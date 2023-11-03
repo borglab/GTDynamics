@@ -54,10 +54,18 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
   bool equals(const MultiJacobian& other, double tol = 1e-8) const;
 
   KeySet keys() const;
+
+  void operator += (const MultiJacobian& other);
 };
+
+MultiJacobian operator*(const Matrix& m, const MultiJacobian& jac);
+
+MultiJacobian operator+(const MultiJacobian& jac1, const MultiJacobian& jac2);
 
 /** jacobian of multiple variables w.r.t. multiple variables. */
 typedef std::unordered_map<Key, MultiJacobian> MultiJacobians;
+
+MultiJacobians JacobiansMultiply(const MultiJacobians& multi_jac1, const MultiJacobians& multi_jac2);
 
 /** Given a bayes net, compute the jacobians of all variables w.r.t. basis
  * variables.

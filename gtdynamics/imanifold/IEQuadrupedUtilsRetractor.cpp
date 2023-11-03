@@ -43,7 +43,8 @@ Vision60Retractor::Vision60Retractor(const IEVision60Robot &robot,
   /// Split basis keys into 3 levels
   if (params.use_basis_keys) {
     KeyVector basis_keys = robot_.getBasisKeyFunc()(manifold.eCC());
-    ClassifyKeysByLevel(basis_keys, basis_q_keys_, basis_v_keys_, basis_ad_keys_);
+    ClassifyKeysByLevel(basis_keys, basis_q_keys_, basis_v_keys_,
+                        basis_ad_keys_);
   } else {
     basis_q_keys_ = q_keys;
     basis_v_keys_ = v_keys;
@@ -195,6 +196,16 @@ IERetractor::shared_ptr Vision60RetractorMultiPhaseCreator::create(
       gtdynamics::DynamicsSymbol(*manifold.values().keys().begin()).time();
   return std::make_shared<Vision60Retractor>(
       vision60_multi_phase_.robotAtStep(k), manifold, params_);
+}
+
+/* ************************************************************************* */
+TspaceBasis::shared_ptr Vision60MultiPhaseTspaceBasisCreator::create(
+    const ConnectedComponent::shared_ptr cc, const Values &values) const {
+  size_t k = gtdynamics::DynamicsSymbol(*values.keys().begin()).time();
+  KeyVector basis_keys =
+      vision60_multi_phase_.robotAtStep(k).getBasisKeyFunc()(cc);
+  size_t manifold_dim = values.dim() - cc->constraints_.dim();
+  return TspaceBasis::create(params_, cc, values, basis_keys, manifold_dim);
 }
 
 } // namespace gtsam

@@ -65,6 +65,7 @@ public:
   /** Perform optimization on manifolds. */
   Values optimizeManifolds(const NonlinearFactorGraph &graph,
                            const IEManifoldValues &manifolds,
+                           const Values& unconstrained_values,
                            gtdynamics::ConstrainedOptResult
                                *intermediate_result = nullptr) const override;
 

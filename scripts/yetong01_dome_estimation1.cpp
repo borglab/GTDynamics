@@ -1,5 +1,5 @@
 
-#include "gtdynamics/imanifold/IERetractor.h"
+
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/imanifold/IEHalfSphere.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
@@ -131,26 +131,28 @@ Values ZeroValues(const size_t num_steps) {
   return values;
 }
 
-Values InitValuesByOdometry(const IEHalfSphere& half_sphere, const Point3& init_point, const std::vector<Vector3>& odometry) {
+Values InitValuesByOdometry(const IEHalfSphere &half_sphere,
+                            const Point3 &init_point,
+                            const std::vector<Vector3> &odometry) {
   size_t num_steps = odometry.size();
   std::vector<Point3> points(num_steps + 1);
   points[0] = init_point;
 
-  for (size_t k=0; k<num_steps; k++) {
-    const Vector3& rel = odometry.at(k);
-    points[k+1] = points[k] + rel;
+  for (size_t k = 0; k < num_steps; k++) {
+    const Vector3 &rel = odometry.at(k);
+    points[k + 1] = points[k] + rel;
   }
 
-  const double& r = half_sphere.r;
+  const double &r = half_sphere.r;
 
   Values values;
-  for (size_t k=0; k<=num_steps; k++) {
+  for (size_t k = 0; k <= num_steps; k++) {
     Point3 modified_point = points[k];
     if (modified_point.z() < 0) {
       modified_point.z() = 0;
     }
     if (modified_point.norm() > r) {
-      modified_point = r/modified_point.norm() * modified_point;
+      modified_point = r / modified_point.norm() * modified_point;
     }
     values.insert(PointKey(k), modified_point);
   }
@@ -194,8 +196,7 @@ IEConsOptProblem SimpleProblem(const IEHalfSphere &half_sphere) {
   auto prior_noise = noiseModel::Isotropic::Sigma(3, 0.01);
   auto between_noise = noiseModel::Isotropic::Sigma(3, 0.01);
   Vector odometry_sigmas = between_noise->sigmas();
-  auto measurements =
-      GenerateMeasurements(gt_values, odometry_sigmas);
+  auto measurements = GenerateMeasurements(gt_values, odometry_sigmas);
 
   // graph
   NonlinearFactorGraph graph =
@@ -209,14 +210,15 @@ IEConsOptProblem SimpleProblem(const IEHalfSphere &half_sphere) {
   }
 
   // values
-  Values initial_values = InitValuesByOdometry(half_sphere, init_point, measurements);
+  Values initial_values =
+      InitValuesByOdometry(half_sphere, init_point, measurements);
   return IEConsOptProblem(graph, e_constraints, i_constraints, initial_values);
 }
 
-double TranslationError(const Values& gt_values, const Values& values) {
+double TranslationError(const Values &gt_values, const Values &values) {
   size_t num_steps = gt_values.size() - 1;
   double error = 0;
-  for (size_t k=0; k<=num_steps; k++) {
+  for (size_t k = 0; k <= num_steps; k++) {
     Point3 gt_point = gt_values.at<Point3>(PointKey(k));
     Point3 point = values.at<Point3>(PointKey(k));
     error += pow((gt_point - point).norm(), 2);
@@ -232,7 +234,11 @@ int main(int argc, char **argv) {
   problem.initValues().print();
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<DomeRetractor>(half_sphere));
+  iecm_params->retractor_creator =
+      std::make_shared<UniversalIERetractorCreator>(
+          std::make_shared<DomeRetractor>(half_sphere));
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
+      iecm_params->ecm_params->basis_params);
 
   LevenbergMarquardtParams lm_params;
   std::cout << "run soft...\n";
@@ -265,19 +271,19 @@ int main(int argc, char **argv) {
   std::string folder_lm = folder + "lm/";
   std::filesystem::create_directory(folder_lm);
   IEHalfSphere::ExportValues(
-      IEOptimizer::CollectManifoldValues(
-          lm_result.second.back().state.manifolds),
-      num_steps, folder_lm + "values_final.txt");
-  IEHalfSphere::ExportValues(gt,
-      num_steps, folder_lm + "values_gt.txt");
-
+      CollectManifoldValues(lm_result.second.back().state.manifolds), num_steps,
+      folder_lm + "values_final.txt");
+  IEHalfSphere::ExportValues(gt, num_steps, folder_lm + "values_gt.txt");
 
   auto soft_error = TranslationError(gt, soft_result.second.back().values);
-  auto barrier_error = TranslationError(gt, barrier_result.second.back().values);
-  auto gd_error = TranslationError(gt, IEOptimizer::CollectManifoldValues(gd_result.second.back().state.manifolds));
-  auto lm_error = TranslationError(gt, IEOptimizer::CollectManifoldValues(lm_result.second.back().state.manifolds));
-  std::cout << soft_error << "\t" << barrier_error << "\t" << gd_error << "\t" << lm_error << "\n";
-
+  auto barrier_error =
+      TranslationError(gt, barrier_result.second.back().values);
+  auto gd_error = TranslationError(
+      gt, CollectManifoldValues(gd_result.second.back().state.manifolds));
+  auto lm_error = TranslationError(
+      gt, CollectManifoldValues(lm_result.second.back().state.manifolds));
+  std::cout << soft_error << "\t" << barrier_error << "\t" << gd_error << "\t"
+            << lm_error << "\n";
 
   //   for (const auto &iter_details : details) {
   //     IEOptimizer::PrintIterDetails(iter_details, num_steps, false,

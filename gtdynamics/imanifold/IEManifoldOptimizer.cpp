@@ -93,10 +93,11 @@ IdentifyConnectedComponents(
                         gtdynamics::InequalityConstraints::shared_ptr>>
       components;
   while (!keys.empty()) {
-    Key key = *keys.begin();
-    keys.erase(key);
     auto component_info = IdentifyConnectedComponent(
-        e_constraints, i_constraints, e_var_index, i_var_index, key);
+        e_constraints, i_constraints, e_var_index, i_var_index, *keys.begin());
+    for (const Key& key: component_info.keys) {
+      keys.erase(key);
+    }
 
     // e_constraints
     gtdynamics::EqualityConstraints component_e_constraints;
@@ -157,12 +158,19 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
 }
 
 /* ************************************************************************* */
-Values IEOptimizer::CollectManifoldValues(const IEManifoldValues &manifolds) {
-  Values values;
-  for (const auto &it : manifolds) {
-    values.insert(it.second.values());
+Values IEOptimizer::IdentifyUnconstrainedValues(
+      const gtdynamics::EqualityConstraints &e_constraints,
+      const gtdynamics::InequalityConstraints &i_constraints,
+      const gtsam::Values &values) {
+  Values unconstrained_values;
+  KeySet constrained_keys = e_constraints.keys();
+  constrained_keys.merge(i_constraints.keys());
+  for (const Key& key: values.keys()) {
+    if (!constrained_keys.exists(key)) {
+      unconstrained_values.insert(key, values.at(key));
+    }
   }
-  return values;
+  return unconstrained_values;
 }
 
 /* ************************************************************************* */
@@ -313,24 +321,6 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
   }
 
   return approach_indices_map;
-}
-
-/* ************************************************************************* */
-IEManifoldValues
-IEOptimizer::MoveToBoundaries(const IEManifoldValues &manifolds,
-                              const IndexSetMap &approach_indices_map) {
-  IEManifoldValues new_manifolds;
-  for (const auto &it : manifolds) {
-    const Key &key = it.first;
-    const auto &manifold = it.second;
-    if (approach_indices_map.find(key) == approach_indices_map.end()) {
-      new_manifolds.insert({key, manifold});
-    } else {
-      new_manifolds.insert(
-          {key, manifold.moveToBoundary(approach_indices_map.at(key))});
-    }
-  }
-  return new_manifolds;
 }
 
 /* ************************************************************************* */

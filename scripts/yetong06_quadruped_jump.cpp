@@ -69,13 +69,14 @@ void TrajectoryOptimization() {
   std::map<std::string, double> torque_upper_limits;
   double lower_torque_lower_limit = -20.0;
   double lower_torque_upper_limit = 20.0;
-  for (const auto& hip_joint : IEVision60Robot::lower_joint_names) {
-    torque_lower_limits.insert({hip_joint, lower_torque_lower_limit});
-    torque_upper_limits.insert({hip_joint, lower_torque_upper_limit});
+  for (const auto& leg : IEVision60Robot::legs) {
+    torque_lower_limits.insert({leg.lower_joint->name(), lower_torque_lower_limit});
+    torque_upper_limits.insert({leg.lower_joint->name(), lower_torque_upper_limit});
   }
   vision60_params.torque_upper_limits = torque_upper_limits;
   vision60_params.torque_lower_limits = torque_lower_limits;
   vision60_params.include_torque_limits = true;
+  vision60_params.set4C();
 
   IEVision60Robot vision60(vision60_params);
 
@@ -139,7 +140,8 @@ void TrajectoryOptimization() {
   vision60_retractor_params.prior_sigma = 0.1;
   iecm_params->retractor_creator =
       std::make_shared<Vision60RetractorCreator>(vision60, vision60_retractor_params);
-
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
+      iecm_params->ecm_params->basis_params, vision60.getBasisKeyFunc());
 
   LevenbergMarquardtParams lm_params;
   lm_params.setMaxIterations(10);
@@ -147,8 +149,8 @@ void TrajectoryOptimization() {
 
   // optimize IELM
   auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
-  Values result_values = IEOptimizer::CollectManifoldValues(
-      lm_result.second.back().state.manifolds);
+  Values result_values = 
+      lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
     IEOptimizer::PrintIterDetails(
         iter_details, num_steps, false, IEVision60Robot::PrintValues,
@@ -158,15 +160,17 @@ void TrajectoryOptimization() {
   EvaluateCosts(result_values);
   IEVision60Robot::ExportValues(result_values, num_steps, "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_quadruped_traj.csv");
   
-  // // Optimize Barrier
-  // BarrierParameters barrier_params;
-  // barrier_params.initial_mu = 1e0;
-  // barrier_params.num_iterations = 5;
-  // auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
-  // EvaluateCosts(barrier_result.second.rbegin()->values);
-  // barrier_result.first.exportFileWithMu("/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_quadruped_barrier.txt");
-  // barrier_result.first.printLatex(std::cout);
-  // lm_result.first.printLatex(std::cout);
+  // Optimize Barrier
+  BarrierParameters barrier_params;
+  barrier_params.initial_mu = 1e0;
+  barrier_params.num_iterations = 5;
+  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  EvaluateCosts(barrier_result.second.rbegin()->values);
+  IEVision60Robot::PrintValues(barrier_result.second.rbegin()->values, num_steps);
+  barrier_result.first.exportFileWithMu("/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_quadruped_barrier.txt");
+  
+  barrier_result.first.printLatex(std::cout);
+  lm_result.first.printLatex(std::cout);
 }
 
 

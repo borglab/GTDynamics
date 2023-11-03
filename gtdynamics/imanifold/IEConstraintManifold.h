@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "gtdynamics/manifold/TspaceBasis.h"
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/imanifold/TangentCone.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
@@ -35,7 +36,8 @@ public:
         std::make_shared<ConstraintManifold::Params>();
     // IERetractType ie_retract_type = IERetractType::Barrier;
     IERetractorCreator::shared_ptr retractor_creator;
-
+    TspaceBasisCreator::shared_ptr e_basis_creator;
+    bool e_basis_with_new_constraints = false;
     /** Default constructor. */
     Params() = default;
   };
@@ -67,12 +69,13 @@ public:
         embedding_dim_(values.dim()),
         e_constraints_dim_(e_cc_->constraints_.dim()),
         dim_(embedding_dim_ - e_constraints_dim_),
-        e_basis_(ConstraintManifold::constructTspaceBasis(params->ecm_params,
-                                                          e_cc, values, dim_)),
+        e_basis_(params->e_basis_creator->create(e_cc_, values_)),
+        // e_basis_(ConstraintManifold::constructTspaceBasis(params->ecm_params,
+        //                                                   e_cc, values,
+        //                                                   dim_)),
         i_cone_(ConstructTangentCone(*i_constraints, values, active_indices_,
-                                     e_basis_)) {
-    retractor_ = params->retractor_creator->create(*this);
-  }
+                                     e_basis_)),
+        retractor_(params->retractor_creator->create(*this)) {}
 
   /** constructor from other manifold but update the values. */
   IEConstraintManifold(const IEConstraintManifold &other, const Values &values,
@@ -104,9 +107,9 @@ public:
 
   const TspaceBasis::shared_ptr eBasis() const { return e_basis_; }
 
-  const TangentCone::shared_ptr &tangentCone() const {return i_cone_; }
+  const TangentCone::shared_ptr &tangentCone() const { return i_cone_; }
 
-  const IERetractor::shared_ptr &retractor() const {return retractor_; }
+  const IERetractor::shared_ptr &retractor() const { return retractor_; }
 
   const gtdynamics::InequalityConstraints::shared_ptr &iConstraints() const {
     return i_constraints_;
@@ -114,7 +117,7 @@ public:
 
   const ConnectedComponent::shared_ptr &eCC() const { return e_cc_; }
 
-  const size_t &dim() const  {return dim_; }
+  const size_t &dim() const { return dim_; }
 
   /// Set of blocking constraints when going in the direction g, return set of
   /// blocking constraint indices, and the projected vector
@@ -151,7 +154,7 @@ public:
   }
 
   double evalEViolation() const {
-    return e_cc_->constraints_.evaluateViolationL2Norm(values_); 
+    return e_cc_->constraints_.evaluateViolationL2Norm(values_);
   }
 
 protected:
@@ -170,5 +173,13 @@ protected:
                        const Values &values, const IndexSet &active_indices,
                        const TspaceBasis::shared_ptr &t_basis);
 };
+
+typedef std::map<Key, IEConstraintManifold> IEManifoldValues;
+typedef std::map<Key, ConstraintManifold> EManifoldValues;
+
+Values CollectManifoldValues(const IEManifoldValues &manifolds);
+
+IEManifoldValues MoveToBoundaries(const IEManifoldValues &manifolds,
+                                  const IndexSetMap &approach_indices_map);
 
 } // namespace gtsam

@@ -11,6 +11,8 @@
  * @author Yetong Zhang
  */
 
+#include "gtdynamics/manifold/ConnectedComponent.h"
+#include "gtdynamics/optimizer/EqualityConstraint.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -23,7 +25,9 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/Expression.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <memory>
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -58,8 +62,8 @@ TEST(TspaceBasis, connected_poses) {
   auto basis_params = std::make_shared<TspaceBasisParams>();
   auto basis_m =
       std::make_shared<MatrixBasis>(basis_params, component, cm_base_values);
-  auto basis_e = std::make_shared<FixedVarBasis>(basis_params, component,
-                                                 cm_base_values, basis_keys);
+  auto basis_e = std::make_shared<EliminationBasis>(basis_params, component,
+                                                    cm_base_values, basis_keys);
   auto basis_sm = std::make_shared<SparseMatrixBasis>(basis_params, component,
                                                       cm_base_values);
 
@@ -122,6 +126,53 @@ TEST(TspaceBasis, connected_poses) {
       EXPECT_DOUBLES_EQUAL(0.0, linear_graph->error(delta1), 1e-9);
     }
   }
+}
+
+/** Simple example Pose3 with between constraints. */
+TEST(TspaceBasis, linear_system) {
+  Key x1_key = 1;
+  Key x2_key = 2;
+  Key x3_key = 3;
+  Key x4_key = 4;
+  Double_ x1(x1_key);
+  Double_ x2(x2_key);
+  Double_ x3(x3_key);
+  Double_ x4(x4_key);
+  double tol = 1.0;
+  EqualityConstraints constraints;
+  constraints.emplace_shared<DoubleExpressionEquality>(x1 + x2 + x3, tol);
+  constraints.emplace_shared<DoubleExpressionEquality>(x1 + x2 + 2 * x3 + x4,
+                                                       tol);
+  auto cc = std::make_shared<ConnectedComponent>(constraints);
+  Values values;
+  values.insertDouble(x1_key, 0.0);
+  values.insertDouble(x2_key, 0.0);
+  values.insertDouble(x3_key, 0.0);
+  values.insertDouble(x4_key, 0.0);
+  KeyVector basis_keys{x1_key, x2_key};
+  auto basis_params = std::make_shared<TspaceBasisParams>();
+  // auto basis_m = std::make_shared<MatrixBasis>(basis_params, cc, values);
+  auto basis_e =
+      std::make_shared<EliminationBasis>(basis_params, cc, values, basis_keys);
+  
+  // Construct new basis by adding addtional constraints
+  EqualityConstraints new_constraints;
+  new_constraints.emplace_shared<DoubleExpressionEquality>(x2, tol);
+  NonlinearFactorGraph new_graph;
+  for (const auto& constraint: new_constraints) {
+    new_graph.add(constraint->createFactor(1.0));
+  }
+  auto linear_graph = new_graph.linearize(values);
+  auto new_basis_e = basis_e->createWithAdditionalConstraints(*linear_graph);
+  
+  Matrix expected_H_x1 = I_1x1;
+  Matrix expected_H_x2 = I_1x1*0;
+  Matrix expected_H_x3 = I_1x1 * -1;
+  Matrix expected_H_x4 = I_1x1;
+  EXPECT(assert_equal(expected_H_x1, new_basis_e->recoverJacobian(x1_key)));
+  EXPECT(assert_equal(expected_H_x2, new_basis_e->recoverJacobian(x2_key)));
+  EXPECT(assert_equal(expected_H_x3, new_basis_e->recoverJacobian(x3_key)));
+  EXPECT(assert_equal(expected_H_x4, new_basis_e->recoverJacobian(x4_key)));
 }
 
 int main() {

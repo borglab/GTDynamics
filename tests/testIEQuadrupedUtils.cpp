@@ -2,6 +2,7 @@
 
 #include "gtdynamics/imanifold/IERetractor.h"
 #include "gtdynamics/manifold/ConnectedComponent.h"
+#include "gtdynamics/manifold/TspaceBasis.h"
 #include "gtdynamics/optimizer/EqualityConstraint.h"
 #include "gtdynamics/optimizer/InequalityConstraint.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
@@ -408,6 +409,9 @@ TEST(IEVision60Robot_4c, manifold) {
   vision60_retractor_params.prior_sigma = 0.1;
   iecm_params->retractor_creator =
       std::make_shared<Vision60RetractorCreator>(vision60, vision60_retractor_params);
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
+      iecm_params->ecm_params->basis_params,
+      iecm_params->ecm_params->basis_key_func);
 
   IEConstraintManifold manifold(iecm_params, e_cc, i_constraints_ptr, values);
   EXPECT_LONGS_EQUAL(24, manifold.dim());
@@ -496,6 +500,9 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
   vision60_retractor_params.prior_sigma = 0.1;
   iecm_params->retractor_creator =
       std::make_shared<Vision60RetractorCreator>(vision60, vision60_retractor_params);
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
+      iecm_params->ecm_params->basis_params,
+      iecm_params->ecm_params->basis_key_func);
 
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
@@ -591,6 +598,9 @@ TEST(IEVision60Robot_in_air, manifold) {
   vision60_retractor_params.prior_sigma = 0.1;
   iecm_params->retractor_creator =
       std::make_shared<Vision60RetractorCreator>(vision60, vision60_retractor_params);
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
+      iecm_params->ecm_params->basis_params,
+      iecm_params->ecm_params->basis_key_func);
 
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
@@ -684,6 +694,9 @@ TEST(IEVision60Robot_ground_air_boundary, manifold) {
   vision60_retractor_params.prior_sigma = 0.1;
   iecm_params->retractor_creator =
       std::make_shared<Vision60RetractorCreator>(vision60, vision60_retractor_params);
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
+      iecm_params->ecm_params->basis_params,
+      iecm_params->ecm_params->basis_key_func);
 
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);

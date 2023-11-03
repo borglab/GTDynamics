@@ -147,4 +147,41 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
   }
 }
 
+void MultiJacobian::operator += (const MultiJacobian& other) {
+  for (const auto &it: other) {
+    addJacobian(it.first, it.second);
+  }
+}
+
+MultiJacobian operator*(const Matrix &m, const MultiJacobian &jac) {
+  MultiJacobian new_jac;
+  for (const auto &it : jac) {
+    new_jac.insert({it.first, m * it.second});
+  }
+  return new_jac;
+}
+
+MultiJacobian operator+(const MultiJacobian& jac1, const MultiJacobian& jac2) {
+  MultiJacobian sum_jac = jac1;
+  for (const auto &it: jac2) {
+    sum_jac.addJacobian(it.first, it.second);
+  }
+  return sum_jac;
+}
+
+MultiJacobians JacobiansMultiply(const MultiJacobians& jacs1, const MultiJacobians& jacs2) {
+  MultiJacobians result_jacs;
+  for (const auto& it: jacs1) {
+    MultiJacobian jac;
+    const MultiJacobian& jac1 = it.second;
+    for (const auto& it1 : jac1) {
+      const Key& key = it1.first;
+      const Matrix& m = it1.second;
+      jac += m * jacs2.at(key);
+    }
+    result_jacs.insert({it.first, jac});
+  }
+  return result_jacs;
+}
+
 }  // namespace gtsam

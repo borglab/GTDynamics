@@ -1,4 +1,5 @@
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtsam {
 
@@ -93,6 +94,17 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
   active_constraints.add(new_active_constraints);
   auto new_cc = std::make_shared<gtsam::ConnectedComponent>(active_constraints,
                                                             unconstrained_keys);
+
+  if (params_->e_basis_with_new_constraints) {
+    NonlinearFactorGraph new_constraint_graph;
+    for (const auto& constraint: new_active_constraints) {
+      new_constraint_graph.add(constraint->createFactor(1.0));
+    }
+    auto linear_graph = new_constraint_graph.linearize(values_);
+    auto new_basis = e_basis_->createWithAdditionalConstraints(*linear_graph);
+    return ConstraintManifold(new_cc, values_, params_->ecm_params, false, new_basis);
+  }
+
   if (params_->ecm_params->basis_params->use_basis_keys &&
       new_active_constraints.size() > 0) {
 
@@ -115,7 +127,7 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
     return ConstraintManifold(new_cc, values_, params_->ecm_params, false, new_basis);
   }
   return ConstraintManifold(new_cc, values_, params_->ecm_params, false);
-  // auto new_basis = e_basis_->createWithAdditionalConstraints(active_constraints);
+  // 
 }
 
 /* ************************************************************************* */

@@ -12,6 +12,7 @@
  */
 
 #include "dynamics/DynamicsGraph.h"
+#include "utils/DynamicsSymbol.h"
 #include "utils/values.h"
 #include <_types/_uint8_t.h>
 #include <gtdynamics/factors/CollocationFactors.h>
@@ -24,6 +25,8 @@
 #include <gtdynamics/factors/WrenchFactor.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IEQuadrupedUtils.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/expressions.h>
 
 using namespace gtdynamics;
@@ -309,17 +312,63 @@ InequalityConstraints IEVision60Robot::iConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
+NonlinearFactorGraph
+IEVision60Robot::linkCollocationFactors(const uint8_t link_id, const size_t &k,
+                                        const double &dt) const {
+  NonlinearFactorGraph graph;
+  if (params.collocation == CollocationScheme::Trapezoidal) {
+    graph.emplace_shared<gtdynamics::FixTimeTrapezoidalPoseCollocationFactor>(
+        PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
+        TwistKey(link_id, k + 1), dt, graph_builder.opt().pose_col_cost_model);
+    graph.emplace_shared<gtdynamics::FixTimeTrapezoidalTwistCollocationFactor>(
+        TwistKey(link_id, k), TwistKey(link_id, k + 1),
+        TwistAccelKey(link_id, k), TwistAccelKey(link_id, k + 1), dt,
+        graph_builder.opt().twist_col_cost_model);
+  } else {
+    graph.emplace_shared<gtdynamics::FixTimeEulerPoseCollocationFactor>(
+        PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k), dt,
+        graph_builder.opt().pose_col_cost_model);
+    graph.emplace_shared<gtdynamics::FixTimeEulerTwistCollocationFactor>(
+        TwistKey(link_id, k), TwistKey(link_id, k + 1),
+        TwistAccelKey(link_id, k), dt,
+        graph_builder.opt().twist_col_cost_model);
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60Robot::multiPhaseLinkCollocationFactors(
+    const uint8_t link_id, const size_t &k, const Key &phase_key) const {
+  NonlinearFactorGraph graph;
+  if (params.collocation == CollocationScheme::Trapezoidal) {
+    graph.add(gtdynamics::TrapezoidalPoseCollocationFactor(
+        PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
+        TwistKey(link_id, k + 1), phase_key,
+        graph_builder.opt().pose_col_cost_model));
+    graph.add(gtdynamics::TrapezoidalTwistCollocationFactor(
+        TwistKey(link_id, k), TwistKey(link_id, k + 1),
+        TwistAccelKey(link_id, k), TwistAccelKey(link_id, k + 1), phase_key,
+        graph_builder.opt().twist_col_cost_model));
+  } else {
+    graph.add(gtdynamics::EulerPoseCollocationFactor(
+        PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
+        phase_key, graph_builder.opt().pose_col_cost_model));
+    graph.add(gtdynamics::EulerTwistCollocationFactor(
+        TwistKey(link_id, k), TwistKey(link_id, k + 1),
+        TwistAccelKey(link_id, k), phase_key,
+        graph_builder.opt().twist_col_cost_model));
+  }
+
+  return graph;
+}
+
+/* ************************************************************************* */
 NonlinearFactorGraph IEVision60Robot::collocationCosts(const size_t num_steps,
                                                        double dt) const {
   NonlinearFactorGraph graph;
   for (size_t k = 0; k < num_steps; k++) {
-    graph.add(gtdynamics::FixTimeTrapezoidalPoseCollocationFactor(
-        PoseKey(base_id, k), PoseKey(base_id, k + 1), TwistKey(base_id, k),
-        TwistKey(base_id, k + 1), dt, graph_builder.opt().pose_col_cost_model));
-    graph.add(gtdynamics::FixTimeTrapezoidalTwistCollocationFactor(
-        TwistKey(base_id, k), TwistKey(base_id, k + 1),
-        TwistAccelKey(base_id, k), TwistAccelKey(base_id, k + 1), dt,
-        graph_builder.opt().twist_col_cost_model));
+    graph.add(linkCollocationFactors(base_id, k, dt));
+
     // TODO: add version for Euler
     for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
       if (!params.contact_indices.exists(leg_idx)) {
@@ -352,14 +401,7 @@ IEVision60Robot::multiPhaseCollocationCosts(const size_t start_step,
   NonlinearFactorGraph graph;
   Key phase_key = PhaseKey(phase_id);
   for (size_t k = start_step; k < end_step; k++) {
-    graph.add(gtdynamics::TrapezoidalPoseCollocationFactor(
-        PoseKey(base_id, k), PoseKey(base_id, k + 1), TwistKey(base_id, k),
-        TwistKey(base_id, k + 1), phase_key,
-        graph_builder.opt().pose_col_cost_model));
-    graph.add(gtdynamics::TrapezoidalTwistCollocationFactor(
-        TwistKey(base_id, k), TwistKey(base_id, k + 1),
-        TwistAccelKey(base_id, k), TwistAccelKey(base_id, k + 1), phase_key,
-        graph_builder.opt().twist_col_cost_model));
+    graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
 
     for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
       if (!params.contact_indices.exists(leg_idx)) {
@@ -406,6 +448,26 @@ IEVision60Robot::finalStateCosts(const Pose3 &des_pose,
   graph.addPrior<Pose3>(PoseKey(base_id, num_steps), des_pose, des_pose_nm);
   graph.addPrior<Vector6>(TwistKey(base_id, num_steps), des_twist,
                           des_twist_nm);
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60Robot::stateCosts(
+    const Values &values, const std::optional<KeyVector> &optional_keys) const {
+  NonlinearFactorGraph graph;
+  KeyVector keys = optional_keys ? *optional_keys : values.keys();
+  for (const auto &key : keys) {
+    DynamicsSymbol symb(key);
+    if (symb.label() == "q") {
+      graph.addPrior<double>(key, values.at<double>(key), des_q_nm);
+    } else if (symb.label() == "v") {
+      graph.addPrior<double>(key, values.at<double>(key), des_v_nm);
+    } else if (symb.label() == "p") {
+      graph.addPrior<Pose3>(key, values.at<Pose3>(key), des_pose_nm);
+    } else if (symb.label() == "V") {
+      graph.addPrior<Vector6>(key, values.at<Vector6>(key), des_pose_nm);
+    }
+  }
   return graph;
 }
 

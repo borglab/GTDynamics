@@ -22,10 +22,7 @@
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Ordering.h>
-#include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/PCGSolver.h>
-#include <gtsam/linear/SubgraphSolver.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/linear/linearExceptions.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -49,17 +46,17 @@ typedef internal::LevenbergMarquardtState State;
 /* ************************************************************************* */
 Values IELMOptimizer::optimizeManifolds(
     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
+    const Values &unconstrained_values,
     gtdynamics::ConstrainedOptResult *intermediate_result) const {
 
   // Construct initial state
-  IELMState state(manifolds, graph, 0);
-  state.lambda = params_.lambdaInitial;
-  state.lambda_factor = params_.lambdaFactor;
+  IELMState state(manifolds, unconstrained_values, graph, params_.lambdaInitial,
+                  params_.lambdaFactor, 0);
 
   // check if we're already close enough
   if (state.error <= params_.errorTol) {
     details_->emplace_back(state);
-    return IEOptimizer::CollectManifoldValues(state.manifolds);
+    return state.baseValues();
   }
 
   // Iterative loop
@@ -73,7 +70,7 @@ Values IELMOptimizer::optimizeManifolds(
            !checkConvergence(prev_state, state) &&
            checkLambdaWithinLimits(state.lambda) && std::isfinite(state.error));
   details_->emplace_back(state);
-  return IEOptimizer::CollectManifoldValues(state.manifolds);
+  return state.baseValues();
 }
 
 /* ************************************************************************* */
@@ -86,8 +83,8 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   }
 
   // Set lambda for first trial.
-  IELMTrial trial;
-  trial.setLambda(state);
+  double lambda = state.lambda;
+  double lambda_factor = state.lambda_factor;
 
   // Perform trials until any of follwing conditions is met
   // * 1) trial is successful
@@ -95,7 +92,10 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   // * 3) lambda goes beyond limits
   while (true) {
     // Perform the trial.
-    tryLambda(graph, state, trial);
+    IELMTrial trial(state, graph, lambda, params_);
+    if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
+      trial.print(state);
+    }
     iter_details.trials.emplace_back(trial);
 
     // Check condition 1.
@@ -104,23 +104,20 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
     }
 
     // Check condition 2.
-    if (trial.solve_successful) {
+    if (trial.linear_update.solve_successful) {
       double abs_change_tol = std::max(params_.absoluteErrorTol,
                                        params_.relativeErrorTol * state.error);
-      if (trial.linear_cost_change < abs_change_tol) {
-        if (trial.nonlinear_cost_change < abs_change_tol) {
-          break;
-        }
+      if (trial.linear_update.cost_change < abs_change_tol &&
+          trial.nonlinear_update.cost_change < abs_change_tol) {
+        break;
       }
     }
 
     // Set lambda for next trial.
-    IELMTrial next_trial;
-    trial.setNextLambda(next_trial.lambda, next_trial.lambda_factor, params_);
-    trial = next_trial;
+    trial.setNextLambda(lambda, lambda_factor, params_);
 
     // Check condition 3.
-    if (!checkLambdaWithinLimits(trial.lambda)) {
+    if (!checkLambdaWithinLimits(lambda)) {
       break;
     }
   }
@@ -157,8 +154,8 @@ bool IELMOptimizer::checkModeChange(
   size_t trial_idx = details_->back().trials.size() - 1;
   bool failed_trial_exists = false;
   while (true) {
-    const auto& trial = details_->at(iter_idx).trials.at(trial_idx);
-    if (!trial.step_is_successful && trial.solve_successful) {
+    const auto &trial = details_->at(iter_idx).trials.at(trial_idx);
+    if (!trial.step_is_successful) {
       failed_trial_exists = true;
       break;
     }
@@ -179,9 +176,11 @@ bool IELMOptimizer::checkModeChange(
     return false;
   }
 
-  IndexSetMap change_indices_map = IdentifyChangeIndices(
-      current_iter_details.state.manifolds,
-      details_->at(iter_idx).trials.at(trial_idx).new_manifolds);
+  IndexSetMap change_indices_map =
+      IdentifyChangeIndices(current_iter_details.state.manifolds,
+                            details_->at(iter_idx)
+                                .trials.at(trial_idx)
+                                .nonlinear_update.new_manifolds);
 
   // Condition2(2): most recent failed trial results in other mode
   if (change_indices_map.size() == 0) {
@@ -198,55 +197,9 @@ bool IELMOptimizer::checkModeChange(
   }
 
   // Enforce approaching indices;
-  IELMTrial trial;
-  trial.setLambda(current_iter_details.state);
-  trial.forced_indices_map = approach_indices_map;
-  trial.new_manifolds = MoveToBoundaries(current_iter_details.state.manifolds,
-                                         approach_indices_map);
-  trial.new_error = graph.error(CollectManifoldValues(trial.new_manifolds));
-  trial.step_is_successful = true;
+  IELMTrial trial(current_iter_details.state, graph, approach_indices_map);
   current_iter_details.trials.emplace_back(trial);
   return true;
-}
-
-/* ************************************************************************* */
-void IELMOptimizer::tryLambda(const NonlinearFactorGraph &graph,
-                              const IELMState &currentState,
-                              IELMTrial &trial) const {
-  auto start = std::chrono::high_resolution_clock::now();
-
-  // std::cout << "compute Delta\n";
-  trial.solve_successful = trial.computeDelta(graph, currentState, params_);
-  if (!trial.solve_successful) {
-    trial.step_is_successful = false;
-    // std::cout << "solve not successful\n";
-    return;
-  }
-
-  // std::cout << "compute new manifolds\n";
-  trial.computeNewManifolds(currentState);
-
-  // std::cout << "decide if accept or reject trial\n";
-  Values newValues = CollectManifoldValues(trial.new_manifolds);
-  trial.new_error = graph.error(newValues);
-  trial.nonlinear_cost_change = currentState.error - trial.new_error;
-  trial.model_fidelity = trial.nonlinear_cost_change / trial.linear_cost_change;
-  if (trial.linear_cost_change <=
-      std::numeric_limits<double>::epsilon() * trial.old_linear_error) {
-    trial.step_is_successful = false;
-  } else {
-    trial.step_is_successful = trial.model_fidelity > params_.minModelFidelity;
-  }
-
-  auto end = std::chrono::high_resolution_clock::now();
-  trial.trial_time =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count() /
-      1e6;
-
-  if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
-    trial.print(currentState);
-  }
 }
 
 /* ************************************************************************* */

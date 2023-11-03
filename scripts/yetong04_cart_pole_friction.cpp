@@ -133,7 +133,11 @@ int main(int argc, char **argv) {
   IECartPoleWithFriction::PrintValues(initial_values, num_steps);
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<CPBarrierRetractor>(cp));
+  iecm_params->retractor_creator =
+      std::make_shared<UniversalIERetractorCreator>(
+          std::make_shared<CPBarrierRetractor>(cp));
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
+      iecm_params->ecm_params->basis_params);
 
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 
@@ -161,13 +165,11 @@ int main(int argc, char **argv) {
   lm_result.first.exportFile("../../results/pole_lm/summary.txt");
 
   IECartPoleWithFriction::ExportValues(
-      IEOptimizer::CollectManifoldValues(
-          lm_result.second.back().state.manifolds),
-      num_steps, "../../results/pole_lm/values_final.txt");
+      lm_result.second.back().state.baseValues(), num_steps,
+      "../../results/pole_lm/values_final.txt");
 
-
-  IECartPoleWithFriction::PrintValues(IEOptimizer::CollectManifoldValues(
-          lm_result.second.back().state.manifolds), num_steps);
+  IECartPoleWithFriction::PrintValues(
+      lm_result.second.back().state.baseValues(), num_steps);
 
   // // Run LM optimization
   // {
@@ -189,11 +191,11 @@ int main(int argc, char **argv) {
 
   //   const auto &details = lm_optimizer.details();
 
-    for (const auto& iter_details : lm_result.second) {
-      IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
-                                    IECartPoleWithFriction::PrintValues,
-                                    IECartPoleWithFriction::PrintDelta);
-    }
+  for (const auto &iter_details : lm_result.second) {
+    IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+                                  IECartPoleWithFriction::PrintValues,
+                                  IECartPoleWithFriction::PrintDelta);
+  }
   //   IECartPoleWithFriction::PrintValues(lm_result, num_steps);
   // }
 

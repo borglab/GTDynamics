@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include "manifold/MultiJacobian.h"
 #include <Eigen/SparseQR>
 #include <gtdynamics/manifold/TspaceBasis.h>
 #include <gtdynamics/utils/values.h>
@@ -37,7 +38,7 @@ TspaceBasis::create(const TspaceBasisParams::shared_ptr params,
     basis = std::make_shared<SparseMatrixBasis>(params, cc, values);
   } else if (params->basis_type == BasisType::SPECIFY_VARIABLES) {
     basis =
-        std::make_shared<FixedVarBasis>(params, cc, values, basis_keys);
+        std::make_shared<EliminationBasis>(params, cc, values, basis_keys);
   }
 
   // Check the total dimension of basis variables should be the same as the
@@ -106,6 +107,18 @@ void MatrixBasis::construct(const ConnectedComponent::shared_ptr &cc,
 
   is_constructed_ = true;
 }
+
+TspaceBasis::shared_ptr MatrixBasis::createWithAdditionalConstraints(
+    const GaussianFactorGraph &linear_graph) const {
+    JacobianFactor combined(linear_graph);
+    Matrix A_new = combined.jacobian().first;
+    // TODO: create A_new with correct size
+    Matrix AB_new = A_new * basis_;
+    Eigen::FullPivLU<Eigen::MatrixXd> lu(AB_new);
+    Matrix M = lu.kernel();
+    Matrix new_basis = basis_*M;
+    return std::make_shared<MatrixBasis>(*this, new_basis);
+  }
 
 /* ************************************************************************* */
 VectorValues MatrixBasis::computeTangentVector(const Vector &xi) const {
@@ -307,7 +320,7 @@ void SparseMatrixBasis::setSparseEntries(
 }
 
 /* ************************************************************************* */
-FixedVarBasis::FixedVarBasis(
+EliminationBasis::EliminationBasis(
     const TspaceBasisParams::shared_ptr &params,
     const ConnectedComponent::shared_ptr &cc, const Values &values,
     std::optional<const KeyVector> basis_keys)
@@ -343,9 +356,9 @@ FixedVarBasis::FixedVarBasis(
 }
 
 /* ************************************************************************* */
-FixedVarBasis::FixedVarBasis(const ConnectedComponent::shared_ptr &cc,
+EliminationBasis::EliminationBasis(const ConnectedComponent::shared_ptr &cc,
                                    const Values &values,
-                                   const FixedVarBasis &other)
+                                   const EliminationBasis &other)
     : TspaceBasis(other.params_), basis_keys_(other.basis_keys_),
       ordering_(other.ordering_), total_basis_dim_(other.total_basis_dim_),
       basis_location_(other.basis_location_), var_dim_(other.var_dim_) {
@@ -355,7 +368,7 @@ FixedVarBasis::FixedVarBasis(const ConnectedComponent::shared_ptr &cc,
 }
 
 /* ************************************************************************* */
-void FixedVarBasis::construct(const ConnectedComponent::shared_ptr &cc,
+void EliminationBasis::construct(const ConnectedComponent::shared_ptr &cc,
                                  const Values &values) {
   auto linear_graph = cc->merit_graph_.linearize(values);
   auto elim_result =
@@ -365,8 +378,64 @@ void FixedVarBasis::construct(const ConnectedComponent::shared_ptr &cc,
   is_constructed_ = true;
 }
 
+TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
+  const GaussianFactorGraph &linear_graph) const {
+
+    // Identify the keys to eliminate
+    KeyVector new_basis_keys;
+    KeySet new_constraint_keys = linear_graph.keys();
+    for (const Key& key: basis_keys_) {
+      if (!new_constraint_keys.exists(key)) {
+        new_basis_keys.push_back(key);
+      }
+    }
+
+    // Identify basis keys locations in xi
+    std::map<Key, size_t> new_basis_location;
+    size_t location = 0;
+    for (const Key &key : new_basis_keys) {
+      new_basis_location[key] = location;
+      location += var_dim_.at(key);
+    }
+    size_t new_basis_dim = location;
+
+    // eliminate on the new factors
+    // Ordering new_ordering =
+    //     Ordering::ColamdConstrainedLast(linear_graph, basis_keys_);
+    // for (size_t i = 0; i < new_basis_keys.size(); i++) {
+    //   new_ordering.pop_back();
+    // }
+    // auto elim_result =
+    //   linear_graph.eliminatePartialSequential(new_ordering, EliminateQR);
+    // auto bayes_net = elim_result.first;
+    // MultiJacobians new_jacobians;
+    // ComputeBayesNetJacobian(*bayes_net, new_basis_keys, var_dim_, new_jacobians);
+    Ordering new_ordering(new_constraint_keys.begin(), new_constraint_keys.end());
+    MultiJacobians new_jacobians;
+    for (const Key& key: new_basis_keys) {
+      size_t dim = var_dim_.at(key);
+      new_jacobians.insert({key, MultiJacobian(key, Matrix::Identity(dim, dim))});
+    }
+    for (const Key& key: new_constraint_keys) {
+      new_jacobians.insert({key, MultiJacobian()});
+    }
+
+    Ordering total_ordering = ordering_;
+    total_ordering.insert(total_ordering.end(), new_ordering.begin(), new_ordering.end());
+    auto new_basis = std::make_shared<EliminationBasis>(params_);
+    new_basis->basis_keys_ = new_basis_keys;
+    new_basis->ordering_ = total_ordering;
+    new_basis->total_basis_dim_ = new_basis_dim;
+    new_basis->basis_location_ = new_basis_location;
+    new_basis->var_dim_ = var_dim_;
+    new_basis->jacobians_ = JacobiansMultiply(jacobians_, new_jacobians);
+    new_basis->is_constructed_ = true;
+    
+    return new_basis;
+  }
+
 /* ************************************************************************* */
-VectorValues FixedVarBasis::computeTangentVector(const Vector &xi) const {
+VectorValues EliminationBasis::computeTangentVector(const Vector &xi) const {
   VectorValues delta;
   // Set tangent vector for basis variables to corresponding segment in xi
   for (const Key &key : basis_keys_) {
@@ -388,7 +457,7 @@ VectorValues FixedVarBasis::computeTangentVector(const Vector &xi) const {
 }
 
 /* ************************************************************************* */
-Vector FixedVarBasis::computeXi(const VectorValues &delta) const {
+Vector EliminationBasis::computeXi(const VectorValues &delta) const {
   Vector xi = Vector::Zero(total_basis_dim_);
   for (const Key &key : basis_keys_) {
     xi.segment(basis_location_.at(key), var_dim_.at(key)) = delta.at(key);
@@ -397,7 +466,7 @@ Vector FixedVarBasis::computeXi(const VectorValues &delta) const {
 }
 
 /* ************************************************************************* */
-Matrix FixedVarBasis::recoverJacobian(const Key &key) const {
+Matrix EliminationBasis::recoverJacobian(const Key &key) const {
   Matrix H = Matrix::Zero(var_dim_.at(key), total_basis_dim_);
   for (const auto &it : jacobians_.at(key)) {
     const Key &basis_key = it.first;
@@ -408,7 +477,7 @@ Matrix FixedVarBasis::recoverJacobian(const Key &key) const {
 }
 
 /* ************************************************************************* */
-Vector FixedVarBasis::localCoordinates(const Values &values,
+Vector EliminationBasis::localCoordinates(const Values &values,
                                           const Values &values_other) const {
   Vector xi = Vector::Zero(total_basis_dim_);
   for (const Key &key : basis_keys_) {

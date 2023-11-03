@@ -59,7 +59,7 @@ public:
   IEGDState(const IEManifoldValues &_manifolds,
             const NonlinearFactorGraph &graph, size_t _iterations = 0)
       : manifolds(_manifolds),
-        error(graph.error(IEOptimizer::CollectManifoldValues(manifolds))),
+        error(graph.error(CollectManifoldValues(manifolds))),
         e_manifolds(IEOptimizer::EManifolds(_manifolds)),
         iterations(_iterations) {
     computeDescentDirection(graph);
@@ -139,6 +139,7 @@ public:
   virtual Values
   optimizeManifolds(const NonlinearFactorGraph &graph,
                     const IEManifoldValues &manifolds,
+                    const Values &unconstrained_values,
                     gtdynamics::ConstrainedOptResult *intermediate_result =
                         nullptr) const override;
 

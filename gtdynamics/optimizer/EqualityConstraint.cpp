@@ -123,6 +123,15 @@ gtsam::VariableIndex EqualityConstraints::varIndex() const {
 }
 
 /* ************************************************************************* */
+gtsam::NonlinearFactorGraph EqualityConstraints::meritGraph(const double mu) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto &constraint : *this) {
+    graph.add(constraint->createFactor(mu));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
 size_t EqualityConstraints::dim() const {
   size_t dimension = 0;
   for (const auto& constraint : *this) {

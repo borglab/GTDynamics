@@ -1,5 +1,5 @@
-#include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
+#include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -18,7 +18,6 @@
 using namespace gtsam;
 using namespace gtdynamics;
 
-
 // void SaveResult(const ConstrainedOptResult &result,
 //                 const Values &initial_values, const size_t &num_steps,
 //                 const std::string &folder) {
@@ -29,8 +28,9 @@ using namespace gtdynamics;
 //     for (int i = 0; i < result.intermediate_values.size(); i++) {
 //       for (int k = 0; k <= num_steps; k++) {
 //         Key point_key = gtsam::Symbol('p', k);
-//         Point3 point = result.intermediate_values.at(i).at<Point3>(point_key);
-//         file << point.x() << " " << point.y() << " " << point.z() << " ";
+//         Point3 point =
+//         result.intermediate_values.at(i).at<Point3>(point_key); file <<
+//         point.x() << " " << point.y() << " " << point.z() << " ";
 //       }
 //       file << "\n";
 //     }
@@ -103,7 +103,11 @@ int main(int argc, char **argv) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<HalfSphereRetractor>(half_sphere));
+  iecm_params->retractor_creator =
+      std::make_shared<UniversalIERetractorCreator>(
+          std::make_shared<HalfSphereRetractor>(half_sphere));
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
+      iecm_params->ecm_params->basis_params);
 
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 
@@ -126,15 +130,14 @@ int main(int argc, char **argv) {
   gd_result.first.printLatex(std::cout);
   lm_result.first.printLatex(std::cout);
 
-
-
   // // Run LM optimization
   // {
   //   LevenbergMarquardtParams params;
   //   params.setVerbosityLM("SUMMARY");
   //   params.minModelFidelity = 0.5;
   //   IELMOptimizer lm_optimizer(params);
-  //   auto lm_result = lm_optimizer.optimize(graph, e_constraints, i_constraints,
+  //   auto lm_result = lm_optimizer.optimize(graph, e_constraints,
+  //   i_constraints,
   //                                          initial_values, iecm_params);
 
   //   const auto &details = lm_optimizer.details();
@@ -150,7 +153,8 @@ int main(int argc, char **argv) {
   //   GDParams params;
   //   params.maxIterations = 30;
   //   IEGDOptimizer gd_optimizer(params);
-  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints, i_constraints,
+  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints,
+  //   i_constraints,
   //                                          initial_values, iecm_params);
 
   //   const auto &details = gd_optimizer.details();

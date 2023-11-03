@@ -30,7 +30,7 @@ namespace gtdynamics {
  *
  * @return pose_t1 link pose at next time step
  */
-gtsam::Pose3 predictPose(const gtsam::Pose3 &pose_t0,
+inline gtsam::Pose3 predictPose(const gtsam::Pose3 &pose_t0,
                          const gtsam::Vector6 &twistdt,
                          gtsam::OptionalJacobian<6, 6> H_pose_t0 = {},
                          gtsam::OptionalJacobian<6, 6> H_twistdt = {}) {
@@ -206,6 +206,83 @@ class TrapezoidalPoseCollocationFactor
 #endif
 };
 
+
+/**
+ * FixTimeEulerPoseCollocationFactor imposes collocation between link
+ * poses of current and next time steps with fixed dt.
+ */
+class FixTimeEulerPoseCollocationFactor
+    : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
+                                      gtsam::Vector6> {
+ private:
+  using This = FixTimeEulerPoseCollocationFactor;
+  using Base = gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Pose3,
+                                        gtsam::Vector6>;
+  double dt_;
+
+ public:
+   FixTimeEulerPoseCollocationFactor(
+       gtsam::Key pose_t0_key, gtsam::Key pose_t1_key, gtsam::Key twist_t0_key,
+       double dt, const gtsam::noiseModel::Base::shared_ptr &cost_model)
+       : Base(cost_model, pose_t0_key, pose_t1_key, twist_t0_key), dt_(dt) {}
+
+   virtual ~FixTimeEulerPoseCollocationFactor() {}
+
+   /**
+    * Evaluate link pose errors
+
+    * @param pose_t0 link pose of current step
+    * @param pose_t1 link pose of next step
+    * @param twist_t0 link twist of current step
+    * @param twist_t1 link twist of next step
+    * @param dt duration of time step
+   */
+   gtsam::Vector evaluateError(
+       const gtsam::Pose3 &pose_t0, const gtsam::Pose3 &pose_t1,
+       const gtsam::Vector6 &twist_t0,
+       gtsam::OptionalMatrixType H_pose_t0 = nullptr,
+       gtsam::OptionalMatrixType H_pose_t1 = nullptr,
+       gtsam::OptionalMatrixType H_twist_t0 = nullptr) const override {
+     gtsam::Vector6 twistdt = dt_ * twist_t0;
+     gtsam::Matrix6 H_twistdt;
+     auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
+     gtsam::Vector6 error = pose_t1.logmap(pose_t1_hat);
+     if (H_pose_t1) {
+       *H_pose_t1 = -gtsam::I_6x6;
+     }
+     if (H_twist_t0) {
+       *H_twist_t0 = dt_ * H_twistdt;
+     }
+     return error;
+  }
+
+  //// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  /// print contents
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << s << "Euler pose collocation factor" << std::endl;
+    Base::print("", keyFormatter);
+  }
+
+ private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+  /// Serialization function
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
+    ar &boost::serialization::make_nvp(
+        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+  }
+#endif
+};
+
+
 /**
  * FixTimeTrapezoidalPoseCollocationFactor imposes collocation between link
  * poses of current and next time steps with fixed dt.
@@ -282,7 +359,7 @@ class FixTimeTrapezoidalPoseCollocationFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
@@ -448,6 +525,82 @@ class TrapezoidalTwistCollocationFactor
   }
 #endif
 };
+
+
+/**
+ * FixTimeEulerTwistCollocationFactor is a three-way nonlinear factor
+ * between link twist of current and next time steps
+ */
+class FixTimeEulerTwistCollocationFactor
+    : public gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
+                                      gtsam::Vector6> {
+ private:
+  using This = FixTimeEulerTwistCollocationFactor;
+  using Base = gtsam::NoiseModelFactor3<gtsam::Vector6, gtsam::Vector6,
+                                        gtsam::Vector6>;
+  double dt_;
+
+ public:
+   FixTimeEulerTwistCollocationFactor(
+       gtsam::Key twist_t0_key, gtsam::Key twist_t1_key,
+       gtsam::Key accel_t0_key, double dt,
+       const gtsam::noiseModel::Base::shared_ptr &cost_model)
+       : Base(cost_model, twist_t0_key, twist_t1_key, accel_t0_key), dt_(dt) {}
+
+   virtual ~FixTimeEulerTwistCollocationFactor() {}
+
+   /**
+    * Evaluate link twist errors
+    *
+    * @param twist_t0 link twist of current step
+    * @param twist_t1 link twist of next step
+    * @param accel_t0 link twist acceleration of current step
+    */
+   gtsam::Vector evaluateError(
+       const gtsam::Vector6 &twist_t0, const gtsam::Vector6 &twist_t1,
+       const gtsam::Vector6 &accel_t0,
+       gtsam::OptionalMatrixType H_twist_t0 = nullptr,
+       gtsam::OptionalMatrixType H_twist_t1 = nullptr,
+       gtsam::OptionalMatrixType H_accel_t0 = nullptr) const override {
+     gtsam::Vector6 error = twist_t0 + dt_ * accel_t0 - twist_t1;
+     if (H_twist_t1) {
+       *H_twist_t1 = -gtsam::I_6x6;
+     }
+     if (H_twist_t0) {
+       *H_twist_t0 = gtsam::I_6x6;
+     }
+     if (H_accel_t0) {
+       *H_accel_t0 = dt_ * gtsam::I_6x6;
+     }
+     return error;
+  }
+
+  //// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  /// print contents
+  void print(const std::string &s = "",
+             const gtsam::KeyFormatter &keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << s << "Euler twist collocation factor" << std::endl;
+    Base::print("", keyFormatter);
+  }
+
+ private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+  /// Serialization function
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE const &ar, const unsigned int version) {
+    ar &boost::serialization::make_nvp(
+        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+  }
+#endif
+};
+
 
 /**
  * FixTimeTrapezoidalTwistCollocationFactor is a four-way nonlinear factor

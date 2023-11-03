@@ -148,6 +148,8 @@ public:
   gtdynamics::DynamicsGraph graph_builder;
   SharedNoiseModel des_pose_nm;
   SharedNoiseModel des_twist_nm;
+  SharedNoiseModel des_q_nm;
+  SharedNoiseModel des_v_nm;
   SharedNoiseModel min_torque_nm;
   SharedNoiseModel cpoint_cost_model;
   SharedNoiseModel redundancy_model;
@@ -178,6 +180,14 @@ protected:
   /// inequality constraints).
   NonlinearFactorGraph DynamicsFactors(const size_t k) const;
 
+  NonlinearFactorGraph linkCollocationFactors(const uint8_t link_id,
+                                              const size_t &k,
+                                              const double &dt) const;
+
+  NonlinearFactorGraph
+  multiPhaseLinkCollocationFactors(const uint8_t link_id, const size_t &k,
+                                   const Key &phase_key) const;
+
 public:
   /// Constructor.
   IEVision60Robot(const Params &_params);
@@ -207,6 +217,10 @@ public:
   NonlinearFactorGraph finalStateCosts(const Pose3 &des_pose,
                                        const Vector6 &des_twist,
                                        const size_t num_steps) const;
+  
+  /// Costs for init condition and reaching target poses.
+  NonlinearFactorGraph stateCosts(const Values &values,
+                                  const std::optional<KeyVector> &keys = {}) const;
 
   /** <================= Value Initialize Functions =================> **/
   /// Return values of one step satisfying kinodynamic constraints.
@@ -216,6 +230,31 @@ public:
                            const Vector6 &base_twist = Vector6::Zero(),
                            const Vector6 &base_accel = Vector6::Zero(),
                            Values init_values_t = Values()) const;
+
+  /// Return values of one step satisfying kinodynamic constraints. The
+  /// variables specified by known_keys will remain unchanged. If known_keys not
+  /// specified, basis_keys will be used.
+  Values stepValues(const size_t k, const Values &init_values,
+                    const std::optional<KeyVector> &known_keys = {}) const;
+
+  /// Return values of one step by integration from previous step. The variables
+  /// specified with integration_keys will be used for integration. Variables of
+  /// a and d levels will be copied from the previous step.
+  Values stepValuesByIntegration(
+      const size_t k, const double dt, const Values &prev_values,
+      const std::optional<KeyVector> &intagration_keys = {}) const;
+
+  /// Return values of trajectory from start_step to end_step that satisfy all
+  /// kinodynamic constraints and Euler collcation.
+  Values trajectoryValuesByInterpolation(
+      const size_t start_step, const size_t end_step, const double dt,
+      const std::vector<Values> &boudnary_values,
+      const std::string initialization_technique = "interp") const;
+
+  // /// Return values of trajectory.
+  // Values trajectoryValuesByIntegration(const size_t start_step,
+  //                                      const size_t end_step, const double
+  //                                      dt, const Values &prev_values) const;
 
   /// Return values of trajectory satisfying kinodynamic constraints.
   Values getInitValuesTrajectory(
@@ -242,13 +281,16 @@ public:
 
   /// Return function that select basis keys for constraint manifolds.
   BasisKeyFunc getBasisKeyFunc() const;
+
+  KeyVector basisKeys(const size_t k,
+                      bool include_init_state_constraints = false) const;
 };
 
 /**
  * Class of utilitis for Vision60 robot.
  */
 class IEVision60RobotMultiPhase {
-protected:
+public:
   std::vector<IEVision60Robot> phase_robots_;
   std::vector<IEVision60Robot> boundary_robots_;
   std::vector<size_t> phase_num_steps_;
@@ -262,6 +304,9 @@ public:
   const IEVision60Robot &robotAtStep(const size_t k) const;
 
   NonlinearFactorGraph collocationCosts() const;
+
+  // Values getInitValuesTrajectory(const std::vector<Values> &boundary_values,
+  //                                const std::vector<double> &phases_dt) const;
 };
 
 /**
@@ -330,22 +375,34 @@ public:
  */
 class Vision60RetractorMultiPhaseCreator : public IERetractorCreator {
 protected:
-  const IEVision60RobotMultiPhase vision60_multi_phase_;
+  const IEVision60RobotMultiPhase &vision60_multi_phase_;
   const Vision60Retractor::Params &params_;
 
 public:
   Vision60RetractorMultiPhaseCreator(
-      const std::vector<IEVision60Robot> &phase_robots,
-      const std::vector<IEVision60Robot> &boundary_robots,
-      const std::vector<size_t> &boundary_ks,
+      const IEVision60RobotMultiPhase &vision60_multi_phase,
       const Vision60Retractor::Params &params)
-      : vision60_multi_phase_(phase_robots, boundary_robots, boundary_ks),
-        params_(params) {}
+      : vision60_multi_phase_(vision60_multi_phase), params_(params) {}
 
   virtual ~Vision60RetractorMultiPhaseCreator() {}
 
   IERetractor::shared_ptr
   create(const IEConstraintManifold &manifold) const override;
+};
+
+class Vision60MultiPhaseTspaceBasisCreator : public TspaceBasisCreator {
+protected:
+  const IEVision60RobotMultiPhase &vision60_multi_phase_;
+
+public:
+  Vision60MultiPhaseTspaceBasisCreator(
+      const IEVision60RobotMultiPhase &vision60_multi_phase,
+      const TspaceBasisParams::shared_ptr params)
+      : TspaceBasisCreator(params),
+        vision60_multi_phase_(vision60_multi_phase) {}
+
+  TspaceBasis::shared_ptr create(const ConnectedComponent::shared_ptr cc,
+                                 const Values &values) const override;
 };
 
 } // namespace gtsam

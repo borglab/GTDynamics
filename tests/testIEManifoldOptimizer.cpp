@@ -38,7 +38,11 @@ TEST(IdentifyManifolds, HalfSphere) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<HalfSphereRetractor>(half_sphere));
+  iecm_params->retractor_creator =
+      std::make_shared<UniversalIERetractorCreator>(
+          std::make_shared<HalfSphereRetractor>(half_sphere));
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
+      iecm_params->ecm_params->basis_params);
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
@@ -69,7 +73,11 @@ TEST(IdentifyManifolds, CartPoleWithFriction) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<CartPoleWithFrictionRetractor>(cp));
+  iecm_params->retractor_creator =
+      std::make_shared<UniversalIERetractorCreator>(
+          std::make_shared<CartPoleWithFrictionRetractor>(cp));
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
+      iecm_params->ecm_params->basis_params);
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
@@ -92,9 +100,13 @@ TEST(IdentifyManifolds, Dome) {
   for (size_t k = 0; k <= num_steps; k++) {
     i_constraints.add(half_sphere.iDomeConstraints(k));
   }
-  
+
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<DomeRetractor>(half_sphere));
+  iecm_params->retractor_creator =
+      std::make_shared<UniversalIERetractorCreator>(
+          std::make_shared<DomeRetractor>(half_sphere));
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
+      iecm_params->ecm_params->basis_params);
 
   Values values;
   for (size_t k = 0; k <= num_steps; k++) {

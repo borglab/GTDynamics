@@ -22,8 +22,6 @@
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
 namespace gtsam {
-typedef std::map<Key, IEConstraintManifold> IEManifoldValues;
-typedef std::map<Key, ConstraintManifold> EManifoldValues;
 
 class IEOptimizer {
 public:
@@ -40,11 +38,15 @@ public:
       gtdynamics::ConstrainedOptResult *intermediate_result = nullptr) const {
     auto manifolds = IdentifyManifolds(e_constraints, i_constraints,
                                        initial_values, iecm_params);
-    return optimizeManifolds(graph, manifolds, intermediate_result);
+    Values unconstrained_values = IdentifyUnconstrainedValues(
+        e_constraints, i_constraints, initial_values);
+    return optimizeManifolds(graph, manifolds, unconstrained_values,
+                             intermediate_result);
   }
 
   virtual Values optimizeManifolds(const NonlinearFactorGraph &graph,
                                    const IEManifoldValues &manifolds,
+                                   const Values &unconstrained_values,
                                    gtdynamics::ConstrainedOptResult *
                                        intermediate_result = nullptr) const = 0;
 
@@ -58,7 +60,10 @@ public:
       const gtsam::Values &values,
       const IEConstraintManifold::Params::shared_ptr &iecm_params);
 
-  static Values CollectManifoldValues(const IEManifoldValues &manifolds);
+  static Values IdentifyUnconstrainedValues(
+      const gtdynamics::EqualityConstraints &e_constraints,
+      const gtdynamics::InequalityConstraints &i_constraints,
+      const gtsam::Values &values);
 
   static VectorValues ComputeTangentVector(const IEManifoldValues &manifolds,
                                            const VectorValues &delta);
@@ -94,10 +99,6 @@ public:
                              const IndexSetMap &change_indices_map,
                              const double &approach_rate_threshold);
 
-  static IEManifoldValues
-  MoveToBoundaries(const IEManifoldValues &manifolds,
-                   const IndexSetMap &approach_indices_map);
-
   static std::string
   IndicesStr(const IndexSetMap &indices_map,
              const KeyFormatter &keyFormatter = DefaultKeyFormatter);
@@ -113,12 +114,12 @@ public:
       PrintDeltaFunc;
 
   template <typename IterDetails>
-  static void PrintIterDetails(const IterDetails &iter_details,
-                               const size_t num_steps,
-                               bool print_values = false,
-                               PrintValuesFunc print_values_func = NULL,
-                               PrintDeltaFunc print_delta_func = NULL,
-                               const KeyFormatter& keyFormatter = DefaultKeyFormatter) {
+  static void
+  PrintIterDetails(const IterDetails &iter_details, const size_t num_steps,
+                   bool print_values = false,
+                   PrintValuesFunc print_values_func = NULL,
+                   PrintDeltaFunc print_delta_func = NULL,
+                   const KeyFormatter &keyFormatter = DefaultKeyFormatter) {
     std::string red = "1;31";
     std::string green = "1;32";
     std::string blue = "1;34";
@@ -130,7 +131,8 @@ public:
     /// Print state
     std::cout << "\033[" + green + "merror: " << std::setprecision(4)
               << state.error << "\033[0m\n";
-    auto state_current_str = IEOptimizer::IndicesStr(state.manifolds, keyFormatter);
+    auto state_current_str =
+        IEOptimizer::IndicesStr(state.manifolds, keyFormatter);
     if (state_current_str.size() > 0) {
       std::cout << "current: " << state_current_str << "\n";
     }
@@ -144,19 +146,18 @@ public:
       double i_error = it.second.evalIViolation();
       double e_error = it.second.evalEViolation();
       if (e_error > 1e-5) {
-        std::cout << "violating e: " << keyFormatter(it.first) << " "
-                  << e_error << "\n";
+        std::cout << "violating e: " << keyFormatter(it.first) << " " << e_error
+                  << "\n";
       }
       if (i_error > 1e-5) {
-        std::cout << "violating i: " << keyFormatter(it.first) << " "
-                  << i_error << "\n";
+        std::cout << "violating i: " << keyFormatter(it.first) << " " << i_error
+                  << "\n";
       }
     }
 
     if (print_values) {
       std::cout << "values: \n";
-      print_values_func(IEOptimizer::CollectManifoldValues(state.manifolds),
-                        num_steps);
+      print_values_func(CollectManifoldValues(state.manifolds), num_steps);
 
       std::cout << "gradient: \n";
       print_delta_func(
@@ -167,15 +168,15 @@ public:
     /// Print trials
     for (const auto &trial : iter_details.trials) {
       std::string color = trial.step_is_successful ? red : blue;
-      std::cout << "\033[" + color + "mlambda: " << trial.lambda
-                << "\terror: " << state.error << " -> " << trial.new_error
+      std::cout << "\033[" + color + "mlambda: " << trial.linear_update.lambda
+                << "\terror: " << state.error << " -> " << trial.nonlinear_update.new_error
                 << "\tfidelity: " << trial.model_fidelity
-                << "\tlinear: " << trial.linear_cost_change
-                << "\tnonlinear: " << trial.nonlinear_cost_change
+                << "\tlinear: " << trial.linear_update.cost_change
+                << "\tnonlinear: " << trial.nonlinear_update.cost_change
                 << "\033[0m\n";
 
       auto blocking_str =
-          IEOptimizer::IndicesStr(trial.blocking_indices_map, keyFormatter);
+          IEOptimizer::IndicesStr(trial.linear_update.blocking_indices_map, keyFormatter);
       if (blocking_str.size() > 0) {
         std::cout << "blocking: " << blocking_str << "\n";
       }
@@ -184,20 +185,20 @@ public:
       if (forced_str.size() > 0) {
         std::cout << "forced: " << forced_str << "\n";
       }
-      auto new_str = IEOptimizer::IndicesStr(trial.new_manifolds, keyFormatter);
+      auto new_str = IEOptimizer::IndicesStr(trial.nonlinear_update.new_manifolds, keyFormatter);
       if (new_str.size() > 0) {
         std::cout << "new: " << new_str << "\n";
       }
 
       if (print_values) {
-        if (trial.tangent_vector.size() > 0) {
+        if (trial.linear_update.tangent_vector.size() > 0) {
           std::cout << "tangent vector: \n";
-          print_delta_func(trial.tangent_vector, num_steps);
+          print_delta_func(trial.linear_update.tangent_vector, num_steps);
         }
 
         std::cout << "new values: \n";
-        print_values_func(
-            IEOptimizer::CollectManifoldValues(trial.new_manifolds), num_steps);
+        print_values_func(CollectManifoldValues(trial.nonlinear_update.new_manifolds),
+                          num_steps);
       }
     }
   }

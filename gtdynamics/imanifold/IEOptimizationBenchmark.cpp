@@ -149,7 +149,7 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
   summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
-    Values state_values = IEOptimizer::CollectManifoldValues(state.manifolds);
+    Values state_values = CollectManifoldValues(state.manifolds);
     IEIterSummary iter_summary;
     iter_summary.num_inner_iters = state.totalNumberInnerIterations;
     iter_summary.cost = problem.evaluateCost(state_values);
@@ -186,7 +186,7 @@ OptimizeIELM(const IEConsOptProblem &problem,
   summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
-    Values state_values = IEOptimizer::CollectManifoldValues(state.manifolds);
+    Values state_values = state.baseValues();
     IEIterSummary iter_summary;
     iter_summary.num_inner_iters = state.totalNumberInnerIterations;
     iter_summary.cost = problem.evaluateCost(state_values);

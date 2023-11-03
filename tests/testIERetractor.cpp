@@ -27,7 +27,10 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
-  params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
+  params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(
+      std::make_shared<BarrierRetractor>());
+  params->e_basis_creator =
+      std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
 
   Values values;
   double q = M_PI_2, v = 0, a = 0;
@@ -72,6 +75,8 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   auto params = std::make_shared<IEConstraintManifold::Params>();
 //   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
 //   params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
+//   params->e_basis_creator =
+//       std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
 
 //   Values values;
 //   double q = M_PI_2, v = 0, a = 0;
@@ -158,6 +163,8 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   auto params = std::make_shared<IEConstraintManifold::Params>();
 //   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
 //   params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
+//   params->e_basis_creator =
+//       std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
 
 //   Values values;
 //   double q = M_PI_2, v = 0, a = 0;
@@ -183,15 +190,15 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //                  Vector1(cp.computeFy(q, v, new_a) - cp.computeFy(q, v, a)));
 
 //     auto new_manifold = manifold.retractor()->retract(&manifold, delta);
-//     // Values expected_values;
-//     // new_a = cp.mu * (cp.M + cp.m) * cp.g;
-//     // expected_values.insert(QKey(k), q);
-//     // expected_values.insert(VKey(k), v);
-//     // expected_values.insert(AKey(k), new_a);
-//     // expected_values.insert(TauKey(k), cp.computeTau(new_a));
-//     // expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
-//     // expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
-//     // EXPECT(assert_equal(expected_values, new_manifold.values()));
+//     Values expected_values;
+//     new_a = cp.mu * (cp.M + cp.m) * cp.g;
+//     expected_values.insert(QKey(k), q);
+//     expected_values.insert(VKey(k), v);
+//     expected_values.insert(AKey(k), new_a);
+//     expected_values.insert(TauKey(k), cp.computeTau(q, new_a));
+//     expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
+//     expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
+//     EXPECT(assert_equal(expected_values, new_manifold.values()));
 
 //     IndexSet expected_active_indices;
 //     expected_active_indices.insert(1);
@@ -214,13 +221,13 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     auto new_manifold = manifold.retractor()->retract(&manifold, delta);
 //     Values expected_values;
 //     new_a = -cp.mu * (cp.M + cp.m) * cp.g;
-//     // expected_values.insert(QKey(k), q);
-//     // expected_values.insert(VKey(k), v);
-//     // expected_values.insert(AKey(k), new_a);
-//     // expected_values.insert(TauKey(k), cp.computeTau(new_a));
-//     // expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
-//     // expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
-//     // EXPECT(assert_equal(expected_values, new_manifold.values()));
+//     expected_values.insert(QKey(k), q);
+//     expected_values.insert(VKey(k), v);
+//     expected_values.insert(AKey(k), new_a);
+//     expected_values.insert(TauKey(k), cp.computeTau(q, new_a));
+//     expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
+//     expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
+//     EXPECT(assert_equal(expected_values, new_manifold.values()));
 
 //     IndexSet expected_active_indices;
 //     expected_active_indices.insert(0);

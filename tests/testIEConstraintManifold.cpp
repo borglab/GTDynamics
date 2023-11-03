@@ -7,9 +7,9 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/geometry/Point3.h>
 
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 
@@ -24,7 +24,6 @@ bool container_equal(const Container &c1, const Container &c2) {
   return std::equal(c1.begin(), c1.end(), c2.begin());
 }
 
-
 TEST(IEConstraintManifold, HalfSphere) {
   Key point_key = gtsam::Symbol('p', 0);
 
@@ -37,15 +36,16 @@ TEST(IEConstraintManifold, HalfSphere) {
   e_constraints.emplace_shared<DoubleExpressionEquality>(sphere_expr, 1.0);
   i_constraints->emplace_shared<DoubleExpressionInequality>(z_expr, 1.0);
   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
-  
+
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
   params->retractor_creator = std::make_shared<BarrierRetractorCreator>();
+  params->e_basis_creator =
+      std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
 
   {
     Values values;
     values.insert(point_key, Point3(0.6, 0.8, 0));
-
 
     // Test constructor.
     IEConstraintManifold manifold(params, e_cc, i_constraints, values);
@@ -106,7 +106,6 @@ TEST(IEConstraintManifold, HalfSphere) {
     auto e_manifold1 = manifold.eConstraintManifold(a_indices);
     EXPECT(e_manifold1.dim() == 1);
   }
-
 }
 
 int main() {

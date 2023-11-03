@@ -34,13 +34,39 @@ void PrintGraphWithError(
     double error_threshold = 1e-3,
     const KeyFormatter &key_formatter = gtdynamics::GTDKeyFormatter);
 
-template <typename CONTAINER>
-inline gtsam::Values SubValues(const gtsam::Values &values, const CONTAINER &keys) {
-  gtsam::Values sub_values;
+template <typename CONTAINER, typename VALUES>
+inline VALUES SubValues(const VALUES &values, const CONTAINER &keys) {
+  VALUES sub_values;
   for (const gtsam::Key &key : keys) {
     sub_values.insert(key, values.at(key));
   }
   return sub_values;
+}
+
+template <typename CONTAINER>
+inline Values PickValues(const CONTAINER &keys, const Values &priority_values,
+                  const Values &supplementary_values) {
+  Values values;
+  for (const Key &key : keys) {
+    if (priority_values.exists(key)) {
+      values.insert(key, priority_values.at(key));
+    } else if (supplementary_values.exists(key)) {
+      values.insert(key, supplementary_values.at(key));
+    } else {
+      throw std::runtime_error("key " + gtdynamics::GTDKeyFormatter(key) + " does not exist in both values.");
+    }
+  }
+  return values;
+}
+
+inline void CheckFeasible(const NonlinearFactorGraph &graph,
+                          const Values &values,
+                          const double feasible_threshold = 1e-3) {
+
+  if (graph.error(values) > feasible_threshold) {
+    std::cout << "fail: " << graph.error(values) << "\n";
+    PrintGraphWithError(graph, values, feasible_threshold);
+  }
 }
 
 } // namespace gtsam

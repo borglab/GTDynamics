@@ -36,7 +36,7 @@ public:
   /// Constructor from constraints.
   ConnectedComponent(const gtdynamics::EqualityConstraints &constraints)
       : constraints_(constraints),
-        merit_graph_(constructMeritGraph(constraints)),
+        merit_graph_(constraints.meritGraph()),
         keys_(merit_graph_.keys()),
         unconstrained_keys_() {}
 
@@ -44,14 +44,9 @@ public:
   ConnectedComponent(const gtdynamics::EqualityConstraints &constraints,
                      const gtsam::KeySet unconstrained_keys)
       : constraints_(constraints),
-        merit_graph_(constructMeritGraph(constraints)),
+        merit_graph_(constraints.meritGraph()),
         keys_(merit_graph_.keys()),
         unconstrained_keys_(unconstrained_keys) {}
-
-protected:
-  /// Create factor graph that represents merit function ||h(X)||^2.
-  NonlinearFactorGraph
-  constructMeritGraph(const gtdynamics::EqualityConstraints &constraints);
 };
 
 } // namespace gtsam

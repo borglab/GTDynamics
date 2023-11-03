@@ -232,6 +232,8 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
   double evaluateViolationL2Norm(const gtsam::Values &values) const;
 
   gtsam::VariableIndex varIndex() const;
+
+  gtsam::NonlinearFactorGraph meritGraph(const double mu = 1.0) const;
 };
 
 /// Create FactorZeroErrorConstraintConstraints from the factors of a graph.

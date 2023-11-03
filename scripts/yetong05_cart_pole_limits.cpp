@@ -72,15 +72,19 @@ int main(int argc, char **argv) {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->ecm_params->basis_params->setFixVars();
   iecm_params->ecm_params->basis_key_func = cp.getBasisKeyFunc();
-  iecm_params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<CartPoleWithLimitsRetractor>(cp));
+  iecm_params->retractor_creator =
+      std::make_shared<UniversalIERetractorCreator>(
+          std::make_shared<CartPoleWithLimitsRetractor>(cp));
+  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
+      iecm_params->ecm_params->basis_params, cp.getBasisKeyFunc());
   LevenbergMarquardtParams lm_params;
   lm_params.setMaxIterations(100);
   IELMParams ie_params;
 
   // optimize IELM
   auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
-  Values result_values = IEOptimizer::CollectManifoldValues(
-      lm_result.second.back().state.manifolds);
+  Values result_values = 
+      lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
     IEOptimizer::PrintIterDetails(
         iter_details, num_steps, false, IECartPoleWithLimits::PrintValues,

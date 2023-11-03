@@ -18,11 +18,20 @@
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/inference/Key.h>
+#include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/VectorValues.h>
 
 #include <Eigen/Sparse>
+#include <stdexcept>
 
 namespace gtsam {
+
+
+/// Function to find the basis keys for constraint manifold.
+// typedef KeyVector (*BasisKeyFunc)(const ConnectedComponent::shared_ptr &);
+
+typedef std::function<KeyVector(const ConnectedComponent::shared_ptr &cc)>
+    BasisKeyFunc;
 
 // Method to compute tangent space basis
 enum BasisType {
@@ -94,6 +103,10 @@ class TspaceBasis {
   virtual shared_ptr createWithNewValues(
       const ConnectedComponent::shared_ptr &cc, const Values &values) const = 0;
 
+  /// Construct new basis by incorporating new constraints
+  virtual shared_ptr createWithAdditionalConstraints(
+      const GaussianFactorGraph &linear_graph) const = 0;
+
   /** Compute the tangent vector in the ambient space, given a vector xi
    * representing the magnitude of each basis component. */
   virtual VectorValues computeTangentVector(const Vector &xi) const = 0;
@@ -137,6 +150,12 @@ class EmptyBasis : public TspaceBasis {
   TspaceBasis::shared_ptr createWithNewValues(
       const ConnectedComponent::shared_ptr &cc,
       const Values &values) const override {
+    return std::make_shared<EmptyBasis>(params_);
+  }
+
+  /// Construct new basis by incorporating new constraints
+  TspaceBasis::shared_ptr createWithAdditionalConstraints(
+      const GaussianFactorGraph &linear_graph) const override {
     return std::make_shared<EmptyBasis>(params_);
   }
 
@@ -200,6 +219,19 @@ class MatrixBasis : public TspaceBasis {
   MatrixBasis(const TspaceBasisParams::shared_ptr &params,
               const ConnectedComponent::shared_ptr &cc, const Values &values);
 
+  MatrixBasis(const MatrixBasis &other, const Matrix &mat)
+      : TspaceBasis(other.params_), var_location_(other.var_location_),
+        var_dim_(other.var_dim_), total_basis_dim_(mat.cols()),
+        unconstrained_keys_(other.unconstrained_keys_),
+        unconstrained_xi_location_(other.unconstrained_xi_location_),
+        basis_(mat) {
+    size_t dim_reduction = other.total_basis_dim_ - total_basis_dim_;
+    for (const Key &key : unconstrained_keys_) {
+      unconstrained_xi_location_.at(key) -= dim_reduction;
+    }
+    is_constructed_ = true;
+  }
+
   /// Constructor from other, avoids recomputation.
   MatrixBasis(const ConnectedComponent::shared_ptr &cc, const Values &values,
               const MatrixBasis &other)
@@ -220,6 +252,10 @@ class MatrixBasis : public TspaceBasis {
       const Values &values) const override {
     return std::make_shared<MatrixBasis>(cc, values, *this);
   }
+
+  /// Construct new basis by incorporating new constraints
+  TspaceBasis::shared_ptr createWithAdditionalConstraints(
+      const GaussianFactorGraph &linear_graph) const override;
 
   /// Compute the tangent vector in the ambient space.
   VectorValues computeTangentVector(const Vector &xi) const override;
@@ -296,6 +332,12 @@ class SparseMatrixBasis : public TspaceBasis {
     return std::make_shared<SparseMatrixBasis>(cc, values, *this);
   }
 
+  /// Construct new basis by incorporating new constraints
+  TspaceBasis::shared_ptr createWithAdditionalConstraints(
+      const GaussianFactorGraph &linear_graph) const override {
+    throw std::runtime_error("not implemented");
+  }
+
   /// Compute the tangent vector in the ambient space.
   VectorValues computeTangentVector(const Vector &xi) const override;
 
@@ -338,12 +380,12 @@ class SparseMatrixBasis : public TspaceBasis {
  * the rest of the variables will be computed through variable elimination.
  * The basis matrix will be in the form of [B;I], which means the
  * corresponding rows to the basis variables form the identity matrix. */
-class FixedVarBasis : public TspaceBasis {
+class EliminationBasis : public TspaceBasis {
  protected:
   KeyVector basis_keys_;
   Ordering ordering_;
   size_t total_basis_dim_;
-  std::map<Key, size_t> basis_location_;
+  std::map<Key, size_t> basis_location_; // location of basis var in xi
   std::map<Key, size_t> var_dim_;
   MultiJacobians jacobians_;
 
@@ -353,20 +395,27 @@ class FixedVarBasis : public TspaceBasis {
    * @param values values of the variables in the connected component
    * @param basis_keys variables selected as basis variables
    */
-  FixedVarBasis(const TspaceBasisParams::shared_ptr &params,
+  EliminationBasis(const TspaceBasisParams::shared_ptr &params,
                 const ConnectedComponent::shared_ptr &cc, const Values &values,
                 std::optional<const KeyVector> basis_keys = {});
 
   /// Constructor from other, avoids recomputation.
-  FixedVarBasis(const ConnectedComponent::shared_ptr &cc, const Values &values,
-                const FixedVarBasis &other);
+  EliminationBasis(const ConnectedComponent::shared_ptr &cc, const Values &values,
+                const EliminationBasis &other);
+
+  EliminationBasis(const TspaceBasisParams::shared_ptr &params)
+      : TspaceBasis(params) {}
 
   /// Create basis with new values.
   TspaceBasis::shared_ptr createWithNewValues(
       const ConnectedComponent::shared_ptr &cc,
       const Values &values) const override {
-    return std::make_shared<FixedVarBasis>(cc, values, *this);
+    return std::make_shared<EliminationBasis>(cc, values, *this);
   }
+
+  /// Construct new basis by incorporating new constraints
+  TspaceBasis::shared_ptr createWithAdditionalConstraints(
+      const GaussianFactorGraph &linear_graph) const override;
 
   /// Compute the tangent vector in the ambient space.
   VectorValues computeTangentVector(const Vector &xi) const override;
@@ -401,6 +450,39 @@ class FixedVarBasis : public TspaceBasis {
 
   /// Return a const reference to jacobians.
   const MultiJacobians &jacobians() const { return jacobians_; }
+};
+
+/** Factory class used to create Tspace basis. */
+class TspaceBasisCreator {
+protected:
+  TspaceBasisParams::shared_ptr params_;
+
+public:
+  using shared_ptr = std::shared_ptr<TspaceBasisCreator>;
+  TspaceBasisCreator(TspaceBasisParams::shared_ptr params) : params_(params) {}
+
+  virtual ~TspaceBasisCreator() {}
+
+  virtual TspaceBasis::shared_ptr
+  create(const ConnectedComponent::shared_ptr cc, const Values &values) const {
+    return TspaceBasis::create(params_, cc, values);
+  }
+};
+
+class TspaceBasisKeysCreator : public TspaceBasisCreator {
+protected:
+  BasisKeyFunc basis_key_func_;
+
+public:
+  TspaceBasisKeysCreator(TspaceBasisParams::shared_ptr params,
+                         BasisKeyFunc basis_key_func)
+      : TspaceBasisCreator(params), basis_key_func_(basis_key_func) {}
+
+  TspaceBasis::shared_ptr create(const ConnectedComponent::shared_ptr cc,
+                                 const Values &values) const override {
+    KeyVector basis_keys = basis_key_func_(cc);
+    return TspaceBasis::create(params_, cc, values, basis_keys);
+  }
 };
 
 }  // namespace gtsam

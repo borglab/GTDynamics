@@ -40,7 +40,7 @@ IEVision60RobotMultiPhase::robotAtStep(const size_t k) const {
     size_t boundary_k = boundary_ks_.at(i);
     if (k == boundary_k) {
       return boundary_robots_.at(i);
-    } else if (k > boundary_k) {
+    } else if (k < boundary_k) {
       return phase_robots_.at(i);
     }
   }

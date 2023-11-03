@@ -18,7 +18,6 @@
 #include <gtdynamics/universal_robot/sdf.h>
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -37,10 +36,25 @@ IEVision60Robot::IEVision60Robot(const Params &_params)
                            getOptSetting(_params), _params.gravity)) {
   des_pose_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_pose);
   des_twist_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_twist);
+  des_q_nm = noiseModel::Isotropic::Sigma(1, params.sigma_des_twist);
+  des_v_nm = noiseModel::Isotropic::Sigma(1, params.sigma_des_twist);
   min_torque_nm = noiseModel::Isotropic::Sigma(1, params.sigma_actuation);
   cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params.tol_q);
   redundancy_model =
       gtsam::noiseModel::Isotropic::Sigma(6, params.tol_dynamics);
+
+  // Phase configuration
+  for (const auto &idx : params.leaving_indices) {
+    leaving_link_indices.insert(legs.at(idx).lower_link_id);
+  }
+  for (const auto &idx : params.landing_indices) {
+    landing_link_indices.insert(legs.at(idx).lower_link_id);
+  }
+  for (const auto &idx : params.contact_indices) {
+    contact_points.emplace_back(
+        gtdynamics::PointOnLink(legs.at(idx).lower_link, contact_in_com));
+    contact_ids.emplace_back(legs.at(idx).lower_link_id);
+  }
 
   /// Nominal configuration
   int lower0_id = legs[0].lower_link_id;
@@ -66,17 +80,7 @@ IEVision60Robot::IEVision60Robot(const Params &_params)
   nominal_b = 0.5 * (nominal_contact_in_world.at(0).y() -
                      nominal_contact_in_world.at(1).y());
 
-  // Phase configuration
-  for (const auto &idx : params.leaving_indices) {
-    leaving_link_indices.insert(legs.at(idx).lower_link_id);
-  }
-  for (const auto &idx : params.landing_indices) {
-    landing_link_indices.insert(legs.at(idx).lower_link_id);
-  }
   for (const auto &idx : params.contact_indices) {
-    contact_points.emplace_back(
-        gtdynamics::PointOnLink(legs.at(idx).lower_link, contact_in_com));
-    contact_ids.emplace_back(legs.at(idx).lower_link_id);
     contact_in_world.emplace_back(nominal_contact_in_world.at(idx));
   }
 }
@@ -170,192 +174,40 @@ IEVision60Robot::getOptSetting(const Params &params) {
 }
 
 /* ************************************************************************* */
-Values IEVision60Robot::getInitValuesStep(const size_t k,
-                                          const Pose3 &base_pose,
-                                          const Vector6 &base_twist,
-                                          const Vector6 &base_accel,
-                                          Values init_values_t) const {
-  if (init_values_t.size() == 0) {
-    Vector6 zero_vec6 = Vector6::Zero();
-    for (auto &&joint : robot.joints()) {
-      int j = joint->id();
-      InsertJointAngle(&init_values_t, j, k, JointAngle(nominal_values, j));
-      InsertJointVel(&init_values_t, j, k, JointVel(nominal_values, j));
-      InsertJointAccel(&init_values_t, j, k, 0.0);
-      InsertTorque(&init_values_t, j, k, 0.0);
-      InsertWrench(&init_values_t, joint->parent()->id(), j, k, zero_vec6);
-      InsertWrench(&init_values_t, joint->child()->id(), j, k, zero_vec6);
+KeyVector IEVision60Robot::basisKeys(const size_t k, bool include_init_state_constraints) const {
+  KeyVector basis_keys;
+  if (k > 0 || !include_init_state_constraints) {
+    basis_keys.emplace_back(PoseKey(base_id, k));
+    basis_keys.emplace_back(TwistKey(base_id, k));
+    for (size_t i = 0; i < 4; i++) {
+      if (!params.contact_indices.exists(i)) {
+        basis_keys.emplace_back(JointAngleKey(legs[i].hip_joint_id, k));
+        basis_keys.emplace_back(JointAngleKey(legs[i].upper_joint_id, k));
+        basis_keys.emplace_back(JointAngleKey(legs[i].lower_joint_id, k));
+      }
     }
-    for (const auto &cp : contact_points) {
-      int i = cp.link->id();
-      init_values_t.insert(ContactWrenchKey(i, 0, k), zero_vec6);
+    for (size_t i = 0; i < 4; i++) {
+      if (!params.contact_indices.exists(i)) {
+        basis_keys.emplace_back(JointVelKey(legs[i].hip_joint_id, k));
+        basis_keys.emplace_back(JointVelKey(legs[i].upper_joint_id, k));
+        basis_keys.emplace_back(JointVelKey(legs[i].lower_joint_id, k));
+      }
     }
-    for (auto &&link : robot.links()) {
-      int i = link->id();
-      InsertPose(&init_values_t, i, k, Pose(nominal_values, i));
-      InsertTwist(&init_values_t, i, k, Twist(nominal_values, i));
-      InsertTwistAccel(&init_values_t, i, k, zero_vec6);
+  }
+  if (params.basis_using_torques) {
+    // TODO: for boundary steps
+    if (params.leaving_indices.size() == 0) {
+      for (size_t j = 0; j < robot.numJoints(); j++) {
+        basis_keys.emplace_back(TorqueKey(j, k));
+      }
     }
+  } else {
+    basis_keys.emplace_back(TwistAccelKey(base_id, k));
     if (params.express_redundancy) {
-      init_values_t.insert(ContactRedundancyKey(k), zero_vec6);
+      basis_keys.emplace_back(ContactRedundancyKey(k));
     }
   }
-
-  Values known_values;
-  LevenbergMarquardtParams lm_params;
-  // lm_params.setVerbosityLM("SUMMARY");
-
-  // solve q level
-  NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(k);
-  graph_q.addPrior<Pose3>(PoseKey(base_id, k), base_pose,
-                          graph_builder.opt().p_cost_model);
-  for (size_t i = 0; i < 4; i++) {
-    if (!params.contact_indices.exists(i)) {
-      Key hip_joint_key = JointAngleKey(legs[i].hip_joint_id, k);
-      Key upper_joint_key = JointAngleKey(legs[i].upper_joint_id, k);
-      Key lower_joint_key = JointAngleKey(legs[i].lower_joint_id, k);
-      graph_q.addPrior<double>(hip_joint_key,
-                               init_values_t.atDouble(hip_joint_key),
-                               graph_builder.opt().prior_q_cost_model);
-      graph_q.addPrior<double>(upper_joint_key,
-                               init_values_t.atDouble(upper_joint_key),
-                               graph_builder.opt().prior_q_cost_model);
-      graph_q.addPrior<double>(lower_joint_key,
-                               init_values_t.atDouble(lower_joint_key),
-                               graph_builder.opt().prior_q_cost_model);
-    }
-  }
-
-  Values init_values_q = SubValues(init_values_t, graph_q.keys());
-  LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lm_params);
-  auto results_q = optimizer_q.optimize();
-  if (graph_q.error(results_q) > 1e-5) {
-    std::cout << "solving q fails! error: " << graph_q.error(results_q) << "\n";
-    PrintGraphWithError(graph_q, init_values_q);
-    PrintGraphWithError(graph_q, results_q);
-  }
-  known_values.insert(results_q);
-
-  // solve v level
-  NonlinearFactorGraph graph_v = getConstraintsGraphStepV(k);
-  graph_v.addPrior<Vector6>(TwistKey(base_id, k), base_twist,
-                            graph_builder.opt().v_cost_model);
-  graph_v = ConstVarGraph(graph_v, known_values);
-  Values init_values_v = SubValues(init_values_t, graph_v.keys());
-  LevenbergMarquardtOptimizer optimizer_v(graph_v, init_values_v, lm_params);
-  auto results_v = optimizer_v.optimize();
-  if (graph_v.error(results_v) > 1e-5) {
-    std::cout << "solving v fails! error: " << graph_v.error(results_v) << "\n";
-    PrintGraphWithError(graph_v, init_values_v);
-    PrintGraphWithError(graph_v, results_v);
-  }
-  known_values.insert(results_v);
-
-  // solve a and dynamics level
-  NonlinearFactorGraph graph_ad = getConstraintsGraphStepAD(k);
-  // TODO: handle for boundary phases
-  if (params.leaving_indices.size()<4) {
-    graph_ad.addPrior<Vector6>(TwistAccelKey(base_id, k), base_accel,
-                              graph_builder.opt().a_cost_model);
-  }
-
-  Vector6 zero_vec6 = Vector6::Zero();
-  if (params.express_redundancy) {
-    graph_ad.addPrior<Vector6>(ContactRedundancyKey(k), zero_vec6,
-                               redundancy_model);
-  }
-  graph_ad = ConstVarGraph(graph_ad, known_values);
-  Values init_values_ad = SubValues(init_values_t, graph_ad.keys());
-  LevenbergMarquardtOptimizer optimizer_ad(graph_ad, init_values_ad, lm_params);
-  auto results_ad = optimizer_ad.optimize();
-  if (graph_ad.error(results_ad) > 1e-5) {
-    std::cout << "solving ad fails! error: " << graph_ad.error(results_ad)
-              << "\n";
-    PrintGraphWithError(graph_ad, init_values_ad);
-    PrintGraphWithError(graph_ad, results_ad);
-  }
-  known_values.insert(results_ad);
-
-  return known_values;
-}
-
-/* ************************************************************************* */
-Values IEVision60Robot::getInitValuesTrajectory(
-    const size_t num_steps, double dt, const Pose3 &base_pose_init,
-    const std::vector<gtsam::Pose3> &des_poses,
-    std::vector<double> &des_poses_t,
-    const std::string initialization_technique) const {
-  // Initialize solution.
-  gtsam::Values init_vals;
-  Initializer initializer;
-
-  // solve 1 step value
-  Values init_values_0 = getInitValuesStep(0, base_pose_init);
-
-  // copy for all steps
-  if (initialization_technique == "zero") {
-    for (int t = 0; t <= num_steps; t++) {
-      for (const Key &key : init_values_0.keys()) {
-        init_vals.insert(key + t, init_values_0.at(key));
-      }
-    }
-  } else if (initialization_technique == "interp") {
-    /// interpolate base pose
-    auto interp_values = initializer.InitializeSolutionInterpolationMultiPhase(
-        robot, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
-        contact_points);
-    Values base_link_values;
-    for (int t = 0; t <= num_steps; t++) {
-      base_link_values.insert(PoseKey(base_id, t),
-                              interp_values.at(PoseKey(base_id, t)));
-    }
-    /// compute base twist
-    Vector6 zero_vector6 = Vector6::Zero();
-    base_link_values.insert(TwistKey(base_id, 0), zero_vector6);
-    for (int t = 0; t < num_steps; t++) {
-      Pose3 pose_prev = base_link_values.at<Pose3>(PoseKey(base_id, t));
-      Pose3 pose_curr = base_link_values.at<Pose3>(PoseKey(base_id, t + 1));
-      Pose3 pose_rel = pose_prev.inverse().compose(pose_curr);
-      Vector6 twist_interval = Pose3::Logmap(pose_rel) / dt;
-      Vector6 twist_prev = base_link_values.at<Vector6>(TwistKey(base_id, t));
-      // Vector6 twist_curr = 2 * twist_interval - twist_prev;
-      Vector6 twist_curr = twist_interval;
-      base_link_values.insert(TwistKey(base_id, t + 1), twist_curr);
-    }
-    /// compute base accel
-    base_link_values.insert(TwistAccelKey(base_id, 0), zero_vector6);
-    for (int t = 0; t < num_steps; t++) {
-      Vector6 twist_prev = base_link_values.at<Vector6>(TwistKey(base_id, t));
-      Vector6 twist_curr =
-          base_link_values.at<Vector6>(TwistKey(base_id, t + 1));
-      Vector6 twist_rel = twist_curr - twist_prev;
-      Vector6 accel_interval = twist_rel / dt;
-      Vector6 accel_prev =
-          base_link_values.at<Vector6>(TwistAccelKey(base_id, t));
-      // Vector6 accel_curr = 2 * accel_interval - accel_prev;
-      Vector6 accel_curr = accel_interval;
-      base_link_values.insert(TwistAccelKey(base_id, t + 1), accel_curr);
-    }
-    /// solve kinodynamics for each step
-    Values prev_values = init_values_0;
-    init_vals = init_values_0;
-    for (int t = 1; t <= num_steps; t++) {
-      Values init_values_t;
-      for (const Key &key : prev_values.keys()) {
-        init_values_t.insert(key + 1, prev_values.at(key));
-      }
-      Values values_t = getInitValuesStep(
-          t, Pose(base_link_values, base_id, t),
-          Twist(base_link_values, base_id, t),
-          TwistAccel(base_link_values, base_id, t), init_values_t);
-      prev_values = values_t;
-      init_vals.insert(values_t);
-
-      // std::cout << "pose: " << Pose(init_vals, base_id, t) << "\n";
-    }
-  }
-
-  return init_vals;
+  return basis_keys;
 }
 
 /* ************************************************************************* */
@@ -364,38 +216,7 @@ BasisKeyFunc IEVision60Robot::getBasisKeyFunc() const {
       [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
     KeyVector basis_keys;
     size_t k = gtdynamics::DynamicsSymbol(*cc->keys_.begin()).time();
-    if (k > 0) {
-      basis_keys.emplace_back(PoseKey(base_id, k));
-      basis_keys.emplace_back(TwistKey(base_id, k));
-      for (size_t i = 0; i < 4; i++) {
-        if (!params.contact_indices.exists(i)) {
-          basis_keys.emplace_back(JointAngleKey(legs[i].hip_joint_id, k));
-          basis_keys.emplace_back(JointAngleKey(legs[i].upper_joint_id, k));
-          basis_keys.emplace_back(JointAngleKey(legs[i].lower_joint_id, k));
-        }
-      }
-      for (size_t i = 0; i < 4; i++) {
-        if (!params.contact_indices.exists(i)) {
-          basis_keys.emplace_back(JointVelKey(legs[i].hip_joint_id, k));
-          basis_keys.emplace_back(JointVelKey(legs[i].upper_joint_id, k));
-          basis_keys.emplace_back(JointVelKey(legs[i].lower_joint_id, k));
-        }
-      }
-    }
-    if (params.basis_using_torques) {
-      // TODO: for boundary steps
-      if (params.leaving_indices.size() == 0) {
-        for (size_t j = 0; j < robot.numJoints(); j++) {
-          basis_keys.emplace_back(TorqueKey(j, k));
-        }
-      }
-    } else {
-      basis_keys.emplace_back(TwistAccelKey(base_id, k));
-      if (params.express_redundancy) {
-        basis_keys.emplace_back(ContactRedundancyKey(k));
-      }
-    }
-    return basis_keys;
+    return basisKeys(k, true);
   };
   return basis_key_func;
 }
@@ -409,30 +230,52 @@ Values IEVision60Robot::getNominalConfiguration(const double height) const {
     qd_values.insert(JointAngleKey(joint->id(), 0), 0.0);
   }
   std::string base_name = "body";
-  Values fk_values = robot.forwardKinematics(qd_values, 0, base_name);
-  return fk_values;
+  Values values = robot.forwardKinematics(qd_values, 0, base_name);
+  
+  size_t k = 0;
+  Vector6 zero_vec6 = Vector6::Zero();
+  for (auto &&joint : robot.joints()) {
+    int j = joint->id();
+    InsertJointAccel(&values, j, k, 0.0);
+    InsertTorque(&values, j, k, 0.0);
+    InsertWrench(&values, joint->parent()->id(), j, k, zero_vec6);
+    InsertWrench(&values, joint->child()->id(), j, k, zero_vec6);
+  }
+  for (const auto &cp : contact_points) {
+    int i = cp.link->id();
+    values.insert(ContactWrenchKey(i, 0, k), zero_vec6);
+  }
+  for (auto &&link : robot.links()) {
+    int i = link->id();
+    InsertTwistAccel(&values, i, k, zero_vec6);
+  }
+  if (params.express_redundancy) {
+    values.insert(ContactRedundancyKey(k), zero_vec6);
+  }
+  // PrintKeyVector(values.keys(), "", GTDKeyFormatter);
+  return values;
 }
 
 /* ************************************************************************* */
 void IEVision60Robot::PrintValues(const Values &values,
                                   const size_t num_steps) {
-  for (auto &&joint : robot.joints()) {
+  for (auto &&joint : robot.orderedJoints()) {
     std::cout << joint->name() << "\t";
   }
   std::cout << std::endl;
   for (size_t k = 0; k <= num_steps; k++) {
-    for (const auto &joint : robot.joints()) {
+    for (const auto &joint : robot.orderedJoints()) {
       double q = JointAngle(values, joint->id(), k);
       std::cout << q << "\t";
     }
     std::cout << "\n";
   }
-  for (auto &&joint : robot.joints()) {
+  for (auto &&joint : robot.orderedJoints()) {
     std::cout << joint->name() << "\t";
   }
   std::cout << std::endl;
   for (size_t k = 0; k <= num_steps; k++) {
-    for (const auto &joint : robot.joints()) {
+    for (const auto &joint : robot.orderedJoints()) {
       double torque = Torque(values, joint->id(), k);
       std::cout << torque << "\t";
     }

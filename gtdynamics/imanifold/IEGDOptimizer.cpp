@@ -98,7 +98,7 @@ void IEGDTrial::computeNewManifolds(const IEGDState &state) {
 /* ************************************************************************* */
 void IEGDTrial::computeNewError(const NonlinearFactorGraph &graph,
                                 const IEGDState &state) {
-  new_error = graph.error(IEOptimizer::CollectManifoldValues(new_manifolds));
+  new_error = graph.error(CollectManifoldValues(new_manifolds));
   nonlinear_cost_change = state.error - new_error;
   model_fidelity = nonlinear_cost_change / linear_cost_change;
 }
@@ -216,6 +216,7 @@ void IEGDOptimizer::tryLambda(const NonlinearFactorGraph &graph,
 /* ************************************************************************* */
 Values IEGDOptimizer::optimizeManifolds(
     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
+    const Values &unconstrained_values,
     gtdynamics::ConstrainedOptResult *intermediate_result) const {
   // construct equivalent factors on e-manifolds
   // std::cout << "in optimize\n";
@@ -231,7 +232,7 @@ Values IEGDOptimizer::optimizeManifolds(
   // check if we're already close enough
   if (state.error <= params_.errorTol) {
     details_->emplace_back(state);
-    return IEOptimizer::CollectManifoldValues(state.manifolds);
+    return CollectManifoldValues(state.manifolds);
   }
 
   // Iterative loop
@@ -245,7 +246,7 @@ Values IEGDOptimizer::optimizeManifolds(
            !checkConvergence(prev_state, state) &&
            checkMuWithinLimits(state.lambda) && std::isfinite(state.error));
   details_->emplace_back(state);
-  return IEOptimizer::CollectManifoldValues(state.manifolds);
+  return CollectManifoldValues(state.manifolds);
 }
 
 /* ************************************************************************* */

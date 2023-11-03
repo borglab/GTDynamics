@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gtdynamics/utils/values.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
@@ -116,13 +117,24 @@ class Retractor {
     return retractConstraints(retractBaseVariables(values, delta));
   }
 
+  /** Retraction operation
+   * @param values base values composing the constraint manifold
+   * @param delta tangent vector
+   * @param metric_sigmas sigmas that define the metric for projection
+   * @return retracted point on the manifold
+   */
+  virtual Values retract(const Values &values, const VectorValues &delta,
+                         const VectorValues &metric_sigmas) {
+    return retract(values, delta);
+  }
+
   /** Given values of variables in CCC that may violate the constraints, compute
    * the values that satisfy the constraints. */
   virtual Values retractConstraints(Values &&values) {
     return retractConstraints((const Values &)values);
   };
 
-  /** Given values of variables in CCC that may violate the constraints, compute
+  /** Given values of variables in CCC that may violate the constraints, compute 
    * the values that satisfy the constraints. */
   virtual Values retractConstraints(const Values &values) = 0;
 
@@ -162,6 +174,9 @@ class ProjRetractor : public Retractor {
 
   /// Retraction operation.
   Values retract(const Values &values, const VectorValues &delta) override;
+
+  Values retract(const Values &values, const VectorValues &delta,
+                         const VectorValues &metric_sigmas) override;
 
   Values retractConstraints(const Values &values) override;
 };
