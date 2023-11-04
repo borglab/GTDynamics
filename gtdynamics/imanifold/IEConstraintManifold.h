@@ -18,7 +18,6 @@
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/imanifold/TangentCone.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/manifold/IneqConstraintManifold.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Expression.h>

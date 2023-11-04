@@ -4,9 +4,6 @@
 #include <gtdynamics/imanifold/IEHalfSphere.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/manifold/ICGradientDescentOptimizer.h>
-#include <gtdynamics/manifold/ICLMOptimizer.h>
-#include <gtdynamics/manifold/IneqConstraintManifold.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/linear/NoiseModel.h>

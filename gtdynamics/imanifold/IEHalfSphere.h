@@ -14,7 +14,6 @@
 #pragma once
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IERetractor.h>
-#include <gtdynamics/manifold/IneqConstraintManifold.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/geometry/Point3.h>
@@ -23,6 +22,13 @@
 namespace gtsam {
 
 inline Key PointKey(const int k) { return Symbol('p', k); }
+
+inline double point3_z(const Point3 &p, OptionalJacobian<1, 3> H = {}) {
+  if (H) {
+    *H << 0, 0, 1;
+  }
+  return p.z();
+}
 
 /** Manifold with boundary representing the upper half sphere defined by
  * 1) sqrt(x^2 + y^2 + z^2) - r = 0

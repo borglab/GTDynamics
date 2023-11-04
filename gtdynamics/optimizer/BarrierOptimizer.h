@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/manifold/IneqConstraintManifold.h>
+#include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/HistoryLMOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>

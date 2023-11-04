@@ -3,6 +3,7 @@
 #include "gtdynamics/imanifold/IERetractor.h"
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/imanifold/IEHalfSphere.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
