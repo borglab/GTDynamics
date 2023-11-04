@@ -82,7 +82,7 @@ public:
 
     /// Optimization settings
     bool express_redundancy = true;
-    bool basis_using_torques = false;
+    bool ad_basis_using_torques = false;
     bool include_friction_cone = false;
     bool include_joint_limits = false;
     bool include_torque_limits = false;
@@ -217,10 +217,11 @@ public:
   NonlinearFactorGraph finalStateCosts(const Pose3 &des_pose,
                                        const Vector6 &des_twist,
                                        const size_t num_steps) const;
-  
+
   /// Costs for init condition and reaching target poses.
-  NonlinearFactorGraph stateCosts(const Values &values,
-                                  const std::optional<KeyVector> &keys = {}) const;
+  NonlinearFactorGraph
+  stateCosts(const Values &values,
+             const std::optional<KeyVector> &keys = {}) const;
 
   /** <================= Value Initialize Functions =================> **/
   /// Return values of one step satisfying kinodynamic constraints.
@@ -309,87 +310,92 @@ public:
   //                                const std::vector<double> &phases_dt) const;
 };
 
-/**
- * Retractor for quadruped manifold.
- */
-class Vision60Retractor : public IERetractor {
+/* ************************************************************************* */
+/* <=================== Factory class for Retractor =======================> */
+/* ************************************************************************* */
 
-public:
-  struct Params {
-    LevenbergMarquardtParams lm_params;
-    double prior_sigma;
-    bool use_basis_keys;
-    bool check_feasible;
-    double feasible_threshold;
-  };
-
+/** Hierarchical retractor creator for single phase. */
+class Vision60HierarchicalRetractorCreator : public IERetractorCreator {
 protected:
   const IEVision60Robot &robot_;
-  const Params &params_;
-
-  NonlinearFactorGraph merit_graph_;
-  NonlinearFactorGraph graph_q_, graph_v_, graph_ad_;
-  IndexSet i_indices_q_, i_indices_v_, i_indices_ad_;
-  KeySet basis_q_keys_, basis_v_keys_, basis_ad_keys_;
-  std::vector<std::shared_ptr<ConstVarFactor>> const_var_factors_v_,
-      const_var_factors_ad_;
+  const KinodynamicHierarchicalRetractor::Params &params_;
+  bool use_basis_keys_;
 
 public:
-  Vision60Retractor(const IEVision60Robot &robot,
-                    const IEConstraintManifold &manifold, const Params &params);
+  Vision60HierarchicalRetractorCreator(
+      const IEVision60Robot &robot,
+      const KinodynamicHierarchicalRetractor::Params &params,
+      bool use_basis_keys)
+      : robot_(robot), params_(params), use_basis_keys_(use_basis_keys) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
-
-protected:
-  template <typename CONTAINER>
-  static void classifyKeys(const CONTAINER &keys, KeySet &q_keys,
-                           KeySet &v_keys, KeySet &ad_keys);
-
-  void checkFeasible(const NonlinearFactorGraph &graph,
-                     const Values &values) const;
-};
-
-/**
- * Class of utilitis for Vision60 robot.
- */
-class Vision60RetractorCreator : public IERetractorCreator {
-protected:
-  const IEVision60Robot &robot_;
-  const Vision60Retractor::Params &params_;
-
-public:
-  Vision60RetractorCreator(const IEVision60Robot &robot,
-                           const Vision60Retractor::Params &params)
-      : robot_(robot), params_(params) {}
-
-  virtual ~Vision60RetractorCreator() {}
+  virtual ~Vision60HierarchicalRetractorCreator() {}
 
   IERetractor::shared_ptr
   create(const IEConstraintManifold &manifold) const override;
 };
 
-/**
- * Class of utilitis for Vision60 robot.
- */
-class Vision60RetractorMultiPhaseCreator : public IERetractorCreator {
+/** Barrier retractor creator for single phase. */
+class Vision60BarrierRetractorCreator : public IERetractorCreator {
+protected:
+  const IEVision60Robot &robot_;
+  const BarrierRetractor::Params &params_;
+  bool use_basis_keys_;
+
+public:
+  Vision60BarrierRetractorCreator(const IEVision60Robot &robot,
+                                  const BarrierRetractor::Params &params,
+                                  bool use_basis_keys)
+      : robot_(robot), params_(params), use_basis_keys_(use_basis_keys) {}
+
+  virtual ~Vision60BarrierRetractorCreator() {}
+
+  IERetractor::shared_ptr
+  create(const IEConstraintManifold &manifold) const override;
+};
+
+/** Hierarchical retractor creator for multiple phases. */
+class Vision60MultiPhaseHierarchicalRetractorCreator
+    : public IERetractorCreator {
 protected:
   const IEVision60RobotMultiPhase &vision60_multi_phase_;
-  const Vision60Retractor::Params &params_;
+  const KinodynamicHierarchicalRetractor::Params &params_;
+  bool use_basis_keys_;
 
 public:
-  Vision60RetractorMultiPhaseCreator(
+  Vision60MultiPhaseHierarchicalRetractorCreator(
       const IEVision60RobotMultiPhase &vision60_multi_phase,
-      const Vision60Retractor::Params &params)
-      : vision60_multi_phase_(vision60_multi_phase), params_(params) {}
+      const KinodynamicHierarchicalRetractor::Params &params,
+      bool use_basis_keys)
+      : vision60_multi_phase_(vision60_multi_phase), params_(params),
+        use_basis_keys_(use_basis_keys) {}
 
-  virtual ~Vision60RetractorMultiPhaseCreator() {}
+  virtual ~Vision60MultiPhaseHierarchicalRetractorCreator() {}
 
   IERetractor::shared_ptr
   create(const IEConstraintManifold &manifold) const override;
 };
 
+/** Barrier retractor creator for multiple phases. */
+class Vision60MultiPhaseBarrierRetractorCreator : public IERetractorCreator {
+protected:
+  const IEVision60RobotMultiPhase &vision60_multi_phase_;
+  const BarrierRetractor::Params &params_;
+  bool use_basis_keys_;
+
+public:
+  Vision60MultiPhaseBarrierRetractorCreator(
+      const IEVision60RobotMultiPhase &vision60_multi_phase,
+      const BarrierRetractor::Params &params, bool use_basis_keys)
+      : vision60_multi_phase_(vision60_multi_phase), params_(params),
+        use_basis_keys_(use_basis_keys) {}
+
+  virtual ~Vision60MultiPhaseBarrierRetractorCreator() {}
+
+  IERetractor::shared_ptr
+  create(const IEConstraintManifold &manifold) const override;
+};
+
+/** Tangent space creator for multiple phases. */
 class Vision60MultiPhaseTspaceBasisCreator : public TspaceBasisCreator {
 protected:
   const IEVision60RobotMultiPhase &vision60_multi_phase_;

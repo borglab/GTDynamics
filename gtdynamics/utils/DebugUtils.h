@@ -65,7 +65,7 @@ inline void CheckFeasible(const NonlinearFactorGraph &graph,
 
   if (graph.error(values) > feasible_threshold) {
     std::cout << "fail: " << graph.error(values) << "\n";
-    PrintGraphWithError(graph, values, feasible_threshold);
+    // PrintGraphWithError(graph, values, feasible_threshold);
   }
 }
 

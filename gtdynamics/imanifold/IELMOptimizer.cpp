@@ -60,6 +60,11 @@ Values IELMOptimizer::optimizeManifolds(
   }
 
   // Iterative loop
+  if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
+    std::cout << "Initial error: " << state.error << "\n";
+    IELMTrial::PrintTitle();
+  }
+
   IELMState prev_state;
   do {
     prev_state = state;

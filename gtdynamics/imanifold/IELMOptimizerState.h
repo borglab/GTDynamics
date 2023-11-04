@@ -92,7 +92,7 @@ struct IELMTrial {
     IndexSetMap blocking_indices_map;
     Values e_manifolds;
     Values const_e_manifolds;
-    // VectorValues delta;
+    VectorValues delta;
     VectorValues tangent_vector;
     double old_error;
     double new_error;
@@ -117,7 +117,7 @@ struct IELMTrial {
     /// Linearize based on the e-manifolds.
     GaussianFactorGraph::shared_ptr
     linearize(const NonlinearFactorGraph &graph,
-              const Values& unconstrained_values,
+              const Values &unconstrained_values,
               const std::map<Key, Key> &keymap_var2manifold) const;
 
     /// Solve gaussian factor graph using specified parameters.
@@ -205,6 +205,8 @@ public:
 
   /** Print summary info of the trial. */
   void print(const IELMState &state) const;
+
+  static void PrintTitle();
 };
 
 struct IELMIterDetails {
@@ -214,6 +216,13 @@ struct IELMIterDetails {
   IELMIterDetails(const IELMState &_state) : state(_state), trials() {}
 };
 
-typedef std::vector<IELMIterDetails> IELMItersDetails;
+class IELMItersDetails : public std::vector<IELMIterDetails> {
+public:
+  using base = std::vector<IELMIterDetails>;
+  using base::base;
+
+  void exportFile(const std::string &state_file_path,
+                  const std::string &trial_file_path) const;
+};
 
 } // namespace gtsam

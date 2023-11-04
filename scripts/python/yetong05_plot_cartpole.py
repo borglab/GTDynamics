@@ -1,19 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import csv
 import matplotlib.animation as animation
-
-def load_csv(file_name):
-  data = []
-  with open(file_name, newline='') as csvfile:
-    spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
-    rows = [row for row in spamreader]
-    for row in rows[1:]:
-        data_row = [float(d) for d in row]
-        data.append(data_row)
-  data = np.array(data)
-  return data
+from yetong00_utils import load_csv
 
 data = load_csv("data/ineq_cartpole_traj.csv")
 
@@ -36,6 +25,6 @@ for i in range(len(data)):
 
 ani = animation.ArtistAnimation(fig, plots, interval=50, blit=True,
                                 repeat_delay=1000)
-
+# plt.savefig("figures/cart_pole.pdf")
 plt.show()
 

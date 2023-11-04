@@ -174,8 +174,11 @@ IEVision60Robot::getOptSetting(const Params &params) {
 }
 
 /* ************************************************************************* */
-KeyVector IEVision60Robot::basisKeys(const size_t k, bool include_init_state_constraints) const {
+KeyVector
+IEVision60Robot::basisKeys(const size_t k,
+                           bool include_init_state_constraints) const {
   KeyVector basis_keys;
+  // qv levels
   if (k > 0 || !include_init_state_constraints) {
     basis_keys.emplace_back(PoseKey(base_id, k));
     basis_keys.emplace_back(TwistKey(base_id, k));
@@ -194,18 +197,30 @@ KeyVector IEVision60Robot::basisKeys(const size_t k, bool include_init_state_con
       }
     }
   }
-  if (params.basis_using_torques) {
-    // TODO: for boundary steps
-    if (params.leaving_indices.size() == 0) {
-      for (size_t j = 0; j < robot.numJoints(); j++) {
-        basis_keys.emplace_back(TorqueKey(j, k));
-      }
+  // ad levels
+  if (params.leaving_indices.size() == 4) {
+     // TODO: for boundary steps
+    return basis_keys;
+  }
+  if (params.ad_basis_using_torques) {
+    for (size_t j = 0; j < robot.numJoints(); j++) {
+      basis_keys.emplace_back(TorqueKey(j, k));
     }
   } else {
-    basis_keys.emplace_back(TwistAccelKey(base_id, k));
-    if (params.express_redundancy) {
-      basis_keys.emplace_back(ContactRedundancyKey(k));
+    if (params.contact_indices.size() == 4) {
+      // ground
+      basis_keys.emplace_back(TwistAccelKey(base_id, k));
+      if (params.express_redundancy) {
+        basis_keys.emplace_back(ContactRedundancyKey(k));
+      }
     }
+    else {
+      // air
+      for (size_t j = 0; j < robot.numJoints(); j++) {
+        basis_keys.emplace_back(JointAccelKey(j, k));
+      }
+    }
+
   }
   return basis_keys;
 }
@@ -231,7 +246,7 @@ Values IEVision60Robot::getNominalConfiguration(const double height) const {
   }
   std::string base_name = "body";
   Values values = robot.forwardKinematics(qd_values, 0, base_name);
-  
+
   size_t k = 0;
   Vector6 zero_vec6 = Vector6::Zero();
   for (auto &&joint : robot.joints()) {

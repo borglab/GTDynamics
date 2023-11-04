@@ -202,13 +202,26 @@ void IELMTrial::setDecreasedNextLambda(
 }
 
 /* ************************************************************************* */
+void IELMTrial::PrintTitle() {
+  cout << setw(10) << "iter"
+       << " " << setw(12) << "error "
+       << " " << setw(12) << "nonlinear "
+       << " " << setw(12) << "linear "
+       << " " << setw(10) << "lambda "
+       << " " << setw(10) << "solve_succ "
+       << " " << setw(10) << "time " << endl;
+}
+
+/* ************************************************************************* */
 void IELMTrial::print(const IELMState &state) const {
-  cout << setw(4) << state.iterations << " " << setw(10) << setprecision(4)
-       << nonlinear_update.new_error << " " << setw(10) << setprecision(4)
-       << nonlinear_update.cost_change << " " << setw(5) << setprecision(2)
-       << linear_update.lambda << " " << setw(4)
-       << linear_update.solve_successful << " " << setw(3) << setprecision(2)
-       << trial_time << endl;
+  cout << setw(10) << state.iterations << " " << setw(12) << setprecision(4)
+       << nonlinear_update.new_error << " " << setw(12) << setprecision(4)
+       << nonlinear_update.cost_change << " " << setw(10) << setprecision(4)
+       << linear_update.cost_change << " " << setw(10) << setprecision(2)
+       << linear_update.lambda << " " << setw(10)
+       << (linear_update.solve_successful ? "T   " : "F   ") << " " << setw(10)
+       << setprecision(2) << trial_time  << setw(10)
+       << setprecision(4) << linear_update.delta.norm() << endl;
 }
 
 /* ************************************************************************* */
@@ -252,7 +265,7 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         buildDampedSystem(*linear, sqrt_hessian_diagonal, params);
 
     // solve delta
-    VectorValues delta;
+    // VectorValues delta;
     try {
       delta = solve(damped_system, params);
       solve_successful = true;
@@ -263,7 +276,7 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
 
     // check if satisfy tagent cone, if not, add constraints and recompute
     bool feasible = true;
-    for (const Key& key: e_manifolds.keys()) {
+    for (const Key &key : e_manifolds.keys()) {
       const Vector &xi = delta.at(key);
       ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
       VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
@@ -479,6 +492,53 @@ void IELMTrial::NonlinearUpdate::computeError(const NonlinearFactorGraph &graph,
   new_error = IELMState::EvaluateGraphError(graph, new_manifolds,
                                             new_unconstrained_values);
   cost_change = old_error - new_error;
+}
+
+/* ************************************************************************* */
+/* <========================= IELMItersDetails ============================> */
+/* ************************************************************************* */
+void IELMItersDetails::exportFile(const std::string &state_file_path,
+                                  const std::string &trial_file_path) const {
+  std::ofstream state_file, trial_file;
+  state_file.open(state_file_path);
+  trial_file.open(trial_file_path);
+
+  state_file << "iterations"
+             << ","
+             << "lambda"
+             << ","
+             << "error"
+             << "\n";
+  trial_file << "iterations"
+             << ","
+             << "lambda"
+             << ","
+             << "error"
+             << ","
+             << "step_is_successful"
+             << ","
+             << "linear_cost_change"
+             << ","
+             << "nonlinear_cost_change"
+             << ","
+             << "model_fidelity"
+             << "\n";
+
+  for (const auto &iter_details : *this) {
+    const auto &state = iter_details.state;
+    state_file << state.iterations << "," << state.lambda << "," << state.error
+               << "\n";
+    for (const auto &trial : iter_details.trials) {
+      trial_file << state.iterations << "," << trial.linear_update.lambda << ","
+                 << trial.nonlinear_update.new_error << ","
+                 << trial.step_is_successful << ","
+                 << trial.linear_update.cost_change << ","
+                 << trial.nonlinear_update.cost_change << ","
+                 << trial.model_fidelity << "\n";
+    }
+  }
+  state_file.close();
+  trial_file.close();
 }
 
 } // namespace gtsam

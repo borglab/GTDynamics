@@ -27,8 +27,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
-  params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(
-      std::make_shared<BarrierRetractor>());
+  params->retractor_creator = std::make_shared<BarrierRetractorCreator>();
   params->e_basis_creator =
       std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
 

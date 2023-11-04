@@ -17,46 +17,8 @@
 #include <gtdynamics/imanifold/IEQuadrupedUtils.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
 
-#include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/dynamics/OptimizerSetting.h>
-#include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
-#include <gtdynamics/utils/PointOnLink.h>
-#include <gtsam/base/Value.h>
-#include <gtsam/base/Vector.h>
-#include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/ExpressionFactor.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <gtsam/slam/expressions.h>
-
-#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
-
-#include "gtdynamics/factors/ContactPointFactor.h"
-#include "gtdynamics/manifold/ConnectedComponent.h"
-#include "gtdynamics/manifold/ConstraintManifold.h"
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include "gtdynamics/optimizer/ConstrainedOptimizer.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
-#include "gtdynamics/optimizer/InequalityConstraint.h"
-#include "gtdynamics/optimizer/OptimizationBenchmark.h"
 #include "gtdynamics/utils/DebugUtils.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/values.h"
 
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <utility>
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -172,11 +134,10 @@ getInitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
   return values;
 }
 
-void TrajectoryOptimization() {
-  /// Initialize vision60 robot
+IEVision60Robot::Params GetVision60Params() {
   IEVision60Robot::Params vision60_params;
   vision60_params.express_redundancy = true;
-  vision60_params.basis_using_torques = true;
+  vision60_params.ad_basis_using_torques = true;
   vision60_params.collocation = CollocationScheme::Trapezoidal;
   std::map<std::string, double> torque_lower_limits;
   std::map<std::string, double> torque_upper_limits;
@@ -193,7 +154,12 @@ void TrajectoryOptimization() {
   vision60_params.include_torque_limits = true;
   vision60_params.sigma_q_col = 1e-3;
   vision60_params.sigma_v_col = 1e-3;
+  return vision60_params;
+}
 
+IEVision60RobotMultiPhase
+GetVision60MultiPhase(IEVision60Robot::Params &_vision60_params) {
+  IEVision60Robot::Params vision60_params = _vision60_params;
   vision60_params.set4C();
   IEVision60Robot vision60_4c(vision60_params);
   vision60_params.setInAir();
@@ -204,20 +170,28 @@ void TrajectoryOptimization() {
   /// Scenario
   size_t num_steps_ground = 10;
   size_t num_steps_air = 10;
-  size_t num_steps = num_steps_ground + num_steps_air;
 
   std::vector<IEVision60Robot> phase_robots{vision60_4c, vision60_air};
   std::vector<IEVision60Robot> boundary_robots{vision60_boundary};
   std::vector<size_t> phase_num_steps{num_steps_ground, num_steps_air};
   IEVision60RobotMultiPhase vision60_multi_phase(phase_robots, boundary_robots,
                                                  phase_num_steps);
+  return vision60_multi_phase;
+}
+
+IEConsOptProblem
+CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase) {
+  const IEVision60Robot &vision60_4c = vision60_multi_phase.phase_robots_[0];
+  const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
+  size_t num_steps = vision60_multi_phase.phase_num_steps_[0] +
+                     vision60_multi_phase.phase_num_steps_[1];
 
   Pose3 base_pose_init(Rot3::Identity(),
                        Point3(0, 0, vision60_4c.nominal_height));
   Vector6 base_twist_init = Vector6::Zero();
 
   Values des_values;
-  for (const auto& joint: vision60_air.robot.joints()) {
+  for (const auto &joint : vision60_air.robot.joints()) {
     InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
   }
   InsertTwist(&des_values, vision60_air.base_id, num_steps, Vector6::Zero());
@@ -230,7 +204,7 @@ void TrajectoryOptimization() {
   for (size_t k = 0; k <= num_steps; k++) {
     const IEVision60Robot &vision60 = vision60_multi_phase.robotAtStep(k);
     e_constraints.add(vision60.eConstraints(k));
-    i_constraints.add(vision60.iConstraints(k));
+    // i_constraints.add(vision60.iConstraints(k));
   }
   e_constraints.add(
       vision60_4c.initStateConstraints(base_pose_init, base_twist_init));
@@ -244,8 +218,7 @@ void TrajectoryOptimization() {
   /// Costs
   NonlinearFactorGraph collocation_costs =
       vision60_multi_phase.collocationCosts();
-  NonlinearFactorGraph boundary_costs =
-      vision60_air.stateCosts(des_values);
+  NonlinearFactorGraph boundary_costs = vision60_air.stateCosts(des_values);
   NonlinearFactorGraph min_torque_costs = vision60_4c.minTorqueCosts(num_steps);
   NonlinearFactorGraph costs;
   costs.add(collocation_costs);
@@ -272,6 +245,112 @@ void TrajectoryOptimization() {
 
   /// Problem
   IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
+  return problem;
+}
+
+void RunRetractorBenchMark(
+    const IEConsOptProblem &problem,
+    const std::map<std::string, IERetractorCreator::shared_ptr>
+        &retractor_creators,
+    const LevenbergMarquardtParams &lm_params, const IELMParams &ie_params,
+    const IEConstraintManifold::Params::shared_ptr &_ecm_params) {
+  auto iecm_params =
+      std::make_shared<IEConstraintManifold::Params>(*_ecm_params);
+
+  for (const auto &it : retractor_creators) {
+    const auto &retractor_name = it.first;
+    const auto &retractor_creator = it.second;
+    iecm_params->retractor_creator = retractor_creator;
+    std::cout << retractor_name << ":\n";
+    auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+    // Values result_values = lm_result.second.back().state.baseValues();
+    const auto &iters_details = lm_result.second;
+    std::string state_file_path =
+        "../../data/quadruped_ground_air_" + retractor_name + "_states.csv";
+    std::string trial_file_path =
+        "../../data/quadruped_ground_air_" + retractor_name + "_trials.csv";
+    iters_details.exportFile(state_file_path, trial_file_path);
+  }
+}
+
+void RetractorBenchMark() {
+  /// Initialize vision60 robot
+  auto vision60_params = GetVision60Params();
+  vision60_params.ad_basis_using_torques = false;
+  auto vision60_multi_phase_a = GetVision60MultiPhase(vision60_params);
+  vision60_params.ad_basis_using_torques = true;
+  auto vision60_multi_phase_T = GetVision60MultiPhase(vision60_params);
+
+  /// Create problem
+  auto problem = CreateProblem(vision60_multi_phase_a);
+
+  BarrierRetractor::Params barrier_params;
+  barrier_params.prior_sigma = 0.1;
+
+  KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
+  vision60_retractor_params.prior_sigma = 0.1;
+  vision60_retractor_params.check_feasible = true;
+  vision60_retractor_params.feasible_threshold = 1e-3;
+
+  auto barrier_retractor_creator_no_basis_keys =
+      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+          vision60_multi_phase_a, barrier_params, false);
+
+  auto barrier_retractor_creator_a_basis_keys =
+      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+          vision60_multi_phase_a, barrier_params, true);
+
+  auto barrier_retractor_creator_T_basis_keys =
+      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+          vision60_multi_phase_T, barrier_params, true);
+
+  auto hierarchical_retractor_creator_no_basis_keys =
+      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+          vision60_multi_phase_a, vision60_retractor_params, false);
+
+  auto hierarchical_retractor_creator_a_basis_keys =
+      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+          vision60_multi_phase_a, vision60_retractor_params, true);
+
+  auto hierarchical_retractor_creator_T_basis_keys =
+      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+          vision60_multi_phase_T, vision60_retractor_params, true);
+
+  std::map<std::string, IERetractorCreator::shared_ptr> retractor_creators{
+      // {"barrier_none", barrier_retractor_creator_no_basis_keys},
+      // {"barrier_a", barrier_retractor_creator_a_basis_keys},
+      // {"barrier_T", barrier_retractor_creator_T_basis_keys},
+      {"hierarchical_none", hierarchical_retractor_creator_no_basis_keys},
+      {"hierarchical_a", hierarchical_retractor_creator_a_basis_keys},
+      {"hierarchical_T", hierarchical_retractor_creator_T_basis_keys}};
+
+  LevenbergMarquardtParams lm_params;
+  lm_params.setLinearSolverType("SEQUENTIAL_QR");
+  lm_params.setVerbosityLM("SUMMARY");
+  lm_params.setMaxIterations(100);
+  lm_params.setlambdaInitial(1e0);
+  lm_params.setlambdaUpperBound(1e10);
+
+  IELMParams ie_params;
+
+  auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
+  iecm_params->e_basis_with_new_constraints = true;
+  iecm_params->ecm_params->basis_params->setFixVars();
+  iecm_params->e_basis_creator =
+      std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
+          vision60_multi_phase_T, iecm_params->ecm_params->basis_params);
+
+  RunRetractorBenchMark(problem, retractor_creators, lm_params, ie_params,
+                        iecm_params);
+}
+
+void TrajectoryOptimization() {
+  /// Initialize vision60 robot
+  auto vision60_params = GetVision60Params();
+  auto vision60_multi_phase = GetVision60MultiPhase(vision60_params);
+
+  /// Create problem
+  auto problem = CreateProblem(vision60_multi_phase);
 
   // Parameters
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
@@ -279,17 +358,22 @@ void TrajectoryOptimization() {
   iecm_params->ecm_params->basis_params->setFixVars();
   // iecm_params->ecm_params->basis_key_func = vision60.getBasisKeyFunc();
 
-  Vision60Retractor::Params vision60_retractor_params;
+  KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
   vision60_retractor_params.lm_params = LevenbergMarquardtParams();
   // vision60_retractor_params.lm_params.setVerbosityLM("SUMMARY");
   // vision60_retractor_params.lm_params.minModelFidelity = 0.5;
   vision60_retractor_params.check_feasible = true;
   vision60_retractor_params.feasible_threshold = 1e-3;
-  vision60_retractor_params.use_basis_keys = true;
   vision60_retractor_params.prior_sigma = 0.1;
+  vision60_retractor_params.lm_params.setVerbosityLM("SUMMARY");
   iecm_params->retractor_creator =
-      std::make_shared<Vision60RetractorMultiPhaseCreator>(
-          vision60_multi_phase, vision60_retractor_params);
+      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+          vision60_multi_phase, vision60_retractor_params, true);
+  BarrierRetractor::Params barrier_params;
+  barrier_params.prior_sigma = 0.1;
+  iecm_params->retractor_creator =
+      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+          vision60_multi_phase, barrier_params, true);
   iecm_params->e_basis_creator =
       std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
           vision60_multi_phase, iecm_params->ecm_params->basis_params);
@@ -297,40 +381,44 @@ void TrajectoryOptimization() {
   LevenbergMarquardtParams lm_params;
   lm_params.setVerbosityLM("SUMMARY");
   lm_params.setMaxIterations(10);
+  lm_params.setLinearSolverType("SEQUENTIAL_QR");
+  // lm_params.setlambdaInitial(1e10);
+  lm_params.setlambdaUpperBound(1e30);
+  // lm_params.minModelFidelity = 0.3;
   IELMParams ie_params;
 
   // optimize IELM
   auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
-  Values result_values = 
-      lm_result.second.back().state.baseValues();
-  for (const auto &iter_details : lm_result.second) {
-    IEOptimizer::PrintIterDetails(
-        iter_details, num_steps, false, IEVision60Robot::PrintValues,
-        IEVision60Robot::PrintDelta, gtdynamics::GTDKeyFormatter);
-  }
-  IEVision60Robot::PrintValues(result_values, num_steps);
-  EvaluateCosts(result_values);
-  IEVision60Robot::ExportValues(result_values, num_steps,
-                                "/Users/yetongzhang/packages/noboost/GTD_ineq/"
-                                "GTDynamics/data/ineq_quadruped_traj.csv");
+  Values result_values = lm_result.second.back().state.baseValues();
+  // for (const auto &iter_details : lm_result.second) {
+  //   IEOptimizer::PrintIterDetails(
+  //       iter_details, num_steps, false, IEVision60Robot::PrintValues,
+  //       IEVision60Robot::PrintDelta, gtdynamics::GTDKeyFormatter);
+  // }
+  // IEVision60Robot::PrintValues(result_values, num_steps);
+  // EvaluateCosts(result_values);
+  // IEVision60Robot::ExportValues(result_values, num_steps,
+  //                               "/Users/yetongzhang/packages/noboost/GTD_ineq/"
+  //                               "GTDynamics/data/ineq_quadruped_traj.csv");
 
-  // Optimize Barrier
-  BarrierParameters barrier_params;
-  barrier_params.initial_mu = 1e0;
-  barrier_params.num_iterations = 5;
-  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
-  EvaluateCosts(barrier_result.second.rbegin()->values);
-  IEVision60Robot::PrintValues(barrier_result.second.rbegin()->values,
-                               num_steps);
-  barrier_result.first.exportFileWithMu(
-      "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/"
-      "ineq_quadruped_barrier.txt");
+  // // Optimize Barrier
+  // BarrierParameters barrier_params;
+  // barrier_params.initial_mu = 1e0;
+  // barrier_params.num_iterations = 15;
+  // auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  // EvaluateCosts(barrier_result.second.rbegin()->values);
+  // IEVision60Robot::PrintValues(barrier_result.second.rbegin()->values,
+  //                              num_steps);
+  // barrier_result.first.exportFileWithMu(
+  //     "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/"
+  //     "ineq_quadruped_barrier.txt");
 
-  barrier_result.first.printLatex(std::cout);
-  lm_result.first.printLatex(std::cout);
+  // barrier_result.first.printLatex(std::cout);
+  // lm_result.first.printLatex(std::cout);
 }
 
 int main(int argc, char **argv) {
-  TrajectoryOptimization();
+  // TrajectoryOptimization();
+  RetractorBenchMark();
   return 0;
 }
