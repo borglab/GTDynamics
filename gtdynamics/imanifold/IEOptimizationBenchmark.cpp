@@ -31,13 +31,23 @@ void IEResultSummary::exportFile(const std::string &file_path) const {
 void IEResultSummary::exportFileWithMu(const std::string &file_path) const {
   std::ofstream file;
   file.open(file_path);
+  file << "mu"
+       << ","
+       << "cost"
+       << ","
+       << "e_violation"
+       << ","
+       << "i_violation"
+       << ","
+       << "num_inner_iters"
+       << "\n";
   for (int i = 0; i < iters_summary.size(); i++) {
     if (i == iters_summary.size() - 1 ||
         (i > 0 && iters_summary[i].mu != iters_summary[i + 1].mu)) {
       const auto &iter_summary = iters_summary.at(i);
-      file << iter_summary.num_inner_iters << " " << iter_summary.mu << " "
-           << iter_summary.cost << " " << iter_summary.e_violation << " "
-           << iter_summary.i_violation << "\n";
+      file << iter_summary.mu << "," << iter_summary.cost << ","
+           << iter_summary.e_violation << "," << iter_summary.i_violation << ","
+           << iter_summary.num_inner_iters << "\n";
     }
   }
   file.close();
@@ -56,7 +66,8 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
   IEResultSummary summary;
   summary.exp_name = "soft";
   summary.variable_dim = result.dim();
-  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() + problem.iConstraints().dim();
+  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
+                       problem.iConstraints().dim();
   summary.total_inner_iters = optimizer.getInnerIterations();
   summary.total_iters = optimizer.iterations();
   summary.cost = problem.evaluateCost(result);
@@ -93,7 +104,8 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
   BarrierItersDetail iters_details;
   summary.exp_name = "barrier";
   summary.variable_dim = result.dim();
-  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() + problem.iConstraints().dim();
+  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
+                       problem.iConstraints().dim();
   summary.cost = problem.evaluateCost(result);
   summary.e_violation = problem.evaluateEConstraintViolationL2Norm(result);
   summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
@@ -115,7 +127,7 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
                                intermediate_result.intermediate_values[i]);
   }
   summary.total_inner_iters = summary.iters_summary.back().num_inner_iters;
-  // summary.total_iters = summary.iters_summary.back().num_iters; 
+  // summary.total_iters = summary.iters_summary.back().num_iters;
 
   //     std::accumulate(intermediate_result.num_inner_iters.begin(),
   //                     intermediate_result.num_inner_iters.end(), 0.0);

@@ -11,20 +11,17 @@
  * @author: Yetong Zhang
  */
 
+#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IEQuadrupedUtils.h>
-
-#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/sdf.h>
-
+#include <gtdynamics/utils/DebugUtils.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-
-#include <gtdynamics/utils/DebugUtils.h>
 
 using namespace gtdynamics;
 
@@ -40,6 +37,7 @@ IEVision60Robot::IEVision60Robot(const Params &_params)
   des_v_nm = noiseModel::Isotropic::Sigma(1, params.sigma_des_twist);
   min_torque_nm = noiseModel::Isotropic::Sigma(1, params.sigma_actuation);
   cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params.tol_q);
+  c_force_model = gtsam::noiseModel::Isotropic::Sigma(3, params.tol_dynamics);
   redundancy_model =
       gtsam::noiseModel::Isotropic::Sigma(6, params.tol_dynamics);
 
@@ -53,7 +51,7 @@ IEVision60Robot::IEVision60Robot(const Params &_params)
   for (const auto &idx : params.contact_indices) {
     contact_points.emplace_back(
         gtdynamics::PointOnLink(legs.at(idx).lower_link, contact_in_com));
-    contact_ids.emplace_back(legs.at(idx).lower_link_id);
+    contact_link_ids.emplace_back(legs.at(idx).lower_link_id);
   }
 
   /// Nominal configuration
@@ -199,7 +197,7 @@ IEVision60Robot::basisKeys(const size_t k,
   }
   // ad levels
   if (params.leaving_indices.size() == 4) {
-     // TODO: for boundary steps
+    // TODO: for boundary steps
     return basis_keys;
   }
   if (params.ad_basis_using_torques) {
@@ -213,14 +211,12 @@ IEVision60Robot::basisKeys(const size_t k,
       if (params.express_redundancy) {
         basis_keys.emplace_back(ContactRedundancyKey(k));
       }
-    }
-    else {
+    } else {
       // air
       for (size_t j = 0; j < robot.numJoints(); j++) {
         basis_keys.emplace_back(JointAccelKey(j, k));
       }
     }
-
   }
   return basis_keys;
 }
@@ -249,6 +245,8 @@ Values IEVision60Robot::getNominalConfiguration(const double height) const {
 
   size_t k = 0;
   Vector6 zero_vec6 = Vector6::Zero();
+  Vector3 zero_vec3 = Vector3::Zero();
+  // ad level of joints
   for (auto &&joint : robot.joints()) {
     int j = joint->id();
     InsertJointAccel(&values, j, k, 0.0);
@@ -256,45 +254,137 @@ Values IEVision60Robot::getNominalConfiguration(const double height) const {
     InsertWrench(&values, joint->parent()->id(), j, k, zero_vec6);
     InsertWrench(&values, joint->child()->id(), j, k, zero_vec6);
   }
-  for (const auto &cp : contact_points) {
-    int i = cp.link->id();
-    values.insert(ContactWrenchKey(i, 0, k), zero_vec6);
-  }
+  // ad level of links
   for (auto &&link : robot.links()) {
     int i = link->id();
     InsertTwistAccel(&values, i, k, zero_vec6);
   }
-  if (params.express_redundancy) {
+  // ad level of contacts
+  for (const auto &cp : contact_points) {
+    int i = cp.link->id();
+    values.insert(ContactWrenchKey(i, 0, k), zero_vec6);
+    if (params.express_contact_force) {
+      values.insert(ContactForceKey(i, 0, k), zero_vec3);
+    }
+  }
+  if (params.contact_indices.size() == 4 && params.express_redundancy) {
     values.insert(ContactRedundancyKey(k), zero_vec6);
   }
   // PrintKeyVector(values.keys(), "", GTDKeyFormatter);
   return values;
 }
 
+void IEVision60Robot::PrintJointValuesLevel(const Values &values,
+                                            const size_t num_steps,
+                                            const std::string level) {
+  std::cout << level << "-level:\n";
+  std::cout << "\t";
+  for (auto &&joint : robot.orderedJoints()) {
+    std::cout << std::setw(10) << joint->name();
+  }
+  std::cout << std::endl;
+  for (size_t k = 0; k <= num_steps; k++) {
+    std::cout << k << "\t";
+    for (const auto &joint : robot.orderedJoints()) {
+      double value;
+      if (level == "q") {
+        value = JointAngle(values, joint->id(), k);
+      } else if (level == "v") {
+        value = JointVel(values, joint->id(), k);
+      } else if (level == "a") {
+        value = JointAccel(values, joint->id(), k);
+      } else if (level == "d") {
+        value = Torque(values, joint->id(), k);
+      }
+      std::cout << std::setw(10) << std::setprecision(3) << value;
+    }
+    std::cout << "\n";
+  }
+}
+
+/* ************************************************************************* */
+void IEVision60Robot::PrintTorso(const Values &values, const size_t num_steps) {
+  std::cout << "torso:\n";
+  std::cout << "\t" << std::setw(54) << "pose" << std::setw(54) << "twist"
+            << std::setw(54) << "twist_accel"
+            << "\n";
+  for (size_t k = 0; k <= num_steps; k++) {
+    std::cout << k << "\t";
+    Pose3 torso_pose = Pose(values, base_id, k);
+    Vector6 torso_twist = Twist(values, base_id, k);
+    Vector6 torso_twist_accel = TwistAccel(values, base_id, k);
+    for (int i = 0; i < 3; i++) {
+      double val = torso_pose.rotation().rpy()(i);
+      if (abs(val) < 1e-9) {
+        val = 0;
+      }
+      std::cout << std::setw(9) << std::setprecision(3) << val;
+    }
+    for (int i = 0; i < 3; i++) {
+      double val = torso_pose.translation()(i);
+      if (abs(val) < 1e-9) {
+        val = 0;
+      }
+      std::cout << std::setw(9) << std::setprecision(3) << val;
+    }
+    for (int i = 0; i < 6; i++) {
+      double val = torso_twist(i);
+      if (abs(val) < 1e-9) {
+        val = 0;
+      }
+      std::cout << std::setw(9) << std::setprecision(3) << val;
+    }
+    for (int i = 0; i < 6; i++) {
+      double val = torso_twist_accel(i);
+      if (abs(val) < 1e-9) {
+        val = 0;
+      }
+      std::cout << std::setw(9) << std::setprecision(3) << val;
+    }
+    std::cout << std::endl;
+  }
+}
+
+/* ************************************************************************* */
+void IEVision60Robot::PrintContactForces(const Values &values,
+                                         const size_t num_steps) {
+  std::cout << "contact force:\n";
+  std::cout << "\t";
+  for (const auto &leg : legs) {
+    std::cout << std::setw(24) << leg.lower_link->name();
+  }
+  std::cout << std::endl;
+  for (size_t k = 0; k <= num_steps; k++) {
+    std::cout << k << "\t";
+    for (const auto &leg : legs) {
+      uint8_t link_id = leg.lower_link->id();
+      Key contact_wrench_key = gtdynamics::ContactWrenchKey(link_id, 0, k);
+      if (values.exists(contact_wrench_key)) {
+        Vector6 wrench_b = values.at<Vector6>(contact_wrench_key);
+        Pose3 pose = Pose(values, link_id, k);
+        Vector6 wrench_w = pose.inverse().AdjointTranspose(wrench_b);
+        for (int i = 3; i < 6; i++) {
+          double val = wrench_w(i);
+          if (abs(val) < 1e-9) {
+            val = 0;
+          }
+          std::cout << std::setw(8) << std::setprecision(3) << val;
+        }
+      } else {
+        std::cout << std::setw(24) << "-";
+      }
+    }
+    std::cout << std::endl;
+  }
+}
+
 /* ************************************************************************* */
 void IEVision60Robot::PrintValues(const Values &values,
                                   const size_t num_steps) {
-  for (auto &&joint : robot.orderedJoints()) {
-    std::cout << joint->name() << "\t";
-  }
-  std::cout << std::endl;
-  for (size_t k = 0; k <= num_steps; k++) {
-    for (const auto &joint : robot.orderedJoints()) {
-      double q = JointAngle(values, joint->id(), k);
-      std::cout << q << "\t";
-    }
-    std::cout << "\n";
-  }
-  for (auto &&joint : robot.orderedJoints()) {
-    std::cout << joint->name() << "\t";
-  }
-  std::cout << std::endl;
-  for (size_t k = 0; k <= num_steps; k++) {
-    for (const auto &joint : robot.orderedJoints()) {
-      double torque = Torque(values, joint->id(), k);
-      std::cout << torque << "\t";
-    }
-    std::cout << "\n";
+  PrintTorso(values, num_steps);
+  PrintContactForces(values, num_steps);
+  for (const std::string &level : {"q", "v", "a", "d"}) {
+    PrintJointValuesLevel(values, num_steps, level);
   }
 }
 

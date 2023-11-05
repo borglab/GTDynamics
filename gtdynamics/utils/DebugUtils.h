@@ -61,10 +61,11 @@ inline Values PickValues(const CONTAINER &keys, const Values &priority_values,
 
 inline void CheckFeasible(const NonlinearFactorGraph &graph,
                           const Values &values,
+                          const std::string s = "",
                           const double feasible_threshold = 1e-3) {
 
   if (graph.error(values) > feasible_threshold) {
-    std::cout << "fail: " << graph.error(values) << "\n";
+    std::cout << s << "fail: " << graph.error(values) << "\n";
     // PrintGraphWithError(graph, values, feasible_threshold);
   }
 }

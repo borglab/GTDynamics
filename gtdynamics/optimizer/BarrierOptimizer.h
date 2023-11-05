@@ -57,6 +57,9 @@ public:
     size_t total_inner_iters = 0;
     gtsam::Values values = init_values;
     for (size_t i = 0; i < p_.num_iterations; i++) {
+      if (p_.verbose) {
+        std::cout << "====== iteration " << i << " mu = " << mu << " =======\n";
+      }
       gtsam::NonlinearFactorGraph merit_graph = graph;
       for (const auto &constraint : e_constraints) {
         merit_graph.add(constraint->createFactor(mu));
@@ -67,6 +70,12 @@ public:
       gtsam::HistoryLMOptimizer optimizer(merit_graph, values,
                                           p_.lm_parameters);
       values = optimizer.optimize();
+      if (p_.verbose) {
+        std::cout << "\tLM_iters: " << optimizer.getInnerIterations() << "\n";
+        std::cout << "\tcost: " << graph.error(values) << "\n";
+        std::cout << "\te_violation: " << e_constraints.evaluateViolationL2Norm(values) << "\n";
+        std::cout << "\ti_violation: " << i_constraints.evaluateViolationL2Norm(values) << "\n";
+      }
       if (intermediate_result != nullptr) {
         const auto &history_states = optimizer.states();
         for (const auto &state : history_states) {

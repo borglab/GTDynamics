@@ -24,8 +24,8 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/PointOnLink.h>
-
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
+#include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtsam {
@@ -82,6 +82,7 @@ public:
 
     /// Optimization settings
     bool express_redundancy = true;
+    bool express_contact_force = false;
     bool ad_basis_using_torques = false;
     bool include_friction_cone = false;
     bool include_joint_limits = false;
@@ -133,7 +134,7 @@ public:
 
   /// Contact point info
   gtdynamics::PointOnLinks contact_points;
-  std::vector<int> contact_ids;
+  std::vector<int> contact_link_ids;
   IndexSet leaving_link_indices;
   IndexSet landing_link_indices;
 
@@ -152,6 +153,7 @@ public:
   SharedNoiseModel des_v_nm;
   SharedNoiseModel min_torque_nm;
   SharedNoiseModel cpoint_cost_model;
+  SharedNoiseModel c_force_model;
   SharedNoiseModel redundancy_model;
 
 protected:
@@ -201,9 +203,15 @@ public:
   gtdynamics::EqualityConstraints
   initStateConstraints(const Pose3 &init_pose, const Vector6 &init_twist) const;
 
+  NonlinearFactorGraph collocationCostsStep(const size_t k,
+                                            const double dt) const;
+
   /// Costs for collocation across steps.
   NonlinearFactorGraph collocationCosts(const size_t num_steps,
                                         double dt) const;
+
+  NonlinearFactorGraph
+  multiPhaseCollocationCostsStep(const size_t k, const size_t phase_id) const;
 
   /// Cost for collocation that parameterize phase duration
   NonlinearFactorGraph multiPhaseCollocationCosts(const size_t start_step,
@@ -274,6 +282,35 @@ public:
 
   static void ExportVector(const VectorValues &values, const size_t num_steps,
                            const std::string &file_path);
+
+protected:
+  static void PrintTorso(const Values &values, const size_t num_steps);
+
+  static void PrintContactForces(const Values &values, const size_t num_steps);
+
+  static void PrintJointValuesLevel(const Values &values,
+                                    const size_t num_steps,
+                                    const std::string level);
+
+public:
+  /** <===================== Utility Functions =====================> **/
+  /** Transform contact wrench expressed in link frame to contact force
+   * expressed in world frame. */
+  static Vector3 GetContactForce(const Pose3 &pose, const Vector6 wrench,
+                                 OptionalJacobian<3, 6> H_pose = {},
+                                 OptionalJacobian<3, 6> H_wrench = {});
+
+  /** Factor that enforce the relationship between contact force and contact
+   * wernch. */
+  NoiseModelFactor::shared_ptr contactForceFactor(const uint8_t link_id,
+                                                  const size_t k) const;
+
+  /** 6-dimensional vector that represents the redundancy in degress of freedom
+   * in d-level with known acceleration. Only used in 4-leg contact case. */
+  NoiseModelFactor::shared_ptr contactRedundancyFactor(const size_t k) const;
+
+  /** Factor that enforce the q-level constraint at a known point contact. */
+  NonlinearFactorGraph qPointContactFactors(const size_t k) const;
 
   /// Return optimizer setting.
   const gtdynamics::OptimizerSetting &opt() const {

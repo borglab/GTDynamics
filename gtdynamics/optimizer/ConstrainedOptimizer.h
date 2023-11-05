@@ -24,7 +24,8 @@ namespace gtdynamics {
 /// Constrained optimization parameters shared between all solvers.
 struct ConstrainedOptimizationParameters {
   gtsam::LevenbergMarquardtParams lm_parameters;  // LM parameters
-
+  bool verbose = false;
+  
   /// Constructor.
   ConstrainedOptimizationParameters() {}
 
@@ -76,9 +77,12 @@ class ConstrainedOptimizer {
  * functions, h(X)=0 represents the constraints.
 */
 struct EqConsOptProblem {
+  typedef std::function<void(const gtsam::Values &values)> EvalFunc;
+
   gtsam::NonlinearFactorGraph costs_;           // cost function, ||f(X)||^2
   gtdynamics::EqualityConstraints constraints_; // equality constraints. h(X)=0
   gtsam::Values values_;                        // values of all variables, X
+  EvalFunc eval_func;
   /// Constructor.
   EqConsOptProblem(const gtsam::NonlinearFactorGraph& costs,
                    const gtdynamics::EqualityConstraints& constraints,

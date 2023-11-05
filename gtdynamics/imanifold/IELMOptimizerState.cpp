@@ -209,7 +209,8 @@ void IELMTrial::PrintTitle() {
        << " " << setw(12) << "linear "
        << " " << setw(10) << "lambda "
        << " " << setw(10) << "solve_succ "
-       << " " << setw(10) << "time " << endl;
+       << " " << setw(10) << "time   "
+       << " " << setw(10) << "delta_norm" << endl;
 }
 
 /* ************************************************************************* */
@@ -220,8 +221,8 @@ void IELMTrial::print(const IELMState &state) const {
        << linear_update.cost_change << " " << setw(10) << setprecision(2)
        << linear_update.lambda << " " << setw(10)
        << (linear_update.solve_successful ? "T   " : "F   ") << " " << setw(10)
-       << setprecision(2) << trial_time  << setw(10)
-       << setprecision(4) << linear_update.delta.norm() << endl;
+       << setprecision(2) << trial_time << setw(10) << setprecision(4)
+       << linear_update.delta.norm() << endl;
 }
 
 /* ************************************************************************* */

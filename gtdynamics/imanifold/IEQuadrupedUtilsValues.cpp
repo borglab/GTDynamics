@@ -35,7 +35,7 @@ Values IEVision60Robot::stepValues(
       PickValues(graph_q.keys(), init_values, nominal_values_k);
   LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lm_params);
   auto results_q = optimizer_q.optimize();
-  CheckFeasible(graph_q, results_q);
+  CheckFeasible(graph_q, results_q, "q-level ");
   known_values.insert(results_q);
 
   // solve v level
@@ -46,7 +46,7 @@ Values IEVision60Robot::stepValues(
       PickValues(graph_v.keys(), init_values, nominal_values_k);
   LevenbergMarquardtOptimizer optimizer_v(graph_v, init_values_v, lm_params);
   auto results_v = optimizer_v.optimize();
-  CheckFeasible(graph_v, results_v);
+  CheckFeasible(graph_v, results_v, "v-level ");
   known_values.insert(results_v);
 
   // solve ad level
@@ -57,7 +57,7 @@ Values IEVision60Robot::stepValues(
       PickValues(graph_ad.keys(), init_values, nominal_values_k);
   LevenbergMarquardtOptimizer optimizer_ad(graph_ad, init_values_ad, lm_params);
   auto results_ad = optimizer_ad.optimize();
-  CheckFeasible(graph_ad, results_ad);
+  CheckFeasible(graph_ad, results_ad, "ad-level ");
   known_values.insert(results_ad);
 
   return known_values;

@@ -11,7 +11,6 @@
  * @author: Yetong Zhang
  */
 
-#include "dynamics/DynamicsGraph.h"
 #include "utils/DynamicsSymbol.h"
 #include "utils/values.h"
 #include <_types/_uint8_t.h>
@@ -33,9 +32,10 @@ using namespace gtdynamics;
 
 namespace gtsam {
 /* ************************************************************************* */
-Vector3 get_contact_force(const Pose3 &pose, const Vector6 wrench,
-                          OptionalJacobian<3, 6> H_pose,
-                          OptionalJacobian<3, 6> H_wrench) {
+Vector3 IEVision60Robot::GetContactForce(const Pose3 &pose,
+                                         const Vector6 wrench,
+                                         OptionalJacobian<3, 6> H_pose,
+                                         OptionalJacobian<3, 6> H_wrench) {
   Vector3 force_l(wrench(3), wrench(4), wrench(5));
   if (H_pose || H_wrench) {
     gtsam::Matrix36 J_fl_wrench;
@@ -61,15 +61,26 @@ Vector3 get_contact_force(const Pose3 &pose, const Vector6 wrench,
 }
 
 /* ************************************************************************* */
-gtsam::Vector6_ ContactRedundancyConstraint(int t,
-                                            const std::vector<int> &contact_ids,
-                                            const double &a, const double &b) {
+NoiseModelFactor::shared_ptr
+IEVision60Robot::contactForceFactor(const uint8_t link_id,
+                                    const size_t k) const {
+  Vector6_ c_wrench(gtdynamics::ContactWrenchKey(link_id, 0, k));
+  Pose3_ pose(gtdynamics::PoseKey(link_id, k));
+  Vector3_ expected_contact_force_expr(IEVision60Robot::GetContactForce, pose,
+                                       c_wrench);
+  Vector3_ contact_force_expr(ContactForceKey(link_id, 0, k));
+  return std::make_shared<ExpressionFactor<Vector3>>(
+      c_force_model, Vector3::Zero(),
+      expected_contact_force_expr - contact_force_expr);
+}
+
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr
+IEVision60Robot::contactRedundancyFactor(const size_t k) const {
+  const double &a = nominal_a;
+  const double &b = nominal_b;
   std::vector<gtsam::Vector6_> error;
   for (size_t i = 0; i < 4; i++) {
-    auto link_id = contact_ids.at(i);
-    Vector6_ c_wrench(gtdynamics::ContactWrenchKey(link_id, 0, t));
-    Pose3_ pose(gtdynamics::PoseKey(link_id, t));
-    Vector3_ c_force(get_contact_force, pose, c_wrench);
     gtsam::Matrix63 H;
     if (i == 0) {
       H << 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, a, b, 0;
@@ -83,43 +94,39 @@ gtsam::Vector6_ ContactRedundancyConstraint(int t,
     const std::function<gtsam::Vector6(Vector3)> f = [H](const Vector3 &F) {
       return H * F;
     };
-    error.emplace_back(gtsam::linearExpression(f, c_force, H));
+    auto link_id = contact_link_ids.at(i);
+    if (params.express_contact_force) {
+      Vector3_ c_force(ContactForceKey(link_id, 0, k));
+      error.emplace_back(gtsam::linearExpression(f, c_force, H));
+    } else {
+      Vector6_ c_wrench(gtdynamics::ContactWrenchKey(link_id, 0, k));
+      Pose3_ pose(gtdynamics::PoseKey(link_id, k));
+      Vector3_ c_force(IEVision60Robot::GetContactForce, pose, c_wrench);
+      error.emplace_back(gtsam::linearExpression(f, c_force, H));
+    }
   }
+  Vector6_ redundancy_expr = error[0] + error[1] + error[2] + error[3];
 
-  return error[0] + error[1] + error[2] + error[3];
-}
-
-/* ************************************************************************* */
-NoiseModelFactor::shared_ptr
-ContactRedundancyFactor(int t, const std::vector<int> &contact_ids,
-                        const double &a, const double &b,
-                        const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                        bool express_redundancy) {
-  if (express_redundancy) {
-    Vector6_ expected_redundancy =
-        ContactRedundancyConstraint(t, contact_ids, a, b);
-    Vector6_ redundancy(ContactRedundancyKey(t));
+  if (params.express_redundancy) {
+    Vector6_ redundancy(ContactRedundancyKey(k));
     return std::make_shared<ExpressionFactor<Vector6>>(
-        cost_model, Vector6::Zero(), expected_redundancy - redundancy);
+        redundancy_model, Vector6::Zero(), redundancy_expr - redundancy);
   } else {
     return std::make_shared<ExpressionFactor<Vector6>>(
-        cost_model, Vector6::Zero(),
-        ContactRedundancyConstraint(t, contact_ids, a, b));
+        redundancy_model, Vector6::Zero(), redundancy_expr);
   }
 }
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-contact_q_factors(const int k, const gtdynamics::PointOnLinks &contact_points,
-                  const std::vector<Point3> &contact_in_world,
-                  const noiseModel::Base::shared_ptr &cost_model) {
+IEVision60Robot::qPointContactFactors(const size_t k) const {
   NonlinearFactorGraph graph;
   // Add contact factors.
   for (size_t contact_idx = 0; contact_idx < contact_points.size();
        contact_idx++) {
     const auto &cp = contact_points.at(contact_idx);
     gtdynamics::FixedContactPointFactor contact_pose_factor(
-        gtdynamics::PoseKey(cp.link->id(), k), cost_model,
+        gtdynamics::PoseKey(cp.link->id(), k), cpoint_cost_model,
         contact_in_world.at(contact_idx), cp.point);
     graph.add(contact_pose_factor);
   }
@@ -146,6 +153,10 @@ NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
           continue;
         auto wrench_key = ContactWrenchKey(i, 0, k);
         wrench_keys.push_back(wrench_key);
+
+        if (params.express_contact_force) {
+          graph.add(contactForceFactor(i, k));
+        }
 
         if (leaving_link_indices.exists(i)) {
           graph.addPrior<Vector6>(wrench_key, Vector6::Zero(),
@@ -176,8 +187,7 @@ NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
 NonlinearFactorGraph
 IEVision60Robot::getConstraintsGraphStepQ(const int t) const {
   NonlinearFactorGraph graph = graph_builder.qFactors(robot, t);
-  graph.add(contact_q_factors(t, contact_points, contact_in_world,
-                              cpoint_cost_model));
+  graph.add(qPointContactFactors(t));
   return graph;
 }
 
@@ -192,10 +202,8 @@ NonlinearFactorGraph
 IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
   NonlinearFactorGraph graph = graph_builder.aFactors(robot, t, contact_points);
   graph.add(DynamicsFactors(t));
-  if (contact_ids.size() == 4) {
-    graph.add(ContactRedundancyFactor(t, contact_ids, nominal_a, nominal_b,
-                                      redundancy_model,
-                                      params.express_redundancy));
+  if (contact_link_ids.size() == 4) {
+    graph.add(contactRedundancyFactor(t));
   }
 
   return graph;
@@ -363,30 +371,71 @@ NonlinearFactorGraph IEVision60Robot::multiPhaseLinkCollocationFactors(
 }
 
 /* ************************************************************************* */
+NonlinearFactorGraph
+IEVision60Robot::collocationCostsStep(const size_t k, const double dt) const {
+  NonlinearFactorGraph graph;
+  graph.add(linkCollocationFactors(base_id, k, dt));
+
+  // TODO: add version for Euler
+  for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
+    if (!params.contact_indices.exists(leg_idx)) {
+      for (const auto &joint : legs.at(leg_idx).joints) {
+        uint8_t j = joint->id();
+        Key q0_key = JointAngleKey(j, k);
+        Key q1_key = JointAngleKey(j, k + 1);
+        Key v0_key = JointVelKey(j, k);
+        Key v1_key = JointVelKey(j, k + 1);
+        Key a0_key = JointAccelKey(j, k);
+        Key a1_key = JointAccelKey(j, k + 1);
+        DynamicsGraph::addCollocationFactorDouble(
+            &graph, q0_key, q1_key, v0_key, v1_key, dt,
+            graph_builder.opt().q_col_cost_model, params.collocation);
+        DynamicsGraph::addCollocationFactorDouble(
+            &graph, v0_key, v1_key, a0_key, a1_key, dt,
+            graph_builder.opt().v_col_cost_model, params.collocation);
+      }
+    }
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
 NonlinearFactorGraph IEVision60Robot::collocationCosts(const size_t num_steps,
                                                        double dt) const {
   NonlinearFactorGraph graph;
   for (size_t k = 0; k < num_steps; k++) {
-    graph.add(linkCollocationFactors(base_id, k, dt));
+    graph.add(collocationCostsStep(k, dt));
+  }
+  return graph;
+}
 
-    // TODO: add version for Euler
-    for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
-      if (!params.contact_indices.exists(leg_idx)) {
-        for (const auto &joint : legs.at(leg_idx).joints) {
-          uint8_t j = joint->id();
-          Key q0_key = JointAngleKey(j, k);
-          Key q1_key = JointAngleKey(j, k + 1);
-          Key v0_key = JointVelKey(j, k);
-          Key v1_key = JointVelKey(j, k + 1);
-          Key a0_key = JointAccelKey(j, k);
-          Key a1_key = JointAccelKey(j, k + 1);
-          DynamicsGraph::addCollocationFactorDouble(
-              &graph, q0_key, q1_key, v0_key, v1_key, dt,
-              graph_builder.opt().q_col_cost_model, params.collocation);
-          DynamicsGraph::addCollocationFactorDouble(
-              &graph, v0_key, v1_key, a0_key, a1_key, dt,
-              graph_builder.opt().v_col_cost_model, params.collocation);
-        }
+/* ************************************************************************* */
+NonlinearFactorGraph
+IEVision60Robot::multiPhaseCollocationCostsStep(const size_t k,
+                                                const size_t phase_id) const {
+  NonlinearFactorGraph graph;
+  Key phase_key = PhaseKey(phase_id);
+  graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
+  graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
+
+  graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
+
+  for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
+    if (!params.contact_indices.exists(leg_idx)) {
+      for (const auto &joint : legs.at(leg_idx).joints) {
+        uint8_t j = joint->id();
+        Key q0_key = JointAngleKey(j, k);
+        Key q1_key = JointAngleKey(j, k + 1);
+        Key v0_key = JointVelKey(j, k);
+        Key v1_key = JointVelKey(j, k + 1);
+        Key a0_key = JointAccelKey(j, k);
+        Key a1_key = JointAccelKey(j, k + 1);
+        DynamicsGraph::addMultiPhaseCollocationFactorDouble(
+            &graph, q0_key, q1_key, v0_key, v1_key, phase_key,
+            graph_builder.opt().q_col_cost_model, params.collocation);
+        DynamicsGraph::addMultiPhaseCollocationFactorDouble(
+            &graph, v0_key, v1_key, a0_key, a1_key, phase_key,
+            graph_builder.opt().v_col_cost_model, params.collocation);
       }
     }
   }
@@ -399,31 +448,9 @@ IEVision60Robot::multiPhaseCollocationCosts(const size_t start_step,
                                             const size_t end_step,
                                             const size_t phase_id) const {
   NonlinearFactorGraph graph;
-  Key phase_key = PhaseKey(phase_id);
   for (size_t k = start_step; k < end_step; k++) {
-    graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
-
-    for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
-      if (!params.contact_indices.exists(leg_idx)) {
-        for (const auto &joint : legs.at(leg_idx).joints) {
-          uint8_t j = joint->id();
-          Key q0_key = JointAngleKey(j, k);
-          Key q1_key = JointAngleKey(j, k + 1);
-          Key v0_key = JointVelKey(j, k);
-          Key v1_key = JointVelKey(j, k + 1);
-          Key a0_key = JointAccelKey(j, k);
-          Key a1_key = JointAccelKey(j, k + 1);
-          DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-              &graph, q0_key, q1_key, v0_key, v1_key, phase_key,
-              graph_builder.opt().q_col_cost_model, params.collocation);
-          DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-              &graph, v0_key, v1_key, a0_key, a1_key, phase_key,
-              graph_builder.opt().v_col_cost_model, params.collocation);
-        }
-      }
-    }
+    graph.add(multiPhaseCollocationCostsStep(k, phase_id));
   }
-
   return graph;
 }
 
