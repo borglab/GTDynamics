@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtsam/base/types.h>
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -149,4 +150,51 @@ const Values ConstraintManifold::feasibleValues() const {
   return optimizer.optimize();
 }
 
-}  // namespace gtsam
+/* ************************************************************************* */
+Values EManifoldValues::baseValues() const {
+  Values base_values;
+  for (const auto &it : *this) {
+    base_values.insert(it.second.values());
+  }
+  return base_values;
+}
+
+/* ************************************************************************* */
+KeyVector EManifoldValues::keys() const {
+  KeyVector key_vector;
+  for (const auto &it : *this) {
+    key_vector.push_back(it.first);
+  }
+  return key_vector;
+}
+
+/* ************************************************************************* */
+VectorValues
+EManifoldValues::computeTangentVector(const VectorValues &delta) const {
+  VectorValues tangent_vector;
+  for (const auto &it : *this) {
+    tangent_vector.insert(
+        it.second.basis()->computeTangentVector(delta.at(it.first)));
+  }
+  return tangent_vector;
+}
+
+/* ************************************************************************* */
+EManifoldValues EManifoldValues::retract(const VectorValues &delta) const {
+  EManifoldValues new_values;
+  for (const auto &it : *this) {
+    new_values.insert({it.first, it.second.retract(delta.at(it.first))});
+  }
+  return new_values;
+}
+
+/* ************************************************************************* */
+std::map<Key, size_t> EManifoldValues::dims() const {
+  std::map<Key, size_t> dims_map;
+  for (const auto &it : *this) {
+    dims_map.insert({it.first, it.second.dim()});
+  }
+  return dims_map;
+}
+
+} // namespace gtsam

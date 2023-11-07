@@ -15,6 +15,7 @@
 #include <gtdynamics/manifold/Retractor.h>
 #include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
 #include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
@@ -344,16 +345,6 @@ DynamicsRetractor::DynamicsRetractor(
   optimizer_wp_q_.setGraph(graph_q);
   optimizer_wp_v_.setGraph(graph_v);
   optimizer_wp_ad_.setGraph(graph_ad);
-}
-
-/* ************************************************************************* */
-template <typename CONTAINER>
-Values SubValues(const Values &values, const CONTAINER &keys) {
-  Values sub_values;
-  for (const Key &key : keys) {
-    sub_values.insert(key, values.at(key));
-  }
-  return sub_values;
 }
 
 /* ************************************************************************* */

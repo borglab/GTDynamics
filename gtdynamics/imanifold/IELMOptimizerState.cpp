@@ -1,12 +1,10 @@
+#include "imanifold/IELMOptimizer.h"
 #include <gtdynamics/imanifold/IELMOptimizerState.h>
 #include <gtdynamics/imanifold/IEManifoldOptimizer.h>
-#include <gtdynamics/utils/DebugUtils.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Ordering.h>
-#include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/PCGSolver.h>
-#include <gtsam/linear/SubgraphSolver.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/linear/linearExceptions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -230,21 +228,6 @@ void IELMTrial::print(const IELMState &state) const {
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-VectorValues SqrtHessianDiagonal(const GaussianFactorGraph &graph,
-                                 const LevenbergMarquardtParams &params) {
-  VectorValues sqrt_hessian_diagonal;
-  if (params.diagonalDamping) {
-    sqrt_hessian_diagonal = graph.hessianDiagonal();
-    for (auto &[key, value] : sqrt_hessian_diagonal) {
-      value = value.cwiseMax(params.minDiagonal)
-                  .cwiseMin(params.maxDiagonal)
-                  .cwiseSqrt();
-    }
-  }
-  return sqrt_hessian_diagonal;
-}
-
-/* ************************************************************************* */
 IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const NonlinearFactorGraph &graph,
                                       const IELMState &state,
@@ -263,12 +246,12 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         linearize(graph, state.unconstrained_values, keymap_var2manifold);
     VectorValues sqrt_hessian_diagonal = SqrtHessianDiagonal(*linear, params);
     auto damped_system =
-        buildDampedSystem(*linear, sqrt_hessian_diagonal, params);
+        buildDampedSystem(*linear, sqrt_hessian_diagonal, state, params);
 
     // solve delta
     // VectorValues delta;
     try {
-      delta = solve(damped_system, params);
+      delta = SolveLinear(damped_system, params);
       solve_successful = true;
     } catch (const IndeterminantLinearSystemException &) {
       solve_successful = false;
@@ -318,79 +301,30 @@ GaussianFactorGraph::shared_ptr IELMTrial::LinearUpdate::linearize(
 }
 
 /* ************************************************************************* */
-VectorValues
-IELMTrial::LinearUpdate::solve(const GaussianFactorGraph &gfg,
-                               const NonlinearOptimizerParams &params) {
-  // solution of linear solver is an update to the linearization point
-  VectorValues delta;
-
-  // Check which solver we are using
-  if (params.isMultifrontal()) {
-    // Multifrontal QR or Cholesky (decided by params.getEliminationFunction())
-    if (params.ordering)
-      delta = gfg.optimize(*params.ordering, params.getEliminationFunction());
-    else
-      delta = gfg.optimize(params.getEliminationFunction());
-  } else if (params.isSequential()) {
-    // Sequential QR or Cholesky (decided by params.getEliminationFunction())
-    if (params.ordering)
-      delta = gfg.eliminateSequential(*params.ordering,
-                                      params.getEliminationFunction())
-                  ->optimize();
-    else
-      delta = gfg.eliminateSequential(params.orderingType,
-                                      params.getEliminationFunction())
-                  ->optimize();
-  } else if (params.isIterative()) {
-    // Conjugate Gradient -> needs params.iterativeParams
-    if (!params.iterativeParams)
-      throw std::runtime_error(
-          "NonlinearOptimizer::solve: cg parameter has to be assigned ...");
-
-    if (auto pcg = std::dynamic_pointer_cast<PCGSolverParameters>(
-            params.iterativeParams)) {
-      delta = PCGSolver(*pcg).optimize(gfg);
-    } else if (auto spcg = std::dynamic_pointer_cast<SubgraphSolverParameters>(
-                   params.iterativeParams)) {
-      if (!params.ordering)
-        throw std::runtime_error("SubgraphSolver needs an ordering");
-      delta = SubgraphSolver(gfg, *spcg, *params.ordering).optimize();
-    } else {
-      throw std::runtime_error(
-          "NonlinearOptimizer::solve: special cg parameter type is not handled "
-          "in LM solver ...");
-    }
-  } else {
-    throw std::runtime_error(
-        "NonlinearOptimizer::solve: Optimization parameter is invalid");
-  }
-
-  // return update
-  return delta;
-}
-
-/* ************************************************************************* */
-IELMTrial::LinearUpdate::CachedModel *
-IELMTrial::LinearUpdate::getCachedModel(size_t dim) const {
+LMCachedModel *IELMTrial::LinearUpdate::getCachedModel(size_t dim) const {
   if (dim >= noiseModelCache.size())
     noiseModelCache.resize(dim + 1);
-  CachedModel *item = &noiseModelCache[dim];
+  LMCachedModel *item = &noiseModelCache[dim];
   if (!item->model)
-    *item = CachedModel(dim, 1.0 / std::sqrt(lambda));
+    *item = LMCachedModel(dim, 1.0 / std::sqrt(lambda));
   return item;
 }
 
 /* ************************************************************************* */
-GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
-    GaussianFactorGraph damped /* gets copied */) const {
+GaussianFactorGraph
+IELMTrial::LinearUpdate::buildDampedSystem(GaussianFactorGraph damped,
+                                           const IELMState &state) const {
   noiseModelCache.resize(0);
   // for each of the variables, add a prior
-  damped.reserve(damped.size() + e_manifolds.size());
+  damped.reserve(damped.size() + e_manifolds.size() +
+                 state.unconstrained_values.size());
   std::map<Key, size_t> dims = e_manifolds.dims();
+  std::map<Key, size_t> dims_unconstrained = state.unconstrained_values.dims();
+  dims.insert(dims_unconstrained.begin(), dims_unconstrained.end());
   for (const auto &key_dim : dims) {
     const Key &key = key_dim.first;
     const size_t &dim = key_dim.second;
-    const CachedModel *item = getCachedModel(dim);
+    const LMCachedModel *item = getCachedModel(dim);
     damped.emplace_shared<JacobianFactor>(key, item->A, item->b, item->model);
   }
   return damped;
@@ -401,12 +335,12 @@ GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
     GaussianFactorGraph damped, // gets copied
     const VectorValues &sqrtHessianDiagonal) const {
   noiseModelCache.resize(0);
-  damped.reserve(damped.size() + e_manifolds.size());
+  damped.reserve(damped.size() + sqrtHessianDiagonal.size());
   for (const auto &key_vector : sqrtHessianDiagonal) {
     try {
       const Key key = key_vector.first;
       const size_t dim = key_vector.second.size();
-      CachedModel *item = getCachedModel(dim);
+      LMCachedModel *item = getCachedModel(dim);
       item->A.diagonal() = sqrtHessianDiagonal.at(key); // use diag(hessian)
       damped.emplace_shared<JacobianFactor>(key, item->A, item->b, item->model);
     } catch (const std::out_of_range &) {
@@ -419,12 +353,12 @@ GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
 /* ************************************************************************* */
 GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
     const GaussianFactorGraph &linear, const VectorValues &sqrtHessianDiagonal,
-    const LevenbergMarquardtParams &params) const {
+    const IELMState &state, const LevenbergMarquardtParams &params) const {
 
   if (params.diagonalDamping)
     return buildDampedSystem(linear, sqrtHessianDiagonal);
   else
-    return buildDampedSystem(linear);
+    return buildDampedSystem(linear, state);
 }
 
 /* ************************************************************************* */

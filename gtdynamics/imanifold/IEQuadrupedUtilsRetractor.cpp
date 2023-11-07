@@ -15,7 +15,7 @@
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IEQuadrupedUtils.h>
 #include <gtdynamics/manifold/GeneralPriorFactor.h>
-#include <gtdynamics/utils/DebugUtils.h>
+#include <gtdynamics/utils/GraphUtils.h>
 
 using namespace gtdynamics;
 

@@ -1,17 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from yetong00_utils import load_data
+from yetong00_utils import *
 
-data_file = "data/ineq_cartpole_barrier.txt"
-data = load_data(data_file)
+scenario_name = "yetong07_e_quadruped_jump"
+scenario_folder = "data/" + scenario_name + "/"
 
-cost_barrier = data[:,2]
-constraint_vio_barrier = data[:,3] ** 2 + data[:,4] ** 2
+fig1, ax1 = plt.subplots()
+plot_error_vs_constraint(ax1, scenario_folder)
 
-cost_manopt = 92.249
-constraint_vio_manopt = 0.0
+fig2, axs2 = plt.subplots(2, 1, figsize=(8, 8))
+plot_optimization_progress(axs2, scenario_folder)
 
-plt.plot(cost_barrier, constraint_vio_barrier)
-plt.scatter([cost_manopt], [constraint_vio_manopt])
-# plt.yscale("log")
+fig3, axs3 = plt.subplots(3, 2, figsize=(8, 8))
+plot_trajectory(axs3, scenario_folder)
+
 plt.show()

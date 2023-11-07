@@ -16,251 +16,13 @@
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/imanifold/IEQuadrupedUtils.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
-#include <gtsam/base/serialization.h>
+#include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-
-#include "gtdynamics/utils/DebugUtils.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
 
-double SolveConstA(const size_t num_steps, const double dt,
-                   const double target_x) {
-  double x = 0, v = 0;
-  for (size_t k = 0; k < num_steps; k++) {
-    x += v * dt;
-    v += 1 * dt;
-  }
-  double a = target_x / x;
-  return a;
-}
-
-Values getInitValuesTrajectorySmoooth(
-    const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::vector<double> &phases_dt) {
-  Values values;
-  for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx += 1) {
-    values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
-  }
-
-  //// Phase on ground: part1: const accel of torso
-  std::cout << "phase on ground part1\n";
-  const IEVision60Robot &vision60_ground =
-      vision60_multi_phase.phase_robots_[0];
-  size_t num_steps_ground = vision60_multi_phase.phase_num_steps_[0];
-  double dt_ground = phases_dt[0];
-  // double leave_height = 0.07;
-  size_t num_steps_ground1 = num_steps_ground * 0.5;
-  // double accel = SolveConstA(num_steps_ground1, dt_ground, leave_height);
-  double accel = 15;
-
-  double base_z = vision60_ground.nominal_height;
-  double base_v = 0;
-  Values prev_values;
-  for (size_t k = 0; k <= num_steps_ground1; k++) {
-    // set a,v,q level for each step of base_link
-    Vector6 base_accel = (Vector(6) << 0, 0, 0, 0, 0, accel).finished();
-    Vector6 base_twist = (Vector(6) << 0, 0, 0, 0, 0, base_v).finished();
-    Pose3 base_pose(Rot3::Identity(), Point3(0, 0, base_z));
-    base_z += base_v * dt_ground;
-    base_v += accel * dt_ground;
-
-    /// solve kinodynamics
-    Values init_values_k = k == 0 ? vision60_ground.nominal_values
-                                  : DynamicsValuesFromPrev(prev_values);
-    init_values_k.update(PoseKey(vision60_ground.base_id, k), base_pose);
-    init_values_k.update(TwistKey(vision60_ground.base_id, k), base_twist);
-    init_values_k.update(TwistAccelKey(vision60_ground.base_id, k), base_accel);
-    KeyVector known_keys{PoseKey(vision60_ground.base_id, k),
-                         TwistKey(vision60_ground.base_id, k),
-                         TwistAccelKey(vision60_ground.base_id, k),
-                         ContactRedundancyKey(k)};
-    Values values_k = vision60_ground.stepValues(k, init_values_k, known_keys);
-    values.insert(values_k);
-    prev_values = values_k;
-  }
-
-  //// Phase on ground: part2: reduce contact force to 0
-  std::cout << "phase on ground part2\n";
-  std::map<uint8_t, Vector3> contact_forces;
-  for (const auto &link_id : vision60_ground.contact_link_ids) {
-    contact_forces.insert({link_id, prev_values.at<Vector3>(ContactForceKey(
-                                        link_id, 0, num_steps_ground1))});
-  }
-
-  size_t num_steps_ground2 = num_steps_ground - num_steps_ground1;
-  for (size_t k = num_steps_ground1 + 1; k <= num_steps_ground; k++) {
-    // integrate prev values
-    Values init_values_k =
-        vision60_ground.stepValuesByIntegration(k, dt_ground, prev_values);
-
-    // set contact force
-    for (const auto &link_id : vision60_ground.contact_link_ids) {
-      Vector3 boundary_contact_force = contact_forces.at(link_id);
-      Vector3 contact_force =
-          boundary_contact_force *
-          (double(num_steps_ground - k) / num_steps_ground2);
-      init_values_k.update(ContactForceKey(link_id, 0, k), contact_force);
-    }
-
-    // solve for ad level
-    KeyVector basis_keys;
-    basis_keys.push_back(PoseKey(vision60_ground.base_id, k));
-    basis_keys.push_back(TwistKey(vision60_ground.base_id, k));
-    for (const auto &link_id : vision60_ground.contact_link_ids) {
-      basis_keys.push_back(ContactForceKey(link_id, 0, k));
-    }
-    init_values_k = vision60_ground.stepValues(k, init_values_k, basis_keys);
-    values.insert(init_values_k);
-    prev_values = init_values_k;
-  }
-
-  //// boundary step same as last step in ground phase
-
-  //// Phase in air
-  std::cout << "phase in air\n";
-  const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
-  size_t num_steps_air = vision60_multi_phase.phase_num_steps_[1];
-  double dt_air = phases_dt[1];
-
-  std::map<uint8_t, double> prev_torques;
-  for (const auto &joint : vision60_air.robot.joints()) {
-    uint8_t j = joint->id();
-    prev_torques.insert({j, Torque(prev_values, j, num_steps_ground)});
-  }
-
-  size_t num_steps = num_steps_ground + num_steps_air;
-  for (size_t k = num_steps_ground + 1; k <= num_steps; k++) {
-    // integrate prev values
-    Values init_values_k =
-        vision60_air.stepValuesByIntegration(k, dt_air, prev_values);
-
-    // set joint torques
-    for (const auto &joint : vision60_air.robot.joints()) {
-      uint8_t j = joint->id();
-      double prev_torque = prev_torques.at(j);
-      double torque = prev_torque * (double(num_steps - k) / num_steps_air);
-      init_values_k.update(TorqueKey(j, k), torque);
-    }
-
-    // solve for ad-level
-    KeyVector basis_keys;
-    basis_keys.push_back(PoseKey(vision60_air.base_id, k));
-    basis_keys.push_back(TwistKey(vision60_air.base_id, k));
-    for (const auto &joint : vision60_air.robot.orderedJoints()) {
-      basis_keys.push_back(JointAngleKey(joint->id(), k));
-      basis_keys.push_back(JointVelKey(joint->id(), k));
-      basis_keys.push_back(TorqueKey(joint->id(), k));
-    }
-    init_values_k = vision60_air.stepValues(k, init_values_k, basis_keys);
-    values.insert(init_values_k);
-    prev_values = init_values_k;
-  }
-
-  return values;
-}
-
-Values
-getInitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
-                        const std::vector<double> &phases_dt) {
-  Values values;
-  for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx += 1) {
-    values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
-  }
-
-  //// Phase on ground
-  std::cout << "phase on ground\n";
-  const IEVision60Robot &vision60_ground =
-      vision60_multi_phase.phase_robots_[0];
-  size_t num_steps_ground = vision60_multi_phase.phase_num_steps_[0];
-  double dt_ground = phases_dt[0];
-  double leave_height = 0.2;
-  double accel = SolveConstA(num_steps_ground, dt_ground, leave_height);
-
-  double base_z = vision60_ground.nominal_height;
-  double base_v = 0;
-  Values prev_values;
-  for (size_t k = 0; k < num_steps_ground; k++) {
-    // set a,v,q level for each step of base_link
-    Vector6 base_accel = (Vector(6) << 0, 0, 0, 0, 0, accel).finished();
-    Vector6 base_twist = (Vector(6) << 0, 0, 0, 0, 0, base_v).finished();
-    Pose3 base_pose(Rot3::Identity(), Point3(0, 0, base_z));
-    base_z += base_v * dt_ground;
-    base_v += accel * dt_ground;
-
-    /// solve kinodynamics
-    Values init_values_k = k == 0 ? vision60_ground.nominal_values
-                                  : DynamicsValuesFromPrev(prev_values);
-    init_values_k.update(PoseKey(vision60_ground.base_id, k), base_pose);
-    init_values_k.update(TwistKey(vision60_ground.base_id, k), base_twist);
-    init_values_k.update(TwistAccelKey(vision60_ground.base_id, k), base_accel);
-    KeyVector known_keys{PoseKey(vision60_ground.base_id, k),
-                         TwistKey(vision60_ground.base_id, k),
-                         TwistAccelKey(vision60_ground.base_id, k),
-                         ContactRedundancyKey(k)};
-    Values values_k = vision60_ground.stepValues(k, init_values_k, known_keys);
-    values.insert(values_k);
-    prev_values = values_k;
-  }
-
-  //// boundary step
-  std::cout << "boundary step\n";
-  size_t boundary_k = vision60_multi_phase.boundary_ks_[0];
-  const IEVision60Robot &vision60_boundary =
-      vision60_multi_phase.boundary_robots_[0];
-  Values values_boundary;
-  {
-    values_boundary = vision60_ground.stepValuesByIntegration(
-        boundary_k, dt_ground, prev_values);
-    values_boundary = vision60_boundary.stepValues(boundary_k, values_boundary);
-    values.insert(values_boundary);
-  }
-
-  //// Phase in air
-  std::cout << "phase in air\n";
-  const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
-  size_t num_steps_air = vision60_multi_phase.phase_num_steps_[1];
-  double dt_air = phases_dt[1];
-
-  // set joint constant a for air phase
-  Values values_first_air = vision60_air.stepValuesByIntegration(
-      boundary_k + 1, dt_air, values_boundary);
-  Values joint_a_air_values;
-  for (const auto &joint : vision60_air.robot.joints()) {
-    uint8_t j = joint->id();
-    double v = JointVel(values_first_air, j, boundary_k + 1);
-    double a = -v / ((num_steps_air - 1) * dt_air);
-    InsertJointAccel(&joint_a_air_values, j, boundary_k, a);
-  }
-
-  prev_values = values_boundary;
-  for (size_t k = boundary_k + 1; k <= boundary_k + num_steps_air; k++) {
-    // integrate prev values
-    Values init_values_k =
-        vision60_air.stepValuesByIntegration(k, dt_air, prev_values);
-
-    // set joint accel
-    joint_a_air_values = DynamicsValuesFromPrev(joint_a_air_values);
-    init_values_k.update(joint_a_air_values);
-
-    // solve for target a
-    KeyVector basis_keys;
-    basis_keys.push_back(PoseKey(vision60_air.base_id, k));
-    basis_keys.push_back(TwistKey(vision60_air.base_id, k));
-    for (const auto &joint : vision60_air.robot.orderedJoints()) {
-      basis_keys.push_back(JointAngleKey(joint->id(), k));
-      basis_keys.push_back(JointVelKey(joint->id(), k));
-      basis_keys.push_back(JointAccelKey(joint->id(), k));
-    }
-    init_values_k = vision60_air.stepValues(k, init_values_k, basis_keys);
-    values.insert(init_values_k);
-    prev_values = init_values_k;
-  }
-
-  return values;
-}
+bool include_inequality = false;
 
 IEVision60Robot::Params GetVision60Params() {
   IEVision60Robot::Params vision60_params;
@@ -277,10 +39,8 @@ IEVision60Robot::Params GetVision60Params() {
   double lower_torque_lower_limit = -20.0;
   double lower_torque_upper_limit = 20.0;
   for (const auto &leg : IEVision60Robot::legs) {
-    torque_lower_limits.insert(
-        {leg.hip_joint->name(), hip_torque_lower_limit});
-    torque_upper_limits.insert(
-        {leg.hip_joint->name(), hip_torque_upper_limit});
+    torque_lower_limits.insert({leg.hip_joint->name(), hip_torque_lower_limit});
+    torque_upper_limits.insert({leg.hip_joint->name(), hip_torque_upper_limit});
     torque_lower_limits.insert(
         {leg.upper_joint->name(), upper_torque_lower_limit});
     torque_upper_limits.insert(
@@ -292,13 +52,14 @@ IEVision60Robot::Params GetVision60Params() {
   }
   vision60_params.torque_upper_limits = torque_upper_limits;
   vision60_params.torque_lower_limits = torque_lower_limits;
-  vision60_params.include_torque_limits = true;
+
+  vision60_params.include_torque_limits = include_inequality;
 
   vision60_params.sigma_des_pose = 1e-2;
   vision60_params.sigma_des_twist = 1e-2;
   vision60_params.sigma_actuation = 1e1;
-  vision60_params.sigma_q_col = 1e-2;
-  vision60_params.sigma_v_col = 1e-2;
+  vision60_params.sigma_q_col = 5e-3;
+  vision60_params.sigma_v_col = 5e-3;
 
   return vision60_params;
 }
@@ -326,7 +87,8 @@ GetVision60MultiPhase(IEVision60Robot::Params &_vision60_params) {
 }
 
 IEConsOptProblem
-CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase) {
+CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
+              bool add_phase_prior = false) {
   const IEVision60Robot &vision60_4c = vision60_multi_phase.phase_robots_[0];
   const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
   size_t num_steps = vision60_multi_phase.phase_num_steps_[0] +
@@ -337,6 +99,9 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase) {
   Vector6 base_twist_init = Vector6::Zero();
 
   Values des_values;
+  for (const auto &joint : vision60_air.robot.joints()) {
+    InsertJointAngle(&des_values, joint->id(), num_steps, 0.0);
+  }
   for (const auto &joint : vision60_air.robot.joints()) {
     InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
   }
@@ -380,6 +145,10 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase) {
   costs.add(collocation_costs);
   costs.add(boundary_costs);
   costs.add(min_torque_costs);
+  if (include_inequality && add_phase_prior) {
+    costs.addPrior(PhaseKey(1), 0.02, noiseModel::Isotropic::Sigma(1, 1e-4));
+  }
+
   auto Evaluate = [=](const Values &values) {
     std::cout << "phase_dt: " << values.atDouble(PhaseKey(0)) << "\t"
               << values.atDouble(PhaseKey(1)) << "\n";
@@ -402,12 +171,8 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase) {
 
   /// Initial Values
   std::vector<double> phases_dt{0.02, 0.02};
-  auto init_values = getInitValuesTrajectorySmoooth(vision60_multi_phase, phases_dt);
-  // Evaluate(init_values);
-
-  // IEVision60Robot::ExportValues(init_values, num_steps,
-  //                               "/Users/yetongzhang/packages/noboost/GTD_ineq/"
-  //                               "GTDynamics/data/quadruped_traj_init.csv");
+  auto init_values =
+      TrajectoryValuesVerticalJump(vision60_multi_phase, phases_dt);
 
   /// Problem
   IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
@@ -512,34 +277,35 @@ void RetractorBenchMark() {
 }
 
 void TrajectoryOptimization() {
+  std::string constraint_str = include_inequality ? "ie" : "e";
+  std::string scenario = "yetong07_" + constraint_str + "_quadruped_jump";
+  std::string scenario_folder = "../../data/" + scenario + "/";
+  std::filesystem::create_directory(scenario_folder);
+
   /// Initialize vision60 robot
   auto vision60_params = GetVision60Params();
   auto vision60_multi_phase = GetVision60MultiPhase(vision60_params);
   size_t num_steps = vision60_multi_phase.phase_num_steps_[0] +
                      vision60_multi_phase.phase_num_steps_[1];
-  // std::vector<double> phases_dt{0.01, 0.01};
-
-  // Values init_values =
-  //     getInitValuesTrajectorySmoooth(vision60_multi_phase, phases_dt);
 
   /// Create problem
-  auto problem = CreateProblem(vision60_multi_phase);
+  auto problem = CreateProblem(vision60_multi_phase, true);
   IEVision60Robot::PrintValues(problem.initValues(), num_steps);
-  problem.eval_func(problem.initValues());
-
+  // problem.eval_func(problem.initValues());
   IEVision60Robot::ExportValues(problem.initValues(), num_steps,
-                                "/Users/yetongzhang/packages/noboost/GTD_ineq/"
-                                "GTDynamics/data/quadruped_traj_init.csv");
-  // optimize IELM
+                                scenario_folder + "init_traj_viz.csv");
+  IEVision60Robot::ExportValuesMultiPhase(problem.initValues(),
+                                          vision60_multi_phase.phase_num_steps_,
+                                          scenario_folder + "init_traj.csv");
+
+  /// optimize IELM
   // Parameters
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->e_basis_with_new_constraints = true;
   iecm_params->ecm_params->basis_params->setFixVars();
-  // iecm_params->ecm_params->basis_key_func = vision60.getBasisKeyFunc();
 
   KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
   vision60_retractor_params.lm_params = LevenbergMarquardtParams();
-  // vision60_retractor_params.lm_params.setVerbosityLM("SUMMARY");
   // vision60_retractor_params.lm_params.minModelFidelity = 0.5;
   vision60_retractor_params.check_feasible = true;
   vision60_retractor_params.feasible_threshold = 1e-3;
@@ -558,41 +324,56 @@ void TrajectoryOptimization() {
 
   LevenbergMarquardtParams lm_params;
   lm_params.setVerbosityLM("SUMMARY");
-  lm_params.setMaxIterations(10);
+  lm_params.setMaxIterations(30);
   lm_params.setLinearSolverType("SEQUENTIAL_QR");
   lm_params.setlambdaInitial(1e-1);
-  // lm_params.setlambdaUpperBound(1e10);
   // lm_params.minModelFidelity = 0.3;
   IELMParams ie_params;
 
   auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+
+  // problem = CreateProblem(vision60_multi_phase, false);
+  // problem.values_ = lm_result.second.back().state.baseValues();
+  // lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+
   Values result_values = lm_result.second.back().state.baseValues();
-  for (const auto &iter_details : lm_result.second) {
-    IEOptimizer::PrintIterDetails(
-        iter_details, num_steps, false, IEVision60Robot::PrintValues,
-        IEVision60Robot::PrintDelta, gtdynamics::GTDKeyFormatter);
-  }
-  IEVision60Robot::PrintValues(result_values, num_steps);
+  // for (const auto &iter_details : lm_result.second) {
+  //   IEOptimizer::PrintIterDetails(
+  //       iter_details, num_steps, false, IEVision60Robot::PrintValues,
+  //       IEVision60Robot::PrintDelta, gtdynamics::GTDKeyFormatter);
+  // }
   problem.eval_func(result_values);
+  IEVision60Robot::PrintValues(result_values, num_steps);
   IEVision60Robot::ExportValues(result_values, num_steps,
-  "/Users/yetongzhang/packages/noboost/GTD_ineq/"
-  "GTDynamics/data/ineq_quadruped_traj.csv");
+                                scenario_folder + "manopt_traj_viz.csv");
+  IEVision60Robot::ExportValuesMultiPhase(result_values,
+                                          vision60_multi_phase.phase_num_steps_,
+                                          scenario_folder + "manopt_traj.csv");
+  lm_result.first.exportFile(scenario_folder + "manopt_summary.csv");
+  std::string manopt_state_file_path = scenario_folder + "manopt_states.csv";
+  std::string manopt_trial_file_path = scenario_folder + "manopt_trials.csv";
+  lm_result.second.exportFile(manopt_state_file_path, manopt_trial_file_path);
 
-  // // Optimize Barrier
-  // BarrierParameters barrier_params;
-  // barrier_params.verbose = true;
-  // barrier_params.initial_mu = 1e0;
-  // barrier_params.num_iterations = 10;
-  // auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
-  // problem.eval_func(barrier_result.second.rbegin()->values);
-  // // IEVision60Robot::PrintValues(barrier_result.second.rbegin()->values,
-  // //                              num_steps);
-  // barrier_result.first.exportFileWithMu(
-  //     "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/"
-  //     "ineq_quadruped_barrier.csv");
+  /// Optimize Barrier
+  BarrierParameters barrier_params;
+  barrier_params.verbose = true;
+  barrier_params.initial_mu = 1e0;
+  barrier_params.num_iterations = 10;
+  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  const Values &barrier_result_values = barrier_result.second.rbegin()->values;
+  problem.eval_func(barrier_result_values);
+  // IEVision60Robot::PrintValues(barrier_result_values, num_steps);
+  IEVision60Robot::ExportValues(barrier_result_values, num_steps,
+                                scenario_folder + "barrier_traj_viz.csv");
+  IEVision60Robot::ExportValuesMultiPhase(barrier_result_values,
+                                          vision60_multi_phase.phase_num_steps_,
+                                          scenario_folder + "barrier_traj.csv");
+  barrier_result.first.exportFile(scenario_folder + "barrier_summary.csv");
+  barrier_result.first.exportFileWithMu(scenario_folder +
+                                        "barrier_summary_outerloop.csv");
 
-  // barrier_result.first.printLatex(std::cout);
-  // lm_result.first.printLatex(std::cout);
+  barrier_result.first.printLatex(std::cout);
+  lm_result.first.printLatex(std::cout);
 }
 
 int main(int argc, char **argv) {

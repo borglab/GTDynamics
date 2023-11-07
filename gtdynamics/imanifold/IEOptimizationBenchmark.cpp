@@ -20,9 +20,18 @@ void IEResultSummary::printLatex(std::ostream &latex_os) const {
 void IEResultSummary::exportFile(const std::string &file_path) const {
   std::ofstream file;
   file.open(file_path);
+  file << "cost"
+       << ","
+       << "e_violation"
+       << ","
+       << "i_violation"
+       << ","
+       << "num_inner_iters"
+       << "\n";
   for (const auto &iter_summary : iters_summary) {
-    file << iter_summary.num_inner_iters << " " << iter_summary.cost << " "
-         << iter_summary.e_violation << " " << iter_summary.i_violation << "\n";
+    file << iter_summary.cost << "," << iter_summary.e_violation << ","
+         << iter_summary.i_violation << "," << iter_summary.num_inner_iters
+         << "\n";
   }
   file.close();
 }

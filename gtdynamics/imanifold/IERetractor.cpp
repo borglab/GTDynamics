@@ -15,7 +15,7 @@
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/manifold/GeneralPriorFactor.h>
-#include <gtdynamics/utils/DebugUtils.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 using namespace gtdynamics;

@@ -85,11 +85,6 @@ public:
   IELMIterDetails iterate(const NonlinearFactorGraph &graph,
                           const IELMState &state) const;
 
-  /** Inner loop, perform a trial with specified lambda parameters, changes
-   * trial. */
-  void tryLambda(const NonlinearFactorGraph &graph,
-                 const IELMState &currentState, IELMTrial &trial) const;
-
   /** Check if a mode change is required. The following conditions need to be
    * met to enforce a mode change:
    * 1) the mode has stayed constant for consecutive states.

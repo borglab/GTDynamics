@@ -15,13 +15,15 @@
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IEQuadrupedUtils.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/DebugUtils.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <numeric>
+#include <string>
 
 using namespace gtdynamics;
 
@@ -417,6 +419,75 @@ void IEVision60Robot::ExportValues(const Values &values, const size_t num_steps,
             << "\n";
   for (int t = 0; t <= num_steps; t++) {
     std::vector<std::string> vals;
+    for (auto &&joint : robot.joints())
+      vals.push_back(std::to_string(JointAngle(values, joint->id(), t)));
+    for (auto &&joint : robot.joints())
+      vals.push_back(std::to_string(JointVel(values, joint->id(), t)));
+    for (auto &&joint : robot.joints())
+      vals.push_back(std::to_string(JointAccel(values, joint->id(), t)));
+    for (auto &&joint : robot.joints())
+      vals.push_back(std::to_string(Torque(values, joint->id(), t)));
+
+    Pose3 bp = Pose(values, base_id, t);
+    vals.push_back(std::to_string(bp.x()));
+    vals.push_back(std::to_string(bp.y()));
+    vals.push_back(std::to_string(bp.z()));
+    vals.push_back(std::to_string(bp.rotation().toQuaternion().x()));
+    vals.push_back(std::to_string(bp.rotation().toQuaternion().y()));
+    vals.push_back(std::to_string(bp.rotation().toQuaternion().z()));
+    vals.push_back(std::to_string(bp.rotation().toQuaternion().w()));
+
+    std::string vals_str = "";
+    for (size_t j = 0; j < vals.size(); j++) {
+      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+    }
+    traj_file << vals_str << "\n";
+  }
+  traj_file.close();
+}
+
+/* ************************************************************************* */
+void IEVision60Robot::ExportValuesMultiPhase(
+    const Values &values, const std::vector<size_t> &phase_num_steps,
+    const std::string &file_path) {
+  // Log the joint angles, velocities, accels, torques, and current goal pose.
+  std::vector<std::string> jnames;
+  for (auto &&joint : robot.joints())
+    jnames.push_back(joint->name());
+  std::string jnames_str_q = "", jnames_str_v = "", jnames_str_a = "",
+              jnames_str_T = "";
+  for (size_t j = 0; j < jnames.size(); j++) {
+    jnames_str_q += jnames[j] + "_q" + (j != jnames.size() - 1 ? "," : "");
+    jnames_str_v += jnames[j] + "_v" + (j != jnames.size() - 1 ? "," : "");
+    jnames_str_a += jnames[j] + "_a" + (j != jnames.size() - 1 ? "," : "");
+    jnames_str_T += jnames[j] + "_T" + (j != jnames.size() - 1 ? "," : "");
+  }
+  std::ofstream traj_file;
+  traj_file.open(file_path);
+  // angles, vels, accels, torques.
+  traj_file << "time"
+            << "," << jnames_str_q << "," << jnames_str_v << "," << jnames_str_a
+            << "," << jnames_str_T << ",base_x"
+            << ",base_y"
+            << ",base_z"
+            << ",base_qx"
+            << ",base_qy"
+            << ",base_qz"
+            << ",base_qw"
+            << "\n";
+  size_t num_steps =
+      std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
+  std::vector<double> step_time{0};
+  double time = 0;
+  for (size_t i = 0; i < phase_num_steps.size(); i++) {
+    for (size_t k = 0; k < phase_num_steps[i]; k++) {
+      time += values.atDouble(PhaseKey(i));
+      step_time.push_back(time);
+    }
+  }
+  for (int t = 0; t <= num_steps; t++) {
+    std::vector<std::string> vals;
+    vals.push_back(std::to_string(step_time[t]));
     for (auto &&joint : robot.joints())
       vals.push_back(std::to_string(JointAngle(values, joint->id(), t)));
     for (auto &&joint : robot.joints())

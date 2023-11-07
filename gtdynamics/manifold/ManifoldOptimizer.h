@@ -39,6 +39,12 @@ struct ManifoldOptProblem {
    * variable dimension. */
   std::pair<size_t, size_t> problemDimension() const;
 
+  Values unconstrainedValues() const;
+
+  EManifoldValues manifolds() const;
+
+  EManifoldValues constManifolds() const;
+
   /// Customizable print function.
   void print(const std::string& s = "",
              const KeyFormatter& keyFormatter = DefaultKeyFormatter) const;

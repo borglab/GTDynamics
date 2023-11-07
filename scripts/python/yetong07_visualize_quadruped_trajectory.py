@@ -8,6 +8,11 @@ import pybullet_data
 
 import gtdynamics as gtd
 
+scenario_name = "yetong07_e_quadruped_jump"
+optimizer_name = "init"
+scenario_folder = "data/" + scenario_name + "/"
+traj_file = scenario_folder + optimizer_name + "_traj_viz.csv"
+
 ordered_joints = ["fl_upper", "fl_lower", "rl_upper", "rl_lower", "fr_upper", "fr_lower", "rr_upper", "rr_lower", "fl_hip", "rl_hip", "fr_hip", "rr_hip"]
 
 # pylint: disable=I1101, C0103
@@ -26,10 +31,8 @@ for i in range(p.getNumJoints(quad_id)):
     urdf_joint_name = jinfo[1].decode("utf-8")
     joint_name = ordered_joints[int(urdf_joint_name)]
     joint_to_jid_map[joint_name] = jinfo[0]
-print(joint_to_jid_map)
 
-#TODO(Varun) This should be passed as a cmdline argument
-df = pd.read_csv('data/quadruped_traj_init.csv')
+df = pd.read_csv(traj_file)
 print(df.columns)
 
 input("Press ENTER to continue.")
@@ -57,7 +60,7 @@ for i in range(len(df)):
     jaccels = df.loc[i][[str(i) + '.2' for i in ordered_joints]]
     jtorques = df.loc[i][[str(i) + '.3' for i in ordered_joints]]
 
-    print(jangles)
+    # print(jangles)
 
     base_pos = df.loc[i][['base_x', 'base_y', 'base_z']].tolist()
     # base_pos[2] = base_pos[2] + 0.21

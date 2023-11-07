@@ -174,7 +174,6 @@ protected:
 };
 
 typedef std::map<Key, IEConstraintManifold> IEManifoldValues;
-typedef std::map<Key, ConstraintManifold> EManifoldValues;
 
 Values CollectManifoldValues(const IEManifoldValues &manifolds);
 

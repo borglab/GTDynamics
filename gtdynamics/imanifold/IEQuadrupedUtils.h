@@ -283,6 +283,10 @@ public:
   static void ExportVector(const VectorValues &values, const size_t num_steps,
                            const std::string &file_path);
 
+  static void ExportValuesMultiPhase(const Values &values,
+                                     const std::vector<size_t> &phase_num_steps,
+                                     const std::string &file_path);
+
 protected:
   static void PrintTorso(const Values &values, const size_t num_steps);
 
@@ -342,10 +346,26 @@ public:
   const IEVision60Robot &robotAtStep(const size_t k) const;
 
   NonlinearFactorGraph collocationCosts() const;
-
-  // Values getInitValuesTrajectory(const std::vector<Values> &boundary_values,
-  //                                const std::vector<double> &phases_dt) const;
 };
+
+/* ************************************************************************* */
+/* <======================= Example Trajectories ==========================> */
+/* ************************************************************************* */
+
+/// Construct values of a vertical jumping trajectory. We pre-specified that all
+/// feet leave the ground at the same time. The trajectory consists of two
+/// phase: on-ground phase and in-air phase. In the on-ground phase, the robot
+/// first accelerate its torso with constant acceleration, then reduce the
+/// contact force uniformly to 0. In the in-air phase, the torques at all joints
+/// are reduced uniformly to 0.
+Values TrajectoryValuesVerticalJump(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt, const double torso_accel_z = 15,
+    const size_t ground_switch_k = 5);
+
+Values TrajectoryValuesVerticalJumpDeprecated(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt, const double torso_accel_z = 15);
 
 /* ************************************************************************* */
 /* <=================== Factory class for Retractor =======================> */

@@ -174,4 +174,20 @@ template <>
 struct traits<ConstraintManifold>
     : gtsam::internal::Manifold<ConstraintManifold> {};
 
+class EManifoldValues : public std::map<Key, ConstraintManifold> {
+public:
+ using base = std::map<Key, ConstraintManifold>;
+ using base::base;
+
+ Values baseValues() const;
+
+ KeyVector keys() const;
+
+ VectorValues computeTangentVector(const VectorValues& delta) const;
+
+ EManifoldValues retract(const VectorValues& delta) const;
+
+ std::map<Key, size_t> dims() const;
+};
+
 }  // namespace gtsam

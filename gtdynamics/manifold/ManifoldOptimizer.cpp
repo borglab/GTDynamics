@@ -13,18 +13,31 @@
 
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtdynamics/manifold/SubstituteFactor.h>
-#include <gtsam/linear/GaussianEliminationTree.h>
-#include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/PCGSolver.h>
-#include <gtsam/linear/SubgraphSolver.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-
-#include <stack>
-
-#include "manifold/Retractor.h"
+#include <gtdynamics/utils/GraphUtils.h>
 
 namespace gtsam {
+/* ************************************************************************* */
+Values ManifoldOptProblem::unconstrainedValues() const {
+  return SubValues(values_, unconstrained_keys_);
+}
+
+/* ************************************************************************* */
+EManifoldValues ManifoldOptProblem::manifolds() const {
+  EManifoldValues e_manifolds;
+  for (const Key &key : manifold_keys_) {
+    e_manifolds.insert({key, values_.at<ConstraintManifold>(key)});
+  }
+  return e_manifolds;
+}
+
+/* ************************************************************************* */
+EManifoldValues ManifoldOptProblem::constManifolds() const {
+  EManifoldValues e_manifolds;
+  for (const Key &key : fixed_manifolds_.keys()) {
+    e_manifolds.insert({key, fixed_manifolds_.at<ConstraintManifold>(key)});
+  }
+  return e_manifolds;
+}
 
 /* ************************************************************************* */
 std::pair<size_t, size_t> ManifoldOptProblem::problemDimension() const {
