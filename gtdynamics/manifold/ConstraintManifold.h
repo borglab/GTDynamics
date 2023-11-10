@@ -117,9 +117,6 @@ class ConstraintManifold {
   ConstraintManifold retract(const gtsam::Vector &xi, ChartJacobian H1 = {},
                              ChartJacobian H2 = {}) const;
 
-  ConstraintManifold retract(const gtsam::Vector &xi,
-                             const VectorValues &metric_sigmas) const;
-
   /** LocalCoordinates of the constraint manifold, e.g., localCoordinates
    * required for gtsam manifold type. */
   gtsam::Vector localCoordinates(const ConstraintManifold &g,

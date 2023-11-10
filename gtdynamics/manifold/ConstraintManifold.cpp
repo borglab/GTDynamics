@@ -71,19 +71,6 @@ ConstraintManifold ConstraintManifold::retract(const gtsam::Vector &xi,
 }
 
 /* ************************************************************************* */
-ConstraintManifold
-ConstraintManifold::retract(const gtsam::Vector &xi,
-                            const gtsam::VectorValues &metric_sigmas) const {
-  // Compute delta for each variable and perform update.
-  makeSureBasisConstructed();
-  VectorValues delta = basis_->computeTangentVector(xi);
-  Values new_values = retractor_->retract(values_, delta, metric_sigmas);
-
-  // Satisfy the constraints in the connected component.
-  return createWithNewValues(new_values);
-}
-
-/* ************************************************************************* */
 gtsam::Vector ConstraintManifold::localCoordinates(const ConstraintManifold &g,
                                                    ChartJacobian H1,
                                                    ChartJacobian H2) const {

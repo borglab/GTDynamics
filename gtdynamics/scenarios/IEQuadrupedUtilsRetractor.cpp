@@ -14,7 +14,7 @@
 #include "imanifold/IERetractor.h"
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
-#include <gtdynamics/manifold/GeneralPriorFactor.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
 using namespace gtdynamics;

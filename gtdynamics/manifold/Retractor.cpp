@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/manifold/GeneralPriorFactor.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/manifold/Retractor.h>
 #include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
 #include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
@@ -122,30 +122,6 @@ Values ProjRetractor::retract(const Values &values, const VectorValues &delta) {
       optimizer_with_priors.error() < params_->feasible_threshold) {
     return result;
   }
-
-  // optimize without priors
-  LevenbergMarquardtOptimizer optimizer_without_priors(
-      cc_->merit_graph_, result, params_->lm_params);
-  const Values &final_result = optimizer_without_priors.optimize();
-  checkFeasible(cc_->merit_graph_, final_result);
-  return final_result;
-}
-
-/* ************************************************************************* */
-Values ProjRetractor::retract(const Values &values, const VectorValues &delta,
-                        const VectorValues &metric_sigmas) {
-  // optimize with priors
-  NonlinearFactorGraph graph = cc_->merit_graph_;
-  Values values_retract_base = retractBaseVariables(values, delta);
-  // metric_sigmas.print();
-  AddGeneralPriors(values_retract_base, metric_sigmas, graph);
-  // const Values &init_values =
-  //     params_->apply_base_retraction ? values_retract_base : values;
-  const Values &init_values = values_retract_base;
-
-  LevenbergMarquardtOptimizer optimizer_with_priors(graph, init_values,
-                                                    params_->lm_params);
-  const Values &result = optimizer_with_priors.optimize();
 
   // optimize without priors
   LevenbergMarquardtOptimizer optimizer_without_priors(
