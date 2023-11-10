@@ -19,12 +19,14 @@
  * @date    Feb 26, 2012
  */
 
+#include "utils/DynamicsSymbol.h"
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Ordering.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/linear/linearExceptions.h>
+#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 #include <gtsam/nonlinear/Values.h>
@@ -50,17 +52,18 @@ Values IELMOptimizer::optimizeManifolds(
     gtdynamics::ConstrainedOptResult *intermediate_result) const {
 
   // Construct initial state
-  IELMState state(manifolds, unconstrained_values, graph, params_.lambdaInitial,
-                  params_.lambdaFactor, 0);
+  const LevenbergMarquardtParams &lm_params = ielm_params_.lm_params;
+  IELMState state(manifolds, unconstrained_values, graph,
+                  lm_params.lambdaInitial, lm_params.lambdaFactor, 0);
 
   // check if we're already close enough
-  if (state.error <= params_.errorTol) {
+  if (state.error <= lm_params.errorTol) {
     details_->emplace_back(state);
     return state.baseValues();
   }
 
   // Iterative loop
-  if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
+  if (lm_params.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
     std::cout << "Initial error: " << state.error << "\n";
     IELMTrial::PrintTitle();
   }
@@ -69,9 +72,9 @@ Values IELMOptimizer::optimizeManifolds(
   do {
     prev_state = state;
     IELMIterDetails iter_details = iterate(graph, state);
-    state = IELMState::FromLastIteration(iter_details, graph, params_);
+    state = IELMState::FromLastIteration(iter_details, graph, lm_params);
     details_->push_back(iter_details);
-  } while (state.iterations < params_.maxIterations &&
+  } while (state.iterations < lm_params.maxIterations &&
            !checkConvergence(prev_state, state) &&
            checkLambdaWithinLimits(state.lambda) && std::isfinite(state.error));
   details_->emplace_back(state);
@@ -81,6 +84,13 @@ Values IELMOptimizer::optimizeManifolds(
 /* ************************************************************************* */
 IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
                                        const IELMState &state) const {
+
+  const LevenbergMarquardtParams &lm_params = ielm_params_.lm_params;
+  if (iecm_params_->retractor_creator->use_varying_sigmas) {
+    *iecm_params_->retractor_creator->metric_sigmas =
+        state.computeMetricSigmas(graph);
+    // iecm_params_->retractor_creator->metric_sigmas->print("metric sigmas:", gtdynamics::GTDKeyFormatter);
+  }
 
   IELMIterDetails iter_details(state);
   if (checkModeChange(graph, iter_details)) {
@@ -97,8 +107,8 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   // * 3) lambda goes beyond limits
   while (true) {
     // Perform the trial.
-    IELMTrial trial(state, graph, lambda, params_);
-    if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
+    IELMTrial trial(state, graph, lambda, lm_params);
+    if (lm_params.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
       trial.print(state);
     }
     iter_details.trials.emplace_back(trial);
@@ -110,8 +120,8 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
 
     // Check condition 2.
     if (trial.linear_update.solve_successful) {
-      double abs_change_tol = std::max(params_.absoluteErrorTol,
-                                       params_.relativeErrorTol * state.error);
+      double abs_change_tol = std::max(
+          lm_params.absoluteErrorTol, lm_params.relativeErrorTol * state.error);
       if (trial.linear_update.cost_change < abs_change_tol &&
           trial.nonlinear_update.cost_change < abs_change_tol) {
         break;
@@ -119,7 +129,7 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
     }
 
     // Set lambda for next trial.
-    trial.setNextLambda(lambda, lambda_factor, params_);
+    trial.setNextLambda(lambda, lambda_factor, lm_params);
 
     // Check condition 3.
     if (!checkLambdaWithinLimits(lambda)) {
@@ -194,7 +204,7 @@ bool IELMOptimizer::checkModeChange(
 
   auto approach_indices_map = IdentifyApproachingIndices(
       init_iter_dertails.state.manifolds, current_iter_details.state.manifolds,
-      change_indices_map, ie_params_.boundary_approach_rate_threshold);
+      change_indices_map, ielm_params_.boundary_approach_rate_threshold);
 
   // Condition3: approaching boundary with decent rate
   if (approach_indices_map.size() == 0) {
@@ -209,15 +219,15 @@ bool IELMOptimizer::checkModeChange(
 
 /* ************************************************************************* */
 bool IELMOptimizer::checkLambdaWithinLimits(const double &lambda) const {
-  return lambda <= params_.lambdaUpperBound &&
-         lambda >= params_.lambdaLowerBound;
+  return lambda <= ielm_params_.lm_params.lambdaUpperBound &&
+         lambda >= ielm_params_.lm_params.lambdaLowerBound;
 }
 
 /* ************************************************************************* */
 bool IELMOptimizer::checkConvergence(const IELMState &prev_state,
                                      const IELMState &state) const {
 
-  if (state.error <= params_.errorTol)
+  if (state.error <= ielm_params_.lm_params.errorTol)
     return true;
 
   // check if mode changes
@@ -229,9 +239,10 @@ bool IELMOptimizer::checkConvergence(const IELMState &prev_state,
 
   // calculate relative error decrease and update currentError
   double relativeDecrease = absoluteDecrease / prev_state.error;
-  bool converged = (params_.relativeErrorTol &&
-                    (relativeDecrease <= params_.relativeErrorTol)) ||
-                   (absoluteDecrease <= params_.absoluteErrorTol);
+  bool converged =
+      (ielm_params_.lm_params.relativeErrorTol &&
+       (relativeDecrease <= ielm_params_.lm_params.relativeErrorTol)) ||
+      (absoluteDecrease <= ielm_params_.lm_params.absoluteErrorTol);
   return converged;
 }
 

@@ -54,8 +54,40 @@ public:
   struct Params {
     LevenbergMarquardtParams lm_params = LevenbergMarquardtParams();
     double prior_sigma = 1.0;
+    bool use_varying_sigma = false;
+    std::shared_ptr<VectorValues> metric_sigmas = NULL;
+    bool init_values_as_x = true; // 
+    bool check_feasible = true;
+    double feasible_threshold = 1e-3;
 
     Params() = default;
+
+    /** Constructor using the same sigma. */
+    Params(const LevenbergMarquardtParams &_lm_params,
+           const double &_prior_sigma)
+        : lm_params(_lm_params), prior_sigma(_prior_sigma),
+          use_varying_sigma(false), metric_sigmas(NULL) {}
+
+    /** Constructor using varying sigmas. */
+    Params(const LevenbergMarquardtParams &_lm_params,
+           const std::shared_ptr<VectorValues> &_metric_sigmas)
+        : lm_params(_lm_params), prior_sigma(0.0), use_varying_sigma(true),
+          metric_sigmas(_metric_sigmas) {}
+
+    static Params VarySigmas(const LevenbergMarquardtParams &_lm_param =
+                                 LevenbergMarquardtParams()) {
+      return Params(_lm_param, std::make_shared<VectorValues>());
+    }
+
+    template <typename CONTAINER>
+    void addPriors(const Values &values, const CONTAINER &keys,
+                   NonlinearFactorGraph &graph) const {
+      if (use_varying_sigma) {
+        AddGeneralPriors(values, keys, *metric_sigmas, graph);
+      } else {
+        AddGeneralPriors(values, keys, prior_sigma, graph);
+      }
+    }
   };
 
 protected:
@@ -91,12 +123,7 @@ public:
 class KinodynamicHierarchicalRetractor : public IERetractor {
 
 public:
-  struct Params {
-    LevenbergMarquardtParams lm_params;
-    double prior_sigma;
-    bool check_feasible;
-    double feasible_threshold;
-  };
+  using Params = BarrierRetractor::Params;
 
 protected:
   const Params &params_;
@@ -117,10 +144,6 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {}) const override;
-
-protected:
-  void checkFeasible(const NonlinearFactorGraph &graph,
-                     const Values &values) const;
 };
 
 /* ************************************************************************* */
@@ -129,10 +152,22 @@ protected:
 
 /** Base class of retractor creator. */
 class IERetractorCreator {
+public:
+  bool use_varying_sigmas = false;
+  std::shared_ptr<VectorValues> metric_sigmas;
 
 public:
   using shared_ptr = std::shared_ptr<IERetractorCreator>;
-  IERetractorCreator() {}
+
+  IERetractorCreator() : use_varying_sigmas(false), metric_sigmas(NULL) {}
+
+  IERetractorCreator(const std::shared_ptr<VectorValues> &_metric_sigmas)
+      : use_varying_sigmas(true), metric_sigmas(_metric_sigmas) {}
+
+  IERetractorCreator(bool _use_varying_sigmas,
+                     const std::shared_ptr<VectorValues> &_metric_sigmas)
+      : use_varying_sigmas(_use_varying_sigmas), metric_sigmas(_metric_sigmas) {
+  }
 
   virtual IERetractor::shared_ptr
   create(const IEConstraintManifold &manifold) const = 0;
@@ -163,7 +198,8 @@ protected:
 public:
   BarrierRetractorCreator(
       const BarrierRetractor::Params &params = BarrierRetractor::Params())
-      : IERetractorCreator(), params_(params),
+      : IERetractorCreator(params.use_varying_sigma, params.metric_sigmas),
+        params_(params),
         retractor_(std::make_shared<BarrierRetractor>(params_)) {}
 
   IERetractor::shared_ptr

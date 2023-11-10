@@ -14,7 +14,7 @@
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/imanifold/IEQuadrupedUtils.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -153,13 +153,12 @@ void TrajectoryOptimization() {
           vision60, vision60_retractor_params, true);
   iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
       iecm_params->ecm_params->basis_params, vision60.getBasisKeyFunc());
-
-  LevenbergMarquardtParams lm_params;
-  lm_params.setMaxIterations(10);
+  
   IELMParams ie_params;
+  ie_params.lm_params.setMaxIterations(10);
 
   // optimize IELM
-  auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
   Values result_values = lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
     IEOptimizer::PrintIterDetails(

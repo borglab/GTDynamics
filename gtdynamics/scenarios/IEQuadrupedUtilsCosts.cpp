@@ -23,7 +23,7 @@
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IEQuadrupedUtils.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/expressions.h>

@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IEManifoldOptimizer.h>
+#include <gtdynamics/imanifold/IEOptimizer.h>
 
 namespace gtsam {
 
@@ -154,6 +154,10 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
                                             component_i_constraints,
                                             component_values));
   }
+  // for (const auto& [key, manifold] : ie_manifolds) {
+  //   std::cout << key << "\n";
+  //   manifold.values().print();
+  // }
   return ie_manifolds;
 }
 

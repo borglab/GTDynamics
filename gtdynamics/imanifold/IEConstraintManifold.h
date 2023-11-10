@@ -173,11 +173,21 @@ protected:
                        const TspaceBasis::shared_ptr &t_basis);
 };
 
-typedef std::map<Key, IEConstraintManifold> IEManifoldValues;
+class IEManifoldValues : public std::map<Key, IEConstraintManifold> {
+public:
+  using base = std::map<Key, IEConstraintManifold>;
+  using base::base;
 
-Values CollectManifoldValues(const IEManifoldValues &manifolds);
+  Values baseValues() const;
 
-IEManifoldValues MoveToBoundaries(const IEManifoldValues &manifolds,
-                                  const IndexSetMap &approach_indices_map);
+  KeyVector keys() const;
+
+  IEManifoldValues
+  moveToBoundaries(const IndexSetMap &approach_indices_map) const;
+
+  // VectorValues computeTangentVector(const VectorValues &delta) const;
+
+  // EManifoldValues retract(const VectorValues &delta) const;
+};
 
 } // namespace gtsam

@@ -423,7 +423,8 @@ public:
       const IEVision60RobotMultiPhase &vision60_multi_phase,
       const KinodynamicHierarchicalRetractor::Params &params,
       bool use_basis_keys)
-      : vision60_multi_phase_(vision60_multi_phase), params_(params),
+      : IERetractorCreator(params.use_varying_sigma, params.metric_sigmas),
+        vision60_multi_phase_(vision60_multi_phase), params_(params),
         use_basis_keys_(use_basis_keys) {}
 
   virtual ~Vision60MultiPhaseHierarchicalRetractorCreator() {}
@@ -443,7 +444,8 @@ public:
   Vision60MultiPhaseBarrierRetractorCreator(
       const IEVision60RobotMultiPhase &vision60_multi_phase,
       const BarrierRetractor::Params &params, bool use_basis_keys)
-      : vision60_multi_phase_(vision60_multi_phase), params_(params),
+      : IERetractorCreator(params.use_varying_sigma, params.metric_sigmas),
+        vision60_multi_phase_(vision60_multi_phase), params_(params),
         use_basis_keys_(use_basis_keys) {}
 
   virtual ~Vision60MultiPhaseBarrierRetractorCreator() {}

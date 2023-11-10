@@ -1,6 +1,7 @@
 #include "imanifold/IELMOptimizer.h"
+#include "utils/DynamicsSymbol.h"
 #include <gtdynamics/imanifold/IELMOptimizerState.h>
-#include <gtdynamics/imanifold/IEManifoldOptimizer.h>
+#include <gtdynamics/imanifold/IEOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Ordering.h>
@@ -103,16 +104,40 @@ void IELMState::ConstructEManifolds(const NonlinearFactorGraph &graph) {
 double IELMState::EvaluateGraphError(const NonlinearFactorGraph &graph,
                                      const IEManifoldValues &_manifolds,
                                      const Values &_unconstrained_values) {
-  Values all_values = CollectManifoldValues(_manifolds);
+  Values all_values = _manifolds.baseValues();
   all_values.insert(_unconstrained_values);
   return graph.error(all_values);
 }
 
 /* ************************************************************************* */
 Values IELMState::baseValues() const {
-  Values base_values = CollectManifoldValues(manifolds);
+  Values base_values = manifolds.baseValues();
   base_values.insert(unconstrained_values);
   return base_values;
+}
+
+/* ************************************************************************* */
+VectorValues
+IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
+  Values base_values = baseValues();
+  // PrintKeyVector(base_values.keys(), "base_values",
+  //                gtdynamics::GTDKeyFormatter);
+  // PrintKeySet(graph.keys(), "graph_keys", gtdynamics::GTDKeyFormatter);
+  auto linear_graph = graph.linearize(base_values);
+  auto hessian_diag = linear_graph->hessianDiagonal();
+  VectorValues metric_sigmas;
+  for (auto &[key, value] : hessian_diag) {
+    Vector sigmas_sqr_inv = hessian_diag.at(key);
+    Vector sigmas = sigmas_sqr_inv;
+    for (int i = 0; i < sigmas.size(); i++) {
+      sigmas(i) = 1 / sqrt(sigmas(i));
+    }
+    metric_sigmas.insert(key, sigmas);
+  }
+  metric_sigmas = 10 * metric_sigmas;
+  // metric_sigmas.print("metric sigmas:", gtdynamics::GTDKeyFormatter);
+
+  return metric_sigmas;
 }
 
 /* ************************************************************************* */
@@ -157,7 +182,7 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
   linear_update.lambda = state.lambda;
   forced_indices_map = approach_indices_map;
   nonlinear_update.new_manifolds =
-      MoveToBoundaries(state.manifolds, approach_indices_map);
+      state.manifolds.moveToBoundaries(approach_indices_map);
   nonlinear_update.new_unconstrained_values = state.unconstrained_values;
   nonlinear_update.computeError(graph, state.error);
   step_is_successful = true;

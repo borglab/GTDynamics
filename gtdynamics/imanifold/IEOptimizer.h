@@ -6,8 +6,9 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  IEGradientDescentOptimizer.h
- * @brief First order optimization on manifolds with boundaries/corners.
+ * @file  IEOptimizer.h
+ * @brief Manifold Optimizer for problems with equality and inequality
+ * constraints.
  * @author: Yetong Zhang
  */
 
@@ -24,8 +25,12 @@
 namespace gtsam {
 
 class IEOptimizer {
+protected:
+  IEConstraintManifold::Params::shared_ptr iecm_params_;
+
 public:
-  IEOptimizer() {}
+  IEOptimizer(const IEConstraintManifold::Params::shared_ptr &iecm_params)
+      : iecm_params_(iecm_params) {}
 
   void print() const { std::cout << "Hello\n"; }
 
@@ -34,10 +39,9 @@ public:
       const gtdynamics::EqualityConstraints &e_constraints,
       const gtdynamics::InequalityConstraints &i_constraints,
       const gtsam::Values &initial_values,
-      const IEConstraintManifold::Params::shared_ptr &iecm_params,
       gtdynamics::ConstrainedOptResult *intermediate_result = nullptr) const {
     auto manifolds = IdentifyManifolds(e_constraints, i_constraints,
-                                       initial_values, iecm_params);
+                                       initial_values, iecm_params_);
     Values unconstrained_values = IdentifyUnconstrainedValues(
         e_constraints, i_constraints, initial_values);
     return optimizeManifolds(graph, manifolds, unconstrained_values,
@@ -157,7 +161,7 @@ public:
 
     if (print_values) {
       std::cout << "values: \n";
-      print_values_func(CollectManifoldValues(state.manifolds), num_steps);
+      print_values_func(state.manifolds.baseValues(), num_steps);
 
       std::cout << "gradient: \n";
       print_delta_func(
@@ -169,14 +173,15 @@ public:
     for (const auto &trial : iter_details.trials) {
       std::string color = trial.step_is_successful ? red : blue;
       std::cout << "\033[" + color + "mlambda: " << trial.linear_update.lambda
-                << "\terror: " << state.error << " -> " << trial.nonlinear_update.new_error
+                << "\terror: " << state.error << " -> "
+                << trial.nonlinear_update.new_error
                 << "\tfidelity: " << trial.model_fidelity
                 << "\tlinear: " << trial.linear_update.cost_change
                 << "\tnonlinear: " << trial.nonlinear_update.cost_change
                 << "\033[0m\n";
 
-      auto blocking_str =
-          IEOptimizer::IndicesStr(trial.linear_update.blocking_indices_map, keyFormatter);
+      auto blocking_str = IEOptimizer::IndicesStr(
+          trial.linear_update.blocking_indices_map, keyFormatter);
       if (blocking_str.size() > 0) {
         std::cout << "blocking: " << blocking_str << "\n";
       }
@@ -185,7 +190,8 @@ public:
       if (forced_str.size() > 0) {
         std::cout << "forced: " << forced_str << "\n";
       }
-      auto new_str = IEOptimizer::IndicesStr(trial.nonlinear_update.new_manifolds, keyFormatter);
+      auto new_str = IEOptimizer::IndicesStr(
+          trial.nonlinear_update.new_manifolds, keyFormatter);
       if (new_str.size() > 0) {
         std::cout << "new: " << new_str << "\n";
       }
@@ -197,8 +203,9 @@ public:
         }
 
         std::cout << "new values: \n";
-        print_values_func(CollectManifoldValues(trial.nonlinear_update.new_manifolds),
-                          num_steps);
+        print_values_func(
+            trial.nonlinear_update.new_manifolds.baseValues(),
+            num_steps);
       }
     }
   }

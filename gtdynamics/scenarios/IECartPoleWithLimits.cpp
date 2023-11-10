@@ -1,7 +1,7 @@
 #include "utils/DynamicsSymbol.h"
 #include "utils/values.h"
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/imanifold/IECartPoleWithLimits.h>
+#include <gtdynamics/scenarios/IECartPoleWithLimits.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>

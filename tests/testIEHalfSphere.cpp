@@ -10,7 +10,7 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 
-#include <gtdynamics/imanifold/IEHalfSphere.h>
+#include <gtdynamics/scenarios/IEHalfSphere.h>
 
 using namespace gtdynamics;
 using namespace gtsam;

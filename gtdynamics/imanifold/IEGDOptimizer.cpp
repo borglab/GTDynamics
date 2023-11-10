@@ -98,7 +98,7 @@ void IEGDTrial::computeNewManifolds(const IEGDState &state) {
 /* ************************************************************************* */
 void IEGDTrial::computeNewError(const NonlinearFactorGraph &graph,
                                 const IEGDState &state) {
-  new_error = graph.error(CollectManifoldValues(new_manifolds));
+  new_error = graph.error(new_manifolds.baseValues());
   nonlinear_cost_change = state.error - new_error;
   model_fidelity = nonlinear_cost_change / linear_cost_change;
 }
@@ -232,7 +232,7 @@ Values IEGDOptimizer::optimizeManifolds(
   // check if we're already close enough
   if (state.error <= params_.errorTol) {
     details_->emplace_back(state);
-    return CollectManifoldValues(state.manifolds);
+    return state.manifolds.baseValues();
   }
 
   // Iterative loop
@@ -246,7 +246,7 @@ Values IEGDOptimizer::optimizeManifolds(
            !checkConvergence(prev_state, state) &&
            checkMuWithinLimits(state.lambda) && std::isfinite(state.error));
   details_->emplace_back(state);
-  return CollectManifoldValues(state.manifolds);
+  return state.manifolds.baseValues();
 }
 
 /* ************************************************************************* */
@@ -326,9 +326,8 @@ bool IEGDOptimizer::checkModeChange(
   IEGDTrial trial;
   trial.lambda = current_iter_details.state.lambda;
   trial.forced_indices_map = approach_indices_map;
-  trial.new_manifolds = MoveToBoundaries(current_iter_details.state.manifolds,
-                                         approach_indices_map);
-  trial.new_error = graph.error(CollectManifoldValues(trial.new_manifolds));
+  trial.new_manifolds = current_iter_details.state.manifolds.moveToBoundaries(approach_indices_map);
+  trial.new_error = graph.error(trial.new_manifolds.baseValues());
   trial.step_is_successful = true;
   current_iter_details.trials.emplace_back(trial);
   return true;

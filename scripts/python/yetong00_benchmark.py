@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from yetong00_utils import *
 
-scenario_name = "yetong07_e_quadruped_jump"
+scenario_name = "yetong07_ie_quadruped_jump"
 scenario_folder = "data/" + scenario_name + "/"
 
 fig1, ax1 = plt.subplots()

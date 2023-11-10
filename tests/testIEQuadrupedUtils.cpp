@@ -14,7 +14,7 @@
 #include <gtsam/base/numericalDerivative.h>
 
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IEQuadrupedUtils.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <memory>

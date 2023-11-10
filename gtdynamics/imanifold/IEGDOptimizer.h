@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IEManifoldOptimizer.h>
+#include <gtdynamics/imanifold/IEOptimizer.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -59,7 +59,7 @@ public:
   IEGDState(const IEManifoldValues &_manifolds,
             const NonlinearFactorGraph &graph, size_t _iterations = 0)
       : manifolds(_manifolds),
-        error(graph.error(CollectManifoldValues(manifolds))),
+        error(graph.error(manifolds.baseValues())),
         e_manifolds(IEOptimizer::EManifolds(_manifolds)),
         iterations(_iterations) {
     computeDescentDirection(graph);
@@ -124,8 +124,10 @@ protected:
 
 public:
   /** Constructor */
-  IEGDOptimizer(const GDParams &params = GDParams())
-      : IEOptimizer(), params_(params),
+  IEGDOptimizer(const GDParams &params = GDParams(),
+                const IEConstraintManifold::Params::shared_ptr &iecm_params =
+                    std::make_shared<IEConstraintManifold::Params>())
+      : IEOptimizer(iecm_params), params_(params),
         details_(std::make_shared<IEGDItersDetails>()) {}
 
   const IEGDItersDetails &details() const { return *details_; }
@@ -149,8 +151,8 @@ public:
 
   /** Inner loop, perform a trial with specified lambda parameters, changes
    * trial. */
-  void tryLambda(const NonlinearFactorGraph &graph, const IEGDState &currentState,
-             IEGDTrial &trial) const;
+  void tryLambda(const NonlinearFactorGraph &graph,
+                 const IEGDState &currentState, IEGDTrial &trial) const;
 
   /** Check if lambda is within limits. */
   bool checkMuWithinLimits(const double &lambda) const;

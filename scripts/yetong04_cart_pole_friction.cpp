@@ -11,7 +11,7 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/imanifold/IECartPoleWithFriction.h>
+#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
@@ -152,7 +152,8 @@ int main(int argc, char **argv) {
   auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
-  auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+  ie_params.lm_params = lm_params;
+  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);
   barrier_result.first.printLatex(std::cout);

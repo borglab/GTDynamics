@@ -8,7 +8,7 @@
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <gtdynamics/imanifold/IECartPoleWithFriction.h>
+#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 
 using namespace gtsam;
 

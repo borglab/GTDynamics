@@ -13,7 +13,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IEQuadrupedUtils.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>

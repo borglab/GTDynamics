@@ -1,7 +1,7 @@
 
 
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
-#include <gtdynamics/imanifold/IEHalfSphere.h>
+#include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
@@ -252,8 +252,8 @@ int main(int argc, char **argv) {
 
   IELMParams ie_params;
   std::cout << "run lm...\n";
-  lm_params.setVerbosityLM("SUMMARY");
-  auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+  ie_params.lm_params.setVerbosityLM("SUMMARY");
+  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);
   barrier_result.first.printLatex(std::cout);
@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
   std::string folder_lm = folder + "lm/";
   std::filesystem::create_directory(folder_lm);
   IEHalfSphere::ExportValues(
-      CollectManifoldValues(lm_result.second.back().state.manifolds), num_steps,
+      lm_result.second.back().state.baseValues(), num_steps,
       folder_lm + "values_final.txt");
   IEHalfSphere::ExportValues(gt, num_steps, folder_lm + "values_gt.txt");
 
@@ -276,9 +276,9 @@ int main(int argc, char **argv) {
   auto barrier_error =
       TranslationError(gt, barrier_result.second.back().values);
   auto gd_error = TranslationError(
-      gt, CollectManifoldValues(gd_result.second.back().state.manifolds));
+      gt, gd_result.second.back().state.manifolds.baseValues());
   auto lm_error = TranslationError(
-      gt, CollectManifoldValues(lm_result.second.back().state.manifolds));
+      gt, lm_result.second.back().state.baseValues());
   std::cout << soft_error << "\t" << barrier_error << "\t" << gd_error << "\t"
             << lm_error << "\n";
 

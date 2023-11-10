@@ -18,7 +18,7 @@
 #pragma once
 
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IEManifoldOptimizer.h>
+#include <gtdynamics/imanifold/IEOptimizer.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/inference/Key.h>
@@ -72,6 +72,10 @@ public:
 
   /// Construct e-manifolds using grad blocking constraints.
   void ConstructEManifolds(const NonlinearFactorGraph &graph);
+
+  /// Compute the hessian diagonal of the linearized graph. It is used to
+  /// construct metric sigma for projection.
+  VectorValues computeMetricSigmas(const NonlinearFactorGraph &graph) const;
 };
 
 /** Trial for LM inner iteration with certain lambda setting. */

@@ -131,4 +131,16 @@ inline void AddGeneralPriors(const Values &values,
   }
 }
 
+template <typename CONTAINER>
+inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
+                             const VectorValues &all_sigmas,
+                             NonlinearFactorGraph &graph) {
+  for (const Key &key : keys) {
+    if (all_sigmas.exists(key)) {
+      graph.emplace_shared<GeneralPriorFactor>(
+          key, values.at(key), noiseModel::Diagonal::Sigmas(all_sigmas.at(key)));
+    }
+  }
+}
+
 }  // namespace gtsam

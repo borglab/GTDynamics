@@ -2,7 +2,7 @@
 #include "utils/values.h"
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IEQuadrupedUtils.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/manifold/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/Initializer.h>

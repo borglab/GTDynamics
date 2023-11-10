@@ -8,8 +8,8 @@ import pybullet_data
 
 import gtdynamics as gtd
 
-scenario_name = "yetong07_e_quadruped_jump"
-optimizer_name = "init"
+scenario_name = "yetong07_ie_quadruped_jump"
+optimizer_name = "manopt"
 scenario_folder = "data/" + scenario_name + "/"
 traj_file = scenario_folder + optimizer_name + "_traj_viz.csv"
 

@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IECartPoleWithFriction.h>
+#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/manifold/GeneralPriorFactor.h>
@@ -42,20 +42,21 @@ IEConstraintManifold BarrierRetractor::retract(
 
   NonlinearFactorGraph graph;
 
-  // optimize barrier
+  // optimize with prior and barrier factors
   Values new_values = manifold->values().retract(delta);
   auto prior_noise = noiseModel::Unit::Create(1);
   KeyVector prior_keys = use_basis_keys_ ? basis_keys_ : new_values.keys();
-  AddGeneralPriors(new_values, prior_keys, params_.prior_sigma, graph);
+  params_.addPriors(new_values, prior_keys, graph);
+
   for (const auto &constraint : e_constraints) {
-    graph.add(constraint->createFactor(1e-1));
+    graph.add(constraint->createFactor(1.0));
   }
   for (const auto &constraint : i_constraints) {
-    graph.add(constraint->createBarrierFactor(1e-1));
+    graph.add(constraint->createBarrierFactor(1.0));
   }
-
-  LevenbergMarquardtOptimizer optimizer(graph, manifold->values(),
-                                        params_.lm_params);
+  LevenbergMarquardtOptimizer optimizer(
+      graph, params_.init_values_as_x ? manifold->values() : new_values,
+      params_.lm_params);
   Values opt_values = optimizer.optimize();
 
   // collect active indices
@@ -67,21 +68,24 @@ IEConstraintManifold BarrierRetractor::retract(
     }
   }
 
-  // final optimization to make strictly feasible solution
-  NonlinearFactorGraph graph1;
+  // final optimization without priors to make strictly feasible solution
+  NonlinearFactorGraph graph_np;
   for (const auto &constraint : e_constraints) {
-    graph1.add(constraint->createFactor(1.0));
+    graph_np.add(constraint->createFactor(1.0));
   }
   for (const auto &constraint_idx : active_indices) {
-    graph1.add(i_constraints.at(constraint_idx)
+    graph_np.add(i_constraints.at(constraint_idx)
                    ->createEqualityConstraint()
                    ->createFactor(1.0));
   }
   // std::cout << "optimize for feasibility\n";
   // active_indices.print("active indices\n");
-  LevenbergMarquardtOptimizer optimizer1(graph1, opt_values, params_.lm_params);
-  Values result = optimizer1.optimize();
-  CheckFeasible(graph1, result);
+  LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values, params_.lm_params);
+  Values result = optimizer_np.optimize();
+  if (params_.check_feasible) {
+    CheckFeasible(graph_np, result,
+                  "barrier retraction: ", params_.feasible_threshold);
+  }
 
   return manifold->createWithNewValues(result, active_indices);
 }
@@ -160,7 +164,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   // solve q level with priors
   NonlinearFactorGraph graph_np_q = graph_q_;
   NonlinearFactorGraph graph_wp_q = graph_np_q;
-  AddGeneralPriors(new_values, basis_q_keys_, params_.prior_sigma, graph_wp_q);
+  params_.addPriors(new_values, basis_q_keys_, graph_wp_q);
   Values init_values_q = SubValues(values, graph_wp_q.keys());
   LevenbergMarquardtOptimizer optimizer_wp_q(graph_wp_q, init_values_q,
                                              params_.lm_params);
@@ -178,6 +182,10 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
                                              params_.lm_params);
   Values new_results_q = optimizer_np_q.optimize();
   known_values.insert(new_results_q);
+  if (params_.check_feasible) {
+    CheckFeasible(graph_np_q, new_results_q, "q-level",
+                  params_.feasible_threshold);
+  }
 
   // solve v level with priors
   NonlinearFactorGraph graph_np_v = graph_v_;
@@ -186,7 +194,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     graph_np_v.add(factor);
   }
   NonlinearFactorGraph graph_wp_v = graph_np_v;
-  AddGeneralPriors(new_values, basis_v_keys_, params_.prior_sigma, graph_wp_v);
+  params_.addPriors(new_values, basis_v_keys_, graph_wp_v);
   Values init_values_v = SubValues(values, graph_wp_v.keys());
   LevenbergMarquardtOptimizer optimizer_wp_v(graph_wp_v, init_values_v,
                                              params_.lm_params);
@@ -204,6 +212,10 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
                                              params_.lm_params);
   Values new_results_v = optimizer_np_v.optimize();
   known_values.insert(new_results_v);
+  if (params_.check_feasible) {
+    CheckFeasible(graph_np_v, new_results_v, "v-level",
+                  params_.feasible_threshold);
+  }
 
   // solve a and dynamics level with priors
   NonlinearFactorGraph graph_np_ad = graph_ad_;
@@ -212,8 +224,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     graph_np_ad.add(factor);
   }
   NonlinearFactorGraph graph_wp_ad = graph_np_ad;
-  AddGeneralPriors(new_values, basis_ad_keys_, params_.prior_sigma,
-                   graph_wp_ad);
+  params_.addPriors(new_values, basis_ad_keys_, graph_wp_ad);
   Values init_values_ad = SubValues(values, graph_wp_ad.keys());
   LevenbergMarquardtOptimizer optimizer_wp_ad(graph_wp_ad, init_values_ad,
                                               params_.lm_params);
@@ -231,36 +242,17 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
                                               params_.lm_params);
   Values new_results_ad = optimizer_np_ad.optimize();
   known_values.insert(new_results_ad);
+  if (params_.check_feasible) {
+    CheckFeasible(graph_np_ad, results_ad, "ad-level",
+                  params_.feasible_threshold);
+  }
 
-  // size_t k = DynamicsSymbol(*manifold->values().keys().begin()).time();
-  // std::cout << "time: " << k << "\n";
-  // PrintKeySet(basis_ad_keys_, "", GTDKeyFormatter);
-  // double delta_norm = delta.norm();
-  // std::cout << delta_norm << "\n";
-  // if (delta_norm > 1) {
-  //   delta.print("delta: ", GTDKeyFormatter);
+  // if (params_.check_feasible) {
+  //   CheckFeasible(merit_graph_, known_values, "overall",
+  //                 params_.feasible_threshold);
   // }
-  // std::cout << "q error : " << graph_wp_q.error(init_values_q) << " -> "
-  //           << graph_wp_q.error(results_q) << "\n";
-  // std::cout << "v error : " << graph_wp_v.error(init_values_v) << " -> "
-  //           << graph_wp_v.error(results_v) << "\n";
-  // std::cout << "ad error : " << graph_wp_ad.error(init_values_ad) << " -> "
-  //           << graph_wp_ad.error(results_ad) << " -> " <<
-  //           graph_np_ad.error(new_results_ad) << "\n";
-
-  checkFeasible(merit_graph_, known_values);
 
   return manifold->createWithNewValues(known_values, active_indices);
-}
-
-/* ************************************************************************* */
-void KinodynamicHierarchicalRetractor::checkFeasible(
-    const NonlinearFactorGraph &graph, const Values &values) const {
-  if (params_.check_feasible) {
-    if (graph.error(values) > params_.feasible_threshold) {
-      std::cout << "fail: " << graph.error(values) << "\n";
-    }
-  }
 }
 
 } // namespace gtsam

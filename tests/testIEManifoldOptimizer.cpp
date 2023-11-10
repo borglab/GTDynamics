@@ -14,9 +14,9 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/imanifold/IECartPoleWithFriction.h>
-#include <gtdynamics/imanifold/IEHalfSphere.h>
-#include <gtdynamics/imanifold/IEManifoldOptimizer.h>
+#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
+#include <gtdynamics/scenarios/IEHalfSphere.h>
+#include <gtdynamics/imanifold/IEOptimizer.h>
 
 using namespace gtdynamics;
 using namespace gtsam;

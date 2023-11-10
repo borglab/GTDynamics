@@ -1,3 +1,4 @@
+#include "utils/DynamicsSymbol.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/optimizer/HistoryLMOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -152,10 +153,10 @@ std::pair<IEResultSummary, IEGDItersDetails>
 OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params) {
 
-  IEGDOptimizer optimizer(params);
+  IEGDOptimizer optimizer(params, iecm_params);
   Values result = optimizer.optimize(problem.costs(), problem.eConstraints(),
                                      problem.iConstraints(),
-                                     problem.initValues(), iecm_params);
+                                     problem.initValues());
   const auto &iters_details = optimizer.details();
 
   IEResultSummary summary;
@@ -170,7 +171,7 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
   summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
-    Values state_values = CollectManifoldValues(state.manifolds);
+    Values state_values = state.manifolds.baseValues();
     IEIterSummary iter_summary;
     iter_summary.num_inner_iters = state.totalNumberInnerIterations;
     iter_summary.cost = problem.evaluateCost(state_values);
@@ -186,13 +187,12 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
 /* ************************************************************************* */
 std::pair<IEResultSummary, IELMItersDetails>
 OptimizeIELM(const IEConsOptProblem &problem,
-             const gtsam::LevenbergMarquardtParams &params,
-             const gtsam::IELMParams &ie_params,
+             const gtsam::IELMParams &ielm_params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params) {
-  IELMOptimizer optimizer(params, ie_params);
+  IELMOptimizer optimizer(ielm_params, iecm_params);
   Values result = optimizer.optimize(problem.costs(), problem.eConstraints(),
                                      problem.iConstraints(),
-                                     problem.initValues(), iecm_params);
+                                     problem.initValues());
   const auto &iters_details = optimizer.details();
 
   IEResultSummary summary;

@@ -12,7 +12,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
-#include <gtdynamics/imanifold/IEHalfSphere.h>
+#include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 
 using namespace gtsam;
@@ -59,9 +59,9 @@ int main(int argc, char **argv) {
   auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
-  lm_params.minModelFidelity = 0.5;
+  ie_params.lm_params.minModelFidelity = 0.5;
   // lm_params.setVerbosityLM("SUMMARY");
-  auto lm_result = OptimizeIELM(problem, lm_params, ie_params, iecm_params);
+  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);
   barrier_result.first.printLatex(std::cout);

@@ -19,7 +19,7 @@
 #pragma once
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IELMOptimizerState.h>
-#include <gtdynamics/imanifold/IEManifoldOptimizer.h>
+#include <gtdynamics/imanifold/IEOptimizer.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/VectorValues.h>
@@ -32,6 +32,7 @@ namespace gtsam {
 struct IELMParams {
   IELMParams() {}
   double boundary_approach_rate_threshold = 3;
+  LevenbergMarquardtParams lm_params;
 };
 
 /**
@@ -40,8 +41,7 @@ struct IELMParams {
 class IELMOptimizer : public IEOptimizer {
 
 protected:
-  const LevenbergMarquardtParams params_; ///< LM parameters
-  const IELMParams ie_params_;
+  const IELMParams ielm_params_;
   std::shared_ptr<IELMItersDetails> details_;
 
 public:
@@ -50,22 +50,22 @@ public:
   const IELMItersDetails &details() const { return *details_; }
 
   /** Constructor */
-  IELMOptimizer(
-      const LevenbergMarquardtParams &params = LevenbergMarquardtParams(),
-      const IELMParams &ie_params = IELMParams())
-      : IEOptimizer(), params_(params), ie_params_(ie_params),
+  IELMOptimizer(const IELMParams &ielm_params = IELMParams(),
+                const IEConstraintManifold::Params::shared_ptr &iecm_params =
+                    std::make_shared<IEConstraintManifold::Params>())
+      : IEOptimizer(iecm_params), ielm_params_(ielm_params),
         details_(std::make_shared<IELMItersDetails>()) {}
 
   /** Virtual destructor */
   ~IELMOptimizer() {}
 
   /** Read-only access the parameters */
-  const LevenbergMarquardtParams &params() const { return params_; }
+  const IELMParams &ielmParams() const { return ielm_params_; }
 
   /** Perform optimization on manifolds. */
   Values optimizeManifolds(const NonlinearFactorGraph &graph,
                            const IEManifoldValues &manifolds,
-                           const Values& unconstrained_values,
+                           const Values &unconstrained_values,
                            gtdynamics::ConstrainedOptResult
                                *intermediate_result = nullptr) const override;
 

@@ -133,14 +133,14 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 std::pair<IEResultSummary, IEGDItersDetails>
-OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
+OptimizeIEGD(const IEConsOptProblem &problem,
+             const gtsam::GDParams &iegd_params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 std::pair<IEResultSummary, IELMItersDetails>
 OptimizeIELM(const IEConsOptProblem &problem,
-             const gtsam::LevenbergMarquardtParams &params,
-             const gtsam::IELMParams &ie_params,
+             const gtsam::IELMParams &ielm_params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params);
 
 } // namespace gtsam

@@ -1,4 +1,4 @@
-#include <gtdynamics/imanifold/IECartPoleWithFriction.h>
+#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtsam {
