@@ -2,8 +2,17 @@
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/PCGSolver.h>
 #include <gtsam/linear/SubgraphSolver.h>
+#include <gtsam/nonlinear/NonlinearEquality.h>
+#include <gtsam/base/serialization.h>
+#include <gtsam/geometry/Pose3.h>
 
 #include <iostream>
+
+GTSAM_VALUE_EXPORT(double)
+GTSAM_VALUE_EXPORT(gtsam::Point3)
+GTSAM_VALUE_EXPORT(gtsam::Rot3)
+GTSAM_VALUE_EXPORT(gtsam::Pose3)
+GTSAM_VALUE_EXPORT(gtsam::Vector6)
 
 namespace gtsam {
 
@@ -101,5 +110,21 @@ VectorValues SolveLinear(const GaussianFactorGraph &gfg,
   // return update
   return delta;
 }
+
+/* ************************************************************************* */
+
+/* ************************************************************************* */
+void ExportValuesToFile(const Values& values, const std::string& file_path) {
+  serializeToBinaryFile(values, file_path);
+}
+
+/* ************************************************************************* */
+Values LoadValuesFromFile(const std::string& file_path) {
+  Values values;
+  deserializeFromBinaryFile(file_path, values);
+  return values;
+}
+
+
 
 } // namespace gtsam

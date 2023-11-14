@@ -7,19 +7,20 @@
 
 /**
  * @file  ManifoldOptimizer.h
- * @brief Optimizer that treat equality-constrained components as manifolds.
+ * @brief Manifold Optimzier with manually written LM algorithm.
  * @author: Yetong Zhang
  */
 
 #pragma once
 
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
-using gtdynamics::EqConsOptProblem;
+using gtdynamics::EqConsOptProblem, gtdynamics::EqualityConstraints;
 
 namespace gtsam {
 
@@ -27,7 +28,7 @@ namespace gtsam {
 /// Manifold optimization problem.
 struct ManifoldOptProblem {
   NonlinearFactorGraph graph_;  // cost function on constraint manifolds
-  std::vector<ConnectedComponent::shared_ptr>
+  std::vector<EqualityConstraints::shared_ptr>
       components_;  // All the constraint-connected components
   Values
       values_;  // values for constraint manifolds and unconstrained variables
@@ -86,14 +87,14 @@ class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
   /** Perform dfs to find the connected component that contains start_key. Will
    * also erase all the keys in the connected component from keys.
    */
-  static ConnectedComponent::shared_ptr IdentifyConnectedComponent(
-      const gtdynamics::EqualityConstraints& constraints,
-      const gtsam::Key start_key, gtsam::KeySet& keys,
-      const gtsam::VariableIndex& var_index);
+  static EqualityConstraints::shared_ptr
+  IdentifyConnectedComponent(const EqualityConstraints &constraints,
+                             const Key start_key, KeySet &keys,
+                             const VariableIndex &var_index);
 
   /// Identify the connected components by constraints.
-  static std::vector<ConnectedComponent::shared_ptr> IdentifyConnectedComponents(
-      const gtdynamics::EqualityConstraints& constraints);
+  static std::vector<EqualityConstraints::shared_ptr>
+  IdentifyConnectedComponents(const EqualityConstraints &constraints);
 
   /// Create equivalent factor graph on manifold variables.
   static NonlinearFactorGraph ManifoldGraph(const NonlinearFactorGraph &graph,
@@ -128,10 +129,10 @@ class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
   problemTransform(const EqConsOptProblem &ecopt_problem) const;
 
   /// Initialize the manifold optization problem.
-  ManifoldOptProblem initializeMoptProblem(
-      const gtsam::NonlinearFactorGraph& costs,
-      const gtdynamics::EqualityConstraints& constraints,
-      const gtsam::Values& init_values) const;
+  ManifoldOptProblem
+  initializeMoptProblem(const NonlinearFactorGraph &costs,
+                        const EqualityConstraints &constraints,
+                        const Values &init_values) const;
 
   /// Construct values of original variables.
   Values baseValues(const ManifoldOptProblem &mopt_problem,
@@ -140,12 +141,6 @@ class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
   VectorValues baseTangentVector(const ManifoldOptProblem &mopt_problem,
                                  const Values &values,
                                  const VectorValues &delta) const;
-
-  //   /// Optimization given manifold optimization problem.
-  //   virtual gtsam::Values optimize(
-  //       const ManifoldOptProblem& mopt_problem,
-  //       gtdynamics::ConstrainedOptResult* intermediate_result = nullptr)
-  //       const = 0;
 
 };
 

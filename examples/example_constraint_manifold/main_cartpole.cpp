@@ -96,10 +96,9 @@ void dynamic_planning() {
 
   // optimize constraint manifold specify variables (feasbile)
   // std::cout << "constraint manifold basis variables (feasible):\n";
-  auto mopt_params = DefaultMoptParamsSV();
-  mopt_params.cc_params->retract_params->check_feasible=true;
-  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  mopt_params.cc_params->basis_key_func = cartpole.getBasisKeyFunc(true);
+  auto mopt_params = DefaultMoptParamsSV(cartpole.getBasisKeyFunc(true));
+  mopt_params.cc_params->retractor_creator->params()->check_feasible=true;
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   // auto cm_basis_result =
   //     OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
   // EvaluateCosts(cm_basis_result);
@@ -107,7 +106,7 @@ void dynamic_planning() {
 
   // // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result =
       OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
 

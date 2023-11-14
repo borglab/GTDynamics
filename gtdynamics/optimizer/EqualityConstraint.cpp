@@ -13,6 +13,7 @@
 
 #include <gtdynamics/factors/BiasedFactor.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtsam/inference/Key.h>
 
 namespace gtdynamics {
 
@@ -100,6 +101,12 @@ gtsam::KeySet EqualityConstraints::keys() const {
     keys.merge(constraint->keys());
   }
   return keys;
+}
+
+/* ************************************************************************* */
+gtsam::KeyVector EqualityConstraints::keyVector() const {
+  auto keyset = keys();
+  return gtsam::KeyVector(keyset.begin(), keyset.end());
 }
 
 /* ************************************************************************* */

@@ -110,9 +110,9 @@ Values get_init_values(const Values &gt) {
 }
 
 /** Function to manually define the basis keys for each constraint manifold. */
-KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
+KeyVector FindBasisKeys(const KeyVector& keys) {
   KeyVector basis_keys;
-  for (const Key& key : cc->keys_) {
+  for (const Key& key : keys) {
     auto symb = Symbol(key);
     if (symb.chr() == 'a') {
       basis_keys.push_back(key);
@@ -197,7 +197,7 @@ void kinematic_planning() {
     // optimize constraint manifold specify variables (feasbile)
     std::cout << "constraint manifold basis variables (feasible):\n";
     auto mopt_params = DefaultMoptParams();
-    mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+    mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     auto cm_basis_result = OptimizeConstraintManifold(
         problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
     std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_result) << "\n";
@@ -207,7 +207,7 @@ void kinematic_planning() {
     // optimize constraint manifold specify variables (infeasbile)
     std::cout << "constraint manifold basis variables (infeasible):\n";
     // auto mopt_params = DefaultMoptParams();
-    mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
     auto cm_basis_infeasible_result = OptimizeConstraintManifold(
         problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
     std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_infeasible_result) << "\n";

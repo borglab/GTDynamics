@@ -21,19 +21,12 @@ namespace gtsam {
 
 /* ************************************************************************* */
 Values ConstraintManifold::constructValues(
-    const ConnectedComponent::shared_ptr cc, const gtsam::Values &values,
+    const gtsam::Values &values,
     const Retractor::shared_ptr &retractor, bool retract_init) {
-  Values cm_values;
-  for (const gtsam::Key &key : cc->keys_) {
-    cm_values.insert(key, values.at(key));
-  }
-  for (const gtsam::Key &key : cc->unconstrained_keys_) {
-    cm_values.insert(key, values.at(key));
-  }
   if (retract_init) {
-    return retractor->retractConstraints(std::move(cm_values));
+    return retractor->retractConstraints(std::move(values));
   } else {
-    return cm_values;
+    return values;
   }
 }
 
@@ -101,39 +94,8 @@ bool ConstraintManifold::equals(const ConstraintManifold &other,
 }
 
 /* ************************************************************************* */
-Retractor::shared_ptr ConstraintManifold::constructRetractor(
-    const Params::shared_ptr &params,
-    const ConnectedComponent::shared_ptr &cc) {
-  if (params->retract_params->use_basis_keys) {
-    if (params->basis_key_func == NULL) {
-      throw std::runtime_error("Basis Key Function not provided for retractor");
-    }
-    KeyVector basis_keys = params->basis_key_func(cc);
-    return Retractor::create(params->retract_params, cc, basis_keys);
-  }
-  return Retractor::create(params->retract_params, cc);
-}
-
-/* ************************************************************************* */
-TspaceBasis::shared_ptr ConstraintManifold::constructTspaceBasis(
-    const Params::shared_ptr &params, const ConnectedComponent::shared_ptr &cc,
-    const Values &values, size_t manifold_dim) {
-  if (params->basis_params->use_basis_keys) {
-    if (params->basis_key_func == NULL) {
-      throw std::runtime_error(
-          "Basis Key Function not provided for tspace basis");
-    }
-    KeyVector basis_keys = params->basis_key_func(cc);
-    return TspaceBasis::create(params->basis_params, cc, values, basis_keys,
-                               manifold_dim);
-  }
-  return TspaceBasis::create(params->basis_params, cc, values, {},
-                             manifold_dim);
-}
-
-/* ************************************************************************* */
 const Values ConstraintManifold::feasibleValues() const {
-  LevenbergMarquardtOptimizer optimizer(cc_->merit_graph_, values_);
+  LevenbergMarquardtOptimizer optimizer(constraints_->meritGraph(), values_);
   return optimizer.optimize();
 }
 

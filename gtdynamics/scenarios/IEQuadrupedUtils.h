@@ -15,7 +15,6 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/imanifold/IERetractor.h>
-#include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
@@ -67,6 +66,8 @@ public:
     double sigma_actuation = 1e1;
     double sigma_q_col = 1e-2;
     double sigma_v_col = 1e-2;
+    double sigma_pose_col = 1e-2;
+    double sigma_twist_col = 1e-2;
 
     // tolerance for e constraints
     double tol_q = 1e-2;        // tolerance of q-level constraints
@@ -79,6 +80,7 @@ public:
     double tol_tl = 0.1;
     double tol_fc = 0.1;
     double tol_ca = 0.1;
+    double tol_phase_dt = 0.1;
 
     /// Optimization settings
     bool express_redundancy = true;
@@ -346,6 +348,10 @@ public:
   const IEVision60Robot &robotAtStep(const size_t k) const;
 
   NonlinearFactorGraph collocationCosts() const;
+
+  /** Inequality constraints that limit the min phase durations. */
+  gtdynamics::InequalityConstraints phaseMinDurationConstraints(
+      const std::vector<double> &phases_min_dt) const;
 };
 
 /* ************************************************************************* */
@@ -361,11 +367,16 @@ public:
 Values TrajectoryValuesVerticalJump(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, const double torso_accel_z = 15,
-    const size_t ground_switch_k = 5);
+    const size_t ground_switch_k = 5, bool use_trapezoidal = false);
 
 Values TrajectoryValuesVerticalJumpDeprecated(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, const double torso_accel_z = 15);
+
+Values
+TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
+                          const std::vector<double> &phases_dt,
+                          const Values &values);
 
 /* ************************************************************************* */
 /* <=================== Factory class for Retractor =======================> */
@@ -462,11 +473,12 @@ protected:
 public:
   Vision60MultiPhaseTspaceBasisCreator(
       const IEVision60RobotMultiPhase &vision60_multi_phase,
-      const TspaceBasisParams::shared_ptr params)
+      const TspaceBasisParams::shared_ptr params =
+          std::make_shared<TspaceBasisParams>(true))
       : TspaceBasisCreator(params),
         vision60_multi_phase_(vision60_multi_phase) {}
 
-  TspaceBasis::shared_ptr create(const ConnectedComponent::shared_ptr cc,
+  TspaceBasis::shared_ptr create(const EqualityConstraints::shared_ptr constraints,
                                  const Values &values) const override;
 };
 

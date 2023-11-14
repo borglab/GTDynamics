@@ -334,7 +334,7 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
   const gtdynamics::InequalityConstraints &i_constraints =
       *manifold->iConstraints();
   const gtdynamics::EqualityConstraints &e_constraints =
-      manifold->eCC()->constraints_;
+      *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
 
@@ -428,7 +428,7 @@ IEConstraintManifold CPBarrierRetractor::retract(
   const gtdynamics::InequalityConstraints &i_constraints =
       *manifold->iConstraints();
   const gtdynamics::EqualityConstraints &e_constraints =
-      manifold->eCC()->constraints_;
+      *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
 

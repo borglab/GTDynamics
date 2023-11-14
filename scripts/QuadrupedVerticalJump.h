@@ -12,8 +12,9 @@
  */
 
 #pragma once
-#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+#include "gtdynamics/utils/GraphUtils.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -56,13 +57,27 @@ inline IEVision60Robot::Params GetVision60Params() {
   vision60_params.sigma_actuation = 1e1;
   vision60_params.sigma_q_col = 5e-3;
   vision60_params.sigma_v_col = 5e-3;
+  vision60_params.sigma_twist_col = 5e-3;
+  vision60_params.sigma_pose_col = 3e-3;
 
   return vision60_params;
 }
 
+struct VerticalJumpParams {
+  IEVision60Robot::Params vision60_params = GetVision60Params();
+  std::vector<size_t> phase_num_steps{10, 10};
+  bool include_inequalities = false;
+  bool add_phase_prior = false;
+  bool init_values_with_trapezoidal = false;
+  bool add_phase_duration_constraints = false;
+  std::vector<double> phases_min_dt;
+  std::vector<double> phase_prior_dt;
+  Pose3 des_pose = Pose3(Rot3::Ry(0), Point3(0, 0, 0.8));
+};
+
 inline IEVision60RobotMultiPhase
-GetVision60MultiPhase(IEVision60Robot::Params &_vision60_params) {
-  IEVision60Robot::Params vision60_params = _vision60_params;
+GetVision60MultiPhase(const VerticalJumpParams &params) {
+  IEVision60Robot::Params vision60_params = params.vision60_params;
   vision60_params.set4C();
   IEVision60Robot vision60_4c(vision60_params);
   vision60_params.setInAir();
@@ -70,22 +85,15 @@ GetVision60MultiPhase(IEVision60Robot::Params &_vision60_params) {
   vision60_params.setBoundaryLeave(vision60_4c.params, vision60_air.params);
   IEVision60Robot vision60_boundary(vision60_params);
 
-  /// Scenario
-  size_t num_steps_ground = 10;
-  size_t num_steps_air = 10;
-
   std::vector<IEVision60Robot> phase_robots{vision60_4c, vision60_air};
   std::vector<IEVision60Robot> boundary_robots{vision60_boundary};
-  std::vector<size_t> phase_num_steps{num_steps_ground, num_steps_air};
   IEVision60RobotMultiPhase vision60_multi_phase(phase_robots, boundary_robots,
-                                                 phase_num_steps);
+                                                 params.phase_num_steps);
   return vision60_multi_phase;
 }
 
-inline IEConsOptProblem
-CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
-              bool include_inequalities = true,
-              bool add_phase_prior = false) {
+inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
+  auto vision60_multi_phase = GetVision60MultiPhase(params);
   const IEVision60Robot &vision60_4c = vision60_multi_phase.phase_robots_[0];
   const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
   size_t num_steps = vision60_multi_phase.phase_num_steps_[0] +
@@ -103,8 +111,7 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
     InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
   }
   InsertTwist(&des_values, vision60_air.base_id, num_steps, Vector6::Zero());
-  Pose3 des_pose(Rot3::Ry(0), Point3(0, 0, 0.8));
-  InsertPose(&des_values, vision60_air.base_id, num_steps, des_pose);
+  InsertPose(&des_values, vision60_air.base_id, num_steps, params.des_pose);
 
   /// Constraints
   EqualityConstraints e_constraints;
@@ -112,12 +119,16 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
   for (size_t k = 0; k <= num_steps; k++) {
     const IEVision60Robot &vision60 = vision60_multi_phase.robotAtStep(k);
     e_constraints.add(vision60.eConstraints(k));
-    if (include_inequalities) {
+    if (params.include_inequalities) {
       i_constraints.add(vision60.iConstraints(k));
     }
   }
   e_constraints.add(
       vision60_4c.initStateConstraints(base_pose_init, base_twist_init));
+  if (params.add_phase_duration_constraints) {
+    i_constraints.add(
+        vision60_multi_phase.phaseMinDurationConstraints(params.phases_min_dt));
+  }
 
   /// Costs
   NonlinearFactorGraph collocation_costs;
@@ -144,8 +155,9 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
   costs.add(collocation_costs);
   costs.add(boundary_costs);
   costs.add(min_torque_costs);
-  if (include_inequalities && add_phase_prior) {
-    costs.addPrior(PhaseKey(1), 0.02, noiseModel::Isotropic::Sigma(1, 1e-4));
+  if (params.add_phase_prior) {
+    costs.addPrior(PhaseKey(0), params.phase_prior_dt.at(0), noiseModel::Isotropic::Sigma(1, 1e-4));
+    costs.addPrior(PhaseKey(1), params.phase_prior_dt.at(1), noiseModel::Isotropic::Sigma(1, 1e-4));
   }
 
   auto Evaluate = [=](const Values &values) {
@@ -153,15 +165,13 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
               << values.atDouble(PhaseKey(1)) << "\n";
     std::cout << "collocation costs:\t" << collocation_costs.error(values)
               << "\n";
+    std::cout << "boundary costs:\t" << boundary_costs.error(values) << "\n";
+    std::cout << "min torque costs:\t" << min_torque_costs.error(values)
+              << "\n";
     for (size_t k = 0; k < num_steps; k++) {
       std::cout << "\t" << k << "\t"
                 << step_collocation_costs.at(k).error(values) << "\n";
     }
-    std::cout << "boundary costs:\t" << boundary_costs.error(values) << "\n";
-    std::cout << "min torque costs:\t" << min_torque_costs.error(values)
-              << "\n";
-    // PrintGraphWithError(collocation_costs, values);
-    // PrintGraphWithError(boundary_costs, values);
     std::cout << "e constraints violation:\t"
               << e_constraints.evaluateViolationL2Norm(values) << "\n";
     std::cout << "i constraints violation:\t"
@@ -171,7 +181,8 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
   /// Initial Values
   std::vector<double> phases_dt{0.02, 0.02};
   auto init_values =
-      TrajectoryValuesVerticalJump(vision60_multi_phase, phases_dt);
+      TrajectoryValuesVerticalJump(vision60_multi_phase, phases_dt, 15, 5,
+                                   params.init_values_with_trapezoidal);
 
   /// Problem
   IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
@@ -179,4 +190,4 @@ CreateProblem(const IEVision60RobotMultiPhase &vision60_multi_phase,
   return problem;
 }
 
-}  // namespace constrained_example
+} // namespace quadruped_vertical_jump

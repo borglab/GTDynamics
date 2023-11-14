@@ -19,17 +19,15 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   IECartPoleWithFriction cp;
   int k = 0;
 
-  EqualityConstraints e_constraints;
+  auto e_constraints = std::make_shared<EqualityConstraints>();
   auto i_constraints = std::make_shared<InequalityConstraints>();
   i_constraints->add(cp.iConstraints(k));
-  e_constraints.add(cp.eConstraints(k));
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
+  e_constraints->add(cp.eConstraints(k));
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
   params->retractor_creator = std::make_shared<BarrierRetractorCreator>();
-  params->e_basis_creator =
-      std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
+  params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
 
   Values values;
   double q = M_PI_2, v = 0, a = 0;
@@ -40,7 +38,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   values.insert(FxKey(k), cp.computeFx(q, v, a));
   values.insert(FyKey(k), cp.computeFy(q, v, a));
 
-  IEConstraintManifold manifold(params, e_cc, i_constraints, values);
+  IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
 
   VectorValues delta;
   double new_a = 20.0;

@@ -163,7 +163,7 @@ void kinematic_planning() {
 
   // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result = OptimizeConstraintManifold(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
 

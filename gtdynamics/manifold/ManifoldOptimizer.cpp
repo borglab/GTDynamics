@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
-#include <gtdynamics/manifold/SubstituteFactor.h>
+#include <gtdynamics/factors/SubstituteFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
 namespace gtsam {
@@ -82,7 +82,7 @@ ManifoldOptimizerParameters::ManifoldOptimizerParameters()
       retract_init(true) {}
 
 /* ************************************************************************* */
-ConnectedComponent::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
+EqualityConstraints::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
     const gtdynamics::EqualityConstraints& constraints,
     const gtsam::Key start_key, gtsam::KeySet& keys,
     const gtsam::VariableIndex& var_index) {
@@ -106,15 +106,15 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
     }
   }
 
-  gtdynamics::EqualityConstraints cc_constraints;
+  auto cc_constraints = std::make_shared<EqualityConstraints>();
   for (const auto& constraint_index : constraint_indices) {
-    cc_constraints.emplace_back(constraints.at(constraint_index));
+    cc_constraints->emplace_back(constraints.at(constraint_index));
   }
-  return std::make_shared<ConnectedComponent>(cc_constraints);
+  return cc_constraints;
 }
 
 /* ************************************************************************* */
-std::vector<ConnectedComponent::shared_ptr>
+std::vector<EqualityConstraints::shared_ptr>
 ManifoldOptimizer::IdentifyConnectedComponents(
     const gtdynamics::EqualityConstraints& constraints) {
   // Get all the keys in constraints.
@@ -122,7 +122,7 @@ ManifoldOptimizer::IdentifyConnectedComponents(
   gtsam::KeySet constraint_keys = constraints.keys();
 
   // Find connected component using DFS algorithm.
-  std::vector<ConnectedComponent::shared_ptr> components;
+  std::vector<EqualityConstraints::shared_ptr> components;
   while (!constraint_keys.empty()) {
     Key key = *constraint_keys.begin();
     constraint_keys.erase(key);
@@ -186,9 +186,9 @@ void ManifoldOptimizer::constructManifoldValues(
   for (size_t i = 0; i < mopt_problem.components_.size(); i++) {
     // Find the values of variables in the component.
     const auto& component = mopt_problem.components_.at(i);
-    const Key& component_key = *component->keys_.begin();
+    const Key& component_key = *component->keys().begin();
     Values component_values;
-    for (const Key& key : component->keys_) {
+    for (const Key& key : component->keys()) {
       component_values.insert(key, ecopt_problem.values_.at(key));
     }
     // Construct manifold value
@@ -212,7 +212,7 @@ void ManifoldOptimizer::constructUnconstrainedValues(
   mopt_problem.unconstrained_keys_ = ecopt_problem.costs_.keys();
   KeySet& unconstrained_keys = mopt_problem.unconstrained_keys_;
   for (const auto& component : mopt_problem.components_) {
-    for (const Key& key : component->keys_) {
+    for (const Key& key : component->keys()) {
       if (unconstrained_keys.find(key) != unconstrained_keys.end()) {
         unconstrained_keys.erase(key);
       }

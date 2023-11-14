@@ -1,12 +1,14 @@
 #include "utils/DynamicsSymbol.h"
 #include "utils/values.h"
 #include <gtdynamics/factors/CollocationFactors.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
-#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/inference/Key.h>
+#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <stdexcept>
@@ -301,10 +303,11 @@ Values IEVision60Robot::getInitValuesTrajectory(
   return init_vals;
 }
 
+/* ************************************************************************* */
 Values TrajectoryValuesVerticalJump(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, const double torso_accel_z,
-    const size_t ground_switch_k) {
+    const size_t ground_switch_k, bool use_trapezoidal) {
 
   Values values;
   for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx += 1) {
@@ -421,13 +424,17 @@ Values TrajectoryValuesVerticalJump(
     prev_values = init_values_k;
   }
 
+  if (use_trapezoidal) {
+    values = TrajectoryWithTrapezoidal(vision60_multi_phase, phases_dt, values);
+  }
+
   return values;
 }
 
-
+/* ************************************************************************* */
 Values TrajectoryValuesVerticalJumpDeprecated(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::vector<double> &phases_dt, const double torso_accel_z){
+    const std::vector<double> &phases_dt, const double torso_accel_z) {
   Values values;
   for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx += 1) {
     values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
@@ -524,6 +531,39 @@ Values TrajectoryValuesVerticalJumpDeprecated(
   return values;
 }
 
+/* ************************************************************************* */
+Values
+TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
+                          const std::vector<double> &phases_dt,
+                          const Values &values) {
 
+  size_t num_steps = vision60_multi_phase.phase_num_steps_[0] +
+                     vision60_multi_phase.phase_num_steps_[1];
 
+  Pose3 base_pose_init = Pose(values, IEVision60Robot::base_id, 0);
+  Vector6 base_twist_init = Twist(values, IEVision60Robot::base_id, 0);
+  ;
+
+  // Create graph with e-constraints and collocation constraints
+  EqualityConstraints e_constraints;
+  for (size_t k = 0; k <= num_steps; k++) {
+    const IEVision60Robot &vision60 = vision60_multi_phase.robotAtStep(k);
+    e_constraints.add(vision60.eConstraints(k));
+  }
+  e_constraints.add(vision60_multi_phase.robotAtStep(0).initStateConstraints(
+      base_pose_init, base_twist_init));
+
+  NonlinearFactorGraph graph = e_constraints.meritGraph();
+  graph.add(vision60_multi_phase.collocationCosts());
+
+  auto dt_model = noiseModel::Isotropic::Sigma(1, 1e-3);
+  for (size_t phase_idx =0; phase_idx<phases_dt.size(); phase_idx++) {
+    graph.addPrior<double>(PhaseKey(phase_idx), phases_dt.at(phase_idx), dt_model);
+  }
+
+  LevenbergMarquardtParams lm_params;
+  // lm_params.setVerbosityLM("SUMMARY");
+  LevenbergMarquardtOptimizer optimizer(graph, values, lm_params);
+  return optimizer.optimize();
+}
 } // namespace gtsam

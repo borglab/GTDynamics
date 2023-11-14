@@ -1,5 +1,6 @@
 
 #include "gtdynamics/imanifold/IERetractor.h"
+#include "gtdynamics/manifold/TspaceBasis.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
@@ -41,16 +42,14 @@ TEST(IdentifyManifolds, HalfSphere) {
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<HalfSphereRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
-      iecm_params->ecm_params->basis_params);
+  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
   for (const auto &it : manifolds) {
     const auto &manifold = it.second;
     EXPECT_LONGS_EQUAL(1, manifold.iConstraints()->size());
-    EXPECT_LONGS_EQUAL(1, manifold.eCC()->constraints_.size());
-    EXPECT_LONGS_EQUAL(0, manifold.eCC()->unconstrained_keys_.size());
+    EXPECT_LONGS_EQUAL(1, manifold.eConstraints()->size());
     EXPECT_LONGS_EQUAL(1, manifold.values().size());
   }
   EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
@@ -76,16 +75,14 @@ TEST(IdentifyManifolds, CartPoleWithFriction) {
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<CartPoleWithFrictionRetractor>(cp));
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
-      iecm_params->ecm_params->basis_params);
+  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
   for (const auto &it : manifolds) {
     const auto &manifold = it.second;
     EXPECT_LONGS_EQUAL(2, manifold.iConstraints()->size());
-    EXPECT_LONGS_EQUAL(3, manifold.eCC()->constraints_.size());
-    EXPECT_LONGS_EQUAL(0, manifold.eCC()->unconstrained_keys_.size());
+    EXPECT_LONGS_EQUAL(3, manifold.eConstraints()->size());
     EXPECT_LONGS_EQUAL(6, manifold.values().size());
   }
   EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
@@ -105,8 +102,7 @@ TEST(IdentifyManifolds, Dome) {
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<DomeRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
-      iecm_params->ecm_params->basis_params);
+  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
 
   Values values;
   for (size_t k = 0; k <= num_steps; k++) {
@@ -118,8 +114,7 @@ TEST(IdentifyManifolds, Dome) {
   for (const auto &it : manifolds) {
     const auto &manifold = it.second;
     EXPECT_LONGS_EQUAL(2, manifold.iConstraints()->size());
-    EXPECT_LONGS_EQUAL(0, manifold.eCC()->constraints_.size());
-    EXPECT_LONGS_EQUAL(1, manifold.eCC()->unconstrained_keys_.size());
+    EXPECT_LONGS_EQUAL(0, manifold.eConstraints()->size());
     EXPECT_LONGS_EQUAL(1, manifold.values().size());
   }
   EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());

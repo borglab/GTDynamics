@@ -71,7 +71,7 @@ IEConstraintManifold::moveToBoundary(const IndexSet &active_indices) const {
 
 /* ************************************************************************* */
 ConstraintManifold IEConstraintManifold::eConstraintManifold() const {
-  return ConstraintManifold(e_cc_, values_, params_->ecm_params, false,
+  return ConstraintManifold(e_constraints_, values_, params_->ecm_params, false,
                             e_basis_);
 }
 
@@ -79,55 +79,19 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold() const {
 ConstraintManifold IEConstraintManifold::eConstraintManifold(
     const IndexSet &active_indices) const {
   // TODO: construct e-basis using createWithAdditionalConstraints
-  gtdynamics::EqualityConstraints active_constraints = e_cc_->constraints_;
   gtdynamics::EqualityConstraints new_active_constraints;
-  KeySet unconstrained_keys = e_cc_->unconstrained_keys_;
   for (const auto &idx : active_indices) {
-    for (const Key &key : i_constraints_->at(idx)->keys()) {
-      if (unconstrained_keys.exists(key)) {
-        unconstrained_keys.erase(key);
-      }
-    }
     new_active_constraints.emplace_back(
         i_constraints_->at(idx)->createEqualityConstraint());
   }
-  active_constraints.add(new_active_constraints);
-  auto new_cc = std::make_shared<gtsam::ConnectedComponent>(active_constraints,
-                                                            unconstrained_keys);
+  auto active_constraints =
+      std::make_shared<EqualityConstraints>(*e_constraints_);
+  active_constraints->add(new_active_constraints);
 
-  if (params_->e_basis_with_new_constraints) {
-    NonlinearFactorGraph new_constraint_graph;
-    for (const auto& constraint: new_active_constraints) {
-      new_constraint_graph.add(constraint->createFactor(1.0));
-    }
-    auto linear_graph = new_constraint_graph.linearize(values_);
-    auto new_basis = e_basis_->createWithAdditionalConstraints(*linear_graph);
-    return ConstraintManifold(new_cc, values_, params_->ecm_params, false, new_basis);
-  }
-
-  if (params_->ecm_params->basis_params->use_basis_keys &&
-      new_active_constraints.size() > 0) {
-
-    // update basis keys
-    size_t new_manifold_dim = dim_ - new_active_constraints.dim();
-    auto basis_keys = params_->ecm_params->basis_key_func(e_cc_);
-    auto new_constrained_keys = new_active_constraints.keys();
-    // TODO: this only works for simple ineq constraint cases
-    KeyVector new_basis_keys;
-    for (const Key& key: basis_keys) {
-      if (!new_constrained_keys.exists(key)) {
-        new_basis_keys.push_back(key);
-      }
-    }
-
-    // create basis here
-    auto new_basis =
-        TspaceBasis::create(params_->ecm_params->basis_params, new_cc, values_,
-                            new_basis_keys, new_manifold_dim);
-    return ConstraintManifold(new_cc, values_, params_->ecm_params, false, new_basis);
-  }
-  return ConstraintManifold(new_cc, values_, params_->ecm_params, false);
-  // 
+  auto new_basis = e_basis_->createWithAdditionalConstraints(
+      new_active_constraints, values_, params_->e_basis_build_from_scratch);
+  return ConstraintManifold(active_constraints, values_, params_->ecm_params,
+                            false, new_basis);
 }
 
 /* ************************************************************************* */

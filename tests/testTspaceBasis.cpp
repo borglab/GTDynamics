@@ -11,11 +11,10 @@
  * @author Yetong Zhang
  */
 
-#include "gtdynamics/manifold/ConnectedComponent.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtdynamics/manifold/TspaceBasis.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -39,14 +38,14 @@ TEST(TspaceBasis, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  gtdynamics::EqualityConstraints constraints;
+  auto constraints = std::make_shared<gtdynamics::EqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
+  constraints->emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
+  constraints->emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
 
   // Create manifold values for testing.
   Values cm_base_values;
@@ -54,21 +53,18 @@ TEST(TspaceBasis, connected_poses) {
   cm_base_values.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 1)));
   cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 1, 1)));
 
-  // Connected component.
-  auto component = std::make_shared<ConnectedComponent>(constraints);
-
   // Construct basis.
   KeyVector basis_keys{x3_key};
   auto basis_params = std::make_shared<TspaceBasisParams>();
   auto basis_m =
-      std::make_shared<MatrixBasis>(basis_params, component, cm_base_values);
-  auto basis_e = std::make_shared<EliminationBasis>(basis_params, component,
+      std::make_shared<MatrixBasis>(basis_params, constraints, cm_base_values);
+  auto basis_e = std::make_shared<EliminationBasis>(basis_params, constraints,
                                                     cm_base_values, basis_keys);
-  auto basis_sm = std::make_shared<SparseMatrixBasis>(basis_params, component,
-                                                      cm_base_values);
+  // auto basis_sm = std::make_shared<SparseMatrixBasis>(basis_params, constraints,
+  //                                                     cm_base_values);
 
-  auto linear_graph = component->merit_graph_.linearize(cm_base_values);
-  std::vector<TspaceBasis::shared_ptr> basis_vec{basis_m, basis_e, basis_sm};
+  auto linear_graph = constraints->meritGraph().linearize(cm_base_values);
+  std::vector<TspaceBasis::shared_ptr> basis_vec{basis_m, basis_e};//, basis_sm};
 
   // Check dimension.
   for (const auto& basis : basis_vec) {
@@ -113,11 +109,10 @@ TEST(TspaceBasis, connected_poses) {
   new_cm_base_values.insert(x1_key, Pose3(Rot3(), Point3(1, 1, 1)));
   new_cm_base_values.insert(x2_key, Pose3(Rot3(), Point3(1, 1, 2)));
   new_cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(1, 2, 2)));
-  auto nwe_linear_graph = component->merit_graph_.linearize(new_cm_base_values);
 
   // Check createWithNewValues.
   for (const auto& basis : basis_vec) {
-    auto new_basis = basis->createWithNewValues(component, new_cm_base_values);
+    auto new_basis = basis->createWithNewValues(new_cm_base_values);
     for (int i = 0; i < 6; i++) {
       Vector xi1 = Vector::Zero(6);
       xi1(i) = 1;
@@ -139,11 +134,11 @@ TEST(TspaceBasis, linear_system) {
   Double_ x3(x3_key);
   Double_ x4(x4_key);
   double tol = 1.0;
-  EqualityConstraints constraints;
-  constraints.emplace_shared<DoubleExpressionEquality>(x1 + x2 + x3, tol);
-  constraints.emplace_shared<DoubleExpressionEquality>(x1 + x2 + 2 * x3 + x4,
-                                                       tol);
-  auto cc = std::make_shared<ConnectedComponent>(constraints);
+  auto constraints = std::make_shared<EqualityConstraints>();
+  constraints->emplace_shared<DoubleExpressionEquality>(x1 + x2 + x3, tol);
+  constraints->emplace_shared<DoubleExpressionEquality>(x1 + x2 + 2 * x3 + x4,
+                                                        tol);
+
   Values values;
   values.insertDouble(x1_key, 0.0);
   values.insertDouble(x2_key, 0.0);
@@ -153,17 +148,12 @@ TEST(TspaceBasis, linear_system) {
   auto basis_params = std::make_shared<TspaceBasisParams>();
   // auto basis_m = std::make_shared<MatrixBasis>(basis_params, cc, values);
   auto basis_e =
-      std::make_shared<EliminationBasis>(basis_params, cc, values, basis_keys);
+      std::make_shared<EliminationBasis>(basis_params, constraints, values, basis_keys);
   
   // Construct new basis by adding addtional constraints
   EqualityConstraints new_constraints;
   new_constraints.emplace_shared<DoubleExpressionEquality>(x2, tol);
-  NonlinearFactorGraph new_graph;
-  for (const auto& constraint: new_constraints) {
-    new_graph.add(constraint->createFactor(1.0));
-  }
-  auto linear_graph = new_graph.linearize(values);
-  auto new_basis_e = basis_e->createWithAdditionalConstraints(*linear_graph);
+  auto new_basis_e = basis_e->createWithAdditionalConstraints(new_constraints, values);
   
   Matrix expected_H_x1 = I_1x1;
   Matrix expected_H_x2 = I_1x1*0;

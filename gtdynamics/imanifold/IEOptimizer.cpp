@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include "utils/DynamicsSymbol.h"
 #include <gtdynamics/imanifold/IEOptimizer.h>
 
 namespace gtsam {
@@ -76,12 +77,12 @@ ComponentInfo IdentifyConnectedComponent(
 }
 
 /* ************************************************************************* */
-std::vector<std::pair<ConnectedComponent::shared_ptr,
+std::vector<std::pair<gtdynamics::EqualityConstraints::shared_ptr,
                       gtdynamics::InequalityConstraints::shared_ptr>>
 IdentifyConnectedComponents(
     const gtdynamics::EqualityConstraints &e_constraints,
     const gtdynamics::InequalityConstraints &i_constraints) {
-  
+
   gtsam::VariableIndex e_var_index = e_constraints.varIndex();
   gtsam::VariableIndex i_var_index = i_constraints.varIndex();
 
@@ -89,20 +90,21 @@ IdentifyConnectedComponents(
   KeySet keys = e_constraints.keys();
   keys.merge(i_constraints.keys());
 
-  std::vector<std::pair<ConnectedComponent::shared_ptr,
+  std::vector<std::pair<gtdynamics::EqualityConstraints::shared_ptr,
                         gtdynamics::InequalityConstraints::shared_ptr>>
       components;
   while (!keys.empty()) {
     auto component_info = IdentifyConnectedComponent(
         e_constraints, i_constraints, e_var_index, i_var_index, *keys.begin());
-    for (const Key& key: component_info.keys) {
+    for (const Key &key : component_info.keys) {
       keys.erase(key);
     }
 
     // e_constraints
-    gtdynamics::EqualityConstraints component_e_constraints;
+    auto component_e_constraints =
+        std::make_shared<gtdynamics::EqualityConstraints>();
     for (const auto &idx : component_info.e_indices) {
-      component_e_constraints.emplace_back(e_constraints.at(idx));
+      component_e_constraints->emplace_back(e_constraints.at(idx));
     }
     // i_constraints
     auto component_i_constraints =
@@ -110,18 +112,8 @@ IdentifyConnectedComponents(
     for (const auto &idx : component_info.i_indices) {
       component_i_constraints->emplace_back(i_constraints.at(idx));
     }
-    // cc
-    KeySet unconstrained_keys;
-    KeySet component_i_keys = component_i_constraints->keys();
-    KeySet component_e_keys = component_e_constraints.keys();
-    std::set_difference(
-        component_i_keys.begin(), component_i_keys.end(),
-        component_e_keys.begin(), component_e_keys.end(),
-        std::inserter(unconstrained_keys, unconstrained_keys.begin()));
-    auto cc = std::make_shared<ConnectedComponent>(component_e_constraints,
-                                                   unconstrained_keys);
 
-    components.emplace_back(cc, component_i_constraints);
+    components.emplace_back(component_e_constraints, component_i_constraints);
   }
   return components;
 }
@@ -136,28 +128,19 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
   auto components = IdentifyConnectedComponents(e_constraints, i_constraints);
 
   IEManifoldValues ie_manifolds;
-  for (const auto &it : components) {
-    const auto& cc = it.first;
-    const auto& component_i_constraints = it.second;
-
-    KeySet keys;
-    std::set_union(cc->keys_.begin(), cc->keys_.end(),
-                   cc->unconstrained_keys_.begin(),
-                   cc->unconstrained_keys_.end(), std::inserter(keys, keys.begin()));
+  for (const auto &[component_e_constraints, component_i_constraints] : components) {
+    KeySet keys = component_e_constraints->keys();
+    keys.merge(component_i_constraints->keys());
     Key component_key = *keys.begin();
     Values component_values;
     for (const Key &key : keys) {
       component_values.insert(key, values.at(key));
     }
     ie_manifolds.emplace(
-        component_key, IEConstraintManifold(iecm_params, cc,
+        component_key, IEConstraintManifold(iecm_params, component_e_constraints,
                                             component_i_constraints,
                                             component_values));
   }
-  // for (const auto& [key, manifold] : ie_manifolds) {
-  //   std::cout << key << "\n";
-  //   manifold.values().print();
-  // }
   return ie_manifolds;
 }
 

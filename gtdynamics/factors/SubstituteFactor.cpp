@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/manifold/SubstituteFactor.h>
+#include <gtdynamics/factors/SubstituteFactor.h>
 
 namespace gtsam {
 

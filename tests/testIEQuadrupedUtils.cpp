@@ -1,7 +1,7 @@
 
 
 #include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/ConnectedComponent.h"
+#include "gtdynamics/manifold/Retractor.h"
 #include "gtdynamics/manifold/TspaceBasis.h"
 #include "gtdynamics/optimizer/EqualityConstraint.h"
 #include "gtdynamics/optimizer/InequalityConstraint.h"
@@ -69,8 +69,8 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.1, 0, 0, 0.2).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.1, 0, 0, 0.1).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints e_constraints = vision60.eConstraints(k);
-InequalityConstraints i_constraints = vision60.iConstraints(k);
+EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_4c_single_step
 
 namespace vision60_back_on_ground_single_step {
@@ -119,8 +119,8 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints e_constraints = vision60.eConstraints(k);
-InequalityConstraints i_constraints = vision60.iConstraints(k);
+EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_back_on_ground_single_step
 
 namespace vision60_in_air_single_step {
@@ -169,8 +169,8 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints e_constraints = vision60.eConstraints(k);
-InequalityConstraints i_constraints = vision60.iConstraints(k);
+EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_in_air_single_step
 
 namespace vision60_ground_air_boundary_step {
@@ -224,8 +224,8 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints e_constraints = vision60.eConstraints(k);
-InequalityConstraints i_constraints = vision60.iConstraints(k);
+EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_ground_air_boundary_step
 
 /// Test that the init values satisfy the equality constraints.
@@ -238,7 +238,7 @@ TEST(IEVision60Robot_4c, constraints_and_values) {
   EXPECT(assert_equal(base_accel, TwistAccel(values, vision60.base_id, k)));
 
   // check all constraints are satisfied
-  EXPECT(assert_equal(e_constraints.evaluateViolationL2Norm(values), 0.0));
+  EXPECT(assert_equal(e_constraints->evaluateViolationL2Norm(values), 0.0));
 
   // check variable size and dimension
   size_t q_vars = 13 + 12;
@@ -261,12 +261,12 @@ TEST(IEVision60Robot_4c, constraints_and_values) {
   size_t v_cons_dim = 12 * 6 + 4 * 3;
   size_t a_cons_dim = 12 * 6 + 4 * 3;
   size_t d_cons_dim = 13 * 6 + 12 * 6 + 12 * 1 + 4 * 3 + 6;
-  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints.size());
+  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints->size());
   EXPECT_LONGS_EQUAL(q_cons_dim + v_cons_dim + a_cons_dim + d_cons_dim,
-                     e_constraints.dim());
+                     e_constraints->dim());
 
-  EXPECT_LONGS_EQUAL(16, i_constraints.size());
-  EXPECT_LONGS_EQUAL(16, i_constraints.dim());
+  EXPECT_LONGS_EQUAL(16, i_constraints->size());
+  EXPECT_LONGS_EQUAL(16, i_constraints->dim());
 }
 
 /// Test that the init values satisfy the equality constraints.
@@ -279,7 +279,7 @@ TEST(IEVision60Robot_back_on_ground, constraints_and_values) {
   EXPECT(assert_equal(base_accel, TwistAccel(values, vision60.base_id, k)));
 
   // check all constraints are satisfied
-  EXPECT(assert_equal(e_constraints.evaluateViolationL2Norm(values), 0.0));
+  EXPECT(assert_equal(e_constraints->evaluateViolationL2Norm(values), 0.0));
 
   // check variable size and dimension
   size_t q_vars = 13 + 12;
@@ -302,12 +302,12 @@ TEST(IEVision60Robot_back_on_ground, constraints_and_values) {
   size_t v_cons_dim = 12 * 6 + 2 * 3;
   size_t a_cons_dim = 12 * 6 + 2 * 3;
   size_t d_cons_dim = 13 * 6 + 12 * 6 + 12 * 1 + 2 * 3;
-  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints.size());
+  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints->size());
   EXPECT_LONGS_EQUAL(q_cons_dim + v_cons_dim + a_cons_dim + d_cons_dim,
-                     e_constraints.dim());
+                     e_constraints->dim());
 
-  EXPECT_LONGS_EQUAL(16, i_constraints.size());
-  EXPECT_LONGS_EQUAL(16, i_constraints.dim());
+  EXPECT_LONGS_EQUAL(16, i_constraints->size());
+  EXPECT_LONGS_EQUAL(16, i_constraints->dim());
 }
 
 /// Test that the init values satisfy the equality constraints.
@@ -320,7 +320,7 @@ TEST(IEVision60Robot_in_air, constraints_and_values) {
   EXPECT(assert_equal(base_accel, TwistAccel(values, vision60.base_id, k)));
 
   // check all constraints are satisfied
-  EXPECT(assert_equal(e_constraints.evaluateViolationL2Norm(values), 0.0));
+  EXPECT(assert_equal(e_constraints->evaluateViolationL2Norm(values), 0.0));
 
   // check variable size and dimension
   size_t q_vars = 13 + 12;
@@ -343,12 +343,12 @@ TEST(IEVision60Robot_in_air, constraints_and_values) {
   size_t v_cons_dim = 12 * 6;
   size_t a_cons_dim = 12 * 6;
   size_t d_cons_dim = 13 * 6 + 12 * 6 + 12 * 1;
-  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints.size());
+  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints->size());
   EXPECT_LONGS_EQUAL(q_cons_dim + v_cons_dim + a_cons_dim + d_cons_dim,
-                     e_constraints.dim());
+                     e_constraints->dim());
 
-  EXPECT_LONGS_EQUAL(16, i_constraints.size());
-  EXPECT_LONGS_EQUAL(16, i_constraints.dim());
+  EXPECT_LONGS_EQUAL(16, i_constraints->size());
+  EXPECT_LONGS_EQUAL(16, i_constraints->dim());
 }
 
 /// Test that the init values satisfy the equality constraints.
@@ -361,7 +361,7 @@ TEST(IEVision60Robot_ground_air_boundary, constraints_and_values) {
   // EXPECT(assert_equal(base_accel, TwistAccel(values, vision60.base_id, k)));
 
   // check all constraints are satisfied
-  EXPECT(assert_equal(e_constraints.evaluateViolationL2Norm(values), 0.0));
+  EXPECT(assert_equal(e_constraints->evaluateViolationL2Norm(values), 0.0));
 
   // check variable size and dimension
   size_t q_vars = 13 + 12;
@@ -384,23 +384,20 @@ TEST(IEVision60Robot_ground_air_boundary, constraints_and_values) {
   size_t v_cons_dim = 12 * 6 + 4 * 3;
   size_t a_cons_dim = 12 * 6 + 4 * 3;
   size_t d_cons_dim = 13 * 6 + 12 * 6 + 12 * 1 + 4 * 6 + 6;
-  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints.size());
+  EXPECT_LONGS_EQUAL(q_cons + v_cons + a_cons + d_cons, e_constraints->size());
   EXPECT_LONGS_EQUAL(q_cons_dim + v_cons_dim + a_cons_dim + d_cons_dim,
-                     e_constraints.dim());
+                     e_constraints->dim());
 
-  EXPECT_LONGS_EQUAL(16, i_constraints.size());
-  EXPECT_LONGS_EQUAL(16, i_constraints.dim());
+  EXPECT_LONGS_EQUAL(16, i_constraints->size());
+  EXPECT_LONGS_EQUAL(16, i_constraints->dim());
 }
 
 // /// Test create ie-manifold from IEVision60Robot
 TEST(IEVision60Robot_4c, manifold) {
   using namespace vision60_4c_single_step;
-  auto i_constraints_ptr = std::make_shared<InequalityConstraints>();
-  i_constraints_ptr->add(i_constraints);
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_params->setFixVars();
-  iecm_params->ecm_params->basis_key_func = vision60.getBasisKeyFunc();
+  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
   vision60_retractor_params.lm_params = LevenbergMarquardtParams();
@@ -412,11 +409,9 @@ TEST(IEVision60Robot_4c, manifold) {
   iecm_params->retractor_creator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, vision60_retractor_params, true);
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
-      iecm_params->ecm_params->basis_params,
-      iecm_params->ecm_params->basis_key_func);
+  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
 
-  IEConstraintManifold manifold(iecm_params, e_cc, i_constraints_ptr, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
   EXPECT_LONGS_EQUAL(24, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();
@@ -452,9 +447,9 @@ TEST(IEVision60Robot_4c, manifold) {
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        e_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        i_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
   }
 
   /// Test retractor in the case of violating torque limits
@@ -488,9 +483,9 @@ TEST(IEVision60Robot_4c, manifold) {
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        e_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        i_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     // for (const auto& joint: vision60.robot.orderedJoints()) {
     //   int j = joint->id();
     //   // double q = JointAngle(new_manifold.values(), j, k);
@@ -503,12 +498,9 @@ TEST(IEVision60Robot_4c, manifold) {
 // /// Test create ie-manifold from IEVision60Robot
 TEST(IEVision60Robot_back_on_ground, manifold) {
   using namespace vision60_back_on_ground_single_step;
-  auto i_constraints_ptr = std::make_shared<InequalityConstraints>();
-  i_constraints_ptr->add(i_constraints);
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_params->setFixVars();
-  iecm_params->ecm_params->basis_key_func = vision60.getBasisKeyFunc();
+  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
   vision60_retractor_params.lm_params = LevenbergMarquardtParams();
@@ -520,14 +512,12 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
   iecm_params->retractor_creator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, vision60_retractor_params, true);
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
-      iecm_params->ecm_params->basis_params,
-      iecm_params->ecm_params->basis_key_func);
+  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
 
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_cc, i_constraints_ptr, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
   EXPECT_LONGS_EQUAL(36, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();
@@ -561,9 +551,9 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        e_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        i_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
   }
 
   /// Test retractor in the case of violating torque limits
@@ -598,9 +588,9 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        e_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        i_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
 
     // for (const auto& joint: vision60.robot.orderedJoints()) {
     //   int j = joint->id();
@@ -614,12 +604,9 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
 // /// Test create ie-manifold from IEVision60Robot
 TEST(IEVision60Robot_in_air, manifold) {
   using namespace vision60_in_air_single_step;
-  auto i_constraints_ptr = std::make_shared<InequalityConstraints>();
-  i_constraints_ptr->add(i_constraints);
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_params->setFixVars();
-  iecm_params->ecm_params->basis_key_func = vision60.getBasisKeyFunc();
+  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
   vision60_retractor_params.lm_params = LevenbergMarquardtParams();
@@ -631,14 +618,12 @@ TEST(IEVision60Robot_in_air, manifold) {
   iecm_params->retractor_creator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, vision60_retractor_params, true);
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
-      iecm_params->ecm_params->basis_params,
-      iecm_params->ecm_params->basis_key_func);
+  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
 
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_cc, i_constraints_ptr, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
   EXPECT_LONGS_EQUAL(48, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();
@@ -674,9 +659,9 @@ TEST(IEVision60Robot_in_air, manifold) {
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        e_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        i_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
   }
 
   /// Test retractor in the case of violating torque limits
@@ -713,9 +698,9 @@ TEST(IEVision60Robot_in_air, manifold) {
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        e_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        i_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
 
     // for (const auto& joint: vision60.robot.orderedJoints()) {
     //   int j = joint->id();
@@ -729,12 +714,9 @@ TEST(IEVision60Robot_in_air, manifold) {
 // /// Test create ie-manifold from IEVision60Robot
 TEST(IEVision60Robot_ground_air_boundary, manifold) {
   using namespace vision60_ground_air_boundary_step;
-  auto i_constraints_ptr = std::make_shared<InequalityConstraints>();
-  i_constraints_ptr->add(i_constraints);
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_params->setFixVars();
-  iecm_params->ecm_params->basis_key_func = vision60.getBasisKeyFunc();
+  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
   vision60_retractor_params.lm_params = LevenbergMarquardtParams();
@@ -746,14 +728,12 @@ TEST(IEVision60Robot_ground_air_boundary, manifold) {
   iecm_params->retractor_creator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, vision60_retractor_params, true);
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
-      iecm_params->ecm_params->basis_params,
-      iecm_params->ecm_params->basis_key_func);
+  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
 
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_cc, i_constraints_ptr, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
   EXPECT_LONGS_EQUAL(12, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();
@@ -789,9 +769,9 @@ TEST(IEVision60Robot_ground_air_boundary, manifold) {
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        e_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints.evaluateViolationL2Norm(new_manifold.values()), 0.0));
+        i_constraints->evaluateViolationL2Norm(new_manifold.values()), 0.0));
   }
 
   // TODO: consider about handling cases that violate i-constriants.

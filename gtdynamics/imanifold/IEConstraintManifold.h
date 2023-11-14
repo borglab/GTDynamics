@@ -15,6 +15,7 @@
 #pragma once
 
 #include "gtdynamics/manifold/TspaceBasis.h"
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/imanifold/TangentCone.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
@@ -36,14 +37,14 @@ public:
     // IERetractType ie_retract_type = IERetractType::Barrier;
     IERetractorCreator::shared_ptr retractor_creator;
     TspaceBasisCreator::shared_ptr e_basis_creator;
-    bool e_basis_with_new_constraints = false;
+    bool e_basis_build_from_scratch = true;
     /** Default constructor. */
     Params() = default;
   };
 
 protected:
   Params::shared_ptr params_;
-  ConnectedComponent::shared_ptr e_cc_;
+  gtdynamics::EqualityConstraints::shared_ptr e_constraints_;
   gtdynamics::InequalityConstraints::shared_ptr i_constraints_;
   gtsam::Values values_;    // values of variables in CCC
   IndexSet active_indices_; // indices of active i_constraints
@@ -57,21 +58,17 @@ protected:
 public:
   IEConstraintManifold(
       const Params::shared_ptr &params,
-      const ConnectedComponent::shared_ptr &e_cc,
+      const gtdynamics::EqualityConstraints::shared_ptr &e_constraints,
       const gtdynamics::InequalityConstraints::shared_ptr &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {})
-      : params_(params), e_cc_(e_cc), i_constraints_(i_constraints),
-        values_(values),
+      : params_(params), e_constraints_(e_constraints),
+        i_constraints_(i_constraints), values_(values),
         active_indices_(
             active_indices ? *active_indices
                            : IdentifyActiveConstraints(*i_constraints, values)),
-        embedding_dim_(values.dim()),
-        e_constraints_dim_(e_cc_->constraints_.dim()),
+        embedding_dim_(values.dim()), e_constraints_dim_(e_constraints_->dim()),
         dim_(embedding_dim_ - e_constraints_dim_),
-        e_basis_(params->e_basis_creator->create(e_cc_, values_)),
-        // e_basis_(ConstraintManifold::constructTspaceBasis(params->ecm_params,
-        //                                                   e_cc, values,
-        //                                                   dim_)),
+        e_basis_(params->e_basis_creator->create(e_constraints_, values_)),
         i_cone_(ConstructTangentCone(*i_constraints, values, active_indices_,
                                      e_basis_)),
         retractor_(params->retractor_creator->create(*this)) {}
@@ -79,14 +76,14 @@ public:
   /** constructor from other manifold but update the values. */
   IEConstraintManifold(const IEConstraintManifold &other, const Values &values,
                        const std::optional<IndexSet> &active_indices = {})
-      : params_(other.params_), e_cc_(other.e_cc_),
+      : params_(other.params_), e_constraints_(other.e_constraints_),
         i_constraints_(other.i_constraints_), values_(values),
         active_indices_(active_indices ? *active_indices
                                        : IdentifyActiveConstraints(
                                              *i_constraints_, values)),
         embedding_dim_(other.embedding_dim_),
         e_constraints_dim_(other.e_constraints_dim_), dim_(other.dim_),
-        e_basis_(other.e_basis_->createWithNewValues(e_cc_, values_)),
+        e_basis_(other.e_basis_->createWithNewValues(values_)),
         i_cone_(ConstructTangentCone(*i_constraints_, values_, active_indices_,
                                      e_basis_)),
         retractor_(other.retractor_) {}
@@ -114,7 +111,9 @@ public:
     return i_constraints_;
   }
 
-  const ConnectedComponent::shared_ptr &eCC() const { return e_cc_; }
+  const EqualityConstraints::shared_ptr &eConstraints() const {
+    return e_constraints_;
+  }
 
   const size_t &dim() const { return dim_; }
 
@@ -153,7 +152,7 @@ public:
   }
 
   double evalEViolation() const {
-    return e_cc_->constraints_.evaluateViolationL2Norm(values_);
+    return e_constraints_->evaluateViolationL2Norm(values_);
   }
 
 protected:

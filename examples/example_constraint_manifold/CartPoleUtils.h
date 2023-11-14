@@ -15,7 +15,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
-#include <gtdynamics/manifold/ManifoldOptimizerType1.h>
+#include <gtdynamics/manifold/NonlinearMOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>

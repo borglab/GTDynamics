@@ -247,9 +247,9 @@ Values IECartPoleWithLimits::getInitValuesInterp(size_t num_steps) const {
 }
 
 BasisKeyFunc IECartPoleWithLimits::getBasisKeyFunc() const {
-  BasisKeyFunc basis_key_func = [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
+  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
     KeyVector basis_keys;
-    size_t k = gtdynamics::DynamicsSymbol(*cc->keys_.begin()).time();
+    size_t k = gtdynamics::DynamicsSymbol(*keys.begin()).time();
     if (k == 0) {
       basis_keys.push_back(gtdynamics::TorqueKey(p_joint_id, k));
       return basis_keys;
@@ -261,7 +261,7 @@ BasisKeyFunc IECartPoleWithLimits::getBasisKeyFunc() const {
     //   }
     //   return basis_keys;
     // }
-    for (const Key &key : cc->keys_) {
+    for (const Key &key : keys) {
       auto symb = gtdynamics::DynamicsSymbol(key);
       if (symb.label() == "q") {
         basis_keys.push_back(key);

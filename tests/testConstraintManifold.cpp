@@ -24,8 +24,6 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include "gtdynamics/manifold/Retractor.h"
-
 using namespace gtsam;
 using namespace gtdynamics;
 
@@ -36,15 +34,14 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  gtdynamics::EqualityConstraints constraints;
+  auto constraints = std::make_shared<EqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
-  auto component = std::make_shared<ConnectedComponent>(constraints);
+  constraints->emplace_shared<FactorZeroErrorConstraint>(factor12);
+  constraints->emplace_shared<FactorZeroErrorConstraint>(factor23);
 
   // Create manifold values for testing.
   Values cm_base_values;
@@ -53,30 +50,24 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 1, 1)));
 
   // Create constraint manifold with various tspacebasis and retractors
-  std::vector<BasisType> basis_types{BasisType::MATRIX,
-                                     BasisType::SPECIFY_VARIABLES,
-                                     BasisType::SPARSE_MATRIX};
-  std::vector<RetractType> retract_types{RetractType::UOPT,
-                                         RetractType::FIX_VARS};
-
-  BasisKeyFunc basis_key_func =
-      [=](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
+  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
     return KeyVector{x3_key};
   };
+  std::vector<TspaceBasisCreator::shared_ptr> basis_creators{
+    std::make_shared<MatrixBasisCreator>(),
+    std::make_shared<EliminationBasisCreator>(basis_key_func)
+  };
+  std::vector<RetractorCreator::shared_ptr> retractor_creators{
+    std::make_shared<UoptRetractorCreator>(),
+    std::make_shared<BasisRetractorCreator>(basis_key_func)
+  };
 
-  for (const auto& basis_type : basis_types) {
-    for (const auto& retract_type : retract_types) {
+  for (const auto& basis_creator : basis_creators) {
+    for (const auto& retractor_creator : retractor_creators) {
       auto params = std::make_shared<ConstraintManifold::Params>();
-      params->basis_key_func = basis_key_func;
-      params->basis_params->basis_type = basis_type;
-      params->retract_params->retract_type = retract_type;
-      if (basis_type == BasisType::SPECIFY_VARIABLES) {
-        params->basis_params->use_basis_keys = true;
-      }
-      if (retract_type == RetractType::FIX_VARS) {
-        params->retract_params->use_basis_keys = true;
-      }
-      ConstraintManifold manifold(component, cm_base_values, params, true);
+      params->basis_creator = basis_creator;
+      params->retractor_creator = retractor_creator;
+      ConstraintManifold manifold(constraints, cm_base_values, params, true);
 
       // Check recover
       Values values;
@@ -147,19 +138,16 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   basis_keys.push_back(JointVelKey(j1_id, 0));
   basis_keys.push_back(JointAccelKey(j0_id, 0));
   basis_keys.push_back(JointAccelKey(j1_id, 0));
-  BasisKeyFunc basis_key_func =
-      [=](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
+  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
     return basis_keys;
   };
 
   // constraint manifold
-  auto constraints = ConstraintsFromGraph(constraints_graph);
+  auto constraints = std::make_shared<EqualityConstraints>(ConstraintsFromGraph(constraints_graph));
   auto cc_params = std::make_shared<ConstraintManifold::Params>();
-  cc_params->retract_params->setFixVars();
-  cc_params->basis_params->setFixVars();
-  cc_params->basis_key_func = basis_key_func;
-  auto cc = std::make_shared<ConnectedComponent>(constraints);
-  auto cm = ConstraintManifold(cc, init_values, cc_params, true);
+  cc_params->retractor_creator = std::make_shared<BasisRetractorCreator>(basis_key_func);
+  cc_params->basis_creator = std::make_shared<EliminationBasisCreator>(basis_key_func);
+  auto cm = ConstraintManifold(constraints, init_values, cc_params, true);
 
   // retract
   Vector xi = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
@@ -173,7 +161,7 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   EXPECT(assert_equal(0., new_cm.recover<double>(JointAccelKey(j1_id, 0))));
 
   // Check that all constraints shall be satisfied after retraction.
-  EXPECT(assert_equal(0., cc->merit_graph_.error(new_cm.values())));
+  EXPECT(assert_equal(0., constraints->meritGraph().error(new_cm.values())));
 }
 
 int main() {

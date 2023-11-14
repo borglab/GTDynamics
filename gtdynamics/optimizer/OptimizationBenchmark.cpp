@@ -11,6 +11,8 @@
  * @author Yetong Zhang
  */
 
+#include "manifold/Retractor.h"
+#include "manifold/TspaceBasis.h"
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 
 #include <iomanip>
@@ -61,15 +63,30 @@ Values OptimizeSoftConstraints(const EqConsOptProblem& problem,
 /* ************************************************************************* */
 gtsam::ManifoldOptimizerParameters DefaultMoptParams() {
   gtsam::ManifoldOptimizerParameters mopt_params;
-  mopt_params.cc_params->basis_params->always_construct_basis = false;
+  auto retractor_params = std::make_shared<gtsam::RetractParams>();
+  mopt_params.cc_params->retractor_creator =
+      std::make_shared<gtsam::UoptRetractorCreator>(retractor_params);
+  auto basis_params = std::make_shared<gtsam::TspaceBasisParams>();
+  basis_params->always_construct_basis = false;
+  mopt_params.cc_params->basis_creator =
+      std::make_shared<gtsam::MatrixBasisCreator>(basis_params);
   return mopt_params;
 }
 
 /* ************************************************************************* */
-gtsam::ManifoldOptimizerParameters DefaultMoptParamsSV() {
-  gtsam::ManifoldOptimizerParameters mopt_params = DefaultMoptParams();
-  mopt_params.cc_params->retract_params->setFixVars();
-  mopt_params.cc_params->basis_params->setFixVars();
+gtsam::ManifoldOptimizerParameters
+DefaultMoptParamsSV(const gtsam::BasisKeyFunc &basis_key_func) {
+  gtsam::ManifoldOptimizerParameters mopt_params;
+  auto retractor_params = std::make_shared<gtsam::RetractParams>();
+  retractor_params->use_basis_keys = true;
+  mopt_params.cc_params->retractor_creator =
+      std::make_shared<gtsam::BasisRetractorCreator>(basis_key_func,
+                                                     retractor_params);
+  auto basis_params = std::make_shared<gtsam::TspaceBasisParams>();
+  basis_params->use_basis_keys = true;
+  basis_params->always_construct_basis = false;
+  mopt_params.cc_params->basis_creator =
+      std::make_shared<gtsam::EliminationBasisCreator>(basis_params);
   return mopt_params;
 }
 
@@ -79,7 +96,7 @@ Values OptimizeConstraintManifold(
     gtsam::ManifoldOptimizerParameters mopt_params,
     LevenbergMarquardtParams lm_params, std::string exp_name,
     double constraint_unit_scale) {
-  gtsam::ManifoldOptimizerType1 optimizer(mopt_params, lm_params);
+  gtsam::NonlinearMOptimizer optimizer(mopt_params, lm_params);
   auto mopt_problem = optimizer.initializeMoptProblem(
       problem.costs(), problem.constraints(), problem.initValues());
   gtdynamics::ConstrainedOptResult intermediate_result;

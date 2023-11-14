@@ -416,9 +416,6 @@ IEVision60Robot::multiPhaseCollocationCostsStep(const size_t k,
   NonlinearFactorGraph graph;
   Key phase_key = PhaseKey(phase_id);
   graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
-  graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
-
-  graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
 
   for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
     if (!params.contact_indices.exists(leg_idx)) {

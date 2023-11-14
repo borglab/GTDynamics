@@ -48,81 +48,81 @@ void RunRetractorBenchMark(
 }
 
 void RetractorBenchMark() {
-  /// Initialize vision60 robot
-  auto vision60_params = GetVision60Params();
-  vision60_params.ad_basis_using_torques = false;
-  auto vision60_multi_phase_a = GetVision60MultiPhase(vision60_params);
-  vision60_params.ad_basis_using_torques = true;
-  auto vision60_multi_phase_T = GetVision60MultiPhase(vision60_params);
+//   /// Initialize vision60 robot
+//   auto vision60_params = GetVision60Params();
+//   vision60_params.ad_basis_using_torques = false;
+//   auto vision60_multi_phase_a = GetVision60MultiPhase(vision60_params);
+//   vision60_params.ad_basis_using_torques = true;
+//   auto vision60_multi_phase_T = GetVision60MultiPhase(vision60_params);
 
-  /// Create problem
-  auto problem =
-      CreateProblem(vision60_multi_phase_a, include_inequality, true);
+//   /// Create problem
+//   auto problem =
+//       CreateProblem(vision60_multi_phase_a, include_inequality, true);
 
-  LevenbergMarquardtParams lm_params;
-  BarrierRetractor::Params retractor_params(lm_params, 0.1);
+//   LevenbergMarquardtParams lm_params;
+//   BarrierRetractor::Params retractor_params(lm_params, 0.1);
 
-  auto metric_sigmas = std::make_shared<VectorValues>();
-  BarrierRetractor::Params metric_retractor_params(lm_params, metric_sigmas);
+//   auto metric_sigmas = std::make_shared<VectorValues>();
+//   BarrierRetractor::Params metric_retractor_params(lm_params, metric_sigmas);
 
-  auto barrier_retractor_creator_no_basis_keys =
-      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-          vision60_multi_phase_a, retractor_params, false);
+//   auto barrier_retractor_creator_no_basis_keys =
+//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+//           vision60_multi_phase_a, retractor_params, false);
 
-  auto barrier_retractor_creator_a_basis_keys =
-      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-          vision60_multi_phase_a, retractor_params, true);
+//   auto barrier_retractor_creator_a_basis_keys =
+//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+//           vision60_multi_phase_a, retractor_params, true);
 
-  auto barrier_retractor_creator_T_basis_keys =
-      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-          vision60_multi_phase_T, retractor_params, true);
+//   auto barrier_retractor_creator_T_basis_keys =
+//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+//           vision60_multi_phase_T, retractor_params, true);
 
-  auto barrier_retractor_creator_diagonal_metric =
-      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-          vision60_multi_phase_T, metric_retractor_params, false);
+//   auto barrier_retractor_creator_diagonal_metric =
+//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+//           vision60_multi_phase_T, metric_retractor_params, false);
 
-  auto hierarchical_retractor_creator_no_basis_keys =
-      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
-          vision60_multi_phase_a, retractor_params, false);
+//   auto hierarchical_retractor_creator_no_basis_keys =
+//       std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+//           vision60_multi_phase_a, retractor_params, false);
 
-  auto hierarchical_retractor_creator_a_basis_keys =
-      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
-          vision60_multi_phase_a, retractor_params, true);
+//   auto hierarchical_retractor_creator_a_basis_keys =
+//       std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+//           vision60_multi_phase_a, retractor_params, true);
 
-  auto hierarchical_retractor_creator_T_basis_keys =
-      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
-          vision60_multi_phase_T, retractor_params, true);
+//   auto hierarchical_retractor_creator_T_basis_keys =
+//       std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+//           vision60_multi_phase_T, retractor_params, true);
 
-  auto hierarchical_retractor_creator_diagonal_metric =
-      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-          vision60_multi_phase_T, metric_retractor_params, false);
+//   auto hierarchical_retractor_creator_diagonal_metric =
+//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+//           vision60_multi_phase_T, metric_retractor_params, false);
 
-  std::vector<std::pair<std::string, IERetractorCreator::shared_ptr>>
-      retractor_creators{
-          {"barrier_none", barrier_retractor_creator_no_basis_keys},
-          {"barrier_a", barrier_retractor_creator_a_basis_keys},
-          {"barrier_T", barrier_retractor_creator_T_basis_keys},
-          {"barrier_metric", barrier_retractor_creator_diagonal_metric},
-          {"hierarchical_none", hierarchical_retractor_creator_no_basis_keys},
-          {"hierarchical_a", hierarchical_retractor_creator_a_basis_keys},
-          {"hierarchical_T", hierarchical_retractor_creator_T_basis_keys},
-          {"hierarchical_metric",
-           hierarchical_retractor_creator_diagonal_metric}};
+//   std::vector<std::pair<std::string, IERetractorCreator::shared_ptr>>
+//       retractor_creators{
+//           {"barrier_none", barrier_retractor_creator_no_basis_keys},
+//           {"barrier_a", barrier_retractor_creator_a_basis_keys},
+//           {"barrier_T", barrier_retractor_creator_T_basis_keys},
+//           {"barrier_metric", barrier_retractor_creator_diagonal_metric},
+//           {"hierarchical_none", hierarchical_retractor_creator_no_basis_keys},
+//           {"hierarchical_a", hierarchical_retractor_creator_a_basis_keys},
+//           {"hierarchical_T", hierarchical_retractor_creator_T_basis_keys},
+//           {"hierarchical_metric",
+//            hierarchical_retractor_creator_diagonal_metric}};
 
-  IELMParams ie_params;
-  ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-  ie_params.lm_params.setVerbosityLM("SUMMARY");
-  ie_params.lm_params.setMaxIterations(30);
-  ie_params.lm_params.setlambdaInitial(1e-2);
+//   IELMParams ie_params;
+//   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
+//   ie_params.lm_params.setVerbosityLM("SUMMARY");
+//   ie_params.lm_params.setMaxIterations(30);
+//   ie_params.lm_params.setlambdaInitial(1e-2);
 
-  auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_with_new_constraints = true;
-  iecm_params->ecm_params->basis_params->setFixVars();
-  iecm_params->e_basis_creator =
-      std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
-          vision60_multi_phase_T, iecm_params->ecm_params->basis_params);
+//   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
+//   iecm_params->e_basis_build_from_scratch = true;
+//   iecm_params->ecm_params->basis_params->setFixVars();
+//   iecm_params->e_basis_creator =
+//       std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
+//           vision60_multi_phase_T, iecm_params->ecm_params->basis_params);
 
-  RunRetractorBenchMark(problem, retractor_creators, ie_params, iecm_params);
+//   RunRetractorBenchMark(problem, retractor_creators, ie_params, iecm_params);
 }
 
 int main(int argc, char **argv) {

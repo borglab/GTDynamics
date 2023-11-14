@@ -43,8 +43,7 @@ int main(int argc, char **argv) {
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
           make_shared<HalfSphereRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
-      iecm_params->ecm_params->basis_params);
+  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
 
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 

@@ -16,8 +16,6 @@
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/geometry/Point3.h>
-#include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -95,5 +93,19 @@ struct LMCachedModel {
   Vector b;
   SharedDiagonal model;
 };
+
+
+// GTSAM_VALUE_EXPORT(gtsam::Point2)
+// GTSAM_VALUE_EXPORT(gtsam::Point3)
+// GTSAM_VALUE_EXPORT(gtsam::Rot2)
+// GTSAM_VALUE_EXPORT(gtsam::Rot3)
+// GTSAM_VALUE_EXPORT(gtsam::Pose2)
+// GTSAM_VALUE_EXPORT(gtsam::Pose3)
+// GTSAM_VALUE_EXPORT(gtsam::Vector6)
+
+
+void ExportValuesToFile(const Values& values, const std::string& file_path);
+
+Values LoadValuesFromFile(const std::string& file_path);
 
 } // namespace gtsam

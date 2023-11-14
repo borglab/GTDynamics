@@ -32,24 +32,22 @@ TEST(IEConstraintManifold, HalfSphere) {
   gtsam::Expression<double> sphere_expr(&norm3, point_expr);
   gtsam::Expression<double> z_expr(&point3_z, point_expr);
 
-  EqualityConstraints e_constraints;
+  auto e_constraints = std::make_shared<EqualityConstraints>();
   auto i_constraints = std::make_shared<InequalityConstraints>();
-  e_constraints.emplace_shared<DoubleExpressionEquality>(sphere_expr, 1.0);
+  e_constraints->emplace_shared<DoubleExpressionEquality>(sphere_expr, 1.0);
   i_constraints->emplace_shared<DoubleExpressionInequality>(z_expr, 1.0);
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
   params->retractor_creator = std::make_shared<BarrierRetractorCreator>();
-  params->e_basis_creator =
-      std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
+  params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
 
   {
     Values values;
     values.insert(point_key, Point3(0.6, 0.8, 0));
 
     // Test constructor.
-    IEConstraintManifold manifold(params, e_cc, i_constraints, values);
+    IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
 
     // Test active constraints.
     auto active_indices = manifold.activeIndices();

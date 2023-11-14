@@ -16,7 +16,6 @@
 #include "gtdynamics/dynamics/DynamicsGraph.h"
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Link.h"
-#include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
@@ -63,10 +62,10 @@ contact_q_factors(const int k, const gtdynamics::PointOnLinks &contact_points,
                   const noiseModel::Base::shared_ptr &cost_model);
 
 /** Function to manually define the basis keys for each constraint manifold. */
-KeyVector FindBasisKeys4C(const ConnectedComponent::shared_ptr &cc);
+KeyVector FindBasisKeys4C(const KeyVector &keys);
 
 /** Function to manually define the basis keys for each constraint manifold. */
-KeyVector FindBasisKeysReduancy(const ConnectedComponent::shared_ptr &cc);
+KeyVector FindBasisKeysReduancy(const KeyVector &keys);
 
 /// Class of utilitis for Vision60 robot.
 class Vision60Robot {

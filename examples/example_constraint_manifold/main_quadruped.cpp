@@ -38,7 +38,6 @@
 #include <gtdynamics/factors/TorqueFactor.h>
 
 #include "gtdynamics/factors/ContactPointFactor.h"
-#include "gtdynamics/manifold/ConnectedComponent.h"
 #include "gtdynamics/optimizer/ConstrainedOptimizer.h"
 #include "gtdynamics/manifold/ConstraintManifold.h"
 #include "gtdynamics/manifold/TspaceBasis.h"
@@ -135,20 +134,22 @@ void TrajectoryOptimization() {
 
   // std::cout << "constraint manifold basis variables feasible:\n";
   lm_params.setlambdaInitial(1e1);
-  auto mopt_params = DefaultMoptParamsSV();
+  auto mopt_params = DefaultMoptParamsSV(vision60.getBasisKeyFunc());
   // mopt_params.cc_params->retract_params->setDynamics(true);
-  mopt_params.cc_params->retract_params->setProjection(true, 1.0, true);
-  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+  mopt_params.cc_params->retractor_creator->params()->use_basis_keys=true;
+  mopt_params.cc_params->retractor_creator->params()->sigma=1.0;
+  mopt_params.cc_params->retractor_creator->params()->apply_base_retraction = true;
+
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   // mopt_params.cc_params->retract_params->setUopt();
-  mopt_params.cc_params->basis_key_func = vision60.getBasisKeyFunc();
-  mopt_params.cc_params->retract_params->check_feasible = true;
+  mopt_params.cc_params->retractor_creator->params()->check_feasible = true;
   auto cm_result =
         OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
   EvaluateCosts(cm_result);
   vision60.exportTrajectory(cm_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv");
 
   std::cout << "constraint manifold basis variables infeasible:\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(10);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(10);
   mopt_params.retract_final = true;
   auto cm_infeas_result =
         OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);

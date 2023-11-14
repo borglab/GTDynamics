@@ -38,7 +38,7 @@ IEConstraintManifold BarrierRetractor::retract(
   const gtdynamics::InequalityConstraints &i_constraints =
       *manifold->iConstraints();
   const gtdynamics::EqualityConstraints &e_constraints =
-      manifold->eCC()->constraints_;
+      *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
 
@@ -97,7 +97,7 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
     : IERetractor(), params_(params), graph_q_(), graph_v_(), graph_ad_() {
 
   /// Create merit graph for e-constriants and i-constraints
-  merit_graph_ = manifold.eCC()->merit_graph_;
+  merit_graph_ = manifold.eConstraints()->meritGraph();
   const auto &i_constraints = *manifold.iConstraints();
   for (const auto &i_constraint : i_constraints) {
     merit_graph_.add(i_constraint->createBarrierFactor(1.0));
@@ -243,7 +243,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   Values new_results_ad = optimizer_np_ad.optimize();
   known_values.insert(new_results_ad);
   if (params_.check_feasible) {
-    CheckFeasible(graph_np_ad, results_ad, "ad-level",
+    CheckFeasible(graph_np_ad, new_results_ad, "ad-level",
                   params_.feasible_threshold);
   }
 

@@ -199,6 +199,8 @@ class FactorZeroErrorConstraint : public EqualityConstraint {
 
 /// Container of EqualityConstraint.
 class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
+ public:
+    using shared_ptr = std::shared_ptr<EqualityConstraints>;
  private:
   using Base = std::vector<EqualityConstraint::shared_ptr>;
 
@@ -228,6 +230,8 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
   /// Return keys involved in constraints.
   gtsam::KeySet keys() const;
 
+  gtsam::KeyVector keyVector() const;
+
   /// Evaluate the constraint violation (as L2 norm).
   double evaluateViolationL2Norm(const gtsam::Values &values) const;
 
@@ -241,5 +245,9 @@ EqualityConstraints ConstraintsFromGraph(
     const gtsam::NonlinearFactorGraph& graph);
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+typedef std::function<KeyVector(const KeyVector &keys)> BasisKeyFunc;
+}
 
 #include <gtdynamics/optimizer/EqualityConstraint-inl.h>

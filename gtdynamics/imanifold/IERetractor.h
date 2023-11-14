@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gtdynamics/factors/ConstVarFactor.h>
-#include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/geometry/Point3.h>

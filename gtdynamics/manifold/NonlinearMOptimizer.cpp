@@ -6,23 +6,20 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ManifoldOptimizerType1.cpp
+ * @file  NonlinearMOptimizer.cpp
  * @brief Manifold optimizer implementations.
  * @author: Yetong Zhang
  */
 
 #include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/manifold/ManifoldOptimizerType1.h>
-#include <gtdynamics/manifold/SubstituteFactor.h>
+#include <gtdynamics/manifold/NonlinearMOptimizer.h>
+#include <gtdynamics/factors/SubstituteFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-
-#include "manifold/Retractor.h"
-#include "manifold/TspaceBasis.h"
 
 namespace gtsam {
 
 /* ************************************************************************* */
-Values ManifoldOptimizerType1::optimize(
+Values NonlinearMOptimizer::optimize(
     const NonlinearFactorGraph& costs,
     const gtdynamics::EqualityConstraints& constraints,
     const Values& init_values,
@@ -32,7 +29,7 @@ Values ManifoldOptimizerType1::optimize(
 }
 
 /* ************************************************************************* */
-Values ManifoldOptimizerType1::optimize(
+Values NonlinearMOptimizer::optimize(
     const ManifoldOptProblem& mopt_problem,
     gtdynamics::ConstrainedOptResult* intermediate_result) const {
   auto nonlinear_optimizer = constructNonlinearOptimizer(mopt_problem);
@@ -48,7 +45,7 @@ Values ManifoldOptimizerType1::optimize(
 
 /* ************************************************************************* */
 std::shared_ptr<NonlinearOptimizer>
-ManifoldOptimizerType1::constructNonlinearOptimizer(
+NonlinearMOptimizer::constructNonlinearOptimizer(
     const ManifoldOptProblem& mopt_problem) const {
   if (std::holds_alternative<GaussNewtonParams>(nopt_params_)) {
     return std::make_shared<GaussNewtonOptimizer>(

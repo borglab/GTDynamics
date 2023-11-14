@@ -167,9 +167,9 @@ IEVision60Robot::getOptSetting(const Params &params) {
       gtsam::noiseModel::Isotropic::Sigma(1, params.sigma_v_col);
   opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.pose_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, params.sigma_q_col);
+      gtsam::noiseModel::Isotropic::Sigma(6, params.sigma_pose_col);
   opt.twist_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, params.sigma_v_col);
+      gtsam::noiseModel::Isotropic::Sigma(6, params.sigma_twist_col);
   return opt;
 }
 
@@ -225,10 +225,11 @@ IEVision60Robot::basisKeys(const size_t k,
 
 /* ************************************************************************* */
 BasisKeyFunc IEVision60Robot::getBasisKeyFunc() const {
-  BasisKeyFunc basis_key_func =
-      [=](const ConnectedComponent::shared_ptr &cc) -> KeyVector {
-    KeyVector basis_keys;
-    size_t k = gtdynamics::DynamicsSymbol(*cc->keys_.begin()).time();
+  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
+    if (keys.size() == 1) {
+      return keys;
+    }
+    size_t k = gtdynamics::DynamicsSymbol(*keys.begin()).time();
     return basisKeys(k, true);
   };
   return basis_key_func;

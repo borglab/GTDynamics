@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
-#include <gtdynamics/manifold/ManifoldOptimizerType1.h>
+#include <gtdynamics/manifold/NonlinearMOptimizer.h>
 #include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
 #include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
 #include <gtsam/base/timing.h>
@@ -42,7 +42,8 @@ gtsam::ManifoldOptimizerParameters DefaultMoptParams();
 
 /// Default parameters for manifold optimization, with basis constructed by
 /// specifying variables.
-gtsam::ManifoldOptimizerParameters DefaultMoptParamsSV();
+gtsam::ManifoldOptimizerParameters
+DefaultMoptParamsSV(const gtsam::BasisKeyFunc &basis_key_func);
 
 /** Run optimization using constraint manifold. */
 Values OptimizeConstraintManifold(

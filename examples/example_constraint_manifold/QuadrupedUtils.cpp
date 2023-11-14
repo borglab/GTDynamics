@@ -169,9 +169,9 @@ NonlinearFactorGraph Vision60Robot::DynamicsFactors(
 }
 
 /* ************************************************************************* */
-KeyVector FindBasisKeys4C(const ConnectedComponent::shared_ptr &cc) {
+KeyVector FindBasisKeys4C(const KeyVector &keys) {
   KeyVector basis_keys;
-  for (const Key &key : cc->keys_) {
+  for (const Key &key : keys) {
     auto symb = gtdynamics::DynamicsSymbol(key);
     if (symb.label() == "p" && symb.linkIdx() == 0) {
       basis_keys.push_back(key);
@@ -185,9 +185,9 @@ KeyVector FindBasisKeys4C(const ConnectedComponent::shared_ptr &cc) {
 }
 
 /* ************************************************************************* */
-KeyVector FindBasisKeysReduancy(const ConnectedComponent::shared_ptr &cc) {
+KeyVector FindBasisKeysReduancy(const KeyVector &keys) {
   KeyVector basis_keys;
-  for (const Key &key : cc->keys_) {
+  for (const Key &key : keys) {
     auto symb = gtdynamics::DynamicsSymbol(key);
     if (symb.label() == "p" && symb.linkIdx() == 0) {
       basis_keys.push_back(key);

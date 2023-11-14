@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include "optimizer/InequalityConstraint.h"
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -58,6 +59,22 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::collocationCosts() const {
     start_k = end_k;
   }
   return graph;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::phaseMinDurationConstraints(
+    const std::vector<double> &phases_min_dt) const {
+  InequalityConstraints constraints;
+  for (size_t phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
+    Key phase_key = PhaseKey(phase_idx);
+    double phase_min_dt = phases_min_dt.at(phase_idx);
+    Double_ phase_expr(phase_key);
+    Double_ phase_min_expr = phase_expr - Double_(phase_min_dt);
+    constraints.emplace_shared<DoubleExpressionInequality>(
+        phase_min_expr, phase_robots_.at(0).params.tol_phase_dt);
+  }
+  return constraints;
 }
 
 } // namespace gtsam

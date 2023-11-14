@@ -139,8 +139,7 @@ void OptimizeSO2() {
   ielm_params.lm_params.setVerbosityLM("SUMMARY");
   // ielm_params.lm_params.setMaxIterations(1);
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisCreator>(
-      iecm_params->ecm_params->basis_params);
+  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
   LevenbergMarquardtParams lm_params;
   // lm_params.setVerbosityLM("SUMMARY");
   lm_params.minModelFidelity = 0.5;

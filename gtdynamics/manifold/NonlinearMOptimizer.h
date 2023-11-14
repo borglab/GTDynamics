@@ -6,9 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ManifoldOptimizerType1.h
- * @brief Manifold optimizer that use a constraint manifold to represent each
- * constraint-connected-component.
+ * @file  NonlinearMOptimizer.h
+ * @brief Manifold optimizer that internally calls nonlinear optimizer.
  * @author: Yetong Zhang
  */
 
@@ -29,9 +28,9 @@ namespace gtsam {
 
 /** Manifold Optimizer that replace each constraint-connected component with a
  * constraint manifold variable */
-class ManifoldOptimizerType1 : public ManifoldOptimizer {
+class NonlinearMOptimizer : public ManifoldOptimizer {
  public:
-  using shared_ptr = std::shared_ptr<const ManifoldOptimizerType1>;
+  using shared_ptr = std::shared_ptr<const NonlinearMOptimizer>;
   typedef std::variant<GaussNewtonParams, LevenbergMarquardtParams,
                        DoglegParams>
       NonlinearOptParamsVariant;
@@ -41,13 +40,13 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
 
  public:
   /// Construct from parameters.
-  ManifoldOptimizerType1(const ManifoldOptimizerParameters& mopt_params,
+  NonlinearMOptimizer(const ManifoldOptimizerParameters& mopt_params,
                          const NonlinearOptParamsVariant& nopt_params,
                          std::optional<BasisKeyFunc> basis_key_func = {})
       : ManifoldOptimizer(mopt_params), nopt_params_(nopt_params) {}
 
   /// Virtual destructor.
-  virtual ~ManifoldOptimizerType1() {}
+  virtual ~NonlinearMOptimizer() {}
 
   /** Run manifold optimization by substituting the constrained variables with
    * the constraint manifold variables. */

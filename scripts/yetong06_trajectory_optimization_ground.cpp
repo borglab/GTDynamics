@@ -43,7 +43,6 @@
 
 #include "gtdynamics/factors/ContactPointFactor.h"
 #include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/ConnectedComponent.h"
 #include "gtdynamics/manifold/ConstraintManifold.h"
 #include "gtdynamics/manifold/TspaceBasis.h"
 #include "gtdynamics/optimizer/ConstrainedOptimizer.h"
@@ -51,6 +50,7 @@
 #include "gtdynamics/optimizer/InequalityConstraint.h"
 #include "gtdynamics/optimizer/OptimizationBenchmark.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/GraphUtils.h"
 #include "gtdynamics/utils/values.h"
 
 #include <fstream>
@@ -138,8 +138,7 @@ void TrajectoryOptimization() {
 
   // Parameters
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_params->setFixVars();
-  iecm_params->ecm_params->basis_key_func = vision60.getBasisKeyFunc();
+  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
 
   KinodynamicHierarchicalRetractor::Params vision60_retractor_params;
   vision60_retractor_params.lm_params = LevenbergMarquardtParams();
@@ -151,8 +150,8 @@ void TrajectoryOptimization() {
   iecm_params->retractor_creator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, vision60_retractor_params, true);
-  iecm_params->e_basis_creator = std::make_shared<TspaceBasisKeysCreator>(
-      iecm_params->ecm_params->basis_params, vision60.getBasisKeyFunc());
+  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
+  iecm_params->e_basis_build_from_scratch = false;
   
   IELMParams ie_params;
   ie_params.lm_params.setMaxIterations(10);

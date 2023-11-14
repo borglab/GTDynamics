@@ -13,11 +13,13 @@
 
 #pragma once
 
-#include <gtdynamics/manifold/ConnectedComponent.h>
+#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/manifold/Retractor.h>
 #include <gtdynamics/manifold/TspaceBasis.h>
 
 #include <cstddef>
+
+using gtdynamics::EqualityConstraints;
 
 namespace gtsam {
 
@@ -29,21 +31,18 @@ class ConstraintManifold {
   /** Parameters for constraint manifold. */
   struct Params {
     using shared_ptr = std::shared_ptr<Params>;
-
-    // Member variables.
-    RetractParams::shared_ptr retract_params =
-        std::make_shared<RetractParams>();
-    TspaceBasisParams::shared_ptr basis_params =
-        std::make_shared<TspaceBasisParams>();
-    BasisKeyFunc basis_key_func = NULL;
+    TspaceBasisCreator::shared_ptr basis_creator;
+    RetractorCreator::shared_ptr retractor_creator;
 
     /** Default constructor. */
-    Params() = default;
+    Params()
+        : basis_creator(std::make_shared<MatrixBasisCreator>()),
+          retractor_creator(std::make_shared<UoptRetractorCreator>()) {}
   };
 
  protected:
   Params::shared_ptr params_;
-  ConnectedComponent::shared_ptr cc_;
+  gtdynamics::EqualityConstraints::shared_ptr constraints_;
   Retractor::shared_ptr retractor_;  // retraction operation
   gtsam::Values values_;             // values of variables in CCC
   size_t embedding_dim_;             // dimension of embedding space
@@ -63,30 +62,30 @@ class ConstraintManifold {
    * @param retract_init  whether to perform retract in initialization
    */
   ConstraintManifold(
-      const ConnectedComponent::shared_ptr &cc, const gtsam::Values &values,
+      const EqualityConstraints::shared_ptr constraints, const gtsam::Values &values,
       const Params::shared_ptr &params = std::make_shared<Params>(),
       bool retract_init = true,
       std::optional<TspaceBasis::shared_ptr> basis = {})
       : params_(params),
-        cc_(cc),
-        retractor_(constructRetractor(params, cc)),
-        values_(constructValues(cc, values, retractor_, retract_init)),
+        constraints_(constraints),
+        retractor_(params->retractor_creator->create(constraints_)),
+        values_(constructValues(values, retractor_, retract_init)),
         embedding_dim_(values_.dim()),
-        constraint_dim_(cc->constraints_.dim()),
+        constraint_dim_(constraints_->dim()),
         dim_(embedding_dim_ > constraint_dim_ ? embedding_dim_ - constraint_dim_
                                               : 0),
-        basis_(basis ? *basis : constructTspaceBasis(params, cc, values_, dim_)) {}
+        basis_(basis ? *basis : params->basis_creator->create(constraints_, values_)) {}
 
   /** constructor from other manifold but update the values. */
   ConstraintManifold(const ConstraintManifold &other, const Values &values)
       : params_(other.params_),
-        cc_(other.cc_),
+        constraints_(other.constraints_),
         retractor_(other.retractor_),
         values_(values),
         embedding_dim_(other.embedding_dim_),
         constraint_dim_(other.constraint_dim_),
         dim_(other.dim_),
-        basis_(other.basis_->createWithNewValues(cc_, values_)) {}
+        basis_(other.basis_->createWithNewValues(values_)) {}
 
   /** Construct new ConstraintManifold with new values. Note: this function
    * indirectly calls retractConstraints. */
@@ -141,7 +140,7 @@ class ConstraintManifold {
   /** Initialize the values_ of variables in CCC and compute dimension of the
    * constraint manifold and compute the dimension of the constraint manifold.
    */
-  static Values constructValues(const ConnectedComponent::shared_ptr cc,
+  static Values constructValues(
                                 const gtsam::Values &values,
                                 const Retractor::shared_ptr &retractor,
                                 bool retract_init);
@@ -149,21 +148,9 @@ class ConstraintManifold {
   /// Make sure the tangent space basis is constructed.
   void makeSureBasisConstructed() const {
     if (!basis_->isConstructed()) {
-      basis_->construct(cc_, values_);
+      basis_->construct(values_);
     }
   }
-
-  /// Construct the retractor used to perform retraction.
-  static Retractor::shared_ptr constructRetractor(
-      const Params::shared_ptr &params,
-      const ConnectedComponent::shared_ptr &cc);
-
-public:
-  /// Construct the basis for tangent space.
-  static TspaceBasis::shared_ptr constructTspaceBasis(
-      const Params::shared_ptr &params,
-      const ConnectedComponent::shared_ptr &cc, const Values &values,
-      size_t manifold_dim);
 };
 
 // Specialize ConstraintManifold traits to use a Retract/Local

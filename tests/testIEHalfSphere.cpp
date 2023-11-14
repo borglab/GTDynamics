@@ -1,7 +1,7 @@
 
 
 #include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/ConnectedComponent.h"
+#include "gtdynamics/manifold/TspaceBasis.h"
 #include "gtdynamics/optimizer/EqualityConstraint.h"
 #include "gtdynamics/optimizer/InequalityConstraint.h"
 #include <CppUnitLite/TestHarness.h>
@@ -49,18 +49,17 @@ TEST(HalfSphereRetractor, retract) {
   auto retractor = std::make_shared<HalfSphereRetractor>(half_sphere);
 
   // Create manifold.
-  auto e_constraints = half_sphere.eConstraints(0);
+  auto e_constraints =
+      std::make_shared<EqualityConstraints>(half_sphere.eConstraints(0));
   auto i_constraints =
       std::make_shared<InequalityConstraints>(half_sphere.iConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  params->e_basis_creator =
-      std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
+  params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
   Values values1;
   values1.insert(PointKey(0), Point3(3, 0, 0));
-  IEConstraintManifold manifold1(params, e_cc, i_constraints, values1);
+  IEConstraintManifold manifold1(params, e_constraints, i_constraints, values1);
 
   // retract
   VectorValues delta1;
@@ -87,18 +86,15 @@ TEST(HalfSphere, Dome) {
   Values values;
   values.insert(point_key, Point3(1, 0, 0));
 
-  EqualityConstraints e_constraints;
+  auto e_constraints = std::make_shared<EqualityConstraints>();
   auto i_constraints =
       std::make_shared<InequalityConstraints>(half_sphere.iDomeConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  params->e_basis_creator =
-      std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
-  auto e_cc = std::make_shared<ConnectedComponent>(e_constraints,
-                                                   i_constraints->keys());
+  params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
 
-  IEConstraintManifold manifold(params, e_cc, i_constraints, values);
+  IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
 
   {
     VectorValues delta;
