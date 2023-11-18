@@ -238,14 +238,17 @@ void IELMTrial::PrintTitle() {
 
 /* ************************************************************************* */
 void IELMTrial::print(const IELMState &state) const {
-  cout << setw(10) << state.iterations << " " << setw(12) << setprecision(4)
-       << nonlinear_update.new_error << " " << setw(12) << setprecision(4)
-       << nonlinear_update.cost_change << " " << setw(10) << setprecision(4)
-       << linear_update.cost_change << " " << setw(10) << setprecision(2)
-       << linear_update.lambda << " " << setw(10)
-       << (linear_update.solve_successful ? "T   " : "F   ") << " " << setw(10)
-       << setprecision(2) << trial_time << setw(10) << setprecision(4)
-       << linear_update.delta.norm() << endl;
+  cout << setw(10) << state.iterations << " ";
+  cout << setw(12) << setprecision(4) << nonlinear_update.new_error << " "
+       << setw(12) << setprecision(4) << nonlinear_update.cost_change << " "
+       << setw(10) << setprecision(4) << linear_update.cost_change << " "
+       << setw(10) << setprecision(2) << linear_update.lambda << " ";
+  cout << setw(10) << (linear_update.solve_successful ? "T   " : "F   ") << " "
+       << setw(10) << setprecision(2) << trial_time << " ";
+  cout << setw(10) << setprecision(4) << linear_update.delta.norm() << " ";
+  cout << setw(10) << setprecision(4) << linear_update.tangent_vector.norm() << " ";
+  cout << setw(10) << setprecision(4) << linear_update.tangent_vector.norm() / linear_update.delta.norm() << " ";
+  cout << endl;
 }
 
 /* ************************************************************************* */

@@ -14,14 +14,15 @@
 
 #pragma once
 
+#include <Eigen/Sparse>
+#include <SuiteSparseQR.hpp>
+#include <cholmod.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/VectorValues.h>
-
-#include <Eigen/Sparse>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <memory>
 #include <stdexcept>
@@ -99,6 +100,8 @@ public:
 
   virtual void
   print(const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) = 0;
+
+  virtual std::vector<VectorValues> basisVectors() const;
 };
 
 class EmptyBasis : public TspaceBasis {
@@ -249,95 +252,100 @@ protected:
   Matrix computeConstraintJacobian(const Values &values) const;
 };
 
-// /** Tangent space basis implmented using a matrix, e.g., the kernel of Dh(X),
-//  * where h(X)=0 represents all the constraints. */
-// class SparseMatrixBasis : public TspaceBasis {
-//  public:
-//   typedef Eigen::SparseMatrix<double> SpMatrix;
-//   typedef Eigen::Triplet<double> Triplet;
+/** Tangent space basis implmented using a sparse matrix, e.g., the kernel of
+ * Dh(X), where h(X)=0 represents all the constraints. */
+class SparseMatrixBasis : public TspaceBasis {
+public:
+  typedef Eigen::SparseMatrix<double> SpMatrix;
 
-//  protected:
-//   std::map<Key, size_t> var_location_;  // location of variables in Jacobian
-//   std::map<Key, size_t> var_dim_;       // dimension of variables
-//   size_t total_variable_dim_;
-//   size_t total_constraint_dim_;
-//   size_t total_basis_dim_;
-//   SpMatrix basis_;  // basis for the tangent space
+protected:
+  struct Attributes {
+    NonlinearFactorGraph merit_graph;
+    std::map<Key, size_t> var_location; // location of variables in Jacobian
+    std::map<Key, size_t> var_dim;      // dimension of variables
+    size_t total_var_dim;
+    size_t total_constraint_dim;
+    size_t total_basis_dim;
+    using shared_ptr = std::shared_ptr<Attributes>;
+  };
+  bool use_suitespare_ = true;
+  cholmod_common *cc_;
+  Attributes::shared_ptr attributes_;
+  SpMatrix basis_;
 
-//  public:
-//   /** Constructor
-//    * @param cc constraint-connected component for the constraint manifold
-//    * @param values values of the variables in the connected component
-//    */
+public:
+  /** Constructor
+   * @param cc constraint-connected component for the constraint manifold
+   * @param values values of the variables in the connected component
+   */
 
-//   SparseMatrixBasis(const TspaceBasisParams::shared_ptr &params,
-//                     const ConnectedComponent::shared_ptr &cc,
-//                     const Values &values);
+  SparseMatrixBasis(const TspaceBasisParams::shared_ptr &params,
+                    const EqualityConstraints::shared_ptr &constraints,
+                    const Values &values, cholmod_common *cc);
 
-//   /// Constructor from other, avoids recomputation.
-//   SparseMatrixBasis(const ConnectedComponent::shared_ptr &cc,
-//                     const Values &values, const SparseMatrixBasis &other)
-//       : TspaceBasis(other.params_),
-//         var_location_(other.var_location_),
-//         var_dim_(other.var_dim_),
-//         total_variable_dim_(other.total_variable_dim_),
-//         total_constraint_dim_(other.total_constraint_dim_),
-//         total_basis_dim_(other.total_basis_dim_) {
-//     if (params_->always_construct_basis) {
-//       construct(cc, values);
-//     }
-//   }
+  /// Constructor from other, avoids recomputation.
+  SparseMatrixBasis(const Values &values, const SparseMatrixBasis &other)
+      : TspaceBasis(other.params_), cc_(other.cc_),
+        attributes_(other.attributes_) {
+    if (params_->always_construct_basis) {
+      construct(values);
+    }
+  }
 
-//   /// Create basis with new values.
-//   TspaceBasis::shared_ptr createWithNewValues(
-//       const ConnectedComponent::shared_ptr &cc,
-//       const Values &values) const override {
-//     return std::make_shared<SparseMatrixBasis>(cc, values, *this);
-//   }
+  /// Create basis with new values.
+  TspaceBasis::shared_ptr
+  createWithNewValues(const Values &values) const override {
+    return std::make_shared<SparseMatrixBasis>(values, *this);
+  }
 
-//   /// Construct new basis by incorporating new constraints
-//   TspaceBasis::shared_ptr createWithAdditionalConstraints(
-//       const GaussianFactorGraph &linear_graph) const override {
-//     throw std::runtime_error("not implemented");
-//   }
+  /// Construct new basis by incorporating new constraints
+  TspaceBasis::shared_ptr createWithAdditionalConstraints(
+      const EqualityConstraints &constraints, const Values &values,
+      bool create_from_scratch = false) const override {
+    throw std::runtime_error("not implemented");
+  }
 
-//   /// Compute the tangent vector in the ambient space.
-//   VectorValues computeTangentVector(const Vector &xi) const override;
+  /// Compute the tangent vector in the ambient space.
+  VectorValues computeTangentVector(const Vector &xi) const override;
 
-//   /// Compute xi of basis components.
-//   Vector computeXi(const VectorValues &tangent_vector) const override;
+  /// Compute xi of basis components.
+  Vector computeXi(const VectorValues &tangent_vector) const override;
 
-//   /// Jacobian of recover function.
-//   Matrix recoverJacobian(const Key &key) const override;
+  /// Jacobian of recover function.
+  Matrix recoverJacobian(const Key &key) const override;
 
-//   /// Implmentation of localCoordinate for the constraint manifold.
-//   Vector localCoordinates(const Values &values,
-//                           const Values &values_other) const override;
+  /// Implmentation of localCoordinate for the constraint manifold.
+  Vector localCoordinates(const Values &values,
+                          const Values &values_other) const override;
 
-//   /// Dimension of the basis.
-//   size_t dim() const override { return total_basis_dim_; }
+  /// Dimension of the basis.
+  size_t dim() const override { return attributes_->total_basis_dim; }
 
-//   /// Basis matrix.
-//   const SpMatrix &matrix() const { return basis_; }
+  /// Basis matrix.
+  const SpMatrix &matrix() const { return basis_; }
 
-//   /// Construct the actual basis, all the heavy computation goes here.
-//   void construct(const Values &values) override;
+  /// Construct the actual basis, all the heavy computation goes here.
+  void construct(const Values &values) override;
 
-//   void print(
-//       const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) override
-//       {
-//     std::cout << "Matrix basis\n" << matrix() << "\n";
-//   }
+  void print(
+      const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) override {
+    std::cout << "Matrix basis\n" << matrix() << "\n";
+  }
 
-//  protected:
-//   void setMatrix(const Matrix &matrix, const size_t &row_offset,
-//                  const size_t &col_offset,
-//                  std::vector<Triplet> &triplet_list) const;
+  // protected:
+  /** Construct the jacobian (represented as cholmod sparse matrix) from the
+   * triplets of the augmented jacobian. */
+  static cholmod_sparse *SparseJacobianTranspose(
+      const size_t nrows, const size_t ncols,
+      const std::vector<std::tuple<int, int, double>> &triplets,
+      cholmod_common *cc);
 
-//   void setSparseEntries(const GaussianFactor::shared_ptr &factor,
-//                         const size_t row_offset,
-//                         std::vector<Triplet> &triplet_list) const;
-// };
+  static cholmod_sparse *LastColsSelectionMat(const size_t nrows,
+                                              const size_t ncols,
+                                              cholmod_common *cc);
+
+  static SpMatrix CholmodToEigen(cholmod_sparse *A, cholmod_common *cc);
+};
 
 /** Tangent space basis as the specified variables, the update on
  * the rest of the variables will be computed through variable elimination.
@@ -449,6 +457,29 @@ public:
   create(const EqualityConstraints::shared_ptr constraints,
          const Values &values) const override {
     return std::make_shared<MatrixBasis>(params_, constraints, values);
+  }
+};
+
+class SpraseMatrixBasisCreator : public TspaceBasisCreator {
+public:
+  cholmod_common common;
+  cholmod_common *cc;
+
+public:
+  SpraseMatrixBasisCreator(TspaceBasisParams::shared_ptr params =
+                               std::make_shared<TspaceBasisParams>())
+      : TspaceBasisCreator(params), common(), cc(&common) {
+    cholmod_l_start(cc);
+    cc->print = 5;
+  }
+
+  virtual ~SpraseMatrixBasisCreator() { cholmod_finish(cc); }
+
+  TspaceBasis::shared_ptr
+  create(const EqualityConstraints::shared_ptr constraints,
+         const Values &values) const override {
+    return std::make_shared<SparseMatrixBasis>(params_, constraints, values,
+                                               cc);
   }
 };
 

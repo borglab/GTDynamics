@@ -94,16 +94,6 @@ struct LMCachedModel {
   SharedDiagonal model;
 };
 
-
-// GTSAM_VALUE_EXPORT(gtsam::Point2)
-// GTSAM_VALUE_EXPORT(gtsam::Point3)
-// GTSAM_VALUE_EXPORT(gtsam::Rot2)
-// GTSAM_VALUE_EXPORT(gtsam::Rot3)
-// GTSAM_VALUE_EXPORT(gtsam::Pose2)
-// GTSAM_VALUE_EXPORT(gtsam::Pose3)
-// GTSAM_VALUE_EXPORT(gtsam::Vector6)
-
-
 void ExportValuesToFile(const Values& values, const std::string& file_path);
 
 Values LoadValuesFromFile(const std::string& file_path);

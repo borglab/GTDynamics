@@ -57,11 +57,29 @@ install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}/config.h" DESTINATION ${CMA
 # Needs to be a SHARED library so that the wrapper can compile correctly
 add_library(gtdynamics SHARED ${sources} ${headers})
 
+find_package(SuiteSparse_config REQUIRED)
+find_package(AMD REQUIRED)
+find_package(COLAMD REQUIRED)
+find_package(CHOLMOD REQUIRED)
+find_package(CAMD REQUIRED)
+find_package(CCOLAMD REQUIRED)
+find_package(SPQR REQUIRED)
+
 set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
 ## Link all dependencies
-target_link_libraries(gtdynamics PUBLIC ${GTSAM_LIBS} ${SDFormat_LIBRARIES})
+# list(APPEND SUITESPARSE_LIBRARIES ${AMD_LIBRARY})
+# list(APPEND SUITESPARSE_LIBRARIES ${CAMD_LIBRARY})
+# list(APPEND SUITESPARSE_LIBRARIES ${COLAMD_LIBRARY})
+# list(APPEND SUITESPARSE_LIBRARIES ${CCOLAMD_LIBRARY})
+# list(APPEND SUITESPARSE_LIBRARIES ${CHOLMOD_LIBRARY})
+# list(APPEND SUITESPARSE_LIBRARIES ${SUITESPARSE_CONFIG_LIBRARY})
+# list(APPEND SUITESPARSE_LIBRARIES ${SPQR_LIBRARY})
+# target_link_libraries (gtdynamics PUBLIC ${SUITESPARSE_LIBRARIES})
 
+target_link_libraries (gtdynamics PUBLIC SuiteSparse::SPQR SuiteSparse::CHOLMOD)
+target_link_libraries(gtdynamics PUBLIC ${GTSAM_LIBS}) 
+target_link_libraries(gtdynamics PUBLIC ${SDFormat_LIBRARIES})
 target_link_libraries(gtdynamics PUBLIC ${GTDYNAMICS_ADDITIONAL_LIBRARIES})
 
 
@@ -84,7 +102,12 @@ target_include_directories(gtdynamics BEFORE PUBLIC
 )
 
 target_include_directories(gtdynamics PUBLIC ${SDFormat_INCLUDE_DIRS})
+# target_include_directories(gtdynamics PUBLIC ${SuiteSparse_INCLUDE_DIRS})
 
+# message(STATUS "SPQR_INCLUDE_DIRS: ${SPQR_INCLUDE_DIRS}")
+# message(STATUS "SUITESPARSEQR_INCLUDE_DIRS: ${SUITESPARSEQR_INCLUDE_DIRS}")
+# message(STATUS "SPQR_LIBRARY_DIRS: ${SPQR_LIBRARY_DIRS}")
+# message(STATUS "SUITESPARSEQR_LIBRARY_DIRS: ${SUITESPARSEQR_LIBRARY_DIRS}")
 
 ## Install library and headers.
 install(

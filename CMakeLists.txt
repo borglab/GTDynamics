@@ -31,9 +31,9 @@ include(GtsamTesting)
 # For unit tests and scripts.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
-# Boost is automatically added when we add GTSAM above.
-# This ensures both GTSAM and GTDynamics have the same Boost version.
-include_directories(${Boost_INCLUDE_DIR})
+# # Boost is automatically added when we add GTSAM above.
+# # This ensures both GTSAM and GTDynamics have the same Boost version.
+# include_directories(${Boost_INCLUDE_DIR})
 
 if(NOT (${Boost_VERSION} LESS 105600))
   message(

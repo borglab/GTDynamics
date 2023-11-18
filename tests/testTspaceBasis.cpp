@@ -60,11 +60,11 @@ TEST(TspaceBasis, connected_poses) {
       std::make_shared<MatrixBasis>(basis_params, constraints, cm_base_values);
   auto basis_e = std::make_shared<EliminationBasis>(basis_params, constraints,
                                                     cm_base_values, basis_keys);
-  // auto basis_sm = std::make_shared<SparseMatrixBasis>(basis_params, constraints,
-  //                                                     cm_base_values);
+  auto sparse_creator = std::make_shared<SpraseMatrixBasisCreator>();
+  auto basis_sm = sparse_creator->create(constraints, cm_base_values);
 
   auto linear_graph = constraints->meritGraph().linearize(cm_base_values);
-  std::vector<TspaceBasis::shared_ptr> basis_vec{basis_m, basis_e};//, basis_sm};
+  std::vector<TspaceBasis::shared_ptr> basis_vec{basis_m, basis_e, basis_sm};
 
   // Check dimension.
   for (const auto& basis : basis_vec) {
