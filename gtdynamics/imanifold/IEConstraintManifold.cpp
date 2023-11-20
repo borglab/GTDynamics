@@ -78,6 +78,10 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold() const {
 /* ************************************************************************* */
 ConstraintManifold IEConstraintManifold::eConstraintManifold(
     const IndexSet &active_indices) const {
+  if (active_indices.size() == 0) {
+    return eConstraintManifold();
+  }
+  
   // TODO: construct e-basis using createWithAdditionalConstraints
   gtdynamics::EqualityConstraints new_active_constraints;
   for (const auto &idx : active_indices) {

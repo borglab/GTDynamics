@@ -103,7 +103,7 @@ void MatrixBasis::construct(const Values &values) {
 /* ************************************************************************* */
 TspaceBasis::shared_ptr MatrixBasis::createWithAdditionalConstraints(
     const EqualityConstraints &constraints, const Values &values,
-    bool create_from_scartch) const {
+    bool create_from_scratch) const {
   // attributes
   auto new_merit_graph = constraints.meritGraph();
 
@@ -116,25 +116,23 @@ TspaceBasis::shared_ptr MatrixBasis::createWithAdditionalConstraints(
   new_attributes->total_constraint_dim = attributes_->total_constraint_dim + constraints.dim();
   new_attributes->total_basis_dim = new_attributes->total_var_dim - new_attributes->total_constraint_dim;
 
-  if (create_from_scartch) {
-    if (!is_constructed_) {
-      throw std::runtime_error("basis not constructed yet.");
-    }
-    auto new_linear_graph = new_merit_graph.linearize(values);
-    JacobianFactor combined(*new_linear_graph);
-    Matrix A_new = combined.jacobian().first;
-    A_new = rearrangeMatrix(A_new, combined.keys());
-    Matrix AB_new = A_new * basis_;
-    Eigen::FullPivLU<Eigen::MatrixXd> lu(AB_new);
-    Matrix M = lu.kernel();
-    Matrix new_basis = basis_ * M;
-    return std::make_shared<MatrixBasis>(params_, new_attributes, new_basis);
-  }
-  else {
+  if (create_from_scratch) {
     auto new_basis = std::make_shared<MatrixBasis>(params_, new_attributes);
     new_basis->construct(values);
     return new_basis;
   }
+  if (!is_constructed_) {
+    throw std::runtime_error("basis not constructed yet.");
+  }
+  auto new_linear_graph = new_merit_graph.linearize(values);
+  JacobianFactor combined(*new_linear_graph);
+  Matrix A_new = combined.jacobian().first;
+  A_new = rearrangeMatrix(A_new, combined.keys());
+  Matrix AB_new = A_new * basis_;
+  Eigen::FullPivLU<Eigen::MatrixXd> lu(AB_new);
+  Matrix M = lu.kernel();
+  Matrix new_basis = basis_ * M;
+  return std::make_shared<MatrixBasis>(params_, new_attributes, new_basis);
 }
 
 /* ************************************************************************* */
@@ -290,6 +288,24 @@ SparseMatrixBasis::SpMatrix SparseMatrixBasis::CholmodToEigen(cholmod_sparse *A,
 }
 
 /* ************************************************************************* */
+SparseMatrixBasis::SpMatrix SparseMatrixBasis::EigenSparseJacobian(const GaussianFactorGraph &graph) {
+  Ordering ordering(graph.keys());
+  size_t rows, cols;
+  auto triplets = graph.sparseJacobian(ordering, rows, cols);
+  size_t last_col = cols-1;
+  std::vector<Eigen::Triplet<double>> entries;
+  for (auto& v : triplets) {
+    if (std::get<1>(v) < last_col) {
+      entries.emplace_back(std::get<0>(v), std::get<1>(v), std::get<2>(v));
+    }
+  }
+  SparseMatrixBasis::SpMatrix A(rows, cols-1);
+  A.setFromTriplets(entries.begin(), entries.end());
+  return A;
+}
+
+
+/* ************************************************************************* */
 void SparseMatrixBasis::construct(const Values &values) {
   // if (attributes_->merit_graph.size() == 0) {
   //   basis_ = Matrix::Identity(attributes_->total_basis_dim,
@@ -382,6 +398,71 @@ Vector SparseMatrixBasis::localCoordinates(const Values &values,
                                            const Values &values_other) const {
   return Vector::Zero(attributes_->total_basis_dim);
 }
+
+/* ************************************************************************* */
+TspaceBasis::shared_ptr SparseMatrixBasis::createWithAdditionalConstraints(
+    const EqualityConstraints &constraints, const Values &values,
+    bool create_from_scratch) const {
+  auto new_merit_graph = constraints.meritGraph();
+
+  auto new_attributes = std::make_shared<Attributes>();
+  new_attributes->merit_graph = attributes_->merit_graph;
+  new_attributes->merit_graph.add(new_merit_graph);
+  new_attributes->var_location = attributes_->var_location;
+  new_attributes->var_dim = attributes_->var_dim;
+  new_attributes->total_var_dim = attributes_->total_var_dim;
+  new_attributes->total_constraint_dim = attributes_->total_constraint_dim + constraints.dim();
+  new_attributes->total_basis_dim = new_attributes->total_var_dim - new_attributes->total_constraint_dim;
+
+  if (create_from_scratch) {
+    auto new_basis =
+        std::make_shared<SparseMatrixBasis>(params_, cc_, new_attributes);
+    new_basis->construct(values);
+    return new_basis;
+  }
+
+  if (!is_constructed_) {
+    throw std::runtime_error("basis not constructed yet.");
+  }
+  auto new_linear_graph = new_merit_graph.linearize(values);
+  SpMatrix A_new = eigenSparseJacobian(*new_linear_graph);
+  SpMatrix AB_new = A_new * basis_;
+  Matrix AB_new_dense(AB_new);
+  Eigen::FullPivLU<Eigen::MatrixXd> lu(AB_new_dense);
+  Matrix M_dense = lu.kernel();
+  SpMatrix M = M_dense.sparseView();
+  SpMatrix new_basis = basis_ * M;
+  return std::make_shared<SparseMatrixBasis>(params_, cc_, new_attributes, new_basis);
+}
+
+/* ************************************************************************* */
+SparseMatrixBasis::SpMatrix SparseMatrixBasis::eigenSparseJacobian(const GaussianFactorGraph &graph) const {
+
+  std::vector<Eigen::Triplet<double>> entries;
+
+  size_t nrows = 0;
+  for (const auto &factor : graph) {
+    Matrix f_jacobian = factor->jacobian().first;
+    size_t factor_dim = f_jacobian.cols();
+    size_t start_col_f = 0;
+    for (const Key &key : *factor) {
+      const auto &start_col_jacobian = attributes_->var_location.at(key);
+      for (size_t i = 0; i < factor_dim; i++)
+        for (size_t j = 0; j < attributes_->var_dim.at(key); j++) {
+          const double &s = f_jacobian(i, j + start_col_f);
+          if (std::abs(s) > 1e-12)
+            entries.emplace_back(nrows + i, start_col_jacobian + j, s);
+        }
+      start_col_f += attributes_->var_dim.at(key);
+    }
+    nrows += factor_dim;
+  }
+  SparseMatrixBasis::SpMatrix A(nrows, attributes_->total_var_dim);
+  A.setFromTriplets(entries.begin(), entries.end());
+  return A;
+}
+
+
 
 /* ************************************************************************* */
 EliminationBasis::EliminationBasis(

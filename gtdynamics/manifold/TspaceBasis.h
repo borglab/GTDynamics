@@ -104,68 +104,6 @@ public:
   virtual std::vector<VectorValues> basisVectors() const;
 };
 
-class EmptyBasis : public TspaceBasis {
-public:
-  /** Constructor
-   * @param cc constraint-connected component for the constraint manifold
-   * @param values values of the variables in the connected component
-   */
-  EmptyBasis(const TspaceBasisParams::shared_ptr &params)
-      : TspaceBasis(params) {}
-
-  /// Create basis with new values.
-  TspaceBasis::shared_ptr
-  createWithNewValues(const Values &values) const override {
-    return std::make_shared<EmptyBasis>(params_);
-  }
-
-  /// Construct new basis by incorporating new constraints
-  TspaceBasis::shared_ptr createWithAdditionalConstraints(
-      const EqualityConstraints &constraints, const Values &values,
-      bool create_from_scratch = false) const override {
-    return std::make_shared<EmptyBasis>(params_);
-  }
-
-  /// Compute the tangent vector in the ambient space.
-  VectorValues computeTangentVector(const Vector &xi) const override {
-    throwError();
-    return VectorValues();
-  }
-
-  Vector computeXi(const VectorValues &tangent_vector) const override {
-    throwError();
-    return Vector();
-  }
-
-  /// Jacobian of recover function.
-  Matrix recoverJacobian(const Key &key) const override {
-    throwError();
-    return Matrix();
-  };
-
-  /// Implmentation of localCoordinate for the constraint manifold.
-  Vector localCoordinates(const Values &values,
-                          const Values &values_other) const override {
-    throwError();
-    return Vector();
-  };
-
-  /// Dimension of the basis.
-  size_t dim() const override { return 0; }
-
-  /// Construct the actual basis, all the heavy computation goes here.
-  void construct(const Values &values) override {}
-
-  void print(
-      const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) override {
-    std::cout << "Empty basis\n";
-  }
-
-  void throwError() const {
-    throw std::runtime_error("Empty basis shall not be called");
-  }
-};
-
 /** Tangent space basis implmented using a matrix, e.g., the kernel of Dh(X),
  * where h(X)=0 represents all the constraints. */
 class MatrixBasis : public TspaceBasis {
@@ -283,6 +221,17 @@ public:
                     const EqualityConstraints::shared_ptr &constraints,
                     const Values &values, cholmod_common *cc);
 
+  SparseMatrixBasis(const TspaceBasisParams::shared_ptr &params,
+                    cholmod_common *cc,
+                    const Attributes::shared_ptr &attributes)
+      : TspaceBasis(params), cc_(cc), attributes_(attributes) {}
+
+  SparseMatrixBasis(const TspaceBasisParams::shared_ptr &params,
+                    cholmod_common *cc,
+                    const Attributes::shared_ptr &attributes,
+                    const SpMatrix& basis)
+      : TspaceBasis(params), cc_(cc), attributes_(attributes), basis_(basis) {}
+
   /// Constructor from other, avoids recomputation.
   SparseMatrixBasis(const Values &values, const SparseMatrixBasis &other)
       : TspaceBasis(other.params_), cc_(other.cc_),
@@ -301,9 +250,7 @@ public:
   /// Construct new basis by incorporating new constraints
   TspaceBasis::shared_ptr createWithAdditionalConstraints(
       const EqualityConstraints &constraints, const Values &values,
-      bool create_from_scratch = false) const override {
-    throw std::runtime_error("not implemented");
-  }
+      bool create_from_scratch = false) const override;
 
   /// Compute the tangent vector in the ambient space.
   VectorValues computeTangentVector(const Vector &xi) const override;
@@ -345,6 +292,14 @@ public:
                                               cholmod_common *cc);
 
   static SpMatrix CholmodToEigen(cholmod_sparse *A, cholmod_common *cc);
+
+  SpMatrix eigenSparseJacobian(const GaussianFactorGraph &graph) const;
+
+  // cholmod_sparse* suiteSparseJacobian(const GaussianFactorGraph &graph);
+
+  /** Return jacobian of a Gaussian factor graph represented as an Eigen sparse
+   * matrix. */
+  static SpMatrix EigenSparseJacobian(const GaussianFactorGraph &graph);
 };
 
 /** Tangent space basis as the specified variables, the update on
