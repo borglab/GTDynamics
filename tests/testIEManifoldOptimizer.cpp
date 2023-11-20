@@ -42,7 +42,7 @@ TEST(IdentifyManifolds, HalfSphere) {
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<HalfSphereRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
+  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
@@ -75,7 +75,7 @@ TEST(IdentifyManifolds, CartPoleWithFriction) {
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<CartPoleWithFrictionRetractor>(cp));
-  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
+  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
 
   auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
@@ -102,7 +102,7 @@ TEST(IdentifyManifolds, Dome) {
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<DomeRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
+  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
 
   Values values;
   for (size_t k = 0; k <= num_steps; k++) {

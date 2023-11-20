@@ -39,7 +39,7 @@ std::vector<VectorValues> TspaceBasis::basisVectors() const {
 
 
 /* ************************************************************************* */
-Matrix MatrixBasis::rearrangeMatrix(const Matrix &A, const KeyVector &A_keys) const {
+Matrix OrthonormalBasis::rearrangeMatrix(const Matrix &A, const KeyVector &A_keys) const {
   Matrix jac_mat = Matrix::Zero(A.rows(), attributes_->total_var_dim);
   size_t A_col_idx = 0;
   for (const Key &key : A_keys) {
@@ -52,7 +52,7 @@ Matrix MatrixBasis::rearrangeMatrix(const Matrix &A, const KeyVector &A_keys) co
 }
 
 /* ************************************************************************* */
-Matrix MatrixBasis::computeConstraintJacobian(const Values &values) const {
+Matrix OrthonormalBasis::computeConstraintJacobian(const Values &values) const {
   auto linear_graph = attributes_->merit_graph.linearize(values);
   JacobianFactor combined(*linear_graph);
   if (combined.keys().size() == values.keys().size()) {
@@ -65,7 +65,7 @@ Matrix MatrixBasis::computeConstraintJacobian(const Values &values) const {
 }
 
 /* ************************************************************************* */
-MatrixBasis::MatrixBasis(const TspaceBasisParams::shared_ptr &params,
+OrthonormalBasis::OrthonormalBasis(const TspaceBasisParams::shared_ptr &params,
                          const EqualityConstraints::shared_ptr &constraints,
                          const Values &values)
     : TspaceBasis(params), attributes_(std::make_shared<Attributes>()) {
@@ -88,20 +88,65 @@ MatrixBasis::MatrixBasis(const TspaceBasisParams::shared_ptr &params,
 }
 
 /* ************************************************************************* */
-void MatrixBasis::construct(const Values &values) {
+void OrthonormalBasis::construct(const Values &values) {
   if (attributes_->merit_graph.size() == 0) {
     basis_ = Matrix::Identity(attributes_->total_basis_dim,
                               attributes_->total_basis_dim);
   } else {
-    Matrix A = computeConstraintJacobian(values); // m x n
-    Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
-    basis_ = lu.kernel(); // n x n-m
+    if (params_->use_sparse) {
+      constructSparse(values);
+    }
+    else {
+      constructDense(values);
+    }
   }
   is_constructed_ = true;
 }
 
 /* ************************************************************************* */
-TspaceBasis::shared_ptr MatrixBasis::createWithAdditionalConstraints(
+void OrthonormalBasis::constructDense(const Values &values) {
+  Matrix A = computeConstraintJacobian(values); // m x n
+  Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
+  basis_ = lu.kernel(); // n x n-m
+}
+
+
+/* ************************************************************************* */
+void OrthonormalBasis::constructSparse(const Values &values) {
+  auto linear_graph = attributes_->merit_graph.linearize(values);
+  Ordering ordering;
+  auto triplets = linear_graph->sparseJacobian();
+  size_t nrows = attributes_->total_constraint_dim;
+  size_t ncols = attributes_->total_var_dim + 1;
+
+  cholmod_common common;
+  cholmod_common *cc = &common;
+  cholmod_l_start(cc);
+
+  cholmod_sparse *A_t = SparseJacobianTranspose(nrows, ncols, triplets, cc);
+  SuiteSparseQR_factorization<double> *QR = SuiteSparseQR_factorize<double>(
+      SPQR_ORDERING_DEFAULT, SPQR_DEFAULT_TOL, A_t, cc);
+
+  cholmod_dense* eye = cholmod_l_eye(attributes_->total_var_dim,attributes_->total_var_dim,CHOLMOD_REAL, cc) ;
+  cholmod_dense *Q =
+      SuiteSparseQR_qmult(SPQR_QX, QR, eye, cc);
+
+  cholmod_sparse *selection_mat = LastColsSelectionMat(
+      attributes_->total_var_dim, attributes_->total_basis_dim, cc);
+
+  cholmod_sparse *basis_cholmod =
+      SuiteSparseQR_qmult(SPQR_QX, QR, selection_mat, cc);
+
+  basis_ = CholmodToEigen(basis_cholmod, cc);
+
+  cholmod_l_free_sparse(&A_t, cc);
+  cholmod_l_free_sparse(&selection_mat, cc);
+  cholmod_l_free_sparse(&basis_cholmod, cc);
+  cholmod_finish(cc);
+}
+
+/* ************************************************************************* */
+TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
     const EqualityConstraints &constraints, const Values &values,
     bool create_from_scratch) const {
   // attributes
@@ -117,7 +162,7 @@ TspaceBasis::shared_ptr MatrixBasis::createWithAdditionalConstraints(
   new_attributes->total_basis_dim = new_attributes->total_var_dim - new_attributes->total_constraint_dim;
 
   if (create_from_scratch) {
-    auto new_basis = std::make_shared<MatrixBasis>(params_, new_attributes);
+    auto new_basis = std::make_shared<OrthonormalBasis>(params_, new_attributes);
     new_basis->construct(values);
     return new_basis;
   }
@@ -125,18 +170,43 @@ TspaceBasis::shared_ptr MatrixBasis::createWithAdditionalConstraints(
     throw std::runtime_error("basis not constructed yet.");
   }
   auto new_linear_graph = new_merit_graph.linearize(values);
-  JacobianFactor combined(*new_linear_graph);
+
+  if (params_->use_sparse) {
+    return createWithAdditionalConstraintsSparse(*new_linear_graph, new_attributes);
+  }
+  else {
+    return createWithAdditionalConstraintsDense(*new_linear_graph, new_attributes);
+  }
+}
+
+/* ************************************************************************* */
+TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsDense(
+    const GaussianFactorGraph &graph,
+    const Attributes::shared_ptr &new_attributes) const {
+  JacobianFactor combined(graph);
   Matrix A_new = combined.jacobian().first;
   A_new = rearrangeMatrix(A_new, combined.keys());
   Matrix AB_new = A_new * basis_;
   Eigen::FullPivLU<Eigen::MatrixXd> lu(AB_new);
   Matrix M = lu.kernel();
   Matrix new_basis = basis_ * M;
-  return std::make_shared<MatrixBasis>(params_, new_attributes, new_basis);
+  return std::make_shared<OrthonormalBasis>(params_, new_attributes, new_basis);
 }
 
 /* ************************************************************************* */
-VectorValues MatrixBasis::computeTangentVector(const Vector &xi) const {
+TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsSparse(
+    const GaussianFactorGraph &graph,
+    const Attributes::shared_ptr &new_attributes) const {
+  SpMatrix A_new = eigenSparseJacobian(graph);
+  Matrix AB_new = A_new * basis_;
+  Eigen::FullPivLU<Eigen::MatrixXd> lu(AB_new);
+  Matrix M = lu.kernel();
+  Matrix new_basis = basis_ * M;
+  return std::make_shared<OrthonormalBasis>(params_, new_attributes, new_basis);
+}
+
+/* ************************************************************************* */
+VectorValues OrthonormalBasis::computeTangentVector(const Vector &xi) const {
   VectorValues delta;
   Vector x_xi = basis_ * xi;
   for (const auto &[key, location]: attributes_->var_location) {
@@ -146,7 +216,7 @@ VectorValues MatrixBasis::computeTangentVector(const Vector &xi) const {
 }
 
 /* ************************************************************************* */
-Vector MatrixBasis::computeXi(const VectorValues &delta) const {
+Vector OrthonormalBasis::computeXi(const VectorValues &delta) const {
   Vector x_xi = Vector::Zero(basis_.rows());
   for (const auto &it : attributes_->var_location) {
     const Key &key = it.first;
@@ -157,13 +227,13 @@ Vector MatrixBasis::computeXi(const VectorValues &delta) const {
 }
 
 /* ************************************************************************* */
-Matrix MatrixBasis::recoverJacobian(const Key &key) const {
+Matrix OrthonormalBasis::recoverJacobian(const Key &key) const {
   return basis_.middleRows(attributes_->var_location.at(key),
                            attributes_->var_dim.at(key));
 }
 
 /* ************************************************************************* */
-Vector MatrixBasis::localCoordinates(const Values &values,
+Vector OrthonormalBasis::localCoordinates(const Values &values,
                                      const Values &values_other) const {
   Eigen::MatrixXd basis_pinv =
       basis_.completeOrthogonalDecomposition().pseudoInverse();
@@ -194,32 +264,10 @@ void PrintSparse(cholmod_sparse *A, cholmod_common *cc) {
 }
 
 
-/* ************************************************************************* */
-SparseMatrixBasis::SparseMatrixBasis(
-    const TspaceBasisParams::shared_ptr &params,
-    const EqualityConstraints::shared_ptr &constraints, const Values &values, cholmod_common* cc)
-    : TspaceBasis(params), cc_(cc), attributes_(std::make_shared<Attributes>()) {
-  // set attributes
-  attributes_->total_constraint_dim = constraints->dim();
-  attributes_->total_var_dim = values.dim();
-  attributes_->total_basis_dim =
-      attributes_->total_var_dim - attributes_->total_constraint_dim;
-  attributes_->merit_graph = constraints->meritGraph();
-  size_t position = 0;
-  for (const Key &key : values.keys()) {
-    size_t var_dim = values.at(key).dim();
-    attributes_->var_dim[key] = var_dim;
-    attributes_->var_location[key] = position;
-    position += var_dim;
-  }
-  if (params_->always_construct_basis) {
-    construct(values);
-  }
-}
 
 /* ************************************************************************* */
 cholmod_sparse *
-SparseMatrixBasis::SparseJacobianTranspose(const size_t nrows, const size_t ncols,
+OrthonormalBasis::SparseJacobianTranspose(const size_t nrows, const size_t ncols,
                    const std::vector<std::tuple<int, int, double>> &triplets,
                    cholmod_common *cc) {
   int A_stype = 0;
@@ -252,7 +300,7 @@ SparseMatrixBasis::SparseJacobianTranspose(const size_t nrows, const size_t ncol
 }
 
 /* ************************************************************************* */
-cholmod_sparse *SparseMatrixBasis::LastColsSelectionMat(const size_t nrows,
+cholmod_sparse *OrthonormalBasis::LastColsSelectionMat(const size_t nrows,
                                               const size_t ncols,
                                               cholmod_common *cc) {
   int A_stype = 0;
@@ -274,7 +322,7 @@ cholmod_sparse *SparseMatrixBasis::LastColsSelectionMat(const size_t nrows,
 }
 
 /* ************************************************************************* */
-SparseMatrixBasis::SpMatrix SparseMatrixBasis::CholmodToEigen(cholmod_sparse *A, cholmod_common *cc) {
+OrthonormalBasis::SpMatrix OrthonormalBasis::CholmodToEigen(cholmod_sparse *A, cholmod_common *cc) {
 
   cholmod_triplet *T = cholmod_l_sparse_to_triplet(A, cc);
   std::vector<Eigen::Triplet<double>> triplets(T->nnz);
@@ -288,7 +336,7 @@ SparseMatrixBasis::SpMatrix SparseMatrixBasis::CholmodToEigen(cholmod_sparse *A,
 }
 
 /* ************************************************************************* */
-SparseMatrixBasis::SpMatrix SparseMatrixBasis::EigenSparseJacobian(const GaussianFactorGraph &graph) {
+OrthonormalBasis::SpMatrix OrthonormalBasis::EigenSparseJacobian(const GaussianFactorGraph &graph) {
   Ordering ordering(graph.keys());
   size_t rows, cols;
   auto triplets = graph.sparseJacobian(ordering, rows, cols);
@@ -299,144 +347,13 @@ SparseMatrixBasis::SpMatrix SparseMatrixBasis::EigenSparseJacobian(const Gaussia
       entries.emplace_back(std::get<0>(v), std::get<1>(v), std::get<2>(v));
     }
   }
-  SparseMatrixBasis::SpMatrix A(rows, cols-1);
+  OrthonormalBasis::SpMatrix A(rows, cols-1);
   A.setFromTriplets(entries.begin(), entries.end());
   return A;
 }
 
-
 /* ************************************************************************* */
-void SparseMatrixBasis::construct(const Values &values) {
-  // if (attributes_->merit_graph.size() == 0) {
-  //   basis_ = Matrix::Identity(attributes_->total_basis_dim,
-  //                             attributes_->total_basis_dim);
-  //   is_constructed_ = true;
-  //   return;
-  // }
-
-  auto linear_graph = attributes_->merit_graph.linearize(values);
-  Ordering ordering;
-  auto triplets = linear_graph->sparseJacobian();
-  size_t nrows = attributes_->total_constraint_dim;
-  size_t ncols = attributes_->total_var_dim + 1;
-
-  if (use_suitespare_) {
-    cholmod_sparse *A_t = SparseJacobianTranspose(nrows, ncols, triplets, cc_);
-    // std::cout << "A_t\n";
-    // PrintSparse(A_t, cc_);
-    // cholmod_l_print_sparse(A_t, "A", cc_);
-    SuiteSparseQR_factorization<double> *QR = SuiteSparseQR_factorize<double>(
-        SPQR_ORDERING_DEFAULT, SPQR_DEFAULT_TOL, A_t, cc_);
-
-    cholmod_dense* eye = cholmod_l_eye(attributes_->total_var_dim,attributes_->total_var_dim,CHOLMOD_REAL, cc_) ;
-    cholmod_dense *Q =
-        SuiteSparseQR_qmult(SPQR_QX, QR, eye, cc_);
-    // std::cout << "Q\n";
-    // PrintDense(Q, cc_);
-    // cholmod_l_print_dense(Q, "Q", cc_);
-
-    cholmod_sparse *selection_mat = LastColsSelectionMat(
-        attributes_->total_var_dim, attributes_->total_basis_dim, cc_);
-    // std::cout << "selection_mat\n";
-    // PrintSparse(selection_mat, cc_);
-    cholmod_sparse *basis_cholmod =
-        SuiteSparseQR_qmult(SPQR_QX, QR, selection_mat, cc_);
-    // std::cout << "basis_cholmod\n";
-    // PrintSparse(basis_cholmod, cc_);
-    basis_ = CholmodToEigen(basis_cholmod, cc_);
-    // Matrix dense = basis_;
-    // std::cout << "basis\n" << dense << "\n";
-    cholmod_l_free_sparse(&A_t, cc_);
-    cholmod_l_free_sparse(&selection_mat, cc_);
-    cholmod_l_free_sparse(&basis_cholmod, cc_);
-  } else {
-    throw std::runtime_error("eigen sparse matrix basis not implemented yet.");
-    // SpMatrix Ab(attributes_->total_constraint_dim, attributes_->total_var_dim);
-    // Ab.setFromTriplets(triplets.begin(), triplets.end());
-    // SpMatrix A;
-    // SpMatrix A_t = A.transpose();
-    // SpMatrix Q;
-    // auto qr = Eigen::SparseQR<SpMatrix, Eigen::COLAMDOrdering<int>>(A_t);
-    // Q = qr.matrixQ();
-    // basis_ = Q.rightCols(attributes_->total_basis_dim);
-  }
-  is_constructed_ = true;
-}
-
-/* ************************************************************************* */
-VectorValues SparseMatrixBasis::computeTangentVector(const Vector &xi) const {
-  VectorValues delta;
-  Vector x_xi = basis_ * xi;
-  for (const auto &[key, location]: attributes_->var_location) {
-    delta.insert(key, x_xi.middleRows(location, attributes_->var_dim.at(key)));
-  }
-  return delta;
-}
-
-/* ************************************************************************* */
-Vector SparseMatrixBasis::computeXi(const VectorValues &delta) const {
-  Vector x_xi = Vector::Zero(basis_.rows());
-  for (const auto &it : attributes_->var_location) {
-    const Key &key = it.first;
-    x_xi.middleRows(it.second, attributes_->var_dim.at(key)) = delta.at(key);
-  }
-  // Vector xi = basis_.colPivHouseholderQr().solve(x_xi);
-  // return basis_.completeOrthogonalDecomposition().pseudoInverse() * x_xi;
-  auto qr = Eigen::SparseQR<SpMatrix, Eigen::COLAMDOrdering<int>>(basis_);
-  Vector xi = qr.solve(x_xi);
-  return xi;
-}
-
-/* ************************************************************************* */
-Matrix SparseMatrixBasis::recoverJacobian(const Key &key) const {
-  return basis_.middleRows(attributes_->var_location.at(key),
-                           attributes_->var_dim.at(key));
-}
-
-/* ************************************************************************* */
-Vector SparseMatrixBasis::localCoordinates(const Values &values,
-                                           const Values &values_other) const {
-  return Vector::Zero(attributes_->total_basis_dim);
-}
-
-/* ************************************************************************* */
-TspaceBasis::shared_ptr SparseMatrixBasis::createWithAdditionalConstraints(
-    const EqualityConstraints &constraints, const Values &values,
-    bool create_from_scratch) const {
-  auto new_merit_graph = constraints.meritGraph();
-
-  auto new_attributes = std::make_shared<Attributes>();
-  new_attributes->merit_graph = attributes_->merit_graph;
-  new_attributes->merit_graph.add(new_merit_graph);
-  new_attributes->var_location = attributes_->var_location;
-  new_attributes->var_dim = attributes_->var_dim;
-  new_attributes->total_var_dim = attributes_->total_var_dim;
-  new_attributes->total_constraint_dim = attributes_->total_constraint_dim + constraints.dim();
-  new_attributes->total_basis_dim = new_attributes->total_var_dim - new_attributes->total_constraint_dim;
-
-  if (create_from_scratch) {
-    auto new_basis =
-        std::make_shared<SparseMatrixBasis>(params_, cc_, new_attributes);
-    new_basis->construct(values);
-    return new_basis;
-  }
-
-  if (!is_constructed_) {
-    throw std::runtime_error("basis not constructed yet.");
-  }
-  auto new_linear_graph = new_merit_graph.linearize(values);
-  SpMatrix A_new = eigenSparseJacobian(*new_linear_graph);
-  SpMatrix AB_new = A_new * basis_;
-  Matrix AB_new_dense(AB_new);
-  Eigen::FullPivLU<Eigen::MatrixXd> lu(AB_new_dense);
-  Matrix M_dense = lu.kernel();
-  SpMatrix M = M_dense.sparseView();
-  SpMatrix new_basis = basis_ * M;
-  return std::make_shared<SparseMatrixBasis>(params_, cc_, new_attributes, new_basis);
-}
-
-/* ************************************************************************* */
-SparseMatrixBasis::SpMatrix SparseMatrixBasis::eigenSparseJacobian(const GaussianFactorGraph &graph) const {
+OrthonormalBasis::SpMatrix OrthonormalBasis::eigenSparseJacobian(const GaussianFactorGraph &graph) const {
 
   std::vector<Eigen::Triplet<double>> entries;
 
@@ -457,7 +374,7 @@ SparseMatrixBasis::SpMatrix SparseMatrixBasis::eigenSparseJacobian(const Gaussia
     }
     nrows += factor_dim;
   }
-  SparseMatrixBasis::SpMatrix A(nrows, attributes_->total_var_dim);
+  OrthonormalBasis::SpMatrix A(nrows, attributes_->total_var_dim);
   A.setFromTriplets(entries.begin(), entries.end());
   return A;
 }

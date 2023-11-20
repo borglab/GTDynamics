@@ -56,7 +56,7 @@ TEST(HalfSphereRetractor, retract) {
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
+  params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
   Values values1;
   values1.insert(PointKey(0), Point3(3, 0, 0));
   IEConstraintManifold manifold1(params, e_constraints, i_constraints, values1);
@@ -92,7 +92,7 @@ TEST(HalfSphere, Dome) {
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
+  params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
 
   IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
 

@@ -57,10 +57,10 @@ TEST(TspaceBasis, connected_poses) {
   KeyVector basis_keys{x3_key};
   auto basis_params = std::make_shared<TspaceBasisParams>();
   auto basis_m =
-      std::make_shared<MatrixBasis>(basis_params, constraints, cm_base_values);
+      std::make_shared<OrthonormalBasis>(basis_params, constraints, cm_base_values);
   auto basis_e = std::make_shared<EliminationBasis>(basis_params, constraints,
                                                     cm_base_values, basis_keys);
-  auto sparse_creator = std::make_shared<SpraseMatrixBasisCreator>();
+  auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
   auto basis_sm = sparse_creator->create(constraints, cm_base_values);
 
   auto linear_graph = constraints->meritGraph().linearize(cm_base_values);
@@ -149,12 +149,29 @@ TEST(TspaceBasis, linear_system) {
   // auto basis_m = std::make_shared<MatrixBasis>(basis_params, cc, values);
   auto basis_e =
       std::make_shared<EliminationBasis>(basis_params, constraints, values, basis_keys);
-  
+  auto basis_m = std::make_shared<OrthonormalBasis>(basis_params, constraints, values);
+  auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
+  auto basis_sm = sparse_creator->create(constraints, values);
+
   // Construct new basis by adding addtional constraints
   EqualityConstraints new_constraints;
   new_constraints.emplace_shared<DoubleExpressionEquality>(x2, tol);
   auto new_basis_e = basis_e->createWithAdditionalConstraints(new_constraints, values);
-  
+  auto new_basis_m = basis_m->createWithAdditionalConstraints(new_constraints, values);
+  auto new_basis_sm = basis_sm->createWithAdditionalConstraints(new_constraints, values);
+  NonlinearFactorGraph merit_graph = constraints->meritGraph();
+  merit_graph.add(new_constraints.meritGraph());
+  auto linear_graph = merit_graph.linearize(values);
+  for (const auto& vector: new_basis_e->basisVectors()) {
+    EXPECT(assert_equal(0.0, linear_graph->error(vector)));
+  }
+  for (const auto& vector: new_basis_m->basisVectors()) {
+    EXPECT(assert_equal(0.0, linear_graph->error(vector)));
+  }
+  for (const auto& vector: new_basis_sm->basisVectors()) {
+    EXPECT(assert_equal(0.0, linear_graph->error(vector)));
+  }
+
   Matrix expected_H_x1 = I_1x1;
   Matrix expected_H_x2 = I_1x1*0;
   Matrix expected_H_x3 = I_1x1 * -1;

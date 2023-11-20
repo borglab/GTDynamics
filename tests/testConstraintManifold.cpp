@@ -54,7 +54,7 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
     return KeyVector{x3_key};
   };
   std::vector<TspaceBasisCreator::shared_ptr> basis_creators{
-    std::make_shared<MatrixBasisCreator>(),
+    std::make_shared<OrthonormalBasisCreator>(),
     std::make_shared<EliminationBasisCreator>(basis_key_func)
   };
   std::vector<RetractorCreator::shared_ptr> retractor_creators{

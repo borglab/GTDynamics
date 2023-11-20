@@ -69,7 +69,7 @@ gtsam::ManifoldOptimizerParameters DefaultMoptParams() {
   auto basis_params = std::make_shared<gtsam::TspaceBasisParams>();
   basis_params->always_construct_basis = false;
   mopt_params.cc_params->basis_creator =
-      std::make_shared<gtsam::MatrixBasisCreator>(basis_params);
+      std::make_shared<gtsam::OrthonormalBasisCreator>(basis_params);
   return mopt_params;
 }
 

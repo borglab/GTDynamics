@@ -36,7 +36,7 @@ class ConstraintManifold {
 
     /** Default constructor. */
     Params()
-        : basis_creator(std::make_shared<MatrixBasisCreator>()),
+        : basis_creator(std::make_shared<OrthonormalBasisCreator>()),
           retractor_creator(std::make_shared<UoptRetractorCreator>()) {}
   };
 
