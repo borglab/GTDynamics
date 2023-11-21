@@ -46,7 +46,7 @@ IEConstraintManifold BarrierRetractor::retract(
   Values new_values = manifold->values().retract(delta);
   auto prior_noise = noiseModel::Unit::Create(1);
   KeyVector prior_keys = use_basis_keys_ ? basis_keys_ : new_values.keys();
-  params_.addPriors(new_values, prior_keys, graph);
+  params_->addPriors(new_values, prior_keys, graph);
 
   for (const auto &constraint : e_constraints) {
     graph.add(constraint->createFactor(1.0));
@@ -55,8 +55,8 @@ IEConstraintManifold BarrierRetractor::retract(
     graph.add(constraint->createBarrierFactor(1.0));
   }
   LevenbergMarquardtOptimizer optimizer(
-      graph, params_.init_values_as_x ? manifold->values() : new_values,
-      params_.lm_params);
+      graph, params_->init_values_as_x ? manifold->values() : new_values,
+      params_->lm_params);
   Values opt_values = optimizer.optimize();
 
   // collect active indices
@@ -80,11 +80,11 @@ IEConstraintManifold BarrierRetractor::retract(
   }
   // std::cout << "optimize for feasibility\n";
   // active_indices.print("active indices\n");
-  LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values, params_.lm_params);
+  LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values, params_->lm_params);
   Values result = optimizer_np.optimize();
-  if (params_.check_feasible) {
+  if (params_->check_feasible) {
     CheckFeasible(graph_np, result,
-                  "barrier retraction: ", params_.feasible_threshold);
+                  "barrier retraction: ", params_->feasible_threshold);
   }
 
   return manifold->createWithNewValues(result, active_indices);
@@ -92,9 +92,9 @@ IEConstraintManifold BarrierRetractor::retract(
 
 /* ************************************************************************* */
 KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
-    const IEConstraintManifold &manifold, const Params &params,
+    const IEConstraintManifold &manifold, const Params::shared_ptr &params,
     const std::optional<KeyVector> &basis_keys)
-    : IERetractor(), params_(params), graph_q_(), graph_v_(), graph_ad_() {
+    : IERetractor(params), graph_q_(), graph_v_(), graph_ad_() {
 
   /// Create merit graph for e-constriants and i-constraints
   merit_graph_ = manifold.eConstraints()->meritGraph();
@@ -164,10 +164,10 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   // solve q level with priors
   NonlinearFactorGraph graph_np_q = graph_q_;
   NonlinearFactorGraph graph_wp_q = graph_np_q;
-  params_.addPriors(new_values, basis_q_keys_, graph_wp_q);
+  params_->addPriors(new_values, basis_q_keys_, graph_wp_q);
   Values init_values_q = SubValues(values, graph_wp_q.keys());
   LevenbergMarquardtOptimizer optimizer_wp_q(graph_wp_q, init_values_q,
-                                             params_.lm_params);
+                                             params_->lm_params);
   Values results_q = optimizer_wp_q.optimize();
 
   // solve q level without priors
@@ -179,12 +179,12 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     }
   }
   LevenbergMarquardtOptimizer optimizer_np_q(graph_np_q, results_q,
-                                             params_.lm_params);
+                                             params_->lm_params);
   Values new_results_q = optimizer_np_q.optimize();
   known_values.insert(new_results_q);
-  if (params_.check_feasible) {
+  if (params_->check_feasible) {
     CheckFeasible(graph_np_q, new_results_q, "q-level",
-                  params_.feasible_threshold);
+                  params_->feasible_threshold);
   }
 
   // solve v level with priors
@@ -194,10 +194,10 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     graph_np_v.add(factor);
   }
   NonlinearFactorGraph graph_wp_v = graph_np_v;
-  params_.addPriors(new_values, basis_v_keys_, graph_wp_v);
+  params_->addPriors(new_values, basis_v_keys_, graph_wp_v);
   Values init_values_v = SubValues(values, graph_wp_v.keys());
   LevenbergMarquardtOptimizer optimizer_wp_v(graph_wp_v, init_values_v,
-                                             params_.lm_params);
+                                             params_->lm_params);
   Values results_v = optimizer_wp_v.optimize();
 
   // solve v level without priors
@@ -209,12 +209,12 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     }
   }
   LevenbergMarquardtOptimizer optimizer_np_v(graph_np_v, results_v,
-                                             params_.lm_params);
+                                             params_->lm_params);
   Values new_results_v = optimizer_np_v.optimize();
   known_values.insert(new_results_v);
-  if (params_.check_feasible) {
+  if (params_->check_feasible) {
     CheckFeasible(graph_np_v, new_results_v, "v-level",
-                  params_.feasible_threshold);
+                  params_->feasible_threshold);
   }
 
   // solve a and dynamics level with priors
@@ -224,10 +224,10 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     graph_np_ad.add(factor);
   }
   NonlinearFactorGraph graph_wp_ad = graph_np_ad;
-  params_.addPriors(new_values, basis_ad_keys_, graph_wp_ad);
+  params_->addPriors(new_values, basis_ad_keys_, graph_wp_ad);
   Values init_values_ad = SubValues(values, graph_wp_ad.keys());
   LevenbergMarquardtOptimizer optimizer_wp_ad(graph_wp_ad, init_values_ad,
-                                              params_.lm_params);
+                                              params_->lm_params);
   Values results_ad = optimizer_wp_ad.optimize();
 
   // solve a and dynamics level without priors
@@ -239,17 +239,17 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     }
   }
   LevenbergMarquardtOptimizer optimizer_np_ad(graph_np_ad, results_ad,
-                                              params_.lm_params);
+                                              params_->lm_params);
   Values new_results_ad = optimizer_np_ad.optimize();
   known_values.insert(new_results_ad);
-  if (params_.check_feasible) {
+  if (params_->check_feasible) {
     CheckFeasible(graph_np_ad, new_results_ad, "ad-level",
-                  params_.feasible_threshold);
+                  params_->feasible_threshold);
   }
 
-  // if (params_.check_feasible) {
+  // if (params_->check_feasible) {
   //   CheckFeasible(merit_graph_, known_values, "overall",
-  //                 params_.feasible_threshold);
+  //                 params_->feasible_threshold);
   // }
 
   return manifold->createWithNewValues(known_values, active_indices);

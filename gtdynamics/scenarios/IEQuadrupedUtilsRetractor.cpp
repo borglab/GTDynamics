@@ -78,12 +78,12 @@ IERetractor::shared_ptr Vision60MultiPhaseBarrierRetractorCreator::create(
 TspaceBasis::shared_ptr Vision60MultiPhaseTspaceBasisCreator::create(
     const EqualityConstraints::shared_ptr constraints, const Values &values) const {
   if (values.size() == 1) {
-    return std::make_shared<OrthonormalBasis>(params_, constraints, values);
+    return std::make_shared<OrthonormalBasis>(constraints, values, params_);
   }
   size_t k = gtdynamics::DynamicsSymbol(*values.keys().begin()).time();
   KeyVector basis_keys =
       vision60_multi_phase_.robotAtStep(k).getBasisKeyFunc()(values.keys());
-  return std::make_shared<EliminationBasis>(params_, constraints, values, basis_keys);
+  return std::make_shared<EliminationBasis>(constraints, values, params_, basis_keys);
 }
 
 } // namespace gtsam

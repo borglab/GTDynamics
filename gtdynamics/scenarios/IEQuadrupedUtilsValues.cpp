@@ -315,7 +315,6 @@ Values TrajectoryValuesVerticalJump(
   }
 
   //// Phase on ground: part1: const accel of torso
-  std::cout << "phase on ground part1\n";
   const IEVision60Robot &vision60_ground =
       vision60_multi_phase.phase_robots_[0];
   size_t num_steps_ground = vision60_multi_phase.phase_num_steps_[0];
@@ -348,7 +347,6 @@ Values TrajectoryValuesVerticalJump(
   }
 
   //// Phase on ground: part2: reduce contact force to 0
-  std::cout << "phase on ground part2\n";
   std::map<uint8_t, Vector3> contact_forces;
   for (const auto &link_id : vision60_ground.contact_link_ids) {
     contact_forces.insert({link_id, prev_values.at<Vector3>(ContactForceKey(
@@ -385,7 +383,6 @@ Values TrajectoryValuesVerticalJump(
   //// boundary step same as last step in ground phase
 
   //// Phase in air
-  std::cout << "phase in air\n";
   const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
   size_t num_steps_air = vision60_multi_phase.phase_num_steps_[1];
   double dt_air = phases_dt[1];

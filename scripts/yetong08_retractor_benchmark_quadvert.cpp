@@ -6,123 +6,169 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  main.cpp
- * @brief Trajectory optimization for a legged robot with contacts.
- * @author Alejandro Escontrela
+ * @file  retractor_benchmark_quadvert.cpp
+ * @brief Tspace and Retractor benchmarking in a quadruped vertical jump
+ * trajectory optimization problem.
+ * @author Yetong Zhang
  */
 
 #include "QuadrupedVerticalJump.h"
-#include "gtdynamics/imanifold/IERetractor.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <memory>
 
 using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_vertical_jump;
 
 bool include_inequality = false;
+std::string constraint_str = include_inequality ? "ie" : "e";
+std::string scenario = "yetong08_" + constraint_str + "_quadruped_jump";
+std::string scenario_folder = "../../data/" + scenario + "/";
 
-void RunRetractorBenchMark(
-    const IEConsOptProblem &problem,
-    const std::vector<std::pair<std::string, IERetractorCreator::shared_ptr>>
-        &retractor_creators,
-    const IELMParams &ie_params,
-    const IEConstraintManifold::Params::shared_ptr &_ecm_params) {
-  auto iecm_params =
-      std::make_shared<IEConstraintManifold::Params>(*_ecm_params);
+typedef std::vector<
+    std::pair<std::string, IEConstraintManifold::Params::shared_ptr>>
+    IECM_PARAMS_LIST;
 
-  for (const auto &[retractor_name, retractor_creator] : retractor_creators) {
-    iecm_params->retractor_creator = retractor_creator;
-    std::cout << retractor_name << ":\n";
+void RunRetractorBenchMark(const IEConsOptProblem &problem,
+                           const IECM_PARAMS_LIST &iecm_params_list,
+                           const IELMParams &ie_params) {
+  std::filesystem::create_directory(scenario_folder);
+  for (const auto &[exp_name, iecm_params] : iecm_params_list) {
+    std::cout << exp_name << ":\n";
+
+    // run experiment
     auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
-    // Values result_values = lm_result.second.back().state.baseValues();
+
+    // print result and evaluation
+    Values result_values = lm_result.second.back().state.baseValues();
+    problem.eval_func(result_values);
+    for (const auto &iter_details : lm_result.second) {
+      Values values = iter_details.state.baseValues();
+      double dt1 = values.atDouble(PhaseKey(0));
+      double dt2 = values.atDouble(PhaseKey(1));
+      std::cout << iter_details.state.iterations << "\t" << dt1 << "\t" << dt2
+                << "\n";
+    }
+
+    // export file
     const auto &iters_details = lm_result.second;
-    std::string state_file_path =
-        "../../data/quadruped_ground_air_" + retractor_name + "_states.csv";
-    std::string trial_file_path =
-        "../../data/quadruped_ground_air_" + retractor_name + "_trials.csv";
+    std::string state_file_path = scenario_folder + exp_name + "_states.csv";
+    std::string trial_file_path = scenario_folder + exp_name + "_trials.csv";
     iters_details.exportFile(state_file_path, trial_file_path);
   }
 }
 
 void RetractorBenchMark() {
-//   /// Initialize vision60 robot
-//   auto vision60_params = GetVision60Params();
-//   vision60_params.ad_basis_using_torques = false;
-//   auto vision60_multi_phase_a = GetVision60MultiPhase(vision60_params);
-//   vision60_params.ad_basis_using_torques = true;
-//   auto vision60_multi_phase_T = GetVision60MultiPhase(vision60_params);
+  VerticalJumpParams params;
+  params.include_inequalities = include_inequality;
+  params.add_phase_prior = true;
+  params.phase_prior_dt = std::vector<double>{0.025, 0.025};
+  params.vision60_params.ad_basis_using_torques = false;
+  auto vision60_multi_phase_a = GetVision60MultiPhase(params);
+  params.vision60_params.ad_basis_using_torques = true;
+  auto vision60_multi_phase_T = GetVision60MultiPhase(params);
 
-//   /// Create problem
-//   auto problem =
-//       CreateProblem(vision60_multi_phase_a, include_inequality, true);
+  /// Create problem
+  auto problem = CreateProblem(params);
 
-//   LevenbergMarquardtParams lm_params;
-//   BarrierRetractor::Params retractor_params(lm_params, 0.1);
+  std::vector<std::tuple<std::string, std::string, std::string>> exp_settings;
+  // exp_settings.emplace_back("Orthonormal", "Barrier", "all");
+  // exp_settings.emplace_back("Orthonormal", "Barrier", "cost");
+  // exp_settings.emplace_back("Orthonormal", "Barrier", "costscale");
+  // // exp_settings.emplace_back("Orthonormal", "Barrier", "basisa");
+  // exp_settings.emplace_back("Orthonormal", "Barrier", "basisT");
 
-//   auto metric_sigmas = std::make_shared<VectorValues>();
-//   BarrierRetractor::Params metric_retractor_params(lm_params, metric_sigmas);
+  exp_settings.emplace_back("Orthonormal", "Hierarchical", "all");
+  exp_settings.emplace_back("Orthonormal", "Hierarchical", "cost");
+  exp_settings.emplace_back("Orthonormal", "Hierarchical", "costscale");
+  // exp_settings.emplace_back("Orthonormal", "Hierarchical", "basisa");
+  exp_settings.emplace_back("Orthonormal", "Hierarchical", "basisT");
 
-//   auto barrier_retractor_creator_no_basis_keys =
-//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-//           vision60_multi_phase_a, retractor_params, false);
+  // exp_settings.emplace_back("EliminationT", "Barrier", "all");
+  // exp_settings.emplace_back("EliminationT", "Barrier", "cost");
+  // exp_settings.emplace_back("EliminationT", "Barrier", "costscale");
+  // // exp_settings.emplace_back("EliminationT", "Barrier", "basisa");
+  // exp_settings.emplace_back("EliminationT", "Barrier", "basisT");
 
-//   auto barrier_retractor_creator_a_basis_keys =
-//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-//           vision60_multi_phase_a, retractor_params, true);
+  // exp_settings.emplace_back("EliminationT", "Hierarchical", "all");
+  // exp_settings.emplace_back("EliminationT", "Hierarchical", "cost");
+  // exp_settings.emplace_back("EliminationT", "Hierarchical", "costscale");
+  // // exp_settings.emplace_back("EliminationT", "Hierarchical", "basisa");
+  // exp_settings.emplace_back("EliminationT", "Hierarchical", "basisT");
 
-//   auto barrier_retractor_creator_T_basis_keys =
-//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-//           vision60_multi_phase_T, retractor_params, true);
+  IECM_PARAMS_LIST iecm_params_list;
+  for (const auto &[basis_type, retractor_type, metric_type] : exp_settings) {
+    auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
 
-//   auto barrier_retractor_creator_diagonal_metric =
-//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-//           vision60_multi_phase_T, metric_retractor_params, false);
+    /// Tspace Basis
+    if (basis_type == "Orthonormal") {
+      iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
+    } else if (basis_type == "EliminationT") {
+      iecm_params->e_basis_creator =
+          std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
+              vision60_multi_phase_T);
+    } else if (basis_type == "Eliminationa") {
+      iecm_params->e_basis_creator =
+          std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
+              vision60_multi_phase_a);
+    }
 
-//   auto hierarchical_retractor_creator_no_basis_keys =
-//       std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
-//           vision60_multi_phase_a, retractor_params, false);
-
-//   auto hierarchical_retractor_creator_a_basis_keys =
-//       std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
-//           vision60_multi_phase_a, retractor_params, true);
-
-//   auto hierarchical_retractor_creator_T_basis_keys =
-//       std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
-//           vision60_multi_phase_T, retractor_params, true);
-
-//   auto hierarchical_retractor_creator_diagonal_metric =
-//       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-//           vision60_multi_phase_T, metric_retractor_params, false);
-
-//   std::vector<std::pair<std::string, IERetractorCreator::shared_ptr>>
-//       retractor_creators{
-//           {"barrier_none", barrier_retractor_creator_no_basis_keys},
-//           {"barrier_a", barrier_retractor_creator_a_basis_keys},
-//           {"barrier_T", barrier_retractor_creator_T_basis_keys},
-//           {"barrier_metric", barrier_retractor_creator_diagonal_metric},
-//           {"hierarchical_none", hierarchical_retractor_creator_no_basis_keys},
-//           {"hierarchical_a", hierarchical_retractor_creator_a_basis_keys},
-//           {"hierarchical_T", hierarchical_retractor_creator_T_basis_keys},
-//           {"hierarchical_metric",
-//            hierarchical_retractor_creator_diagonal_metric}};
-
-//   IELMParams ie_params;
-//   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-//   ie_params.lm_params.setVerbosityLM("SUMMARY");
-//   ie_params.lm_params.setMaxIterations(30);
-//   ie_params.lm_params.setlambdaInitial(1e-2);
-
-//   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-//   iecm_params->e_basis_build_from_scratch = true;
-//   iecm_params->ecm_params->basis_params->setFixVars();
-//   iecm_params->e_basis_creator =
-//       std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
-//           vision60_multi_phase_T, iecm_params->ecm_params->basis_params);
-
-//   RunRetractorBenchMark(problem, retractor_creators, ie_params, iecm_params);
+    /// Retractor params
+    auto retractor_params = std::make_shared<IERetractorParams>();
+    retractor_params->lm_params = LevenbergMarquardtParams();
+    // retractor_params->lm_params.minModelFidelity = 0.5;
+    retractor_params->check_feasible = true;
+    retractor_params->feasible_threshold = 1e-3;
+    retractor_params->prior_sigma = 0.1;
+    if ((metric_type == "cost") || (metric_type == "costscale")) {
+      retractor_params->use_varying_sigma = true;
+      retractor_params->metric_sigmas = std::make_shared<VectorValues>();
+    }
+    if (metric_type == "costscale") {
+      retractor_params->scale_varying_sigma = true;
+    }
+    /// Retractor
+    if (retractor_type == "Barrier") {
+      if (metric_type == "basisT") {
+        iecm_params->retractor_creator =
+            std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+                vision60_multi_phase_T, retractor_params, true);
+      } else if (metric_type == "basisa") {
+        iecm_params->retractor_creator =
+            std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+                vision60_multi_phase_a, retractor_params, true);
+      } else {
+        iecm_params->retractor_creator =
+            std::make_shared<BarrierRetractorCreator>(retractor_params);
+      }
+    } else if (retractor_type == "Hierarchical") {
+      if (metric_type == "basisT") {
+        iecm_params->retractor_creator =
+            std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+                vision60_multi_phase_T, retractor_params, true);
+      } else if (metric_type == "basisa") {
+        iecm_params->retractor_creator =
+            std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+                vision60_multi_phase_a, retractor_params, true);
+      } else {
+        iecm_params->retractor_creator =
+            std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+                vision60_multi_phase_T, retractor_params, false);
+      }
+    }
+    std::string exp_name =
+        basis_type + "_" + retractor_type + "_" + metric_type;
+    iecm_params_list.emplace_back(exp_name, iecm_params);
+  }
+  IELMParams ie_params;
+  ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
+  ie_params.lm_params.setVerbosityLM("SUMMARY");
+  ie_params.lm_params.setMaxIterations(100);
+  ie_params.lm_params.setlambdaInitial(1e-2);
+  ie_params.lm_params.setlambdaUpperBound(1e10);
+  RunRetractorBenchMark(problem, iecm_params_list, ie_params);
 }
 
 int main(int argc, char **argv) {

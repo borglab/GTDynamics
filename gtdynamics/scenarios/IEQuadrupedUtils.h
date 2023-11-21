@@ -350,8 +350,8 @@ public:
   NonlinearFactorGraph collocationCosts() const;
 
   /** Inequality constraints that limit the min phase durations. */
-  gtdynamics::InequalityConstraints phaseMinDurationConstraints(
-      const std::vector<double> &phases_min_dt) const;
+  gtdynamics::InequalityConstraints
+  phaseMinDurationConstraints(const std::vector<double> &phases_min_dt) const;
 };
 
 /* ************************************************************************* */
@@ -386,15 +386,14 @@ TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
 class Vision60HierarchicalRetractorCreator : public IERetractorCreator {
 protected:
   const IEVision60Robot &robot_;
-  const KinodynamicHierarchicalRetractor::Params &params_;
   bool use_basis_keys_;
 
 public:
   Vision60HierarchicalRetractorCreator(
       const IEVision60Robot &robot,
-      const KinodynamicHierarchicalRetractor::Params &params,
+      const IERetractorParams::shared_ptr &params,
       bool use_basis_keys)
-      : robot_(robot), params_(params), use_basis_keys_(use_basis_keys) {}
+      : IERetractorCreator(params), robot_(robot), use_basis_keys_(use_basis_keys) {}
 
   virtual ~Vision60HierarchicalRetractorCreator() {}
 
@@ -406,14 +405,14 @@ public:
 class Vision60BarrierRetractorCreator : public IERetractorCreator {
 protected:
   const IEVision60Robot &robot_;
-  const BarrierRetractor::Params &params_;
   bool use_basis_keys_;
 
 public:
   Vision60BarrierRetractorCreator(const IEVision60Robot &robot,
-                                  const BarrierRetractor::Params &params,
+                                  const IERetractorParams::shared_ptr &params,
                                   bool use_basis_keys)
-      : robot_(robot), params_(params), use_basis_keys_(use_basis_keys) {}
+      : IERetractorCreator(params), robot_(robot),
+        use_basis_keys_(use_basis_keys) {}
 
   virtual ~Vision60BarrierRetractorCreator() {}
 
@@ -426,16 +425,13 @@ class Vision60MultiPhaseHierarchicalRetractorCreator
     : public IERetractorCreator {
 protected:
   const IEVision60RobotMultiPhase &vision60_multi_phase_;
-  const KinodynamicHierarchicalRetractor::Params &params_;
   bool use_basis_keys_;
 
 public:
   Vision60MultiPhaseHierarchicalRetractorCreator(
       const IEVision60RobotMultiPhase &vision60_multi_phase,
-      const KinodynamicHierarchicalRetractor::Params &params,
-      bool use_basis_keys)
-      : IERetractorCreator(params.use_varying_sigma, params.metric_sigmas),
-        vision60_multi_phase_(vision60_multi_phase), params_(params),
+      const IERetractorParams::shared_ptr &params, bool use_basis_keys)
+      : IERetractorCreator(params), vision60_multi_phase_(vision60_multi_phase),
         use_basis_keys_(use_basis_keys) {}
 
   virtual ~Vision60MultiPhaseHierarchicalRetractorCreator() {}
@@ -448,15 +444,13 @@ public:
 class Vision60MultiPhaseBarrierRetractorCreator : public IERetractorCreator {
 protected:
   const IEVision60RobotMultiPhase &vision60_multi_phase_;
-  const BarrierRetractor::Params &params_;
   bool use_basis_keys_;
 
 public:
   Vision60MultiPhaseBarrierRetractorCreator(
       const IEVision60RobotMultiPhase &vision60_multi_phase,
-      const BarrierRetractor::Params &params, bool use_basis_keys)
-      : IERetractorCreator(params.use_varying_sigma, params.metric_sigmas),
-        vision60_multi_phase_(vision60_multi_phase), params_(params),
+      const IERetractorParams::shared_ptr &params, bool use_basis_keys)
+      : IERetractorCreator(params), vision60_multi_phase_(vision60_multi_phase),
         use_basis_keys_(use_basis_keys) {}
 
   virtual ~Vision60MultiPhaseBarrierRetractorCreator() {}
@@ -478,8 +472,9 @@ public:
       : TspaceBasisCreator(params),
         vision60_multi_phase_(vision60_multi_phase) {}
 
-  TspaceBasis::shared_ptr create(const EqualityConstraints::shared_ptr constraints,
-                                 const Values &values) const override;
+  TspaceBasis::shared_ptr
+  create(const EqualityConstraints::shared_ptr constraints,
+         const Values &values) const override;
 };
 
 } // namespace gtsam

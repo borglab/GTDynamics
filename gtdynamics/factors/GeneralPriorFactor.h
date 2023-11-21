@@ -143,4 +143,28 @@ inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
   }
 }
 
+template <typename CONTAINER>
+inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
+                             const VectorValues &all_sigmas,
+                             NonlinearFactorGraph &graph,
+                             double nominal_sigma) {
+
+  double min_sigma = 1e10;
+  for (const Key &key : keys) {
+    if (all_sigmas.exists(key)) {
+      min_sigma = std::min(min_sigma, all_sigmas.at(key).minCoeff());
+    }
+  }
+  double scale = nominal_sigma / min_sigma;
+  // std::cout << "scale: " << scale << "\n";
+
+  for (const Key &key : keys) {
+    if (all_sigmas.exists(key)) {
+      graph.emplace_shared<GeneralPriorFactor>(
+          key, values.at(key), noiseModel::Diagonal::Sigmas(scale * all_sigmas.at(key)));
+    }
+  }
+}
+
+
 }  // namespace gtsam

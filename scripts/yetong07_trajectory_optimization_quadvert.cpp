@@ -7,11 +7,12 @@
 
 /**
  * @file  main.cpp
- * @brief Trajectory optimization for a legged robot with contacts.
- * @author Alejandro Escontrela
+ * @brief Trajectory optimization for a legged robot vertical jump.
+ * @author Yetong Zhang
  */
 
 #include "QuadrupedVerticalJump.h"
+#include "gtdynamics/imanifold/IERetractor.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 
 using namespace gtdynamics;
@@ -30,8 +31,8 @@ void TrajectoryOptimization() {
   VerticalJumpParams params;
   params.include_inequalities = include_inequality;
   params.vision60_params.ad_basis_using_torques = true;
-  // params.add_phase_prior = true;
-  // params.phase_prior_dt = std::vector<double>{0.025, 0.025};
+  params.add_phase_prior = true;
+  params.phase_prior_dt = std::vector<double>{0.025, 0.025};
   // params.add_phase_duration_constraints = true;
   // params.phases_min_dt = std::vector<double>{0.015, 0.015};
   auto vision60_multi_phase = GetVision60MultiPhase(params);
@@ -53,27 +54,33 @@ void TrajectoryOptimization() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->e_basis_build_from_scratch = false;
 
-  BarrierRetractor::Params retractor_params;
-  retractor_params.lm_params = LevenbergMarquardtParams();
-  // retractor_params.lm_params.minModelFidelity = 0.5;
-  retractor_params.check_feasible = true;
-  retractor_params.feasible_threshold = 1e-3;
-  retractor_params.prior_sigma = 0.1;
+  auto retractor_params = std::make_shared<IERetractorParams>();
+  retractor_params->lm_params = LevenbergMarquardtParams();
+  // retractor_params->lm_params.minModelFidelity = 0.5;
+  retractor_params->check_feasible = true;
+  retractor_params->feasible_threshold = 1e-3;
+  retractor_params->prior_sigma = 0.1;
+
+  // retractor_params->use_varying_sigma = true;
+  // retractor_params->scale_varying_sigma = true;
+  // retractor_params->metric_sigmas = std::make_shared<VectorValues>();
+
   iecm_params->retractor_creator =
       std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
           vision60_multi_phase, retractor_params, false);
   // iecm_params->retractor_creator =
   //     std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
-  //         vision60_multi_phase, retractor_params, true);
-  iecm_params->e_basis_creator =
-      std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
-          vision60_multi_phase);
+  //         vision60_multi_phase, retractor_params, false);
+  // iecm_params->e_basis_creator =
+  //     std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
+  //         vision60_multi_phase);
+  iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
 
   IELMParams ie_params;
   ie_params.lm_params.setVerbosityLM("SUMMARY");
-  ie_params.lm_params.setMaxIterations(30);
+  ie_params.lm_params.setMaxIterations(100);
   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-  ie_params.lm_params.setlambdaInitial(1e-1);
+  ie_params.lm_params.setlambdaInitial(1e-2);
   ie_params.lm_params.setlambdaUpperBound(1e10);
   auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
 
@@ -97,17 +104,17 @@ void TrajectoryOptimization() {
     std::cout << iter_details.state.iterations << "\t" << dt1 << "\t" << dt2
               << "\n";
   }
-  IEVision60Robot::ExportValues(result_values, num_steps,
-                                scenario_folder + "manopt_traj_viz.csv");
-  IEVision60Robot::ExportValuesMultiPhase(result_values,
-                                          vision60_multi_phase.phase_num_steps_,
-                                          scenario_folder +
-                                          "manopt_traj.csv");
-  lm_result.first.exportFile(scenario_folder + "manopt_summary.csv");
-  std::string manopt_state_file_path = scenario_folder + "manopt_states.csv";
-  std::string manopt_trial_file_path = scenario_folder + "manopt_trials.csv";
-  lm_result.second.exportFile(manopt_state_file_path,
-  manopt_trial_file_path);
+  // IEVision60Robot::ExportValues(result_values, num_steps,
+  //                               scenario_folder + "manopt_traj_viz.csv");
+  // IEVision60Robot::ExportValuesMultiPhase(result_values,
+  //                                         vision60_multi_phase.phase_num_steps_,
+  //                                         scenario_folder +
+  //                                         "manopt_traj.csv");
+  // lm_result.first.exportFile(scenario_folder + "manopt_summary.csv");
+  // std::string manopt_state_file_path = scenario_folder + "manopt_states.csv";
+  // std::string manopt_trial_file_path = scenario_folder + "manopt_trials.csv";
+  // lm_result.second.exportFile(manopt_state_file_path,
+  // manopt_trial_file_path);
 
   // /// Optimize Barrier
   // BarrierParameters barrier_params;

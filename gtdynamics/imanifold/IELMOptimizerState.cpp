@@ -246,8 +246,11 @@ void IELMTrial::print(const IELMState &state) const {
   cout << setw(10) << (linear_update.solve_successful ? "T   " : "F   ") << " "
        << setw(10) << setprecision(2) << trial_time << " ";
   cout << setw(10) << setprecision(4) << linear_update.delta.norm() << " ";
-  cout << setw(10) << setprecision(4) << linear_update.tangent_vector.norm() << " ";
-  cout << setw(10) << setprecision(4) << linear_update.tangent_vector.norm() / linear_update.delta.norm() << " ";
+  cout << setw(10) << setprecision(4) << linear_update.tangent_vector.norm()
+       << " ";
+  cout << setw(10) << setprecision(4)
+       << linear_update.tangent_vector.norm() / linear_update.delta.norm()
+       << " ";
   cout << endl;
 }
 
@@ -485,6 +488,8 @@ void IELMItersDetails::exportFile(const std::string &state_file_path,
              << "nonlinear_cost_change"
              << ","
              << "model_fidelity"
+             << ","
+             << "tangent_vector_norm"
              << "\n";
 
   for (const auto &iter_details : *this) {
@@ -497,7 +502,8 @@ void IELMItersDetails::exportFile(const std::string &state_file_path,
                  << trial.step_is_successful << ","
                  << trial.linear_update.cost_change << ","
                  << trial.nonlinear_update.cost_change << ","
-                 << trial.model_fidelity << "\n";
+                 << trial.model_fidelity << ","
+                 << trial.linear_update.tangent_vector.norm() << "\n";
     }
   }
   state_file.close();

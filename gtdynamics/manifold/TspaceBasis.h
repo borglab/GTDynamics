@@ -127,9 +127,9 @@ protected:
   typedef Eigen::SparseMatrix<double> SpMatrix;
 
 public:
-  OrthonormalBasis(const TspaceBasisParams::shared_ptr &params,
-                   const EqualityConstraints::shared_ptr &constraints,
-                   const Values &values);
+  OrthonormalBasis(const EqualityConstraints::shared_ptr &constraints,
+                   const Values &values,
+                   const TspaceBasisParams::shared_ptr &params);
 
   OrthonormalBasis(const TspaceBasisParams::shared_ptr &params,
                    const Attributes::shared_ptr &attributes)
@@ -245,13 +245,13 @@ protected:
 
 public:
   /** Constructor
-   * @param cc constraint-connected component for the constraint manifold
+   * @param constraints cosntriants for the constraint manifold
    * @param values values of the variables in the connected component
    * @param basis_keys variables selected as basis variables
    */
-  EliminationBasis(const TspaceBasisParams::shared_ptr &params,
-                   const EqualityConstraints::shared_ptr &constraints,
+  EliminationBasis(const EqualityConstraints::shared_ptr &constraints,
                    const Values &values,
+                   const TspaceBasisParams::shared_ptr &params,
                    std::optional<const KeyVector> basis_keys = {});
 
   /// Constructor from other, avoids recomputation.
@@ -339,7 +339,7 @@ public:
   TspaceBasis::shared_ptr
   create(const EqualityConstraints::shared_ptr constraints,
          const Values &values) const override {
-    return std::make_shared<OrthonormalBasis>(params_, constraints, values);
+    return std::make_shared<OrthonormalBasis>(constraints, values, params_);
   }
 };
 
@@ -364,10 +364,10 @@ public:
          const Values &values) const override {
     if (params_->use_basis_keys) {
       KeyVector basis_keys = basis_key_func_(values.keys());
-      return std::make_shared<EliminationBasis>(params_, constraints, values,
+      return std::make_shared<EliminationBasis>(constraints, values, params_,
                                                 basis_keys);
     }
-    return std::make_shared<EliminationBasis>(params_, constraints, values);
+    return std::make_shared<EliminationBasis>(constraints, values, params_);
   }
 };
 

@@ -139,15 +139,15 @@ void OptimizeSO2() {
   ielm_params.lm_params.setVerbosityLM("SUMMARY");
   // ielm_params.lm_params.setMaxIterations(1);
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_creator = std::make_shared<MatrixBasisCreator>();
+  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
   LevenbergMarquardtParams lm_params;
   // lm_params.setVerbosityLM("SUMMARY");
   lm_params.minModelFidelity = 0.5;
 
   //// Optimization with fixed sigmas
   {
-    BarrierRetractor::Params barrier_params(lm_params, 0.1);
-    barrier_params.init_values_as_x = false;
+    auto barrier_params = std::make_shared<IERetractorParams>(lm_params, 0.1);
+    barrier_params->init_values_as_x = false;
     iecm_params->retractor_creator =
         std::make_shared<BarrierRetractorCreator>(barrier_params);
     IELMOptimizer optimizer(ielm_params, iecm_params);
@@ -164,9 +164,9 @@ void OptimizeSO2() {
 
   //// Optimization with varying sigmas
   {
-    BarrierRetractor::Params barrier_params =
-        BarrierRetractor::Params::VarySigmas(lm_params);
-    barrier_params.init_values_as_x = false;
+    auto barrier_params =
+        IERetractorParams::VarySigmas(lm_params);
+    barrier_params->init_values_as_x = false;
     iecm_params->retractor_creator =
         std::make_shared<BarrierRetractorCreator>(barrier_params);
     IELMOptimizer optimizer(ielm_params, iecm_params);

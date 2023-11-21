@@ -56,10 +56,10 @@ TEST(TspaceBasis, connected_poses) {
   // Construct basis.
   KeyVector basis_keys{x3_key};
   auto basis_params = std::make_shared<TspaceBasisParams>();
-  auto basis_m =
-      std::make_shared<OrthonormalBasis>(basis_params, constraints, cm_base_values);
-  auto basis_e = std::make_shared<EliminationBasis>(basis_params, constraints,
-                                                    cm_base_values, basis_keys);
+  auto basis_m = std::make_shared<OrthonormalBasis>(constraints, cm_base_values,
+                                                    basis_params);
+  auto basis_e = std::make_shared<EliminationBasis>(constraints, cm_base_values,
+                                                    basis_params, basis_keys);
   auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
   auto basis_sm = sparse_creator->create(constraints, cm_base_values);
 
@@ -148,8 +148,8 @@ TEST(TspaceBasis, linear_system) {
   auto basis_params = std::make_shared<TspaceBasisParams>();
   // auto basis_m = std::make_shared<MatrixBasis>(basis_params, cc, values);
   auto basis_e =
-      std::make_shared<EliminationBasis>(basis_params, constraints, values, basis_keys);
-  auto basis_m = std::make_shared<OrthonormalBasis>(basis_params, constraints, values);
+      std::make_shared<EliminationBasis>(constraints, values, basis_params, basis_keys);
+  auto basis_m = std::make_shared<OrthonormalBasis>(constraints, values, basis_params);
   auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
   auto basis_sm = sparse_creator->create(constraints, values);
 
