@@ -125,10 +125,6 @@ void OrthonormalBasis::constructSparse(const Values &values) {
   SuiteSparseQR_factorization<double> *QR = SuiteSparseQR_factorize<double>(
       SPQR_ORDERING_DEFAULT, SPQR_DEFAULT_TOL, A_t, cc);
 
-  cholmod_dense *eye = cholmod_l_eye(
-      attributes_->total_var_dim, attributes_->total_var_dim, CHOLMOD_REAL, cc);
-  cholmod_dense *Q = SuiteSparseQR_qmult(SPQR_QX, QR, eye, cc);
-
   cholmod_sparse *selection_mat = LastColsSelectionMat(
       attributes_->total_var_dim, attributes_->total_basis_dim, cc);
 
@@ -138,9 +134,10 @@ void OrthonormalBasis::constructSparse(const Values &values) {
   basis_ = CholmodToEigen(basis_cholmod, cc);
 
   cholmod_l_free_sparse(&A_t, cc);
+  SuiteSparseQR_free(&QR, cc);
   cholmod_l_free_sparse(&selection_mat, cc);
   cholmod_l_free_sparse(&basis_cholmod, cc);
-  cholmod_finish(cc);
+  cholmod_l_finish(cc);
 }
 
 /* ************************************************************************* */
@@ -334,6 +331,7 @@ OrthonormalBasis::CholmodToEigen(cholmod_sparse *A, cholmod_common *cc) {
 
   SpMatrix A_eigen(A->nrow, A->ncol);
   A_eigen.setFromTriplets(triplets.begin(), triplets.end());
+  cholmod_l_free_triplet(&T, cc);
   return A_eigen;
 }
 
