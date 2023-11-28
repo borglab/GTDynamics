@@ -14,8 +14,8 @@
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
@@ -63,9 +63,9 @@ using namespace gtsam;
 
 void TrajectoryOptimization() {
   /// Initialize vision60 robot
-  IEVision60Robot::Params vision60_params;
-  vision60_params.express_redundancy = true;
-  vision60_params.ad_basis_using_torques = true;
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
+  vision60_params->express_redundancy = true;
+  vision60_params->ad_basis_using_torques = true;
   std::map<std::string, double> torque_lower_limits;
   std::map<std::string, double> torque_upper_limits;
   double lower_torque_lower_limit = -20.0;
@@ -76,12 +76,12 @@ void TrajectoryOptimization() {
     torque_upper_limits.insert(
         {leg.lower_joint->name(), lower_torque_upper_limit});
   }
-  vision60_params.torque_upper_limits = torque_upper_limits;
-  vision60_params.torque_lower_limits = torque_lower_limits;
-  vision60_params.include_torque_limits = true;
-  vision60_params.set4C();
+  vision60_params->torque_upper_limits = torque_upper_limits;
+  vision60_params->torque_lower_limits = torque_lower_limits;
+  vision60_params->include_torque_limits = true;
 
-  IEVision60Robot vision60(vision60_params);
+  IEVision60Robot vision60(vision60_params,
+                           IEVision60Robot::PhaseInfo::Ground());
 
   /// Scenario
   size_t num_steps = 10;
@@ -92,6 +92,18 @@ void TrajectoryOptimization() {
   Pose3 des_pose(Rot3::Ry(-0.2), Point3(0.2, 0, vision60.nominal_height + 0.2));
   Vector6 des_twist = Vector6::Zero();
 
+  Values state_constrained_values;
+  InsertPose(&state_constrained_values, IEVision60Robot::base_id, 0,
+             base_pose_init);
+  InsertTwist(&state_constrained_values, IEVision60Robot::base_id, 0,
+              base_twist_init);
+  vision60_params->state_constrianed_values = state_constrained_values;
+  Values state_cost_values;
+  InsertPose(&state_cost_values, IEVision60Robot::base_id, num_steps, des_pose);
+  InsertTwist(&state_cost_values, IEVision60Robot::base_id, num_steps,
+              des_twist);
+  vision60_params->state_cost_values = state_cost_values;
+
   /// Constraints
   EqualityConstraints e_constraints;
   InequalityConstraints i_constraints;
@@ -99,8 +111,7 @@ void TrajectoryOptimization() {
     e_constraints.add(vision60.eConstraints(k));
     i_constraints.add(vision60.iConstraints(k));
   }
-  e_constraints.add(
-      vision60.initStateConstraints(base_pose_init, base_twist_init));
+  e_constraints.add(vision60.stateConstraints());
   auto EvaluateConstraints = [=](const Values &values) {
     std::cout << "e constraints violation:\t"
               << e_constraints.evaluateViolationL2Norm(values) << "\n";
@@ -111,9 +122,8 @@ void TrajectoryOptimization() {
   /// Costs
   NonlinearFactorGraph collocation_costs =
       vision60.collocationCosts(num_steps, dt);
-  NonlinearFactorGraph boundary_costs =
-      vision60.finalStateCosts(des_pose, des_twist, num_steps);
-  NonlinearFactorGraph min_torque_costs = vision60.minTorqueCosts(num_steps);
+  NonlinearFactorGraph boundary_costs = vision60.stateCosts();
+  NonlinearFactorGraph min_torque_costs = vision60.actuationCosts(num_steps);
   NonlinearFactorGraph costs;
   costs.add(collocation_costs);
   costs.add(boundary_costs);
@@ -138,7 +148,8 @@ void TrajectoryOptimization() {
 
   // Parameters
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lm_params = LevenbergMarquardtParams();
@@ -152,7 +163,7 @@ void TrajectoryOptimization() {
           vision60, retractor_params, true);
   iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
   iecm_params->e_basis_build_from_scratch = false;
-  
+
   IELMParams ie_params;
   ie_params.lm_params.setMaxIterations(10);
 

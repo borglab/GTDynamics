@@ -30,14 +30,13 @@ void TrajectoryOptimization() {
   /// scenario setting
   VerticalJumpParams params;
   params.include_inequalities = include_inequality;
-  params.vision60_params.ad_basis_using_torques = true;
-  params.add_phase_prior = true;
-  params.phase_prior_dt = std::vector<double>{0.025, 0.025};
-  // params.add_phase_duration_constraints = true;
-  // params.phases_min_dt = std::vector<double>{0.015, 0.015};
+  params.vision60_params->ad_basis_using_torques = true;
+  // params.add_phase_prior = true;
+  // params.phase_prior_dt = std::vector<double>{0.025, 0.025};
+  params.vision60_params->include_phase_duration_limits = true;
+  params.vision60_params->phases_min_dt = std::vector<double>{0.015, 0.015};
   auto vision60_multi_phase = GetVision60MultiPhase(params);
-  size_t num_steps = vision60_multi_phase.phase_num_steps_[0] +
-                     vision60_multi_phase.phase_num_steps_[1];
+  size_t num_steps = vision60_multi_phase.numSteps();
 
   /// Create problem
   auto problem = CreateProblem(params);
@@ -104,8 +103,8 @@ void TrajectoryOptimization() {
     std::cout << iter_details.state.iterations << "\t" << dt1 << "\t" << dt2
               << "\n";
   }
-  // IEVision60Robot::ExportValues(result_values, num_steps,
-  //                               scenario_folder + "manopt_traj_viz.csv");
+  IEVision60Robot::ExportValues(result_values, num_steps,
+                                scenario_folder + "manopt_traj_viz.csv");
   // IEVision60Robot::ExportValuesMultiPhase(result_values,
   //                                         vision60_multi_phase.phase_num_steps_,
   //                                         scenario_folder +

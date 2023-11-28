@@ -11,7 +11,6 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 using namespace gtdynamics;
@@ -38,67 +37,69 @@ IEVision60Robot::Leg::Leg(const gtdynamics::Robot &robot,
       links({hip_link, upper_link, lower_link}) {}
 
 /* ************************************************************************* */
-void IEVision60Robot::Params::set4C() {
-  contact_indices = IndexSet{0, 1, 2, 3};
-  leaving_indices = IndexSet{};
-  landing_indices = IndexSet{};
+IEVision60Robot::PhaseInfo::shared_ptr IEVision60Robot::PhaseInfo::Ground() {
+  return std::make_shared<PhaseInfo>(IndexSet{0, 1, 2, 3}, IndexSet{},
+                                     IndexSet{});
 }
 
 /* ************************************************************************* */
-void IEVision60Robot::Params::setBackOnGround() {
-  contact_indices = IndexSet{2, 3};
-  leaving_indices = IndexSet{};
-  landing_indices = IndexSet{};
+IEVision60Robot::PhaseInfo::shared_ptr
+IEVision60Robot::PhaseInfo::BackOnGround() {
+  return std::make_shared<PhaseInfo>(IndexSet{2, 3}, IndexSet{}, IndexSet{});
 }
 
 /* ************************************************************************* */
-void IEVision60Robot::Params::setFrontOnGround() {
-  contact_indices = IndexSet{0, 1};
-  leaving_indices = IndexSet{};
-  landing_indices = IndexSet{};
+IEVision60Robot::PhaseInfo::shared_ptr
+IEVision60Robot::PhaseInfo::FrontOnGround() {
+  return std::make_shared<PhaseInfo>(IndexSet{0, 1}, IndexSet{}, IndexSet{});
 }
 
 /* ************************************************************************* */
-void IEVision60Robot::Params::setInAir() {
-  contact_indices = IndexSet{};
-  leaving_indices = IndexSet{};
-  landing_indices = IndexSet{};
+IEVision60Robot::PhaseInfo::shared_ptr IEVision60Robot::PhaseInfo::InAir() {
+  return std::make_shared<PhaseInfo>(IndexSet{}, IndexSet{}, IndexSet{});
 }
 
 /* ************************************************************************* */
-void IEVision60Robot::Params::setBoundaryLeave(const Params &phase0_params,
-                                               const Params &phase1_params) {
-  contact_indices = IndexSet{};
-  leaving_indices = IndexSet{};
-  landing_indices = IndexSet{};
-  std::set_difference(phase0_params.contact_indices.begin(),
-                      phase0_params.contact_indices.end(),
-                      phase1_params.contact_indices.begin(),
-                      phase1_params.contact_indices.end(),
-                      std::inserter(leaving_indices, leaving_indices.begin()));
+IEVision60Robot::PhaseInfo::shared_ptr
+IEVision60Robot::PhaseInfo::BoundaryLeave(const PhaseInfo &phase0_params,
+                                          const PhaseInfo &phase1_params) {
+
+  IndexSet _leaving_indices = IndexSet{};
+  IndexSet _contact_indices = IndexSet{};
+  std::set_difference(
+      phase0_params.contact_indices.begin(),
+      phase0_params.contact_indices.end(),
+      phase1_params.contact_indices.begin(),
+      phase1_params.contact_indices.end(),
+      std::inserter(_leaving_indices, _leaving_indices.begin()));
   std::set_union(phase0_params.contact_indices.begin(),
                  phase0_params.contact_indices.end(),
                  phase1_params.contact_indices.begin(),
                  phase1_params.contact_indices.end(),
-                 std::inserter(contact_indices, contact_indices.begin()));
+                 std::inserter(_contact_indices, _contact_indices.begin()));
+  return std::make_shared<PhaseInfo>(_contact_indices, _leaving_indices,
+                                     IndexSet{});
 }
 
 /* ************************************************************************* */
-void IEVision60Robot::Params::setBoundaryLand(const Params &phase0_params,
-                                              const Params &phase1_params) {
-  contact_indices = IndexSet{};
-  leaving_indices = IndexSet{};
-  landing_indices = IndexSet{};
-  std::set_difference(phase1_params.contact_indices.begin(),
-                      phase1_params.contact_indices.end(),
-                      phase0_params.contact_indices.begin(),
-                      phase0_params.contact_indices.end(),
-                      std::inserter(landing_indices, landing_indices.begin()));
+IEVision60Robot::PhaseInfo::shared_ptr
+IEVision60Robot::PhaseInfo::BoundaryLand(const PhaseInfo &phase0_params,
+                                         const PhaseInfo &phase1_params) {
+  IndexSet _contact_indices = IndexSet{};
+  IndexSet _landing_indices = IndexSet{};
+  std::set_difference(
+      phase1_params.contact_indices.begin(),
+      phase1_params.contact_indices.end(),
+      phase0_params.contact_indices.begin(),
+      phase0_params.contact_indices.end(),
+      std::inserter(_landing_indices, _landing_indices.begin()));
   std::set_union(phase0_params.contact_indices.begin(),
                  phase0_params.contact_indices.end(),
                  phase1_params.contact_indices.begin(),
                  phase1_params.contact_indices.end(),
-                 std::inserter(contact_indices, contact_indices.begin()));
+                 std::inserter(_contact_indices, _contact_indices.begin()));
+  return std::make_shared<PhaseInfo>(_contact_indices, IndexSet{},
+                                     _landing_indices);
 }
 
 } // namespace gtsam

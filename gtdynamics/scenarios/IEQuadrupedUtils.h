@@ -16,16 +16,23 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
+#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
-#include <gtdynamics/universal_robot/Joint.h>
-#include <gtdynamics/universal_robot/Link.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+
+#define ACTUATION_RMSE_TORQUE 0
+#define ACTUATION_IMPULSE_SQR 1
+#define ACTUATION_IMPULSE 2
+#define ACTUATION_WORK_SQR 3
+#define ACTUATION_WORK 4
+
+using gtdynamics::InequalityConstraints, gtdynamics::InequalityConstraint;
 
 namespace gtsam {
 
@@ -64,60 +71,96 @@ public:
     double sigma_des_pose = 1e-2;
     double sigma_des_twist = 1e-2;
     double sigma_actuation = 1e1;
+    double sigma_jerk = 1e2;
     double sigma_q_col = 1e-2;
     double sigma_v_col = 1e-2;
     double sigma_pose_col = 1e-2;
     double sigma_twist_col = 1e-2;
+    double sigma_phase_dt = 1e-4;
 
     // tolerance for e constraints
     double tol_q = 1e-2;        // tolerance of q-level constraints
     double tol_v = 1e-2;        // tolerance of v-level constraints
     double tol_a = 1e-2;        // tolerance of a-level constraints
     double tol_dynamics = 1e-2; // tolerance of d-level constraints
+    double tol_prior_q = 1e-2;
+    double tol_prior_v = 1e-2;
 
     // tolerance for i constraints
     double tol_jl = 0.1;
     double tol_tl = 0.1;
     double tol_fc = 0.1;
-    double tol_ca = 0.1;
+    double tol_cf = 0.1;
     double tol_phase_dt = 0.1;
 
-    /// Optimization settings
+    /// Option for values
     bool express_redundancy = true;
     bool express_contact_force = false;
     bool ad_basis_using_torques = false;
+    // Option for e-constraints
+    bool include_state_constraints = true;
+    Values state_constrianed_values;
+    // Option for i-constraints
     bool include_friction_cone = false;
     bool include_joint_limits = false;
     bool include_torque_limits = false;
-    bool include_collision_avoidance = false;
-
-    /// Joint and torque limits
+    bool include_collision_free_s = false;
+    bool include_collision_free_z = false;
+    bool include_phase_duration_limits = false;
+    std::vector<double> phases_min_dt;
     std::map<std::string, double> joint_lower_limits;
     std::map<std::string, double> joint_upper_limits;
     std::map<std::string, double> torque_lower_limits;
     std::map<std::string, double> torque_upper_limits;
+    std::vector<std::pair<std::string, Point3>> collision_checking_points_s;
+    std::vector<std::pair<std::string, Point3>> collision_checking_points_z;
+    std::vector<std::pair<Point3, double>> sphere_obstacles;
+    // Option for costs
+    bool include_collocation_costs = false;
+    bool include_actuation_costs = false;
+    bool include_jerk_costs = false;
+    bool include_state_costs = false;
+    bool include_phase_duration_prior_costs = false;
+    int actuation_cost_option = ACTUATION_RMSE_TORQUE;
+    Values state_cost_values;
+    std::vector<double> phase_prior_dt;
+
+    /// Constructor
+    Params() = default;
+
+    using shared_ptr = std::shared_ptr<Params>;
+  };
+
+  struct PhaseInfo {
+    using shared_ptr = std::shared_ptr<PhaseInfo>;
 
     // phase info
     IndexSet contact_indices;
     IndexSet leaving_indices;
     IndexSet landing_indices;
 
-    Params() = default;
+    PhaseInfo(const IndexSet &_contact_indices,
+              const IndexSet &_leaving_indices,
+              const IndexSet &_landing_indices)
+        : contact_indices(_contact_indices), leaving_indices(_leaving_indices),
+          landing_indices(_landing_indices) {}
 
-    void set4C();
+    static shared_ptr Ground();
 
-    void setBackOnGround();
+    static shared_ptr BackOnGround();
 
-    void setFrontOnGround();
+    static shared_ptr FrontOnGround();
 
-    void setInAir();
+    static shared_ptr InAir();
 
-    void setBoundaryLeave(const Params &phase0_params,
-                          const Params &phase1_params);
+    static shared_ptr BoundaryLeave(const PhaseInfo &phase0_params,
+                                    const PhaseInfo &phase1_params);
 
-    void setBoundaryLand(const Params &phase0_params,
-                         const Params &phase1_params);
+    static shared_ptr BoundaryLand(const PhaseInfo &phase0_params,
+                                   const PhaseInfo &phase1_params);
   };
+
+  friend class IEVision60RobotMultiPhase;
 
   /// Robot
   static gtdynamics::Robot getVision60Robot();
@@ -147,18 +190,20 @@ public:
   double nominal_a;
   double nominal_b;
 
-  Params params;
+  Params::shared_ptr params;
+  PhaseInfo::shared_ptr phase_info;
   gtdynamics::DynamicsGraph graph_builder;
   SharedNoiseModel des_pose_nm;
   SharedNoiseModel des_twist_nm;
   SharedNoiseModel des_q_nm;
   SharedNoiseModel des_v_nm;
-  SharedNoiseModel min_torque_nm;
+  SharedNoiseModel actuation_nm;
+  SharedNoiseModel jerk_nm;
   SharedNoiseModel cpoint_cost_model;
   SharedNoiseModel c_force_model;
   SharedNoiseModel redundancy_model;
 
-protected:
+public:
   static gtdynamics::OptimizerSetting getOptSetting(const Params &_params);
 
   Values getNominalConfiguration(const double height = 0) const;
@@ -169,16 +214,31 @@ protected:
 
   NonlinearFactorGraph getConstraintsGraphStepAD(const int t) const;
 
-  gtdynamics::InequalityConstraints
-  frictionConeConstraints(const size_t k) const;
+  InequalityConstraint::shared_ptr
+  frictionConeConstraint(const size_t contact_link_id, const size_t k) const;
 
-  gtdynamics::InequalityConstraints jointLimitConstraints(const size_t k) const;
+  InequalityConstraints frictionConeConstraints(const size_t k) const;
 
-  gtdynamics::InequalityConstraints
-  torqueLimitConstraints(const size_t k) const;
+  /// Collision free with a spherical object.
+  InequalityConstraint::shared_ptr
+  obstacleCollisionFreeConstraint(const size_t link_idx, const size_t k,
+                                  const Point3 &p_l, const Point3 &center,
+                                  const double radius) const;
 
-  gtdynamics::InequalityConstraints
-  collisionAvoidanceConstraints(const size_t k) const;
+  /// Collision free with ground.
+  InequalityConstraint::shared_ptr
+  groundCollisionFreeConstraint(const size_t link_idx, const size_t k,
+                                const Point3 &p_l) const;
+
+  InequalityConstraints jointLimitConstraints(const size_t k) const;
+
+  InequalityConstraints torqueLimitConstraints(const size_t k) const;
+
+  /// Collision free with obstacles.
+  InequalityConstraints obstacleCollisionFreeConstraints(const size_t k) const;
+
+  /// Collision free with ground.
+  InequalityConstraints groundCollisionFreeConstraints(const size_t k) const;
 
   /// Dynamcis factors without friction cone factors (as they are moved to
   /// inequality constraints).
@@ -192,28 +252,40 @@ protected:
   multiPhaseLinkCollocationFactors(const uint8_t link_id, const size_t &k,
                                    const Key &phase_key) const;
 
+  /// Cost based on the root-mean-square at step k.
+  NonlinearFactorGraph actuationRmseTorqueCosts(const size_t k) const;
+
+  /// Cost based on the impulse of all joints from step k to k+1.
+  NonlinearFactorGraph actuationImpulseCosts(const size_t k,
+                                             const size_t phase_idx,
+                                             bool apply_sqrt = false) const;
+
+  /// Cost based on the work done by all joints from step k to k+1.
+  NonlinearFactorGraph actuationWorkCosts(const size_t k,
+                                          bool apply_sqrt = false) const;
+
+  NonlinearFactorGraph collocationCostsStep(const size_t k,
+                                            const double dt) const;
+
+  NonlinearFactorGraph
+  multiPhaseCollocationCostsStep(const size_t k, const size_t phase_id) const;
+
 public:
   /// Constructor.
-  IEVision60Robot(const Params &_params);
+  IEVision60Robot(const Params::shared_ptr &_params,
+                  const PhaseInfo::shared_ptr &_phase_info);
 
   /** <================= Constraints and Costs =================> **/
   /// Kinodynamic constraints at the specified time step.
   gtdynamics::EqualityConstraints eConstraints(const size_t k) const;
 
-  gtdynamics::InequalityConstraints iConstraints(const size_t k) const;
+  InequalityConstraints iConstraints(const size_t k) const;
 
-  gtdynamics::EqualityConstraints
-  initStateConstraints(const Pose3 &init_pose, const Vector6 &init_twist) const;
-
-  NonlinearFactorGraph collocationCostsStep(const size_t k,
-                                            const double dt) const;
+  gtdynamics::EqualityConstraints stateConstraints() const;
 
   /// Costs for collocation across steps.
   NonlinearFactorGraph collocationCosts(const size_t num_steps,
                                         double dt) const;
-
-  NonlinearFactorGraph
-  multiPhaseCollocationCostsStep(const size_t k, const size_t phase_id) const;
 
   /// Cost for collocation that parameterize phase duration
   NonlinearFactorGraph multiPhaseCollocationCosts(const size_t start_step,
@@ -221,17 +293,13 @@ public:
                                                   const size_t phase_id) const;
 
   /// Costs for min torque objectives.
-  NonlinearFactorGraph minTorqueCosts(const size_t num_steps) const;
+  NonlinearFactorGraph actuationCosts(const size_t num_steps) const;
+
+  /// Costs for minimize jerk in torques.
+  NonlinearFactorGraph jerkCosts(const size_t num_steps) const;
 
   /// Costs for init condition and reaching target poses.
-  NonlinearFactorGraph finalStateCosts(const Pose3 &des_pose,
-                                       const Vector6 &des_twist,
-                                       const size_t num_steps) const;
-
-  /// Costs for init condition and reaching target poses.
-  NonlinearFactorGraph
-  stateCosts(const Values &values,
-             const std::optional<KeyVector> &keys = {}) const;
+  NonlinearFactorGraph stateCosts() const;
 
   /** <================= Value Initialize Functions =================> **/
   /// Return values of one step satisfying kinodynamic constraints.
@@ -241,6 +309,20 @@ public:
                            const Vector6 &base_twist = Vector6::Zero(),
                            const Vector6 &base_accel = Vector6::Zero(),
                            Values init_values_t = Values()) const;
+
+  Values stepValuesQ(const size_t k, const Values &init_values,
+                     const KeyVector &known_q_keys = KeyVector()) const;
+
+  Values stepValuesV(const size_t k, const Values &init_values,
+                     const Values &known_q_values,
+                     const KeyVector &known_v_keys = KeyVector()) const;
+
+  Values stepValuesAD(const size_t k, const Values &init_values,
+                      const Values &known_qv_values,
+                      const KeyVector &known_ad_keys = KeyVector()) const;
+
+  Values stepValuesQV(const size_t k, const Values &init_values,
+                      const std::optional<KeyVector> &known_keys = {}) const;
 
   /// Return values of one step satisfying kinodynamic constraints. The
   /// variables specified by known_keys will remain unchanged. If known_keys not
@@ -261,11 +343,6 @@ public:
       const size_t start_step, const size_t end_step, const double dt,
       const std::vector<Values> &boudnary_values,
       const std::string initialization_technique = "interp") const;
-
-  // /// Return values of trajectory.
-  // Values trajectoryValuesByIntegration(const size_t start_step,
-  //                                      const size_t end_step, const double
-  //                                      dt, const Values &prev_values) const;
 
   /// Return values of trajectory satisfying kinodynamic constraints.
   Values getInitValuesTrajectory(
@@ -345,38 +422,33 @@ public:
                             const std::vector<IEVision60Robot> &boundary_robots,
                             const std::vector<size_t> &phase_num_steps);
 
+  const IEVision60Robot::Params::shared_ptr &params() const {
+    return phase_robots_.at(0).params;
+  }
+
   const IEVision60Robot &robotAtStep(const size_t k) const;
 
   NonlinearFactorGraph collocationCosts() const;
 
+  NonlinearFactorGraph actuationCosts() const;
+
+  NonlinearFactorGraph phaseDurationPriorCosts() const;
+
+  EqualityConstraints eConstraints() const;
+
+  InequalityConstraints iConstraints() const;
+
+  NonlinearFactorGraph costs() const;
+
+  gtdynamics::EqConsOptProblem::EvalFunc costsEvalFunc() const;
+
+  size_t numSteps() const {
+    return std::accumulate(phase_num_steps_.begin(), phase_num_steps_.end(), 0);
+  }
+
   /** Inequality constraints that limit the min phase durations. */
-  gtdynamics::InequalityConstraints
-  phaseMinDurationConstraints(const std::vector<double> &phases_min_dt) const;
+  InequalityConstraints phaseMinDurationConstraints() const;
 };
-
-/* ************************************************************************* */
-/* <======================= Example Trajectories ==========================> */
-/* ************************************************************************* */
-
-/// Construct values of a vertical jumping trajectory. We pre-specified that all
-/// feet leave the ground at the same time. The trajectory consists of two
-/// phase: on-ground phase and in-air phase. In the on-ground phase, the robot
-/// first accelerate its torso with constant acceleration, then reduce the
-/// contact force uniformly to 0. In the in-air phase, the torques at all joints
-/// are reduced uniformly to 0.
-Values TrajectoryValuesVerticalJump(
-    const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::vector<double> &phases_dt, const double torso_accel_z = 15,
-    const size_t ground_switch_k = 5, bool use_trapezoidal = false);
-
-Values TrajectoryValuesVerticalJumpDeprecated(
-    const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::vector<double> &phases_dt, const double torso_accel_z = 15);
-
-Values
-TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
-                          const std::vector<double> &phases_dt,
-                          const Values &values);
 
 /* ************************************************************************* */
 /* <=================== Factory class for Retractor =======================> */
@@ -390,10 +462,10 @@ protected:
 
 public:
   Vision60HierarchicalRetractorCreator(
-      const IEVision60Robot &robot,
-      const IERetractorParams::shared_ptr &params,
+      const IEVision60Robot &robot, const IERetractorParams::shared_ptr &params,
       bool use_basis_keys)
-      : IERetractorCreator(params), robot_(robot), use_basis_keys_(use_basis_keys) {}
+      : IERetractorCreator(params), robot_(robot),
+        use_basis_keys_(use_basis_keys) {}
 
   virtual ~Vision60HierarchicalRetractorCreator() {}
 
@@ -477,4 +549,51 @@ public:
          const Values &values) const override;
 };
 
+Values
+TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
+                          const std::vector<double> &phases_dt,
+                          const Values &values);
+
 } // namespace gtsam
+
+/* ************************************************************************* */
+/* <========================= Example Scenarios ===========================> */
+/* ************************************************************************* */
+
+namespace quadruped_vertical_jump {
+gtsam::IEVision60RobotMultiPhase
+GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+                      const std::vector<size_t> &phase_num_steps);
+
+/// Construct values of a vertical jumping trajectory. We pre-specified that all
+/// feet leave the ground at the same time. The trajectory consists of two
+/// phase: on-ground phase and in-air phase. In the on-ground phase, the robot
+/// first accelerate its torso with constant acceleration, then reduce the
+/// contact force uniformly to 0. In the in-air phase, the torques at all joints
+/// are reduced uniformly to 0.
+gtsam::Values InitValuesTrajectory(
+    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt, const double torso_accel_z = 15,
+    const size_t ground_switch_k = 5, bool use_trapezoidal = false);
+
+/// Create an initial trajectory that is not dynamically feasible.
+gtsam::Values InitValuesTrajectoryInfeasible(
+    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt);
+
+gtsam::Values InitValuesTrajectoryDeprecated(
+    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt, const double torso_accel_z = 15);
+} // namespace quadruped_vertical_jump
+
+namespace quadruped_forward_jump {
+gtsam::IEVision60RobotMultiPhase
+GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+                      const std::vector<size_t> &phase_num_steps);
+
+/// Construct values of a robot forward jump trajectory. Consisting of 5 phases:
+/// on-ground -> back-contact -> in-air -> front-contact -> on-gorund.
+gtsam::Values InitValuesTrajectory(
+    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt, bool use_trapezoidal = false);
+} // namespace quadruped_forward_jump

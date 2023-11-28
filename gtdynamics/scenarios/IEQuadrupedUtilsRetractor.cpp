@@ -11,9 +11,6 @@
  * @author: Yetong Zhang
  */
 
-#include "imanifold/IERetractor.h"
-#include "manifold/TspaceBasis.h"
-#include "optimizer/EqualityConstraint.h"
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>

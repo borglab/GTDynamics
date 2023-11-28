@@ -128,3 +128,7 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
 gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+double point3_z(const gtsam::Point3 &p, gtsam::OptionalJacobian<1, 3> H = {});
+}

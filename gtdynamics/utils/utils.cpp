@@ -158,3 +158,12 @@ gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis) {
 }
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+double point3_z(const gtsam::Point3 &p, gtsam::OptionalJacobian<1, 3> H) {
+  if (H) {
+    *H << 0, 0, 1;
+  }
+  return p.z();
+}
+}

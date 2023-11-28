@@ -12,8 +12,6 @@
  */
 
 #include "utils/DynamicsSymbol.h"
-#include "utils/values.h"
-#include <_types/_uint8_t.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
@@ -24,8 +22,10 @@
 #include <gtdynamics/factors/WrenchFactor.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+#include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/expressions.h>
 
 using namespace gtdynamics;
@@ -95,7 +95,7 @@ IEVision60Robot::contactRedundancyFactor(const size_t k) const {
       return H * F;
     };
     auto link_id = contact_link_ids.at(i);
-    if (params.express_contact_force) {
+    if (params->express_contact_force) {
       Vector3_ c_force(ContactForceKey(link_id, 0, k));
       error.emplace_back(gtsam::linearExpression(f, c_force, H));
     } else {
@@ -107,7 +107,7 @@ IEVision60Robot::contactRedundancyFactor(const size_t k) const {
   }
   Vector6_ redundancy_expr = error[0] + error[1] + error[2] + error[3];
 
-  if (params.express_redundancy) {
+  if (params->express_redundancy) {
     Vector6_ redundancy(ContactRedundancyKey(k));
     return std::make_shared<ExpressionFactor<Vector6>>(
         redundancy_model, Vector6::Zero(), redundancy_expr - redundancy);
@@ -154,7 +154,7 @@ NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
         auto wrench_key = ContactWrenchKey(i, 0, k);
         wrench_keys.push_back(wrench_key);
 
-        if (params.express_contact_force) {
+        if (params->express_contact_force) {
           graph.add(contactForceFactor(i, k));
         }
 
@@ -170,7 +170,7 @@ NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
 
       // add wrench factor for link
       graph.add(WrenchFactor(opt().fa_cost_model, link, wrench_keys, k,
-                             params.gravity));
+                             params->gravity));
     }
   }
 
@@ -210,44 +210,90 @@ IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
 }
 
 /* ************************************************************************* */
+gtdynamics::InequalityConstraint::shared_ptr
+IEVision60Robot::frictionConeConstraint(const size_t contact_link_id,
+                                        const size_t k) const {
+  auto friction_cone_function = [&](const Vector3 &f,
+                                    gtsam::OptionalJacobian<1, 3> H = {}) {
+    const double &fx = f(0), fy = f(1), fz = f(2);
+    double mu_prime = params->mu * params->mu;
+    int sign_fz = (fz > 0) - (fz < 0);
+    // std::cout << "sign_fz: " << sign_fz << "\n";
+    // std::cout << "fx: " << fx << "\n";
+    // std::cout << "fy: " << fy << "\n";
+    // std::cout << "fz: " << fz << "\n";
+    double result = sign_fz * mu_prime * fz * fz - fx * fx - fy * fy;
+    // std::cout << "result: " << result << "\n";
+    if (H) {
+      (*H) << -2 * fx, -2 * fy, 2 * sign_fz * mu_prime * fz;
+    }
+    return result;
+  };
+
+  Vector3_ contact_force_expr(ContactForceKey(contact_link_id, 0, k));
+  Double_ compute_fc_expr(friction_cone_function, contact_force_expr);
+  return std::make_shared<DoubleExpressionInequality>(compute_fc_expr,
+                                                      params->tol_fc);
+}
+
+/* ************************************************************************* */
 gtdynamics::InequalityConstraints
 IEVision60Robot::frictionConeConstraints(const size_t k) const {
-  // NonlinearFactorGraph graph;
-  // for (int t = 0; t <= num_steps; t++) {
-  //   for (auto &&cp : contact_points) {
-  //     int i = cp.link->id();
-  //     auto wrench_key = ContactWrenchKey(i, 0, t);
-
-  //     // Add contact dynamics constraints.
-  //     graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
-  //         PoseKey(i, t), wrench_key, opt().cfriction_cost_model, mu,
-  //         gravity);
-  //   }
-  // }
-  // return graph;
   InequalityConstraints constraints;
+  for (const auto &link_id : contact_link_ids) {
+    constraints.push_back(frictionConeConstraint(link_id, k));
+  }
   return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraint::shared_ptr
+IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
+                                                 const size_t k,
+                                                 const Point3 &p_l,
+                                                 const Point3 &center,
+                                                 const double radius) const {
+  Pose3_ wTl(PoseKey(link_idx, k));
+  Point3_ p_l_const(p_l);
+  Point3_ p_w(wTl, &Pose3::transformFrom, p_l_const);
+  Point3_ center_const(center);
+  Double_ dist(distance3, p_w, center_const);
+  Double_ collsion_free_expr = dist - Double_(radius);
+  return std::make_shared<DoubleExpressionInequality>(collsion_free_expr,
+                                                      params->tol_cf);
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraint::shared_ptr
+IEVision60Robot::groundCollisionFreeConstraint(const size_t link_idx,
+                                               const size_t k,
+                                               const Point3 &p_l) const {
+  Pose3_ wTl(PoseKey(link_idx, k));
+  Point3_ p_l_const(p_l);
+  Point3_ p_w(wTl, &Pose3::transformFrom, p_l_const);
+  Double_ z(&point3_z, p_w);
+  return std::make_shared<DoubleExpressionInequality>(z, params->tol_cf);
 }
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
 IEVision60Robot::jointLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
-  for (const auto &it : params.joint_lower_limits) {
+  for (const auto &it : params->joint_lower_limits) {
     size_t joint_id = robot.joint(it.first)->id();
     Key joint_key = JointAngleKey(joint_id, k);
     Double_ q_expr(joint_key);
     Double_ q_min_expr = q_expr - Double_(it.second);
     constraints.emplace_shared<DoubleExpressionInequality>(q_min_expr,
-                                                           params.tol_jl);
+                                                           params->tol_jl);
   }
-  for (const auto &it : params.joint_upper_limits) {
+  for (const auto &it : params->joint_upper_limits) {
     size_t joint_id = robot.joint(it.first)->id();
     Key joint_key = JointAngleKey(joint_id, k);
     Double_ q_expr(joint_key);
     Double_ q_max_expr = Double_(it.second) - q_expr;
     constraints.emplace_shared<DoubleExpressionInequality>(q_max_expr,
-                                                           params.tol_jl);
+                                                           params->tol_jl);
   }
   return constraints;
 }
@@ -256,29 +302,48 @@ IEVision60Robot::jointLimitConstraints(const size_t k) const {
 gtdynamics::InequalityConstraints
 IEVision60Robot::torqueLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
-  for (const auto &it : params.torque_lower_limits) {
+  for (const auto &it : params->torque_lower_limits) {
     size_t joint_id = robot.joint(it.first)->id();
     Key torque_key = TorqueKey(joint_id, k);
     Double_ tau_expr(torque_key);
     Double_ tau_min_expr = tau_expr - Double_(it.second);
     constraints.emplace_shared<DoubleExpressionInequality>(tau_min_expr,
-                                                           params.tol_tl);
+                                                           params->tol_tl);
   }
-  for (const auto &it : params.torque_upper_limits) {
+  for (const auto &it : params->torque_upper_limits) {
     size_t joint_id = robot.joint(it.first)->id();
     Key torque_key = TorqueKey(joint_id, k);
     Double_ tau_expr(torque_key);
     Double_ tau_max_expr = Double_(it.second) - tau_expr;
     constraints.emplace_shared<DoubleExpressionInequality>(tau_max_expr,
-                                                           params.tol_tl);
+                                                           params->tol_tl);
   }
   return constraints;
 }
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
-IEVision60Robot::collisionAvoidanceConstraints(const size_t k) const {
+IEVision60Robot::obstacleCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
+
+  for (const auto &[center, radius] : params->sphere_obstacles) {
+    for (const auto &[link_name, p_l] : params->collision_checking_points_s) {
+      uint8_t link_idx = robot.link(link_name)->id();
+      constraints.push_back(
+          obstacleCollisionFreeConstraint(link_idx, k, p_l, center, radius));
+    }
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
+  InequalityConstraints constraints;
+  for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
+    uint8_t link_idx = robot.link(link_name)->id();
+    constraints.push_back(groundCollisionFreeConstraint(link_idx, k, p_l));
+  }
   return constraints;
 }
 
@@ -292,29 +357,49 @@ EqualityConstraints IEVision60Robot::eConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::EqualityConstraints
-IEVision60Robot::initStateConstraints(const Pose3 &init_pose,
-                                      const Vector6 &init_twist) const {
+gtdynamics::EqualityConstraints IEVision60Robot::stateConstraints() const {
   NonlinearFactorGraph graph;
-  graph.addPrior<Pose3>(PoseKey(base_id, 0), init_pose, des_pose_nm);
-  graph.addPrior<Vector6>(TwistKey(base_id, 0), init_twist, des_twist_nm);
+  const auto &values = params->state_constrianed_values;
+  for (const auto &key : values.keys()) {
+    DynamicsSymbol symb(key);
+    if (symb.label() == "q") {
+      graph.addPrior<double>(
+          key, values.at<double>(key),
+          noiseModel::Isotropic::Sigma(1, params->tol_prior_q));
+    } else if (symb.label() == "v") {
+      graph.addPrior<double>(
+          key, values.at<double>(key),
+          noiseModel::Isotropic::Sigma(1, params->tol_prior_v));
+    } else if (symb.label() == "p") {
+      graph.addPrior<Pose3>(
+          key, values.at<Pose3>(key),
+          noiseModel::Isotropic::Sigma(6, params->tol_prior_q));
+    } else if (symb.label() == "V") {
+      graph.addPrior<Vector6>(
+          key, values.at<Vector6>(key),
+          noiseModel::Isotropic::Sigma(6, params->tol_prior_v));
+    }
+  }
   return ConstraintsFromGraph(graph);
 }
 
 /* ************************************************************************* */
 InequalityConstraints IEVision60Robot::iConstraints(const size_t k) const {
   InequalityConstraints constraints;
-  if (params.include_friction_cone) {
+  if (params->include_friction_cone) {
     constraints.add(frictionConeConstraints(k));
   }
-  if (params.include_joint_limits) {
+  if (params->include_joint_limits) {
     constraints.add(jointLimitConstraints(k));
   }
-  if (params.include_torque_limits) {
+  if (params->include_torque_limits) {
     constraints.add(torqueLimitConstraints(k));
   }
-  if (params.include_collision_avoidance) {
-    constraints.add(collisionAvoidanceConstraints(k));
+  if (params->include_collision_free_z) {
+    constraints.add(groundCollisionFreeConstraints(k));
+  }
+  if (params->include_collision_free_s) {
+    constraints.add(obstacleCollisionFreeConstraints(k));
   }
   return constraints;
 }
@@ -324,7 +409,7 @@ NonlinearFactorGraph
 IEVision60Robot::linkCollocationFactors(const uint8_t link_id, const size_t &k,
                                         const double &dt) const {
   NonlinearFactorGraph graph;
-  if (params.collocation == CollocationScheme::Trapezoidal) {
+  if (params->collocation == CollocationScheme::Trapezoidal) {
     graph.emplace_shared<gtdynamics::FixTimeTrapezoidalPoseCollocationFactor>(
         PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
         TwistKey(link_id, k + 1), dt, graph_builder.opt().pose_col_cost_model);
@@ -348,7 +433,7 @@ IEVision60Robot::linkCollocationFactors(const uint8_t link_id, const size_t &k,
 NonlinearFactorGraph IEVision60Robot::multiPhaseLinkCollocationFactors(
     const uint8_t link_id, const size_t &k, const Key &phase_key) const {
   NonlinearFactorGraph graph;
-  if (params.collocation == CollocationScheme::Trapezoidal) {
+  if (params->collocation == CollocationScheme::Trapezoidal) {
     graph.add(gtdynamics::TrapezoidalPoseCollocationFactor(
         PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
         TwistKey(link_id, k + 1), phase_key,
@@ -378,7 +463,7 @@ IEVision60Robot::collocationCostsStep(const size_t k, const double dt) const {
 
   // TODO: add version for Euler
   for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
-    if (!params.contact_indices.exists(leg_idx)) {
+    if (!phase_info->contact_indices.exists(leg_idx)) {
       for (const auto &joint : legs.at(leg_idx).joints) {
         uint8_t j = joint->id();
         Key q0_key = JointAngleKey(j, k);
@@ -389,10 +474,10 @@ IEVision60Robot::collocationCostsStep(const size_t k, const double dt) const {
         Key a1_key = JointAccelKey(j, k + 1);
         DynamicsGraph::addCollocationFactorDouble(
             &graph, q0_key, q1_key, v0_key, v1_key, dt,
-            graph_builder.opt().q_col_cost_model, params.collocation);
+            graph_builder.opt().q_col_cost_model, params->collocation);
         DynamicsGraph::addCollocationFactorDouble(
             &graph, v0_key, v1_key, a0_key, a1_key, dt,
-            graph_builder.opt().v_col_cost_model, params.collocation);
+            graph_builder.opt().v_col_cost_model, params->collocation);
       }
     }
   }
@@ -418,7 +503,7 @@ IEVision60Robot::multiPhaseCollocationCostsStep(const size_t k,
   graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
 
   for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
-    if (!params.contact_indices.exists(leg_idx)) {
+    if (!phase_info->contact_indices.exists(leg_idx)) {
       for (const auto &joint : legs.at(leg_idx).joints) {
         uint8_t j = joint->id();
         Key q0_key = JointAngleKey(j, k);
@@ -429,10 +514,10 @@ IEVision60Robot::multiPhaseCollocationCostsStep(const size_t k,
         Key a1_key = JointAccelKey(j, k + 1);
         DynamicsGraph::addMultiPhaseCollocationFactorDouble(
             &graph, q0_key, q1_key, v0_key, v1_key, phase_key,
-            graph_builder.opt().q_col_cost_model, params.collocation);
+            graph_builder.opt().q_col_cost_model, params->collocation);
         DynamicsGraph::addMultiPhaseCollocationFactorDouble(
             &graph, v0_key, v1_key, a0_key, a1_key, phase_key,
-            graph_builder.opt().v_col_cost_model, params.collocation);
+            graph_builder.opt().v_col_cost_model, params->collocation);
       }
     }
   }
@@ -453,34 +538,74 @@ IEVision60Robot::multiPhaseCollocationCosts(const size_t start_step,
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::minTorqueCosts(const size_t num_steps) const {
+IEVision60Robot::actuationRmseTorqueCosts(const size_t k) const {
   NonlinearFactorGraph graph;
-  for (int t = 0; t <= num_steps; t++) {
-    for (auto &&joint : robot.joints())
-      graph.add(gtdynamics::MinTorqueFactor(TorqueKey(joint->id(), t),
-                                            min_torque_nm));
+  for (auto &&joint : robot.joints()) {
+    graph.add(
+        gtdynamics::MinTorqueFactor(TorqueKey(joint->id(), k), actuation_nm));
   }
   return graph;
 }
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::finalStateCosts(const Pose3 &des_pose,
-                                 const Vector6 &des_twist,
-                                 const size_t num_steps) const {
+IEVision60Robot::actuationImpulseCosts(const size_t k, const size_t phase_idx,
+                                       bool apply_sqrt) const {
+  // TODO: add option with apply_sqrt
   NonlinearFactorGraph graph;
-  graph.addPrior<Pose3>(PoseKey(base_id, num_steps), des_pose, des_pose_nm);
-  graph.addPrior<Vector6>(TwistKey(base_id, num_steps), des_twist,
-                          des_twist_nm);
+  for (auto &&joint : robot.joints()) {
+    Double_ torque_curr(TorqueKey(joint->id(), k));
+    Double_ torque_next(TorqueKey(joint->id(), k + 1));
+    Double_ phase_dt(PhaseKey(phase_idx));
+    Double_ impulse = 0.5 * (torque_curr + torque_next) * phase_dt;
+    graph.emplace_shared<ExpressionFactor<double>>(actuation_nm, 0.0, impulse);
+  }
   return graph;
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph IEVision60Robot::stateCosts(
-    const Values &values, const std::optional<KeyVector> &optional_keys) const {
+NonlinearFactorGraph
+IEVision60Robot::actuationWorkCosts(const size_t k, bool apply_sqrt) const {
+  // TODO: distinguish positive work and negative work
   NonlinearFactorGraph graph;
-  KeyVector keys = optional_keys ? *optional_keys : values.keys();
-  for (const auto &key : keys) {
+  for (auto &&joint : robot.joints()) {
+    Double_ torque_curr(TorqueKey(joint->id(), k));
+    Double_ torque_next(TorqueKey(joint->id(), k + 1));
+    Double_ q_curr(JointAngleKey(joint->id(), k));
+    Double_ q_next(JointAngleKey(joint->id(), k + 1));
+    Double_ work = 0.5 * (torque_curr + torque_next) * (q_next - q_curr);
+    graph.emplace_shared<ExpressionFactor<double>>(actuation_nm, 0.0, work);
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph
+IEVision60Robot::actuationCosts(const size_t num_steps) const {
+  NonlinearFactorGraph graph;
+  for (size_t k = 0; k <= num_steps; k++) {
+    graph.add(actuationRmseTorqueCosts(k));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60Robot::jerkCosts(const size_t num_steps) const {
+  NonlinearFactorGraph graph;
+  for (size_t k = 0; k < num_steps; k++) {
+    for (auto &&joint : robot.joints())
+      graph.emplace_shared<BetweenFactor<double>>(TorqueKey(joint->id(), k),
+                                                  TorqueKey(joint->id(), k + 1),
+                                                  0.0, jerk_nm);
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60Robot::stateCosts() const {
+  NonlinearFactorGraph graph;
+  const auto &values = params->state_cost_values;
+  for (const auto &key : values.keys()) {
     DynamicsSymbol symb(key);
     if (symb.label() == "q") {
       graph.addPrior<double>(key, values.at<double>(key), des_q_nm);

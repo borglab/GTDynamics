@@ -1,24 +1,13 @@
 
-
-#include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/Retractor.h"
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
-#include "gtdynamics/optimizer/InequalityConstraint.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/Values.h>
-#include <memory>
-#include <string>
+
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -26,8 +15,8 @@ using namespace gtsam;
 namespace vision60_4c_single_step {
 
 IEVision60Robot GetVision60() {
-  IEVision60Robot::Params vision60_params;
-  vision60_params.express_redundancy = true;
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
+  vision60_params->express_redundancy = true;
   std::map<std::string, double> joint_lower_limits;
   std::map<std::string, double> joint_upper_limits;
   double hip_joint_lower_limit = -M_PI_2;
@@ -36,8 +25,8 @@ IEVision60Robot GetVision60() {
     joint_lower_limits.insert({leg.hip_joint->name(), hip_joint_lower_limit});
     joint_upper_limits.insert({leg.hip_joint->name(), hip_joint_upper_limit});
   }
-  vision60_params.joint_upper_limits = joint_upper_limits;
-  vision60_params.joint_lower_limits = joint_lower_limits;
+  vision60_params->joint_upper_limits = joint_upper_limits;
+  vision60_params->joint_lower_limits = joint_lower_limits;
 
   std::map<std::string, double> torque_lower_limits;
   std::map<std::string, double> torque_upper_limits;
@@ -49,14 +38,14 @@ IEVision60Robot GetVision60() {
     torque_upper_limits.insert(
         {leg.upper_joint->name(), upper_torque_upper_limit});
   }
-  vision60_params.torque_upper_limits = torque_upper_limits;
-  vision60_params.torque_lower_limits = torque_lower_limits;
+  vision60_params->torque_upper_limits = torque_upper_limits;
+  vision60_params->torque_lower_limits = torque_lower_limits;
 
-  vision60_params.include_torque_limits = true;
-  vision60_params.include_joint_limits = true;
-  vision60_params.set4C();
+  vision60_params->include_torque_limits = true;
+  vision60_params->include_joint_limits = true;
 
-  IEVision60Robot vision60_(vision60_params);
+  IEVision60Robot vision60_(vision60_params,
+                            IEVision60Robot::PhaseInfo::Ground());
   return vision60_;
 }
 
@@ -69,14 +58,16 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.1, 0, 0, 0.2).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.1, 0, 0, 0.1).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
-InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
+EqualityConstraints::shared_ptr e_constraints =
+    std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints =
+    std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_4c_single_step
 
 namespace vision60_back_on_ground_single_step {
 
 IEVision60Robot GetVision60() {
-  IEVision60Robot::Params vision60_params;
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
   std::map<std::string, double> joint_lower_limits;
   std::map<std::string, double> joint_upper_limits;
   double hip_joint_lower_limit = -M_PI_2;
@@ -85,8 +76,8 @@ IEVision60Robot GetVision60() {
     joint_lower_limits.insert({leg.hip_joint->name(), hip_joint_lower_limit});
     joint_upper_limits.insert({leg.hip_joint->name(), hip_joint_upper_limit});
   }
-  vision60_params.joint_upper_limits = joint_upper_limits;
-  vision60_params.joint_lower_limits = joint_lower_limits;
+  vision60_params->joint_upper_limits = joint_upper_limits;
+  vision60_params->joint_lower_limits = joint_lower_limits;
 
   std::map<std::string, double> torque_lower_limits;
   std::map<std::string, double> torque_upper_limits;
@@ -98,15 +89,16 @@ IEVision60Robot GetVision60() {
     torque_upper_limits.insert(
         {leg.upper_joint->name(), upper_torque_upper_limit});
   }
-  vision60_params.torque_upper_limits = torque_upper_limits;
-  vision60_params.torque_lower_limits = torque_lower_limits;
+  vision60_params->torque_upper_limits = torque_upper_limits;
+  vision60_params->torque_lower_limits = torque_lower_limits;
 
-  vision60_params.include_torque_limits = true;
-  vision60_params.include_joint_limits = true;
-  vision60_params.express_redundancy = false;
-  vision60_params.ad_basis_using_torques = true;
-  vision60_params.setBackOnGround();
-  IEVision60Robot vision60_(vision60_params);
+  vision60_params->include_torque_limits = true;
+  vision60_params->include_joint_limits = true;
+  vision60_params->express_redundancy = false;
+  vision60_params->ad_basis_using_torques = true;
+
+  IEVision60Robot vision60_(vision60_params,
+                            IEVision60Robot::PhaseInfo::BackOnGround());
   return vision60_;
 }
 
@@ -119,14 +111,16 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
-InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
+EqualityConstraints::shared_ptr e_constraints =
+    std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints =
+    std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_back_on_ground_single_step
 
 namespace vision60_in_air_single_step {
 
 IEVision60Robot GetVision60() {
-  IEVision60Robot::Params vision60_params;
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
   std::map<std::string, double> joint_lower_limits;
   std::map<std::string, double> joint_upper_limits;
   double hip_joint_lower_limit = -M_PI_2;
@@ -135,8 +129,8 @@ IEVision60Robot GetVision60() {
     joint_lower_limits.insert({leg.hip_joint->name(), hip_joint_lower_limit});
     joint_upper_limits.insert({leg.hip_joint->name(), hip_joint_upper_limit});
   }
-  vision60_params.joint_upper_limits = joint_upper_limits;
-  vision60_params.joint_lower_limits = joint_lower_limits;
+  vision60_params->joint_upper_limits = joint_upper_limits;
+  vision60_params->joint_lower_limits = joint_lower_limits;
 
   std::map<std::string, double> torque_lower_limits;
   std::map<std::string, double> torque_upper_limits;
@@ -148,15 +142,14 @@ IEVision60Robot GetVision60() {
     torque_upper_limits.insert(
         {leg.upper_joint->name(), upper_torque_upper_limit});
   }
-  vision60_params.torque_upper_limits = torque_upper_limits;
-  vision60_params.torque_lower_limits = torque_lower_limits;
+  vision60_params->torque_upper_limits = torque_upper_limits;
+  vision60_params->torque_lower_limits = torque_lower_limits;
 
-  vision60_params.include_torque_limits = true;
-  vision60_params.include_joint_limits = true;
-  vision60_params.express_redundancy = false;
-  vision60_params.ad_basis_using_torques = true;
-  vision60_params.setInAir();
-  IEVision60Robot vision60_(vision60_params);
+  vision60_params->include_torque_limits = true;
+  vision60_params->include_joint_limits = true;
+  vision60_params->express_redundancy = false;
+  vision60_params->ad_basis_using_torques = true;
+  IEVision60Robot vision60_(vision60_params, IEVision60Robot::PhaseInfo::InAir());
   return vision60_;
 }
 
@@ -169,14 +162,16 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
-InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
+EqualityConstraints::shared_ptr e_constraints =
+    std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints =
+    std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_in_air_single_step
 
 namespace vision60_ground_air_boundary_step {
 
 IEVision60Robot GetVision60() {
-  IEVision60Robot::Params vision60_params;
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
   std::map<std::string, double> joint_lower_limits;
   std::map<std::string, double> joint_upper_limits;
   double hip_joint_lower_limit = -M_PI_2;
@@ -185,8 +180,8 @@ IEVision60Robot GetVision60() {
     joint_lower_limits.insert({leg.hip_joint->name(), hip_joint_lower_limit});
     joint_upper_limits.insert({leg.hip_joint->name(), hip_joint_upper_limit});
   }
-  vision60_params.joint_upper_limits = joint_upper_limits;
-  vision60_params.joint_lower_limits = joint_lower_limits;
+  vision60_params->joint_upper_limits = joint_upper_limits;
+  vision60_params->joint_lower_limits = joint_lower_limits;
 
   std::map<std::string, double> torque_lower_limits;
   std::map<std::string, double> torque_upper_limits;
@@ -198,20 +193,19 @@ IEVision60Robot GetVision60() {
     torque_upper_limits.insert(
         {leg.upper_joint->name(), upper_torque_upper_limit});
   }
-  vision60_params.torque_upper_limits = torque_upper_limits;
-  vision60_params.torque_lower_limits = torque_lower_limits;
+  vision60_params->torque_upper_limits = torque_upper_limits;
+  vision60_params->torque_lower_limits = torque_lower_limits;
 
-  vision60_params.include_torque_limits = true;
-  vision60_params.include_joint_limits = true;
-  vision60_params.express_redundancy = true;
-  vision60_params.ad_basis_using_torques = true;
+  vision60_params->include_torque_limits = true;
+  vision60_params->include_joint_limits = true;
+  vision60_params->express_redundancy = true;
+  vision60_params->ad_basis_using_torques = true;
 
-  auto vision60_params_ground = vision60_params;
-  vision60_params_ground.set4C();
-  auto vision60_params_air = vision60_params;
-  vision60_params_air.setInAir();
-  vision60_params.setBoundaryLeave(vision60_params_ground, vision60_params_air);
-  IEVision60Robot vision60_(vision60_params);
+  auto phase_info_ground = IEVision60Robot::PhaseInfo::Ground();
+  auto phase_info_air = IEVision60Robot::PhaseInfo::InAir();
+  auto phase_info_boundary = IEVision60Robot::PhaseInfo::BoundaryLeave(
+      *phase_info_ground, *phase_info_air);
+  IEVision60Robot vision60_(vision60_params, phase_info_boundary);
   return vision60_;
 }
 
@@ -224,8 +218,10 @@ Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
     vision60.getInitValuesStep(k, base_pose, base_twist, base_accel);
-EqualityConstraints::shared_ptr e_constraints = std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
-InequalityConstraints::shared_ptr i_constraints = std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
+EqualityConstraints::shared_ptr e_constraints =
+    std::make_shared<EqualityConstraints>(vision60.eConstraints(k));
+InequalityConstraints::shared_ptr i_constraints =
+    std::make_shared<InequalityConstraints>(vision60.iConstraints(k));
 }; // namespace vision60_ground_air_boundary_step
 
 /// Test that the init values satisfy the equality constraints.
@@ -396,8 +392,10 @@ TEST(IEVision60Robot_ground_air_boundary, constraints_and_values) {
 TEST(IEVision60Robot_4c, manifold) {
   using namespace vision60_4c_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lm_params = LevenbergMarquardtParams();
@@ -411,7 +409,8 @@ TEST(IEVision60Robot_4c, manifold) {
           vision60, retractor_params, true);
   iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+                                values);
   EXPECT_LONGS_EQUAL(24, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();
@@ -499,8 +498,10 @@ TEST(IEVision60Robot_4c, manifold) {
 TEST(IEVision60Robot_back_on_ground, manifold) {
   using namespace vision60_back_on_ground_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lm_params = LevenbergMarquardtParams();
@@ -517,7 +518,8 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+                                values);
   EXPECT_LONGS_EQUAL(36, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();
@@ -605,8 +607,10 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
 TEST(IEVision60Robot_in_air, manifold) {
   using namespace vision60_in_air_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lm_params = LevenbergMarquardtParams();
@@ -623,7 +627,8 @@ TEST(IEVision60Robot_in_air, manifold) {
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+                                values);
   EXPECT_LONGS_EQUAL(48, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();
@@ -715,8 +720,10 @@ TEST(IEVision60Robot_in_air, manifold) {
 TEST(IEVision60Robot_ground_air_boundary, manifold) {
   using namespace vision60_ground_air_boundary_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator = std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->ecm_params->retractor_creator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lm_params = LevenbergMarquardtParams();
@@ -733,7 +740,8 @@ TEST(IEVision60Robot_ground_air_boundary, manifold) {
   // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints, values);
+  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+                                values);
   EXPECT_LONGS_EQUAL(12, manifold.dim());
 
   auto e_manifold = manifold.eConstraintManifold();

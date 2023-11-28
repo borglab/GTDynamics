@@ -189,4 +189,19 @@ inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeySet &q_keys,
   }
 }
 
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeyVector &q_keys,
+                         gtsam::KeyVector &v_keys, gtsam::KeyVector &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.push_back(key);
+    } else if (IsVLevel(key)) {
+      v_keys.push_back(key);
+    } else {
+      ad_keys.push_back(key);
+    }
+  }
+}
+
+
 }  // namespace gtdynamics

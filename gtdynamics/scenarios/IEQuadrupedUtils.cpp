@@ -30,27 +30,30 @@ using namespace gtdynamics;
 namespace gtsam {
 
 /* ************************************************************************* */
-IEVision60Robot::IEVision60Robot(const Params &_params)
-    : params(_params), graph_builder(gtdynamics::DynamicsGraph(
-                           getOptSetting(_params), _params.gravity)) {
-  des_pose_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_pose);
-  des_twist_nm = noiseModel::Isotropic::Sigma(6, params.sigma_des_twist);
-  des_q_nm = noiseModel::Isotropic::Sigma(1, params.sigma_des_twist);
-  des_v_nm = noiseModel::Isotropic::Sigma(1, params.sigma_des_twist);
-  min_torque_nm = noiseModel::Isotropic::Sigma(1, params.sigma_actuation);
-  cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params.tol_q);
-  c_force_model = gtsam::noiseModel::Isotropic::Sigma(3, params.tol_dynamics);
+IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
+                                 const PhaseInfo::shared_ptr &_phase_info)
+    : params(_params), phase_info(_phase_info),
+      graph_builder(gtdynamics::DynamicsGraph(getOptSetting(*_params),
+                                              _params->gravity)) {
+  des_pose_nm = noiseModel::Isotropic::Sigma(6, params->sigma_des_pose);
+  des_twist_nm = noiseModel::Isotropic::Sigma(6, params->sigma_des_twist);
+  des_q_nm = noiseModel::Isotropic::Sigma(1, params->sigma_des_twist);
+  des_v_nm = noiseModel::Isotropic::Sigma(1, params->sigma_des_twist);
+  actuation_nm = noiseModel::Isotropic::Sigma(1, params->sigma_actuation);
+  jerk_nm = noiseModel::Isotropic::Sigma(1, params->sigma_jerk);
+  cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params->tol_q);
+  c_force_model = gtsam::noiseModel::Isotropic::Sigma(3, params->tol_dynamics);
   redundancy_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, params.tol_dynamics);
+      gtsam::noiseModel::Isotropic::Sigma(6, params->tol_dynamics);
 
   // Phase configuration
-  for (const auto &idx : params.leaving_indices) {
+  for (const auto &idx : phase_info->leaving_indices) {
     leaving_link_indices.insert(legs.at(idx).lower_link_id);
   }
-  for (const auto &idx : params.landing_indices) {
+  for (const auto &idx : phase_info->landing_indices) {
     landing_link_indices.insert(legs.at(idx).lower_link_id);
   }
-  for (const auto &idx : params.contact_indices) {
+  for (const auto &idx : phase_info->contact_indices) {
     contact_points.emplace_back(
         gtdynamics::PointOnLink(legs.at(idx).lower_link, contact_in_com));
     contact_link_ids.emplace_back(legs.at(idx).lower_link_id);
@@ -80,7 +83,7 @@ IEVision60Robot::IEVision60Robot(const Params &_params)
   nominal_b = 0.5 * (nominal_contact_in_world.at(0).y() -
                      nominal_contact_in_world.at(1).y());
 
-  for (const auto &idx : params.contact_indices) {
+  for (const auto &idx : phase_info->contact_indices) {
     contact_in_world.emplace_back(nominal_contact_in_world.at(idx));
   }
 }
@@ -183,14 +186,14 @@ IEVision60Robot::basisKeys(const size_t k,
     basis_keys.emplace_back(PoseKey(base_id, k));
     basis_keys.emplace_back(TwistKey(base_id, k));
     for (size_t i = 0; i < 4; i++) {
-      if (!params.contact_indices.exists(i)) {
+      if (!phase_info->contact_indices.exists(i)) {
         basis_keys.emplace_back(JointAngleKey(legs[i].hip_joint_id, k));
         basis_keys.emplace_back(JointAngleKey(legs[i].upper_joint_id, k));
         basis_keys.emplace_back(JointAngleKey(legs[i].lower_joint_id, k));
       }
     }
     for (size_t i = 0; i < 4; i++) {
-      if (!params.contact_indices.exists(i)) {
+      if (!phase_info->contact_indices.exists(i)) {
         basis_keys.emplace_back(JointVelKey(legs[i].hip_joint_id, k));
         basis_keys.emplace_back(JointVelKey(legs[i].upper_joint_id, k));
         basis_keys.emplace_back(JointVelKey(legs[i].lower_joint_id, k));
@@ -198,19 +201,19 @@ IEVision60Robot::basisKeys(const size_t k,
     }
   }
   // ad levels
-  if (params.leaving_indices.size() == 4) {
+  if (phase_info->leaving_indices.size() == 4) {
     // TODO: for boundary steps
     return basis_keys;
   }
-  if (params.ad_basis_using_torques) {
+  if (params->ad_basis_using_torques) {
     for (size_t j = 0; j < robot.numJoints(); j++) {
       basis_keys.emplace_back(TorqueKey(j, k));
     }
   } else {
-    if (params.contact_indices.size() == 4) {
+    if (phase_info->contact_indices.size() == 4) {
       // ground
       basis_keys.emplace_back(TwistAccelKey(base_id, k));
-      if (params.express_redundancy) {
+      if (params->express_redundancy) {
         basis_keys.emplace_back(ContactRedundancyKey(k));
       }
     } else {
@@ -266,11 +269,11 @@ Values IEVision60Robot::getNominalConfiguration(const double height) const {
   for (const auto &cp : contact_points) {
     int i = cp.link->id();
     values.insert(ContactWrenchKey(i, 0, k), zero_vec6);
-    if (params.express_contact_force) {
+    if (params->express_contact_force) {
       values.insert(ContactForceKey(i, 0, k), zero_vec3);
     }
   }
-  if (params.contact_indices.size() == 4 && params.express_redundancy) {
+  if (phase_info->contact_indices.size() == 4 && params->express_redundancy) {
     values.insert(ContactRedundancyKey(k), zero_vec6);
   }
   // PrintKeyVector(values.keys(), "", GTDKeyFormatter);
