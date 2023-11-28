@@ -213,22 +213,18 @@ IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
 gtdynamics::InequalityConstraint::shared_ptr
 IEVision60Robot::frictionConeConstraint(const size_t contact_link_id,
                                         const size_t k) const {
-  auto friction_cone_function = [&](const Vector3 &f,
-                                    gtsam::OptionalJacobian<1, 3> H = {}) {
-    const double &fx = f(0), fy = f(1), fz = f(2);
-    double mu_prime = params->mu * params->mu;
-    int sign_fz = (fz > 0) - (fz < 0);
-    // std::cout << "sign_fz: " << sign_fz << "\n";
-    // std::cout << "fx: " << fx << "\n";
-    // std::cout << "fy: " << fy << "\n";
-    // std::cout << "fz: " << fz << "\n";
-    double result = sign_fz * mu_prime * fz * fz - fx * fx - fy * fy;
-    // std::cout << "result: " << result << "\n";
-    if (H) {
-      (*H) << -2 * fx, -2 * fy, 2 * sign_fz * mu_prime * fz;
-    }
-    return result;
-  };
+  double mu = params->mu;
+  double mu_prime = mu * mu;
+  auto friction_cone_function =
+      [mu_prime](const Vector3 &f, gtsam::OptionalJacobian<1, 3> H = {}) {
+        const double &fx = f(0), fy = f(1), fz = f(2);
+        int sign_fz = (fz > 0) - (fz < 0);
+        double result = sign_fz * mu_prime * fz * fz - fx * fx - fy * fy;
+        if (H) {
+          (*H) << -2 * fx, -2 * fy, 2 * sign_fz * mu_prime * fz;
+        }
+        return result;
+      };
 
   Vector3_ contact_force_expr(ContactForceKey(contact_link_id, 0, k));
   Double_ compute_fc_expr(friction_cone_function, contact_force_expr);

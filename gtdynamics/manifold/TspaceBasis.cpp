@@ -362,7 +362,7 @@ OrthonormalBasis::eigenSparseJacobian(const GaussianFactorGraph &graph) const {
   size_t nrows = 0;
   for (const auto &factor : graph) {
     Matrix f_jacobian = factor->jacobian().first;
-    size_t factor_dim = f_jacobian.cols();
+    size_t factor_dim = f_jacobian.rows();
     size_t start_col_f = 0;
     for (const Key &key : *factor) {
       const auto &start_col_jacobian = attributes_->var_location.at(key);
