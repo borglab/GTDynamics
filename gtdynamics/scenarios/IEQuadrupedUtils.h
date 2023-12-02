@@ -14,9 +14,9 @@
 #pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/PointOnLink.h>
@@ -173,12 +173,14 @@ public:
 
   /// Robot
   static gtdynamics::Robot getVision60Robot();
-
   static std::vector<Leg> getLegs(const gtdynamics::Robot &robot);
+  static std::map<std::string, gtsam::Point3> getTorsoCorners();
 
   inline static gtdynamics::Robot robot = getVision60Robot();
   inline static std::vector<Leg> legs = getLegs(robot);
   inline static gtsam::Point3 contact_in_com = Point3(0.14, 0, 0);
+  inline static std::map<std::string, gtsam::Point3> torso_corners_in_com =
+      getTorsoCorners();
 
   /// Link ids
   inline static gtdynamics::LinkSharedPtr base_link = robot.link("body");

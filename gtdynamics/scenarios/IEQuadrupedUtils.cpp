@@ -130,6 +130,21 @@ IEVision60Robot::getLegs(const gtdynamics::Robot &robot) {
 }
 
 /* ************************************************************************* */
+std::map<std::string, gtsam::Point3> IEVision60Robot::getTorsoCorners() {
+  double length = 0.88;
+  double width = 0.25;
+  double height = 0.19;
+  double l = length / 2;
+  double w = width / 2;
+  double h = height / 2;
+  return std::map<std::string, gtsam::Point3>{
+      {"fl_top", Point3(l, w, h)},   {"fr_top", Point3(l, -w, h)},
+      {"rl_top", Point3(-l, w, h)},  {"rr_top", Point3(-l, -w, h)},
+      {"fl_bot", Point3(l, w, -h)},  {"fr_bot", Point3(l, -w, -h)},
+      {"rl_bot", Point3(-l, w, -h)}, {"rr_bot", Point3(-l, -w, -h)}};
+}
+
+/* ************************************************************************* */
 gtdynamics::OptimizerSetting
 IEVision60Robot::getOptSetting(const Params &params) {
   auto opt = gtdynamics::OptimizerSetting();
@@ -478,6 +493,12 @@ void IEVision60Robot::ExportValuesMultiPhase(
       ",base_vroll,base_vpitch,base_vyaw,base_vx,base_vy,base_vz";
   std::string base_accel_w_str =
       ",base_aroll,base_apitch,base_ayaw,base_ax,base_ay,base_az";
+  // base corners
+  std::string torso_corners_str = "";
+  for (const auto &[name, point] : IEVision60Robot::torso_corners_in_com) {
+    torso_corners_str += ",torso_" + name + "_x" + ",torso_" + name + "_y" +
+                         ",torso_" + name + "_z";
+  }
 
   std::ofstream traj_file;
   traj_file.open(file_path);
@@ -485,7 +506,7 @@ void IEVision60Robot::ExportValuesMultiPhase(
   traj_file << "time" << jnames_str_q << jnames_str_v << jnames_str_a
             << jnames_str_T << jnames_str_pos << contacts_str
             << contacts_force_str << base_pose_str << base_twist_w_str
-            << base_accel_w_str << "\n";
+            << base_accel_w_str << torso_corners_str << "\n";
   size_t num_steps =
       std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
   std::vector<double> step_time{0};
@@ -544,6 +565,10 @@ void IEVision60Robot::ExportValuesMultiPhase(
     vals.insert(vals.end(),
                 {twist_accel_w(0), twist_accel_w(1), twist_accel_w(2),
                  twist_accel_w(3), twist_accel_w(4), twist_accel_w(5)});
+    for (const auto &[name, point] : IEVision60Robot::torso_corners_in_com) {
+      Point3 point_w = pose.transformFrom(point);
+    vals.insert(vals.end(), {point_w.x(), point_w.y(), point_w.z()});
+    }
 
     std::string vals_str = "";
     for (size_t j = 0; j < vals.size(); j++) {

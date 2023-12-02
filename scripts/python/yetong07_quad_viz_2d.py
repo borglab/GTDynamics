@@ -65,24 +65,26 @@ class PauseAnimation:
         self.ax_fcone.plot([0, -100], [0, 100], color='k', alpha=0.5)
 
         # general info
-        self.end_point_names1 = [["fl_hip", "rl_hip"],
-                                ["fl_hip", "fl_upper"], ["fl_upper", "fl_lower"], ["fl_lower", "fl_lower_c"],
-                                ["rl_hip", "rl_upper"], ["rl_upper", "rl_lower"], ["rl_lower", "rl_lower_c"]]
-        self.end_point_names2 = [["fl_hip", "rl_hip"], ["fr_hip", "rr_hip"], ["fl_hip", "fr_hip"], ["rl_hip", "rr_hip"],
-                                ["fl_hip", "fl_upper"], ["fl_upper", "fl_lower"], ["fl_lower", "fl_lower_c"],
-                                ["rl_hip", "rl_upper"], ["rl_upper", "rl_lower"], ["rl_lower", "rl_lower_c"],
-                                ["fr_hip", "fr_upper"], ["fr_upper", "fr_lower"], ["fr_lower", "fr_lower_c"],
-                                ["rr_hip", "rr_upper"], ["rr_upper", "rr_lower"], ["rr_lower", "rr_lower_c"]]
+        self.end_point_names1 = [["fl_hip", "fl_upper"], ["fl_upper", "fl_lower"], ["fl_lower", "fl_lower_c"],
+                                 ["rl_hip", "rl_upper"], ["rl_upper", "rl_lower"], ["rl_lower", "rl_lower_c"],
+                                 ["torso_fl_top", "torso_rl_top"], ["torso_fl_bot", "torso_rl_bot"],
+                                 ["torso_fl_top", "torso_fl_bot"], ["torso_rl_top", "torso_rl_bot"]]
+        self.end_point_names2 = [["torso_fl_top", "torso_rl_top"], ["torso_fr_top", "torso_rr_top"], 
+                                 ["torso_fl_top", "torso_fr_top"], ["torso_rl_top", "torso_rr_top"],
+                                 ["fl_hip", "fl_upper"], ["fl_upper", "fl_lower"], ["fl_lower", "fl_lower_c"],
+                                 ["rl_hip", "rl_upper"], ["rl_upper", "rl_lower"], ["rl_lower", "rl_lower_c"],
+                                 ["fr_hip", "fr_upper"], ["fr_upper", "fr_lower"], ["fr_lower", "fr_lower_c"],
+                                 ["rr_hip", "rr_upper"], ["rr_upper", "rr_lower"], ["rr_lower", "rr_lower_c"]]
 
-        self.colors1 = ["k", "k", "r", "orange", "k", "g", "b"]
-        self.colors2 = ["k", "k","k","k", "k", "r", "orange", "k", "g", "b", "k", "r", "orange", "k", "g", "b"]
+        self.colors1 = ["k", "r", "orange", "k", "g", "b", "k", "k", "k", "k"]
+        self.colors2 = ["k", "k", "k", "k", "k", "r", "orange",
+                        "k", "g", "b", "k", "r", "orange", "k", "g", "b"]
 
-        self.joint_names = [ "fl_upper", "fl_lower", "rl_upper", "rl_lower"]
+        self.joint_names = ["fl_upper", "fl_lower", "rl_upper", "rl_lower"]
         self.joint_colors = ['r', 'orange', 'g', 'b']
 
-        self.contact_names = [ "fl_lower_c", "rl_lower_c"]
+        self.contact_names = ["fl_lower_c", "rl_lower_c"]
         self.contact_colors = ['orange', 'b']
-
 
         self.time_plots_ax = []
         self.time_plots_entry_name_x = []
@@ -120,13 +122,16 @@ class PauseAnimation:
         for joint_name, color in zip(self.joint_names, self.joint_colors):
             self.time_plots_ax += [self.ax_q, self.ax_v, self.ax_a, self.ax_T]
             self.time_plots_entry_name_x += ["time", "time", "time", "time"]
-            self.time_plots_entry_name_y += [joint_name+"_q", joint_name+"_v", joint_name+"_a", joint_name+"_T"]
+            self.time_plots_entry_name_y += [joint_name+"_q",
+                                             joint_name+"_v", joint_name+"_a", joint_name+"_T"]
             self.time_plots_color += [color, color, color, color]
-            self.time_plots_label += [joint_name, joint_name, joint_name, joint_name]
+            self.time_plots_label += [joint_name,
+                                      joint_name, joint_name, joint_name]
         for contact_name, color in zip(self.contact_names, self.contact_colors):
             self.time_plots_ax += [self.ax_cforce, self.ax_fcone]
             self.time_plots_entry_name_x += ["time", contact_name+"_fx"]
-            self.time_plots_entry_name_y += [contact_name+"_fz", contact_name+"_fz"]
+            self.time_plots_entry_name_y += [contact_name +
+                                             "_fz", contact_name+"_fz"]
             self.time_plots_color += [color, color]
             self.time_plots_label += [contact_name, contact_name]
         self.time_plots_ax += [self.ax_torso_v, self.ax_torso_a]
@@ -162,11 +167,11 @@ class PauseAnimation:
             y1 = data[entry_name_y1][0]
             y2 = data[entry_name_y2][0]
             frame = ax.plot((x1, x2), (y1, y2),
-                                    color=color, alpha=0.5, animated=True)[0]
+                            color=color, alpha=0.5, animated=True)[0]
             self.step_plots.append(frame)
 
-        self.title_k = self.ax_side.text(0.5, 1.2, str(k), bbox={
-                          'facecolor': 'w', 'alpha': 0.5, 'pad': 5}, ha="center", animated=True)
+        self.title_k = self.ax_side.text(0.5, 1.2, str(0), bbox={
+            'facecolor': 'w', 'alpha': 0.5, 'pad': 5}, ha="center", animated=True)
 
         self.animation = animation.FuncAnimation(
             self.fig, self.update, frames=self.num_steps, interval=300, blit=True)
@@ -191,12 +196,12 @@ class PauseAnimation:
 
     def update(self, k):
         # update time plots
-        for plot, entry_name_x1, entry_name_x2, entry_name_y1, entry_name_y2 in zip(self.step_plots, 
-                                                                                    self.step_plots_entry_name_x1, 
-                                                                                    self.step_plots_entry_name_x2, 
-                                                                                    self.step_plots_entry_name_y1, 
+        for plot, entry_name_x1, entry_name_x2, entry_name_y1, entry_name_y2 in zip(self.step_plots,
+                                                                                    self.step_plots_entry_name_x1,
+                                                                                    self.step_plots_entry_name_x2,
+                                                                                    self.step_plots_entry_name_y1,
                                                                                     self.step_plots_entry_name_y2):
-            x1= data[entry_name_x1][k]
+            x1 = data[entry_name_x1][k]
             x2 = data[entry_name_x2][k]
             y1 = data[entry_name_y1][k]
             y2 = data[entry_name_y2][k]
@@ -217,6 +222,7 @@ class PauseAnimation:
         self.title_k.set_text(str(k))
 
         return self.get_all_plots()
+
 
 pa = PauseAnimation()
 plt.show()
