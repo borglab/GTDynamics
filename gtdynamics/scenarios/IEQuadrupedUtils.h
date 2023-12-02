@@ -16,15 +16,10 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
-#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/PointOnLink.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #define ACTUATION_RMSE_TORQUE 0
 #define ACTUATION_IMPULSE_SQR 1
@@ -68,15 +63,18 @@ public:
         gtdynamics::CollocationScheme::Trapezoidal;
 
     /// Noise sigma for costs
-    double sigma_des_pose = 1e-2;
-    double sigma_des_twist = 1e-2;
-    double sigma_actuation = 1e1;
-    double sigma_jerk = 1e2;
     double sigma_q_col = 1e-2;
     double sigma_v_col = 1e-2;
     double sigma_pose_col = 1e-2;
     double sigma_twist_col = 1e-2;
+    double sigma_actuation = 1e1;
+    double sigma_jerk = 1e2;
+    double sigma_des_pose = 1e-2;
+    double sigma_des_twist = 1e-2;
+    double sigma_des_point = 1e-2;
+    double sigma_des_point_v = 1e-2;
     double sigma_phase_dt = 1e-4;
+    double sigma_a_penalty = 1e2;
 
     // tolerance for e constraints
     double tol_q = 1e-2;        // tolerance of q-level constraints
@@ -100,13 +98,16 @@ public:
     // Option for e-constraints
     bool include_state_constraints = true;
     Values state_constrianed_values;
+    bool boundary_constrain_a = true;
     // Option for i-constraints
-    bool include_friction_cone = false;
     bool include_joint_limits = false;
-    bool include_torque_limits = false;
     bool include_collision_free_s = false;
     bool include_collision_free_z = false;
+    bool include_accel_penalty = false;
+    bool include_torque_limits = false;
+    bool include_friction_cone = false;
     bool include_phase_duration_limits = false;
+
     std::vector<double> phases_min_dt;
     std::map<std::string, double> joint_lower_limits;
     std::map<std::string, double> joint_upper_limits;
@@ -115,15 +116,23 @@ public:
     std::vector<std::pair<std::string, Point3>> collision_checking_points_s;
     std::vector<std::pair<std::string, Point3>> collision_checking_points_z;
     std::vector<std::pair<Point3, double>> sphere_obstacles;
+    double accel_panalty_threshold = 100.0;
     // Option for costs
     bool include_collocation_costs = false;
     bool include_actuation_costs = false;
     bool include_jerk_costs = false;
     bool include_state_costs = false;
     bool include_phase_duration_prior_costs = false;
+    bool collision_as_cost = false;
     int actuation_cost_option = ACTUATION_RMSE_TORQUE;
     Values state_cost_values;
+    std::vector<std::tuple<size_t, Point3, Point3, size_t>> state_cost_points;
+    std::vector<std::tuple<size_t, Point3, Vector3, size_t>>
+        state_cost_point_vels;
     std::vector<double> phase_prior_dt;
+
+    bool eval_details = true;
+    bool eval_collo_step = false;
 
     /// Constructor
     Params() = default;
@@ -195,6 +204,8 @@ public:
   gtdynamics::DynamicsGraph graph_builder;
   SharedNoiseModel des_pose_nm;
   SharedNoiseModel des_twist_nm;
+  SharedNoiseModel des_point_nm;
+  SharedNoiseModel des_point_v_nm;
   SharedNoiseModel des_q_nm;
   SharedNoiseModel des_v_nm;
   SharedNoiseModel actuation_nm;
@@ -270,6 +281,16 @@ public:
   NonlinearFactorGraph
   multiPhaseCollocationCostsStep(const size_t k, const size_t phase_id) const;
 
+  NoiseModelFactor::shared_ptr statePointCostFactor(const size_t link_id,
+                                                    const Point3 &point_l,
+                                                    const Point3 &point_w,
+                                                    const size_t k) const;
+
+  NoiseModelFactor::shared_ptr statePointVelCostFactor(const size_t link_id,
+                                                       const Point3 &point_l,
+                                                       const Vector3 &vel_w,
+                                                       const size_t k) const;
+
 public:
   /// Constructor.
   IEVision60Robot(const Params::shared_ptr &_params,
@@ -297,6 +318,14 @@ public:
 
   /// Costs for minimize jerk in torques.
   NonlinearFactorGraph jerkCosts(const size_t num_steps) const;
+
+  /// Penalty for large joint accelerations above threshold. In theory, the
+  /// joint acceleration of a realistic trajectory can be infinitely large (at
+  /// leg singularity configurations). However, due to discretization error in
+  /// collocation, optimizers can take advantage of it to make abrupt change
+  /// in joint velocity between consecutive time steps. Joint acceleration
+  /// penalty is added to prevent the optimizer from doing such tricks.
+  NonlinearFactorGraph accelPenaltyCosts(const size_t num_steps) const;
 
   /// Costs for init condition and reaching target poses.
   NonlinearFactorGraph stateCosts() const;
@@ -432,12 +461,45 @@ public:
 
   NonlinearFactorGraph actuationCosts() const;
 
+  NonlinearFactorGraph jerkCosts() const;
+
+  NonlinearFactorGraph stateCosts() const;
+
   NonlinearFactorGraph phaseDurationPriorCosts() const;
 
+  NonlinearFactorGraph accelPenaltyCosts() const;
+
+  gtdynamics::InequalityConstraints groundCollisionFreeConstraints() const;
+
+  gtdynamics::InequalityConstraints obstacleCollisionFreeConstraints() const;
+
+  gtdynamics::InequalityConstraints jointLimitConstraints() const;
+
+  gtdynamics::InequalityConstraints torqueLimitConstraints() const;
+
+  gtdynamics::InequalityConstraints frictionConeConstraints() const;
+
+  /** Inequality constraints that limit the min phase durations. */
+  InequalityConstraints phaseMinDurationConstraints() const;
+
+  /// Equality constraints of all types of all time steps.
   EqualityConstraints eConstraints() const;
 
+  /// Pair of inequality constriants with associated type.
+  std::vector<std::pair<std::string, InequalityConstraints>>
+  classifiedIConstraints() const;
+
+  /// Inequality constraints of all types of all time steps.
   InequalityConstraints iConstraints() const;
 
+  /// Pair of cost with associated type.
+  std::vector<std::pair<std::string, NonlinearFactorGraph>>
+  classifiedCosts() const;
+
+  /// Separate factor graphs containing collocation factors of each step.
+  std::vector<NonlinearFactorGraph> collocationFactorsByStep() const;
+
+  /// Costs of all types of all time steps.
   NonlinearFactorGraph costs() const;
 
   gtdynamics::EqConsOptProblem::EvalFunc costsEvalFunc() const;
@@ -445,9 +507,6 @@ public:
   size_t numSteps() const {
     return std::accumulate(phase_num_steps_.begin(), phase_num_steps_.end(), 0);
   }
-
-  /** Inequality constraints that limit the min phase durations. */
-  InequalityConstraints phaseMinDurationConstraints() const;
 };
 
 /* ************************************************************************* */

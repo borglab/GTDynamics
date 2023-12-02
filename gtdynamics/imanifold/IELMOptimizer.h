@@ -17,15 +17,9 @@
  */
 
 #pragma once
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IELMOptimizerState.h>
 #include <gtdynamics/imanifold/IEOptimizer.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
-#include <gtsam/inference/Key.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/NonlinearOptimizer.h>
 
 namespace gtsam {
 
@@ -33,6 +27,7 @@ struct IELMParams {
   IELMParams() {}
   double boundary_approach_rate_threshold = 3;
   LevenbergMarquardtParams lm_params;
+  bool show_active_costraints = false;
 };
 
 /**

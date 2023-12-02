@@ -1,19 +1,7 @@
-#include "imanifold/IELMOptimizer.h"
-#include "utils/DynamicsSymbol.h"
+
+#include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/imanifold/IELMOptimizerState.h>
-#include <gtdynamics/imanifold/IEOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
-#include <gtsam/base/Vector.h>
-#include <gtsam/inference/Ordering.h>
-#include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/linear/linearExceptions.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/NonlinearOptimizer.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/nonlinear/internal/LevenbergMarquardtState.h>
-#include <iomanip>
 
 using std::cout, std::setw, std::setprecision, std::endl;
 
@@ -225,7 +213,7 @@ void IELMTrial::setDecreasedNextLambda(
 }
 
 /* ************************************************************************* */
-void IELMTrial::PrintTitle() {
+void PrintIELMTrialTitle() {
   cout << setw(10) << "iter"
        << " " << setw(12) << "error "
        << " " << setw(12) << "nonlinear "
@@ -237,20 +225,47 @@ void IELMTrial::PrintTitle() {
 }
 
 /* ************************************************************************* */
-void IELMTrial::print(const IELMState &state) const {
+void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
+                    const IELMParams &params, bool forced,
+                    const KeyFormatter &key_formatter) {
+  if (!trial.step_is_successful) {
+    cout << "\033[90m";
+  }
+  const auto &nonlinear_update = trial.nonlinear_update;
+  const auto &linear_update = trial.linear_update;
   cout << setw(10) << state.iterations << " ";
-  cout << setw(12) << setprecision(4) << nonlinear_update.new_error << " "
-       << setw(12) << setprecision(4) << nonlinear_update.cost_change << " "
-       << setw(10) << setprecision(4) << linear_update.cost_change << " "
-       << setw(10) << setprecision(2) << linear_update.lambda << " ";
-  cout << setw(10) << (linear_update.solve_successful ? "T   " : "F   ") << " "
-       << setw(10) << setprecision(2) << trial_time << " ";
-  cout << setw(10) << setprecision(4) << linear_update.delta.norm() << " ";
-  cout << setw(10) << setprecision(4) << linear_update.tangent_vector.norm()
-       << " ";
-  cout << setw(10) << setprecision(4)
-       << linear_update.tangent_vector.norm() / linear_update.delta.norm()
-       << " ";
+  cout << setw(12) << setprecision(4) << nonlinear_update.new_error << " ";
+  cout << setw(12) << setprecision(4) << nonlinear_update.cost_change << " ";
+  if (!forced) {
+    cout << setw(10) << setprecision(4) << linear_update.cost_change << " ";
+    cout << setw(10) << setprecision(2) << linear_update.lambda << " ";
+    cout << setw(10) << (linear_update.solve_successful ? "T   " : "F   ")
+         << " ";
+    cout << setw(10) << setprecision(2) << trial.trial_time << " ";
+    cout << setw(10) << setprecision(4) << linear_update.delta.norm() << " ";
+    if (params.show_active_costraints) {
+      cout << nonlinear_update.new_manifolds.activeConstraintsStr();
+    }
+    // cout << setw(10) << setprecision(4) <<
+    // linear_update.tangent_vector.norm()
+    //      << " ";
+    // cout << setw(10) << setprecision(4)
+    //      << linear_update.tangent_vector.norm() / linear_update.delta.norm()
+    //      << " ";
+  } else {
+    std::string forced_i_str = "forced:";
+    for (const auto &[key, index_set] : trial.forced_indices_map) {
+      const auto &manifold = state.manifolds.at(key);
+      for (const auto &i_idx : index_set) {
+        Key key = *manifold.iConstraints()->at(i_idx)->keys().begin();
+        forced_i_str += " " + key_formatter(key);
+      }
+    }
+    cout << forced_i_str;
+  }
+  if (!trial.step_is_successful) {
+    cout << "\033[0m";
+  }
   cout << endl;
 }
 

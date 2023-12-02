@@ -21,17 +21,13 @@
 #include <gtdynamics/imanifold/IEOptimizer.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
-#include <gtsam/inference/Key.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/NonlinearOptimizer.h>
 
 namespace gtsam {
 
 struct IELMState;
 struct IELMTrial;
 struct IELMIterDetails;
+struct IELMParams;
 
 /** State corresponding to each LM iteration. */
 struct IELMState {
@@ -191,12 +187,16 @@ public:
   /// Set lambda as decreased values for next trial/state.
   void setDecreasedNextLambda(double &new_lambda, double &new_lambda_factor,
                               const LevenbergMarquardtParams &params) const;
-
-  /** Print summary info of the trial. */
-  void print(const IELMState &state) const;
-
-  static void PrintTitle();
 };
+
+/** Print title of summary info of IELM trials. */
+void PrintIELMTrialTitle();
+
+/** Print summary info of an IELM trial. */
+void PrintIELMTrial(
+    const IELMState &state, const IELMTrial &trial, const IELMParams &params,
+    bool forced = false,
+    const KeyFormatter &key_formatter = gtdynamics::GTDKeyFormatter);
 
 struct IELMIterDetails {
   IELMState state;

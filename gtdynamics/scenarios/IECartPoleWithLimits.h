@@ -1,10 +1,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/imanifold/IERetractor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtsam/linear/NoiseModel.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
 
 namespace gtsam {

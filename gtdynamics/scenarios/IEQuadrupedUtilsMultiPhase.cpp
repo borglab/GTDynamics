@@ -11,8 +11,10 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+
+#include <gtdynamics/imanifold/IEConstraintManifold.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 using namespace gtdynamics;
@@ -47,60 +49,35 @@ IEVision60RobotMultiPhase::robotAtStep(const size_t k) const {
   return phase_robots_.back();
 }
 
-/* ************************************************************************* */
-EqualityConstraints IEVision60RobotMultiPhase::eConstraints() const {
-  size_t num_steps = numSteps();
-  EqualityConstraints e_constraints;
-  for (size_t k = 0; k <= num_steps; k++) {
-    const IEVision60Robot &vision60 = robotAtStep(k);
-    e_constraints.add(vision60.eConstraints(k));
-  }
-  if (params()->include_state_constraints) {
-    e_constraints.add(phase_robots_.at(0).stateConstraints());
-  }
-  return e_constraints;
-}
+/* <=======================================================================> */
+/* <================================ costs ================================> */
+/* <=======================================================================> */
 
 /* ************************************************************************* */
-InequalityConstraints IEVision60RobotMultiPhase::iConstraints() const {
-  size_t num_steps = numSteps();
-  InequalityConstraints i_constraints;
-  for (size_t k = 0; k <= num_steps; k++) {
-    const IEVision60Robot &vision60 = robotAtStep(k);
-    i_constraints.add(vision60.iConstraints(k));
+std::vector<NonlinearFactorGraph>
+IEVision60RobotMultiPhase::collocationFactorsByStep() const {
+  std::vector<NonlinearFactorGraph> collocation_factors(numSteps());
+
+  size_t k = 0;
+  for (size_t phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
+    const auto &robot = phase_robots_.at(phase_idx);
+    for (size_t step_idx = 0; step_idx < phase_num_steps_.at(phase_idx);
+         step_idx++) {
+      collocation_factors[k] =
+          robot.multiPhaseCollocationCostsStep(k, phase_idx);
+      k++;
+    }
   }
-  if (params()->include_phase_duration_limits) {
-    i_constraints.add(phaseMinDurationConstraints());
-  }
-  return i_constraints;
+  return collocation_factors;
 }
 
 /* ************************************************************************* */
 NonlinearFactorGraph IEVision60RobotMultiPhase::collocationCosts() const {
   NonlinearFactorGraph graph;
-  size_t start_k = 0;
-  for (size_t phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
-    size_t end_k = start_k + phase_num_steps_[phase_idx];
-    graph.add(phase_robots_.at(phase_idx).multiPhaseCollocationCosts(
-        start_k, end_k, phase_idx));
-    start_k = end_k;
+  for (const auto &graph_k : collocationFactorsByStep()) {
+    graph.add(graph_k);
   }
   return graph;
-}
-
-/* ************************************************************************* */
-gtdynamics::InequalityConstraints
-IEVision60RobotMultiPhase::phaseMinDurationConstraints() const {
-  InequalityConstraints constraints;
-  for (size_t phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
-    Key phase_key = PhaseKey(phase_idx);
-    double phase_min_dt = params()->phases_min_dt.at(phase_idx);
-    Double_ phase_expr(phase_key);
-    Double_ phase_min_expr = phase_expr - Double_(phase_min_dt);
-    constraints.emplace_shared<DoubleExpressionInequality>(
-        phase_min_expr, params()->tol_phase_dt);
-  }
-  return constraints;
 }
 
 /* ************************************************************************* */
@@ -140,85 +117,285 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::actuationCosts() const {
 }
 
 /* ************************************************************************* */
+NonlinearFactorGraph IEVision60RobotMultiPhase::jerkCosts() const {
+  return phase_robots_.at(0).jerkCosts(numSteps());
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60RobotMultiPhase::stateCosts() const {
+  return phase_robots_.at(0).stateCosts();
+}
+
+/* ************************************************************************* */
 NonlinearFactorGraph
 IEVision60RobotMultiPhase::phaseDurationPriorCosts() const {
   NonlinearFactorGraph graph;
   for (size_t phase_idx = 0; phase_idx < phase_robots_.size(); phase_idx++) {
-    graph.addPrior(PhaseKey(0), params()->phase_prior_dt.at(phase_idx),
+    graph.addPrior(PhaseKey(phase_idx), params()->phase_prior_dt.at(phase_idx),
                    noiseModel::Isotropic::Sigma(1, params()->sigma_phase_dt));
   }
   return graph;
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph IEVision60RobotMultiPhase::costs() const {
-  NonlinearFactorGraph graph;
+NonlinearFactorGraph IEVision60RobotMultiPhase::accelPenaltyCosts() const {
+  return phase_robots_.at(0).accelPenaltyCosts(numSteps());
+}
+
+/* ************************************************************************* */
+std::vector<std::pair<std::string, NonlinearFactorGraph>>
+IEVision60RobotMultiPhase::classifiedCosts() const {
+  std::vector<std::pair<std::string, NonlinearFactorGraph>> classified_costs;
   if (params()->include_collocation_costs) {
-    graph.add(collocationCosts());
+    classified_costs.emplace_back("collocation", collocationCosts());
   }
   if (params()->include_actuation_costs) {
-    graph.add(actuationCosts());
+    classified_costs.emplace_back("actuation", actuationCosts());
   }
   if (params()->include_jerk_costs) {
-    graph.add(phase_robots_.at(0).jerkCosts(numSteps()));
+    classified_costs.emplace_back("jerk", jerkCosts());
   }
   if (params()->include_state_costs) {
-    graph.add(phase_robots_.at(0).stateCosts());
+    classified_costs.emplace_back("state", stateCosts());
   }
   if (params()->include_phase_duration_prior_costs) {
-    graph.add(phaseDurationPriorCosts());
+    classified_costs.emplace_back("phase_dt", phaseDurationPriorCosts());
+  }
+  if (params()->include_accel_penalty) {
+    classified_costs.emplace_back("accel_penalty", accelPenaltyCosts());
+  }
+  if (params()->collision_as_cost) {
+    classified_costs.emplace_back(
+        "collision", groundCollisionFreeConstraints().meritGraph());
+  }
+  return classified_costs;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60RobotMultiPhase::costs() const {
+  NonlinearFactorGraph graph;
+  for (const auto &[name, costs] : classifiedCosts()) {
+    graph.add(costs);
   }
   return graph;
+}
+
+/* <=======================================================================> */
+/* <============================= constraints =============================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::jointLimitConstraints() const {
+  gtdynamics::InequalityConstraints constraints;
+  for (size_t k = 0; k <= numSteps(); k++) {
+    constraints.add(robotAtStep(k).jointLimitConstraints(k));
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::groundCollisionFreeConstraints() const {
+  gtdynamics::InequalityConstraints constraints;
+  for (size_t k = 0; k <= numSteps(); k++) {
+    constraints.add(robotAtStep(k).groundCollisionFreeConstraints(k));
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::obstacleCollisionFreeConstraints() const {
+  gtdynamics::InequalityConstraints constraints;
+  for (size_t k = 0; k <= numSteps(); k++) {
+    constraints.add(robotAtStep(k).obstacleCollisionFreeConstraints(k));
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::torqueLimitConstraints() const {
+  gtdynamics::InequalityConstraints constraints;
+  for (size_t k = 0; k <= numSteps(); k++) {
+    constraints.add(robotAtStep(k).torqueLimitConstraints(k));
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::frictionConeConstraints() const {
+  gtdynamics::InequalityConstraints constraints;
+  for (size_t k = 0; k <= numSteps(); k++) {
+    constraints.add(robotAtStep(k).frictionConeConstraints(k));
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::phaseMinDurationConstraints() const {
+  InequalityConstraints constraints;
+  for (size_t phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
+    Key phase_key = PhaseKey(phase_idx);
+    double phase_min_dt = params()->phases_min_dt.at(phase_idx);
+    Double_ phase_expr(phase_key);
+    Double_ phase_min_expr = phase_expr - Double_(phase_min_dt);
+    constraints.emplace_shared<DoubleExpressionInequality>(
+        phase_min_expr, params()->tol_phase_dt);
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+std::vector<std::pair<std::string, InequalityConstraints>>
+IEVision60RobotMultiPhase::classifiedIConstraints() const {
+  std::vector<std::pair<std::string, InequalityConstraints>>
+      classified_constraints;
+  if (params()->include_joint_limits) {
+    classified_constraints.emplace_back("joint_limit", jointLimitConstraints());
+  }
+  if (params()->include_collision_free_s) {
+    classified_constraints.emplace_back("collision_free_obstacle",
+                                        obstacleCollisionFreeConstraints());
+  }
+  if (params()->include_collision_free_z) {
+    classified_constraints.emplace_back("collision_free_ground",
+                                        groundCollisionFreeConstraints());
+  }
+  if (params()->include_torque_limits) {
+    classified_constraints.emplace_back("torque_limit",
+                                        torqueLimitConstraints());
+  }
+  if (params()->include_friction_cone) {
+    classified_constraints.emplace_back("friction_cone",
+                                        frictionConeConstraints());
+  }
+  if (params()->include_phase_duration_limits) {
+    classified_constraints.emplace_back("phase_min_dt",
+                                        phaseMinDurationConstraints());
+  }
+  return classified_constraints;
+}
+
+/* ************************************************************************* */
+InequalityConstraints IEVision60RobotMultiPhase::iConstraints() const {
+  InequalityConstraints constraints_all;
+  for (const auto &[name, constraints] : classifiedIConstraints()) {
+    constraints_all.add(constraints);
+  }
+  return constraints_all;
+}
+
+/* ************************************************************************* */
+EqualityConstraints IEVision60RobotMultiPhase::eConstraints() const {
+  size_t num_steps = numSteps();
+  EqualityConstraints e_constraints;
+  for (size_t k = 0; k <= num_steps; k++) {
+    const IEVision60Robot &vision60 = robotAtStep(k);
+    e_constraints.add(vision60.eConstraints(k));
+  }
+  if (params()->include_state_constraints) {
+    e_constraints.add(phase_robots_.at(0).stateConstraints());
+  }
+  return e_constraints;
+}
+
+/* <=======================================================================> */
+/* <========================== evaluate function ==========================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+void PrintGraphError(const std::string &graph_name, const double &graph_error,
+                     const double &sigma) {
+  std::cout << std::setw(26) << graph_name + ":";
+  std::cout << std::setw(14) << graph_error;
+  std::cout << "->";
+  std::cout << std::setw(14) << ComputeErrorNorm(graph_error, sigma);
+  std::cout << "\n";
+}
+
+/* ************************************************************************* */
+void PrintConstraintViolation(const std::string &name, const double &violation,
+                              const double &sigma) {
+  std::cout << std::setw(26) << name + ":";
+  std::cout << std::setw(14) << violation;
+  std::cout << "->";
+  std::cout << std::setw(14) << violation * sigma;
+  std::cout << "\n";
 }
 
 /* ************************************************************************* */
 gtdynamics::EqConsOptProblem::EvalFunc
 IEVision60RobotMultiPhase::costsEvalFunc() const {
-  NonlinearFactorGraph graph_collo, graph_actuation, graph_jerk, graph_state,
-      graph_phase_duration;
   auto params_ = params();
-  if (params_->include_collocation_costs) {
-    graph_collo = collocationCosts();
-  }
-  if (params_->include_actuation_costs) {
-    graph_actuation = actuationCosts();
-  }
-  if (params_->include_jerk_costs) {
-    graph_jerk = phase_robots_.at(0).jerkCosts(numSteps());
-  }
-  if (params_->include_state_costs) {
-    graph_state = phase_robots_.at(0).stateCosts();
-  }
-  if (params_->include_phase_duration_prior_costs) {
-    graph_phase_duration = phaseDurationPriorCosts();
-  }
+  size_t num_steps = numSteps();
+  auto graph = costs();
   auto e_constraints = eConstraints();
   auto i_constraints = iConstraints();
+
+  auto classified_costs = classifiedCosts();
+  auto classified_i_constraints = classifiedIConstraints();
+  auto collocation_factors = collocationFactorsByStep();
+
+  std::map<std::string, double> graph_sigma_map{
+      {"collocation", params_->sigma_q_col},
+      {"actuation", params_->sigma_actuation},
+      {"jerk", params_->sigma_jerk},
+      {"state", params_->sigma_des_pose},
+      {"phase_dt", params_->sigma_phase_dt},
+      {"accel_penalty", params_->sigma_a_penalty},
+      {"collision", params_->tol_cf}};
+  std::map<std::string, double> constraint_sigma_map{
+      {"joint_limit", params_->tol_jl},
+      {"collision_free_obstacle", params_->tol_cf},
+      {"collision_free_ground", params_->tol_cf},
+      {"torque_limit", params_->tol_tl},
+      {"friction_cone", params_->tol_fc},
+      {"phase_min_dt", params_->tol_phase_dt}};
+
   auto Evaluate = [=](const Values &values) {
-    if (params_->include_collocation_costs) {
-      std::cout << "collocation costs:\t" << graph_collo.error(values) << "\n";
+    std::cout << std::setw(30) << "\033[1mcost:" << std::setw(14)
+              << graph.error(values) << "\033[0m\n";
+    if (params_->eval_details) {
+      for (const auto &[name, graph] : classified_costs) {
+        PrintGraphError(name, graph.error(values), graph_sigma_map.at(name));
+      }
     }
-    if (params_->include_actuation_costs) {
-      std::cout << "actuation costs:  \t" << graph_actuation.error(values)
-                << "\n";
+    if (params_->eval_collo_step) {
+      std::cout << "\033[90m";
+      for (size_t k = 0; k < num_steps; k++) {
+        std::string name =
+            "collo " + std::to_string(k) + "->" + std::to_string(k + 1);
+        PrintGraphError(name, collocation_factors.at(k).error(values),
+                        params_->sigma_pose_col);
+      }
+      std::cout << "\033[0m";
     }
-    if (params_->include_jerk_costs) {
-      std::cout << "jerk costs:       \t" << graph_jerk.error(values) << "\n";
+    double e_violation = e_constraints.evaluateViolationL2Norm(values);
+    double i_violation = i_constraints.evaluateViolationL2Norm(values);
+    std::cout << std::setw(30) << "\033[1me_constraint vio:" << std::setw(14)
+              << e_violation << "\033[0m\n";
+    std::cout << std::setw(30) << "\033[1mi_constraint vio:" << std::setw(14)
+              << i_violation << "\033[0m\n";
+    if (params_->eval_details && i_violation > 1e-3) {
+      for (const auto &[name, constraints] : classified_i_constraints) {
+        PrintConstraintViolation(name,
+                                 constraints.evaluateViolationL2Norm(values),
+                                 constraint_sigma_map.at(name));
+      }
     }
-    if (params_->include_state_costs) {
-      std::cout << "state costs:      \t" << graph_state.error(values) << "\n";
-    }
-    if (params_->include_phase_duration_prior_costs) {
-      std::cout << "phase prior costs:\t" << graph_phase_duration.error(values)
-                << "\n";
-    }
-    std::cout << "e_constraint vio:\t" << e_constraints.evaluateViolationL2Norm(values) << "\n";
-    std::cout << "i_constraint vio:\t" << i_constraints.evaluateViolationL2Norm(values) << "\n";
   };
   return Evaluate;
 }
 
 } // namespace gtsam
+
+/* <=======================================================================> */
+/* <============================== scenarios ==============================> */
+/* <=======================================================================> */
 
 using namespace gtsam;
 namespace quadruped_vertical_jump {

@@ -1,12 +1,10 @@
 #include <gtdynamics/utils/GraphUtils.h>
+#include <gtsam/base/serialization.h>
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/PCGSolver.h>
 #include <gtsam/linear/SubgraphSolver.h>
 #include <gtsam/nonlinear/NonlinearEquality.h>
-#include <gtsam/base/serialization.h>
-#include <gtsam/geometry/Pose3.h>
-
-#include <iostream>
 
 GTSAM_VALUE_EXPORT(double)
 GTSAM_VALUE_EXPORT(gtsam::Point3)
@@ -58,7 +56,6 @@ VectorValues SqrtHessianDiagonal(const GaussianFactorGraph &graph,
   }
   return sqrt_hessian_diagonal;
 }
-
 
 /* ************************************************************************* */
 VectorValues SolveLinear(const GaussianFactorGraph &gfg,
@@ -114,17 +111,20 @@ VectorValues SolveLinear(const GaussianFactorGraph &gfg,
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-void ExportValuesToFile(const Values& values, const std::string& file_path) {
+void ExportValuesToFile(const Values &values, const std::string &file_path) {
   serializeToBinaryFile(values, file_path);
 }
 
 /* ************************************************************************* */
-Values LoadValuesFromFile(const std::string& file_path) {
+Values LoadValuesFromFile(const std::string &file_path) {
   Values values;
   deserializeFromBinaryFile(file_path, values);
   return values;
 }
 
-
+/* ************************************************************************* */
+double ComputeErrorNorm(const double &graph_error, const double &sigma) {
+  return sqrt(graph_error * 2) * sigma;
+}
 
 } // namespace gtsam

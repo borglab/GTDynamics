@@ -11,7 +11,8 @@
  * @author: Yetong Zhang
  */
 
-#include "utils/DynamicsSymbol.h"
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
@@ -20,11 +21,6 @@
 #include <gtdynamics/factors/TorqueFactor.h>
 #include <gtdynamics/factors/WrenchEquivalenceFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
-#include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/expressions.h>
 
@@ -200,7 +196,19 @@ IEVision60Robot::getConstraintsGraphStepV(const int t) const {
 /* ************************************************************************* */
 NonlinearFactorGraph
 IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
-  NonlinearFactorGraph graph = graph_builder.aFactors(robot, t, contact_points);
+
+  NonlinearFactorGraph graph;
+  if (params->boundary_constrain_a) {
+    graph = graph_builder.aFactors(robot, t, contact_points);
+  } else {
+    PointOnLinks static_contact_points;
+    for (const auto &point_on_link : contact_points) {
+      if (!leaving_link_indices.exists(point_on_link.link->id())) {
+        static_contact_points.emplace_back(point_on_link);
+      }
+    }
+    graph = graph_builder.aFactors(robot, t, static_contact_points);
+  }
   graph.add(DynamicsFactors(t));
   if (contact_link_ids.size() == 4) {
     graph.add(contactRedundancyFactor(t));
@@ -341,6 +349,38 @@ IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
     constraints.push_back(groundCollisionFreeConstraint(link_idx, k, p_l));
   }
   return constraints;
+}
+
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr IEVision60Robot::statePointCostFactor(
+    const size_t link_id, const Point3 &point_l, const Point3 &point_w,
+    const size_t k) const {
+  Pose3_ pose_expr(PoseKey(link_id, k));
+  Point3_ point_l_expr(point_l);
+  Point3_ point_w_expr(pose_expr, &Pose3::transformFrom, point_l_expr);
+  return std::make_shared<ExpressionFactor<Point3>>(des_point_nm, point_w,
+                                                    point_w_expr);
+}
+
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr IEVision60Robot::statePointVelCostFactor(
+    const size_t link_id, const Point3 &point_l, const Vector3 &vel_w,
+    const size_t k) const {
+  Pose3_ pose_expr(PoseKey(link_id, k));
+  Vector6_ twist_expr(TwistKey(link_id, k));
+
+  Pose3 lTc(Rot3::Identity(), point_l);
+  Pose3 cTl = lTc.inverse();
+  Matrix36 H_vel_c;
+  H_vel_c << Z_3x3, I_3x3;
+  H_vel_c = H_vel_c * cTl.AdjointMap();
+  const std::function<gtsam::Vector3(gtsam::Vector6)> f =
+      [H_vel_c](const gtsam::Vector6 &A) { return H_vel_c * A; };
+  Vector3_ vel_l_expr = gtsam::linearExpression(f, twist_expr, H_vel_c);
+  Rot3_ rot_expr(&Pose3::rotation, pose_expr);
+  Vector3_ vel_w_expr(rot_expr, &Rot3::rotate, vel_l_expr);
+  return std::make_shared<ExpressionFactor<Vector3>>(des_point_v_nm, vel_w,
+                                                     vel_w_expr);
 }
 
 /* ************************************************************************* */
@@ -598,6 +638,42 @@ NonlinearFactorGraph IEVision60Robot::jerkCosts(const size_t num_steps) const {
 }
 
 /* ************************************************************************* */
+NonlinearFactorGraph
+IEVision60Robot::accelPenaltyCosts(const size_t num_steps) const {
+  NonlinearFactorGraph graph;
+
+  double accel_penalty_threshold = params->accel_panalty_threshold;
+  auto penalty_func =
+      [accel_penalty_threshold](const double &a,
+                                gtsam::OptionalJacobian<1, 1> H = {}) {
+        int sign_a = (a > 0) - (a < 0);
+        double result = abs(a) - accel_penalty_threshold;
+        if (result < 0) {
+          if (H) {
+            H->setConstant(0);
+          }
+          result = 0;
+        } else {
+          if (H) {
+            H->setConstant(sign_a);
+          }
+        }
+        return result;
+      };
+
+  for (size_t k = 0; k <= num_steps; k++) {
+    for (auto &&joint : robot.joints()) {
+      Double_ accel(JointAccelKey(joint->id(), k));
+      Double_ accel_penalty_expr(penalty_func, accel);
+      graph.emplace_shared<ExpressionFactor<double>>(
+          noiseModel::Isotropic::Sigma(1, params->sigma_a_penalty), 0.0,
+          accel_penalty_expr);
+    }
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
 NonlinearFactorGraph IEVision60Robot::stateCosts() const {
   NonlinearFactorGraph graph;
   const auto &values = params->state_cost_values;
@@ -612,6 +688,12 @@ NonlinearFactorGraph IEVision60Robot::stateCosts() const {
     } else if (symb.label() == "V") {
       graph.addPrior<Vector6>(key, values.at<Vector6>(key), des_pose_nm);
     }
+  }
+  for (const auto &[i, point_l, point_w, k] : params->state_cost_points) {
+    graph.add(statePointCostFactor(i, point_l, point_w, k));
+  }
+  for (const auto &[i, point_l, vel_w, k] : params->state_cost_point_vels) {
+    graph.add(statePointVelCostFactor(i, point_l, vel_w, k));
   }
   return graph;
 }

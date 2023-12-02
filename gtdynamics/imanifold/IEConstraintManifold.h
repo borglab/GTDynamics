@@ -14,15 +14,9 @@
 
 #pragma once
 
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/imanifold/TangentCone.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtsam/geometry/Point3.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/nonlinear/Expression.h>
-#include <gtsam/nonlinear/expressions.h>
 
 namespace gtsam {
 
@@ -183,6 +177,10 @@ public:
 
   IEManifoldValues
   moveToBoundaries(const IndexSetMap &approach_indices_map) const;
+
+  /// string indicating the active constriants.
+  std::string activeConstraintsStr(const gtsam::KeyFormatter &key_formatter =
+                                       gtdynamics::GTDKeyFormatter) const;
 
   // VectorValues computeTangentVector(const VectorValues &delta) const;
 

@@ -16,6 +16,12 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
+void InequalityConstraint::print(
+    const gtsam::KeyFormatter &key_formatter) const {
+  gtsam::PrintKeySet(keys(), name_ + "\t", key_formatter);
+}
+
+/* ************************************************************************* */
 gtsam::MultiJacobian
 DoubleExpressionInequality::jacobians(const gtsam::Values &x) const {
   auto keyset = keys();
@@ -27,6 +33,23 @@ DoubleExpressionInequality::jacobians(const gtsam::Values &x) const {
     jac.addJacobian(keyvector.at(i), H.at(i)); // TODO: divide by tolerance?
   }
   return jac;
+}
+
+/* ************************************************************************* */
+gtsam::Vector2_ TwinDoubleExpressionInequality::ConstructExpression(
+    const gtsam::Double_ &expr1, const gtsam::Double_ &expr2) {
+  gtsam::Matrix21 H1, H2;
+  H1 << 1, 0;
+  H2 << 0, 1;
+  const std::function<gtsam::Vector2(double)> combine1 = [H1](const double &x) {
+    return H1 * x;
+  };
+  const std::function<gtsam::Vector2(double)> combine2 = [H2](const double &x) {
+    return H2 * x;
+  };
+  gtsam::Vector2_ expr1_v2 = gtsam::linearExpression(combine1, expr1, H1);
+  gtsam::Vector2_ expr2_v2 = gtsam::linearExpression(combine2, expr2, H2);
+  return expr1_v2 + expr2_v2;
 }
 
 /* ************************************************************************* */
@@ -74,6 +97,16 @@ double InequalityConstraints::evaluateViolationL2Norm(
     violation += pow(constraint->toleranceScaledViolation(values), 2);
   }
   return sqrt(violation);
+}
+
+/* ************************************************************************* */
+gtsam::NonlinearFactorGraph
+InequalityConstraints::meritGraph(const double mu) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto &constraint : *this) {
+    graph.add(constraint->createBarrierFactor(mu));
+  }
+  return graph;
 }
 
 } // namespace gtdynamics

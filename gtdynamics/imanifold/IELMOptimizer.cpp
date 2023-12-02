@@ -19,31 +19,11 @@
  * @date    Feb 26, 2012
  */
 
-#include "utils/DynamicsSymbol.h"
 #include <gtdynamics/imanifold/IELMOptimizer.h>
-#include <gtsam/base/Vector.h>
-#include <gtsam/inference/Ordering.h>
-#include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/VectorValues.h>
-#include <gtsam/linear/linearExceptions.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/NonlinearOptimizer.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/nonlinear/internal/LevenbergMarquardtState.h>
-
-#include <cmath>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <limits>
-#include <string>
 
 using namespace std;
 
 namespace gtsam {
-
-typedef internal::LevenbergMarquardtState State;
 
 /* ************************************************************************* */
 Values IELMOptimizer::optimizeManifolds(
@@ -65,7 +45,7 @@ Values IELMOptimizer::optimizeManifolds(
   // Iterative loop
   if (lm_params.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
     std::cout << "Initial error: " << state.error << "\n";
-    IELMTrial::PrintTitle();
+    PrintIELMTrialTitle();
   }
 
   IELMState prev_state;
@@ -95,6 +75,9 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
 
   IELMIterDetails iter_details(state);
   if (checkModeChange(graph, iter_details)) {
+    if (lm_params.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
+      PrintIELMTrial(state, iter_details.trials.back(), ielm_params_, true);
+    }
     return iter_details;
   }
 
@@ -110,7 +93,7 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
     // Perform the trial.
     IELMTrial trial(state, graph, lambda, lm_params);
     if (lm_params.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
-      trial.print(state);
+      PrintIELMTrial(state, trial, ielm_params_);
     }
     iter_details.trials.emplace_back(trial);
 

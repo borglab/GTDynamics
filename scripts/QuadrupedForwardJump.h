@@ -19,7 +19,7 @@
 using namespace gtsam;
 using namespace gtdynamics;
 
-namespace quadruped_vertical_jump {
+namespace quadruped_forward_jump {
 
 inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   auto vision60_params = std::make_shared<IEVision60Robot::Params>();
@@ -45,13 +45,12 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   std::map<std::string, double> joint_lower_limits;
   std::map<std::string, double> joint_upper_limits;
   for (const auto &joint : IEVision60Robot::robot.joints()) {
-    joint_upper_limits.insert({joint->name(), M_PI});
-    joint_lower_limits.insert({joint->name(), -M_PI});
+    joint_upper_limits.insert({joint->name(), 6});
+    joint_lower_limits.insert({joint->name(), -6});
   }
   vision60_params->joint_lower_limits = joint_lower_limits;
   vision60_params->joint_upper_limits = joint_upper_limits;
 
-  // torque limits
   std::map<std::string, double> torque_lower_limits;
   std::map<std::string, double> torque_upper_limits;
   double hip_torque_lower_limit = -20.0;
@@ -79,30 +78,37 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   std::vector<std::pair<std::string, Point3>> collision_points;
   collision_points.emplace_back("body", Point3(0.44, 0, -0.1));
   collision_points.emplace_back("body", Point3(-0.44, 0, -0.1));
+  collision_points.emplace_back("fl_lower", Point3(0.14, 0, 0));
+  collision_points.emplace_back("fr_lower", Point3(0.14, 0, 0));
+  collision_points.emplace_back("rl_lower", Point3(0.14, 0, 0));
+  collision_points.emplace_back("rr_lower", Point3(0.14, 0, 0));
   vision60_params->collision_checking_points_z = collision_points;
 
-  // friction cone
-  vision60_params->mu = 1.0;
+  // costs
+  vision60_params->sigma_des_pose = 1e-3;
+  vision60_params->sigma_des_twist = 1e-2;
+  vision60_params->sigma_des_point = 5e-3;
+  vision60_params->sigma_des_point_v = 1e-2;
+  vision60_params->sigma_actuation = 1e1;
+  vision60_params->sigma_jerk = 1e1;
+  vision60_params->sigma_q_col = 5e-3;
+  vision60_params->sigma_v_col = 5e-3;
+  vision60_params->sigma_twist_col = 5e-3;
+  vision60_params->sigma_pose_col = 5e-3;
+  vision60_params->sigma_a_penalty = 1e1;
 
   return vision60_params;
 }
 
-struct VerticalJumpParams {
+struct ForwardJumpParams {
   IEVision60Robot::Params::shared_ptr vision60_params = GetVision60Params();
-  std::vector<size_t> phase_num_steps{10, 10};
-  std::vector<double> phases_dt{0.02, 0.02};
-  bool include_inequalities = false;
-  bool init_values_with_trapezoidal = false;
-  Pose3 des_pose = Pose3(Rot3::Ry(0), Point3(0, 0, 0.8));
+  std::vector<size_t> phase_num_steps{20, 10, 20};
+  std::vector<double> phases_dt{0.01, 0.02, 0.02};
 };
 
-inline IEVision60RobotMultiPhase
-GetVision60MultiPhase(const VerticalJumpParams &params) {
-  return GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
-}
-
-inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
-  auto vision60_multi_phase = GetVision60MultiPhase(params);
+inline IEConsOptProblem CreateProblem(const ForwardJumpParams &params) {
+  auto vision60_multi_phase =
+      GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
   // const IEVision60Robot &vision60_4c = vision60_multi_phase.phase_robots_[0];
   const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
   size_t num_steps = vision60_multi_phase.numSteps();
@@ -111,12 +117,27 @@ inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
   // for (const auto &joint : vision60_air.robot.joints()) {
   //   InsertJointAngle(&des_values, joint->id(), num_steps, 0.0);
   // }
-  for (const auto &joint : vision60_air.robot.joints()) {
-    InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
-  }
-  InsertTwist(&des_values, vision60_air.base_id, num_steps, Vector6::Zero());
-  InsertPose(&des_values, vision60_air.base_id, num_steps, params.des_pose);
+  // for (const auto &joint : vision60_air.robot.joints()) {
+  //   InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
+  // }
+  // InsertTwist(&des_values, vision60_air.base_id, num_steps, Vector6::Zero());
+  Pose3 des_pose(Rot3::Identity(),
+                 Point3(1.0, 0.0, vision60_air.nominal_height));
+  InsertPose(&des_values, vision60_air.base_id, num_steps, des_pose);
   vision60_multi_phase.params()->state_cost_values = des_values;
+
+  for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
+    const auto &leg = IEVision60Robot::legs.at(leg_idx);
+    size_t link_id = leg.lower_link_id;
+    Point3 point_l = IEVision60Robot::contact_in_com;
+    Point3 point_w =
+        vision60_air.nominal_contact_in_world.at(leg_idx) + Point3(1, 0, 0);
+    Vector3 vel_w = Vector3::Zero();
+    vision60_multi_phase.params()->state_cost_points.emplace_back(
+        link_id, point_l, point_w, num_steps);
+    vision60_multi_phase.params()->state_cost_point_vels.emplace_back(
+        link_id, point_l, vel_w, num_steps);
+  }
 
   /// Constraints
   EqualityConstraints e_constraints = vision60_multi_phase.eConstraints();
@@ -125,10 +146,7 @@ inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
 
   /// Initial Values
   auto init_values =
-      InitValuesTrajectory(vision60_multi_phase, params.phases_dt, 15, 5,
-                           params.init_values_with_trapezoidal);
-  // auto init_values =
-  //   InitValuesTrajectoryInfeasible(vision60_multi_phase, params.phases_dt);
+      InitValuesTrajectory(vision60_multi_phase, params.phases_dt);
 
   /// Problem
   IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
@@ -136,4 +154,4 @@ inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
   return problem;
 }
 
-} // namespace quadruped_vertical_jump
+} // namespace quadruped_forward_jump

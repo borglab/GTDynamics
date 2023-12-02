@@ -22,6 +22,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include "constrainedExample.h"
+#include "gtdynamics/optimizer/EqualityConstraint.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -73,6 +74,45 @@ TEST(InequalityConstraint, DoubleExpressionInequality) {
   auto equality_constraint = constraint.createEqualityConstraint();
   EXPECT(assert_equal(Vector::Constant(1, 40.0),
                       equality_constraint->toleranceScaledViolation(values2)));
+}
+
+TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
+  Double_ x1_expr(x1_key);
+  Double_ x2_expr(x2_key);
+  double tolerance = 0.1;
+
+  auto constraint1 =
+      std::make_shared<DoubleExpressionInequality>(x1_expr, tolerance);
+  auto constraint2 =
+      std::make_shared<DoubleExpressionInequality>(x2_expr, tolerance);
+
+  // Test constructor
+  TwinDoubleExpressionInequality constraint(constraint1, constraint2);
+
+  Values values1, values2, values3;
+  values1.insert(x1_key, 1.0);
+  values1.insert(x2_key, 1.0);
+  values2.insert(x1_key, -1.0);
+  values2.insert(x2_key, -1.0);
+  values3.insert(x1_key, 0.0);
+  values3.insert(x2_key, 0.0);
+
+  EXPECT(constraint.feasible(values1));
+  EXPECT(!constraint.feasible(values2));
+
+  EXPECT(!constraint.isActive(values1));
+  EXPECT(!constraint.isActive(values2));
+  EXPECT(constraint.isActive(values3));
+
+  EXPECT(constraint.keys().size() == 2);
+
+  auto barrier_factor = constraint.createBarrierFactor(1.0);
+  EXPECT(assert_equal(Vector2(0, 0), barrier_factor->unwhitenedError(values1)));
+  EXPECT(assert_equal(Vector2(1, 1), barrier_factor->unwhitenedError(values2)));
+  EXPECT(assert_equal(Vector2(0, 0), barrier_factor->unwhitenedError(values3)));
+
+  auto l2_factor = constraint.createL2Factor(1.0);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*l2_factor, values1, 1e-7, 1e-5);
 }
 
 int main() {

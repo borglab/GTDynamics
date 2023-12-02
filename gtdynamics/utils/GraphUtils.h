@@ -94,6 +94,17 @@ struct LMCachedModel {
   SharedDiagonal model;
 };
 
+inline size_t GraphDim(const NonlinearFactorGraph& graph) {
+  size_t dim = 0;
+  for (const auto& factor: graph) {
+    dim += factor->dim();
+  }
+  return dim;
+}
+
+/// Compute the error norm in standard units given graph error
+double ComputeErrorNorm(const double& graph_error, const double& sigma);
+
 void ExportValuesToFile(const Values& values, const std::string& file_path);
 
 Values LoadValuesFromFile(const std::string& file_path);

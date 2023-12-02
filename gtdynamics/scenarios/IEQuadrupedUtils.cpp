@@ -11,19 +11,11 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/values.h>
-#include <gtsam/base/Vector.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <numeric>
-#include <string>
 
 using namespace gtdynamics;
 
@@ -37,7 +29,9 @@ IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
                                               _params->gravity)) {
   des_pose_nm = noiseModel::Isotropic::Sigma(6, params->sigma_des_pose);
   des_twist_nm = noiseModel::Isotropic::Sigma(6, params->sigma_des_twist);
-  des_q_nm = noiseModel::Isotropic::Sigma(1, params->sigma_des_twist);
+  des_point_nm = noiseModel::Isotropic::Sigma(3, params->sigma_des_point);
+  des_point_v_nm = noiseModel::Isotropic::Sigma(3, params->sigma_des_point_v);
+  des_q_nm = noiseModel::Isotropic::Sigma(1, params->sigma_des_pose);
   des_v_nm = noiseModel::Isotropic::Sigma(1, params->sigma_des_twist);
   actuation_nm = noiseModel::Isotropic::Sigma(1, params->sigma_actuation);
   jerk_nm = noiseModel::Isotropic::Sigma(1, params->sigma_jerk);
@@ -458,27 +452,40 @@ void IEVision60Robot::ExportValuesMultiPhase(
   std::vector<std::string> jnames;
   for (auto &&joint : robot.joints())
     jnames.push_back(joint->name());
+  // Joint q,v,a,T,position
   std::string jnames_str_q = "", jnames_str_v = "", jnames_str_a = "",
-              jnames_str_T = "";
+              jnames_str_T = "", jnames_str_pos = "";
   for (size_t j = 0; j < jnames.size(); j++) {
-    jnames_str_q += jnames[j] + "_q" + (j != jnames.size() - 1 ? "," : "");
-    jnames_str_v += jnames[j] + "_v" + (j != jnames.size() - 1 ? "," : "");
-    jnames_str_a += jnames[j] + "_a" + (j != jnames.size() - 1 ? "," : "");
-    jnames_str_T += jnames[j] + "_T" + (j != jnames.size() - 1 ? "," : "");
+    const std::string &jname = jnames.at(j);
+    jnames_str_q += "," + jname + "_q";
+    jnames_str_v += "," + jname + "_v";
+    jnames_str_a += "," + jname + "_a";
+    jnames_str_T += "," + jname + "_T";
+    jnames_str_pos += "," + jname + "_x," + jname + "_y," + jname + "_z";
   }
+  // Contact point position and contact force
+  std::string contacts_str = "", contacts_force_str = "";
+  for (const auto &leg : legs) {
+    std::string c_name = leg.lower_link->name() + "_c";
+    contacts_str += "," + c_name + "_x," + c_name + "_y," + c_name + "_z";
+    contacts_force_str +=
+        "," + c_name + "_fx," + c_name + "_fy," + c_name + "_fz";
+  }
+  // base pose, twist(w), accel(w)
+  std::string base_pose_str =
+      ",base_x,base_y,base_z,base_qx,base_qy,base_qz,base_qw";
+  std::string base_twist_w_str =
+      ",base_vroll,base_vpitch,base_vyaw,base_vx,base_vy,base_vz";
+  std::string base_accel_w_str =
+      ",base_aroll,base_apitch,base_ayaw,base_ax,base_ay,base_az";
+
   std::ofstream traj_file;
   traj_file.open(file_path);
-  // angles, vels, accels, torques.
-  traj_file << "time"
-            << "," << jnames_str_q << "," << jnames_str_v << "," << jnames_str_a
-            << "," << jnames_str_T << ",base_x"
-            << ",base_y"
-            << ",base_z"
-            << ",base_qx"
-            << ",base_qy"
-            << ",base_qz"
-            << ",base_qw"
-            << "\n";
+  // title
+  traj_file << "time" << jnames_str_q << jnames_str_v << jnames_str_a
+            << jnames_str_T << jnames_str_pos << contacts_str
+            << contacts_force_str << base_pose_str << base_twist_w_str
+            << base_accel_w_str << "\n";
   size_t num_steps =
       std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
   std::vector<double> step_time{0};
@@ -489,30 +496,58 @@ void IEVision60Robot::ExportValuesMultiPhase(
       step_time.push_back(time);
     }
   }
+  // Joint q,v,a,T,position
   for (int t = 0; t <= num_steps; t++) {
-    std::vector<std::string> vals;
-    vals.push_back(std::to_string(step_time[t]));
+    std::vector<double> vals;
+    vals.push_back(step_time[t]);
     for (auto &&joint : robot.joints())
-      vals.push_back(std::to_string(JointAngle(values, joint->id(), t)));
+      vals.push_back(JointAngle(values, joint->id(), t));
     for (auto &&joint : robot.joints())
-      vals.push_back(std::to_string(JointVel(values, joint->id(), t)));
+      vals.push_back(JointVel(values, joint->id(), t));
     for (auto &&joint : robot.joints())
-      vals.push_back(std::to_string(JointAccel(values, joint->id(), t)));
+      vals.push_back(JointAccel(values, joint->id(), t));
     for (auto &&joint : robot.joints())
-      vals.push_back(std::to_string(Torque(values, joint->id(), t)));
+      vals.push_back(Torque(values, joint->id(), t));
+    for (auto &&joint : robot.joints()) {
+      Pose3 child_pose = Pose(values, joint->child()->id(), t);
+      Pose3 joint_pose = child_pose * joint->jMc().inverse();
+      vals.insert(vals.end(), {joint_pose.x(), joint_pose.y(), joint_pose.z()});
+    }
 
-    Pose3 bp = Pose(values, base_id, t);
-    vals.push_back(std::to_string(bp.x()));
-    vals.push_back(std::to_string(bp.y()));
-    vals.push_back(std::to_string(bp.z()));
-    vals.push_back(std::to_string(bp.rotation().toQuaternion().x()));
-    vals.push_back(std::to_string(bp.rotation().toQuaternion().y()));
-    vals.push_back(std::to_string(bp.rotation().toQuaternion().z()));
-    vals.push_back(std::to_string(bp.rotation().toQuaternion().w()));
+    // Contact point position and contact force
+    for (const auto &leg : legs) {
+      Pose3 lower_pose = Pose(values, leg.lower_link_id, t);
+      Point3 cp_w = lower_pose.transformFrom(contact_in_com);
+      vals.insert(vals.end(), {cp_w.x(), cp_w.y(), cp_w.z()});
+    }
+    for (const auto &leg : legs) {
+      Key contact_force_key = ContactForceKey(leg.lower_link_id, 0, t);
+      Vector3 f = Vector3::Zero();
+      if (values.exists(contact_force_key)) {
+        f = values.at<Vector3>(contact_force_key);
+      }
+      vals.insert(vals.end(), {f.x(), f.y(), f.z()});
+    }
+    // base pose, twist(w), accel(w)
+    Pose3 pose = Pose(values, base_id, t);
+    Rot3 rot = pose.rotation();
+    auto quat = rot.toQuaternion();
+    vals.insert(vals.end(), {pose.x(), pose.y(), pose.z()});
+    vals.insert(vals.end(), {quat.x(), quat.y(), quat.z(), quat.w()});
+    Vector6 twist = Twist(values, base_id, t);
+    Vector6 twist_accel = TwistAccel(values, base_id, t);
+    Pose3 rot_pose(rot, Point3::Zero());
+    Vector6 twist_w = rot_pose.AdjointMap() * twist;
+    Vector6 twist_accel_w = rot_pose.AdjointMap() * twist_accel;
+    vals.insert(vals.end(), {twist_w(0), twist_w(1), twist_w(2), twist_w(3),
+                             twist_w(4), twist_w(5)});
+    vals.insert(vals.end(),
+                {twist_accel_w(0), twist_accel_w(1), twist_accel_w(2),
+                 twist_accel_w(3), twist_accel_w(4), twist_accel_w(5)});
 
     std::string vals_str = "";
     for (size_t j = 0; j < vals.size(); j++) {
-      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+      vals_str += std::to_string(vals[j]) + (j != vals.size() - 1 ? "," : "");
     }
     traj_file << vals_str << "\n";
   }

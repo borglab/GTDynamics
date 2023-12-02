@@ -14,12 +14,18 @@
 using namespace gtdynamics;
 using namespace gtsam;
 
+namespace vision60_test {
+IEVision60Robot::Params::shared_ptr params =
+    std::make_shared<IEVision60Robot::Params>();
+IEVision60Robot::PhaseInfo::shared_ptr phase_info =
+    IEVision60Robot::PhaseInfo::Ground();
+IEVision60Robot robot(params, phase_info);
+size_t k = 0;
+} // namespace vision60_test
+
 TEST(frictionConeConstraint, error_jacobian) {
-  auto params = std::make_shared<IEVision60Robot::Params>();
+  using namespace vision60_test;
   params->mu = 0.8;
-  auto phase_info = IEVision60Robot::PhaseInfo::Ground();
-  IEVision60Robot robot(params, phase_info);
-  size_t k = 0;
   auto contact_link_id = robot.robot.link("fl_lower")->id();
   auto fc_constraint = robot.frictionConeConstraint(contact_link_id, k);
 
@@ -51,10 +57,7 @@ TEST(frictionConeConstraint, error_jacobian) {
 }
 
 TEST(groundCollisionFreeConstraint, feasible) {
-  auto params = std::make_shared<IEVision60Robot::Params>();
-  auto phase_info = IEVision60Robot::PhaseInfo::Ground();
-  IEVision60Robot robot(params, phase_info);
-  size_t k = 0;
+  using namespace vision60_test;
 
   auto link_id = robot.robot.link("fl_lower")->id();
   Point3 p_l(0.2, 0, 0);
@@ -75,10 +78,7 @@ TEST(groundCollisionFreeConstraint, feasible) {
 }
 
 TEST(obstacleCollisionFreeConstraint, feasible) {
-  auto params = std::make_shared<IEVision60Robot::Params>();
-  auto phase_info = IEVision60Robot::PhaseInfo::Ground();
-  IEVision60Robot robot(params, phase_info);
-  size_t k = 0;
+  using namespace vision60_test;
 
   auto link_id = robot.robot.link("fl_lower")->id();
   Point3 p_l(0.2, 0, 0);
@@ -101,6 +101,42 @@ TEST(obstacleCollisionFreeConstraint, feasible) {
   EXPECT(assert_equal(-0.2, (*constraint)(values3)));
 }
 
+TEST(statePointCostFactor, error_and_jacobian) {
+  using namespace vision60_test;
+  size_t link_id = 1;
+  Point3 point_l(0.14, 0, 0);
+  Point3 point_w(1.0, 0.0, 0.0);
+
+  auto factor = robot.statePointCostFactor(link_id, point_l, point_w, k);
+
+  Values values;
+  Pose3 pose_l(Rot3::Ry(M_PI_2), Point3(1, 0, 0.14));
+  values.insert(PoseKey(link_id, k), pose_l);
+
+  Vector expected_error = Vector::Zero(3);
+  EXPECT(assert_equal(expected_error, factor->unwhitenedError(values)));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, 1e-7, 1e-5);
+}
+
+TEST(statePointVelCostFactor, error_and_jacobian) {
+  using namespace vision60_test;
+  size_t link_id = 1;
+  Point3 point_l(0.14, 0, 0);
+  Vector3 vel_w(1.0 - 0.14, 0.2, -0.5);
+
+  auto factor = robot.statePointVelCostFactor(link_id, point_l, vel_w, k);
+
+  Values values;
+  Pose3 pose_l(Rot3::Ry(M_PI_2), Point3(1, 0, 0.14));
+  Vector6 twist_l = (Vector(6) << 0, 1, 0, 0.5, 0.2, 1.0).finished();
+  values.insert(PoseKey(link_id, k), pose_l);
+  values.insert(TwistKey(link_id, k), twist_l);
+
+  Vector expected_error = Vector::Zero(3);
+  EXPECT(assert_equal(expected_error, factor->unwhitenedError(values)));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, 1e-7, 1e-5);
+}
+
 TEST(TrajectoryValuesVerticalJump, constraints) {
   using namespace quadruped_vertical_jump;
   std::vector<size_t> phase_num_steps{10, 10};
@@ -117,7 +153,8 @@ TEST(TrajectoryValuesVerticalJump, constraints) {
   EXPECT(
       assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
 
-  Values values1 = InitValuesTrajectoryInfeasible(vision60_multi_phase, phases_dt);
+  Values values1 =
+      InitValuesTrajectoryInfeasible(vision60_multi_phase, phases_dt);
   EXPECT(
       assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values1), 1e-6));
 }

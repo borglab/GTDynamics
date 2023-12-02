@@ -1,14 +1,10 @@
-#include "utils/DynamicsSymbol.h"
-#include "utils/values.h"
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/Initializer.h>
-#include <gtsam/linear/NoiseModel.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <stdexcept>
 
 using namespace gtdynamics;
 
@@ -793,8 +789,6 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
   double dt_ground = phases_dt[0];
   double dt_back = phases_dt[1];
   double dt_air = phases_dt[2];
-
-  size_t ground_switch_k = 6;
 
   Vector6 torso_twistaccel_ground_w =
       (Vector(6) << 0, -5, 0, 3, 0, 5).finished();

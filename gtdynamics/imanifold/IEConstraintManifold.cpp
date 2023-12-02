@@ -1,5 +1,4 @@
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtsam {
 

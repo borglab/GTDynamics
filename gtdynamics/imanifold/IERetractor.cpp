@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IERetractor.h>
@@ -54,6 +55,12 @@ IEConstraintManifold BarrierRetractor::retract(
   for (const auto &constraint : i_constraints) {
     graph.add(constraint->createBarrierFactor(1.0));
   }
+  if (blocking_indices) {
+    for (const auto& idx: *blocking_indices) {
+      const auto& constraint = i_constraints.at(idx);
+      graph.add(constraint->createL2Factor(1.0));
+    }
+  }
   LevenbergMarquardtOptimizer optimizer(
       graph, params_->init_values_as_x ? manifold->values() : new_values,
       params_->lm_params);
@@ -61,6 +68,9 @@ IEConstraintManifold BarrierRetractor::retract(
 
   // collect active indices
   IndexSet active_indices;
+  if (blocking_indices) {
+    active_indices = *blocking_indices;
+  }
   for (size_t constraint_idx = 0; constraint_idx < i_constraints.size();
        constraint_idx++) {
     if (!i_constraints.at(constraint_idx)->feasible(opt_values)) {
@@ -191,7 +201,6 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   NonlinearFactorGraph graph_np_v = graph_v_;
   for (auto &factor : const_var_factors_v_) {
     factor->setFixedValues(known_values);
-    graph_np_v.add(factor);
   }
   NonlinearFactorGraph graph_wp_v = graph_np_v;
   params_->addPriors(new_values, basis_v_keys_, graph_wp_v);
@@ -205,6 +214,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     if (blocking_indices && blocking_indices->exists(i) ||
         !i_constraints.at(i)->feasible(results_v)) {
       active_indices.insert(i);
+      // TODO: turn into const v graph
       graph_np_v.add(i_constraints.at(i)->createL2Factor(1.0));
     }
   }
@@ -221,7 +231,6 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   NonlinearFactorGraph graph_np_ad = graph_ad_;
   for (auto &factor : const_var_factors_ad_) {
     factor->setFixedValues(known_values);
-    graph_np_ad.add(factor);
   }
   NonlinearFactorGraph graph_wp_ad = graph_np_ad;
   params_->addPriors(new_values, basis_ad_keys_, graph_wp_ad);
@@ -238,6 +247,15 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
       graph_np_ad.add(i_constraints.at(i)->createL2Factor(1.0));
     }
   }
+
+  // std::cout << "values_dim: " << results_ad.dim() << "\n";
+  // std::cout << "graph_dim: " << GraphDim(graph_np_ad) << "\n";
+  // std::cout << "graph size: " << graph_np_ad.size() << "\n";
+  // for (const auto& factor: graph_np_ad) {
+  //   std::cout << "factor " << factor->dim() << "\n\t";
+  //   PrintKeyVector(factor->keys(), "", GTDKeyFormatter);
+  // }
+
   LevenbergMarquardtOptimizer optimizer_np_ad(graph_np_ad, results_ad,
                                               params_->lm_params);
   Values new_results_ad = optimizer_np_ad.optimize();
