@@ -76,7 +76,7 @@ std::pair<IndexSet, Vector> TangentCone::project(const Vector &xi) const {
       if (min_lambda >= 0) {
         return std::make_pair(active_indices, x);
       }
-      active_indices.erase(active_indices_vec.at(min_lambda_constraint_idx));
+      active_indices.erase(min_lambda_constraint_idx);
     } else {
       // check blocking constraints
       double alpha;

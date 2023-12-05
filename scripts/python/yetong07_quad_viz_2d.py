@@ -57,6 +57,8 @@ class PauseAnimation:
         self.ax_torso_a.set_ylabel('torso az')
         self.ax_torso_v.tick_params(axis='y', labelcolor='b')
         self.ax_torso_a.tick_params(axis='y', labelcolor='r')
+        self.ax_torso_v.yaxis.label.set_color('b')
+        self.ax_torso_a.yaxis.label.set_color('r')
         self.ax_fcone.set_aspect('equal')
         self.ax_fcone.set_xlabel('fx')
         self.ax_fcone.set_ylabel('fz')
@@ -137,7 +139,7 @@ class PauseAnimation:
         self.time_plots_ax += [self.ax_torso_v, self.ax_torso_a]
         self.time_plots_entry_name_x += ["time", "time"]
         self.time_plots_entry_name_y += ["base_vz", "base_az"]
-        self.time_plots_color += ['r', 'b']
+        self.time_plots_color += ['b', 'r']
         self.time_plots_label += ["torso_vz", "torso_az"]
 
         # make time plots
