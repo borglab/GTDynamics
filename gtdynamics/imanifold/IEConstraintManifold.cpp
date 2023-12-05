@@ -80,7 +80,7 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
   if (active_indices.size() == 0) {
     return eConstraintManifold();
   }
-  
+
   // TODO: construct e-basis using createWithAdditionalConstraints
   gtdynamics::EqualityConstraints new_active_constraints;
   for (const auto &idx : active_indices) {
@@ -115,20 +115,26 @@ TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
     const gtdynamics::InequalityConstraints &i_constraints,
     const Values &values, const IndexSet &active_indices,
     const TspaceBasis::shared_ptr &t_basis) {
-  Matrix A = Matrix::Zero(active_indices.size(), t_basis->dim());
-  std::vector<size_t> active_indices_vec(active_indices.begin(),
-                                         active_indices.end());
 
-  for (size_t i = 0; i < active_indices_vec.size(); i++) {
-    const auto &i_constraint = i_constraints.at(active_indices_vec[i]);
+  size_t num_rows = 0;
+  for (const auto &active_idx : active_indices) {
+    num_rows += i_constraints.at(active_idx)->dim();
+  }
+  std::vector<std::pair<size_t, size_t>> constraint_rows;
+  Matrix A = Matrix::Zero(num_rows, t_basis->dim());
+  size_t i = 0;
+  for (const auto &active_idx : active_indices) {
+    const auto &i_constraint = i_constraints.at(active_idx);
+    size_t dim = i_constraint->dim();
     auto jacobians = i_constraint->jacobians(values);
-
     for (const Key &key : jacobians.keys()) {
-      A.row(i) += jacobians.at(key) * t_basis->recoverJacobian(key);
+      A.middleRows(i, dim) += jacobians.at(key) * t_basis->recoverJacobian(key);
     }
+    constraint_rows.emplace_back(i, dim);
+    i += dim;
   }
 
-  auto cone = std::make_shared<TangentCone>(A);
+  auto cone = std::make_shared<TangentCone>(A, constraint_rows);
   return cone;
 }
 

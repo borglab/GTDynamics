@@ -4,6 +4,24 @@
 
 namespace gtsam {
 
+inline std::function<double(const double &x, OptionalJacobian<1, 1> H)>
+RampFunction(const double offset) {
+  auto func = [=](const double &x, OptionalJacobian<1, 1> H = {}) -> double {
+    if (x < offset) {
+      if (H) {
+        H->setConstant(0);
+      }
+      return 0;
+    } else {
+      if (H) {
+        H->setConstant(1);
+      }
+      return x - offset;
+    }
+  };
+  return func;
+}
+
 /** A factor that implements the barrier function for inequality constraint
  * for g(x)>=0. the barrier function is ramp(-g(x))
  * for g(x)<=0, the barrier function is ramp(g(x))
@@ -11,7 +29,7 @@ namespace gtsam {
  * noisemodel of substitute factor. The noisemodel in the base factor will be
  * ignored. */
 class BarrierFactor : public NoiseModelFactor {
- protected:
+protected:
   typedef NoiseModelFactor Base;
   typedef BarrierFactor This;
 
@@ -19,7 +37,7 @@ class BarrierFactor : public NoiseModelFactor {
   Base::shared_ptr base_factor_;
   bool positive_;
 
- public:
+public:
   typedef std::shared_ptr<This> shared_ptr;
 
   /** Default constructor for I/O only */
@@ -33,14 +51,14 @@ class BarrierFactor : public NoiseModelFactor {
    * @param base_factor   original factor on X
    * @param bias  the bias term
    */
-  BarrierFactor(const Base::shared_ptr &base_factor, bool positive=true)
+  BarrierFactor(const Base::shared_ptr &base_factor, bool positive = true)
       : Base(base_factor->noiseModel(), base_factor->keys()),
         base_factor_(base_factor), positive_(positive) {}
 
   BarrierFactor(const Base::shared_ptr &base_factor,
-               const SharedNoiseModel &noise_model, bool positive=true)
-      : Base(noise_model, base_factor->keys()),
-        base_factor_(base_factor), positive_(positive) {}
+                const SharedNoiseModel &noise_model, bool positive = true)
+      : Base(noise_model, base_factor->keys()), base_factor_(base_factor),
+        positive_(positive) {}
 
   /**
    * Error function *without* the NoiseModel, \f$ z-h(x) \f$.
@@ -48,23 +66,23 @@ class BarrierFactor : public NoiseModelFactor {
    * If the optional arguments is specified, it should compute
    * both the function evaluation and its derivative(s) in H.
    */
-  virtual Vector unwhitenedError(
-      const Values &x,
-      gtsam::OptionalMatrixVecType H = nullptr) const override {
+  virtual Vector
+  unwhitenedError(const Values &x,
+                  gtsam::OptionalMatrixVecType H = nullptr) const override {
     Vector error = base_factor_->unwhitenedError(x, H);
     if (positive_) {
       error = -error;
       if (H) {
-        for (Matrix& m : *H) {
+        for (Matrix &m : *H) {
           m = -m;
         }
       }
     }
-    for (int i=0; i<error.size(); i++) {
+    for (int i = 0; i < error.size(); i++) {
       if (error(i) < 0) {
         error(i) = 0;
         if (H) {
-          for (Matrix& m : *H) {
+          for (Matrix &m : *H) {
             m.row(i).setZero();
           }
         }
@@ -88,7 +106,7 @@ class BarrierFactor : public NoiseModelFactor {
     Base::print("", keyFormatter);
   }
 
- private:
+private:
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
@@ -100,6 +118,6 @@ class BarrierFactor : public NoiseModelFactor {
   }
 #endif
 
-};  // \class BarrierFactor
+}; // \class BarrierFactor
 
-}  // namespace gtsam
+} // namespace gtsam

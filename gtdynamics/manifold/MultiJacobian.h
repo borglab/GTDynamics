@@ -24,6 +24,9 @@ namespace gtsam {
 /** Class that stores the jacobian of w.r.t. multiple variables. e.g. x = f(m,
  * n, o). The class will store the jacobians of dx/dm, dx/dn, dx/do. */
 class MultiJacobian : public std::unordered_map<Key, Matrix> {
+ protected:
+  int dim_ = -1;
+  
  public:
   using Base = std::unordered_map<Key, Matrix>;
 
@@ -35,6 +38,10 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
 
   /// Constructor from jacobian (as identity matrix) to a single variable.
   static MultiJacobian Identity(const Key& key, const size_t& dim);
+
+  /// Vertical stack of two jacobians.
+  static MultiJacobian VerticalStack(const MultiJacobian &jac1,
+                                     const MultiJacobian &jac2);
 
   /** Add jacobian to a variable. If jacobian to that variable already
    * exists, will add the matrix to the existing jacobian. */
@@ -54,6 +61,8 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
   bool equals(const MultiJacobian& other, double tol = 1e-8) const;
 
   KeySet keys() const;
+
+  size_t numRows() const;
 
   void operator += (const MultiJacobian& other);
 };

@@ -218,7 +218,7 @@ IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraint::shared_ptr
+gtdynamics::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::frictionConeConstraint(const size_t contact_link_id,
                                         const size_t k) const {
   double mu = params->mu;
@@ -244,14 +244,34 @@ IEVision60Robot::frictionConeConstraint(const size_t contact_link_id,
 gtdynamics::InequalityConstraints
 IEVision60Robot::frictionConeConstraints(const size_t k) const {
   InequalityConstraints constraints;
-  for (const auto &link_id : contact_link_ids) {
-    constraints.push_back(frictionConeConstraint(link_id, k));
+  if (params->i_constraints_symmetry) {
+    for (const auto &link_id : contact_link_ids) {
+      if (leaving_link_indices.exists(link_id)) {
+        continue;
+      }
+      std::string link_name = robot.orderedLinks().at(link_id)->name();
+      if (isLeft(link_name)) {
+        std::string counterpart_name = counterpart(link_name);
+        size_t counterpart_id = robot.link(counterpart_name)->id();
+        auto constraint = frictionConeConstraint(link_id, k);
+        auto other_constraint = frictionConeConstraint(counterpart_id, k);
+        constraints.emplace_shared<TwinDoubleExpressionInequality>(
+            constraint, other_constraint);
+      }
+    }
+  } else {
+    for (const auto &link_id : contact_link_ids) {
+      if (leaving_link_indices.exists(link_id)) {
+        continue;
+      }
+      constraints.push_back(frictionConeConstraint(link_id, k));
+    }
   }
   return constraints;
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraint::shared_ptr
+gtdynamics::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
                                                  const size_t k,
                                                  const Point3 &p_l,
@@ -268,7 +288,7 @@ IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraint::shared_ptr
+gtdynamics::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::groundCollisionFreeConstraint(const size_t link_idx,
                                                const size_t k,
                                                const Point3 &p_l) const {
@@ -280,24 +300,108 @@ IEVision60Robot::groundCollisionFreeConstraint(const size_t link_idx,
 }
 
 /* ************************************************************************* */
+DoubleExpressionInequality::shared_ptr
+IEVision60Robot::jointUpperLimitConstraint(const std::string &j_name,
+                                           const size_t k,
+                                           const double upper_limit) const {
+  size_t joint_id = robot.joint(j_name)->id();
+  Key joint_key = JointAngleKey(joint_id, k);
+  Double_ q_expr(joint_key);
+  Double_ q_max_expr = Double_(upper_limit) - q_expr;
+  return std::make_shared<DoubleExpressionInequality>(q_max_expr,
+                                                      params->tol_jl);
+}
+
+/* ************************************************************************* */
+DoubleExpressionInequality::shared_ptr
+IEVision60Robot::jointLowerLimitConstraint(const std::string &j_name,
+                                           const size_t k,
+                                           const double lower_limit) const {
+  size_t joint_id = robot.joint(j_name)->id();
+  Key joint_key = JointAngleKey(joint_id, k);
+  Double_ q_expr(joint_key);
+  Double_ q_min_expr = q_expr - Double_(lower_limit);
+  return std::make_shared<DoubleExpressionInequality>(q_min_expr,
+                                                      params->tol_jl);
+}
+
+/* ************************************************************************* */
+DoubleExpressionInequality::shared_ptr
+IEVision60Robot::torqueUpperLimitConstraint(const std::string &j_name,
+                                            const size_t k,
+                                            const double upper_limit) const {
+  size_t joint_id = robot.joint(j_name)->id();
+  Key torque_key = TorqueKey(joint_id, k);
+  Double_ tau_expr(torque_key);
+  Double_ tau_max_expr = Double_(upper_limit) - tau_expr;
+  return std::make_shared<DoubleExpressionInequality>(tau_max_expr,
+                                                      params->tol_tl);
+}
+
+/* ************************************************************************* */
+DoubleExpressionInequality::shared_ptr
+IEVision60Robot::torqueLowerLimitConstraint(const std::string &j_name,
+                                            const size_t k,
+                                            const double lower_limit) const {
+  size_t joint_id = robot.joint(j_name)->id();
+  Key torque_key = TorqueKey(joint_id, k);
+  Double_ tau_expr(torque_key);
+  Double_ tau_min_expr = tau_expr - Double_(lower_limit);
+  return std::make_shared<DoubleExpressionInequality>(tau_min_expr,
+                                                      params->tol_tl);
+}
+
+/* ************************************************************************* */
 gtdynamics::InequalityConstraints
 IEVision60Robot::jointLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
-  for (const auto &it : params->joint_lower_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key joint_key = JointAngleKey(joint_id, k);
-    Double_ q_expr(joint_key);
-    Double_ q_min_expr = q_expr - Double_(it.second);
-    constraints.emplace_shared<DoubleExpressionInequality>(q_min_expr,
-                                                           params->tol_jl);
+
+  if (params->i_constraints_symmetry) {
+    for (const auto &[j_name, lower_limit] : params->joint_lower_limits) {
+      if (isLeft(j_name)) {
+        auto constraint = jointLowerLimitConstraint(j_name, k, lower_limit);
+        std::string counterpart_name = counterpart(j_name);
+        DoubleExpressionInequality::shared_ptr other_constraint;
+        if (isHip(j_name)) {
+          other_constraint = jointUpperLimitConstraint(
+              counterpart_name, k,
+              params->joint_upper_limits.at(counterpart_name));
+        } else {
+          other_constraint = jointLowerLimitConstraint(
+              counterpart_name, k,
+              params->joint_lower_limits.at(counterpart_name));
+        }
+        constraints.emplace_shared<TwinDoubleExpressionInequality>(
+            constraint, other_constraint);
+      }
+    }
+    for (const auto &[j_name, upper_limit] : params->joint_upper_limits) {
+      if (isLeft(j_name)) {
+        auto constraint = jointUpperLimitConstraint(j_name, k, upper_limit);
+        std::string counterpart_name = counterpart(j_name);
+        DoubleExpressionInequality::shared_ptr other_constraint;
+        if (isHip(j_name)) {
+          other_constraint = jointLowerLimitConstraint(
+              counterpart_name, k,
+              params->joint_lower_limits.at(counterpart_name));
+        } else {
+          other_constraint = jointUpperLimitConstraint(
+              counterpart_name, k,
+              params->joint_upper_limits.at(counterpart_name));
+        }
+        constraints.emplace_shared<TwinDoubleExpressionInequality>(
+            constraint, other_constraint);
+      }
+    }
   }
-  for (const auto &it : params->joint_upper_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key joint_key = JointAngleKey(joint_id, k);
-    Double_ q_expr(joint_key);
-    Double_ q_max_expr = Double_(it.second) - q_expr;
-    constraints.emplace_shared<DoubleExpressionInequality>(q_max_expr,
-                                                           params->tol_jl);
+
+  else {
+    for (const auto &[j_name, lower_limit] : params->joint_lower_limits) {
+      constraints.push_back(jointLowerLimitConstraint(j_name, k, lower_limit));
+    }
+    for (const auto &[j_name, upper_limit] : params->joint_upper_limits) {
+      constraints.push_back(jointUpperLimitConstraint(j_name, k, upper_limit));
+    }
   }
   return constraints;
 }
@@ -306,21 +410,51 @@ IEVision60Robot::jointLimitConstraints(const size_t k) const {
 gtdynamics::InequalityConstraints
 IEVision60Robot::torqueLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
-  for (const auto &it : params->torque_lower_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key torque_key = TorqueKey(joint_id, k);
-    Double_ tau_expr(torque_key);
-    Double_ tau_min_expr = tau_expr - Double_(it.second);
-    constraints.emplace_shared<DoubleExpressionInequality>(tau_min_expr,
-                                                           params->tol_tl);
-  }
-  for (const auto &it : params->torque_upper_limits) {
-    size_t joint_id = robot.joint(it.first)->id();
-    Key torque_key = TorqueKey(joint_id, k);
-    Double_ tau_expr(torque_key);
-    Double_ tau_max_expr = Double_(it.second) - tau_expr;
-    constraints.emplace_shared<DoubleExpressionInequality>(tau_max_expr,
-                                                           params->tol_tl);
+
+  if (params->i_constraints_symmetry) {
+    for (const auto &[j_name, lower_limit] : params->torque_lower_limits) {
+      if (isLeft(j_name)) {
+        auto constraint = torqueLowerLimitConstraint(j_name, k, lower_limit);
+        std::string counterpart_name = counterpart(j_name);
+        DoubleExpressionInequality::shared_ptr other_constraint;
+        if (isHip(j_name)) {
+          other_constraint = torqueUpperLimitConstraint(
+              counterpart_name, k,
+              params->torque_upper_limits.at(counterpart_name));
+        } else {
+          other_constraint = torqueLowerLimitConstraint(
+              counterpart_name, k,
+              params->torque_lower_limits.at(counterpart_name));
+        }
+        constraints.emplace_shared<TwinDoubleExpressionInequality>(
+            constraint, other_constraint);
+      }
+    }
+    for (const auto &[j_name, upper_limit] : params->torque_upper_limits) {
+      if (isLeft(j_name)) {
+        auto constraint = torqueUpperLimitConstraint(j_name, k, upper_limit);
+        std::string counterpart_name = counterpart(j_name);
+        DoubleExpressionInequality::shared_ptr other_constraint;
+        if (isHip(j_name)) {
+          other_constraint = torqueLowerLimitConstraint(
+              counterpart_name, k,
+              params->torque_lower_limits.at(counterpart_name));
+        } else {
+          other_constraint = torqueUpperLimitConstraint(
+              counterpart_name, k,
+              params->torque_upper_limits.at(counterpart_name));
+        }
+        constraints.emplace_shared<TwinDoubleExpressionInequality>(
+            constraint, other_constraint);
+      }
+    }
+  } else {
+    for (const auto &[j_name, lower_limit] : params->torque_lower_limits) {
+      constraints.push_back(torqueLowerLimitConstraint(j_name, k, lower_limit));
+    }
+    for (const auto &[j_name, upper_limit] : params->torque_upper_limits) {
+      constraints.push_back(torqueUpperLimitConstraint(j_name, k, upper_limit));
+    }
   }
   return constraints;
 }
@@ -344,9 +478,29 @@ IEVision60Robot::obstacleCollisionFreeConstraints(const size_t k) const {
 gtdynamics::InequalityConstraints
 IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
-  for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
-    uint8_t link_idx = robot.link(link_name)->id();
-    constraints.push_back(groundCollisionFreeConstraint(link_idx, k, p_l));
+  if (params->i_constraints_symmetry) {
+    for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
+      if (isRight(link_name)) {
+        continue;
+      }
+      uint8_t link_idx = robot.link(link_name)->id();
+      auto constraint = groundCollisionFreeConstraint(link_idx, k, p_l);
+      if (isLeft(link_name)) {
+        std::string counterpart_name = counterpart(link_name);
+        size_t counterpart_idx = robot.link(counterpart_name)->id();
+        auto counterpart_constraint =
+            groundCollisionFreeConstraint(counterpart_idx, k, p_l);
+        constraints.emplace_shared<TwinDoubleExpressionInequality>(
+            constraint, counterpart_constraint);
+      } else {
+        constraints.push_back(constraint);
+      }
+    }
+  } else {
+    for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
+      uint8_t link_idx = robot.link(link_name)->id();
+      constraints.push_back(groundCollisionFreeConstraint(link_idx, k, p_l));
+    }
   }
   return constraints;
 }
@@ -381,6 +535,29 @@ NoiseModelFactor::shared_ptr IEVision60Robot::statePointVelCostFactor(
   Vector3_ vel_w_expr(rot_expr, &Rot3::rotate, vel_l_expr);
   return std::make_shared<ExpressionFactor<Vector3>>(des_point_v_nm, vel_w,
                                                      vel_w_expr);
+}
+
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr
+IEVision60Robot::contactJerkCostFactor(const size_t link_id,
+                                       const size_t k) const {
+  Vector3_ cf_curr(ContactForceKey(link_id, 0, k));
+  Vector3_ cf_next(ContactForceKey(link_id, 0, k + 1));
+  Vector3_ cf_diff = cf_next - cf_curr;
+  Double_ cf_diff_norm(&norm3, cf_diff);
+  auto ramp_func = RampFunction(params->cf_jerk_threshold);
+  Double_ error(ramp_func, cf_diff_norm);
+  return std::make_shared<ExpressionFactor<double>>(cf_jerk_nm, 0.0, error);
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph
+IEVision60Robot::contactJerkCostFactors(const size_t k) const {
+  NonlinearFactorGraph graph;
+  for (const auto &link_id : contact_link_ids) {
+    graph.add(contactJerkCostFactor(link_id, k));
+  }
+  return graph;
 }
 
 /* ************************************************************************* */
@@ -694,6 +871,30 @@ NonlinearFactorGraph IEVision60Robot::stateCosts() const {
   }
   for (const auto &[i, point_l, vel_w, k] : params->state_cost_point_vels) {
     graph.add(statePointVelCostFactor(i, point_l, vel_w, k));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60Robot::symmetryCosts(const size_t k) const {
+  NonlinearFactorGraph graph;
+  for (const auto &joint : robot.joints()) {
+    if (isLeft(joint->name())) {
+      std::string counterpart_name = counterpart(joint->name());
+      size_t left_id = joint->id();
+      size_t right_id = robot.joint(counterpart_name)->id();
+      if (!isHip(joint->name())) {
+        graph.emplace_shared<BetweenFactor<double>>(JointAngleKey(left_id, k),
+                                                    JointAngleKey(right_id, k),
+                                                    0.0, symmetry_nm);
+      }
+      else {
+        Double_ left_q(JointAngleKey(left_id, k));
+        Double_ right_q(JointAngleKey(right_id, k));
+        Double_ error = left_q + right_q;
+        graph.emplace_shared<ExpressionFactor<double>>(symmetry_nm, 0.0, error);
+      }
+    }
   }
   return graph;
 }

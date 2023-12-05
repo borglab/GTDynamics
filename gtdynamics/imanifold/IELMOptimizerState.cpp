@@ -71,9 +71,16 @@ void IELMState::identifyGradBlockingIndices(
   gradient = linear_graph->gradientAtZero();
   VectorValues descent_dir = -1 * gradient;
 
+  // std::cout << "descent_dir dt1: " << descent_dir.at(gtdynamics::PhaseKey(1)) << "\n";
+
   // identify blocking constraints
   blocking_indices_map =
       IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
+
+  // if (blocking_indices_map.exists(gtdynamics::PhaseKey(1))) {
+  //   blocking_indices_map[gtdynamics::PhaseKey(1)] = IndexSet();
+  // }
+
 }
 
 /* ************************************************************************* */
@@ -267,6 +274,20 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     cout << "\033[0m";
   }
   cout << endl;
+
+
+  // for (const auto& [key, manifold]: nonlinear_update.new_manifolds) {
+  //   for (const auto &constraint: *manifold.iConstraints()) {
+  //     if (auto p = std::dynamic_pointer_cast<gtdynamics::TwinDoubleExpressionInequality>(constraint)) {
+  //       double eval1 = (*p->constraint1())(manifold.values());
+  //       double eval2 = (*p->constraint2())(manifold.values());
+  //       if (abs(eval1-eval2)>1e-3) {
+  //         constraint->print();
+  //         std::cout << "\t" << eval1 << ", " <<eval2 << "\n";
+  //       }
+  //     }
+  //   }
+  // }
 }
 
 /* ************************************************************************* */
@@ -310,6 +331,10 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       const Vector &xi = delta.at(key);
       ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
       VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
+
+      // if (key == gtdynamics::PhaseKey(1)) {
+      //   tv.print("tangent vector: ", gtdynamics::GTDKeyFormatter);
+      // }
 
       IndexSet blocking_indices = state.manifolds.at(key).blockingIndices(tv);
       if (blocking_indices.size() > 0) {

@@ -122,6 +122,31 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::jerkCosts() const {
 }
 
 /* ************************************************************************* */
+NonlinearFactorGraph IEVision60RobotMultiPhase::contactForceJerkCosts() const {
+  NonlinearFactorGraph graph;
+  size_t k = 0;
+  for (int phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
+    const auto &robot = phase_robots_.at(phase_idx);
+    for (size_t phase_step = 0; phase_step < phase_num_steps_.at(phase_idx);
+         phase_step++) {
+      graph.add(robot.contactJerkCostFactors(k));
+      k++;
+    }
+  }
+  // PrintKeySet(graph.keys(), "", GTDKeyFormatter);
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph IEVision60RobotMultiPhase::symmetryCosts() const {
+  NonlinearFactorGraph graph;
+  for (size_t k=0; k<=numSteps(); k++) {
+    graph.add(robotAtStep(k).symmetryCosts(k));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
 NonlinearFactorGraph IEVision60RobotMultiPhase::stateCosts() const {
   return phase_robots_.at(0).stateCosts();
 }
@@ -164,9 +189,15 @@ IEVision60RobotMultiPhase::classifiedCosts() const {
   if (params()->include_accel_penalty) {
     classified_costs.emplace_back("accel_penalty", accelPenaltyCosts());
   }
+  if (params()->include_cf_jerk_costs) {
+    classified_costs.emplace_back("cf_jerk", contactForceJerkCosts());
+  }
   if (params()->collision_as_cost) {
     classified_costs.emplace_back(
         "collision", groundCollisionFreeConstraints().meritGraph());
+  }
+  if (params()->include_symmetry_costs) {
+    classified_costs.emplace_back("symmetry", symmetryCosts());
   }
   return classified_costs;
 }
@@ -347,7 +378,9 @@ IEVision60RobotMultiPhase::costsEvalFunc() const {
       {"state", params_->sigma_des_pose},
       {"phase_dt", params_->sigma_phase_dt},
       {"accel_penalty", params_->sigma_a_penalty},
-      {"collision", params_->tol_cf}};
+      {"collision", params_->tol_cf},
+      {"cf_jerk", params_->sigma_cf_jerk},
+      {"symmetry", params_->sigma_symmetry}};
   std::map<std::string, double> constraint_sigma_map{
       {"joint_limit", params_->tol_jl},
       {"collision_free_obstacle", params_->tol_cf},

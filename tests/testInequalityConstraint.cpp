@@ -90,9 +90,9 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
   TwinDoubleExpressionInequality constraint(constraint1, constraint2);
 
   Values values1, values2, values3;
-  values1.insert(x1_key, 1.0);
+  values1.insert(x1_key, 2.0);
   values1.insert(x2_key, 1.0);
-  values2.insert(x1_key, -1.0);
+  values2.insert(x1_key, -2.0);
   values2.insert(x2_key, -1.0);
   values3.insert(x1_key, 0.0);
   values3.insert(x2_key, 0.0);
@@ -108,7 +108,7 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
 
   auto barrier_factor = constraint.createBarrierFactor(1.0);
   EXPECT(assert_equal(Vector2(0, 0), barrier_factor->unwhitenedError(values1)));
-  EXPECT(assert_equal(Vector2(1, 1), barrier_factor->unwhitenedError(values2)));
+  EXPECT(assert_equal(Vector2(2, 1), barrier_factor->unwhitenedError(values2)));
   EXPECT(assert_equal(Vector2(0, 0), barrier_factor->unwhitenedError(values3)));
 
   auto l2_factor = constraint.createL2Factor(1.0);

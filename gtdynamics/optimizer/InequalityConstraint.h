@@ -204,10 +204,16 @@ public:
     return ineq1_->feasible(x) && ineq2_->feasible(x);
   }
 
+  DoubleExpressionInequality::shared_ptr constraint1() const {return ineq1_; }
+
+  DoubleExpressionInequality::shared_ptr constraint2() const {return ineq2_; }
+
   /** Evaluate the constraint function, g(x). */
   double operator()(const gtsam::Values &x) const override {
     // TODO: this should return a vector
-    return (*ineq1_)(x);
+    double eval1 = (*ineq1_)(x);
+    double eval2 = (*ineq2_)(x);
+    return sqrt(eval1 * eval1 + eval2 * eval2);
   }
 
   double toleranceScaledViolation(const gtsam::Values &x) const override {
@@ -247,7 +253,13 @@ public:
   }
 
   gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override {
-    return ineq1_->jacobians(x);
+    auto jac1 = ineq1_->jacobians(x);
+    auto jac2 = ineq2_->jacobians(x);
+    // gtsam::PrintKeySet(ineq1_->keys(), "ineq1", GTDKeyFormatter);
+    // gtsam::PrintKeySet(ineq2_->keys(), "ineq2", GTDKeyFormatter);
+    // jac1.print("jac1", GTDKeyFormatter);
+    // jac2.print("jac2", GTDKeyFormatter);
+    return gtsam::MultiJacobian::VerticalStack(jac1, jac2);
   }
 
   static gtsam::Vector2_ ConstructExpression(const gtsam::Double_ &expr1,

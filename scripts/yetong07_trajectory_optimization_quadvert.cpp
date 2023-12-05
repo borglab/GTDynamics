@@ -19,7 +19,8 @@ using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_vertical_jump;
 
-bool include_inequality = false;
+bool include_inequality = true;
+bool two_stage_optimization = false;
 
 void TrajectoryOptimization() {
   std::string constraint_str = include_inequality ? "ie" : "e";
@@ -35,12 +36,15 @@ void TrajectoryOptimization() {
   VerticalJumpParams params;
   params.vision60_params->eval_details = true;
   params.vision60_params->eval_collo_step = true;
+  params.vision60_params->i_constraints_symmetry = true;
 
   /* <=========== costs ===========> */
   params.vision60_params->include_collocation_costs = true;
   params.vision60_params->include_actuation_costs = true;
   params.vision60_params->include_state_costs = true;
   params.vision60_params->include_jerk_costs = true;
+  params.vision60_params->include_cf_jerk_costs = true;
+  params.vision60_params->include_symmetry_costs = true;
   // params.vision60_params->include_accel_penalty = true;
   // params.vision60_params->accel_panalty_threshold = 200;
   // params.phase_prior_dt = std::vector<double>{0.025, 0.025};
@@ -48,15 +52,19 @@ void TrajectoryOptimization() {
   params.vision60_params->sigma_des_pose = 1e-2;
   params.vision60_params->sigma_des_twist = 1e-2;
   params.vision60_params->sigma_actuation = 10;
-  params.vision60_params->sigma_jerk = 10;
+  params.vision60_params->sigma_jerk = 5;
   params.vision60_params->sigma_q_col = 1e-2;
   params.vision60_params->sigma_v_col = 1e-2;
   params.vision60_params->sigma_twist_col = 1e-2;
   params.vision60_params->sigma_pose_col = 1e-2;
+  params.vision60_params->sigma_cf_jerk = 1e1;
+  params.vision60_params->sigma_symmetry = 1e-1;
+  params.vision60_params->cf_jerk_threshold = 100;
+
 
   /* <=========== inequality constraints ===========> */
   params.vision60_params->include_phase_duration_limits = true;
-  params.vision60_params->phases_min_dt = std::vector<double>{0.015, 0.015};
+  params.vision60_params->phases_min_dt = std::vector<double>{0.015, 0.005};
   if (include_inequality) {
     params.vision60_params->include_friction_cone = true;
     params.vision60_params->include_joint_limits = true;
@@ -68,6 +76,10 @@ void TrajectoryOptimization() {
   /* <=========== create problem ===========> */
   auto problem = CreateProblem(params);
   EvaluateAndExportInitValues(problem, vision60_multi_phase, scenario_folder);
+  // for (const auto& constraint: problem.iConstraints()) {
+  //   PrintKeySet(constraint->keys(), "", GTDKeyFormatter);
+  // }
+
 
   /* <=====================================================================> */
   /* <========================== Optimize IELM ============================> */
@@ -101,12 +113,34 @@ void TrajectoryOptimization() {
   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
   ie_params.lm_params.setlambdaInitial(1e-2);
   ie_params.lm_params.setlambdaUpperBound(1e10);
-  // ie_params.show_active_costraints = true;
+  ie_params.show_active_costraints = true;
 
-  /* <=========== optimzie ===========> */
+  /* <=========== optimize ===========> */
   auto ielm_result = OptimizeIELM(problem, ie_params, iecm_params);
   EvaluateAndExportIELMResult(problem, vision60_multi_phase, ielm_result,
                               scenario_folder, true);
+
+  /* <=========== 2nd stage optimization ===========> */
+  if (two_stage_optimization) {
+    VerticalJumpParams new_params = params;
+    new_params.vision60_params =
+        std::make_shared<IEVision60Robot::Params>(*params.vision60_params);
+    // new_params.vision60_params->sigma_des_pose /= 2;
+    // new_params.vision60_params->sigma_des_twist /= 2;
+    // new_params.vision60_params->sigma_q_col /= 2;
+    // new_params.vision60_params->sigma_v_col /= 2;
+    // new_params.vision60_params->sigma_twist_col /= 2;
+    // new_params.vision60_params->sigma_pose_col /= 2;
+    new_params.vision60_params->include_actuation_costs = false;
+    new_params.vision60_params->include_jerk_costs = false;
+    // new_params.vision60_params->include_state_costs = false;
+    auto new_problem = CreateProblem(new_params);
+    new_problem.values_ = ielm_result.second.back().state.baseValues();
+    EvaluateAndExportInitValues(new_problem, vision60_multi_phase, scenario_folder);
+    auto new_ielm_result = OptimizeIELM(new_problem, ie_params, iecm_params);
+    EvaluateAndExportIELMResult(problem, vision60_multi_phase, new_ielm_result,
+                                scenario_folder, false);
+  }
 
   /* <=====================================================================> */
   /* <======================== Optimize Barrier ===========================> */

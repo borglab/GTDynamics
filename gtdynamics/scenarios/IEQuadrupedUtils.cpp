@@ -17,6 +17,8 @@
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/values.h>
 
+#include <regex>
+
 using namespace gtdynamics;
 
 namespace gtsam {
@@ -35,6 +37,8 @@ IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
   des_v_nm = noiseModel::Isotropic::Sigma(1, params->sigma_des_twist);
   actuation_nm = noiseModel::Isotropic::Sigma(1, params->sigma_actuation);
   jerk_nm = noiseModel::Isotropic::Sigma(1, params->sigma_jerk);
+  cf_jerk_nm = noiseModel::Isotropic::Sigma(1, params->sigma_cf_jerk);
+  symmetry_nm = noiseModel::Isotropic::Sigma(1, params->sigma_symmetry);
   cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params->tol_q);
   c_force_model = gtsam::noiseModel::Isotropic::Sigma(3, params->tol_dynamics);
   redundancy_model =
@@ -114,6 +118,50 @@ gtdynamics::Robot IEVision60Robot::getVision60Robot() {
   vision60_robot.reassignLinks(ordered_link_names);
   vision60_robot.reassignJoints(ordered_joint_names);
   return vision60_robot;
+}
+
+/* ************************************************************************* */
+bool IEVision60Robot::isLeft(const std::string &str) {
+  if (str.find("fl_") != std::string::npos) {
+    return true;
+  }
+  if (str.find("rl_") != std::string::npos) {
+    return true;
+  }
+  return false;
+}
+
+/* ************************************************************************* */
+bool IEVision60Robot::isRight(const std::string& str) {
+  if (str.find("fr_") != std::string::npos) {
+    return true;
+  }
+  if (str.find("rr_") != std::string::npos) {
+    return true;
+  }
+  return false;
+}
+
+/* ************************************************************************* */
+bool IEVision60Robot::isHip(const std::string& str) {
+  return str.find("hip") != std::string::npos;
+}
+
+/* ************************************************************************* */
+std::string IEVision60Robot::counterpart(const std::string &str) {
+  if (str.find("fl_") != std::string::npos) {
+    return std::regex_replace(str, std::regex("fl_"), "fr_");
+  }
+  if (str.find("rl_") != std::string::npos) {
+    return std::regex_replace(str, std::regex("rl_"), "rr_");
+  }
+  if (str.find("fr_") != std::string::npos) {
+    return std::regex_replace(str, std::regex("fr_"), "fl_");
+  }
+  if (str.find("rr_") != std::string::npos) {
+    return std::regex_replace(str, std::regex("rr_"), "rl_");
+  }
+  throw std::runtime_error("cannot identify left or right");
 }
 
 /* ************************************************************************* */
@@ -567,7 +615,7 @@ void IEVision60Robot::ExportValuesMultiPhase(
                  twist_accel_w(3), twist_accel_w(4), twist_accel_w(5)});
     for (const auto &[name, point] : IEVision60Robot::torso_corners_in_com) {
       Point3 point_w = pose.transformFrom(point);
-    vals.insert(vals.end(), {point_w.x(), point_w.y(), point_w.z()});
+      vals.insert(vals.end(), {point_w.x(), point_w.y(), point_w.z()});
     }
 
     std::string vals_str = "";

@@ -34,10 +34,10 @@ TEST(MultiJacobian, Add_Mult) {
   Matrix H1_x2 = (Matrix(2, 1) << 3, 2).finished();
   Matrix H2_x1 = (Matrix(2, 2) << 2, 2, 3, 3).finished();
   Matrix H2_x3 = (Matrix(2, 2) << 4, 3, 2, 1).finished();
-  jac1.insert({x1, H1_x1});
-  jac1.insert({x2, H1_x2});
-  jac2.insert({x1, H2_x1});
-  jac2.insert({x3, H2_x3});
+  jac1.addJacobian(x1, H1_x1);
+  jac1.addJacobian(x2, H1_x2);
+  jac2.addJacobian(x1, H2_x1);
+  jac2.addJacobian(x3, H2_x3);
 
   MultiJacobian expected_sum;
   expected_sum.insert({x1, (Matrix(2, 2) << 3, 4, 6, 7).finished()});
@@ -54,6 +54,15 @@ TEST(MultiJacobian, Add_Mult) {
   expected_mult1.insert({x1, (Matrix(2, 2) << 2, 4, 6, 8).finished()});
   expected_mult1.insert({x2, (Matrix(2, 1) << 6, 4).finished()});
   EXPECT(expected_mult1.equals(m * jac1));
+
+  MultiJacobian jac12_stack = MultiJacobian::VerticalStack(jac1, jac2);
+  MultiJacobian expected_stack12;
+  expected_stack12.insert(
+      {x1, (Matrix(4, 2) << 1, 2, 3, 4, 2, 2, 3, 3).finished()});
+  expected_stack12.insert({x2, (Matrix(4, 1) << 3, 2, 0, 0).finished()});
+  expected_stack12.insert(
+      {x3, (Matrix(4, 2) << 0, 0, 0, 0, 4, 3, 2, 1).finished()});
+  EXPECT(expected_stack12.equals(jac12_stack));
 }
 
 

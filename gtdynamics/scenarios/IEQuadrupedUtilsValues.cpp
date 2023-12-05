@@ -652,7 +652,6 @@ Values InitValuesTrajectoryInfeasible(
   std::vector<Vector6> step_torso_twistaccels(num_steps + 1);
 
   // ground
-  std::cout << "ground\n";
   Pose3 torso_pose =
       Pose(vision60_ground.nominal_values, vision60_ground.base_id);
   Vector6 torso_twist = Vector6::Zero();
@@ -675,8 +674,6 @@ Values InitValuesTrajectoryInfeasible(
   }
 
   // air
-  std::cout << "air\n";
-
   std::map<uint8_t, double> bound_ba_jangles;
   for (const auto &joint : vision60_ground.robot.joints()) {
     uint8_t j = joint->id();
@@ -800,7 +797,6 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
   std::vector<Vector6> step_torso_twistaccels(num_steps + 1);
 
   //// Phase on ground: const accel of torso
-  std::cout << "ground\n";
   Pose3 torso_pose =
       Pose(vision60_ground.nominal_values, vision60_ground.base_id);
   Vector6 torso_twist = Vector6::Zero();
@@ -827,8 +823,6 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
   //// boundary step same as last step in ground phase
 
   //// Back on ground
-  std::cout << "back\n";
-
   std::map<uint8_t, double> bound_gb_jangles;
   for (const auto &leg_idx : vision60_bound_gb.phase_info->leaving_indices) {
     for (const auto &joint : vision60_bound_gb.legs.at(leg_idx).joints) {
@@ -873,8 +867,6 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
   //// boundary step same as last step in back phase
 
   //// Phase in air
-  std::cout << "air\n";
-
   std::map<uint8_t, double> bound_ba_jangles;
   for (const auto &joint : vision60_bound_gb.robot.joints()) {
     uint8_t j = joint->id();

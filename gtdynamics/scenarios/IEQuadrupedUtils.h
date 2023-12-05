@@ -27,7 +27,7 @@
 #define ACTUATION_WORK_SQR 3
 #define ACTUATION_WORK 4
 
-using gtdynamics::InequalityConstraints, gtdynamics::InequalityConstraint;
+using gtdynamics::InequalityConstraints;
 
 namespace gtsam {
 
@@ -75,6 +75,8 @@ public:
     double sigma_des_point_v = 1e-2;
     double sigma_phase_dt = 1e-4;
     double sigma_a_penalty = 1e2;
+    double sigma_cf_jerk = 1e1;
+    double sigma_symmetry = 1e-1;
 
     // tolerance for e constraints
     double tol_q = 1e-2;        // tolerance of q-level constraints
@@ -103,10 +105,10 @@ public:
     bool include_joint_limits = false;
     bool include_collision_free_s = false;
     bool include_collision_free_z = false;
-    bool include_accel_penalty = false;
     bool include_torque_limits = false;
     bool include_friction_cone = false;
     bool include_phase_duration_limits = false;
+    bool i_constraints_symmetry = false;
 
     std::vector<double> phases_min_dt;
     std::map<std::string, double> joint_lower_limits;
@@ -117,12 +119,16 @@ public:
     std::vector<std::pair<std::string, Point3>> collision_checking_points_z;
     std::vector<std::pair<Point3, double>> sphere_obstacles;
     double accel_panalty_threshold = 100.0;
+    double cf_jerk_threshold = 100.0;
     // Option for costs
     bool include_collocation_costs = false;
     bool include_actuation_costs = false;
     bool include_jerk_costs = false;
     bool include_state_costs = false;
+    bool include_accel_penalty = false;
+    bool include_cf_jerk_costs = false;
     bool include_phase_duration_prior_costs = false;
+    bool include_symmetry_costs = false;
     bool collision_as_cost = false;
     int actuation_cost_option = ACTUATION_RMSE_TORQUE;
     Values state_cost_values;
@@ -186,6 +192,11 @@ public:
   inline static gtdynamics::LinkSharedPtr base_link = robot.link("body");
   inline static int base_id = base_link->id();
 
+  static bool isLeft(const std::string &str);
+  static bool isRight(const std::string &str);
+  static bool isHip(const std::string &str);
+  static std::string counterpart(const std::string &str);
+
   std::vector<Point3> contact_in_world;
 
   /// Contact point info
@@ -212,9 +223,11 @@ public:
   SharedNoiseModel des_v_nm;
   SharedNoiseModel actuation_nm;
   SharedNoiseModel jerk_nm;
+  SharedNoiseModel cf_jerk_nm;
   SharedNoiseModel cpoint_cost_model;
   SharedNoiseModel c_force_model;
   SharedNoiseModel redundancy_model;
+  SharedNoiseModel symmetry_nm;
 
 public:
   static gtdynamics::OptimizerSetting getOptSetting(const Params &_params);
@@ -227,21 +240,37 @@ public:
 
   NonlinearFactorGraph getConstraintsGraphStepAD(const int t) const;
 
-  InequalityConstraint::shared_ptr
+  gtdynamics::DoubleExpressionInequality::shared_ptr
   frictionConeConstraint(const size_t contact_link_id, const size_t k) const;
 
   InequalityConstraints frictionConeConstraints(const size_t k) const;
 
   /// Collision free with a spherical object.
-  InequalityConstraint::shared_ptr
+  gtdynamics::DoubleExpressionInequality::shared_ptr
   obstacleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                   const Point3 &p_l, const Point3 &center,
                                   const double radius) const;
 
   /// Collision free with ground.
-  InequalityConstraint::shared_ptr
+  gtdynamics::DoubleExpressionInequality::shared_ptr
   groundCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                 const Point3 &p_l) const;
+
+  gtdynamics::DoubleExpressionInequality::shared_ptr
+  jointUpperLimitConstraint(const std::string &j_name, const size_t k,
+                            const double upper_limit) const;
+
+  gtdynamics::DoubleExpressionInequality::shared_ptr
+  jointLowerLimitConstraint(const std::string &j_name, const size_t k,
+                            const double lower_limit) const;
+
+  gtdynamics::DoubleExpressionInequality::shared_ptr
+  torqueUpperLimitConstraint(const std::string &j_name, const size_t k,
+                             const double upper_limit) const;
+
+  gtdynamics::DoubleExpressionInequality::shared_ptr
+  torqueLowerLimitConstraint(const std::string &j_name, const size_t k,
+                             const double lower_limit) const;
 
   InequalityConstraints jointLimitConstraints(const size_t k) const;
 
@@ -277,6 +306,8 @@ public:
   NonlinearFactorGraph actuationWorkCosts(const size_t k,
                                           bool apply_sqrt = false) const;
 
+  NonlinearFactorGraph symmetryCosts(const size_t k) const;
+
   NonlinearFactorGraph collocationCostsStep(const size_t k,
                                             const double dt) const;
 
@@ -292,6 +323,11 @@ public:
                                                        const Point3 &point_l,
                                                        const Vector3 &vel_w,
                                                        const size_t k) const;
+
+  NoiseModelFactor::shared_ptr contactJerkCostFactor(const size_t link_id,
+                                                     const size_t k) const;
+
+  NonlinearFactorGraph contactJerkCostFactors(const size_t k) const;
 
 public:
   /// Constructor.
@@ -470,6 +506,10 @@ public:
   NonlinearFactorGraph phaseDurationPriorCosts() const;
 
   NonlinearFactorGraph accelPenaltyCosts() const;
+
+  NonlinearFactorGraph contactForceJerkCosts() const;
+
+  NonlinearFactorGraph symmetryCosts() const;
 
   gtdynamics::InequalityConstraints groundCollisionFreeConstraints() const;
 
