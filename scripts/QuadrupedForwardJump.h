@@ -76,8 +76,8 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
 
   // collision checking points
   std::vector<std::pair<std::string, Point3>> collision_points;
-  collision_points.emplace_back("body", Point3(0.44, 0, -0.1));
-  collision_points.emplace_back("body", Point3(-0.44, 0, -0.1));
+  collision_points.emplace_back("body", Point3(0.44, 0, -0.095));
+  collision_points.emplace_back("body", Point3(-0.44, 0, -0.095));
   collision_points.emplace_back("fl_lower", Point3(0.14, 0, 0));
   collision_points.emplace_back("fr_lower", Point3(0.14, 0, 0));
   collision_points.emplace_back("rl_lower", Point3(0.14, 0, 0));
@@ -96,6 +96,8 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   vision60_params->sigma_twist_col = 5e-3;
   vision60_params->sigma_pose_col = 5e-3;
   vision60_params->sigma_a_penalty = 1e1;
+
+  // vision60_params->mu = 1.0;
 
   return vision60_params;
 }

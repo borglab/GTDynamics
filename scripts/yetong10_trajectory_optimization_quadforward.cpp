@@ -20,7 +20,7 @@ using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_forward_jump;
 
-bool include_inequality = false;
+bool include_inequality = true;
 
 void TrajectoryOptimization() {
   std::string constraint_str = include_inequality ? "ie" : "e";
@@ -43,6 +43,7 @@ void TrajectoryOptimization() {
   params.vision60_params->include_jerk_costs = true;
   params.vision60_params->include_cf_jerk_costs = true;
   params.vision60_params->include_symmetry_costs = true;
+  params.vision60_params->collision_as_cost = true;
 
   params.vision60_params->sigma_des_pose = 2e-3;
   params.vision60_params->sigma_des_twist = 1e-2;
@@ -55,16 +56,17 @@ void TrajectoryOptimization() {
   params.vision60_params->sigma_cf_jerk = 1e1;
   params.vision60_params->sigma_symmetry = 1e-1;
   params.vision60_params->cf_jerk_threshold = 30;
+  params.vision60_params->tol_cf = 1e-3;
 
   /* <=========== inequality constraints ===========> */
   params.vision60_params->include_phase_duration_limits = true;
   params.vision60_params->phases_min_dt =
-      std::vector<double>{0.01, 0.005, 0.015};
+      std::vector<double>{0.01, 0.005, 0.01};
   if (include_inequality) {
     params.vision60_params->include_friction_cone = true;
     params.vision60_params->include_joint_limits = true;
-    params.vision60_params->include_torque_limits = true;
-    params.vision60_params->include_collision_free_z = true;
+    // params.vision60_params->include_torque_limits = true;
+    // params.vision60_params->include_collision_free_z = true;
   }
 
   /* <=========== create problem ===========> */
@@ -101,7 +103,7 @@ void TrajectoryOptimization() {
   /* <=========== IELM params ===========> */
   IELMParams ie_params;
   ie_params.lm_params.setVerbosityLM("SUMMARY");
-  ie_params.lm_params.setMaxIterations(100);
+  ie_params.lm_params.setMaxIterations(200);
   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
   ie_params.lm_params.setlambdaInitial(1e-2);
   ie_params.lm_params.setlambdaUpperBound(1e10);
