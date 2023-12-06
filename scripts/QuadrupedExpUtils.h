@@ -39,6 +39,7 @@ inline void EvaluateAndExportIELMResult(
 
   //// Evaluate
   problem.eval_func(result_values);
+  vision60_multi_phase.evaluateCollocation(result_values);
   for (const auto &iter_details : ielm_result.second) {
     Values values = iter_details.state.baseValues();
     std::cout << iter_details.state.iterations << "\t";
@@ -52,7 +53,7 @@ inline void EvaluateAndExportIELMResult(
   }
 
   //// Export final optimized trajectory.
-  // ExportValuesToFile(result_values, scenario_folder + "values.dat");
+  ExportValuesToFile(result_values, scenario_folder + "manopt_values.dat");
   IEVision60Robot::ExportValuesMultiPhase(result_values,
                                           vision60_multi_phase.phase_num_steps_,
                                           scenario_folder + "manopt_traj.csv");

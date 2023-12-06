@@ -199,6 +199,25 @@ class DynamicsGraph {
       const std::optional<std::vector<PointOnLinks>> &phase_contact_points = {},
       const std::optional<double> &mu = {}) const;
 
+  static std::shared_ptr<gtsam::ExpressionFactor<double>>
+  collocationFactorDouble(const gtsam::Key x0_key, const gtsam::Key x1_key,
+                          const gtsam::Key v0_key, const gtsam::Key v1_key,
+                          const gtsam::Key phase_key,
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const CollocationScheme collocation = Trapezoidal);
+
+  static std::shared_ptr<gtsam::ExpressionFactor<double>>
+  multiPhaseJointCollocationQFactor(const size_t j, const size_t k,
+                          const gtsam::Key phase_key,
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const CollocationScheme collocation = Trapezoidal);
+
+  static std::shared_ptr<gtsam::ExpressionFactor<double>>
+  multiPhaseJointCollocationVFactor(const size_t j, const size_t k,
+                          const gtsam::Key phase_key,
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const CollocationScheme collocation = Trapezoidal);
+
   /** Add collocation factor for doubles. */
   static void addCollocationFactorDouble(
       gtsam::NonlinearFactorGraph *graph, const gtsam::Key x0_key,

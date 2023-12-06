@@ -36,9 +36,9 @@ inline gtdynamics::DynamicsSymbol ContactRedundancyKey(int t = 0) {
   return gtdynamics::DynamicsSymbol::SimpleSymbol("CR", t);
 }
 
-/**
- * Class of utilitis for Vision60 robot.
- */
+/* ************************************************************************* */
+/* <======================== Vision60 Single Phase ========================> */
+/* ************************************************************************* */
 class IEVision60Robot {
 public:
   struct Leg {
@@ -229,22 +229,35 @@ public:
   SharedNoiseModel redundancy_model;
   SharedNoiseModel symmetry_nm;
 
-public:
   static gtdynamics::OptimizerSetting getOptSetting(const Params &_params);
 
   Values getNominalConfiguration(const double height = 0) const;
 
-  NonlinearFactorGraph getConstraintsGraphStepQ(const int t) const;
+public:
+  /// Constructor.
+  IEVision60Robot(const Params::shared_ptr &_params,
+                  const PhaseInfo::shared_ptr &_phase_info);
 
-  NonlinearFactorGraph getConstraintsGraphStepV(const int t) const;
+  /** <=================== Single Equality Constraint  ===================> **/
+  /** Transform contact wrench expressed in link frame to contact force
+   * expressed in world frame. */
+  static Vector3 GetContactForce(const Pose3 &pose, const Vector6 wrench,
+                                 OptionalJacobian<3, 6> H_pose = {},
+                                 OptionalJacobian<3, 6> H_wrench = {});
 
-  NonlinearFactorGraph getConstraintsGraphStepAD(const int t) const;
+  /** Factor that enforce the relationship between contact force and contact
+   * wernch. */
+  NoiseModelFactor::shared_ptr contactForceFactor(const uint8_t link_id,
+                                                  const size_t k) const;
 
-  gtdynamics::DoubleExpressionInequality::shared_ptr
-  frictionConeConstraint(const size_t contact_link_id, const size_t k) const;
+  /** 6-dimensional vector that represents the redundancy in degress of freedom
+   * in d-level with known acceleration. Only used in 4-leg contact case. */
+  NoiseModelFactor::shared_ptr contactRedundancyFactor(const size_t k) const;
 
-  InequalityConstraints frictionConeConstraints(const size_t k) const;
+  /** Factor that enforce the q-level constraint at a known point contact. */
+  NonlinearFactorGraph qPointContactFactors(const size_t k) const;
 
+  /** <================= Single Inequality Constraint  ===================> **/
   /// Collision free with a spherical object.
   gtdynamics::DoubleExpressionInequality::shared_ptr
   obstacleCollisionFreeConstraint(const size_t link_idx, const size_t k,
@@ -272,47 +285,29 @@ public:
   torqueLowerLimitConstraint(const std::string &j_name, const size_t k,
                              const double lower_limit) const;
 
-  InequalityConstraints jointLimitConstraints(const size_t k) const;
+  gtdynamics::DoubleExpressionInequality::shared_ptr
+  frictionConeConstraint(const size_t contact_link_id, const size_t k) const;
 
-  InequalityConstraints torqueLimitConstraints(const size_t k) const;
+  /** <======================= Single Cost Factor ========================> **/
+  NoiseModelFactor::shared_ptr
+  multiPhaseLinkPoseCollocationFactor(const uint8_t link_id, const size_t &k,
+                                      const Key &phase_key) const;
 
-  /// Collision free with obstacles.
-  InequalityConstraints obstacleCollisionFreeConstraints(const size_t k) const;
+  NoiseModelFactor::shared_ptr
+  multiPhaseLinkTwistCollocationFactor(const uint8_t link_id, const size_t &k,
+                                       const Key &phase_key) const;
 
-  /// Collision free with ground.
-  InequalityConstraints groundCollisionFreeConstraints(const size_t k) const;
+  NoiseModelFactor::shared_ptr
+  multiPhaseJointQCollocationFactor(const uint8_t joint_id, const size_t &k,
+                                    const Key &phase_key) const;
 
-  /// Dynamcis factors without friction cone factors (as they are moved to
-  /// inequality constraints).
-  NonlinearFactorGraph DynamicsFactors(const size_t k) const;
+  NoiseModelFactor::shared_ptr
+  multiPhaseJointVCollocationFactor(const uint8_t joint_id, const size_t &k,
+                                    const Key &phase_key) const;
 
   NonlinearFactorGraph linkCollocationFactors(const uint8_t link_id,
                                               const size_t &k,
                                               const double &dt) const;
-
-  NonlinearFactorGraph
-  multiPhaseLinkCollocationFactors(const uint8_t link_id, const size_t &k,
-                                   const Key &phase_key) const;
-
-  /// Cost based on the root-mean-square at step k.
-  NonlinearFactorGraph actuationRmseTorqueCosts(const size_t k) const;
-
-  /// Cost based on the impulse of all joints from step k to k+1.
-  NonlinearFactorGraph actuationImpulseCosts(const size_t k,
-                                             const size_t phase_idx,
-                                             bool apply_sqrt = false) const;
-
-  /// Cost based on the work done by all joints from step k to k+1.
-  NonlinearFactorGraph actuationWorkCosts(const size_t k,
-                                          bool apply_sqrt = false) const;
-
-  NonlinearFactorGraph symmetryCosts(const size_t k) const;
-
-  NonlinearFactorGraph collocationCostsStep(const size_t k,
-                                            const double dt) const;
-
-  NonlinearFactorGraph
-  multiPhaseCollocationCostsStep(const size_t k, const size_t phase_id) const;
 
   NoiseModelFactor::shared_ptr statePointCostFactor(const size_t link_id,
                                                     const Point3 &point_l,
@@ -327,13 +322,54 @@ public:
   NoiseModelFactor::shared_ptr contactJerkCostFactor(const size_t link_id,
                                                      const size_t k) const;
 
-  NonlinearFactorGraph contactJerkCostFactors(const size_t k) const;
+  /** <==================== Step Equality Constraint  ====================> **/
+  NonlinearFactorGraph getConstraintsGraphStepQ(const int t) const;
+
+  NonlinearFactorGraph getConstraintsGraphStepV(const int t) const;
+
+  NonlinearFactorGraph getConstraintsGraphStepAD(const int t) const;
+
+  /// Dynamcis factors without friction cone factors (as they are moved to
+  /// inequality constraints).
+  NonlinearFactorGraph DynamicsFactors(const size_t k) const;
+
+  /** <=================== Step Inequality Constraint  ===================> **/
+  InequalityConstraints frictionConeConstraints(const size_t k) const;
+
+  InequalityConstraints jointLimitConstraints(const size_t k) const;
+
+  InequalityConstraints torqueLimitConstraints(const size_t k) const;
+
+  /// Collision free with obstacles.
+  InequalityConstraints obstacleCollisionFreeConstraints(const size_t k) const;
+
+  /// Collision free with ground.
+  InequalityConstraints groundCollisionFreeConstraints(const size_t k) const;
+
+  /** <=========================== Step Cost  ============================> **/
+  NonlinearFactorGraph stepCollocationCosts(const size_t k,
+                                            const double dt) const;
+
+  NonlinearFactorGraph
+  stepMultiPhaseCollocationCosts(const size_t k, const size_t phase_id) const;
+
+  /// Cost based on the root-mean-square at step k.
+  NonlinearFactorGraph stepActuationRmseTorqueCosts(const size_t k) const;
+
+  /// Cost based on the impulse of all joints from step k to k+1.
+  NonlinearFactorGraph stepActuationImpulseCosts(const size_t k,
+                                                 const size_t phase_idx,
+                                                 bool apply_sqrt = false) const;
+
+  /// Cost based on the work done by all joints from step k to k+1.
+  NonlinearFactorGraph stepActuationWorkCosts(const size_t k,
+                                              bool apply_sqrt = false) const;
+
+  NonlinearFactorGraph stepSymmetryCosts(const size_t k) const;
+
+  NonlinearFactorGraph stepContactJerkCosts(const size_t k) const;
 
 public:
-  /// Constructor.
-  IEVision60Robot(const Params::shared_ptr &_params,
-                  const PhaseInfo::shared_ptr &_phase_info);
-
   /** <================= Constraints and Costs =================> **/
   /// Kinodynamic constraints at the specified time step.
   gtdynamics::EqualityConstraints eConstraints(const size_t k) const;
@@ -345,11 +381,6 @@ public:
   /// Costs for collocation across steps.
   NonlinearFactorGraph collocationCosts(const size_t num_steps,
                                         double dt) const;
-
-  /// Cost for collocation that parameterize phase duration
-  NonlinearFactorGraph multiPhaseCollocationCosts(const size_t start_step,
-                                                  const size_t end_step,
-                                                  const size_t phase_id) const;
 
   /// Costs for min torque objectives.
   NonlinearFactorGraph actuationCosts(const size_t num_steps) const;
@@ -377,6 +408,8 @@ public:
                            const Vector6 &base_accel = Vector6::Zero(),
                            Values init_values_t = Values()) const;
 
+  /// Compute q-level values (poses, joint angles) of a single time step that
+  /// satisfy all the equality constraints.
   Values stepValuesQ(const size_t k, const Values &init_values,
                      const KeyVector &known_q_keys = KeyVector()) const;
 
@@ -433,35 +466,20 @@ public:
                                      const std::vector<size_t> &phase_num_steps,
                                      const std::string &file_path);
 
-protected:
+  /// Print pose, twist and acceleration of torso link over time steps.
   static void PrintTorso(const Values &values, const size_t num_steps);
 
+  /// Print contact force over time steps.
   static void PrintContactForces(const Values &values, const size_t num_steps);
 
+  /// Print joint angles(type="q"), velocity(type="v"), acceleration(type="a"),
+  /// torque(type="T") over time steps.
   static void PrintJointValuesLevel(const Values &values,
                                     const size_t num_steps,
-                                    const std::string level);
+                                    const std::string type);
 
 public:
   /** <===================== Utility Functions =====================> **/
-  /** Transform contact wrench expressed in link frame to contact force
-   * expressed in world frame. */
-  static Vector3 GetContactForce(const Pose3 &pose, const Vector6 wrench,
-                                 OptionalJacobian<3, 6> H_pose = {},
-                                 OptionalJacobian<3, 6> H_wrench = {});
-
-  /** Factor that enforce the relationship between contact force and contact
-   * wernch. */
-  NoiseModelFactor::shared_ptr contactForceFactor(const uint8_t link_id,
-                                                  const size_t k) const;
-
-  /** 6-dimensional vector that represents the redundancy in degress of freedom
-   * in d-level with known acceleration. Only used in 4-leg contact case. */
-  NoiseModelFactor::shared_ptr contactRedundancyFactor(const size_t k) const;
-
-  /** Factor that enforce the q-level constraint at a known point contact. */
-  NonlinearFactorGraph qPointContactFactors(const size_t k) const;
-
   /// Return optimizer setting.
   const gtdynamics::OptimizerSetting &opt() const {
     return graph_builder.opt();
@@ -474,9 +492,9 @@ public:
                       bool include_init_state_constraints = false) const;
 };
 
-/**
- * Class of utilitis for Vision60 robot.
- */
+/* ************************************************************************* */
+/* <======================== Vision60 Multi Phase =========================> */
+/* ************************************************************************* */
 class IEVision60RobotMultiPhase {
 public:
   std::vector<IEVision60Robot> phase_robots_;
@@ -493,8 +511,13 @@ public:
     return phase_robots_.at(0).params;
   }
 
+  size_t numSteps() const {
+    return std::accumulate(phase_num_steps_.begin(), phase_num_steps_.end(), 0);
+  }
+
   const IEVision60Robot &robotAtStep(const size_t k) const;
 
+  /** <================= costs =================> **/
   NonlinearFactorGraph collocationCosts() const;
 
   NonlinearFactorGraph actuationCosts() const;
@@ -511,29 +534,6 @@ public:
 
   NonlinearFactorGraph symmetryCosts() const;
 
-  gtdynamics::InequalityConstraints groundCollisionFreeConstraints() const;
-
-  gtdynamics::InequalityConstraints obstacleCollisionFreeConstraints() const;
-
-  gtdynamics::InequalityConstraints jointLimitConstraints() const;
-
-  gtdynamics::InequalityConstraints torqueLimitConstraints() const;
-
-  gtdynamics::InequalityConstraints frictionConeConstraints() const;
-
-  /** Inequality constraints that limit the min phase durations. */
-  InequalityConstraints phaseMinDurationConstraints() const;
-
-  /// Equality constraints of all types of all time steps.
-  EqualityConstraints eConstraints() const;
-
-  /// Pair of inequality constriants with associated type.
-  std::vector<std::pair<std::string, InequalityConstraints>>
-  classifiedIConstraints() const;
-
-  /// Inequality constraints of all types of all time steps.
-  InequalityConstraints iConstraints() const;
-
   /// Pair of cost with associated type.
   std::vector<std::pair<std::string, NonlinearFactorGraph>>
   classifiedCosts() const;
@@ -544,11 +544,37 @@ public:
   /// Costs of all types of all time steps.
   NonlinearFactorGraph costs() const;
 
+  /** <================= inequality constraints =================> **/
+  InequalityConstraints groundCollisionFreeConstraints() const;
+
+  InequalityConstraints obstacleCollisionFreeConstraints() const;
+
+  InequalityConstraints jointLimitConstraints() const;
+
+  InequalityConstraints torqueLimitConstraints() const;
+
+  InequalityConstraints frictionConeConstraints() const;
+
+  /** Inequality constraints that limit the min phase durations. */
+  InequalityConstraints phaseMinDurationConstraints() const;
+
+  /// Pair of inequality constriants with associated type.
+  std::vector<std::pair<std::string, InequalityConstraints>>
+  classifiedIConstraints() const;
+
+  /// Inequality constraints of all types of all time steps.
+  InequalityConstraints iConstraints() const;
+
+  /** <======================= equality constraints ======================> **/
+  /// Equality constraints of all types of all time steps.
+  EqualityConstraints eConstraints() const;
+
+  /** <======================= evaluation functions ======================> **/
   gtdynamics::EqConsOptProblem::EvalFunc costsEvalFunc() const;
 
-  size_t numSteps() const {
-    return std::accumulate(phase_num_steps_.begin(), phase_num_steps_.end(), 0);
-  }
+  /// evaluate the error of collocation of each time step, and accumulative
+  /// error over the trajectory.
+  void evaluateCollocation(const Values &values) const;
 };
 
 /* ************************************************************************* */

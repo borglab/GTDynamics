@@ -552,7 +552,7 @@ IEVision60Robot::contactJerkCostFactor(const size_t link_id,
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::contactJerkCostFactors(const size_t k) const {
+IEVision60Robot::stepContactJerkCosts(const size_t k) const {
   NonlinearFactorGraph graph;
   for (const auto &link_id : contact_link_ids) {
     graph.add(contactJerkCostFactor(link_id, k));
@@ -643,34 +643,57 @@ IEVision60Robot::linkCollocationFactors(const uint8_t link_id, const size_t &k,
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph IEVision60Robot::multiPhaseLinkCollocationFactors(
+NoiseModelFactor::shared_ptr
+IEVision60Robot::multiPhaseLinkPoseCollocationFactor(
     const uint8_t link_id, const size_t &k, const Key &phase_key) const {
-  NonlinearFactorGraph graph;
   if (params->collocation == CollocationScheme::Trapezoidal) {
-    graph.add(gtdynamics::TrapezoidalPoseCollocationFactor(
+    return std::make_shared<gtdynamics::TrapezoidalPoseCollocationFactor>(
         PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
         TwistKey(link_id, k + 1), phase_key,
-        graph_builder.opt().pose_col_cost_model));
-    graph.add(gtdynamics::TrapezoidalTwistCollocationFactor(
+        graph_builder.opt().pose_col_cost_model);
+  } else {
+    return std::make_shared<gtdynamics::EulerPoseCollocationFactor>(
+        PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
+        phase_key, graph_builder.opt().pose_col_cost_model);
+  }
+}
+
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr
+IEVision60Robot::multiPhaseLinkTwistCollocationFactor(
+    const uint8_t link_id, const size_t &k, const Key &phase_key) const {
+  if (params->collocation == CollocationScheme::Trapezoidal) {
+    return std::make_shared<gtdynamics::TrapezoidalTwistCollocationFactor>(
         TwistKey(link_id, k), TwistKey(link_id, k + 1),
         TwistAccelKey(link_id, k), TwistAccelKey(link_id, k + 1), phase_key,
-        graph_builder.opt().twist_col_cost_model));
+        graph_builder.opt().twist_col_cost_model);
   } else {
-    graph.add(gtdynamics::EulerPoseCollocationFactor(
-        PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
-        phase_key, graph_builder.opt().pose_col_cost_model));
-    graph.add(gtdynamics::EulerTwistCollocationFactor(
+    return std::make_shared<gtdynamics::EulerTwistCollocationFactor>(
         TwistKey(link_id, k), TwistKey(link_id, k + 1),
         TwistAccelKey(link_id, k), phase_key,
-        graph_builder.opt().twist_col_cost_model));
+        graph_builder.opt().twist_col_cost_model);
   }
+}
 
-  return graph;
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr IEVision60Robot::multiPhaseJointQCollocationFactor(
+    const uint8_t joint_id, const size_t &k, const Key &phase_key) const {
+  return DynamicsGraph::multiPhaseJointCollocationQFactor(
+      joint_id, k, phase_key, graph_builder.opt().q_col_cost_model,
+      params->collocation);
+}
+
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr IEVision60Robot::multiPhaseJointVCollocationFactor(
+    const uint8_t joint_id, const size_t &k, const Key &phase_key) const {
+  return DynamicsGraph::multiPhaseJointCollocationVFactor(
+      joint_id, k, phase_key, graph_builder.opt().v_col_cost_model,
+      params->collocation);
 }
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::collocationCostsStep(const size_t k, const double dt) const {
+IEVision60Robot::stepCollocationCosts(const size_t k, const double dt) const {
   NonlinearFactorGraph graph;
   graph.add(linkCollocationFactors(base_id, k, dt));
 
@@ -702,35 +725,26 @@ NonlinearFactorGraph IEVision60Robot::collocationCosts(const size_t num_steps,
                                                        double dt) const {
   NonlinearFactorGraph graph;
   for (size_t k = 0; k < num_steps; k++) {
-    graph.add(collocationCostsStep(k, dt));
+    graph.add(stepCollocationCosts(k, dt));
   }
   return graph;
 }
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::multiPhaseCollocationCostsStep(const size_t k,
+IEVision60Robot::stepMultiPhaseCollocationCosts(const size_t k,
                                                 const size_t phase_id) const {
   NonlinearFactorGraph graph;
   Key phase_key = PhaseKey(phase_id);
-  graph.add(multiPhaseLinkCollocationFactors(base_id, k, phase_key));
+  graph.add(multiPhaseLinkPoseCollocationFactor(base_id, k, phase_key));
+  graph.add(multiPhaseLinkTwistCollocationFactor(base_id, k, phase_key));
 
   for (size_t leg_idx = 0; leg_idx < 4; leg_idx++) {
     if (!phase_info->contact_indices.exists(leg_idx)) {
       for (const auto &joint : legs.at(leg_idx).joints) {
         uint8_t j = joint->id();
-        Key q0_key = JointAngleKey(j, k);
-        Key q1_key = JointAngleKey(j, k + 1);
-        Key v0_key = JointVelKey(j, k);
-        Key v1_key = JointVelKey(j, k + 1);
-        Key a0_key = JointAccelKey(j, k);
-        Key a1_key = JointAccelKey(j, k + 1);
-        DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-            &graph, q0_key, q1_key, v0_key, v1_key, phase_key,
-            graph_builder.opt().q_col_cost_model, params->collocation);
-        DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-            &graph, v0_key, v1_key, a0_key, a1_key, phase_key,
-            graph_builder.opt().v_col_cost_model, params->collocation);
+        graph.add(multiPhaseJointQCollocationFactor(j, k, phase_key));
+        graph.add(multiPhaseJointVCollocationFactor(j, k, phase_key));
       }
     }
   }
@@ -739,19 +753,7 @@ IEVision60Robot::multiPhaseCollocationCostsStep(const size_t k,
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::multiPhaseCollocationCosts(const size_t start_step,
-                                            const size_t end_step,
-                                            const size_t phase_id) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = start_step; k < end_step; k++) {
-    graph.add(multiPhaseCollocationCostsStep(k, phase_id));
-  }
-  return graph;
-}
-
-/* ************************************************************************* */
-NonlinearFactorGraph
-IEVision60Robot::actuationRmseTorqueCosts(const size_t k) const {
+IEVision60Robot::stepActuationRmseTorqueCosts(const size_t k) const {
   NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     graph.add(
@@ -762,7 +764,7 @@ IEVision60Robot::actuationRmseTorqueCosts(const size_t k) const {
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::actuationImpulseCosts(const size_t k, const size_t phase_idx,
+IEVision60Robot::stepActuationImpulseCosts(const size_t k, const size_t phase_idx,
                                        bool apply_sqrt) const {
   // TODO: add option with apply_sqrt
   NonlinearFactorGraph graph;
@@ -778,7 +780,7 @@ IEVision60Robot::actuationImpulseCosts(const size_t k, const size_t phase_idx,
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::actuationWorkCosts(const size_t k, bool apply_sqrt) const {
+IEVision60Robot::stepActuationWorkCosts(const size_t k, bool apply_sqrt) const {
   // TODO: distinguish positive work and negative work
   NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
@@ -797,7 +799,7 @@ NonlinearFactorGraph
 IEVision60Robot::actuationCosts(const size_t num_steps) const {
   NonlinearFactorGraph graph;
   for (size_t k = 0; k <= num_steps; k++) {
-    graph.add(actuationRmseTorqueCosts(k));
+    graph.add(stepActuationRmseTorqueCosts(k));
   }
   return graph;
 }
@@ -876,7 +878,7 @@ NonlinearFactorGraph IEVision60Robot::stateCosts() const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph IEVision60Robot::symmetryCosts(const size_t k) const {
+NonlinearFactorGraph IEVision60Robot::stepSymmetryCosts(const size_t k) const {
   NonlinearFactorGraph graph;
   for (const auto &joint : robot.joints()) {
     if (isLeft(joint->name())) {
@@ -887,8 +889,7 @@ NonlinearFactorGraph IEVision60Robot::symmetryCosts(const size_t k) const {
         graph.emplace_shared<BetweenFactor<double>>(JointAngleKey(left_id, k),
                                                     JointAngleKey(right_id, k),
                                                     0.0, symmetry_nm);
-      }
-      else {
+      } else {
         Double_ left_q(JointAngleKey(left_id, k));
         Double_ right_q(JointAngleKey(right_id, k));
         Double_ error = left_q + right_q;

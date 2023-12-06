@@ -4,7 +4,7 @@ import matplotlib as mpl
 import matplotlib.animation as animation
 from yetong00_utils import load_csv
 
-folder = "data/yetong07_e_quadruped_jump/"
+folder = "data/yetong10_e_quadruped_jump/"
 
 # data = load_csv(folder + "init_traj.csv")
 data= load_csv(folder + "manopt_traj.csv")
@@ -31,12 +31,13 @@ class PauseAnimation:
         self.ax_side.set_aspect('equal')
         self.ax_side.set_xlabel('x')
         self.ax_side.set_ylabel('z')
+        self.ax_side.set_title('side view')
         self.ax_top.set_xlim(-1, 2)
         self.ax_top.set_ylim(-0.5, 0.5)
         self.ax_top.set_aspect('equal')
         self.ax_top.set_xlabel('x')
         self.ax_top.set_ylabel('y')
-        self.ax_q.set_xlabel('time')
+        self.ax_top.set_title('top view')
         self.ax_q.set_ylabel('joint angle')
         self.ax_q.set_xlim(0, data["time"][-1])
         self.ax_v.set_xlabel('time')
@@ -172,7 +173,7 @@ class PauseAnimation:
                             color=color, alpha=0.5, animated=True)[0]
             self.step_plots.append(frame)
 
-        self.title_k = self.ax_side.text(0.5, 1.2, str(0), bbox={
+        self.title_k = self.ax_side.text(0.5, 1.5, str(0), bbox={
             'facecolor': 'w', 'alpha': 0.5, 'pad': 5}, ha="center", animated=True)
 
         self.animation = animation.FuncAnimation(

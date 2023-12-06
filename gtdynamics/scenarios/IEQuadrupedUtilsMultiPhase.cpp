@@ -64,7 +64,7 @@ IEVision60RobotMultiPhase::collocationFactorsByStep() const {
     for (size_t step_idx = 0; step_idx < phase_num_steps_.at(phase_idx);
          step_idx++) {
       collocation_factors[k] =
-          robot.multiPhaseCollocationCostsStep(k, phase_idx);
+          robot.stepMultiPhaseCollocationCosts(k, phase_idx);
       k++;
     }
   }
@@ -87,7 +87,7 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::actuationCosts() const {
   size_t num_steps = numSteps();
   if (params->actuation_cost_option == ACTUATION_RMSE_TORQUE) {
     for (size_t k = 0; k <= num_steps; k++) {
-      graph.add(robotAtStep(k).actuationRmseTorqueCosts(k));
+      graph.add(robotAtStep(k).stepActuationRmseTorqueCosts(k));
     }
   } else if (params->actuation_cost_option == ACTUATION_IMPULSE_SQR ||
              params->actuation_cost_option == ACTUATION_IMPULSE) {
@@ -97,7 +97,7 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::actuationCosts() const {
       for (size_t phase_step = 0; phase_step < phase_num_steps_.at(phase_idx);
            phase_step++) {
         graph.add(
-            robotAtStep(k).actuationImpulseCosts(k, phase_idx, apply_sqrt));
+            robotAtStep(k).stepActuationImpulseCosts(k, phase_idx, apply_sqrt));
         k++;
       }
     }
@@ -108,7 +108,7 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::actuationCosts() const {
     for (int phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
       for (size_t phase_step = 0; phase_step < phase_num_steps_.at(phase_idx);
            phase_step++) {
-        graph.add(robotAtStep(k).actuationWorkCosts(k, apply_sqrt));
+        graph.add(robotAtStep(k).stepActuationWorkCosts(k, apply_sqrt));
         k++;
       }
     }
@@ -129,7 +129,7 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::contactForceJerkCosts() const {
     const auto &robot = phase_robots_.at(phase_idx);
     for (size_t phase_step = 0; phase_step < phase_num_steps_.at(phase_idx);
          phase_step++) {
-      graph.add(robot.contactJerkCostFactors(k));
+      graph.add(robot.stepContactJerkCosts(k));
       k++;
     }
   }
@@ -141,7 +141,7 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::contactForceJerkCosts() const {
 NonlinearFactorGraph IEVision60RobotMultiPhase::symmetryCosts() const {
   NonlinearFactorGraph graph;
   for (size_t k=0; k<=numSteps(); k++) {
-    graph.add(robotAtStep(k).symmetryCosts(k));
+    graph.add(robotAtStep(k).stepSymmetryCosts(k));
   }
   return graph;
 }
@@ -422,6 +422,44 @@ IEVision60RobotMultiPhase::costsEvalFunc() const {
     }
   };
   return Evaluate;
+}
+
+/* ************************************************************************* */
+void IEVision60RobotMultiPhase::evaluateCollocation(const Values& values) const {
+  size_t base_id = IEVision60Robot::base_id;
+  size_t k = 0;
+  double accum_base_error_t = 0, accum_base_error_r = 0;
+  double accum_base_error_v = 0, accum_base_error_w = 0;
+
+  for (int phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
+    const auto &robot = phase_robots_.at(phase_idx);
+    Key phase_key = PhaseKey(phase_idx);
+    for (size_t phase_step = 0; phase_step < phase_num_steps_.at(phase_idx);
+         phase_step++) {
+      
+      auto torso_pose_col_factor = robot.multiPhaseLinkPoseCollocationFactor(base_id, k, phase_key);
+      auto torso_twist_col_factor = robot.multiPhaseLinkTwistCollocationFactor(base_id, k, phase_key);
+
+      auto error_pose_col = torso_pose_col_factor->unwhitenedError(values);
+      auto error_twist_col = torso_twist_col_factor->unwhitenedError(values);
+      auto error_r = error_pose_col.middleRows(0, 3);
+      auto error_t = error_pose_col.middleRows(3, 3);
+      auto error_v = error_twist_col.middleRows(3, 3);
+      auto error_w = error_twist_col.middleRows(0, 3);
+
+      accum_base_error_t += error_t.norm();
+      accum_base_error_r += error_r.norm();
+      accum_base_error_v += error_v.norm();
+      accum_base_error_w += error_w.norm();
+
+      std::cout << k << "\t" << error_t.norm() << "\t" << error_r.norm() << "\t" << error_v.norm() << "\t" << error_w.norm() << "\n";
+      k++;
+    }
+  }
+  std::cout << "accumulative translation error: " << accum_base_error_t << "\n";
+  std::cout << "accumulative rotation error:    " << accum_base_error_r << "\n";
+  std::cout << "accumulative velocity error:    " << accum_base_error_v << "\n";
+  std::cout << "accumulative angular vel error: " << accum_base_error_w << "\n";
 }
 
 } // namespace gtsam

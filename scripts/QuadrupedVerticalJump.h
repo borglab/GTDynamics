@@ -56,10 +56,10 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   std::map<std::string, double> torque_upper_limits;
   double hip_torque_lower_limit = -20.0;
   double hip_torque_upper_limit = 20.0;
-  double upper_torque_lower_limit = -20.0;
-  double upper_torque_upper_limit = 20.0;
-  double lower_torque_lower_limit = -20.0;
-  double lower_torque_upper_limit = 20.0;
+  double upper_torque_lower_limit = -30.0;
+  double upper_torque_upper_limit = 30.0;
+  double lower_torque_lower_limit = -30.0;
+  double lower_torque_upper_limit = 30.0;
   for (const auto &leg : IEVision60Robot::legs) {
     torque_lower_limits.insert({leg.hip_joint->name(), hip_torque_lower_limit});
     torque_upper_limits.insert({leg.hip_joint->name(), hip_torque_upper_limit});
@@ -77,8 +77,8 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
 
   // collision checking points
   std::vector<std::pair<std::string, Point3>> collision_points;
-  collision_points.emplace_back("body", Point3(0.44, 0, -0.1));
-  collision_points.emplace_back("body", Point3(-0.44, 0, -0.1));
+  collision_points.emplace_back("body", Point3(0.44, 0, -0.095));
+  collision_points.emplace_back("body", Point3(-0.44, 0, -0.095));
   vision60_params->collision_checking_points_z = collision_points;
 
   // friction cone
@@ -124,11 +124,11 @@ inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
   NonlinearFactorGraph costs = vision60_multi_phase.costs();
 
   /// Initial Values
-  auto init_values =
-      InitValuesTrajectory(vision60_multi_phase, params.phases_dt, 15, 5,
-                           params.init_values_with_trapezoidal);
   // auto init_values =
-  //   InitValuesTrajectoryInfeasible(vision60_multi_phase, params.phases_dt);
+  //     InitValuesTrajectory(vision60_multi_phase, params.phases_dt, 15, 5,
+  //                          params.init_values_with_trapezoidal);
+  auto init_values =
+    InitValuesTrajectoryInfeasible(vision60_multi_phase, params.phases_dt);
 
   /// Problem
   IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);

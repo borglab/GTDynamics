@@ -20,7 +20,7 @@ using namespace gtsam;
 using namespace quadruped_vertical_jump;
 
 bool include_inequality = true;
-bool two_stage_optimization = false;
+bool two_stage_optimization = true;
 
 void TrajectoryOptimization() {
   std::string constraint_str = include_inequality ? "ie" : "e";
@@ -37,6 +37,8 @@ void TrajectoryOptimization() {
   params.vision60_params->eval_details = true;
   params.vision60_params->eval_collo_step = true;
   params.vision60_params->i_constraints_symmetry = true;
+  params.phase_num_steps = std::vector<size_t>{20, 10};
+  params.phases_dt = std::vector<double>{0.01, 0.02};
 
   /* <=========== costs ===========> */
   params.vision60_params->include_collocation_costs = true;
@@ -49,31 +51,31 @@ void TrajectoryOptimization() {
   // params.vision60_params->accel_panalty_threshold = 200;
   // params.phase_prior_dt = std::vector<double>{0.025, 0.025};
 
-  params.vision60_params->sigma_des_pose = 1e-2;
+  params.vision60_params->sigma_des_pose = 2e-3;
   params.vision60_params->sigma_des_twist = 1e-2;
   params.vision60_params->sigma_actuation = 10;
-  params.vision60_params->sigma_jerk = 5;
+  params.vision60_params->sigma_jerk = 3;
   params.vision60_params->sigma_q_col = 1e-2;
   params.vision60_params->sigma_v_col = 1e-2;
-  params.vision60_params->sigma_twist_col = 1e-2;
-  params.vision60_params->sigma_pose_col = 1e-2;
+  params.vision60_params->sigma_twist_col = 2e-3;
+  params.vision60_params->sigma_pose_col = 2e-3;
   params.vision60_params->sigma_cf_jerk = 1e1;
   params.vision60_params->sigma_symmetry = 1e-1;
-  params.vision60_params->cf_jerk_threshold = 100;
+  params.vision60_params->cf_jerk_threshold = 30;
 
 
   /* <=========== inequality constraints ===========> */
   params.vision60_params->include_phase_duration_limits = true;
-  params.vision60_params->phases_min_dt = std::vector<double>{0.015, 0.005};
+  params.vision60_params->phases_min_dt = std::vector<double>{0.01, 0.005};
   if (include_inequality) {
     params.vision60_params->include_friction_cone = true;
     params.vision60_params->include_joint_limits = true;
     params.vision60_params->include_torque_limits = true;
     params.vision60_params->include_collision_free_z = true;
   }
-  auto vision60_multi_phase = GetVision60MultiPhase(params);
 
   /* <=========== create problem ===========> */
+  auto vision60_multi_phase = GetVision60MultiPhase(params);
   auto problem = CreateProblem(params);
   EvaluateAndExportInitValues(problem, vision60_multi_phase, scenario_folder);
   // for (const auto& constraint: problem.iConstraints()) {
@@ -118,21 +120,21 @@ void TrajectoryOptimization() {
   /* <=========== optimize ===========> */
   auto ielm_result = OptimizeIELM(problem, ie_params, iecm_params);
   EvaluateAndExportIELMResult(problem, vision60_multi_phase, ielm_result,
-                              scenario_folder, true);
+                              scenario_folder, false);
 
   /* <=========== 2nd stage optimization ===========> */
   if (two_stage_optimization) {
     VerticalJumpParams new_params = params;
     new_params.vision60_params =
         std::make_shared<IEVision60Robot::Params>(*params.vision60_params);
-    // new_params.vision60_params->sigma_des_pose /= 2;
-    // new_params.vision60_params->sigma_des_twist /= 2;
-    // new_params.vision60_params->sigma_q_col /= 2;
-    // new_params.vision60_params->sigma_v_col /= 2;
-    // new_params.vision60_params->sigma_twist_col /= 2;
-    // new_params.vision60_params->sigma_pose_col /= 2;
-    new_params.vision60_params->include_actuation_costs = false;
-    new_params.vision60_params->include_jerk_costs = false;
+    new_params.vision60_params->sigma_des_pose /= 5;
+    new_params.vision60_params->sigma_des_twist /= 5;
+    new_params.vision60_params->sigma_q_col /= 5;
+    new_params.vision60_params->sigma_v_col /= 5;
+    new_params.vision60_params->sigma_twist_col /= 5;
+    new_params.vision60_params->sigma_pose_col /= 5;
+    // new_params.vision60_params->include_actuation_costs = false;
+    // new_params.vision60_params->include_jerk_costs = false;
     // new_params.vision60_params->include_state_costs = false;
     auto new_problem = CreateProblem(new_params);
     new_problem.values_ = ielm_result.second.back().state.baseValues();
