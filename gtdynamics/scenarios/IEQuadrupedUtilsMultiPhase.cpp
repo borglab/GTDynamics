@@ -140,7 +140,7 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::contactForceJerkCosts() const {
 /* ************************************************************************* */
 NonlinearFactorGraph IEVision60RobotMultiPhase::symmetryCosts() const {
   NonlinearFactorGraph graph;
-  for (size_t k=0; k<=numSteps(); k++) {
+  for (size_t k = 0; k <= numSteps(); k++) {
     graph.add(robotAtStep(k).stepSymmetryCosts(k));
   }
   return graph;
@@ -425,7 +425,8 @@ IEVision60RobotMultiPhase::costsEvalFunc() const {
 }
 
 /* ************************************************************************* */
-void IEVision60RobotMultiPhase::evaluateCollocation(const Values& values) const {
+void IEVision60RobotMultiPhase::evaluateCollocation(
+    const Values &values) const {
   size_t base_id = IEVision60Robot::base_id;
   size_t k = 0;
   double accum_base_error_t = 0, accum_base_error_r = 0;
@@ -436,9 +437,11 @@ void IEVision60RobotMultiPhase::evaluateCollocation(const Values& values) const 
     Key phase_key = PhaseKey(phase_idx);
     for (size_t phase_step = 0; phase_step < phase_num_steps_.at(phase_idx);
          phase_step++) {
-      
-      auto torso_pose_col_factor = robot.multiPhaseLinkPoseCollocationFactor(base_id, k, phase_key);
-      auto torso_twist_col_factor = robot.multiPhaseLinkTwistCollocationFactor(base_id, k, phase_key);
+
+      auto torso_pose_col_factor =
+          robot.multiPhaseLinkPoseCollocationFactor(base_id, k, phase_key);
+      auto torso_twist_col_factor =
+          robot.multiPhaseLinkTwistCollocationFactor(base_id, k, phase_key);
 
       auto error_pose_col = torso_pose_col_factor->unwhitenedError(values);
       auto error_twist_col = torso_twist_col_factor->unwhitenedError(values);
@@ -452,7 +455,8 @@ void IEVision60RobotMultiPhase::evaluateCollocation(const Values& values) const 
       accum_base_error_v += error_v.norm();
       accum_base_error_w += error_w.norm();
 
-      std::cout << k << "\t" << error_t.norm() << "\t" << error_r.norm() << "\t" << error_v.norm() << "\t" << error_w.norm() << "\n";
+      std::cout << k << "\t" << error_t.norm() << "\t" << error_r.norm() << "\t"
+                << error_v.norm() << "\t" << error_w.norm() << "\n";
       k++;
     }
   }
@@ -470,8 +474,8 @@ void IEVision60RobotMultiPhase::evaluateCollocation(const Values& values) const 
 
 using namespace gtsam;
 namespace quadruped_vertical_jump {
-gtsam::IEVision60RobotMultiPhase
-GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+IEVision60RobotMultiPhase::shared_ptr
+GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps) {
 
   auto phase_info_ground = IEVision60Robot::PhaseInfo::Ground();
@@ -484,14 +488,14 @@ GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
 
   std::vector<IEVision60Robot> phase_robots{vision60_ground, vision60_air};
   std::vector<IEVision60Robot> boundary_robots{vision60_boundary};
-  return IEVision60RobotMultiPhase(phase_robots, boundary_robots,
-                                   phase_num_steps);
+  return std::make_shared<IEVision60RobotMultiPhase>(
+      phase_robots, boundary_robots, phase_num_steps);
 }
 } // namespace quadruped_vertical_jump
 
 namespace quadruped_forward_jump {
-gtsam::IEVision60RobotMultiPhase
-GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+IEVision60RobotMultiPhase::shared_ptr
+GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps) {
   auto phase_info_ground = IEVision60Robot::PhaseInfo::Ground();
   auto phase_info_back = IEVision60Robot::PhaseInfo::BackOnGround();
@@ -509,7 +513,7 @@ GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
                                             vision60_air};
   std::vector<IEVision60Robot> boundary_robots{vision60_boundary_gb,
                                                vision60_boundary_ba};
-  return IEVision60RobotMultiPhase(phase_robots, boundary_robots,
-                                   phase_num_steps);
+  return std::make_shared<IEVision60RobotMultiPhase>(
+      phase_robots, boundary_robots, phase_num_steps);
 }
 } // namespace quadruped_forward_jump

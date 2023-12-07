@@ -96,16 +96,17 @@ struct VerticalJumpParams {
   Pose3 des_pose = Pose3(Rot3::Ry(0), Point3(0, 0, 0.8));
 };
 
-inline IEVision60RobotMultiPhase
+inline IEVision60RobotMultiPhase::shared_ptr
 GetVision60MultiPhase(const VerticalJumpParams &params) {
   return GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
 }
 
-inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
+inline std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, VerticalJumpParams>
+CreateProblem(const VerticalJumpParams &params) {
   auto vision60_multi_phase = GetVision60MultiPhase(params);
   // const IEVision60Robot &vision60_4c = vision60_multi_phase.phase_robots_[0];
-  const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
-  size_t num_steps = vision60_multi_phase.numSteps();
+  const IEVision60Robot &vision60_air = vision60_multi_phase->phase_robots_[1];
+  size_t num_steps = vision60_multi_phase->numSteps();
 
   Values des_values;
   // for (const auto &joint : vision60_air.robot.joints()) {
@@ -116,24 +117,24 @@ inline IEConsOptProblem CreateProblem(const VerticalJumpParams &params) {
   }
   InsertTwist(&des_values, vision60_air.base_id, num_steps, Vector6::Zero());
   InsertPose(&des_values, vision60_air.base_id, num_steps, params.des_pose);
-  vision60_multi_phase.params()->state_cost_values = des_values;
+  vision60_multi_phase->params()->state_cost_values = des_values;
 
   /// Constraints
-  EqualityConstraints e_constraints = vision60_multi_phase.eConstraints();
-  InequalityConstraints i_constraints = vision60_multi_phase.iConstraints();
-  NonlinearFactorGraph costs = vision60_multi_phase.costs();
+  EqualityConstraints e_constraints = vision60_multi_phase->eConstraints();
+  InequalityConstraints i_constraints = vision60_multi_phase->iConstraints();
+  NonlinearFactorGraph costs = vision60_multi_phase->costs();
 
   /// Initial Values
   // auto init_values =
   //     InitValuesTrajectory(vision60_multi_phase, params.phases_dt, 15, 5,
   //                          params.init_values_with_trapezoidal);
   auto init_values =
-    InitValuesTrajectoryInfeasible(vision60_multi_phase, params.phases_dt);
+      InitValuesTrajectoryInfeasible(*vision60_multi_phase, params.phases_dt);
 
   /// Problem
   IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
-  problem.eval_func = vision60_multi_phase.costsEvalFunc();
-  return problem;
+  problem.eval_func = vision60_multi_phase->costsEvalFunc();
+  return {problem, vision60_multi_phase, params};
 }
 
 } // namespace quadruped_vertical_jump

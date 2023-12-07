@@ -132,7 +132,7 @@ bool IEVision60Robot::isLeft(const std::string &str) {
 }
 
 /* ************************************************************************* */
-bool IEVision60Robot::isRight(const std::string& str) {
+bool IEVision60Robot::isRight(const std::string &str) {
   if (str.find("fr_") != std::string::npos) {
     return true;
   }
@@ -143,7 +143,7 @@ bool IEVision60Robot::isRight(const std::string& str) {
 }
 
 /* ************************************************************************* */
-bool IEVision60Robot::isHip(const std::string& str) {
+bool IEVision60Robot::isHip(const std::string &str) {
   return str.find("hip") != std::string::npos;
 }
 
@@ -285,12 +285,61 @@ IEVision60Robot::basisKeys(const size_t k,
 
 /* ************************************************************************* */
 BasisKeyFunc IEVision60Robot::getBasisKeyFunc() const {
-  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
+  bool express_redundancy = params->express_redundancy;
+  bool ad_basis_using_torques = params->ad_basis_using_torques;
+  IndexSet contact_indices = phase_info->contact_indices;
+  IndexSet leaving_indices = phase_info->leaving_indices;
+
+  BasisKeyFunc basis_key_func =
+      [express_redundancy, ad_basis_using_torques, contact_indices,
+       leaving_indices](const KeyVector &keys) -> KeyVector {
     if (keys.size() == 1) {
       return keys;
     }
     size_t k = gtdynamics::DynamicsSymbol(*keys.begin()).time();
-    return basisKeys(k, true);
+    KeyVector basis_keys;
+    if (k > 0) {
+      basis_keys.emplace_back(PoseKey(base_id, k));
+      basis_keys.emplace_back(TwistKey(base_id, k));
+      for (size_t i = 0; i < 4; i++) {
+        if (!contact_indices.exists(i)) {
+          basis_keys.emplace_back(JointAngleKey(legs[i].hip_joint_id, k));
+          basis_keys.emplace_back(JointAngleKey(legs[i].upper_joint_id, k));
+          basis_keys.emplace_back(JointAngleKey(legs[i].lower_joint_id, k));
+        }
+      }
+      for (size_t i = 0; i < 4; i++) {
+        if (!contact_indices.exists(i)) {
+          basis_keys.emplace_back(JointVelKey(legs[i].hip_joint_id, k));
+          basis_keys.emplace_back(JointVelKey(legs[i].upper_joint_id, k));
+          basis_keys.emplace_back(JointVelKey(legs[i].lower_joint_id, k));
+        }
+      }
+    }
+    // ad levels
+    if (leaving_indices.size() == 4) {
+      // TODO: for boundary steps
+      return basis_keys;
+    }
+    if (ad_basis_using_torques) {
+      for (size_t j = 0; j < robot.numJoints(); j++) {
+        basis_keys.emplace_back(TorqueKey(j, k));
+      }
+    } else {
+      if (contact_indices.size() == 4) {
+        // ground
+        basis_keys.emplace_back(TwistAccelKey(base_id, k));
+        if (express_redundancy) {
+          basis_keys.emplace_back(ContactRedundancyKey(k));
+        }
+      } else {
+        // air
+        for (size_t j = 0; j < robot.numJoints(); j++) {
+          basis_keys.emplace_back(JointAccelKey(j, k));
+        }
+      }
+    }
+    return basis_keys;
   };
   return basis_key_func;
 }

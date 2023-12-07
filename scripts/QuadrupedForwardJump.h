@@ -108,12 +108,14 @@ struct ForwardJumpParams {
   std::vector<double> phases_dt{0.01, 0.02, 0.02};
 };
 
-inline IEConsOptProblem CreateProblem(const ForwardJumpParams &params) {
+inline std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, ForwardJumpParams>
+CreateProblem(const ForwardJumpParams &params) {
   auto vision60_multi_phase =
       GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
-  // const IEVision60Robot &vision60_4c = vision60_multi_phase.phase_robots_[0];
-  const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
-  size_t num_steps = vision60_multi_phase.numSteps();
+  // const IEVision60Robot &vision60_4c =
+  // vision60_multi_phase->phase_robots_[0];
+  const IEVision60Robot &vision60_air = vision60_multi_phase->phase_robots_[1];
+  size_t num_steps = vision60_multi_phase->numSteps();
 
   Values des_values;
   // for (const auto &joint : vision60_air.robot.joints()) {
@@ -126,7 +128,7 @@ inline IEConsOptProblem CreateProblem(const ForwardJumpParams &params) {
   Pose3 des_pose(Rot3::Identity(),
                  Point3(1.0, 0.0, vision60_air.nominal_height));
   InsertPose(&des_values, vision60_air.base_id, num_steps, des_pose);
-  vision60_multi_phase.params()->state_cost_values = des_values;
+  vision60_multi_phase->params()->state_cost_values = des_values;
 
   for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
     const auto &leg = IEVision60Robot::legs.at(leg_idx);
@@ -135,25 +137,25 @@ inline IEConsOptProblem CreateProblem(const ForwardJumpParams &params) {
     Point3 point_w =
         vision60_air.nominal_contact_in_world.at(leg_idx) + Point3(1, 0, 0);
     Vector3 vel_w = Vector3::Zero();
-    vision60_multi_phase.params()->state_cost_points.emplace_back(
+    vision60_multi_phase->params()->state_cost_points.emplace_back(
         link_id, point_l, point_w, num_steps);
-    vision60_multi_phase.params()->state_cost_point_vels.emplace_back(
+    vision60_multi_phase->params()->state_cost_point_vels.emplace_back(
         link_id, point_l, vel_w, num_steps);
   }
 
   /// Constraints
-  EqualityConstraints e_constraints = vision60_multi_phase.eConstraints();
-  InequalityConstraints i_constraints = vision60_multi_phase.iConstraints();
-  NonlinearFactorGraph costs = vision60_multi_phase.costs();
+  EqualityConstraints e_constraints = vision60_multi_phase->eConstraints();
+  InequalityConstraints i_constraints = vision60_multi_phase->iConstraints();
+  NonlinearFactorGraph costs = vision60_multi_phase->costs();
 
   /// Initial Values
   auto init_values =
-      InitValuesTrajectory(vision60_multi_phase, params.phases_dt);
+      InitValuesTrajectory(*vision60_multi_phase, params.phases_dt);
 
   /// Problem
   IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
-  problem.eval_func = vision60_multi_phase.costsEvalFunc();
-  return problem;
+  problem.eval_func = vision60_multi_phase->costsEvalFunc();
+  return {problem, vision60_multi_phase, params};
 }
 
 } // namespace quadruped_forward_jump

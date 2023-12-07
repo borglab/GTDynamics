@@ -37,6 +37,13 @@ IEVision60Robot::Leg::Leg(const gtdynamics::Robot &robot,
       links({hip_link, upper_link, lower_link}) {}
 
 /* ************************************************************************* */
+void IEVision60Robot::PhaseInfo::print() const {
+  contact_indices.print("contact indices: ");
+  leaving_indices.print("leaving indices: ");
+  landing_indices.print("landing indices: ");
+}
+
+/* ************************************************************************* */
 IEVision60Robot::PhaseInfo::shared_ptr IEVision60Robot::PhaseInfo::Ground() {
   return std::make_shared<PhaseInfo>(IndexSet{0, 1, 2, 3}, IndexSet{},
                                      IndexSet{});

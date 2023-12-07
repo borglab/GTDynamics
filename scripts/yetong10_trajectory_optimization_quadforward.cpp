@@ -21,11 +21,15 @@ using namespace gtsam;
 using namespace quadruped_forward_jump;
 
 bool include_inequality = true;
+std::string constraint_str = include_inequality ? "ie" : "e";
+std::string scenario = "yetong10_" + constraint_str + "_quadruped_jump";
+std::string scenario_folder = "../../data/" + scenario + "/";
 
-void TrajectoryOptimization() {
-  std::string constraint_str = include_inequality ? "ie" : "e";
-  std::string scenario = "yetong10_" + constraint_str + "_quadruped_jump";
-  std::string scenario_folder = "../../data/" + scenario + "/";
+/* <=====================================================================> */
+/* <========================== Create Problem ===========================> */
+/* <=====================================================================> */
+std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, ForwardJumpParams>
+CreateProblem() {
   std::filesystem::create_directory(scenario_folder);
 
   /* <=========== scenario setting ===========> */
@@ -70,10 +74,13 @@ void TrajectoryOptimization() {
   }
 
   /* <=========== create problem ===========> */
-  auto vision60_multi_phase =
-      GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
-  auto problem = CreateProblem(params);
-  EvaluateAndExportInitValues(problem, vision60_multi_phase, scenario_folder);
+
+  return CreateProblem(params);
+}
+
+void TrajectoryOptimization() {
+  auto [problem, vision60_multi_phase, params] = CreateProblem();
+  EvaluateAndExportInitValues(problem, *vision60_multi_phase, scenario_folder);
 
   /* <=====================================================================> */
   /* <========================== Optimize IELM ============================> */
@@ -111,7 +118,7 @@ void TrajectoryOptimization() {
 
   /* <=========== optimize ===========> */
   auto ielm_result = OptimizeIELM(problem, ie_params, iecm_params);
-  EvaluateAndExportIELMResult(problem, vision60_multi_phase, ielm_result,
+  EvaluateAndExportIELMResult(problem, *vision60_multi_phase, ielm_result,
                               scenario_folder, false);
 }
 

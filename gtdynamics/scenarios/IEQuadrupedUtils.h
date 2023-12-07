@@ -160,6 +160,8 @@ public:
         : contact_indices(_contact_indices), leaving_indices(_leaving_indices),
           landing_indices(_landing_indices) {}
 
+    void print() const;
+
     static shared_ptr Ground();
 
     static shared_ptr BackOnGround();
@@ -501,6 +503,7 @@ public:
   std::vector<IEVision60Robot> boundary_robots_;
   std::vector<size_t> phase_num_steps_;
   std::vector<size_t> boundary_ks_;
+  using shared_ptr = std::shared_ptr<IEVision60RobotMultiPhase>;
 
 public:
   IEVision60RobotMultiPhase(const std::vector<IEVision60Robot> &phase_robots,
@@ -623,12 +626,12 @@ public:
 class Vision60MultiPhaseHierarchicalRetractorCreator
     : public IERetractorCreator {
 protected:
-  const IEVision60RobotMultiPhase &vision60_multi_phase_;
+  IEVision60RobotMultiPhase::shared_ptr vision60_multi_phase_;
   bool use_basis_keys_;
 
 public:
   Vision60MultiPhaseHierarchicalRetractorCreator(
-      const IEVision60RobotMultiPhase &vision60_multi_phase,
+      const IEVision60RobotMultiPhase::shared_ptr &vision60_multi_phase,
       const IERetractorParams::shared_ptr &params, bool use_basis_keys)
       : IERetractorCreator(params), vision60_multi_phase_(vision60_multi_phase),
         use_basis_keys_(use_basis_keys) {}
@@ -642,12 +645,12 @@ public:
 /** Barrier retractor creator for multiple phases. */
 class Vision60MultiPhaseBarrierRetractorCreator : public IERetractorCreator {
 protected:
-  const IEVision60RobotMultiPhase &vision60_multi_phase_;
+  IEVision60RobotMultiPhase::shared_ptr vision60_multi_phase_;
   bool use_basis_keys_;
 
 public:
   Vision60MultiPhaseBarrierRetractorCreator(
-      const IEVision60RobotMultiPhase &vision60_multi_phase,
+      const IEVision60RobotMultiPhase::shared_ptr &vision60_multi_phase,
       const IERetractorParams::shared_ptr &params, bool use_basis_keys)
       : IERetractorCreator(params), vision60_multi_phase_(vision60_multi_phase),
         use_basis_keys_(use_basis_keys) {}
@@ -661,11 +664,11 @@ public:
 /** Tangent space creator for multiple phases. */
 class Vision60MultiPhaseTspaceBasisCreator : public TspaceBasisCreator {
 protected:
-  const IEVision60RobotMultiPhase &vision60_multi_phase_;
+  IEVision60RobotMultiPhase::shared_ptr vision60_multi_phase_;
 
 public:
   Vision60MultiPhaseTspaceBasisCreator(
-      const IEVision60RobotMultiPhase &vision60_multi_phase,
+      const IEVision60RobotMultiPhase::shared_ptr &vision60_multi_phase,
       const TspaceBasisParams::shared_ptr params =
           std::make_shared<TspaceBasisParams>(true))
       : TspaceBasisCreator(params),
@@ -688,7 +691,7 @@ TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
 /* ************************************************************************* */
 
 namespace quadruped_vertical_jump {
-gtsam::IEVision60RobotMultiPhase
+gtsam::IEVision60RobotMultiPhase::shared_ptr
 GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps);
 
@@ -714,7 +717,7 @@ gtsam::Values InitValuesTrajectoryDeprecated(
 } // namespace quadruped_vertical_jump
 
 namespace quadruped_forward_jump {
-gtsam::IEVision60RobotMultiPhase
+gtsam::IEVision60RobotMultiPhase::shared_ptr
 GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps);
 

@@ -22,15 +22,16 @@ using namespace quadruped_vertical_jump;
 bool include_inequality = true;
 bool two_stage_optimization = true;
 
-void TrajectoryOptimization() {
-  std::string constraint_str = include_inequality ? "ie" : "e";
-  std::string scenario = "yetong07_" + constraint_str + "_quadruped_jump";
-  std::string scenario_folder = "../../data/" + scenario + "/";
-  std::filesystem::create_directory(scenario_folder);
+std::string constraint_str = include_inequality ? "ie" : "e";
+std::string scenario = "yetong07_" + constraint_str + "_quadruped_jump";
+std::string scenario_folder = "../../data/" + scenario + "/";
 
-  /* <=====================================================================> */
-  /* <========================== Create Problem ===========================> */
-  /* <=====================================================================> */
+/* <=====================================================================> */
+/* <========================== Create Problem ===========================> */
+/* <=====================================================================> */
+std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, VerticalJumpParams>
+CreateProblem() {
+  std::filesystem::create_directory(scenario_folder);
 
   /* <=========== scenario setting ===========> */
   VerticalJumpParams params;
@@ -63,7 +64,6 @@ void TrajectoryOptimization() {
   params.vision60_params->sigma_symmetry = 1e-1;
   params.vision60_params->cf_jerk_threshold = 30;
 
-
   /* <=========== inequality constraints ===========> */
   params.vision60_params->include_phase_duration_limits = true;
   params.vision60_params->phases_min_dt = std::vector<double>{0.01, 0.005};
@@ -75,13 +75,13 @@ void TrajectoryOptimization() {
   }
 
   /* <=========== create problem ===========> */
-  auto vision60_multi_phase = GetVision60MultiPhase(params);
+  return CreateProblem(params);
   auto problem = CreateProblem(params);
-  EvaluateAndExportInitValues(problem, vision60_multi_phase, scenario_folder);
-  // for (const auto& constraint: problem.iConstraints()) {
-  //   PrintKeySet(constraint->keys(), "", GTDKeyFormatter);
-  // }
+}
 
+void TrajectoryOptimization() {
+  auto [problem, vision60_multi_phase, params] = CreateProblem();
+  EvaluateAndExportInitValues(problem, *vision60_multi_phase, scenario_folder);
 
   /* <=====================================================================> */
   /* <========================== Optimize IELM ============================> */
@@ -119,7 +119,7 @@ void TrajectoryOptimization() {
 
   /* <=========== optimize ===========> */
   auto ielm_result = OptimizeIELM(problem, ie_params, iecm_params);
-  EvaluateAndExportIELMResult(problem, vision60_multi_phase, ielm_result,
+  EvaluateAndExportIELMResult(problem, *vision60_multi_phase, ielm_result,
                               scenario_folder, false);
 
   /* <=========== 2nd stage optimization ===========> */
@@ -136,11 +136,12 @@ void TrajectoryOptimization() {
     // new_params.vision60_params->include_actuation_costs = false;
     // new_params.vision60_params->include_jerk_costs = false;
     // new_params.vision60_params->include_state_costs = false;
-    auto new_problem = CreateProblem(new_params);
+    auto new_problem = std::get<0>(CreateProblem(new_params));
     new_problem.values_ = ielm_result.second.back().state.baseValues();
-    EvaluateAndExportInitValues(new_problem, vision60_multi_phase, scenario_folder);
+    EvaluateAndExportInitValues(new_problem, *vision60_multi_phase,
+                                scenario_folder);
     auto new_ielm_result = OptimizeIELM(new_problem, ie_params, iecm_params);
-    EvaluateAndExportIELMResult(problem, vision60_multi_phase, new_ielm_result,
+    EvaluateAndExportIELMResult(problem, *vision60_multi_phase, new_ielm_result,
                                 scenario_folder, false);
   }
 
