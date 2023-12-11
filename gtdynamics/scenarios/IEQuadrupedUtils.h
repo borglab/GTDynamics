@@ -104,6 +104,7 @@ public:
     // Option for i-constraints
     bool include_joint_limits = false;
     bool include_collision_free_s = false;
+    bool include_collision_free_h = false;
     bool include_collision_free_z = false;
     bool include_torque_limits = false;
     bool include_friction_cone = false;
@@ -116,8 +117,14 @@ public:
     std::map<std::string, double> torque_lower_limits;
     std::map<std::string, double> torque_upper_limits;
     std::vector<std::pair<std::string, Point3>> collision_checking_points_s;
+    std::vector<std::pair<std::string, Point3>> collision_checking_points_h;
     std::vector<std::pair<std::string, Point3>> collision_checking_points_z;
     std::vector<std::pair<Point3, double>> sphere_obstacles;
+    std::vector<std::pair<Point2, double>> hurdle_obstacles;
+    std::shared_ptr<std::vector<std::pair<Point2, double>>> spheres_on_ground =
+        std::make_shared<std::vector<std::pair<Point2, double>>>();
+    std::shared_ptr<std::vector<std::pair<double, double>>> hurdles_on_ground =
+        std::make_shared<std::vector<std::pair<double, double>>>();
     double accel_panalty_threshold = 100.0;
     double cf_jerk_threshold = 100.0;
     // Option for costs
@@ -196,6 +203,7 @@ public:
 
   static bool isLeft(const std::string &str);
   static bool isRight(const std::string &str);
+  static std::string frontOrRear(const std::string &str);
   static bool isHip(const std::string &str);
   static std::string counterpart(const std::string &str);
 
@@ -260,10 +268,18 @@ public:
   NonlinearFactorGraph qPointContactFactors(const size_t k) const;
 
   /** <================= Single Inequality Constraint  ===================> **/
+  Double_ terrainHeightExpr(const Vector2_ &point2) const;
+
   /// Collision free with a spherical object.
   gtdynamics::DoubleExpressionInequality::shared_ptr
   obstacleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                   const Point3 &p_l, const Point3 &center,
+                                  const double radius) const;
+
+  /// Collision free with a spherical object.
+  gtdynamics::DoubleExpressionInequality::shared_ptr
+  hurdleCollisionFreeConstraint(const size_t link_idx, const size_t k,
+                                  const Point3 &p_l, const Point2 &center,
                                   const double radius) const;
 
   /// Collision free with ground.
@@ -288,7 +304,7 @@ public:
                              const double lower_limit) const;
 
   gtdynamics::DoubleExpressionInequality::shared_ptr
-  frictionConeConstraint(const size_t contact_link_id, const size_t k) const;
+  frictionConeConstraint(const std::string &link_name, const size_t k) const;
 
   /** <======================= Single Cost Factor ========================> **/
   NoiseModelFactor::shared_ptr
@@ -344,6 +360,8 @@ public:
 
   /// Collision free with obstacles.
   InequalityConstraints obstacleCollisionFreeConstraints(const size_t k) const;
+
+  InequalityConstraints hurdleCollisionFreeConstraints(const size_t k) const;
 
   /// Collision free with ground.
   InequalityConstraints groundCollisionFreeConstraints(const size_t k) const;
@@ -552,6 +570,8 @@ public:
 
   InequalityConstraints obstacleCollisionFreeConstraints() const;
 
+  InequalityConstraints hurdleCollisionFreeConstraints() const;
+
   InequalityConstraints jointLimitConstraints() const;
 
   InequalityConstraints torqueLimitConstraints() const;
@@ -578,6 +598,9 @@ public:
   /// evaluate the error of collocation of each time step, and accumulative
   /// error over the trajectory.
   void evaluateCollocation(const Values &values) const;
+
+  // void exportEvaluation(const Values &values,
+  //                       const std::string &file_path) const;
 };
 
 /* ************************************************************************* */

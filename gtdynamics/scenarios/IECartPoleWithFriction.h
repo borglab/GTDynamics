@@ -106,7 +106,8 @@ public:
 
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const override;
 
   IEConstraintManifold retract1(const IEConstraintManifold *manifold,
                                 const VectorValues &delta) const;
@@ -122,7 +123,8 @@ public:
 
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const override;
 };
 
 } // namespace gtsam

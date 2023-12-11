@@ -281,7 +281,8 @@ BasisKeyFunc IECartPoleWithLimits::getBasisKeyFunc() const {
 /* ************************************************************************* */
 IEConstraintManifold CartPoleWithLimitsRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices) const {
+    const std::optional<IndexSet> &blocking_indices,
+    IERetractInfo* retract_info) const {
   Values new_values = manifold->values().retract(delta);
 
   // delta.print("==============================delta============================\n",

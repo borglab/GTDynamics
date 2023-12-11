@@ -11,11 +11,10 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/utils/DynamicsSymbol.h>
-#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
 #include <gtdynamics/imanifold/IERetractor.h>
-#include <gtdynamics/factors/GeneralPriorFactor.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -26,15 +25,17 @@ namespace gtsam {
 /* ************************************************************************* */
 IEConstraintManifold
 IERetractor::moveToBoundary(const IEConstraintManifold *manifold,
-                            const IndexSet &blocking_indices) const {
+                            const IndexSet &blocking_indices,
+                            IERetractInfo* retract_info) const {
   VectorValues delta = manifold->values().zeroVectors();
-  return retract(manifold, delta, blocking_indices);
+  return retract(manifold, delta, blocking_indices, retract_info);
 }
 
 /* ************************************************************************* */
 IEConstraintManifold BarrierRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices) const {
+    const std::optional<IndexSet> &blocking_indices,
+    IERetractInfo* retract_info) const {
 
   const gtdynamics::InequalityConstraints &i_constraints =
       *manifold->iConstraints();
@@ -56,8 +57,8 @@ IEConstraintManifold BarrierRetractor::retract(
     graph.add(constraint->createBarrierFactor(1.0));
   }
   if (blocking_indices) {
-    for (const auto& idx: *blocking_indices) {
-      const auto& constraint = i_constraints.at(idx);
+    for (const auto &idx : *blocking_indices) {
+      const auto &constraint = i_constraints.at(idx);
       graph.add(constraint->createL2Factor(1.0));
     }
   }
@@ -65,6 +66,9 @@ IEConstraintManifold BarrierRetractor::retract(
       graph, params_->init_values_as_x ? manifold->values() : new_values,
       params_->lm_params);
   Values opt_values = optimizer.optimize();
+  if (retract_info) {
+    retract_info->num_lm_iters = optimizer.iterations();
+  }
 
   // collect active indices
   IndexSet active_indices;
@@ -85,13 +89,17 @@ IEConstraintManifold BarrierRetractor::retract(
   }
   for (const auto &constraint_idx : active_indices) {
     graph_np.add(i_constraints.at(constraint_idx)
-                   ->createEqualityConstraint()
-                   ->createFactor(1.0));
+                     ->createEqualityConstraint()
+                     ->createFactor(1.0));
   }
   // std::cout << "optimize for feasibility\n";
   // active_indices.print("active indices\n");
-  LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values, params_->lm_params);
+  LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values,
+                                           params_->lm_params);
   Values result = optimizer_np.optimize();
+  if (retract_info) {
+    retract_info->num_lm_iters += optimizer_np.iterations();
+  }
   if (params_->check_feasible) {
     CheckFeasible(graph_np, result,
                   "barrier retraction: ", params_->feasible_threshold);
@@ -163,13 +171,15 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
 /* ************************************************************************* */
 IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices) const {
+    const std::optional<IndexSet> &blocking_indices,
+    IERetractInfo* retract_info) const {
 
   Values known_values;
   IndexSet active_indices;
   const Values &values = manifold->values();
   Values new_values = values.retract(delta);
   const InequalityConstraints &i_constraints = *manifold->iConstraints();
+  bool failed = false;
 
   // solve q level with priors
   NonlinearFactorGraph graph_np_q = graph_q_;
@@ -193,8 +203,10 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   Values new_results_q = optimizer_np_q.optimize();
   known_values.insert(new_results_q);
   if (params_->check_feasible) {
-    CheckFeasible(graph_np_q, new_results_q, "q-level",
-                  params_->feasible_threshold);
+    if (!CheckFeasible(graph_np_q, new_results_q, "q-level",
+                       params_->feasible_threshold)) {
+      failed = true;
+    }
   }
 
   // solve v level with priors
@@ -223,8 +235,10 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   Values new_results_v = optimizer_np_v.optimize();
   known_values.insert(new_results_v);
   if (params_->check_feasible) {
-    CheckFeasible(graph_np_v, new_results_v, "v-level",
-                  params_->feasible_threshold);
+    if (!CheckFeasible(graph_np_v, new_results_v, "v-level",
+                       params_->feasible_threshold)) {
+      failed = true;
+    }
   }
 
   // solve a and dynamics level with priors
@@ -248,27 +262,37 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     }
   }
 
-  // std::cout << "values_dim: " << results_ad.dim() << "\n";
-  // std::cout << "graph_dim: " << GraphDim(graph_np_ad) << "\n";
-  // std::cout << "graph size: " << graph_np_ad.size() << "\n";
-  // for (const auto& factor: graph_np_ad) {
-  //   std::cout << "factor " << factor->dim() << "\n\t";
-  //   PrintKeyVector(factor->keys(), "", GTDKeyFormatter);
-  // }
-
   LevenbergMarquardtOptimizer optimizer_np_ad(graph_np_ad, results_ad,
                                               params_->lm_params);
   Values new_results_ad = optimizer_np_ad.optimize();
   known_values.insert(new_results_ad);
   if (params_->check_feasible) {
-    CheckFeasible(graph_np_ad, new_results_ad, "ad-level",
-                  params_->feasible_threshold);
+    if (!CheckFeasible(graph_np_ad, new_results_ad, "ad-level",
+                       params_->feasible_threshold)) {
+      failed = true;
+    }
   }
 
-  // if (params_->check_feasible) {
-  //   CheckFeasible(merit_graph_, known_values, "overall",
-  //                 params_->feasible_threshold);
-  // }
+  if (retract_info) {
+    retract_info->num_lm_iters = optimizer_wp_q.iterations();
+    retract_info->num_lm_iters += optimizer_np_q.iterations();
+    retract_info->num_lm_iters += optimizer_wp_v.iterations();
+    retract_info->num_lm_iters += optimizer_np_v.iterations();
+    retract_info->num_lm_iters += optimizer_wp_ad.iterations();
+    retract_info->num_lm_iters += optimizer_np_ad.iterations();
+  }
+
+  // solve a and dynamics level without priors
+  if (failed) {
+    LevenbergMarquardtOptimizer optimizer_all(merit_graph_, known_values,
+                                              params_->lm_params);
+    known_values = optimizer_all.optimize();
+    if (retract_info) {
+      retract_info->num_lm_iters += optimizer_all.iterations();
+    }
+    CheckFeasible(merit_graph_, known_values, "all-levels",
+                  params_->feasible_threshold);
+  }
 
   return manifold->createWithNewValues(known_values, active_indices);
 }

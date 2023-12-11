@@ -194,9 +194,9 @@ public:
       const DoubleExpressionInequality::shared_ptr ineq1,
       const DoubleExpressionInequality::shared_ptr ineq2,
       const std::string &name = "")
-      : InequalityConstraint(name), ineq1_(ineq1), ineq2_(ineq2),
-        expression_(
-            ConstructExpression(ineq1->expression(), ineq2->expression())),
+      : InequalityConstraint(name == "" ? ineq1->name() : name), ineq1_(ineq1),
+        ineq2_(ineq2), expression_(ConstructExpression(ineq1->expression(),
+                                                       ineq2->expression())),
         tolerance_(ineq1->tolerance(), ineq2->tolerance()) {}
 
   /** Check if constraint violation is within tolerance. */
@@ -204,9 +204,9 @@ public:
     return ineq1_->feasible(x) && ineq2_->feasible(x);
   }
 
-  DoubleExpressionInequality::shared_ptr constraint1() const {return ineq1_; }
+  DoubleExpressionInequality::shared_ptr constraint1() const { return ineq1_; }
 
-  DoubleExpressionInequality::shared_ptr constraint2() const {return ineq2_; }
+  DoubleExpressionInequality::shared_ptr constraint2() const { return ineq2_; }
 
   /** Evaluate the constraint function, g(x). */
   double operator()(const gtsam::Values &x) const override {

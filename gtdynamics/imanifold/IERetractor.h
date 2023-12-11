@@ -71,6 +71,11 @@ struct IERetractorParams {
   }
 };
 
+
+struct IERetractInfo {
+  size_t num_lm_iters;
+};
+
 /** Base class that implements the retraction operation for the constraint
  * manifold. */
 class IERetractor {
@@ -91,11 +96,13 @@ public:
   /// Retract the base variables that compose the constraint manifold.
   virtual IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const = 0;
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const = 0;
 
   virtual IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
-                 const IndexSet &blocking_indices) const;
+                 const IndexSet &blocking_indices,
+                 IERetractInfo* retract_info = nullptr) const;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
@@ -121,7 +128,8 @@ public:
 
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const override;
 };
 
 /**
@@ -153,7 +161,8 @@ public:
 
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override;
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const override;
 };
 
 /* ************************************************************************* */

@@ -41,7 +41,13 @@ std::string IEManifoldValues::activeConstraintsStr(
   for (const auto &[key, manifold] : *this) {
     for (const auto &i_idx : manifold.activeIndices()) {
       const auto &constraint = manifold.iConstraints()->at(i_idx);
-      str += " " + key_formatter(*constraint->keys().begin());
+      if (constraint->name() == "") {
+        str += " " + key_formatter(*constraint->keys().begin());
+      }
+      else {
+        str += " " + constraint->name();
+      }
+      
     }
   }
   return str;

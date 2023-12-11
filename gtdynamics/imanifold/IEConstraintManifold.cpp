@@ -27,17 +27,20 @@ std::pair<IndexSet, VectorValues> IEConstraintManifold::projectTangentCone(
 }
 
 /* ************************************************************************* */
-IEConstraintManifold IEConstraintManifold::retract(
-    const Vector &xi, const std::optional<IndexSet> &blocking_indices) const {
+IEConstraintManifold
+IEConstraintManifold::retract(const Vector &xi,
+                              const std::optional<IndexSet> &blocking_indices,
+                              IERetractInfo *retract_info) const {
   auto tangent_vector = e_basis_->computeTangentVector(xi);
-  return retract(tangent_vector, blocking_indices);
+  return retract(tangent_vector, blocking_indices, retract_info);
 }
 
 /* ************************************************************************* */
-IEConstraintManifold IEConstraintManifold::retract(
-    const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices) const {
-  return retractor_->retract(this, delta, blocking_indices);
+IEConstraintManifold
+IEConstraintManifold::retract(const VectorValues &delta,
+                              const std::optional<IndexSet> &blocking_indices,
+                              IERetractInfo *retract_info) const {
+  return retractor_->retract(this, delta, blocking_indices, retract_info);
 }
 
 /* ************************************************************************* */
@@ -64,8 +67,9 @@ IndexSet IEConstraintManifold::blockingIndices(
 
 /* ************************************************************************* */
 IEConstraintManifold
-IEConstraintManifold::moveToBoundary(const IndexSet &active_indices) const {
-  return retractor_->moveToBoundary(this, active_indices);
+IEConstraintManifold::moveToBoundary(const IndexSet &active_indices,
+                                     IERetractInfo *retract_info) const {
+  return retractor_->moveToBoundary(this, active_indices, retract_info);
 }
 
 /* ************************************************************************* */

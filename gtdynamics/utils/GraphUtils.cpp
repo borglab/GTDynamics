@@ -30,7 +30,7 @@ void PrintGraphWithError(const NonlinearFactorGraph &graph,
 }
 
 /* ************************************************************************* */
-void CheckFeasible(const NonlinearFactorGraph &graph, const Values &values,
+bool CheckFeasible(const NonlinearFactorGraph &graph, const Values &values,
                    const std::string s, const double feasible_threshold,
                    bool print_details, const KeyFormatter &key_formatter) {
 
@@ -39,7 +39,9 @@ void CheckFeasible(const NonlinearFactorGraph &graph, const Values &values,
     if (print_details) {
       PrintGraphWithError(graph, values, feasible_threshold, key_formatter);
     }
+    return false;
   }
+  return true;
 }
 
 /* ************************************************************************* */

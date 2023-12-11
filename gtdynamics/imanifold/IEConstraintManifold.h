@@ -123,15 +123,19 @@ public:
    * constraints. Will also enforce satisfying other inequality constraints. */
   virtual IEConstraintManifold
   retract(const Vector &xi,
-          const std::optional<IndexSet> &blocking_indices = {}) const;
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo *retract_info = nullptr) const;
 
   virtual IEConstraintManifold
   retract(const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const;
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo *retract_info = nullptr) const;
 
   IndexSet blockingIndices(const VectorValues &tangent_vector) const;
 
-  IEConstraintManifold moveToBoundary(const IndexSet &active_indices) const;
+  IEConstraintManifold
+  moveToBoundary(const IndexSet &active_indices,
+                 IERetractInfo *retract_info = nullptr) const;
 
   /// Construct an e-constraint manifold that only includes equalily
   /// constraints.

@@ -264,7 +264,8 @@ void UpdateBoundary(const double &a, const double &b, const size_t &index,
 /* ************************************************************************* */
 IEConstraintManifold CartPoleWithFrictionRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices) const {
+    const std::optional<IndexSet> &blocking_indices,
+    IERetractInfo* retract_info) const {
 
   Values new_values = manifold->values().retract(delta);
   int k = Symbol(new_values.keys().front()).index();
@@ -424,7 +425,8 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
 /* ************************************************************************* */
 IEConstraintManifold CPBarrierRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices) const {
+    const std::optional<IndexSet> &blocking_indices,
+    IERetractInfo* retract_info) const {
 
   const gtdynamics::InequalityConstraints &i_constraints =
       *manifold->iConstraints();

@@ -38,7 +38,7 @@ void PrintGraphWithError(
 
 /** Check if the values is feasible to the constraints corresponding to the
  * factor graph. */
-void CheckFeasible(
+bool CheckFeasible(
     const NonlinearFactorGraph &graph, const Values &values,
     const std::string s = "", const double feasible_threshold = 1e-3,
     bool print_details = false,

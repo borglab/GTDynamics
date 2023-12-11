@@ -148,6 +148,19 @@ bool IEVision60Robot::isHip(const std::string &str) {
 }
 
 /* ************************************************************************* */
+std::string IEVision60Robot::frontOrRear(const std::string &str) {
+  if (str.find("fl_") != std::string::npos ||
+      str.find("fr_") != std::string::npos) {
+    return "f";
+  }
+  if (str.find("rl_") != std::string::npos ||
+      str.find("rr_") != std::string::npos) {
+    return "r";
+  }
+  return "";
+}
+
+/* ************************************************************************* */
 std::string IEVision60Robot::counterpart(const std::string &str) {
   if (str.find("fl_") != std::string::npos) {
     return std::regex_replace(str, std::regex("fl_"), "fr_");

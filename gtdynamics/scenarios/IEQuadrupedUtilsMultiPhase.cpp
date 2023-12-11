@@ -193,8 +193,11 @@ IEVision60RobotMultiPhase::classifiedCosts() const {
     classified_costs.emplace_back("cf_jerk", contactForceJerkCosts());
   }
   if (params()->collision_as_cost) {
-    classified_costs.emplace_back(
-        "collision", groundCollisionFreeConstraints().meritGraph());
+    NonlinearFactorGraph graph;
+    graph.add(groundCollisionFreeConstraints().meritGraph());
+    graph.add(obstacleCollisionFreeConstraints().meritGraph());
+    graph.add(hurdleCollisionFreeConstraints().meritGraph());
+    classified_costs.emplace_back("collision", graph);
   }
   if (params()->include_symmetry_costs) {
     classified_costs.emplace_back("symmetry", symmetryCosts());
@@ -247,6 +250,16 @@ IEVision60RobotMultiPhase::obstacleCollisionFreeConstraints() const {
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
+IEVision60RobotMultiPhase::hurdleCollisionFreeConstraints() const {
+  gtdynamics::InequalityConstraints constraints;
+  for (size_t k = 0; k <= numSteps(); k++) {
+    constraints.add(robotAtStep(k).hurdleCollisionFreeConstraints(k));
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
 IEVision60RobotMultiPhase::torqueLimitConstraints() const {
   gtdynamics::InequalityConstraints constraints;
   for (size_t k = 0; k <= numSteps(); k++) {
@@ -291,6 +304,10 @@ IEVision60RobotMultiPhase::classifiedIConstraints() const {
   if (params()->include_collision_free_s) {
     classified_constraints.emplace_back("collision_free_obstacle",
                                         obstacleCollisionFreeConstraints());
+  }
+  if (params()->include_collision_free_h) {
+    classified_constraints.emplace_back("collision_free_hurdle",
+                                        hurdleCollisionFreeConstraints());
   }
   if (params()->include_collision_free_z) {
     classified_constraints.emplace_back("collision_free_ground",
@@ -384,6 +401,7 @@ IEVision60RobotMultiPhase::costsEvalFunc() const {
   std::map<std::string, double> constraint_sigma_map{
       {"joint_limit", params_->tol_jl},
       {"collision_free_obstacle", params_->tol_cf},
+      {"collision_free_hurdle", params_->tol_cf},
       {"collision_free_ground", params_->tol_cf},
       {"torque_limit", params_->tol_tl},
       {"friction_cone", params_->tol_fc},
@@ -465,6 +483,19 @@ void IEVision60RobotMultiPhase::evaluateCollocation(
   std::cout << "accumulative velocity error:    " << accum_base_error_v << "\n";
   std::cout << "accumulative angular vel error: " << accum_base_error_w << "\n";
 }
+
+// /* *************************************************************************
+// */ void IEVision60RobotMultiPhase::exportEvaluation(
+//     const Values &values, const std::string &file_path) const {
+//   auto graph = costs();
+//   auto e_constraints = eConstraints();
+//   auto i_constraints = iConstraints();
+
+//   auto classified_costs = classifiedCosts();
+//   auto classified_i_constraints = classifiedIConstraints();
+//   auto collocation_factors = collocationFactorsByStep();
+
+// }
 
 } // namespace gtsam
 

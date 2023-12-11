@@ -98,6 +98,7 @@ struct IELMTrial {
     double new_error;
     double cost_change;
     bool solve_successful;
+    size_t num_solves; // number of solving linear systems
 
     /** Default constructor. */
     LinearUpdate() {}
@@ -149,6 +150,7 @@ struct IELMTrial {
     Values new_unconstrained_values;
     double new_error;
     double cost_change;
+    size_t num_retract_iters; // total number of iterations in LM opt.
 
     /** Default constructor. */
     NonlinearUpdate() {}

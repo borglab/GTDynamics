@@ -219,8 +219,9 @@ IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
 
 /* ************************************************************************* */
 gtdynamics::DoubleExpressionInequality::shared_ptr
-IEVision60Robot::frictionConeConstraint(const size_t contact_link_id,
+IEVision60Robot::frictionConeConstraint(const std::string &link_name,
                                         const size_t k) const {
+  auto link_id = robot.link(link_name)->id();
   double mu = params->mu;
   double mu_prime = mu * mu;
   auto friction_cone_function =
@@ -234,8 +235,9 @@ IEVision60Robot::frictionConeConstraint(const size_t contact_link_id,
         return result;
       };
 
-  Vector3_ contact_force_expr(ContactForceKey(contact_link_id, 0, k));
+  Vector3_ contact_force_expr(ContactForceKey(link_id, 0, k));
   Double_ compute_fc_expr(friction_cone_function, contact_force_expr);
+  std::string name = "fc_" + link_name + "(" + std::to_string(k) + ")";
   return std::make_shared<DoubleExpressionInequality>(compute_fc_expr,
                                                       params->tol_fc);
 }
@@ -252,11 +254,12 @@ IEVision60Robot::frictionConeConstraints(const size_t k) const {
       std::string link_name = robot.orderedLinks().at(link_id)->name();
       if (isLeft(link_name)) {
         std::string counterpart_name = counterpart(link_name);
-        size_t counterpart_id = robot.link(counterpart_name)->id();
-        auto constraint = frictionConeConstraint(link_id, k);
-        auto other_constraint = frictionConeConstraint(counterpart_id, k);
+        auto constraint = frictionConeConstraint(link_name, k);
+        auto other_constraint = frictionConeConstraint(counterpart_name, k);
+        std::string name =
+            "fc[" + frontOrRear(link_name) + "]" + std::to_string(k);
         constraints.emplace_shared<TwinDoubleExpressionInequality>(
-            constraint, other_constraint);
+            constraint, other_constraint, name);
       }
     }
   } else {
@@ -264,7 +267,8 @@ IEVision60Robot::frictionConeConstraints(const size_t k) const {
       if (leaving_link_indices.exists(link_id)) {
         continue;
       }
-      constraints.push_back(frictionConeConstraint(link_id, k));
+      std::string link_name = robot.orderedLinks().at(link_id)->name();
+      constraints.push_back(frictionConeConstraint(link_name, k));
     }
   }
   return constraints;
@@ -289,6 +293,79 @@ IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
 
 /* ************************************************************************* */
 gtdynamics::DoubleExpressionInequality::shared_ptr
+IEVision60Robot::hurdleCollisionFreeConstraint(const size_t link_idx,
+                                               const size_t k,
+                                               const Point3 &p_l,
+                                               const Point2 &center,
+                                               const double radius) const {
+  Pose3_ wTl(PoseKey(link_idx, k));
+  Point3_ p_l_const(p_l);
+  Point3_ p_w(wTl, &Pose3::transformFrom, p_l_const);
+  Matrix23 H_xz;
+  H_xz << 1, 0, 0, 0, 0, 1;
+  const std::function<gtsam::Vector2(gtsam::Point3)> f =
+      [H_xz](const gtsam::Point3 &A) { return H_xz * A; };
+  Point2_ p2_w = gtsam::linearExpression(f, p_w, H_xz);
+  Point2_ center_const(center);
+  Double_ dist(distance2, p2_w, center_const);
+  Double_ collsion_free_expr = dist - Double_(radius);
+  return std::make_shared<DoubleExpressionInequality>(collsion_free_expr,
+                                                      params->tol_cf);
+}
+
+/* ************************************************************************* */
+Double_
+IEVision60Robot::terrainHeightExpr(const Vector2_ &point_on_ground) const {
+
+  auto spheres_on_ground = params->spheres_on_ground;
+  auto hurdles_on_ground = params->hurdles_on_ground;
+
+  auto terrain_height_function = [spheres_on_ground, hurdles_on_ground](
+                                     const Vector2 &point,
+                                     OptionalJacobian<1, 2> H = {}) -> double {
+    double ground_height = 0;
+    if (H)
+      H->setConstant(0);
+    for (const auto &[center, radius] : *spheres_on_ground) {
+      double dist = distance2(center, point);
+      if (dist < radius) {
+        double height = sqrt(radius * radius - dist * dist);
+        if (height > ground_height) {
+          ground_height = height;
+          if (H) {
+            Matrix12 H_dist;
+            distance2(center, point, {}, H_dist);
+            *H = -dist / height * H_dist;
+          }
+        }
+      }
+    }
+
+    double x = point(0);
+    for (const auto &[center_x, radius] : *hurdles_on_ground) {
+      double dist = abs(center_x - x);
+      if (dist < radius) {
+        double height = sqrt(radius * radius - dist * dist);
+        if (height > ground_height) {
+          ground_height = height;
+          if (H) {
+            if (x > center_x) {
+              (*H) << -dist / height, 0;
+            } else {
+              (*H) << dist / height, 0;
+            }
+          }
+        }
+      }
+    }
+
+    return ground_height;
+  };
+  return Double_(terrain_height_function, point_on_ground);
+}
+
+/* ************************************************************************* */
+gtdynamics::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::groundCollisionFreeConstraint(const size_t link_idx,
                                                const size_t k,
                                                const Point3 &p_l) const {
@@ -296,7 +373,15 @@ IEVision60Robot::groundCollisionFreeConstraint(const size_t link_idx,
   Point3_ p_l_const(p_l);
   Point3_ p_w(wTl, &Pose3::transformFrom, p_l_const);
   Double_ z(&point3_z, p_w);
-  return std::make_shared<DoubleExpressionInequality>(z, params->tol_cf);
+  Matrix23 H_xy;
+  H_xy << 1, 0, 0, 0, 1, 0;
+  const std::function<gtsam::Vector2(gtsam::Point3)> f =
+      [H_xy](const gtsam::Point3 &A) { return H_xy * A; };
+  Vector2_ point_on_ground = gtsam::linearExpression(f, p_w, H_xy);
+
+  Double_ ground_height = terrainHeightExpr(point_on_ground);
+  return std::make_shared<DoubleExpressionInequality>(z - ground_height,
+                                                      params->tol_cf);
 }
 
 /* ************************************************************************* */
@@ -308,8 +393,9 @@ IEVision60Robot::jointUpperLimitConstraint(const std::string &j_name,
   Key joint_key = JointAngleKey(joint_id, k);
   Double_ q_expr(joint_key);
   Double_ q_max_expr = Double_(upper_limit) - q_expr;
+  std::string name = "jlu(" + j_name + ")" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(q_max_expr,
-                                                      params->tol_jl);
+                                                      params->tol_jl, name);
 }
 
 /* ************************************************************************* */
@@ -321,8 +407,9 @@ IEVision60Robot::jointLowerLimitConstraint(const std::string &j_name,
   Key joint_key = JointAngleKey(joint_id, k);
   Double_ q_expr(joint_key);
   Double_ q_min_expr = q_expr - Double_(lower_limit);
+  std::string name = "jll(" + j_name + ")" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(q_min_expr,
-                                                      params->tol_jl);
+                                                      params->tol_jl, name);
 }
 
 /* ************************************************************************* */
@@ -334,8 +421,9 @@ IEVision60Robot::torqueUpperLimitConstraint(const std::string &j_name,
   Key torque_key = TorqueKey(joint_id, k);
   Double_ tau_expr(torque_key);
   Double_ tau_max_expr = Double_(upper_limit) - tau_expr;
+  std::string name = "Tu(" + j_name + ")" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(tau_max_expr,
-                                                      params->tol_tl);
+                                                      params->tol_tl, name);
 }
 
 /* ************************************************************************* */
@@ -347,8 +435,9 @@ IEVision60Robot::torqueLowerLimitConstraint(const std::string &j_name,
   Key torque_key = TorqueKey(joint_id, k);
   Double_ tau_expr(torque_key);
   Double_ tau_min_expr = tau_expr - Double_(lower_limit);
+  std::string name = "Tl(" + j_name + ")" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(tau_min_expr,
-                                                      params->tol_tl);
+                                                      params->tol_tl, name);
 }
 
 /* ************************************************************************* */
@@ -476,6 +565,47 @@ IEVision60Robot::obstacleCollisionFreeConstraints(const size_t k) const {
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
+IEVision60Robot::hurdleCollisionFreeConstraints(const size_t k) const {
+  InequalityConstraints constraints;
+  if (params->i_constraints_symmetry) {
+    for (const auto &[center, radius] : params->hurdle_obstacles) {
+      for (const auto &[link_name, p_l] : params->collision_checking_points_h) {
+        if (isRight(link_name)) {
+          continue;
+        }
+        uint8_t link_idx = robot.link(link_name)->id();
+        if (std::find(contact_link_ids.begin(), contact_link_ids.end(),
+                      link_idx) != contact_link_ids.end()) {
+          continue;
+        }
+        auto constraint =
+            hurdleCollisionFreeConstraint(link_idx, k, p_l, center, radius);
+        if (isLeft(link_name)) {
+          std::string counterpart_name = counterpart(link_name);
+          size_t counterpart_idx = robot.link(counterpart_name)->id();
+          auto counterpart_constraint = hurdleCollisionFreeConstraint(
+              counterpart_idx, k, p_l, center, radius);
+          constraints.emplace_shared<TwinDoubleExpressionInequality>(
+              constraint, counterpart_constraint);
+        } else {
+          constraints.push_back(constraint);
+        }
+      }
+    }
+  } else {
+    for (const auto &[center, radius] : params->hurdle_obstacles) {
+      for (const auto &[link_name, p_l] : params->collision_checking_points_h) {
+        uint8_t link_idx = robot.link(link_name)->id();
+        constraints.push_back(
+            hurdleCollisionFreeConstraint(link_idx, k, p_l, center, radius));
+      }
+    }
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::InequalityConstraints
 IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
@@ -484,6 +614,10 @@ IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
         continue;
       }
       uint8_t link_idx = robot.link(link_name)->id();
+      if (std::find(contact_link_ids.begin(), contact_link_ids.end(),
+                    link_idx) != contact_link_ids.end()) {
+        continue;
+      }
       auto constraint = groundCollisionFreeConstraint(link_idx, k, p_l);
       if (isLeft(link_name)) {
         std::string counterpart_name = counterpart(link_name);
@@ -499,6 +633,10 @@ IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
   } else {
     for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
       uint8_t link_idx = robot.link(link_name)->id();
+      if (std::find(contact_link_ids.begin(), contact_link_ids.end(),
+                    link_idx) != contact_link_ids.end()) {
+        continue;
+      }
       constraints.push_back(groundCollisionFreeConstraint(link_idx, k, p_l));
     }
   }
@@ -763,9 +901,8 @@ IEVision60Robot::stepActuationRmseTorqueCosts(const size_t k) const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-IEVision60Robot::stepActuationImpulseCosts(const size_t k, const size_t phase_idx,
-                                       bool apply_sqrt) const {
+NonlinearFactorGraph IEVision60Robot::stepActuationImpulseCosts(
+    const size_t k, const size_t phase_idx, bool apply_sqrt) const {
   // TODO: add option with apply_sqrt
   NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {

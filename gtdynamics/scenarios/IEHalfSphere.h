@@ -130,7 +130,8 @@ public:
 
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override {
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -158,7 +159,8 @@ public:
 
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {}) const override {
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const override {
 
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
@@ -177,7 +179,8 @@ public:
 
   IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
-                 const IndexSet &blocking_indices) const override {
+                 const IndexSet &blocking_indices,
+                 IERetractInfo* retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
 

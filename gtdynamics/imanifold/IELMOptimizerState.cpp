@@ -71,7 +71,8 @@ void IELMState::identifyGradBlockingIndices(
   gradient = linear_graph->gradientAtZero();
   VectorValues descent_dir = -1 * gradient;
 
-  // std::cout << "descent_dir dt1: " << descent_dir.at(gtdynamics::PhaseKey(1)) << "\n";
+  // std::cout << "descent_dir dt1: " << descent_dir.at(gtdynamics::PhaseKey(1))
+  // << "\n";
 
   // identify blocking constraints
   blocking_indices_map =
@@ -80,7 +81,6 @@ void IELMState::identifyGradBlockingIndices(
   // if (blocking_indices_map.exists(gtdynamics::PhaseKey(1))) {
   //   blocking_indices_map[gtdynamics::PhaseKey(1)] = IndexSet();
   // }
-
 }
 
 /* ************************************************************************* */
@@ -227,6 +227,7 @@ void PrintIELMTrialTitle() {
        << " " << setw(12) << "linear "
        << " " << setw(10) << "lambda "
        << " " << setw(10) << "solve_succ "
+       << " " << setw(10) << "num_solves "
        << " " << setw(10) << "time   "
        << " " << setw(10) << "delta_norm" << endl;
 }
@@ -248,6 +249,8 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     cout << setw(10) << setprecision(2) << linear_update.lambda << " ";
     cout << setw(10) << (linear_update.solve_successful ? "T   " : "F   ")
          << " ";
+    cout << setw(4) << linear_update.num_solves << "|" << setw(5)
+         << nonlinear_update.num_retract_iters << " ";
     cout << setw(10) << setprecision(2) << trial.trial_time << " ";
     cout << setw(10) << setprecision(4) << linear_update.delta.norm() << " ";
     if (params.show_active_costraints) {
@@ -264,8 +267,13 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     for (const auto &[key, index_set] : trial.forced_indices_map) {
       const auto &manifold = state.manifolds.at(key);
       for (const auto &i_idx : index_set) {
-        Key key = *manifold.iConstraints()->at(i_idx)->keys().begin();
-        forced_i_str += " " + key_formatter(key);
+        const auto &constraint = manifold.iConstraints()->at(i_idx);
+        if (constraint->name() == "") {
+          Key key = *constraint->keys().begin();
+          forced_i_str += " " + key_formatter(key);
+        } else {
+          forced_i_str += " " + constraint->name();
+        }
       }
     }
     cout << forced_i_str;
@@ -275,10 +283,11 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
   }
   cout << endl;
 
-
   // for (const auto& [key, manifold]: nonlinear_update.new_manifolds) {
   //   for (const auto &constraint: *manifold.iConstraints()) {
-  //     if (auto p = std::dynamic_pointer_cast<gtdynamics::TwinDoubleExpressionInequality>(constraint)) {
+  //     if (auto p =
+  //     std::dynamic_pointer_cast<gtdynamics::TwinDoubleExpressionInequality>(constraint))
+  //     {
   //       double eval1 = (*p->constraint1())(manifold.values());
   //       double eval2 = (*p->constraint2())(manifold.values());
   //       if (abs(eval1-eval2)>1e-3) {
@@ -299,7 +308,7 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const NonlinearFactorGraph &graph,
                                       const IELMState &state,
                                       const LevenbergMarquardtParams &params)
-    : lambda(_lambda) {
+    : lambda(_lambda), num_solves(0) {
   // initialize blocking constraints and e_manifolds
   std::map<Key, Key> keymap_var2manifold =
       IEOptimizer::Var2ManifoldKeyMap(state.manifolds);
@@ -318,6 +327,7 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
     // solve delta
     // VectorValues delta;
     try {
+      num_solves += 1;
       delta = SolveLinear(damped_system, params);
       solve_successful = true;
     } catch (const IndeterminantLinearSystemException &) {
@@ -331,10 +341,6 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       const Vector &xi = delta.at(key);
       ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
       VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
-
-      // if (key == gtdynamics::PhaseKey(1)) {
-      //   tv.print("tangent vector: ", gtdynamics::GTDKeyFormatter);
-      // }
 
       IndexSet blocking_indices = state.manifolds.at(key).blockingIndices(tv);
       if (blocking_indices.size() > 0) {
@@ -469,17 +475,21 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
   }
 
   // retract for ie-manifolds
+  num_retract_iters = 0;
   for (const Key &key : linear_update.e_manifolds.keys()) {
     const auto &manifold = state.manifolds.at(key);
     VectorValues tv =
         SubValues(linear_update.tangent_vector, manifold.values().keys());
     const auto &blocking_indices_map = linear_update.blocking_indices_map;
+    IERetractInfo retract_info;
     if (blocking_indices_map.find(key) != blocking_indices_map.end()) {
       const auto &blocking_indices = blocking_indices_map.at(key);
-      new_manifolds.emplace(key, manifold.retract(tv, blocking_indices));
+      new_manifolds.emplace(
+          key, manifold.retract(tv, blocking_indices, &retract_info));
     } else {
-      new_manifolds.emplace(key, manifold.retract(tv));
+      new_manifolds.emplace(key, manifold.retract(tv, {}, &retract_info));
     }
+    num_retract_iters += retract_info.num_lm_iters;
   }
 
   // retract for unconstrained variables
