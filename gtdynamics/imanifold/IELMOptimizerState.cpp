@@ -19,6 +19,7 @@ IELMState::IELMState(const IEManifoldValues &_manifolds,
       error(EvaluateGraphError(graph, manifolds, _unconstrained_values)),
       lambda(_lambda), lambda_factor(_lambda_factor), iterations(_iterations) {
   ConstructEManifolds(graph);
+  base_linear = graph.linearize(baseValues());
 }
 
 /* ************************************************************************* */
@@ -221,15 +222,17 @@ void IELMTrial::setDecreasedNextLambda(
 
 /* ************************************************************************* */
 void PrintIELMTrialTitle() {
-  cout << setw(10) << "iter"
-       << " " << setw(12) << "error "
-       << " " << setw(12) << "nonlinear "
-       << " " << setw(12) << "linear "
-       << " " << setw(10) << "lambda "
-       << " " << setw(10) << "num_solves  "
-       << " " << setw(14) << "retract_devi   "
-       << " " << setw(10) << "time   "
-       << " " << setw(10) << "delta_norm" << endl;
+  cout << setw(10) << "iter   "
+       << "|" << setw(12) << "error  "
+       << "|" << setw(12) << "nonlinear "
+       << "|" << setw(12) << "linear   "
+       << "|" << setw(12) << "linear_retr"
+       << "|" << setw(10) << "lambda  "
+       << "|" << setw(10) << "num_solves"
+       << "|" << setw(14) << "retract_devi "
+       << "|" << setw(10) << "time  "
+       << "|" << setw(10) << "delta_norm"
+       << "|" << setw(30) << "active cosntraints" << endl;
 }
 
 double VectorMean(const std::vector<double> &vec) {
@@ -249,22 +252,26 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
   }
   const auto &nonlinear_update = trial.nonlinear_update;
   const auto &linear_update = trial.linear_update;
-  cout << setw(10) << state.iterations << " ";
-  cout << setw(12) << setprecision(4) << nonlinear_update.new_error << " ";
-  cout << setw(12) << setprecision(4) << nonlinear_update.cost_change << " ";
+  cout << setw(10) << state.iterations << "|";
+  cout << setw(12) << setprecision(4) << nonlinear_update.new_error << "|";
+  cout << setw(12) << setprecision(4) << nonlinear_update.cost_change << "|";
   if (!forced) {
-    cout << setw(10) << setprecision(4) << linear_update.cost_change << " ";
-    cout << setw(10) << setprecision(2) << linear_update.lambda << " ";
+    cout << setw(12) << setprecision(4) << linear_update.cost_change << "|";
+    cout << setw(12) << setprecision(4)
+         << nonlinear_update.linear_cost_change_with_retract_delta << "|";
+    cout << setw(10) << setprecision(2) << linear_update.lambda << "|";
     if (!linear_update.solve_successful) {
       cout << "linear solve not successful\n";
       return;
     }
-    cout << setw(4) << linear_update.num_solves << "|" << setw(5)
-         << nonlinear_update.num_retract_iters << " ";
+    cout << setw(4) << linear_update.num_solves << "|" << setw(5) << std::left
+         << nonlinear_update.num_retract_iters << std::right << "|";
     cout << setw(7) << VectorMean(nonlinear_update.retract_divate_rates) << "|"
-         << setw(6) << VectorMax(nonlinear_update.retract_divate_rates) << " ";
-    cout << setw(10) << setprecision(2) << trial.trial_time << " ";
-    cout << setw(10) << setprecision(4) << linear_update.delta.norm() << " ";
+         << setw(6) << std::left
+         << VectorMax(nonlinear_update.retract_divate_rates) << std::right
+         << "|";
+    cout << setw(10) << setprecision(2) << trial.trial_time << "|";
+    cout << setw(10) << setprecision(4) << linear_update.delta.norm() << "|";
     if (params.show_active_costraints) {
       cout << nonlinear_update.new_manifolds.activeConstraintsStr();
     }
@@ -488,6 +495,7 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
 
   // retract for ie-manifolds
   num_retract_iters = 0;
+  VectorValues retract_delta;
   for (const Key &key : linear_update.e_manifolds.keys()) {
     const auto &manifold = state.manifolds.at(key);
     VectorValues tv =
@@ -503,6 +511,11 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
     }
     num_retract_iters += retract_info.num_lm_iters;
     retract_divate_rates.push_back(retract_info.deviate_rate);
+    retract_delta.insert(retract_info.retract_delta);
+  }
+  for (const auto &key : linear_update.const_e_manifolds.keys()) {
+    const auto &manifold = state.manifolds.at(key);
+    retract_delta.insert(manifold.values().zeroVectors());
   }
 
   // retract for unconstrained variables
@@ -510,9 +523,15 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
       linear_update.tangent_vector, state.unconstrained_values.keys());
   new_unconstrained_values =
       state.unconstrained_values.retract(tangent_vector_unconstrained);
+  retract_delta.insert(tangent_vector_unconstrained);
 
   // compute error
   computeError(graph, state.error);
+  VectorValues zero_vec = VectorValues::Zero(retract_delta);
+  double base_linear_error = state.base_linear->error(zero_vec);
+  double base_linear_error_retract = state.base_linear->error(retract_delta);
+  linear_cost_change_with_retract_delta =
+      base_linear_error - base_linear_error_retract;
 }
 
 void IELMTrial::NonlinearUpdate::computeError(const NonlinearFactorGraph &graph,

@@ -43,6 +43,7 @@ public:
   IndexSetMap blocking_indices_map; // blocking indices map by neg grad
   Values e_manifolds;
   Values const_e_manifolds;
+  GaussianFactorGraph::shared_ptr base_linear;
 
   IELMState() {}
 
@@ -152,6 +153,7 @@ struct IELMTrial {
     double cost_change;
     size_t num_retract_iters; // total number of iterations in LM opt.
     std::vector<double> retract_divate_rates;
+    double linear_cost_change_with_retract_delta;
 
     /** Default constructor. */
     NonlinearUpdate() {}
