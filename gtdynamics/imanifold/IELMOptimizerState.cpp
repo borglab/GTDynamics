@@ -226,10 +226,18 @@ void PrintIELMTrialTitle() {
        << " " << setw(12) << "nonlinear "
        << " " << setw(12) << "linear "
        << " " << setw(10) << "lambda "
-       << " " << setw(10) << "solve_succ "
-       << " " << setw(10) << "num_solves "
+       << " " << setw(10) << "num_solves  "
+       << " " << setw(14) << "retract_devi   "
        << " " << setw(10) << "time   "
        << " " << setw(10) << "delta_norm" << endl;
+}
+
+double VectorMean(const std::vector<double> &vec) {
+  return std::accumulate(vec.begin(), vec.end(), 0.0) / vec.size();
+}
+
+double VectorMax(const std::vector<double> &vec) {
+  return *std::max_element(std::begin(vec), std::end(vec));
 }
 
 /* ************************************************************************* */
@@ -247,10 +255,14 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
   if (!forced) {
     cout << setw(10) << setprecision(4) << linear_update.cost_change << " ";
     cout << setw(10) << setprecision(2) << linear_update.lambda << " ";
-    cout << setw(10) << (linear_update.solve_successful ? "T   " : "F   ")
-         << " ";
+    if (!linear_update.solve_successful) {
+      cout << "linear solve not successful\n";
+      return;
+    }
     cout << setw(4) << linear_update.num_solves << "|" << setw(5)
          << nonlinear_update.num_retract_iters << " ";
+    cout << setw(7) << VectorMean(nonlinear_update.retract_divate_rates) << "|"
+         << setw(6) << VectorMax(nonlinear_update.retract_divate_rates) << " ";
     cout << setw(10) << setprecision(2) << trial.trial_time << " ";
     cout << setw(10) << setprecision(4) << linear_update.delta.norm() << " ";
     if (params.show_active_costraints) {
@@ -490,6 +502,7 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
       new_manifolds.emplace(key, manifold.retract(tv, {}, &retract_info));
     }
     num_retract_iters += retract_info.num_lm_iters;
+    retract_divate_rates.push_back(retract_info.deviate_rate);
   }
 
   // retract for unconstrained variables

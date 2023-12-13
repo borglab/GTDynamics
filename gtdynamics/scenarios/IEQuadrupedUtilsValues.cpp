@@ -10,114 +10,114 @@ using namespace gtdynamics;
 
 namespace gtsam {
 
+/* <=======================================================================> */
+/* <============================= step values =============================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+Values OptimizeWithConstraints(const NonlinearFactorGraph &merit_graph,
+                               const Values &values,
+                               const KeyVector &known_keys, const double sigma,
+                               bool ensure_feasible,
+                               const std::string &info_str) {
+  NonlinearFactorGraph graph_wp = merit_graph;
+  Values init_values = SubValues(values, merit_graph.keys());
+  AddGeneralPriors(init_values, known_keys, sigma, graph_wp);
+
+  LevenbergMarquardtParams lm_params;
+  LevenbergMarquardtOptimizer optimizer(graph_wp, init_values, lm_params);
+  auto results = optimizer.optimize();
+  if (!CheckFeasible(merit_graph, results, info_str)) {
+    lm_params.absoluteErrorTol = 1e-12;
+    lm_params.errorTol = 1e-12;
+    LevenbergMarquardtOptimizer optimizer_ad_np(merit_graph, results,
+                                                lm_params);
+    results = optimizer_ad_np.optimize();
+    CheckFeasible(merit_graph, results, info_str + "_2nd");
+  };
+  return results;
+}
+
 /* ************************************************************************* */
 Values IEVision60Robot::stepValuesQ(const size_t k, const Values &init_values,
-                                    const KeyVector &known_q_keys) const {
+                                    const KeyVector &known_q_keys,
+                                    bool satisfy_i_constriants,
+                                    bool ensure_feasible) const {
 
   NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(k);
-  AddGeneralPriors(init_values, known_q_keys, params->tol_q, graph_q);
-  Values init_values_q = SubValues(init_values, graph_q.keys());
-  LevenbergMarquardtParams lm_params;
-  LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lm_params);
-  auto results_q = optimizer_q.optimize();
-  CheckFeasible(graph_q, results_q, "q-level ");
-  return results_q;
+  if (satisfy_i_constriants) {
+    graph_q.add(stepIConstraintsQ(k).meritGraph());
+  }
+  return OptimizeWithConstraints(graph_q, init_values, known_q_keys,
+                                 params->tol_q, ensure_feasible, "q-level");
 }
 
 /* ************************************************************************* */
 Values IEVision60Robot::stepValuesV(const size_t k, const Values &init_values,
                                     const Values &known_q_values,
-                                    const KeyVector &known_v_keys) const {
+                                    const KeyVector &known_v_keys,
+                                    bool satisfy_i_constriants,
+                                    bool ensure_feasible) const {
 
   NonlinearFactorGraph graph_v = getConstraintsGraphStepV(k);
+  if (satisfy_i_constriants) {
+    graph_v.add(stepIConstraintsV(k).meritGraph());
+  }
   graph_v = ConstVarGraph(graph_v, known_q_values);
-  AddGeneralPriors(init_values, known_v_keys, params->tol_v, graph_v);
-  Values init_values_v = SubValues(init_values, graph_v.keys());
-  LevenbergMarquardtParams lm_params;
-  LevenbergMarquardtOptimizer optimizer_v(graph_v, init_values_v, lm_params);
-  auto results_v = optimizer_v.optimize();
-  CheckFeasible(graph_v, results_v, "v-level ");
-  return results_v;
+  return OptimizeWithConstraints(graph_v, init_values, known_v_keys,
+                                 params->tol_v, ensure_feasible, "v-level");
 }
 
 /* ************************************************************************* */
 Values IEVision60Robot::stepValuesAD(const size_t k, const Values &init_values,
                                      const Values &known_qv_values,
-                                     const KeyVector &known_ad_keys) const {
+                                     const KeyVector &known_ad_keys,
+                                     bool satisfy_i_constriants,
+                                     bool ensure_feasible) const {
 
   NonlinearFactorGraph graph_ad = getConstraintsGraphStepAD(k);
+  if (satisfy_i_constriants) {
+    graph_ad.add(stepIConstraintsAD(k).meritGraph());
+  }
   graph_ad = ConstVarGraph(graph_ad, known_qv_values);
-  AddGeneralPriors(init_values, known_ad_keys, params->tol_dynamics, graph_ad);
-  Values init_values_ad = SubValues(init_values, graph_ad.keys());
-  LevenbergMarquardtParams lm_params;
-  LevenbergMarquardtOptimizer optimizer_ad(graph_ad, init_values_ad, lm_params);
-  auto results_ad = optimizer_ad.optimize();
-  CheckFeasible(graph_ad, results_ad, "ad-level ");
-  return results_ad;
+  return OptimizeWithConstraints(graph_ad, init_values, known_ad_keys,
+                                 params->tol_dynamics, ensure_feasible,
+                                 "ad-level");
 }
 
 /* ************************************************************************* */
 Values IEVision60Robot::stepValuesQV(
     const size_t k, const Values &init_values,
-    const std::optional<KeyVector> &optional_known_keys) const {
+    const std::optional<KeyVector> &optional_known_keys,
+    bool satisfy_i_constriants, bool ensure_feasible) const {
   KeyVector known_keys =
       optional_known_keys ? *optional_known_keys : basisKeys(k);
   KeyVector known_q_keys, known_v_keys, known_ad_keys;
   ClassifyKeysByLevel(known_keys, known_q_keys, known_v_keys, known_ad_keys);
   // LevenbergMarquardtParams lm_params;
-  Values known_values = stepValuesQ(k, init_values, known_q_keys);
-  known_values.insert(stepValuesV(k, init_values, known_values, known_v_keys));
+  Values known_values = stepValuesQ(k, init_values, known_q_keys,
+                                    satisfy_i_constriants, ensure_feasible);
+  known_values.insert(stepValuesV(k, init_values, known_values, known_v_keys,
+                                  satisfy_i_constriants, ensure_feasible));
   return known_values;
 }
 
 /* ************************************************************************* */
-Values IEVision60Robot::stepValues(
-    const size_t k, const Values &init_values,
-    const std::optional<KeyVector> &optional_known_keys) const {
-
-  // Values nominal_values_k = DynamicsValuesFromPrev(nominal_values, k);
+Values
+IEVision60Robot::stepValues(const size_t k, const Values &init_values,
+                            const std::optional<KeyVector> &optional_known_keys,
+                            bool satisfy_i_constriants,
+                            bool ensure_feasible) const {
   KeyVector known_keys =
       optional_known_keys ? *optional_known_keys : basisKeys(k);
   KeyVector known_q_keys, known_v_keys, known_ad_keys;
   ClassifyKeysByLevel(known_keys, known_q_keys, known_v_keys, known_ad_keys);
-  // LevenbergMarquardtParams lm_params;
-  Values known_values = stepValuesQ(k, init_values, known_q_keys);
-  known_values.insert(stepValuesV(k, init_values, known_values, known_v_keys));
-  known_values.insert(
-      stepValuesAD(k, init_values, known_values, known_ad_keys));
-
-  // // solve q level
-  // NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(k);
-  // AddGeneralPriors(init_values, known_q_keys, params->tol_q, graph_q);
-  // Values init_values_q =
-  //     PickValues(graph_q.keys(), init_values, nominal_values_k);
-  // LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lm_params);
-  // auto results_q = optimizer_q.optimize();
-  // CheckFeasible(graph_q, results_q, "q-level ");
-  // known_values.insert(results_q);
-
-  // // solve v level
-  // NonlinearFactorGraph graph_v = getConstraintsGraphStepV(k);
-  // graph_v = ConstVarGraph(graph_v, known_values);
-  // AddGeneralPriors(init_values, known_v_keys, params->tol_v, graph_v);
-  // Values init_values_v =
-  //     PickValues(graph_v.keys(), init_values, nominal_values_k);
-  // LevenbergMarquardtOptimizer optimizer_v(graph_v, init_values_v, lm_params);
-  // auto results_v = optimizer_v.optimize();
-  // CheckFeasible(graph_v, results_v, "v-level ");
-  // known_values.insert(results_v);
-
-  // // solve ad level
-  // NonlinearFactorGraph graph_ad = getConstraintsGraphStepAD(k);
-  // graph_ad = ConstVarGraph(graph_ad, known_values);
-  // AddGeneralPriors(init_values, known_ad_keys, params->tol_dynamics,
-  // graph_ad); Values init_values_ad =
-  //     PickValues(graph_ad.keys(), init_values, nominal_values_k);
-  // LevenbergMarquardtOptimizer optimizer_ad(graph_ad, init_values_ad,
-  // lm_params); auto results_ad = optimizer_ad.optimize();
-  // CheckFeasible(graph_ad, results_ad, "ad-level ");
-  // known_values.insert(results_ad);
-
+  Values known_values = stepValuesQ(k, init_values, known_q_keys,
+                                    satisfy_i_constriants, ensure_feasible);
+  known_values.insert(stepValuesV(k, init_values, known_values, known_v_keys,
+                                  satisfy_i_constriants, ensure_feasible));
+  known_values.insert(stepValuesAD(k, init_values, known_values, known_ad_keys,
+                                   satisfy_i_constriants, ensure_feasible));
   return known_values;
 }
 
@@ -280,6 +280,10 @@ Values IEVision60Robot::getInitValuesStep(const size_t k,
   return known_values;
 }
 
+/* <=======================================================================> */
+/* <========================== trajectory values ==========================> */
+/* <=======================================================================> */
+
 /* ************************************************************************* */
 Values IEVision60Robot::getInitValuesTrajectory(
     const size_t num_steps, double dt, const Pose3 &base_pose_init,
@@ -401,6 +405,10 @@ TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
 }
 
 } // namespace gtsam
+
+/* <=======================================================================> */
+/* <====================== vertical jump trajectory =======================> */
+/* <=======================================================================> */
 
 using namespace gtsam;
 namespace quadruped_vertical_jump {
@@ -767,11 +775,16 @@ Values InitValuesTrajectoryInfeasible(
 
 } // namespace quadruped_vertical_jump
 
+/* <=======================================================================> */
+/* <======================= forward jump trajectory =======================> */
+/* <=======================================================================> */
+
 namespace quadruped_forward_jump {
 /* ************************************************************************* */
 Values
 InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
                      const std::vector<double> &phases_dt,
+                     bool include_i_constriants, bool ensure_feasible,
                      bool use_trapezoidal) {
 
   const auto &vision60_ground = vision60_multi_phase.phase_robots_[0];
@@ -808,7 +821,8 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
     init_values_k.update(TwistKey(IEVision60Robot::base_id, k), torso_twist);
     KeyVector known_keys{PoseKey(IEVision60Robot::base_id, k),
                          TwistKey(IEVision60Robot::base_id, k)};
-    step_values[k] = vision60_ground.stepValuesQV(k, init_values_k, known_keys);
+    step_values[k] = vision60_ground.stepValuesQV(
+        k, init_values_k, known_keys, include_i_constriants, ensure_feasible);
 
     // set a,v,q level of base_link for next step
     Vector torso_twistaccel_w = k < num_steps_ground ? torso_twistaccel_ground_w
@@ -851,7 +865,8 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
         known_keys.push_back(JointVelKey(j, k));
       }
     }
-    step_values[k] = vision60_back.stepValuesQV(k, init_values_k, known_keys);
+    step_values[k] = vision60_back.stepValuesQV(
+        k, init_values_k, known_keys, include_i_constriants, ensure_feasible);
 
     // set a,v,q level of base_link for next step
     Vector torso_twistaccel_w = k < num_steps_ground + num_steps_back
@@ -892,7 +907,8 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
       known_keys.push_back(JointAngleKey(j, k));
       known_keys.push_back(JointVelKey(j, k));
     }
-    step_values[k] = vision60_air.stepValuesQV(k, init_values_k, known_keys);
+    step_values[k] = vision60_air.stepValuesQV(
+        k, init_values_k, known_keys, include_i_constriants, ensure_feasible);
 
     // set a,v,q level of base_link for next step
     Vector torso_twistaccel_w = torso_twistaccel_air_w;
@@ -911,8 +927,15 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
                                   : DynamicsValuesFromPrev(step_values[k - 1]);
     init_values_k.update(TwistAccelKey(IEVision60Robot::base_id, k),
                          step_torso_twistaccels[k]);
+    // KeyVector known_ad_keys;
+    // for (const auto &joint : IEVision60Robot::robot.joints()) {
+    //   uint8_t j = joint->id();
+    //   known_ad_keys.emplace_back(TorqueKey(j, k));
+    //   init_values_k.update(TorqueKey(j, k), 0.0);
+    // }
     Values ad_values = vision60_ground.stepValuesAD(
-        k, init_values_k, step_values.at(k), known_ad_keys);
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
     step_values[k].insert(ad_values);
   }
   // bound_gb
@@ -926,7 +949,8 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
       init_values_k.update(ContactForceKey(link_idx, 0, k), zero_vec);
     }
     Values ad_values = vision60_ground.stepValuesAD(
-        k, init_values_k, step_values.at(k), known_ad_keys);
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
     step_values[k].insert(ad_values);
   }
   // back
@@ -936,8 +960,15 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
     Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
     init_values_k.update(TwistAccelKey(IEVision60Robot::base_id, k),
                          step_torso_twistaccels[k]);
+    // KeyVector known_ad_keys;
+    // for (const auto &joint : IEVision60Robot::robot.joints()) {
+    //   uint8_t j = joint->id();
+    //   known_ad_keys.emplace_back(TorqueKey(j, k));
+    //   init_values_k.update(TorqueKey(j, k), 0.0);
+    // }
     Values ad_values = vision60_back.stepValuesAD(
-        k, init_values_k, step_values.at(k), known_ad_keys);
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
     step_values[k].insert(ad_values);
   }
   // bound_ba
@@ -951,7 +982,8 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
       init_values_k.update(ContactForceKey(link_idx, 0, k), zero_vec);
     }
     Values ad_values = vision60_back.stepValuesAD(
-        k, init_values_k, step_values.at(k), known_ad_keys);
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
     step_values[k].insert(ad_values);
   }
   // air
@@ -960,13 +992,16 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
     Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
     for (const auto &joint : vision60_air.robot.joints()) {
       uint8_t j = joint->id();
+      // known_ad_keys.emplace_back(TorqueKey(j, k));
+      // init_values_k.update(TorqueKey(j, k), 0.0);
       known_ad_keys.emplace_back(JointAccelKey(j, k));
       init_values_k.update(JointAccelKey(j, k), 0.0);
     }
     // init_values_k.update(TwistAccelKey(IEVision60Robot::base_id, k),
     //  step_torso_twistaccels[k]);
     Values ad_values = vision60_air.stepValuesAD(
-        k, init_values_k, step_values.at(k), known_ad_keys);
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
     step_values[k].insert(ad_values);
   }
 

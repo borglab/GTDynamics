@@ -27,6 +27,9 @@
 #define ACTUATION_WORK_SQR 3
 #define ACTUATION_WORK 4
 
+#define JERK_AS_DIFF 0
+#define JERK_DIV_DT 1
+
 using gtdynamics::InequalityConstraints;
 
 namespace gtsam {
@@ -138,11 +141,13 @@ public:
     bool include_symmetry_costs = false;
     bool collision_as_cost = false;
     int actuation_cost_option = ACTUATION_RMSE_TORQUE;
+    int jerk_cost_option = JERK_AS_DIFF;
     Values state_cost_values;
     std::vector<std::tuple<size_t, Point3, Point3, size_t>> state_cost_points;
     std::vector<std::tuple<size_t, Point3, Vector3, size_t>>
         state_cost_point_vels;
     std::vector<double> phase_prior_dt;
+    double dt_threshold = 1.0;
 
     bool eval_details = true;
     bool eval_collo_step = false;
@@ -279,12 +284,12 @@ public:
   /// Collision free with a spherical object.
   gtdynamics::DoubleExpressionInequality::shared_ptr
   hurdleCollisionFreeConstraint(const size_t link_idx, const size_t k,
-                                  const Point3 &p_l, const Point2 &center,
-                                  const double radius) const;
+                                const Point3 &p_l, const Point2 &center,
+                                const double radius) const;
 
   /// Collision free with ground.
   gtdynamics::DoubleExpressionInequality::shared_ptr
-  groundCollisionFreeConstraint(const size_t link_idx, const size_t k,
+  groundCollisionFreeConstraint(const std::string &link_name, const size_t k,
                                 const Point3 &p_l) const;
 
   gtdynamics::DoubleExpressionInequality::shared_ptr
@@ -337,8 +342,13 @@ public:
                                                        const Vector3 &vel_w,
                                                        const size_t k) const;
 
-  NoiseModelFactor::shared_ptr contactJerkCostFactor(const size_t link_id,
-                                                     const size_t k) const;
+  NoiseModelFactor::shared_ptr jerkCostFactor(const size_t joint_id,
+                                              const size_t k,
+                                              const Key &phase_key) const;
+
+  NoiseModelFactor::shared_ptr
+  contactForceJerkCostFactor(const size_t link_id, const size_t k,
+                             const Key &phase_key) const;
 
   /** <==================== Step Equality Constraint  ====================> **/
   NonlinearFactorGraph getConstraintsGraphStepQ(const int t) const;
@@ -352,19 +362,28 @@ public:
   NonlinearFactorGraph DynamicsFactors(const size_t k) const;
 
   /** <=================== Step Inequality Constraint  ===================> **/
-  InequalityConstraints frictionConeConstraints(const size_t k) const;
+  InequalityConstraints stepFrictionConeConstraints(const size_t k) const;
 
-  InequalityConstraints jointLimitConstraints(const size_t k) const;
+  InequalityConstraints stepJointLimitConstraints(const size_t k) const;
 
-  InequalityConstraints torqueLimitConstraints(const size_t k) const;
+  InequalityConstraints stepTorqueLimitConstraints(const size_t k) const;
 
   /// Collision free with obstacles.
-  InequalityConstraints obstacleCollisionFreeConstraints(const size_t k) const;
+  InequalityConstraints
+  stepObstacleCollisionFreeConstraints(const size_t k) const;
 
-  InequalityConstraints hurdleCollisionFreeConstraints(const size_t k) const;
+  InequalityConstraints
+  stepHurdleCollisionFreeConstraints(const size_t k) const;
 
   /// Collision free with ground.
-  InequalityConstraints groundCollisionFreeConstraints(const size_t k) const;
+  InequalityConstraints
+  stepGroundCollisionFreeConstraints(const size_t k) const;
+
+  InequalityConstraints stepIConstraintsQ(const size_t k) const;
+
+  InequalityConstraints stepIConstraintsV(const size_t k) const;
+
+  InequalityConstraints stepIConstraintsAD(const size_t k) const;
 
   /** <=========================== Step Cost  ============================> **/
   NonlinearFactorGraph stepCollocationCosts(const size_t k,
@@ -387,7 +406,11 @@ public:
 
   NonlinearFactorGraph stepSymmetryCosts(const size_t k) const;
 
-  NonlinearFactorGraph stepContactJerkCosts(const size_t k) const;
+  NonlinearFactorGraph stepJerkCosts(const size_t k,
+                                     const Key &phase_key) const;
+
+  NonlinearFactorGraph stepContactForceJerkCosts(const size_t k,
+                                                 const Key &phase_key) const;
 
 public:
   /** <================= Constraints and Costs =================> **/
@@ -431,24 +454,41 @@ public:
   /// Compute q-level values (poses, joint angles) of a single time step that
   /// satisfy all the equality constraints.
   Values stepValuesQ(const size_t k, const Values &init_values,
-                     const KeyVector &known_q_keys = KeyVector()) const;
+                     const KeyVector &known_q_keys = KeyVector(),
+                     bool satisfy_i_constriants = false,
+                     bool ensure_feasible = true) const;
 
   Values stepValuesV(const size_t k, const Values &init_values,
                      const Values &known_q_values,
-                     const KeyVector &known_v_keys = KeyVector()) const;
+                     const KeyVector &known_v_keys = KeyVector(),
+                     bool satisfy_i_constriants = false,
+                     bool ensure_feasible = true) const;
 
   Values stepValuesAD(const size_t k, const Values &init_values,
                       const Values &known_qv_values,
-                      const KeyVector &known_ad_keys = KeyVector()) const;
+                      const KeyVector &known_ad_keys = KeyVector(),
+                      bool satisfy_i_constriants = false,
+                      bool ensure_feasible = true) const;
 
   Values stepValuesQV(const size_t k, const Values &init_values,
-                      const std::optional<KeyVector> &known_keys = {}) const;
+                      const std::optional<KeyVector> &known_keys = {},
+                      bool satisfy_i_constriants = false,
+                      bool ensure_feasible = true) const;
 
-  /// Return values of one step satisfying kinodynamic constraints. The
-  /// variables specified by known_keys will remain unchanged. If known_keys not
-  /// specified, basis_keys will be used.
+  /** Return values of one step satisfying kinodynamic constraints. The
+   * variables specified by known_keys will remain unchanged. If known_keys not
+   * specified, basis_keys will be used.
+   * @param k time step
+   * @param init_values init estimate of variables of the step
+   * @param known_keys variables that can be used as priors
+   * @param satisfy_i_constraints include i-constraints
+   * @param ensure_feasible run a 2nd phase optimization without priors to
+   * ensure constriant satisfaction
+   */
   Values stepValues(const size_t k, const Values &init_values,
-                    const std::optional<KeyVector> &known_keys = {}) const;
+                    const std::optional<KeyVector> &known_keys = {},
+                    bool satisfy_i_constriants = false,
+                    bool ensure_feasible = true) const;
 
   /// Return values of one step by integration from previous step. The variables
   /// specified with integration_keys will be used for integration. Variables of
@@ -748,5 +788,6 @@ GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
 /// on-ground -> back-contact -> in-air -> front-contact -> on-gorund.
 gtsam::Values InitValuesTrajectory(
     const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::vector<double> &phases_dt, bool use_trapezoidal = false);
+    const std::vector<double> &phases_dt, bool include_i_constriants,
+    bool ensure_feasible, bool use_trapezoidal = false);
 } // namespace quadruped_forward_jump

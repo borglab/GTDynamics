@@ -21,10 +21,17 @@ IEVision60Robot::PhaseInfo::shared_ptr phase_info =
     IEVision60Robot::PhaseInfo::Ground();
 IEVision60Robot robot(params, phase_info);
 size_t k = 0;
+Key phase_key = PhaseKey(0);
 } // namespace vision60_test
 
 TEST(frictionConeConstraint, error_jacobian) {
   using namespace vision60_test;
+
+  // auto upper_link = robot.robot.link("fl_upper");
+  // Pose3 pose = robot.nominal_values.at<Pose3>(PoseKey(upper_link->id(), 0));
+  // std::cout << pose.rotation().rpy().transpose() << "\n";
+  // std::cout << pose.translation().transpose() << "\n";
+
   params->mu = 0.8;
   std::string link_name = "fl_lower";
   auto contact_link_id = robot.robot.link(link_name)->id();
@@ -57,12 +64,41 @@ TEST(frictionConeConstraint, error_jacobian) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values5, 1e-7, 1e-5);
 }
 
+TEST(contactForceJerkCostFactor, error_jacobian) {
+  using namespace vision60_test;
+  params->cf_jerk_threshold = 1;
+  params->jerk_cost_option = JERK_DIV_DT;
+  params->dt_threshold = 0.02;
+  std::string link_name = "fl_lower";
+  auto contact_link_id = robot.robot.link(link_name)->id();
+  auto factor = robot.contactForceJerkCostFactor(contact_link_id, k, phase_key);
+
+  Values values1;
+  values1.insert(ContactForceKey(contact_link_id, 0, k), Vector3(0, 0, 3));
+  values1.insert(ContactForceKey(contact_link_id, 0, k + 1), Vector3(0, 4, 0));
+  values1.insert(phase_key, 0.01);
+
+  Values values2;
+  values2.insert(ContactForceKey(contact_link_id, 0, k), Vector3(0, 0, 3));
+  values2.insert(ContactForceKey(contact_link_id, 0, k + 1), Vector3(0, 4, 0));
+  values2.insert(phase_key, 0.03);
+
+  Vector1 expected_error1 = Vector1(9.0);
+  EXPECT(assert_equal(expected_error1, factor->unwhitenedError(values1)));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values1, 1e-7, 1e-5);
+
+  Vector1 expected_error2 = Vector1(4.0);
+  EXPECT(assert_equal(expected_error2, factor->unwhitenedError(values2)));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values2, 1e-7, 1e-5);
+}
+
 TEST(groundCollisionFreeConstraint, feasible) {
   using namespace vision60_test;
 
-  auto link_id = robot.robot.link("fl_lower")->id();
+  std::string link_name = "fl_lower";
+  auto link_id = robot.robot.link(link_name)->id();
   Point3 p_l(0.2, 0, 0);
-  auto constraint = robot.groundCollisionFreeConstraint(link_id, k, p_l);
+  auto constraint = robot.groundCollisionFreeConstraint(link_name, k, p_l);
 
   Values values1;
   values1.insert(PoseKey(link_id, k),
@@ -81,27 +117,28 @@ TEST(groundCollisionFreeConstraint, feasible) {
 TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
   using namespace vision60_test;
 
-  auto link_id = robot.robot.link("fl_lower")->id();
+  std::string link_name = "fl_lower";
+  auto link_id = robot.robot.link(link_name)->id();
   robot.params->hurdles_on_ground->emplace_back(1, 0.5);
-  robot.params->spheres_on_ground->emplace_back(Point2(2,0), 0.5);
+  robot.params->spheres_on_ground->emplace_back(Point2(2, 0), 0.5);
   Point3 p_l(0.2, 0, 0);
-  auto constraint = robot.groundCollisionFreeConstraint(link_id, k, p_l);
+  auto constraint = robot.groundCollisionFreeConstraint(link_name, k, p_l);
   auto factor = constraint->createL2Factor(1.0);
 
   // check hurdle height
   {
     Values values1;
     values1.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(1.4, 0.2, 0.5)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.4, 0.2, 0.5)));
     Values values2;
     values2.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(0.7, -0.1, 0.0)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(0.7, -0.1, 0.0)));
     Values values3;
     values3.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(1.0, 3, 1)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.0, 3, 1)));
     Values values4;
     values4.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(0, 0, 0.1)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(0, 0, 0.1)));
     EXPECT(assert_equal(0.0, (*constraint)(values1)));
     EXPECT(assert_equal(-0.6, (*constraint)(values2)));
     EXPECT(assert_equal(0.3, (*constraint)(values3)));
@@ -117,16 +154,16 @@ TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
   {
     Values values1;
     values1.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(2.4, 0.0, 0.5)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(2.4, 0.0, 0.5)));
     Values values2;
     values2.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(2.0, 0.3, 0.0)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(2.0, 0.3, 0.0)));
     Values values3;
     values3.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(2.0, 0, 1)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(2.0, 0, 1)));
     Values values4;
     values4.insert(PoseKey(link_id, k),
-                  Pose3(Rot3::Ry(M_PI_2), Point3(2, 2, 0.1)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(2, 2, 0.1)));
     EXPECT(assert_equal(0.0, (*constraint)(values1)));
     EXPECT(assert_equal(-0.6, (*constraint)(values2)));
     EXPECT(assert_equal(0.3, (*constraint)(values3)));
@@ -137,7 +174,6 @@ TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values3, 1e-7, 1e-5);
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values4, 1e-7, 1e-5);
   }
-
 }
 
 TEST(obstacleCollisionFreeConstraint, feasible) {

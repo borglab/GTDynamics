@@ -26,16 +26,17 @@ namespace gtsam {
 IEConstraintManifold
 IERetractor::moveToBoundary(const IEConstraintManifold *manifold,
                             const IndexSet &blocking_indices,
-                            IERetractInfo* retract_info) const {
+                            IERetractInfo *retract_info) const {
   VectorValues delta = manifold->values().zeroVectors();
   return retract(manifold, delta, blocking_indices, retract_info);
 }
 
 /* ************************************************************************* */
-IEConstraintManifold BarrierRetractor::retract(
-    const IEConstraintManifold *manifold, const VectorValues &delta,
-    const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo* retract_info) const {
+IEConstraintManifold
+BarrierRetractor::retract(const IEConstraintManifold *manifold,
+                          const VectorValues &delta,
+                          const std::optional<IndexSet> &blocking_indices,
+                          IERetractInfo *retract_info) const {
 
   const gtdynamics::InequalityConstraints &i_constraints =
       *manifold->iConstraints();
@@ -101,8 +102,23 @@ IEConstraintManifold BarrierRetractor::retract(
     retract_info->num_lm_iters += optimizer_np.iterations();
   }
   if (params_->check_feasible) {
-    CheckFeasible(graph_np, result,
-                  "barrier retraction: ", params_->feasible_threshold);
+    size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
+    std::string k_string = "(" + std::to_string(k) + ")";
+    if (!CheckFeasible(graph_np, result, "barrier retraction" + k_string,
+                       params_->feasible_threshold)) {
+      if (params_->ensure_feasible) {
+        return *manifold;
+      }
+    }
+  }
+
+  if (retract_info) {
+    auto actual_update_vec = manifold->values().localCoordinates(result);
+    auto vec_diff = actual_update_vec - delta;
+
+    double delta_norm = delta.norm();
+    double diff_norm = vec_diff.norm();
+    retract_info->deviate_rate = diff_norm / delta_norm;
   }
 
   return manifold->createWithNewValues(result, active_indices);
@@ -172,7 +188,10 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
 IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo* retract_info) const {
+    IERetractInfo *retract_info) const {
+
+  size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
+  std::string k_string = "(" + std::to_string(k) + ")";
 
   Values known_values;
   IndexSet active_indices;
@@ -203,7 +222,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   Values new_results_q = optimizer_np_q.optimize();
   known_values.insert(new_results_q);
   if (params_->check_feasible) {
-    if (!CheckFeasible(graph_np_q, new_results_q, "q-level",
+    if (!CheckFeasible(graph_np_q, new_results_q, "q-level" + k_string,
                        params_->feasible_threshold)) {
       failed = true;
     }
@@ -235,7 +254,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   Values new_results_v = optimizer_np_v.optimize();
   known_values.insert(new_results_v);
   if (params_->check_feasible) {
-    if (!CheckFeasible(graph_np_v, new_results_v, "v-level",
+    if (!CheckFeasible(graph_np_v, new_results_v, "v-level" + k_string,
                        params_->feasible_threshold)) {
       failed = true;
     }
@@ -267,7 +286,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   Values new_results_ad = optimizer_np_ad.optimize();
   known_values.insert(new_results_ad);
   if (params_->check_feasible) {
-    if (!CheckFeasible(graph_np_ad, new_results_ad, "ad-level",
+    if (!CheckFeasible(graph_np_ad, new_results_ad, "ad-level" + k_string,
                        params_->feasible_threshold)) {
       failed = true;
     }
@@ -290,8 +309,21 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     if (retract_info) {
       retract_info->num_lm_iters += optimizer_all.iterations();
     }
-    CheckFeasible(merit_graph_, known_values, "all-levels",
-                  params_->feasible_threshold);
+    if (!CheckFeasible(merit_graph_, known_values, "all-levels" + k_string,
+                       params_->feasible_threshold)) {
+      if (params_->ensure_feasible) {
+        return *manifold;
+      }
+    }
+  }
+
+  if (retract_info) {
+    auto actual_update_vec = manifold->values().localCoordinates(known_values);
+    auto vec_diff = actual_update_vec - delta;
+
+    double delta_norm = delta.norm();
+    double diff_norm = vec_diff.norm();
+    retract_info->deviate_rate = diff_norm / delta_norm;
   }
 
   return manifold->createWithNewValues(known_values, active_indices);

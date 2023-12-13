@@ -151,6 +151,7 @@ struct IELMTrial {
     double new_error;
     double cost_change;
     size_t num_retract_iters; // total number of iterations in LM opt.
+    std::vector<double> retract_divate_rates;
 
     /** Default constructor. */
     NonlinearUpdate() {}

@@ -35,6 +35,7 @@ struct IERetractorParams {
   bool init_values_as_x = true; //
   bool check_feasible = true;
   double feasible_threshold = 1e-3;
+  bool ensure_feasible = false;
 
   IERetractorParams() = default;
 
@@ -74,6 +75,7 @@ struct IERetractorParams {
 
 struct IERetractInfo {
   size_t num_lm_iters;
+  double deviate_rate;
 };
 
 /** Base class that implements the retraction operation for the constraint

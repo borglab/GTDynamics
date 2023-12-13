@@ -244,7 +244,7 @@ IEVision60Robot::frictionConeConstraint(const std::string &link_name,
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
-IEVision60Robot::frictionConeConstraints(const size_t k) const {
+IEVision60Robot::stepFrictionConeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
     for (const auto &link_id : contact_link_ids) {
@@ -366,9 +366,10 @@ IEVision60Robot::terrainHeightExpr(const Vector2_ &point_on_ground) const {
 
 /* ************************************************************************* */
 gtdynamics::DoubleExpressionInequality::shared_ptr
-IEVision60Robot::groundCollisionFreeConstraint(const size_t link_idx,
+IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
                                                const size_t k,
                                                const Point3 &p_l) const {
+  auto link_idx = robot.link(link_name)->id();
   Pose3_ wTl(PoseKey(link_idx, k));
   Point3_ p_l_const(p_l);
   Point3_ p_w(wTl, &Pose3::transformFrom, p_l_const);
@@ -380,6 +381,7 @@ IEVision60Robot::groundCollisionFreeConstraint(const size_t link_idx,
   Vector2_ point_on_ground = gtsam::linearExpression(f, p_w, H_xy);
 
   Double_ ground_height = terrainHeightExpr(point_on_ground);
+  std::string name = "cz(" + link_name + ")" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(z - ground_height,
                                                       params->tol_cf);
 }
@@ -442,7 +444,7 @@ IEVision60Robot::torqueLowerLimitConstraint(const std::string &j_name,
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
-IEVision60Robot::jointLimitConstraints(const size_t k) const {
+IEVision60Robot::stepJointLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
   if (params->i_constraints_symmetry) {
@@ -497,7 +499,7 @@ IEVision60Robot::jointLimitConstraints(const size_t k) const {
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
-IEVision60Robot::torqueLimitConstraints(const size_t k) const {
+IEVision60Robot::stepTorqueLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
   if (params->i_constraints_symmetry) {
@@ -550,7 +552,7 @@ IEVision60Robot::torqueLimitConstraints(const size_t k) const {
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
-IEVision60Robot::obstacleCollisionFreeConstraints(const size_t k) const {
+IEVision60Robot::stepObstacleCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
   for (const auto &[center, radius] : params->sphere_obstacles) {
@@ -565,7 +567,7 @@ IEVision60Robot::obstacleCollisionFreeConstraints(const size_t k) const {
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
-IEVision60Robot::hurdleCollisionFreeConstraints(const size_t k) const {
+IEVision60Robot::stepHurdleCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
     for (const auto &[center, radius] : params->hurdle_obstacles) {
@@ -606,7 +608,7 @@ IEVision60Robot::hurdleCollisionFreeConstraints(const size_t k) const {
 
 /* ************************************************************************* */
 gtdynamics::InequalityConstraints
-IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
+IEVision60Robot::stepGroundCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
     for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
@@ -618,12 +620,11 @@ IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
                     link_idx) != contact_link_ids.end()) {
         continue;
       }
-      auto constraint = groundCollisionFreeConstraint(link_idx, k, p_l);
+      auto constraint = groundCollisionFreeConstraint(link_name, k, p_l);
       if (isLeft(link_name)) {
         std::string counterpart_name = counterpart(link_name);
-        size_t counterpart_idx = robot.link(counterpart_name)->id();
         auto counterpart_constraint =
-            groundCollisionFreeConstraint(counterpart_idx, k, p_l);
+            groundCollisionFreeConstraint(counterpart_name, k, p_l);
         constraints.emplace_shared<TwinDoubleExpressionInequality>(
             constraint, counterpart_constraint);
       } else {
@@ -637,8 +638,45 @@ IEVision60Robot::groundCollisionFreeConstraints(const size_t k) const {
                     link_idx) != contact_link_ids.end()) {
         continue;
       }
-      constraints.push_back(groundCollisionFreeConstraint(link_idx, k, p_l));
+      constraints.push_back(groundCollisionFreeConstraint(link_name, k, p_l));
     }
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+InequalityConstraints IEVision60Robot::stepIConstraintsQ(const size_t k) const {
+  InequalityConstraints constraints;
+  if (params->include_joint_limits) {
+    constraints.add(stepJointLimitConstraints(k));
+  }
+  if (params->include_collision_free_z) {
+    constraints.add(stepGroundCollisionFreeConstraints(k));
+  }
+  if (params->include_collision_free_s) {
+    constraints.add(stepObstacleCollisionFreeConstraints(k));
+  }
+  if (params->include_collision_free_h) {
+    constraints.add(stepHurdleCollisionFreeConstraints(k));
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+InequalityConstraints IEVision60Robot::stepIConstraintsV(const size_t k) const {
+  InequalityConstraints constraints;
+  return constraints;
+}
+
+/* ************************************************************************* */
+InequalityConstraints
+IEVision60Robot::stepIConstraintsAD(const size_t k) const {
+  InequalityConstraints constraints;
+  if (params->include_friction_cone) {
+    constraints.add(stepFrictionConeConstraints(k));
+  }
+  if (params->include_torque_limits) {
+    constraints.add(stepTorqueLimitConstraints(k));
   }
   return constraints;
 }
@@ -676,24 +714,61 @@ NoiseModelFactor::shared_ptr IEVision60Robot::statePointVelCostFactor(
 }
 
 /* ************************************************************************* */
-NoiseModelFactor::shared_ptr
-IEVision60Robot::contactJerkCostFactor(const size_t link_id,
-                                       const size_t k) const {
+NoiseModelFactor::shared_ptr IEVision60Robot::contactForceJerkCostFactor(
+    const size_t link_id, const size_t k, const Key &phase_key) const {
   Vector3_ cf_curr(ContactForceKey(link_id, 0, k));
   Vector3_ cf_next(ContactForceKey(link_id, 0, k + 1));
   Vector3_ cf_diff = cf_next - cf_curr;
   Double_ cf_diff_norm(&norm3, cf_diff);
   auto ramp_func = RampFunction(params->cf_jerk_threshold);
-  Double_ error(ramp_func, cf_diff_norm);
-  return std::make_shared<ExpressionFactor<double>>(cf_jerk_nm, 0.0, error);
+  if (params->jerk_cost_option == JERK_AS_DIFF) {
+    Double_ error(ramp_func, cf_diff_norm);
+    return std::make_shared<ExpressionFactor<double>>(cf_jerk_nm, 0.0, error);
+  } else {
+    Double_ dt(phase_key);
+    Double_ dt_reciprocal(reciprocal, dt);
+    Double_ dt_scale(clip_by_one, params->dt_threshold * dt_reciprocal);
+    Double_ error(ramp_func, dt_scale * cf_diff_norm);
+    return std::make_shared<ExpressionFactor<double>>(cf_jerk_nm, 0.0, error);
+  }
+}
+
+/* ************************************************************************* */
+NoiseModelFactor::shared_ptr
+IEVision60Robot::jerkCostFactor(const size_t joint_id, const size_t k,
+                                const Key &phase_key) const {
+  Double_ torque_curr(TorqueKey(joint_id, k));
+  Double_ torque_next(TorqueKey(joint_id, k + 1));
+  Double_ torque_diff = torque_next - torque_curr;
+  if (params->jerk_cost_option == JERK_AS_DIFF) {
+    return std::make_shared<ExpressionFactor<double>>(jerk_nm, 0.0,
+                                                      torque_diff);
+  } else {
+    Double_ dt(phase_key);
+    Double_ dt_reciprocal(reciprocal, dt);
+    Double_ dt_scale(clip_by_one, params->dt_threshold * dt_reciprocal);
+    return std::make_shared<ExpressionFactor<double>>(jerk_nm, 0.0,
+                                                      torque_diff * dt_scale);
+  }
 }
 
 /* ************************************************************************* */
 NonlinearFactorGraph
-IEVision60Robot::stepContactJerkCosts(const size_t k) const {
+IEVision60Robot::stepContactForceJerkCosts(const size_t k,
+                                           const Key &phase_key) const {
   NonlinearFactorGraph graph;
   for (const auto &link_id : contact_link_ids) {
-    graph.add(contactJerkCostFactor(link_id, k));
+    graph.add(contactForceJerkCostFactor(link_id, k, phase_key));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+NonlinearFactorGraph
+IEVision60Robot::stepJerkCosts(const size_t k, const Key &phase_key) const {
+  NonlinearFactorGraph graph;
+  for (auto &&joint : robot.joints()) {
+    graph.add(jerkCostFactor(joint->id(), k, phase_key));
   }
   return graph;
 }
@@ -738,19 +813,19 @@ gtdynamics::EqualityConstraints IEVision60Robot::stateConstraints() const {
 InequalityConstraints IEVision60Robot::iConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->include_friction_cone) {
-    constraints.add(frictionConeConstraints(k));
+    constraints.add(stepFrictionConeConstraints(k));
   }
   if (params->include_joint_limits) {
-    constraints.add(jointLimitConstraints(k));
+    constraints.add(stepJointLimitConstraints(k));
   }
   if (params->include_torque_limits) {
-    constraints.add(torqueLimitConstraints(k));
+    constraints.add(stepTorqueLimitConstraints(k));
   }
   if (params->include_collision_free_z) {
-    constraints.add(groundCollisionFreeConstraints(k));
+    constraints.add(stepGroundCollisionFreeConstraints(k));
   }
   if (params->include_collision_free_s) {
-    constraints.add(obstacleCollisionFreeConstraints(k));
+    constraints.add(stepObstacleCollisionFreeConstraints(k));
   }
   return constraints;
 }

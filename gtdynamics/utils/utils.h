@@ -131,4 +131,12 @@ gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
 
 namespace gtsam {
 double point3_z(const gtsam::Point3 &p, gtsam::OptionalJacobian<1, 3> H = {});
-}
+
+double double_division(const double &x1, const double &x2,
+                       gtsam::OptionalJacobian<1, 1> H_1 = {},
+                       gtsam::OptionalJacobian<1, 1> H_2 = {});
+
+double reciprocal(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
+
+double clip_by_one(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
+} // namespace gtsam
