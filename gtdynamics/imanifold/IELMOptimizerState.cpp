@@ -72,16 +72,9 @@ void IELMState::identifyGradBlockingIndices(
   gradient = linear_graph->gradientAtZero();
   VectorValues descent_dir = -1 * gradient;
 
-  // std::cout << "descent_dir dt1: " << descent_dir.at(gtdynamics::PhaseKey(1))
-  // << "\n";
-
   // identify blocking constraints
   blocking_indices_map =
       IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
-
-  // if (blocking_indices_map.exists(gtdynamics::PhaseKey(1))) {
-  //   blocking_indices_map[gtdynamics::PhaseKey(1)] = IndexSet();
-  // }
 }
 
 /* ************************************************************************* */
@@ -234,7 +227,7 @@ void PrintIELMTrialTitle() {
        << "|" << setw(12) << "linear_retr"
        << "|" << setw(10) << "lambda  "
        << "|" << setw(10) << "num_solves"
-       << "|" << setw(14) << "retract_devi "
+       << "|" << setw(17) << "retract_devi "
        << "|" << setw(10) << "time  "
        << "|" << setw(10) << "delta_norm"
        << "|" << setw(30) << "active constraints" << endl;
@@ -271,8 +264,8 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     }
     cout << setw(4) << linear_update.num_solves << "|" << setw(5) << std::left
          << nonlinear_update.num_retract_iters << std::right << "|";
-    cout << setw(7) << VectorMean(nonlinear_update.retract_divate_rates) << "|"
-         << setw(6) << std::left
+    cout << setw(8) << VectorMean(nonlinear_update.retract_divate_rates) << "|"
+         << setw(8) << std::left
          << VectorMax(nonlinear_update.retract_divate_rates) << std::right
          << "|";
     cout << setw(10) << setprecision(2) << trial.trial_time << "|";

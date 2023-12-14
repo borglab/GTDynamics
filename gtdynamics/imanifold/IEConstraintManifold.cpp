@@ -104,7 +104,17 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
 /* ************************************************************************* */
 IndexSet IEConstraintManifold::IdentifyActiveConstraints(
     const gtdynamics::InequalityConstraints &i_constraints,
-    const Values &values) {
+    const Values &values, const std::optional<IndexSet> &active_indices) {
+  if (active_indices) {
+    for (const auto& i: *active_indices) {
+      if (!i_constraints.at(i)->isActive(values)) {
+        std::cout << i_constraints.at(i)->name_tmp() << " is not active\t";
+        std::cout << (*i_constraints.at(i))(values) << "\n";
+      }
+    }
+    return *active_indices;
+  }
+
   IndexSet active_set;
   for (size_t i = 0; i < i_constraints.size(); i++) {
     if (i_constraints.at(i)->isActive(values)) {

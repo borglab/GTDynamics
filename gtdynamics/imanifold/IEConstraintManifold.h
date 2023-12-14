@@ -58,8 +58,7 @@ public:
       : params_(params), e_constraints_(e_constraints),
         i_constraints_(i_constraints), values_(values),
         active_indices_(
-            active_indices ? *active_indices
-                           : IdentifyActiveConstraints(*i_constraints, values)),
+            IdentifyActiveConstraints(*i_constraints, values, active_indices)),
         embedding_dim_(values.dim()), e_constraints_dim_(e_constraints_->dim()),
         dim_(embedding_dim_ - e_constraints_dim_),
         e_basis_(params->e_basis_creator->create(e_constraints_, values_)),
@@ -72,9 +71,8 @@ public:
                        const std::optional<IndexSet> &active_indices = {})
       : params_(other.params_), e_constraints_(other.e_constraints_),
         i_constraints_(other.i_constraints_), values_(values),
-        active_indices_(active_indices ? *active_indices
-                                       : IdentifyActiveConstraints(
-                                             *i_constraints_, values)),
+        active_indices_(
+            IdentifyActiveConstraints(*i_constraints_, values, active_indices)),
         embedding_dim_(other.embedding_dim_),
         e_constraints_dim_(other.e_constraints_dim_), dim_(other.dim_),
         e_basis_(other.e_basis_->createWithNewValues(values_)),
@@ -157,7 +155,7 @@ protected:
   /// Identify the current active inequality constraints.
   static IndexSet IdentifyActiveConstraints(
       const gtdynamics::InequalityConstraints &i_constraints,
-      const Values &values);
+      const Values &values, const std::optional<IndexSet> &active_indices = {});
 
   /** Construct the tangent cone with the following steps:
    * 1) linearize active i-constraints

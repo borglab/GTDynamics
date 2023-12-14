@@ -43,7 +43,14 @@ public:
   /** Destructor. */
   virtual ~InequalityConstraint() {}
 
-  const std::string &name() { return name_; }
+  const std::string &name() const { return name_; }
+
+  std::string name_tmp() const {
+    if (name_ == "") {
+      return gtdynamics::GTDKeyFormatter(*keys().begin());
+    }
+    return name();
+  }
 
   /**
    * @brief Check if constraint violation is within tolerance.

@@ -80,7 +80,7 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
     active_constraints.push_back(
         i_constraints.at(constraint_idx)->createEqualityConstraint());
   }
-  NonlinearFactorGraph graph_np = e_constraints.meritGraph();
+  NonlinearFactorGraph graph_np = active_constraints.meritGraph();
   graph_np.add(i_constraints.meritGraph());
   LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values,
                                            params_->lm_params);
