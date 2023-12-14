@@ -69,8 +69,6 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   if (iecm_params_->retractor_creator->params()->use_varying_sigma) {
     *iecm_params_->retractor_creator->params()->metric_sigmas =
         state.computeMetricSigmas(graph);
-    // iecm_params_->retractor_creator->metric_sigmas->print("metric sigmas:",
-    // gtdynamics::GTDKeyFormatter);
   }
 
   IELMIterDetails iter_details(state);

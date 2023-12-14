@@ -116,17 +116,22 @@ Values IELMState::baseValues() const {
 VectorValues
 IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
   Values base_values = baseValues();
-  // PrintKeyVector(base_values.keys(), "base_values",
-  //                gtdynamics::GTDKeyFormatter);
-  // PrintKeySet(graph.keys(), "graph_keys", gtdynamics::GTDKeyFormatter);
   auto linear_graph = graph.linearize(base_values);
   auto hessian_diag = linear_graph->hessianDiagonal();
+  // hessian_diag.print("hessian diag:", gtdynamics::GTDKeyFormatter);
   VectorValues metric_sigmas;
   for (auto &[key, value] : hessian_diag) {
     Vector sigmas_sqr_inv = hessian_diag.at(key);
+    if (sigmas_sqr_inv.norm() < 1e-8) {
+      continue;
+    }
     Vector sigmas = sigmas_sqr_inv;
     for (int i = 0; i < sigmas.size(); i++) {
-      sigmas(i) = 1 / sqrt(sigmas(i));
+      if (sigmas_sqr_inv(i) < 1e-8) {
+        sigmas(i) = 1e4;
+      } else {
+        sigmas(i) = 1 / sqrt(sigmas_sqr_inv(i));
+      }
     }
     metric_sigmas.insert(key, sigmas);
   }
@@ -232,7 +237,7 @@ void PrintIELMTrialTitle() {
        << "|" << setw(14) << "retract_devi "
        << "|" << setw(10) << "time  "
        << "|" << setw(10) << "delta_norm"
-       << "|" << setw(30) << "active cosntraints" << endl;
+       << "|" << setw(30) << "active constraints" << endl;
 }
 
 double VectorMean(const std::vector<double> &vec) {
