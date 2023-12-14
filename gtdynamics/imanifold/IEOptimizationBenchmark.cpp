@@ -102,7 +102,7 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
 /* ************************************************************************* */
 std::pair<IEResultSummary, BarrierItersDetail>
 OptimizeBarrierMethod(const IEConsOptProblem &problem,
-                      const gtdynamics::BarrierParameters &params) {
+                      const gtdynamics::BarrierParameters::shared_ptr &params) {
 
   gtdynamics::BarrierOptimizer optimizer(params);
   gtdynamics::ConstrainedOptResult intermediate_result;

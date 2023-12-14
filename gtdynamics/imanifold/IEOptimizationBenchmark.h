@@ -129,7 +129,7 @@ std::pair<IEResultSummary, LMItersDetail> OptimizeSoftConstraints(
 /** Run constrained optimization using the penalty method. */
 std::pair<IEResultSummary, BarrierItersDetail>
 OptimizeBarrierMethod(const IEConsOptProblem &problem,
-                      const gtdynamics::BarrierParameters &params);
+                      const gtdynamics::BarrierParameters::shared_ptr &params);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 std::pair<IEResultSummary, IEGDItersDetails>

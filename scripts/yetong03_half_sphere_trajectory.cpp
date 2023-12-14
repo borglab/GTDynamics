@@ -114,8 +114,8 @@ int main(int argc, char **argv) {
   LevenbergMarquardtParams lm_params;
   auto soft_result = OptimizeSoftConstraints(problem, lm_params, 100);
 
-  BarrierParameters barrier_params;
-  barrier_params.num_iterations = 15;
+  auto barrier_params = std::make_shared<BarrierParameters>();
+  barrier_params->num_iterations = 15;
   auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
 
   GDParams gd_params;

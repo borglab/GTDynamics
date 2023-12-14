@@ -182,9 +182,9 @@ void TrajectoryOptimization() {
                                 "GTDynamics/data/ineq_quadruped_traj.csv");
 
   // Optimize Barrier
-  BarrierParameters barrier_params;
-  barrier_params.initial_mu = 1e0;
-  barrier_params.num_iterations = 5;
+  auto barrier_params = std::make_shared<BarrierParameters>();
+  barrier_params->initial_mu = 1e0;
+  barrier_params->num_iterations = 5;
   auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
   EvaluateCosts(barrier_result.second.rbegin()->values);
   IEVision60Robot::PrintValues(barrier_result.second.rbegin()->values,

@@ -38,38 +38,28 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
                           const std::optional<IndexSet> &blocking_indices,
                           IERetractInfo *retract_info) const {
 
-  const gtdynamics::InequalityConstraints &i_constraints =
-      *manifold->iConstraints();
-  const gtdynamics::EqualityConstraints &e_constraints =
-      *manifold->eConstraints();
-
-  NonlinearFactorGraph graph;
-
-  // optimize with prior and barrier factors
+  // cost as priors
   Values new_values = manifold->values().retract(delta);
-  auto prior_noise = noiseModel::Unit::Create(1);
   KeyVector prior_keys = use_basis_keys_ ? basis_keys_ : new_values.keys();
-  params_->addPriors(new_values, prior_keys, graph);
+  NonlinearFactorGraph prior_graph;
+  params_->addPriors(new_values, prior_keys, prior_graph);
 
-  for (const auto &constraint : e_constraints) {
-    graph.add(constraint->createFactor(1.0));
-  }
-  for (const auto &constraint : i_constraints) {
-    graph.add(constraint->createBarrierFactor(1.0));
-  }
+  // i and e constraints
+  gtdynamics::InequalityConstraints i_constraints = *manifold->iConstraints();
+  gtdynamics::EqualityConstraints e_constraints = *manifold->eConstraints();
   if (blocking_indices) {
     for (const auto &idx : *blocking_indices) {
       const auto &constraint = i_constraints.at(idx);
-      graph.add(constraint->createL2Factor(1.0));
+      e_constraints.push_back(constraint->createEqualityConstraint());
     }
   }
-  LevenbergMarquardtOptimizer optimizer(
-      graph, params_->init_values_as_x ? manifold->values() : new_values,
-      params_->lm_params);
-  Values opt_values = optimizer.optimize();
-  if (retract_info) {
-    retract_info->num_lm_iters = optimizer.iterations();
-  }
+
+  // run barrier optimization
+  const Values &init_values =
+      params_->init_values_as_x ? manifold->values() : new_values;
+  ConstrainedOptResult opt_info;
+  Values opt_values = barrier_optimizer_.optimize(
+      prior_graph, e_constraints, i_constraints, init_values, &opt_info);
 
   // collect active indices
   IndexSet active_indices;
@@ -84,45 +74,36 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   }
 
   // final optimization without priors to make strictly feasible solution
-  NonlinearFactorGraph graph_np;
-  for (const auto &constraint : e_constraints) {
-    graph_np.add(constraint->createFactor(1.0));
-  }
+  gtdynamics::EqualityConstraints active_constraints =
+      *manifold->eConstraints();
   for (const auto &constraint_idx : active_indices) {
-    graph_np.add(i_constraints.at(constraint_idx)
-                     ->createEqualityConstraint()
-                     ->createFactor(1.0));
+    active_constraints.push_back(
+        i_constraints.at(constraint_idx)->createEqualityConstraint());
   }
-  // std::cout << "optimize for feasibility\n";
-  // active_indices.print("active indices\n");
+  NonlinearFactorGraph graph_np = e_constraints.meritGraph();
+  graph_np.add(i_constraints.meritGraph());
   LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values,
                                            params_->lm_params);
   Values result = optimizer_np.optimize();
-  if (retract_info) {
-    retract_info->num_lm_iters += optimizer_np.iterations();
-  }
+
+  // check and ensure feasible
   if (params_->check_feasible) {
     size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
     std::string k_string = "(" + std::to_string(k) + ")";
     if (!CheckFeasible(graph_np, result, "barrier retraction" + k_string,
                        params_->feasible_threshold)) {
       if (params_->ensure_feasible) {
-        if (retract_info) {
-          retract_info->retract_delta = manifold->values().zeroVectors();
-          auto vec_diff = retract_info->retract_delta - delta;
-          double delta_norm = delta.norm();
-          double diff_norm = vec_diff.norm();
-          retract_info->deviate_rate = diff_norm / delta_norm;
-        }
-        return *manifold;
+        return retract(manifold, 0.7 * delta, blocking_indices, retract_info);
       }
     }
   }
 
+  // record retraction info
   if (retract_info) {
+    retract_info->num_lm_iters =
+        opt_info.num_iters.back() + optimizer_np.iterations();
     retract_info->retract_delta = manifold->values().localCoordinates(result);
     auto vec_diff = retract_info->retract_delta - delta;
-
     double delta_norm = delta.norm();
     double diff_norm = vec_diff.norm();
     retract_info->deviate_rate = diff_norm / delta_norm;

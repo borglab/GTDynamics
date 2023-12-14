@@ -49,7 +49,7 @@ CreateProblem() {
   params.vision60_params->include_jerk_costs = true;
   params.vision60_params->include_cf_jerk_costs = true;
   params.vision60_params->include_symmetry_costs = true;
-  params.vision60_params->collision_as_cost = true;
+  // params.vision60_params->collision_as_cost = true;
 
   params.vision60_params->sigma_des_pose = 2e-3;
   params.vision60_params->sigma_des_twist = 1e-2;
@@ -74,7 +74,7 @@ CreateProblem() {
     params.vision60_params->include_friction_cone = true;
     params.vision60_params->include_joint_limits = true;
     // params.vision60_params->include_torque_limits = true;
-    // params.vision60_params->include_collision_free_z = true;
+    params.vision60_params->include_collision_free_z = true;
     // params.vision60_params->include_collision_free_s = true;
   }
 
@@ -98,19 +98,38 @@ void TrajectoryOptimization() {
   /* <=========== retractor ===========> */
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lm_params = LevenbergMarquardtParams();
+  retractor_params->lm_params.setlambdaUpperBound(1e10);
+  retractor_params->lm_params.setAbsoluteErrorTol(1e-10);
   retractor_params->check_feasible = true;
   retractor_params->ensure_feasible = true;
   retractor_params->feasible_threshold = 1e-3;
-  retractor_params->prior_sigma = 0.1;
-  // retractor_params->use_varying_sigma = true;
+  retractor_params->prior_sigma = 1;
+  retractor_params->use_varying_sigma = true;
   // retractor_params->scale_varying_sigma = true;
-  // retractor_params->metric_sigmas = std::make_shared<VectorValues>();
-  iecm_params->retractor_creator =
-      std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
-          vision60_multi_phase, retractor_params, false);
+  retractor_params->metric_sigmas = std::make_shared<VectorValues>();
+
+  auto barrier_params = std::make_shared<BarrierParameters>();
+  // barrier_params->lm_params = params_->lm_params;
+  barrier_params->initial_mu = 1.0;
+  barrier_params->mu_increase_rate = 4.0;
+  barrier_params->num_iterations = 4;
+  auto lm_params1 = retractor_params->lm_params;
+  auto lm_params2 = retractor_params->lm_params;
+  // lm_params1.setMaxIterations(20);
+  // lm_params1.setVerbosityLM("SUMMARY");
+  barrier_params->iters_lm_params = std::vector<LevenbergMarquardtParams>();
+  for (size_t i=0; i<barrier_params->num_iterations-1; i++) {
+    barrier_params->iters_lm_params.push_back(lm_params1);
+  }
+  barrier_params->iters_lm_params.push_back(lm_params2);
+  retractor_params->barrier_params = barrier_params;
+
   // iecm_params->retractor_creator =
-  //     std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+  //     std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
   //         vision60_multi_phase, retractor_params, false);
+  iecm_params->retractor_creator =
+      std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
+          vision60_multi_phase, retractor_params, false);
 
   /* <=========== t-space basis ===========> */
   iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();

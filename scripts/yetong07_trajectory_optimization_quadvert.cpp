@@ -148,10 +148,10 @@ void TrajectoryOptimization() {
   /* <=====================================================================> */
   /* <======================== Optimize Barrier ===========================> */
   /* <=====================================================================> */
-  // BarrierParameters barrier_params;
-  // barrier_params.verbose = true;
-  // barrier_params.initial_mu = 1e0;
-  // barrier_params.num_iterations = 10;
+  // auto barrier_params = std::make_shared<BarrierParameters>();
+  // barrier_params->verbose = true;
+  // barrier_params->initial_mu = 1e0;
+  // barrier_params->num_iterations = 10;
   // auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
   // EvaluateAndExportBarrierResult(problem, vision60_multi_phase,
   // barrier_result,

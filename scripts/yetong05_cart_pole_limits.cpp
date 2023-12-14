@@ -93,9 +93,9 @@ int main(int argc, char **argv) {
   IECartPoleWithLimits::ExportValues(result_values, num_steps, "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_cartpole_traj.csv");
   
   // Optimize Barrier
-  BarrierParameters barrier_params;
-  barrier_params.initial_mu = 1e0;
-  barrier_params.num_iterations = 20;
+  auto barrier_params = std::make_shared<BarrierParameters>();
+  barrier_params->initial_mu = 1e0;
+  barrier_params->num_iterations = 20;
   auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
   EvaluateCosts(barrier_result.second.rbegin()->values);
   barrier_result.first.exportFileWithMu("/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_cartpole_barrier.txt");

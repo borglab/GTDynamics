@@ -269,7 +269,7 @@ TEST(TrajectoryValuesForwardJump, constraints) {
   auto vision60_multi_phase =
       GetVision60MultiPhase(vision60_params, phase_num_steps);
 
-  Values values = InitValuesTrajectory(*vision60_multi_phase, phases_dt);
+  Values values = InitValuesTrajectory(*vision60_multi_phase, phases_dt, false, false);
   auto e_constraints = vision60_multi_phase->eConstraints();
   EXPECT(
       assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));

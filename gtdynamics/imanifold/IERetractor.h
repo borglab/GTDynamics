@@ -15,6 +15,7 @@
 
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtdynamics/optimizer/BarrierOptimizer.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/linear/VectorValues.h>
@@ -36,6 +37,8 @@ struct IERetractorParams {
   bool check_feasible = true;
   double feasible_threshold = 1e-3;
   bool ensure_feasible = false;
+  gtdynamics::BarrierParameters::shared_ptr barrier_params =
+      std::make_shared<gtdynamics::BarrierParameters>();
 
   IERetractorParams() = default;
 
@@ -72,7 +75,6 @@ struct IERetractorParams {
   }
 };
 
-
 struct IERetractInfo {
   size_t num_lm_iters;
   double deviate_rate;
@@ -85,6 +87,7 @@ class IERetractor {
 
 protected:
   IERetractorParams::shared_ptr params_;
+  gtdynamics::BarrierOptimizer barrier_optimizer_;
 
 public:
   using shared_ptr = std::shared_ptr<IERetractor>;
@@ -92,7 +95,7 @@ public:
   /// Default constructor.
   IERetractor(const IERetractorParams::shared_ptr &params =
                   std::make_shared<IERetractorParams>())
-      : params_(params) {}
+      : params_(params), barrier_optimizer_(params_->barrier_params) {}
 
   virtual ~IERetractor() {}
 
@@ -100,12 +103,12 @@ public:
   virtual IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const = 0;
+          IERetractInfo *retract_info = nullptr) const = 0;
 
   virtual IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
                  const IndexSet &blocking_indices,
-                 IERetractInfo* retract_info = nullptr) const;
+                 IERetractInfo *retract_info = nullptr) const;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
@@ -132,7 +135,7 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override;
+          IERetractInfo *retract_info = nullptr) const override;
 };
 
 /**
@@ -165,7 +168,7 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override;
+          IERetractInfo *retract_info = nullptr) const override;
 };
 
 /* ************************************************************************* */
