@@ -33,6 +33,42 @@ IERetractor::moveToBoundary(const IEConstraintManifold *manifold,
 
 /* ************************************************************************* */
 IEConstraintManifold
+BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
+                                 const IndexSet &blocking_indices,
+                                 IERetractInfo *retract_info) const {
+
+  EqualityConstraints blocking_constraints;
+  for (const auto &blocking_idx : blocking_indices) {
+    blocking_constraints.push_back(
+        manifold->iConstraints()->at(blocking_idx)->createEqualityConstraint());
+  }
+  NonlinearFactorGraph cost = blocking_constraints.meritGraph();
+
+  Values opt_values = barrier_optimizer_.optimize(
+      cost, *manifold->eConstraints(), *manifold->iConstraints(),
+      manifold->values());
+
+  NonlinearFactorGraph merit_graph = cost;
+  merit_graph.add(manifold->eConstraints()->meritGraph());
+  merit_graph.add(manifold->iConstraints()->meritGraph());
+  LevenbergMarquardtOptimizer optimizer_np(merit_graph, opt_values,
+                                           params_->lm_params);
+  Values result = optimizer_np.optimize();
+
+  if (params_->check_feasible) {
+    size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
+    std::string k_string = "(" + std::to_string(k) + ")";
+    if (!CheckFeasible(merit_graph, result,
+                       "barrier move to boundary" + k_string,
+                       params_->feasible_threshold)) {
+    }
+  }
+
+  return manifold->createWithNewValues(result, blocking_indices);
+}
+
+/* ************************************************************************* */
+IEConstraintManifold
 BarrierRetractor::retract(const IEConstraintManifold *manifold,
                           const VectorValues &delta,
                           const std::optional<IndexSet> &blocking_indices,

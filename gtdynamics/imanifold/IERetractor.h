@@ -136,6 +136,11 @@ public:
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractInfo *retract_info = nullptr) const override;
+
+  IEConstraintManifold
+  moveToBoundary(const IEConstraintManifold *manifold,
+                 const IndexSet &blocking_indices,
+                 IERetractInfo *retract_info = nullptr) const override;
 };
 
 /**
