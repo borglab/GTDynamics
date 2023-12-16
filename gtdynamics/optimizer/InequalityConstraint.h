@@ -25,9 +25,81 @@
 #include <gtsam/nonlinear/expressions.h>
 
 namespace gtdynamics {
+/**
+ * Linear inequality constraint base class.
+ */
+class LinearInequalityConstraint {
+public:
+  typedef LinearInequalityConstraint This;
+  typedef std::shared_ptr<This> shared_ptr;
+
+  /** Default constructor. */
+  LinearInequalityConstraint() {}
+
+  virtual ~LinearInequalityConstraint() {}
+
+  virtual size_t dim() const = 0;
+
+  virtual bool feasible(const gtsam::VectorValues &x) const = 0;
+
+  virtual gtsam::JacobianFactor::shared_ptr createL2Factor() const = 0;
+
+  virtual gtsam::JacobianFactor::shared_ptr createConstrainedFactor() const = 0;
+
+  virtual gtsam::MultiJacobian jacobian() const = 0;
+};
 
 /**
- * Equality constraint base class.
+ * Linear inequality constraint represented with a Jacobian factor.
+ */
+class JacobianLinearInequalityConstraint : public LinearInequalityConstraint {
+protected:
+  using base = LinearInequalityConstraint;
+  gtsam::JacobianFactor::shared_ptr factor_;
+
+public:
+  JacobianLinearInequalityConstraint(
+      const gtsam::JacobianFactor::shared_ptr &factor)
+      : base(), factor_(factor) {}
+
+  size_t dim() const override { return factor_->rows(); }
+
+  bool feasible(const gtsam::VectorValues &x) const override {
+    gtsam::Vector error = factor_->error_vector(x);
+    for (const double &entry : error) {
+      if (entry < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  gtsam::JacobianFactor::shared_ptr createL2Factor() const override {
+    return factor_;
+  }
+
+  gtsam::JacobianFactor::shared_ptr createConstrainedFactor() const override {
+    auto factor = std::make_shared<gtsam::JacobianFactor>(*factor_);
+    auto sigmas = gtsam::Vector::Zero(dim());
+    factor->setModel(true, sigmas);
+    return factor;
+  }
+
+  gtsam::MultiJacobian jacobian() const override {
+    gtsam::MultiJacobian jac;
+    size_t start_col = 0;
+    gtsam::Matrix jac_mat = factor_->jacobian().first;
+    for (auto it = factor_->begin(); it != factor_->end(); it++) {
+      size_t dim = factor_->getDim(it);
+      jac.addJacobian(*it, jac_mat.middleCols(start_col, dim));
+      start_col += dim;
+    }
+    return jac;
+  }
+};
+
+/**
+ * Inequality constraint base class.
  */
 class InequalityConstraint {
 protected:
@@ -81,10 +153,13 @@ public:
   virtual EqualityConstraint::shared_ptr createEqualityConstraint() const = 0;
 
   virtual gtsam::NoiseModelFactor::shared_ptr
-  createL2Factor(const double mu) const = 0;
+  createL2Factor(const double mu = 1.0) const = 0;
 
   virtual gtsam::NoiseModelFactor::shared_ptr
-  createBarrierFactor(const double mu) const = 0;
+  createBarrierFactor(const double mu = 1.0) const = 0;
+
+  virtual LinearInequalityConstraint::shared_ptr
+  linearize(const gtsam::Values &values) const;
 
   virtual gtsam::MultiJacobian jacobians(const gtsam::Values &x) const = 0;
 
@@ -160,12 +235,12 @@ public:
   }
 
   gtsam::NoiseModelFactor::shared_ptr
-  createBarrierFactor(const double mu) const override {
+  createBarrierFactor(const double mu = 1.0) const override {
     return std::make_shared<gtsam::BarrierFactor>(createL2Factor(mu), true);
   }
 
   gtsam::NoiseModelFactor::shared_ptr
-  createL2Factor(const double mu) const override {
+  createL2Factor(const double mu = 1.0) const override {
     auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
     return std::make_shared<gtsam::ExpressionFactor<double>>(noise, 0.0,
                                                              expression_);
@@ -247,12 +322,12 @@ public:
   }
 
   gtsam::NoiseModelFactor::shared_ptr
-  createBarrierFactor(const double mu) const override {
+  createBarrierFactor(const double mu = 1.0) const override {
     return std::make_shared<gtsam::BarrierFactor>(createL2Factor(mu), true);
   }
 
   gtsam::NoiseModelFactor::shared_ptr
-  createL2Factor(const double mu) const override {
+  createL2Factor(const double mu = 1.0) const override {
     auto noise =
         gtsam::noiseModel::Isotropic::Sigmas(1 / sqrt(mu) * tolerance_);
     return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector2>>(
@@ -271,6 +346,31 @@ public:
 
   static gtsam::Vector2_ ConstructExpression(const gtsam::Double_ &expr1,
                                              const gtsam::Double_ &expr2);
+};
+
+class LinearInequalityConstraints
+    : public std::vector<LinearInequalityConstraint::shared_ptr> {
+private:
+  using Base = std::vector<LinearInequalityConstraint::shared_ptr>;
+
+  template <typename DERIVEDCONSTRAINT>
+  using IsDerived =
+      typename std::enable_if<std::is_base_of<LinearInequalityConstraint,
+                                              DERIVEDCONSTRAINT>::value>::type;
+
+public:
+  typedef LinearInequalityConstraints This;
+  typedef std::shared_ptr<This> shared_ptr;
+
+  LinearInequalityConstraints() : Base() {}
+
+  /// Emplace a shared pointer to constraint of given type.
+  template <class DERIVEDCONSTRAINT, class... Args>
+  IsDerived<DERIVEDCONSTRAINT> emplace_shared(Args &&...args) {
+    push_back(std::allocate_shared<DERIVEDCONSTRAINT>(
+        Eigen::aligned_allocator<DERIVEDCONSTRAINT>(),
+        std::forward<Args>(args)...));
+  }
 };
 
 /// Container of InequalityConstraint.

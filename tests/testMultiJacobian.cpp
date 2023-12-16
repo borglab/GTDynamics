@@ -39,6 +39,11 @@ TEST(MultiJacobian, Add_Mult) {
   jac2.addJacobian(x1, H2_x1);
   jac2.addJacobian(x3, H2_x3);
 
+  VectorValues expected_row;
+  expected_row.insert(x1, Vector2(1, 2));
+  expected_row.insert(x2, Vector1(3));
+  EXPECT(assert_equal(expected_row, jac1.row(0)));
+
   MultiJacobian expected_sum;
   expected_sum.insert({x1, (Matrix(2, 2) << 3, 4, 6, 7).finished()});
   expected_sum.insert({x2, H1_x2});

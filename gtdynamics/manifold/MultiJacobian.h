@@ -60,6 +60,9 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
   /// Check equality.
   bool equals(const MultiJacobian& other, double tol = 1e-8) const;
 
+  /// Return the i-th row of the jacobian as vector values.
+  VectorValues row(const size_t i) const;
+
   KeySet keys() const;
 
   size_t numRows() const;

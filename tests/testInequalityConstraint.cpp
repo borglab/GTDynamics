@@ -115,6 +115,31 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(*l2_factor, values1, 1e-7, 1e-5);
 }
 
+TEST(LinearInequalityConstraint, JacobianLinearInequalityConstraint) {
+  MultiJacobian jac;
+  jac.addJacobian(x1_key, (Matrix(2, 2) << 2, -2, 1, 3).finished());
+  jac.addJacobian(x2_key, (Matrix(2, 1) << 1, 2).finished());
+  Vector b = Vector::Zero(2);
+  SharedDiagonal model = noiseModel::Unit::Create(2);
+  auto factor = std::make_shared<JacobianFactor>(jac, b, model);
+  JacobianLinearInequalityConstraint constraint(factor);
+
+  EXPECT_LONGS_EQUAL(2, constraint.dim());
+
+  VectorValues values1;
+  values1.insert(x1_key, Vector2(0, 0));
+  values1.insert(x2_key, Vector1(0));
+  VectorValues values2;
+  values2.insert(x1_key, Vector2(0, 1));
+  values2.insert(x2_key, Vector1(0));
+  EXPECT(constraint.feasible(values1));
+  EXPECT(!constraint.feasible(values2));
+
+  auto constrained_factor = constraint.createConstrainedFactor();
+  EXPECT(constrained_factor->get_model()->isConstrained());
+  EXPECT(jac.equals(constraint.jacobian()));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

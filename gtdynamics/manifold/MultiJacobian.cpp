@@ -84,6 +84,15 @@ void MultiJacobian::addJacobianChainRule(const Matrix &H_relative,
 }
 
 /* ************************************************************************* */
+VectorValues MultiJacobian::row(const size_t i) const {
+  VectorValues jac_i;
+  for (const auto &[key, mat] : *this) {
+    jac_i.insert(key, mat.row(i).transpose());
+  }
+  return jac_i;
+}
+
+/* ************************************************************************* */
 void MultiJacobian::print(const std::string &s,
                           const KeyFormatter &keyFormatter) const {
   std::cout << s;

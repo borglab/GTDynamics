@@ -22,6 +22,16 @@ void InequalityConstraint::print(
 }
 
 /* ************************************************************************* */
+LinearInequalityConstraint::shared_ptr
+InequalityConstraint::linearize(const gtsam::Values &values) const {
+  auto nonlinear_factor = createL2Factor();
+  auto linear_factor = nonlinear_factor->linearize(values);
+  auto jacobian_factor =
+      std::static_pointer_cast<gtsam::JacobianFactor>(linear_factor);
+  return std::make_shared<JacobianLinearInequalityConstraint>(jacobian_factor);
+}
+
+/* ************************************************************************* */
 gtsam::MultiJacobian
 DoubleExpressionInequality::jacobians(const gtsam::Values &x) const {
   auto keyset = keys();
