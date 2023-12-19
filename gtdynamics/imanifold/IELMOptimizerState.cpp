@@ -1,6 +1,7 @@
 
 #include <gtdynamics/imanifold/IELMOptimizer.h>
 #include <gtdynamics/imanifold/IELMOptimizerState.h>
+#include <gtdynamics/optimizer/ConvexIQPSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
 using std::cout, std::setw, std::setprecision, std::endl;
@@ -11,46 +12,53 @@ namespace gtsam {
 /* <============================ IELMState ================================> */
 /* ************************************************************************* */
 
+/* ************************************************************************* */
 IELMState::IELMState(const IEManifoldValues &_manifolds,
-                     const Values &_unconstrained_values,
-                     const NonlinearFactorGraph &graph, const double &_lambda,
-                     const double &_lambda_factor, size_t _iterations)
-    : manifolds(_manifolds), unconstrained_values(_unconstrained_values),
-      error(EvaluateGraphError(graph, manifolds, _unconstrained_values)),
+                     const Values &unconstrained_values,
+                     const NonlinearFactorGraph &graph,
+                     const NonlinearFactorGraph &manifold_graph,
+                     const double &_lambda, const double &_lambda_factor,
+                     size_t _iterations)
+    : manifolds(_manifolds),
+      values(AllValues(_manifolds, unconstrained_values)),
+      unconstrained_keys(unconstrained_values.keys()),
+      error(EvaluateGraphError(graph, manifolds, unconstrained_values)),
       lambda(_lambda), lambda_factor(_lambda_factor), iterations(_iterations) {
-  ConstructEManifolds(graph);
-  base_linear = graph.linearize(baseValues());
+  construct(graph, manifold_graph);
 }
 
 /* ************************************************************************* */
-IELMState IELMState::FromLastIteration(const IELMIterDetails &iter_details,
-                                       const NonlinearFactorGraph &graph,
-                                       const LevenbergMarquardtParams &params) {
+IELMState
+IELMState::FromLastIteration(const IELMIterDetails &iter_details,
+                             const NonlinearFactorGraph &graph,
+                             const NonlinearFactorGraph &manifold_graph,
+                             const LevenbergMarquardtParams &params) {
   double lambda;
   const auto &last_trial = iter_details.trials.back();
   const auto &prev_state = iter_details.state;
   IELMState state;
   if (last_trial.step_is_successful) {
-    state =
-        IELMState(last_trial.nonlinear_update.new_manifolds,
-                  last_trial.nonlinear_update.new_unconstrained_values, graph,
-                  last_trial.linear_update.lambda, prev_state.lambda_factor);
+    state = IELMState(last_trial.nonlinear_update.new_manifolds,
+                      last_trial.nonlinear_update.new_unconstrained_values,
+                      graph, manifold_graph, last_trial.linear_update.lambda,
+                      prev_state.lambda_factor);
     // TODO: will this cause early ending? (converged in this mode, but not for
     // the overall problem)
     if (last_trial.forced_indices_map.size() > 0) {
-      state.blocking_indices_map.mergeWith(last_trial.forced_indices_map);
+      state.grad_blocking_indices_map.mergeWith(last_trial.forced_indices_map);
     }
   } else {
     // pick the trials with smallest error
-    state = IELMState(prev_state.manifolds, prev_state.unconstrained_values,
-                      graph, prev_state.lambda, prev_state.lambda_factor);
+    state =
+        IELMState(prev_state.manifolds, prev_state.unconstrainedValues(), graph,
+                  manifold_graph, prev_state.lambda, prev_state.lambda_factor);
     for (const auto &trial : iter_details.trials) {
       if (trial.linear_update.solve_successful &&
           trial.nonlinear_update.new_error < prev_state.error) {
-        state =
-            IELMState(trial.nonlinear_update.new_manifolds,
-                      trial.nonlinear_update.new_unconstrained_values, graph,
-                      trial.linear_update.lambda, prev_state.lambda_factor);
+        state = IELMState(trial.nonlinear_update.new_manifolds,
+                          trial.nonlinear_update.new_unconstrained_values,
+                          graph, manifold_graph, trial.linear_update.lambda,
+                          prev_state.lambda_factor);
       }
     }
   }
@@ -63,30 +71,51 @@ IELMState IELMState::FromLastIteration(const IELMIterDetails &iter_details,
 }
 
 /* ************************************************************************* */
-void IELMState::identifyGradBlockingIndices(
-    const NonlinearFactorGraph &manifold_graph) {
+Values IELMState::AllValues(const IEManifoldValues &manifolds,
+                            const Values &unconstrained_values) {
   Values values = IEOptimizer::EManifolds(manifolds);
   values.insert(unconstrained_values);
-  auto linear_graph = manifold_graph.linearize(values);
-
-  gradient = linear_graph->gradientAtZero();
-  VectorValues descent_dir = -1 * gradient;
-
-  // identify blocking constraints
-  blocking_indices_map =
-      IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
+  return values;
 }
 
 /* ************************************************************************* */
-void IELMState::ConstructEManifolds(const NonlinearFactorGraph &graph) {
-  std::map<Key, Key> keymap_var2manifold =
-      IEOptimizer::Var2ManifoldKeyMap(manifolds);
-  NonlinearFactorGraph manifold_graph =
-      ManifoldOptimizer::ManifoldGraph(graph, keymap_var2manifold);
-  identifyGradBlockingIndices(manifold_graph);
-  // setting blocking constraints as equalities, create e-manifolds
-  std::tie(e_manifolds, const_e_manifolds) =
-      IEOptimizer::EManifolds(manifolds, blocking_indices_map);
+void IELMState::construct(const NonlinearFactorGraph &graph,
+                          const NonlinearFactorGraph &manifold_graph) {
+  // linearize costs
+  base_linear = graph.linearize(baseValues());
+  linear_manifold_graph = manifold_graph.linearize(values);
+
+  // linearize active i-constraints
+  linearizeIConstraints();
+
+  // compute graident
+  computeGradient(manifold_graph);
+}
+
+/* ************************************************************************* */
+void IELMState::linearizeIConstraints() {
+  linear_manifold_i_constraints.resize(0);
+  size_t index = 0;
+  for (const auto &[key, manifold] : manifolds) {
+    auto man_constraints = manifold.linearActiveManIConstraints(key);
+    auto base_constraints = manifold.linearActiveBaseIConstraints();
+    for (const auto &[constraint_idx, constraint] : man_constraints) {
+      linear_manifold_i_constraints.push_back(constraint);
+      linear_base_i_constraints.push_back(base_constraints.at(constraint_idx));
+      lic_index_translator.insert(index, key, constraint_idx);
+      index++;
+    }
+  }
+}
+
+/* ************************************************************************* */
+void IELMState::computeGradient(const NonlinearFactorGraph &manifold_graph) {
+  gradient = linear_manifold_graph->gradientAtZero();
+  VectorValues descent_dir = -1 * gradient;
+
+  // identify blocking constraints
+  grad_blocking_indices_map =
+      IEOptimizer::ProjectTangentCone(manifolds, descent_dir).first;
 }
 
 /* ************************************************************************* */
@@ -99,9 +128,14 @@ double IELMState::EvaluateGraphError(const NonlinearFactorGraph &graph,
 }
 
 /* ************************************************************************* */
+Values IELMState::unconstrainedValues() const {
+  return SubValues(values, unconstrained_keys);
+}
+
+/* ************************************************************************* */
 Values IELMState::baseValues() const {
   Values base_values = manifolds.baseValues();
-  base_values.insert(unconstrained_values);
+  base_values.insert(unconstrainedValues());
   return base_values;
 }
 
@@ -140,8 +174,7 @@ IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
 
 /* ************************************************************************* */
 IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
-                     const double &lambda,
-                     const LevenbergMarquardtParams &params) {
+                     const double &lambda, const IELMParams &params) {
   // std::cout << "========= " << state.iterations << " ======= \n";
   auto start = std::chrono::high_resolution_clock::now();
   step_is_successful = false;
@@ -159,7 +192,7 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
   model_fidelity = nonlinear_update.cost_change / linear_update.cost_change;
   if (linear_update.cost_change >
           std::numeric_limits<double>::epsilon() * linear_update.old_error &&
-      model_fidelity > params.minModelFidelity) {
+      model_fidelity > params.lm_params.minModelFidelity) {
     step_is_successful = true;
   }
 
@@ -177,7 +210,7 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
   forced_indices_map = approach_indices_map;
   nonlinear_update.new_manifolds =
       state.manifolds.moveToBoundaries(approach_indices_map);
-  nonlinear_update.new_unconstrained_values = state.unconstrained_values;
+  nonlinear_update.new_unconstrained_values = state.unconstrainedValues();
   nonlinear_update.computeError(graph, state.error);
   step_is_successful = true;
 }
@@ -299,21 +332,6 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     cout << "\033[0m";
   }
   cout << endl;
-
-  // for (const auto& [key, manifold]: nonlinear_update.new_manifolds) {
-  //   for (const auto &constraint: *manifold.iConstraints()) {
-  //     if (auto p =
-  //     std::dynamic_pointer_cast<gtdynamics::TwinDoubleExpressionInequality>(constraint))
-  //     {
-  //       double eval1 = (*p->constraint1())(manifold.values());
-  //       double eval2 = (*p->constraint2())(manifold.values());
-  //       if (abs(eval1-eval2)>1e-3) {
-  //         constraint->print();
-  //         std::cout << "\t" << eval1 << ", " <<eval2 << "\n";
-  //       }
-  //     }
-  //   }
-  // }
 }
 
 /* ************************************************************************* */
@@ -324,74 +342,109 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
 IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const NonlinearFactorGraph &graph,
                                       const IELMState &state,
-                                      const LevenbergMarquardtParams &params)
+                                      const IELMParams &params)
     : lambda(_lambda), num_solves(0) {
-  // initialize blocking constraints and e_manifolds
-  std::map<Key, Key> keymap_var2manifold =
-      IEOptimizer::Var2ManifoldKeyMap(state.manifolds);
-  blocking_indices_map = state.blocking_indices_map;
-  e_manifolds = state.e_manifolds;
-  const_e_manifolds = state.const_e_manifolds;
+
+  // build damped system
+  GaussianFactorGraph::shared_ptr linear = state.linear_manifold_graph;
+  VectorValues sqrt_hessian_diagonal =
+      SqrtHessianDiagonal(*linear, params.lm_params);
+  auto damped_system = buildDampedSystem(*linear, sqrt_hessian_diagonal, state,
+                                         params.lm_params);
+
+  // solve IQP init estimate
+  IndexSet blocking_indices;
+  std::tie(delta, blocking_indices, num_solves, solve_successful) =
+      InitEstimate(damped_system, state, params.lm_params);
+  if (!solve_successful) {
+    return;
+  }
+
+  // solve IQP
+  if (params.iqp_max_iters > 0) {
+    size_t num_new_solves;
+    std::tie(delta, blocking_indices, num_new_solves, solve_successful) =
+        SolveConvexIQP(damped_system, state.linear_manifold_i_constraints,
+                       blocking_indices, delta, params.iqp_max_iters);
+    num_solves += num_new_solves;
+  }
+
+  // record linear update info
+  blocking_indices_map =
+      state.lic_index_translator.decodeIndices(blocking_indices);
+  tangent_vector = computeTangentVector(state, delta, state.unconstrained_keys);
+  CheckSolutionValid(state, tangent_vector, blocking_indices);
+  old_error = linear->error(VectorValues::Zero(delta));
+  new_error = linear->error(delta);
+  cost_change = old_error - new_error;
+}
+
+/* ************************************************************************* */
+std::tuple<VectorValues, IndexSet, size_t, bool>
+IELMTrial::LinearUpdate::InitEstimate(const GaussianFactorGraph &quadratic_cost,
+                                      const IELMState &state,
+                                      const LevenbergMarquardtParams &params) {
+
+  IndexSet blocking_indices =
+      state.lic_index_translator.encodeIndices(state.grad_blocking_indices_map);
+  size_t num_solves = 0;
 
   while (true) {
-    // linearize and build damped system
-    GaussianFactorGraph::shared_ptr linear =
-        linearize(graph, state.unconstrained_values, keymap_var2manifold);
-    VectorValues sqrt_hessian_diagonal = SqrtHessianDiagonal(*linear, params);
-    auto damped_system =
-        buildDampedSystem(*linear, sqrt_hessian_diagonal, state, params);
+    num_solves += 1;
+    GaussianFactorGraph graph = quadratic_cost;
+    GaussianFactorGraph constraint_graph =
+        state.linear_manifold_i_constraints.constraintGraph(blocking_indices);
+    graph.push_back(constraint_graph.begin(), constraint_graph.end());
 
-    // solve delta
-    // VectorValues delta;
+    VectorValues delta;
     try {
-      num_solves += 1;
-      delta = SolveLinear(damped_system, params);
-      solve_successful = true;
+      delta = SolveLinear(graph, params);
     } catch (const IndeterminantLinearSystemException &) {
-      solve_successful = false;
-      return;
+      return {delta, blocking_indices, num_solves, false};
     }
 
     // check if satisfy tagent cone, if not, add constraints and recompute
     bool feasible = true;
-    for (const Key &key : e_manifolds.keys()) {
+    for (const auto &[key, manifold] : state.manifolds) {
       const Vector &xi = delta.at(key);
-      ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
-      VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
+      VectorValues tv = manifold.eBasis()->computeTangentVector(xi);
 
-      IndexSet blocking_indices = state.manifolds.at(key).blockingIndices(tv);
-      if (blocking_indices.size() > 0) {
-        feasible = false;
-        blocking_indices_map.addIndices(key, blocking_indices);
+      IndexSet man_blocking_indices = manifold.blockingIndices(tv);
+      for (const auto &constraint_idx : man_blocking_indices) {
+        size_t index =
+            state.lic_index_translator.encoder.at({key, constraint_idx});
+        if (!blocking_indices.exists(index)) {
+          feasible = false;
+          blocking_indices.insert(index);
+        }
       }
     }
-
     if (feasible) {
-      tangent_vector =
-          computeTangentVector(delta, state.unconstrained_values.keys());
-      old_error = linear->error(VectorValues::Zero(delta));
-      new_error = linear->error(delta);
-      cost_change = old_error - new_error;
-      break;
-    } else {
-      // recompute e_manifolds
-      std::tie(e_manifolds, const_e_manifolds) =
-          IEOptimizer::EManifolds(state.manifolds, blocking_indices_map);
+      return {delta, blocking_indices, num_solves, true};
     }
   }
 }
 
 /* ************************************************************************* */
-GaussianFactorGraph::shared_ptr IELMTrial::LinearUpdate::linearize(
-    const NonlinearFactorGraph &graph, const Values &unconstrained_values,
-    const std::map<Key, Key> &keymap_var2manifold) const {
-  // linearize on e-manifolds
-  NonlinearFactorGraph manifold_graph = ManifoldOptimizer::ManifoldGraph(
-      graph, keymap_var2manifold, const_e_manifolds);
-  Values values = e_manifolds;
-  values.insert(unconstrained_values);
-  auto active_linear_graph = manifold_graph.linearize(values);
-  return active_linear_graph;
+bool IELMTrial::LinearUpdate::CheckSolutionValid(
+    const IELMState &state, const VectorValues &tangent_vector,
+    const IndexSet &blocking_indices) {
+  for (const auto &constraint : state.linear_base_i_constraints) {
+    if (!constraint->feasible(tangent_vector, 1e-5)) {
+      std::cout << "tangent vector violating constraint: "
+                << (*constraint)(tangent_vector).transpose() << "\n";
+      return false;
+    }
+  }
+  for (const auto &constraint_idx : blocking_indices) {
+    const auto &constraint = state.linear_base_i_constraints.at(constraint_idx);
+    if (!constraint->isActive(tangent_vector)) {
+      std::cout << "blocking constraint is not active: "
+                << (*constraint)(tangent_vector).transpose() << "\n";
+      return false;
+    }
+  }
+  return true;
 }
 
 /* ************************************************************************* */
@@ -410,11 +463,8 @@ IELMTrial::LinearUpdate::buildDampedSystem(GaussianFactorGraph damped,
                                            const IELMState &state) const {
   noiseModelCache.resize(0);
   // for each of the variables, add a prior
-  damped.reserve(damped.size() + e_manifolds.size() +
-                 state.unconstrained_values.size());
-  std::map<Key, size_t> dims = e_manifolds.dims();
-  std::map<Key, size_t> dims_unconstrained = state.unconstrained_values.dims();
-  dims.insert(dims_unconstrained.begin(), dims_unconstrained.end());
+  damped.reserve(damped.size() + state.values.size());
+  std::map<Key, size_t> dims = state.values.dims();
   for (const auto &key_dim : dims) {
     const Key &key = key_dim.first;
     const size_t &dim = key_dim.second;
@@ -457,23 +507,19 @@ GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
 
 /* ************************************************************************* */
 VectorValues IELMTrial::LinearUpdate::computeTangentVector(
-    const VectorValues &delta, const KeyVector &unconstrained_keys) const {
+    const IELMState &state, const VectorValues &delta,
+    const KeySet &unconstrained_keys) const {
   VectorValues tangent_vector;
-  for (const Key &key : e_manifolds.keys()) {
-    const Vector &xi = delta.at(key);
-    ConstraintManifold e_manifold = e_manifolds.at<ConstraintManifold>(key);
-    VectorValues tv = e_manifold.basis()->computeTangentVector(xi);
-    tangent_vector.insert(tv);
+  for (const auto &[key, xi] : delta) {
+    if (unconstrained_keys.exists(key)) {
+      tangent_vector.insert(key, delta.at(key));
+    } else {
+      const auto &manifold = state.manifolds.at(key);
+      VectorValues tv = manifold.eBasis()->computeTangentVector(xi);
+      tangent_vector.insert(tv);
+    }
   }
-  for (const Key &key : const_e_manifolds.keys()) {
-    ConstraintManifold e_manifold =
-        const_e_manifolds.at<ConstraintManifold>(key);
-    VectorValues tv = e_manifold.values().zeroVectors();
-    tangent_vector.insert(tv);
-  }
-  for (const Key &key : unconstrained_keys) {
-    tangent_vector.insert(key, delta.at(key));
-  }
+
   return tangent_vector;
 }
 
@@ -486,16 +532,10 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
                                             const LinearUpdate &linear_update,
                                             const NonlinearFactorGraph &graph) {
 
-  // copy const manifolds
-  for (const Key &key : linear_update.const_e_manifolds.keys()) {
-    new_manifolds.emplace(key, state.manifolds.at(key));
-  }
-
   // retract for ie-manifolds
   num_retract_iters = 0;
   VectorValues retract_delta;
-  for (const Key &key : linear_update.e_manifolds.keys()) {
-    const auto &manifold = state.manifolds.at(key);
+  for (const auto &[key, manifold] : state.manifolds) {
     VectorValues tv =
         SubValues(linear_update.tangent_vector, manifold.values().keys());
     const auto &blocking_indices_map = linear_update.blocking_indices_map;
@@ -511,16 +551,12 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
     retract_divate_rates.push_back(retract_info.deviate_rate);
     retract_delta.insert(retract_info.retract_delta);
   }
-  for (const auto &key : linear_update.const_e_manifolds.keys()) {
-    const auto &manifold = state.manifolds.at(key);
-    retract_delta.insert(manifold.values().zeroVectors());
-  }
 
   // retract for unconstrained variables
-  VectorValues tangent_vector_unconstrained = SubValues(
-      linear_update.tangent_vector, state.unconstrained_values.keys());
+  VectorValues tangent_vector_unconstrained =
+      SubValues(linear_update.tangent_vector, state.unconstrained_keys);
   new_unconstrained_values =
-      state.unconstrained_values.retract(tangent_vector_unconstrained);
+      state.unconstrainedValues().retract(tangent_vector_unconstrained);
   retract_delta.insert(tangent_vector_unconstrained);
 
   // compute error

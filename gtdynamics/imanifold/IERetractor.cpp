@@ -141,8 +141,12 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
     retract_info->retract_delta = manifold->values().localCoordinates(result);
     auto vec_diff = retract_info->retract_delta - delta;
     double delta_norm = delta.norm();
-    double diff_norm = vec_diff.norm();
-    retract_info->deviate_rate = diff_norm / delta_norm;
+    if (abs(delta_norm) < 1e-10) {
+      retract_info->deviate_rate = 0;
+    } else {
+      double diff_norm = vec_diff.norm();
+      retract_info->deviate_rate = diff_norm / delta_norm;
+    }
   }
 
   return manifold->createWithNewValues(result, active_indices);

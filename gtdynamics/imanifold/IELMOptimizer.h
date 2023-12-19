@@ -27,6 +27,7 @@ struct IELMParams {
   IELMParams() {}
   double boundary_approach_rate_threshold = 3;
   LevenbergMarquardtParams lm_params;
+  size_t iqp_max_iters = 0;
   bool show_active_costraints = false;
 };
 

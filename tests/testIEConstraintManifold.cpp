@@ -104,6 +104,24 @@ TEST(IEConstraintManifold, HalfSphere) {
     a_indices.insert(0);
     auto e_manifold1 = manifold.eConstraintManifold(a_indices);
     EXPECT(e_manifold1.dim() == 1);
+
+    // Test linear i-constraints
+    Key manifold_key = 3;
+    VectorValues tangent_vector;
+    tangent_vector.insert(point_key, Vector3(8, -6, 2));
+    Vector xi = manifold.eBasis()->computeXi(tangent_vector);
+    VectorValues delta;
+    delta.insert(manifold_key, xi);
+    auto linear_base_i_constraints = manifold.linearActiveBaseIConstraints();
+    auto linear_manifold_i_constraints = manifold.linearActiveManIConstraints(manifold_key);
+
+    for (const auto&[idx, base_constraint]: linear_base_i_constraints) {
+      auto manifold_constraint = linear_manifold_i_constraints.at(idx);
+      auto base_constraint_eval = (*base_constraint)(tangent_vector);
+      auto manifold_constraint_eval = (*manifold_constraint)(delta);
+      EXPECT(assert_equal(Vector1(2.0), base_constraint_eval));
+      EXPECT(assert_equal(Vector1(2.0), manifold_constraint_eval));
+    }
   }
 }
 

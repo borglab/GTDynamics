@@ -53,9 +53,7 @@ IndexSet IEConstraintManifold::blockingIndices(
     const auto &i_constraint = i_constraints_->at(idx);
     auto jacobians = i_constraint->jacobians(values_);
     double error = 0;
-    for (const auto &it : jacobians) {
-      const Key &key = it.first;
-      const Matrix &jac = it.second;
+    for (const auto &[key, jac] : jacobians) {
       error += (jac * tangent_vector.at(key))(0);
     }
     if (error < -1e-5) {
@@ -106,7 +104,7 @@ IndexSet IEConstraintManifold::IdentifyActiveConstraints(
     const gtdynamics::InequalityConstraints &i_constraints,
     const Values &values, const std::optional<IndexSet> &active_indices) {
   if (active_indices) {
-    for (const auto& i: *active_indices) {
+    for (const auto &i : *active_indices) {
       if (!i_constraints.at(i)->isActive(values)) {
         std::cout << i_constraints.at(i)->name_tmp() << " is not active\t";
         std::cout << (*i_constraints.at(i))(values) << "\n";
@@ -150,6 +148,53 @@ TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
 
   auto cone = std::make_shared<TangentCone>(A, constraint_rows);
   return cone;
+}
+
+/* ************************************************************************* */
+gtdynamics::LinearIConstraintMap
+IEConstraintManifold::linearActiveManIConstraints(
+    const Key manifold_key) const {
+
+  gtdynamics::LinearIConstraintMap active_constraints;
+
+  for (const auto &constraint_idx : active_indices_) {
+    auto i_constraint = i_constraints_->at(constraint_idx);
+    auto jacobians = i_constraint->jacobians(values_);
+    Matrix man_jacobian = Matrix::Zero(i_constraint->dim(), dim());
+    for (const auto &[key, jac] : jacobians) {
+      man_jacobian += jac * e_basis_->recoverJacobian(key);
+    }
+    auto noise_model = noiseModel::Diagonal::Sigmas(i_constraint->tolerance());
+    auto jacobian_factor = std::make_shared<JacobianFactor>(
+        manifold_key, man_jacobian, Vector::Zero(i_constraint->dim()),
+        noise_model);
+    auto linear_constraint =
+        std::make_shared<gtdynamics::JacobianLinearInequalityConstraint>(
+            jacobian_factor);
+    active_constraints.insert({constraint_idx, linear_constraint});
+  }
+
+  return active_constraints;
+}
+
+/* ************************************************************************* */
+gtdynamics::LinearIConstraintMap
+IEConstraintManifold::linearActiveBaseIConstraints() const {
+  gtdynamics::LinearIConstraintMap active_constraints;
+
+  for (const auto &constraint_idx : active_indices_) {
+    auto i_constraint = i_constraints_->at(constraint_idx);
+    auto jacobians = i_constraint->jacobians(values_);
+    auto noise_model = noiseModel::Diagonal::Sigmas(i_constraint->tolerance());
+    auto jacobian_factor = std::make_shared<JacobianFactor>(
+        jacobians, Vector::Zero(i_constraint->dim()), noise_model);
+    auto linear_constraint =
+        std::make_shared<gtdynamics::JacobianLinearInequalityConstraint>(
+            jacobian_factor);
+    active_constraints.insert({constraint_idx, linear_constraint});
+  }
+
+  return active_constraints;
 }
 
 } // namespace gtsam

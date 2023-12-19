@@ -151,6 +151,13 @@ public:
     return e_constraints_->evaluateViolationL2Norm(values_);
   }
 
+  /// Linearized active i-constraints w.r.t. the manifold variable.
+  gtdynamics::LinearIConstraintMap
+  linearActiveManIConstraints(const Key manifold_key) const;
+
+  /// Linearized active i-constraints w.r.t. base variables.
+  gtdynamics::LinearIConstraintMap linearActiveBaseIConstraints() const;
+
 protected:
   /// Identify the current active inequality constraints.
   static IndexSet IdentifyActiveConstraints(

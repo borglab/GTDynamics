@@ -129,4 +129,33 @@ double ComputeErrorNorm(const double &graph_error, const double &sigma) {
   return sqrt(graph_error * 2) * sigma;
 }
 
+/* ************************************************************************* */
+void IndexSetMapTranslator::insert(size_t index, Key key, size_t index_in_key) {
+  decoder.insert({index, {key, index_in_key}});
+  encoder.insert({{key, index_in_key}, index});
+}
+
+/* ************************************************************************* */
+IndexSet
+IndexSetMapTranslator::encodeIndices(const IndexSetMap &index_set_map) const {
+  IndexSet indices;
+  for (const auto &[key, man_indices] : index_set_map) {
+    for (const auto &constraint_idx : man_indices) {
+      indices.insert(encoder.at({key, constraint_idx}));
+    }
+  }
+  return indices;
+}
+
+/* ************************************************************************* */
+IndexSetMap
+IndexSetMapTranslator::decodeIndices(const IndexSet &indices) const {
+  IndexSetMap index_set_map;
+  for (const auto &index : indices) {
+    const auto [key, constraint_idx] = decoder.at(index);
+    index_set_map.addIndex(key, constraint_idx);
+  }
+  return index_set_map;
+}
+
 } // namespace gtsam

@@ -17,6 +17,7 @@
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
@@ -40,7 +41,22 @@ public:
 
   virtual size_t dim() const = 0;
 
-  virtual bool feasible(const gtsam::VectorValues &x) const = 0;
+  virtual gtsam::Vector operator()(const gtsam::VectorValues &x) const = 0;
+
+  virtual bool feasible(const gtsam::VectorValues &x,
+                        double threshold = 0) const {
+    for (const double &entry : (*this)(x)) {
+      if (entry < -threshold) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  virtual bool isActive(const gtsam::VectorValues &x,
+                        double threshold = 1e-5) const {
+    return (*this)(x).norm() < threshold;
+  }
 
   virtual gtsam::JacobianFactor::shared_ptr createL2Factor() const = 0;
 
@@ -64,14 +80,8 @@ public:
 
   size_t dim() const override { return factor_->rows(); }
 
-  bool feasible(const gtsam::VectorValues &x) const override {
-    gtsam::Vector error = factor_->error_vector(x);
-    for (const double &entry : error) {
-      if (entry < 0) {
-        return false;
-      }
-    }
-    return true;
+  gtsam::Vector operator()(const gtsam::VectorValues &x) const override {
+    return factor_->error_vector(x);
   }
 
   gtsam::JacobianFactor::shared_ptr createL2Factor() const override {
@@ -146,6 +156,8 @@ public:
 
   /** @brief return the dimension of the constraint. */
   virtual size_t dim() const { return 1; };
+
+  virtual gtsam::Vector tolerance() const = 0;
 
   /// Return keys of variables involved in the constraint.
   virtual std::set<gtsam::Key> keys() const { return std::set<gtsam::Key>(); }
@@ -248,7 +260,9 @@ public:
 
   gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override;
 
-  double tolerance() const { return tolerance_; }
+  gtsam::Vector tolerance() const override {
+    return gtsam::Vector1(tolerance_);
+  }
 
   const gtsam::Double_ &expression() const { return expression_; }
 };
@@ -279,12 +293,14 @@ public:
       : InequalityConstraint(name == "" ? ineq1->name() : name), ineq1_(ineq1),
         ineq2_(ineq2), expression_(ConstructExpression(ineq1->expression(),
                                                        ineq2->expression())),
-        tolerance_(ineq1->tolerance(), ineq2->tolerance()) {}
+        tolerance_(ineq1->tolerance()(0), ineq2->tolerance()(0)) {}
 
   /** Check if constraint violation is within tolerance. */
   bool feasible(const gtsam::Values &x) const override {
     return ineq1_->feasible(x) && ineq2_->feasible(x);
   }
+
+  gtsam::Vector tolerance() const override { return tolerance_; }
 
   DoubleExpressionInequality::shared_ptr constraint1() const { return ineq1_; }
 
@@ -371,7 +387,13 @@ public:
         Eigen::aligned_allocator<DERIVEDCONSTRAINT>(),
         std::forward<Args>(args)...));
   }
+
+  gtsam::GaussianFactorGraph
+  constraintGraph(const gtsam::IndexSet &active_indices) const;
 };
+
+typedef std::map<size_t, LinearInequalityConstraint::shared_ptr>
+    LinearIConstraintMap;
 
 /// Container of InequalityConstraint.
 class InequalityConstraints
@@ -419,43 +441,3 @@ public:
 };
 
 } // namespace gtdynamics
-
-namespace gtsam {
-
-class IndexSet : public std::set<size_t> {
-public:
-  using base = std::set<size_t>;
-  using base::base;
-
-  bool exists(const size_t idx) const { return find(idx) != end(); }
-
-  void print(const std::string &s = "") const {
-    std::cout << s;
-    for (const auto &val : *this) {
-      std::cout << val << "\t";
-    }
-    std::cout << std::endl;
-  }
-};
-
-struct IndexSetMap : public std::map<Key, IndexSet> {
-public:
-  bool exists(const Key &key) const { return find(key) != end(); }
-
-  void addIndices(const Key &key, const IndexSet &index_set) {
-    if (!exists(key)) {
-      insert({key, index_set});
-    } else {
-      IndexSet &current_indices = at(key);
-      current_indices.insert(index_set.begin(), index_set.end());
-    }
-  }
-
-  void mergeWith(const IndexSetMap &new_map) {
-    for (const auto &it : new_map) {
-      addIndices(it.first, it.second);
-    }
-  }
-};
-
-} // namespace gtsam

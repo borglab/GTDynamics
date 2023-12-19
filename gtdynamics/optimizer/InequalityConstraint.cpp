@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtsam/linear/GaussianFactorGraph.h>
 
 namespace gtdynamics {
 
@@ -115,6 +116,16 @@ InequalityConstraints::meritGraph(const double mu) const {
   gtsam::NonlinearFactorGraph graph;
   for (const auto &constraint : *this) {
     graph.add(constraint->createBarrierFactor(mu));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+gtsam::GaussianFactorGraph LinearInequalityConstraints::constraintGraph(
+    const gtsam::IndexSet &active_indices) const {
+  gtsam::GaussianFactorGraph graph;
+  for (const auto &index : active_indices) {
+    graph.push_back(at(index)->createConstrainedFactor());
   }
   return graph;
 }

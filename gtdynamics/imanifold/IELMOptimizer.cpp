@@ -31,9 +31,15 @@ Values IELMOptimizer::optimizeManifolds(
     const Values &unconstrained_values,
     gtdynamics::ConstrainedOptResult *intermediate_result) const {
 
-  // Construct initial state
   const LevenbergMarquardtParams &lm_params = ielm_params_.lm_params;
-  IELMState state(manifolds, unconstrained_values, graph,
+
+  // Construct manifold graph.
+  std::map<Key, Key> keymap_var2manifold = Var2ManifoldKeyMap(manifolds);
+  NonlinearFactorGraph manifold_graph =
+      ManifoldOptimizer::ManifoldGraph(graph, keymap_var2manifold);
+
+  // Construct initial state
+  IELMState state(manifolds, unconstrained_values, graph, manifold_graph,
                   lm_params.lambdaInitial, lm_params.lambdaFactor, 0);
 
   // check if we're already close enough
@@ -52,7 +58,8 @@ Values IELMOptimizer::optimizeManifolds(
   do {
     prev_state = state;
     IELMIterDetails iter_details = iterate(graph, state);
-    state = IELMState::FromLastIteration(iter_details, graph, lm_params);
+    state = IELMState::FromLastIteration(iter_details, graph, manifold_graph,
+                                         lm_params);
     details_->push_back(iter_details);
   } while (state.iterations < lm_params.maxIterations &&
            !checkConvergence(prev_state, state) &&
@@ -89,7 +96,7 @@ IELMIterDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   // * 3) lambda goes beyond limits
   while (true) {
     // Perform the trial.
-    IELMTrial trial(state, graph, lambda, lm_params);
+    IELMTrial trial(state, graph, lambda, ielm_params_);
     if (lm_params.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
       PrintIELMTrial(state, trial, ielm_params_);
     }

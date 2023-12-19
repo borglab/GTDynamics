@@ -94,19 +94,75 @@ struct LMCachedModel {
   SharedDiagonal model;
 };
 
-inline size_t GraphDim(const NonlinearFactorGraph& graph) {
+inline size_t GraphDim(const NonlinearFactorGraph &graph) {
   size_t dim = 0;
-  for (const auto& factor: graph) {
+  for (const auto &factor : graph) {
     dim += factor->dim();
   }
   return dim;
 }
 
 /// Compute the error norm in standard units given graph error
-double ComputeErrorNorm(const double& graph_error, const double& sigma);
+double ComputeErrorNorm(const double &graph_error, const double &sigma);
 
-void ExportValuesToFile(const Values& values, const std::string& file_path);
+void ExportValuesToFile(const Values &values, const std::string &file_path);
 
-Values LoadValuesFromFile(const std::string& file_path);
+Values LoadValuesFromFile(const std::string &file_path);
+
+class IndexSet : public std::set<size_t> {
+public:
+  using base = std::set<size_t>;
+  using base::base;
+
+  bool exists(const size_t idx) const { return find(idx) != end(); }
+
+  void print(const std::string &s = "") const {
+    std::cout << s;
+    for (const auto &val : *this) {
+      std::cout << val << "\t";
+    }
+    std::cout << std::endl;
+  }
+};
+
+class IndexSetMap : public std::map<Key, IndexSet> {
+public:
+  bool exists(const Key &key) const { return find(key) != end(); }
+
+  void addIndex(const Key &key, const size_t &idx) {
+    IndexSet idxset;
+    idxset.insert(idx);
+    addIndices(key, idxset);
+  }
+
+  void addIndices(const Key &key, const IndexSet &index_set) {
+    if (!exists(key)) {
+      insert({key, index_set});
+    } else {
+      IndexSet &current_indices = at(key);
+      current_indices.insert(index_set.begin(), index_set.end());
+    }
+  }
+
+  void mergeWith(const IndexSetMap &new_map) {
+    for (const auto &it : new_map) {
+      addIndices(it.first, it.second);
+    }
+  }
+};
+
+class IndexSetMapTranslator {
+public:
+  std::map<std::pair<Key, size_t>, size_t> encoder;
+  std::map<size_t, std::pair<Key, size_t>> decoder;
+
+  IndexSetMapTranslator() {}
+
+  void insert(size_t index, Key key, size_t index_in_key);
+
+  IndexSet encodeIndices(const IndexSetMap &index_set_map) const;
+
+  IndexSetMap decodeIndices(const IndexSet &indices) const;
+};
 
 } // namespace gtsam

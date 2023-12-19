@@ -46,7 +46,7 @@ TEST(SolveConvexIQP, example_2D) {
   init_values.insert(x_key, Vector1(0.0));
   init_values.insert(y_key, Vector1(0.0));
 
-  auto [solution, active_indices] = SolveConvexIQP(graph, constraints, init_active_indices, init_values);
+  auto [solution, active_indices, num_solves, solve_successful] = SolveConvexIQP(graph, constraints, init_active_indices, init_values);
   VectorValues expected_solution;
   expected_solution.insert(x_key, Vector1(0.5));
   expected_solution.insert(y_key, Vector1(0.5));

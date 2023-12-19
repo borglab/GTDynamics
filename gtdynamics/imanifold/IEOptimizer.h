@@ -141,7 +141,7 @@ public:
       std::cout << "current: " << state_current_str << "\n";
     }
     auto state_grad_blocking_str =
-        IEOptimizer::IndicesStr(state.blocking_indices_map, keyFormatter);
+        IEOptimizer::IndicesStr(state.grad_blocking_indices_map, keyFormatter);
     if (state_grad_blocking_str.size() > 0) {
       std::cout << "grad blocking: " << state_grad_blocking_str << "\n";
     }

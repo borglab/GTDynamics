@@ -64,6 +64,7 @@ TEST(InequalityConstraint, DoubleExpressionInequality) {
 
   // Check dimension is 1 for scalar g.
   EXPECT(constraint.dim() == 1);
+  EXPECT(assert_equal(Vector1(tolerance), constraint.tolerance()));
 
   // Check keys include x1, x2.
   EXPECT(constraint.keys().size() == 2);
@@ -88,6 +89,8 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
 
   // Test constructor
   TwinDoubleExpressionInequality constraint(constraint1, constraint2);
+  EXPECT_LONGS_EQUAL(2, constraint.dim());
+  EXPECT(assert_equal(Vector2(tolerance, tolerance), constraint.tolerance()));
 
   Values values1, values2, values3;
   values1.insert(x1_key, 2.0);

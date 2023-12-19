@@ -27,14 +27,20 @@ ConstraintGraph(const LinearInequalityConstraints &constraints,
 }
 
 /* ************************************************************************* */
-VectorValues SolveEQP(const GaussianFactorGraph &cost,
-                      const GaussianFactorGraph &constriant_graph) {
+std::pair<VectorValues, bool>
+SolveEQP(const GaussianFactorGraph &cost,
+         const GaussianFactorGraph &constriant_graph) {
   GaussianFactorGraph graph = cost;
   for (const auto &factor : constriant_graph) {
     graph.push_back(factor);
   }
-  VectorValues solution = graph.optimize();
-  return solution;
+
+  try {
+    VectorValues solution = graph.optimize();
+    return {solution, true};
+  } catch (const IndeterminantLinearSystemException &) {
+    return {VectorValues(), false};
+  }
 }
 
 /* ************************************************************************* */
@@ -113,6 +119,14 @@ std::pair<size_t, double> GetMinimum(const std::map<size_t, Vector> &vals) {
   return {min_idx, min_val};
 }
 
+double SubDot(const VectorValues& v1, const VectorValues& v2) {
+  double result = 0;
+  for (const auto&[key, vec]: v1) {
+    result += vec.dot(v2.at(key));
+  }
+  return result;
+}
+
 /* ************************************************************************* */
 std::pair<double, size_t>
 ClipUpdate(const VectorValues &x, const VectorValues &p,
@@ -130,9 +144,11 @@ ClipUpdate(const VectorValues &x, const VectorValues &p,
 
     for (size_t row_idx = 0; row_idx < constraint->dim(); row_idx++) {
       VectorValues A_i = jacobian.row(row_idx);
-      double Aip = A_i.dot(p);
+      // A_i.print("A_i", gtdynamics::GTDKeyFormatter);
+      // p.print("p", gtdynamics::GTDKeyFormatter);
+      double Aip = SubDot(A_i, p);
       if (Aip < 0) {
-        double clip_rate = -A_i.dot(x) / A_i.dot(p);
+        double clip_rate = -SubDot(A_i, x) / Aip;
         if (clip_rate < alpha) {
           alpha = clip_rate;
           blocking_idx = idx;
@@ -145,20 +161,27 @@ ClipUpdate(const VectorValues &x, const VectorValues &p,
 }
 
 /* ************************************************************************* */
-std::pair<VectorValues, IndexSet>
+std::tuple<VectorValues, IndexSet, size_t, bool>
 SolveConvexIQP(const GaussianFactorGraph &cost,
                const LinearInequalityConstraints &constraints,
                const IndexSet &init_active_indices,
-               const VectorValues &init_values) {
+               const VectorValues &init_values,
+               size_t max_iters) {
   VectorValues x = init_values;
   IndexSet active_indices = init_active_indices;
 
+  size_t num_solves = 0;
   while (true) {
+    num_solves++;
+
     // compute update
     auto constraint_graph = ConstraintGraph(constraints, active_indices);
-    VectorValues x_new = SolveEQP(cost, constraint_graph);
-    VectorValues p = x_new - x;
+    auto [x_new, solve_successful] = SolveEQP(cost, constraint_graph);
+    if (!solve_successful) {
+      return {init_values, init_active_indices, num_solves, false};
+    }
 
+    VectorValues p = x_new - x;
     if (p.norm() < 1e-5) {
       // no update is made
       auto lambdas = ComputeLagrangianMultipliers(cost, constraints, x_new,
@@ -166,7 +189,7 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
       auto [min_idx, min_lambda] = GetMinimum(lambdas);
       if (min_lambda >= 0) {
         // all constraints are tight
-        return {x_new, active_indices};
+        return {x_new, active_indices, num_solves, true};
       } else {
         // can relieve constriant
         active_indices.erase(min_idx);
@@ -182,6 +205,9 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
       } else {
         // no constraints blocking
         x = x_new;
+        if (num_solves > max_iters) {
+          return {x, active_indices, num_solves, true};
+        }
       }
     }
   }
