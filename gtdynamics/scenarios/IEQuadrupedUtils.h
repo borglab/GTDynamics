@@ -58,6 +58,17 @@ public:
         const std::string &upper_link_name, const std::string &lower_link_name);
   };
 
+  using TerrainHeightFunction =
+      std::function<double(const Vector2 &point, OptionalJacobian<1, 2> H)>;
+
+  // Function that models the flat terrain of constant height.
+  static TerrainHeightFunction flatTerrainFunc(const double height);
+
+  // Flat terrain with a hurdle modeled by a sinusoidal function.
+  static TerrainHeightFunction sinHurdleTerrainFunc(const double center_x,
+                                                    const double width,
+                                                    const double height);
+
   struct Params {
     // environment
     gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
@@ -124,10 +135,7 @@ public:
     std::vector<std::pair<std::string, Point3>> collision_checking_points_z;
     std::vector<std::pair<Point3, double>> sphere_obstacles;
     std::vector<std::pair<Point2, double>> hurdle_obstacles;
-    std::shared_ptr<std::vector<std::pair<Point2, double>>> spheres_on_ground =
-        std::make_shared<std::vector<std::pair<Point2, double>>>();
-    std::shared_ptr<std::vector<std::pair<double, double>>> hurdles_on_ground =
-        std::make_shared<std::vector<std::pair<double, double>>>();
+    TerrainHeightFunction terrain_height_function = flatTerrainFunc(0.0);
     double accel_panalty_threshold = 100.0;
     double cf_jerk_threshold = 100.0;
     // Option for costs
@@ -273,7 +281,6 @@ public:
   NonlinearFactorGraph qPointContactFactors(const size_t k) const;
 
   /** <================= Single Inequality Constraint  ===================> **/
-  Double_ terrainHeightExpr(const Vector2_ &point2) const;
 
   /// Collision free with a spherical object.
   gtdynamics::DoubleExpressionInequality::shared_ptr

@@ -355,8 +355,6 @@ Values IEVision60Robot::getInitValuesTrajectory(
           TwistAccel(base_link_values, base_id, t), init_values_t);
       prev_values = values_t;
       init_vals.insert(values_t);
-
-      // std::cout << "pose: " << Pose(init_vals, base_id, t) << "\n";
     }
   }
 
@@ -548,7 +546,6 @@ Values InitValuesTrajectoryDeprecated(
   }
 
   //// Phase on ground
-  std::cout << "phase on ground\n";
   const IEVision60Robot &vision60_ground =
       vision60_multi_phase.phase_robots_[0];
   size_t num_steps_ground = vision60_multi_phase.phase_num_steps_[0];
@@ -582,7 +579,6 @@ Values InitValuesTrajectoryDeprecated(
   }
 
   //// boundary step
-  std::cout << "boundary step\n";
   size_t boundary_k = vision60_multi_phase.boundary_ks_[0];
   const IEVision60Robot &vision60_boundary =
       vision60_multi_phase.boundary_robots_[0];
@@ -595,7 +591,6 @@ Values InitValuesTrajectoryDeprecated(
   }
 
   //// Phase in air
-  std::cout << "phase in air\n";
   const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
   size_t num_steps_air = vision60_multi_phase.phase_num_steps_[1];
   double dt_air = phases_dt[1];
@@ -717,7 +712,6 @@ Values InitValuesTrajectoryInfeasible(
 
   // dynamics
   // ground
-  std::cout << "dynamics\n";
   for (size_t k = 0; k < num_steps_ground; k++) {
     KeyVector known_ad_keys;
     Values init_values_k = k == 0 ? vision60_ground.nominal_values
@@ -731,7 +725,6 @@ Values InitValuesTrajectoryInfeasible(
     step_values[k].insert(ad_values);
   }
   // bound_ga
-  std::cout << "bound\n";
   {
     size_t k = num_steps_ground;
     Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
@@ -746,7 +739,6 @@ Values InitValuesTrajectoryInfeasible(
     step_values[k].insert(ad_values);
   }
   // air
-  std::cout << "air\n";
   for (size_t k = num_steps_ground + 1; k <= num_steps; k++) {
     KeyVector known_ad_keys; //{TwistAccelKey(IEVision60Robot::base_id, k)};
     Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);

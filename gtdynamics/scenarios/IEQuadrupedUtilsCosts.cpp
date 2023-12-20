@@ -237,7 +237,7 @@ IEVision60Robot::frictionConeConstraint(const std::string &link_name,
 
   Vector3_ contact_force_expr(ContactForceKey(link_id, 0, k));
   Double_ compute_fc_expr(friction_cone_function, contact_force_expr);
-  std::string name = "fc_" + link_name + "(" + std::to_string(k) + ")";
+  std::string name = "fc[" + link_name + "]" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(compute_fc_expr,
                                                       params->tol_fc);
 }
@@ -314,54 +314,43 @@ IEVision60Robot::hurdleCollisionFreeConstraint(const size_t link_idx,
 }
 
 /* ************************************************************************* */
-Double_
-IEVision60Robot::terrainHeightExpr(const Vector2_ &point_on_ground) const {
-
-  auto spheres_on_ground = params->spheres_on_ground;
-  auto hurdles_on_ground = params->hurdles_on_ground;
-
-  auto terrain_height_function = [spheres_on_ground, hurdles_on_ground](
-                                     const Vector2 &point,
-                                     OptionalJacobian<1, 2> H = {}) -> double {
-    double ground_height = 0;
-    if (H)
-      H->setConstant(0);
-    for (const auto &[center, radius] : *spheres_on_ground) {
-      double dist = distance2(center, point);
-      if (dist < radius) {
-        double height = sqrt(radius * radius - dist * dist);
-        if (height > ground_height) {
-          ground_height = height;
-          if (H) {
-            Matrix12 H_dist;
-            distance2(center, point, {}, H_dist);
-            *H = -dist / height * H_dist;
-          }
-        }
-      }
+IEVision60Robot::TerrainHeightFunction
+IEVision60Robot::flatTerrainFunc(const double height) {
+  TerrainHeightFunction func = [](const Vector2 &point,
+                                  OptionalJacobian<1, 2> H) -> double {
+    if (H) {
+      H->setZero();
     }
-
-    double x = point(0);
-    for (const auto &[center_x, radius] : *hurdles_on_ground) {
-      double dist = abs(center_x - x);
-      if (dist < radius) {
-        double height = sqrt(radius * radius - dist * dist);
-        if (height > ground_height) {
-          ground_height = height;
-          if (H) {
-            if (x > center_x) {
-              (*H) << -dist / height, 0;
-            } else {
-              (*H) << dist / height, 0;
-            }
-          }
-        }
-      }
-    }
-
-    return ground_height;
+    return 0;
   };
-  return Double_(terrain_height_function, point_on_ground);
+  return func;
+}
+
+/* ************************************************************************* */
+IEVision60Robot::TerrainHeightFunction
+IEVision60Robot::sinHurdleTerrainFunc(const double center_x, const double width,
+                                      const double height) {
+  TerrainHeightFunction func =
+      [center_x, width, height](const Vector2 &point,
+                                OptionalJacobian<1, 2> H = {}) -> double {
+    double x = point(0);
+    double dist_to_center = x - center_x;
+    if (abs(dist_to_center) > width / 2) {
+      if (H) {
+        H->setZero();
+      }
+      return 0;
+    }
+    double rate = M_PI * 2 / width;
+    double theta = dist_to_center * rate;
+    double h = (cos(theta) + 1) * height / 2;
+    if (H) {
+      double H_x = -rate * sin(theta) * height / 2;
+      (*H) << H_x, 0;
+    }
+    return h;
+  };
+  return func;
 }
 
 /* ************************************************************************* */
@@ -380,10 +369,10 @@ IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
       [H_xy](const gtsam::Point3 &A) { return H_xy * A; };
   Vector2_ point_on_ground = gtsam::linearExpression(f, p_w, H_xy);
 
-  Double_ ground_height = terrainHeightExpr(point_on_ground);
-  std::string name = "cz(" + link_name + ")" + std::to_string(k);
+  Double_ ground_height(params->terrain_height_function, point_on_ground);
+  std::string name = "cz[" + link_name + "]" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(z - ground_height,
-                                                      params->tol_cf);
+                                                      params->tol_cf, name);
 }
 
 /* ************************************************************************* */
@@ -395,7 +384,7 @@ IEVision60Robot::jointUpperLimitConstraint(const std::string &j_name,
   Key joint_key = JointAngleKey(joint_id, k);
   Double_ q_expr(joint_key);
   Double_ q_max_expr = Double_(upper_limit) - q_expr;
-  std::string name = "jlu(" + j_name + ")" + std::to_string(k);
+  std::string name = "jlu[" + j_name + "]" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(q_max_expr,
                                                       params->tol_jl, name);
 }
@@ -409,7 +398,7 @@ IEVision60Robot::jointLowerLimitConstraint(const std::string &j_name,
   Key joint_key = JointAngleKey(joint_id, k);
   Double_ q_expr(joint_key);
   Double_ q_min_expr = q_expr - Double_(lower_limit);
-  std::string name = "jll(" + j_name + ")" + std::to_string(k);
+  std::string name = "jll[" + j_name + "]" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(q_min_expr,
                                                       params->tol_jl, name);
 }
@@ -423,7 +412,7 @@ IEVision60Robot::torqueUpperLimitConstraint(const std::string &j_name,
   Key torque_key = TorqueKey(joint_id, k);
   Double_ tau_expr(torque_key);
   Double_ tau_max_expr = Double_(upper_limit) - tau_expr;
-  std::string name = "Tu(" + j_name + ")" + std::to_string(k);
+  std::string name = "Tu[" + j_name + "]" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(tau_max_expr,
                                                       params->tol_tl, name);
 }
@@ -437,7 +426,7 @@ IEVision60Robot::torqueLowerLimitConstraint(const std::string &j_name,
   Key torque_key = TorqueKey(joint_id, k);
   Double_ tau_expr(torque_key);
   Double_ tau_min_expr = tau_expr - Double_(lower_limit);
-  std::string name = "Tl(" + j_name + ")" + std::to_string(k);
+  std::string name = "Tl[" + j_name + "]" + std::to_string(k);
   return std::make_shared<DoubleExpressionInequality>(tau_min_expr,
                                                       params->tol_tl, name);
 }

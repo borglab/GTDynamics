@@ -275,6 +275,26 @@ double VectorMax(const std::vector<double> &vec) {
 }
 
 /* ************************************************************************* */
+std::string ConstraintInfoStr(const IEManifoldValues &manifolds,
+                              const IndexSetMap &indices_map,
+                              const KeyFormatter &key_formatter) {
+  std::string str = "";
+  for (const auto &[key, index_set] : indices_map) {
+    const auto &manifold = manifolds.at(key);
+    for (const auto &i_idx : index_set) {
+      const auto &constraint = manifold.iConstraints()->at(i_idx);
+      if (constraint->name() == "") {
+        Key key = *constraint->keys().begin();
+        str += " " + key_formatter(key);
+      } else {
+        str += " " + constraint->name();
+      }
+    }
+  }
+  return str;
+}
+
+/* ************************************************************************* */
 void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
                     const IELMParams &params, bool forced,
                     const KeyFormatter &key_formatter) {
@@ -313,19 +333,9 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     //      << linear_update.tangent_vector.norm() / linear_update.delta.norm()
     //      << " ";
   } else {
-    std::string forced_i_str = "forced:";
-    for (const auto &[key, index_set] : trial.forced_indices_map) {
-      const auto &manifold = state.manifolds.at(key);
-      for (const auto &i_idx : index_set) {
-        const auto &constraint = manifold.iConstraints()->at(i_idx);
-        if (constraint->name() == "") {
-          Key key = *constraint->keys().begin();
-          forced_i_str += " " + key_formatter(key);
-        } else {
-          forced_i_str += " " + constraint->name();
-        }
-      }
-    }
+    std::string forced_i_str =
+        "forced:" + ConstraintInfoStr(state.manifolds, trial.forced_indices_map,
+                                      key_formatter);
     cout << forced_i_str;
   }
   if (!trial.step_is_successful) {

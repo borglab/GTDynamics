@@ -28,7 +28,8 @@ std::string scenario_folder = "../../data/" + scenario + "/";
 /* <=====================================================================> */
 /* <========================== Create Problem ===========================> */
 /* <=====================================================================> */
-std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, ForwardJumpParams>
+std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr,
+           ForwardJumpParams>
 CreateProblem() {
   std::filesystem::create_directory(scenario_folder);
 
@@ -41,6 +42,8 @@ CreateProblem() {
   params.phases_dt = std::vector<double>{0.01, 0.02, 0.02};
   params.init_values_include_i_constraints = true;
   params.init_values_ensure_feasible = true;
+  params.vision60_params->terrain_height_function =
+      IEVision60Robot::sinHurdleTerrainFunc(0.75, 0.3, 0.2);
 
   /* <=========== costs ===========> */
   params.vision60_params->include_collocation_costs = true;
@@ -85,8 +88,8 @@ CreateProblem() {
 
 void TrajectoryOptimization() {
   auto [problem, vision60_multi_phase, params] = CreateProblem();
-  // auto init_values = LoadValuesFromFile(scenario_folder + "manopt_values_cpy.dat");
-  // problem.values_ = init_values;
+  // auto init_values = LoadValuesFromFile(scenario_folder +
+  // "manopt_values_cpy.dat"); problem.values_ = init_values;
   EvaluateAndExportInitValues(problem, *vision60_multi_phase, scenario_folder);
 
   /* <=====================================================================> */
@@ -102,8 +105,8 @@ void TrajectoryOptimization() {
   retractor_params->lm_params.setAbsoluteErrorTol(1e-10);
   retractor_params->check_feasible = true;
   retractor_params->ensure_feasible = true;
-  retractor_params->feasible_threshold = 1e-3;
-  retractor_params->prior_sigma = 1;
+  retractor_params->feasible_threshold = 1e-5;
+  retractor_params->prior_sigma = 1e-1;
   retractor_params->use_varying_sigma = true;
   // retractor_params->scale_varying_sigma = true;
   retractor_params->metric_sigmas = std::make_shared<VectorValues>();
@@ -118,7 +121,7 @@ void TrajectoryOptimization() {
   // lm_params1.setMaxIterations(20);
   // lm_params1.setVerbosityLM("SUMMARY");
   barrier_params->iters_lm_params = std::vector<LevenbergMarquardtParams>();
-  for (size_t i=0; i<barrier_params->num_iterations-1; i++) {
+  for (size_t i = 0; i < barrier_params->num_iterations - 1; i++) {
     barrier_params->iters_lm_params.push_back(lm_params1);
   }
   barrier_params->iters_lm_params.push_back(lm_params2);
@@ -141,6 +144,7 @@ void TrajectoryOptimization() {
   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
   ie_params.lm_params.setlambdaInitial(1e-2);
   ie_params.lm_params.setlambdaUpperBound(1e10);
+  ie_params.iqp_max_iters = 100;
   ie_params.show_active_costraints = true;
 
   /* <=========== optimize ===========> */

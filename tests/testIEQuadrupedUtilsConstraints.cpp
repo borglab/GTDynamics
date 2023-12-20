@@ -119,8 +119,8 @@ TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
 
   std::string link_name = "fl_lower";
   auto link_id = robot.robot.link(link_name)->id();
-  robot.params->hurdles_on_ground->emplace_back(1, 0.5);
-  robot.params->spheres_on_ground->emplace_back(Point2(2, 0), 0.5);
+  robot.params->terrain_height_function =
+      IEVision60Robot::sinHurdleTerrainFunc(1.0, 1.0, 0.3);
   Point3 p_l(0.2, 0, 0);
   auto constraint = robot.groundCollisionFreeConstraint(link_name, k, p_l);
   auto factor = constraint->createL2Factor(1.0);
@@ -129,45 +129,20 @@ TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
   {
     Values values1;
     values1.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(1.4, 0.2, 0.5)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.0, 0.2, 0.5)));
     Values values2;
     values2.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(0.7, -0.1, 0.0)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.5, 0.2, 0.5)));
     Values values3;
     values3.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(1.0, 3, 1)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.0 + 0.5 / 3, 0.2, 0.5)));
     Values values4;
     values4.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(0, 0, 0.1)));
+                   Pose3(Rot3::Ry(M_PI_2), Point3(0.2, 0.2, 0.5)));
     EXPECT(assert_equal(0.0, (*constraint)(values1)));
-    EXPECT(assert_equal(-0.6, (*constraint)(values2)));
-    EXPECT(assert_equal(0.3, (*constraint)(values3)));
-    EXPECT(assert_equal(-0.1, (*constraint)(values4)));
-
-    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values1, 1e-7, 1e-5);
-    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values2, 1e-7, 1e-5);
-    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values3, 1e-7, 1e-5);
-    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values4, 1e-7, 1e-5);
-  }
-
-  // check sphere height
-  {
-    Values values1;
-    values1.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(2.4, 0.0, 0.5)));
-    Values values2;
-    values2.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(2.0, 0.3, 0.0)));
-    Values values3;
-    values3.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(2.0, 0, 1)));
-    Values values4;
-    values4.insert(PoseKey(link_id, k),
-                   Pose3(Rot3::Ry(M_PI_2), Point3(2, 2, 0.1)));
-    EXPECT(assert_equal(0.0, (*constraint)(values1)));
-    EXPECT(assert_equal(-0.6, (*constraint)(values2)));
-    EXPECT(assert_equal(0.3, (*constraint)(values3)));
-    EXPECT(assert_equal(-0.1, (*constraint)(values4)));
+    EXPECT(assert_equal(0.3, (*constraint)(values2)));
+    EXPECT(assert_equal(0.075, (*constraint)(values3)));
+    EXPECT(assert_equal(0.3, (*constraint)(values4)));
 
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values1, 1e-7, 1e-5);
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values2, 1e-7, 1e-5);
@@ -269,7 +244,8 @@ TEST(TrajectoryValuesForwardJump, constraints) {
   auto vision60_multi_phase =
       GetVision60MultiPhase(vision60_params, phase_num_steps);
 
-  Values values = InitValuesTrajectory(*vision60_multi_phase, phases_dt, false, false);
+  Values values =
+      InitValuesTrajectory(*vision60_multi_phase, phases_dt, false, false);
   auto e_constraints = vision60_multi_phase->eConstraints();
   EXPECT(
       assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
