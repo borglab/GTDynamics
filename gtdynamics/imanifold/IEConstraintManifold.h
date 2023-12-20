@@ -187,10 +187,6 @@ public:
   IEManifoldValues
   moveToBoundaries(const IndexSetMap &approach_indices_map) const;
 
-  /// string indicating the active constriants.
-  std::string activeConstraintsStr(const gtsam::KeyFormatter &key_formatter =
-                                       gtdynamics::GTDKeyFormatter) const;
-
   // VectorValues computeTangentVector(const VectorValues &delta) const;
 
   // EManifoldValues retract(const VectorValues &delta) const;

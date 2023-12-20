@@ -252,6 +252,115 @@ void IELMTrial::setDecreasedNextLambda(
 }
 
 /* ************************************************************************* */
+/* <============================= Logging =================================> */
+/* ************************************************************************* */
+
+/* ************************************************************************* */
+std::map<std::pair<Key, size_t>, size_t>
+IdentifyConstraintType(const IEManifoldValues &state_manifolds,
+                       const IndexSetMap blocking_indices_map,
+                       const IEManifoldValues &new_manifolds) {
+  std::map<std::pair<Key, size_t>, size_t> constraint_type_map;
+
+  for (const auto &[key, new_manifold] : new_manifolds) {
+    const auto &state_manifold = state_manifolds.at(key);
+    IndexSet blocking_indices;
+    if (blocking_indices_map.exists(key)) {
+      blocking_indices = blocking_indices_map.at(key);
+    }
+    for (const auto &constraint_idx : new_manifold.activeIndices()) {
+      size_t constraint_type = 0;
+      if (!state_manifold.activeIndices().exists(constraint_idx)) {
+        constraint_type = 2;
+      } else {
+        if (blocking_indices.exists(constraint_idx)) {
+          constraint_type = 1;
+        }
+      }
+      constraint_type_map.insert({{key, constraint_idx}, constraint_type});
+    }
+    for (const auto &constraint_idx : state_manifold.activeIndices()) {
+      if (!new_manifold.activeIndices().exists(constraint_idx)) {
+        constraint_type_map.insert({{key, constraint_idx}, 3});
+      }
+    }
+  }
+  return constraint_type_map;
+}
+
+/* ************************************************************************* */
+std::pair<std::string, size_t> SplitStr(const std::string &str) {
+  size_t i = str.size();
+  while (i > 0) {
+    if (str[i - 1] >= '0' && str[i - 1] <= '9') {
+      i--;
+    } else {
+      break;
+    }
+  }
+  std::string category_str = str.substr(0, i);
+  std::string k_str = str.substr(i, str.size() - i);
+  return {category_str, std::stoi(k_str)};
+}
+
+std::string ColoredStr(const std::string &str, const size_t constraint_type) {
+  std::string color_str;
+  if (constraint_type == 0) {
+    color_str = "90"; // dark_gray
+  }
+  if (constraint_type == 1) {
+    color_str = "30"; // black
+  }
+  if (constraint_type == 2) {
+    color_str = "31"; // red
+  }
+  if (constraint_type == 3) {
+    color_str = "37"; // light_gray
+  }
+  return "\033[0;" + color_str + "m" + str + "\033[0m";
+}
+
+/* ************************************************************************* */
+std::string ConstraintInfoStr(const IEManifoldValues &state_manifolds,
+                              const IndexSetMap blocking_indices_map,
+                              const IEManifoldValues &new_manifolds,
+                              const KeyFormatter &key_formatter) {
+
+  auto constraint_type_map = IdentifyConstraintType(
+      state_manifolds, blocking_indices_map, new_manifolds);
+
+  std::map<std::string, std::vector<std::pair<size_t, size_t>>>
+      category_constraints;
+
+  for (const auto &[key, manifold] : new_manifolds) {
+    for (const auto &constraint_idx : manifold.activeIndices()) {
+      const auto &constraint = manifold.iConstraints()->at(constraint_idx);
+      auto [category, k] = SplitStr(constraint->name_tmp());
+      size_t constraint_type = constraint_type_map.at({key, constraint_idx});
+      if (category_constraints.find(category) == category_constraints.end()) {
+        category_constraints.insert(
+            {category, std::vector<std::pair<size_t, size_t>>()});
+      }
+      category_constraints.at(category).emplace_back(k, constraint_type);
+    }
+  }
+
+  std::string str = "";
+  for (const auto &[category, constraints_info] : category_constraints) {
+    str += " " + category + "(";
+    for (const auto &[k, constraint_type] : constraints_info) {
+      if (str.back() != '(') {
+        str += ",";
+      }
+      str += ColoredStr(std::to_string(k), constraint_type);
+    }
+    str += ")";
+  }
+
+  return str;
+}
+
+/* ************************************************************************* */
 void PrintIELMTrialTitle() {
   cout << setw(10) << "iter   "
        << "|" << setw(12) << "error  "
@@ -283,12 +392,7 @@ std::string ConstraintInfoStr(const IEManifoldValues &manifolds,
     const auto &manifold = manifolds.at(key);
     for (const auto &i_idx : index_set) {
       const auto &constraint = manifold.iConstraints()->at(i_idx);
-      if (constraint->name() == "") {
-        Key key = *constraint->keys().begin();
-        str += " " + key_formatter(key);
-      } else {
-        str += " " + constraint->name();
-      }
+      str += " " + constraint->name_tmp();
     }
   }
   return str;
@@ -324,7 +428,10 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     cout << setw(10) << setprecision(2) << trial.trial_time << "|";
     cout << setw(10) << setprecision(4) << linear_update.delta.norm() << "|";
     if (params.show_active_costraints) {
-      cout << nonlinear_update.new_manifolds.activeConstraintsStr();
+      cout << "\033[0m"
+           << ConstraintInfoStr(
+                  state.manifolds, linear_update.blocking_indices_map,
+                  nonlinear_update.new_manifolds, gtdynamics::GTDKeyFormatter);
     }
     // cout << setw(10) << setprecision(4) <<
     // linear_update.tangent_vector.norm()
