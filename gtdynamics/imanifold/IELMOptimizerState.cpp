@@ -303,7 +303,8 @@ std::pair<std::string, size_t> SplitStr(const std::string &str) {
   return {category_str, std::stoi(k_str)};
 }
 
-std::string ColoredStr(const std::string &str, const size_t constraint_type) {
+std::string ColoredStr(const std::string &str, const size_t constraint_type,
+                       const std::string &default_color_str) {
   std::string color_str;
   if (constraint_type == 0) {
     color_str = "90"; // dark_gray
@@ -317,14 +318,17 @@ std::string ColoredStr(const std::string &str, const size_t constraint_type) {
   if (constraint_type == 3) {
     color_str = "37"; // light_gray
   }
-  return "\033[0;" + color_str + "m" + str + "\033[0m";
+  return "\033[0;" + color_str + "m" + str + default_color_str;
 }
 
 /* ************************************************************************* */
 std::string ConstraintInfoStr(const IEManifoldValues &state_manifolds,
                               const IndexSetMap blocking_indices_map,
                               const IEManifoldValues &new_manifolds,
-                              const KeyFormatter &key_formatter) {
+                              const KeyFormatter &key_formatter,
+                              bool step_is_successful) {
+
+  std::string default_color_str = step_is_successful ? "\033[0m" : "\033[090m";
 
   auto constraint_type_map = IdentifyConstraintType(
       state_manifolds, blocking_indices_map, new_manifolds);
@@ -352,7 +356,7 @@ std::string ConstraintInfoStr(const IEManifoldValues &state_manifolds,
       if (str.back() != '(') {
         str += ",";
       }
-      str += ColoredStr(std::to_string(k), constraint_type);
+      str += ColoredStr(std::to_string(k), constraint_type, default_color_str);
     }
     str += ")";
   }
@@ -428,10 +432,10 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     cout << setw(10) << setprecision(2) << trial.trial_time << "|";
     cout << setw(10) << setprecision(4) << linear_update.delta.norm() << "|";
     if (params.show_active_costraints) {
-      cout << "\033[0m"
-           << ConstraintInfoStr(
-                  state.manifolds, linear_update.blocking_indices_map,
-                  nonlinear_update.new_manifolds, gtdynamics::GTDKeyFormatter);
+      cout << ConstraintInfoStr(
+          state.manifolds, linear_update.blocking_indices_map,
+          nonlinear_update.new_manifolds, gtdynamics::GTDKeyFormatter,
+          trial.step_is_successful);
     }
     // cout << setw(10) << setprecision(4) <<
     // linear_update.tangent_vector.norm()
