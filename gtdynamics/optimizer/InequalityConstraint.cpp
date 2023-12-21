@@ -23,6 +23,12 @@ void InequalityConstraint::print(
 }
 
 /* ************************************************************************* */
+void LinearInequalityConstraint::print(
+    const gtsam::KeyFormatter &key_formatter) const {
+  createL2Factor()->print("", key_formatter);
+}
+
+/* ************************************************************************* */
 LinearInequalityConstraint::shared_ptr
 InequalityConstraint::linearize(const gtsam::Values &values) const {
   auto nonlinear_factor = createL2Factor();
@@ -128,6 +134,22 @@ gtsam::GaussianFactorGraph LinearInequalityConstraints::constraintGraph(
     graph.push_back(at(index)->createConstrainedFactor());
   }
   return graph;
+}
+
+/* ************************************************************************* */
+void LinearInequalityConstraints::print(
+    const gtsam::KeyFormatter &key_formatter) const {
+  for (const auto &constraint : *this) {
+    constraint->print(key_formatter);
+  }
+}
+
+/* ************************************************************************* */
+void InequalityConstraints::print(
+    const gtsam::KeyFormatter &key_formatter) const {
+  for (const auto &constraint : *this) {
+    constraint->print(key_formatter);
+  }
 }
 
 } // namespace gtdynamics

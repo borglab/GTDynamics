@@ -128,25 +128,23 @@ TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
     const Values &values, const IndexSet &active_indices,
     const TspaceBasis::shared_ptr &t_basis) {
 
-  size_t num_rows = 0;
-  for (const auto &active_idx : active_indices) {
-    num_rows += i_constraints.at(active_idx)->dim();
-  }
-  std::vector<std::pair<size_t, size_t>> constraint_rows;
-  Matrix A = Matrix::Zero(num_rows, t_basis->dim());
-  size_t i = 0;
-  for (const auto &active_idx : active_indices) {
-    const auto &i_constraint = i_constraints.at(active_idx);
-    size_t dim = i_constraint->dim();
+  gtdynamics::LinearInequalityConstraints constraints;
+  for (const auto &constraint_idx : active_indices) {
+    auto i_constraint = i_constraints.at(constraint_idx);
     auto jacobians = i_constraint->jacobians(values);
-    for (const Key &key : jacobians.keys()) {
-      A.middleRows(i, dim) += jacobians.at(key) * t_basis->recoverJacobian(key);
+    Matrix man_jacobian = Matrix::Zero(i_constraint->dim(), t_basis->dim());
+    for (const auto &[key, jac] : jacobians) {
+      man_jacobian += jac * t_basis->recoverJacobian(key);
     }
-    constraint_rows.emplace_back(i, dim);
-    i += dim;
+    auto noise_model = noiseModel::Diagonal::Sigmas(i_constraint->tolerance());
+    auto jacobian_factor = std::make_shared<JacobianFactor>(
+        1, man_jacobian, Vector::Zero(i_constraint->dim()),
+        noise_model);
+    constraints.emplace_shared<gtdynamics::JacobianLinearInequalityConstraint>(
+            jacobian_factor);
   }
 
-  auto cone = std::make_shared<TangentCone>(A, constraint_rows);
+  auto cone = std::make_shared<TangentCone>(constraints);
   return cone;
 }
 

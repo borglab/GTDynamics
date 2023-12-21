@@ -63,6 +63,9 @@ public:
   virtual gtsam::JacobianFactor::shared_ptr createConstrainedFactor() const = 0;
 
   virtual gtsam::MultiJacobian jacobian() const = 0;
+
+  virtual void print(const gtsam::KeyFormatter &key_formatter =
+                         gtdynamics::GTDKeyFormatter) const;
 };
 
 /**
@@ -353,10 +356,6 @@ public:
   gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override {
     auto jac1 = ineq1_->jacobians(x);
     auto jac2 = ineq2_->jacobians(x);
-    // gtsam::PrintKeySet(ineq1_->keys(), "ineq1", GTDKeyFormatter);
-    // gtsam::PrintKeySet(ineq2_->keys(), "ineq2", GTDKeyFormatter);
-    // jac1.print("jac1", GTDKeyFormatter);
-    // jac2.print("jac2", GTDKeyFormatter);
     return gtsam::MultiJacobian::VerticalStack(jac1, jac2);
   }
 
@@ -390,6 +389,9 @@ public:
 
   gtsam::GaussianFactorGraph
   constraintGraph(const gtsam::IndexSet &active_indices) const;
+
+  void print(const gtsam::KeyFormatter &key_formatter =
+                         gtdynamics::GTDKeyFormatter) const;
 };
 
 typedef std::map<size_t, LinearInequalityConstraint::shared_ptr>
@@ -438,6 +440,9 @@ public:
   double evaluateViolationL2Norm(const gtsam::Values &values) const;
 
   gtsam::NonlinearFactorGraph meritGraph(const double mu = 1.0) const;
+
+  void print(const gtsam::KeyFormatter &key_formatter =
+                         gtdynamics::GTDKeyFormatter) const;
 };
 
 } // namespace gtdynamics

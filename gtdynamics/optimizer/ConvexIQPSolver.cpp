@@ -184,6 +184,9 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
     VectorValues p = x_new - x;
     if (p.norm() < 1e-5) {
       // no update is made
+      if (active_indices.size() == 0) {
+        return {x_new, active_indices, num_solves, true};
+      }
       auto lambdas = ComputeLagrangianMultipliers(cost, constraints, x_new,
                                                   active_indices);
       auto [min_idx, min_lambda] = GetMinimum(lambdas);
