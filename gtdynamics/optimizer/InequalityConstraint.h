@@ -154,7 +154,8 @@ public:
   createBarrierFactor(const double mu = 1.0) const = 0;
 
   virtual gtsam::NoiseModelFactor::shared_ptr
-  createSmoothBarrierFactor(const double mu = 1.0) const = 0;
+  createSmoothBarrierFactor(const double mu = 1.0,
+                            const double buffer_width = 1.0) const = 0;
 
   virtual LinearInequalityConstraint::shared_ptr
   linearize(const gtsam::Values &values) const;
@@ -215,7 +216,8 @@ public:
   createBarrierFactor(const double mu = 1.0) const override;
 
   gtsam::NoiseModelFactor::shared_ptr
-  createSmoothBarrierFactor(const double mu = 1.0) const override;
+  createSmoothBarrierFactor(const double mu = 1.0,
+                            const double buffer_width = 1.0) const override;
 
   gtsam::NoiseModelFactor::shared_ptr
   createL2Factor(const double mu = 1.0) const override;
@@ -285,7 +287,8 @@ public:
   createBarrierFactor(const double mu = 1.0) const override;
 
   gtsam::NoiseModelFactor::shared_ptr
-  createSmoothBarrierFactor(const double mu = 1.0) const override;
+  createSmoothBarrierFactor(const double mu = 1.0,
+                            const double buffer_width = 1.0) const override;
 
   gtsam::NoiseModelFactor::shared_ptr
   createL2Factor(const double mu = 1.0) const override;
@@ -374,7 +377,9 @@ public:
 
   gtsam::NonlinearFactorGraph meritGraph(const double mu = 1.0) const;
 
-  gtsam::NonlinearFactorGraph smoothMeritGraph(const double mu = 1.0) const;
+  gtsam::NonlinearFactorGraph
+  smoothMeritGraph(const double mu = 1.0,
+                   const double buffer_width = 1.0) const;
 
   void print(const gtsam::KeyFormatter &key_formatter =
                  gtdynamics::GTDKeyFormatter) const;

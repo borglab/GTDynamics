@@ -212,7 +212,8 @@ IEVision60RobotMultiPhase::classifiedCosts() const {
   }
   if (params()->include_collision_free_z_inter_cost) {
     NonlinearFactorGraph graph;
-    graph.add(groundCollisionFreeInterStepConstraints().smoothMeritGraph());
+    graph.add(
+        groundCollisionFreeInterStepConstraints().smoothMeritGraph(1.0, 5.0));
     classified_costs.emplace_back("collision_inter", graph);
   }
   if (params()->include_symmetry_costs) {

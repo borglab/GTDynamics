@@ -165,8 +165,10 @@ DoubleExpressionInequality::createL2Factor(const double mu) const {
 
 /* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr
-DoubleExpressionInequality::createSmoothBarrierFactor(const double mu) const {
-  auto smooth_barrier_function = gtsam::SmoothBarrierFunction(0, tolerance_);
+DoubleExpressionInequality::createSmoothBarrierFactor(
+    const double mu, const double buffer_width) const {
+  auto smooth_barrier_function =
+      gtsam::SmoothBarrierFunction(0, tolerance_ * buffer_width);
   gtsam::Double_ error(smooth_barrier_function, expression_);
   auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
   return std::make_shared<gtsam::ExpressionFactor<double>>(noise, 0.0, error);
@@ -239,8 +241,9 @@ TwinDoubleExpressionInequality::jacobians(const gtsam::Values &x) const {
 /* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr
 TwinDoubleExpressionInequality::createSmoothBarrierFactor(
-    const double mu) const {
-  auto smooth_barrier_function = gtsam::SmoothBarrierFunction(0, tolerance_(0));
+    const double mu, const double buffer_width) const {
+  auto smooth_barrier_function =
+      gtsam::SmoothBarrierFunction(0, tolerance_(0) * buffer_width);
   gtsam::Double_ error1(smooth_barrier_function, ineq1_->expression());
   gtsam::Double_ error2(smooth_barrier_function, ineq2_->expression());
   gtsam::Vector2_ error(gtsam::double_stack, error1, error2);
@@ -329,10 +332,11 @@ InequalityConstraints::meritGraph(const double mu) const {
 
 /* ************************************************************************* */
 gtsam::NonlinearFactorGraph
-InequalityConstraints::smoothMeritGraph(const double mu) const {
+InequalityConstraints::smoothMeritGraph(const double mu,
+                                        const double buffer_width) const {
   gtsam::NonlinearFactorGraph graph;
   for (const auto &constraint : *this) {
-    graph.add(constraint->createSmoothBarrierFactor(mu));
+    graph.add(constraint->createSmoothBarrierFactor(mu, buffer_width));
   }
   return graph;
 }
