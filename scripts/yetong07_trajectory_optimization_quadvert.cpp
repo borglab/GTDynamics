@@ -11,7 +11,6 @@
  * @author Yetong Zhang
  */
 
-#include "QuadrupedExpUtils.h"
 #include "QuadrupedVerticalJump.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 

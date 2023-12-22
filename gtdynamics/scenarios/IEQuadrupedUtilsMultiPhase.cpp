@@ -210,6 +210,11 @@ IEVision60RobotMultiPhase::classifiedCosts() const {
     graph.add(hurdleCollisionFreeConstraints().meritGraph());
     classified_costs.emplace_back("collision", graph);
   }
+  if (params()->include_collision_free_z_inter_cost) {
+    NonlinearFactorGraph graph;
+    graph.add(groundCollisionFreeInterStepConstraints().smoothMeritGraph());
+    classified_costs.emplace_back("collision_inter", graph);
+  }
   if (params()->include_symmetry_costs) {
     classified_costs.emplace_back("symmetry", symmetryCosts());
   }
@@ -230,9 +235,8 @@ NonlinearFactorGraph IEVision60RobotMultiPhase::costs() const {
 /* <=======================================================================> */
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
-IEVision60RobotMultiPhase::jointLimitConstraints() const {
-  gtdynamics::InequalityConstraints constraints;
+InequalityConstraints IEVision60RobotMultiPhase::jointLimitConstraints() const {
+  InequalityConstraints constraints;
   for (size_t k = 0; k <= numSteps(); k++) {
     constraints.add(robotAtStep(k).stepJointLimitConstraints(k));
   }
@@ -240,9 +244,9 @@ IEVision60RobotMultiPhase::jointLimitConstraints() const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+InequalityConstraints
 IEVision60RobotMultiPhase::groundCollisionFreeConstraints() const {
-  gtdynamics::InequalityConstraints constraints;
+  InequalityConstraints constraints;
   for (size_t k = 0; k <= numSteps(); k++) {
     constraints.add(robotAtStep(k).stepGroundCollisionFreeConstraints(k));
   }
@@ -250,9 +254,25 @@ IEVision60RobotMultiPhase::groundCollisionFreeConstraints() const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+InequalityConstraints
+IEVision60RobotMultiPhase::groundCollisionFreeInterStepConstraints() const {
+  InequalityConstraints constraints;
+  size_t k = 0;
+  for (int phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
+    const auto &robot = phase_robots_.at(phase_idx);
+    for (size_t phase_step = 0; phase_step < phase_num_steps_.at(phase_idx);
+         phase_step++) {
+      constraints.add(robot.interStepGroundCollisionFreeConstraints(k));
+      k++;
+    }
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+InequalityConstraints
 IEVision60RobotMultiPhase::obstacleCollisionFreeConstraints() const {
-  gtdynamics::InequalityConstraints constraints;
+  InequalityConstraints constraints;
   for (size_t k = 0; k <= numSteps(); k++) {
     constraints.add(robotAtStep(k).stepObstacleCollisionFreeConstraints(k));
   }
@@ -260,9 +280,9 @@ IEVision60RobotMultiPhase::obstacleCollisionFreeConstraints() const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+InequalityConstraints
 IEVision60RobotMultiPhase::hurdleCollisionFreeConstraints() const {
-  gtdynamics::InequalityConstraints constraints;
+  InequalityConstraints constraints;
   for (size_t k = 0; k <= numSteps(); k++) {
     constraints.add(robotAtStep(k).stepHurdleCollisionFreeConstraints(k));
   }
@@ -270,9 +290,9 @@ IEVision60RobotMultiPhase::hurdleCollisionFreeConstraints() const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+InequalityConstraints
 IEVision60RobotMultiPhase::torqueLimitConstraints() const {
-  gtdynamics::InequalityConstraints constraints;
+  InequalityConstraints constraints;
   for (size_t k = 0; k <= numSteps(); k++) {
     constraints.add(robotAtStep(k).stepTorqueLimitConstraints(k));
   }
@@ -280,9 +300,9 @@ IEVision60RobotMultiPhase::torqueLimitConstraints() const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+InequalityConstraints
 IEVision60RobotMultiPhase::frictionConeConstraints() const {
-  gtdynamics::InequalityConstraints constraints;
+  InequalityConstraints constraints;
   for (size_t k = 0; k <= numSteps(); k++) {
     constraints.add(robotAtStep(k).stepFrictionConeConstraints(k));
   }
@@ -290,7 +310,7 @@ IEVision60RobotMultiPhase::frictionConeConstraints() const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+InequalityConstraints
 IEVision60RobotMultiPhase::phaseMinDurationConstraints() const {
   InequalityConstraints constraints;
   for (size_t phase_idx = 0; phase_idx < phase_num_steps_.size(); phase_idx++) {
@@ -387,8 +407,7 @@ void PrintConstraintViolation(const std::string &name, const double &violation,
 }
 
 /* ************************************************************************* */
-gtdynamics::EqConsOptProblem::EvalFunc
-IEVision60RobotMultiPhase::costsEvalFunc() const {
+EqConsOptProblem::EvalFunc IEVision60RobotMultiPhase::costsEvalFunc() const {
   auto params_ = params();
   size_t num_steps = numSteps();
   auto graph = costs();
@@ -407,6 +426,7 @@ IEVision60RobotMultiPhase::costsEvalFunc() const {
       {"phase_dt", params_->sigma_phase_dt},
       {"accel_penalty", params_->sigma_a_penalty},
       {"collision", params_->tol_cf},
+      {"collision_inter", params_->tol_cf},
       {"cf_jerk", params_->sigma_cf_jerk},
       {"symmetry", params_->sigma_symmetry}};
   std::map<std::string, double> constraint_sigma_map{

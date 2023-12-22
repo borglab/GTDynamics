@@ -201,4 +201,16 @@ double clip_by_one(const double &x, gtsam::OptionalJacobian<1, 1> H) {
     return x;
   }
 }
+
+Vector2 double_stack(const double &x1, const double &x2,
+                     gtsam::OptionalJacobian<2, 1> H_1,
+                     gtsam::OptionalJacobian<2, 1> H_2) {
+  if (H_1) {
+    (*H_1) << 1, 0;
+  }
+  if (H_2) {
+    (*H_2) << 0, 1;
+  }
+  return Vector2(x1, x2);
+}
 }

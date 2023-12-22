@@ -15,6 +15,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/imanifold/IEConstraintManifold.h>
+#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
@@ -148,6 +149,7 @@ public:
     bool include_phase_duration_prior_costs = false;
     bool include_symmetry_costs = false;
     bool collision_as_cost = false;
+    bool include_collision_free_z_inter_cost = false;
     int actuation_cost_option = ACTUATION_RMSE_TORQUE;
     int jerk_cost_option = JERK_AS_DIFF;
     Values state_cost_values;
@@ -156,6 +158,7 @@ public:
         state_cost_point_vels;
     std::vector<double> phase_prior_dt;
     double dt_threshold = 1.0;
+    double step_div_ratio = 0.5;
 
     bool eval_details = true;
     bool eval_collo_step = false;
@@ -299,6 +302,12 @@ public:
   groundCollisionFreeConstraint(const std::string &link_name, const size_t k,
                                 const Point3 &p_l) const;
 
+  /// Collision free with ground.
+  gtdynamics::DoubleExpressionInequality::shared_ptr
+  groundCollisionFreeInterStepConstraint(const std::string &link_name,
+                                         const size_t k, const double ratio,
+                                         const Point3 &p_l) const;
+
   gtdynamics::DoubleExpressionInequality::shared_ptr
   jointUpperLimitConstraint(const std::string &j_name, const size_t k,
                             const double upper_limit) const;
@@ -385,6 +394,9 @@ public:
   /// Collision free with ground.
   InequalityConstraints
   stepGroundCollisionFreeConstraints(const size_t k) const;
+
+  InequalityConstraints
+  interStepGroundCollisionFreeConstraints(const size_t k) const;
 
   InequalityConstraints stepIConstraintsQ(const size_t k) const;
 
@@ -615,6 +627,8 @@ public:
   /** <================= inequality constraints =================> **/
   InequalityConstraints groundCollisionFreeConstraints() const;
 
+  InequalityConstraints groundCollisionFreeInterStepConstraints() const;
+
   InequalityConstraints obstacleCollisionFreeConstraints() const;
 
   InequalityConstraints hurdleCollisionFreeConstraints() const;
@@ -753,6 +767,31 @@ Values
 TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
                           const std::vector<double> &phases_dt,
                           const Values &values);
+
+/* ************************************************************************* */
+/* <========================= Experiment Utils ============================> */
+/* ************************************************************************* */
+void EvaluateAndExportIELMResult(
+    const IEConsOptProblem &problem,
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::pair<IEResultSummary, IELMItersDetails> &ielm_result,
+    const std::string &scenario_folder, bool print_values = false,
+    bool print_iter_details = false);
+
+void EvaluateAndExportBarrierResult(
+    const IEConsOptProblem &problem,
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::pair<IEResultSummary, BarrierItersDetail> &barrier_result,
+    const std::string &scenario_folder, bool print_values = false);
+
+void EvaluateAndExportInitValues(
+    const IEConsOptProblem &problem,
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::string &scenario_folder, bool print_values = false);
+
+void ExportOptimizationProgress(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::string &scenario_folder, const IELMItersDetails &iters_details);
 
 } // namespace gtsam
 

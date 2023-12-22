@@ -14,10 +14,12 @@
 #pragma once
 
 #include <gtdynamics/factors/BarrierFactor.h>
+#include <gtdynamics/factors/SmoothBarrierFactor.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
@@ -44,14 +46,7 @@ public:
   virtual gtsam::Vector operator()(const gtsam::VectorValues &x) const = 0;
 
   virtual bool feasible(const gtsam::VectorValues &x,
-                        double threshold = 0) const {
-    for (const double &entry : (*this)(x)) {
-      if (entry < -threshold) {
-        return false;
-      }
-    }
-    return true;
-  }
+                        double threshold = 0) const;
 
   virtual bool isActive(const gtsam::VectorValues &x,
                         double threshold = 1e-5) const {
@@ -91,24 +86,9 @@ public:
     return factor_;
   }
 
-  gtsam::JacobianFactor::shared_ptr createConstrainedFactor() const override {
-    auto factor = std::make_shared<gtsam::JacobianFactor>(*factor_);
-    auto sigmas = gtsam::Vector::Zero(dim());
-    factor->setModel(true, sigmas);
-    return factor;
-  }
+  gtsam::JacobianFactor::shared_ptr createConstrainedFactor() const override;
 
-  gtsam::MultiJacobian jacobian() const override {
-    gtsam::MultiJacobian jac;
-    size_t start_col = 0;
-    gtsam::Matrix jac_mat = factor_->jacobian().first;
-    for (auto it = factor_->begin(); it != factor_->end(); it++) {
-      size_t dim = factor_->getDim(it);
-      jac.addJacobian(*it, jac_mat.middleCols(start_col, dim));
-      start_col += dim;
-    }
-    return jac;
-  }
+  gtsam::MultiJacobian jacobian() const override;
 };
 
 /**
@@ -173,6 +153,9 @@ public:
   virtual gtsam::NoiseModelFactor::shared_ptr
   createBarrierFactor(const double mu = 1.0) const = 0;
 
+  virtual gtsam::NoiseModelFactor::shared_ptr
+  createSmoothBarrierFactor(const double mu = 1.0) const = 0;
+
   virtual LinearInequalityConstraint::shared_ptr
   linearize(const gtsam::Values &values) const;
 
@@ -208,58 +191,34 @@ public:
 
   // Inequality constraint g(x)>=0.
   static DoubleExpressionInequality::shared_ptr
-  geq(const gtsam::Double_ &expression, const double &tolerance) {
-    return std::make_shared<DoubleExpressionInequality>(expression, tolerance);
-  }
+  geq(const gtsam::Double_ &expression, const double &tolerance);
 
   // Inequality constraint g(x)<=0.
   static DoubleExpressionInequality::shared_ptr
-  leq(const gtsam::Double_ &expression, const double &tolerance) {
-    gtsam::Double_ neg_expr = gtsam::Double_(0.0) - expression;
-    return std::make_shared<DoubleExpressionInequality>(neg_expr, tolerance);
-  }
+  leq(const gtsam::Double_ &expression, const double &tolerance);
 
   /** Check if constraint violation is within tolerance. */
-  bool feasible(const gtsam::Values &x) const override {
-    return expression_.value(x) >= 0;
-  }
+  bool feasible(const gtsam::Values &x) const override;
 
   /** Evaluate the constraint function, g(x). */
-  double operator()(const gtsam::Values &x) const override {
-    return expression_.value(x);
-  }
+  double operator()(const gtsam::Values &x) const override;
 
-  double toleranceScaledViolation(const gtsam::Values &x) const override {
-    double error = expression_.value(x);
-    if (error >= 0) {
-      return 0;
-    } else {
-      return -error / tolerance_;
-    }
-  }
+  double toleranceScaledViolation(const gtsam::Values &x) const override;
 
-  bool isActive(const gtsam::Values &x) const override {
-    double error = expression_.value(x);
-    return abs(error / tolerance_) < 1e-5;
-  }
+  bool isActive(const gtsam::Values &x) const override;
 
   std::set<gtsam::Key> keys() const override { return expression_.keys(); }
 
-  EqualityConstraint::shared_ptr createEqualityConstraint() const override {
-    return std::make_shared<DoubleExpressionEquality>(expression_, tolerance_);
-  }
+  EqualityConstraint::shared_ptr createEqualityConstraint() const override;
 
   gtsam::NoiseModelFactor::shared_ptr
-  createBarrierFactor(const double mu = 1.0) const override {
-    return std::make_shared<gtsam::BarrierFactor>(createL2Factor(mu), true);
-  }
+  createBarrierFactor(const double mu = 1.0) const override;
 
   gtsam::NoiseModelFactor::shared_ptr
-  createL2Factor(const double mu = 1.0) const override {
-    auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
-    return std::make_shared<gtsam::ExpressionFactor<double>>(noise, 0.0,
-                                                             expression_);
-  }
+  createSmoothBarrierFactor(const double mu = 1.0) const override;
+
+  gtsam::NoiseModelFactor::shared_ptr
+  createL2Factor(const double mu = 1.0) const override;
 
   gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override;
 
@@ -310,54 +269,28 @@ public:
   DoubleExpressionInequality::shared_ptr constraint2() const { return ineq2_; }
 
   /** Evaluate the constraint function, g(x). */
-  double operator()(const gtsam::Values &x) const override {
-    // TODO: this should return a vector
-    double eval1 = (*ineq1_)(x);
-    double eval2 = (*ineq2_)(x);
-    return sqrt(eval1 * eval1 + eval2 * eval2);
-  }
+  double operator()(const gtsam::Values &x) const override;
 
-  double toleranceScaledViolation(const gtsam::Values &x) const override {
-    double error1 = ineq1_->toleranceScaledViolation(x);
-    double error2 = ineq2_->toleranceScaledViolation(x);
-    return sqrt(error1 * error1 + error2 * error2);
-  }
+  double toleranceScaledViolation(const gtsam::Values &x) const override;
 
-  bool isActive(const gtsam::Values &x) const override {
-    return ineq1_->isActive(x) || ineq2_->isActive(x);
-  }
+  bool isActive(const gtsam::Values &x) const override;
 
-  size_t dim() const override { return 2; };
+  size_t dim() const override;
 
-  std::set<gtsam::Key> keys() const override {
-    std::set<gtsam::Key> all_keys = ineq1_->keys();
-    all_keys.merge(ineq2_->keys());
-    return all_keys;
-  }
+  std::set<gtsam::Key> keys() const override;
 
-  EqualityConstraint::shared_ptr createEqualityConstraint() const override {
-    return std::make_shared<VectorExpressionEquality<2>>(expression_,
-                                                         tolerance_);
-  }
+  EqualityConstraint::shared_ptr createEqualityConstraint() const override;
 
   gtsam::NoiseModelFactor::shared_ptr
-  createBarrierFactor(const double mu = 1.0) const override {
-    return std::make_shared<gtsam::BarrierFactor>(createL2Factor(mu), true);
-  }
+  createBarrierFactor(const double mu = 1.0) const override;
 
   gtsam::NoiseModelFactor::shared_ptr
-  createL2Factor(const double mu = 1.0) const override {
-    auto noise =
-        gtsam::noiseModel::Isotropic::Sigmas(1 / sqrt(mu) * tolerance_);
-    return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector2>>(
-        noise, gtsam::Vector2::Zero(), expression_);
-  }
+  createSmoothBarrierFactor(const double mu = 1.0) const override;
 
-  gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override {
-    auto jac1 = ineq1_->jacobians(x);
-    auto jac2 = ineq2_->jacobians(x);
-    return gtsam::MultiJacobian::VerticalStack(jac1, jac2);
-  }
+  gtsam::NoiseModelFactor::shared_ptr
+  createL2Factor(const double mu = 1.0) const override;
+
+  gtsam::MultiJacobian jacobians(const gtsam::Values &x) const override;
 
   static gtsam::Vector2_ ConstructExpression(const gtsam::Double_ &expr1,
                                              const gtsam::Double_ &expr2);
@@ -391,7 +324,7 @@ public:
   constraintGraph(const gtsam::IndexSet &active_indices) const;
 
   void print(const gtsam::KeyFormatter &key_formatter =
-                         gtdynamics::GTDKeyFormatter) const;
+                 gtdynamics::GTDKeyFormatter) const;
 };
 
 typedef std::map<size_t, LinearInequalityConstraint::shared_ptr>
@@ -441,8 +374,10 @@ public:
 
   gtsam::NonlinearFactorGraph meritGraph(const double mu = 1.0) const;
 
+  gtsam::NonlinearFactorGraph smoothMeritGraph(const double mu = 1.0) const;
+
   void print(const gtsam::KeyFormatter &key_formatter =
-                         gtdynamics::GTDKeyFormatter) const;
+                 gtdynamics::GTDKeyFormatter) const;
 };
 
 } // namespace gtdynamics

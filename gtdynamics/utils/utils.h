@@ -139,4 +139,8 @@ double double_division(const double &x1, const double &x2,
 double reciprocal(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
 
 double clip_by_one(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
+
+Vector2 double_stack(const double &x1, const double &x2,
+                     gtsam::OptionalJacobian<2, 1> H_1 = {},
+                     gtsam::OptionalJacobian<2, 1> H_2 = {});
 } // namespace gtsam

@@ -30,6 +30,11 @@ def load_csv(file_name):
     data = {title[i]: data[:, i] for i in range(len(title))}
     return data
 
+def load_csv_no_title(file_name):
+    with open(file_name, newline='') as csvfile:
+        spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        data = [row for row in spamreader]
+        return data
 
 def draw_half_sphere(ax):
     phi, theta = np.mgrid[0.0:0.5*np.pi:180j,

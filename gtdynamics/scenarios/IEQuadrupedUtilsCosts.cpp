@@ -376,6 +376,33 @@ IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
 }
 
 /* ************************************************************************* */
+gtdynamics::DoubleExpressionInequality::shared_ptr
+IEVision60Robot::groundCollisionFreeInterStepConstraint(
+    const std::string &link_name, const size_t k, const double ratio,
+    const Point3 &p_l) const {
+  auto link_idx = robot.link(link_name)->id();
+  Point3_ p_l_const(p_l);
+
+  Pose3_ wTl0(PoseKey(link_idx, k));
+  Point3_ p_w0(wTl0, &Pose3::transformFrom, p_l_const);
+  Pose3_ wTl1(PoseKey(link_idx, k + 1));
+  Point3_ p_w1(wTl1, &Pose3::transformFrom, p_l_const);
+  Point3_ p_w = ratio * p_w1 + (1 - ratio) * p_w0;
+
+  Double_ z(&point3_z, p_w);
+  Matrix23 H_xy;
+  H_xy << 1, 0, 0, 0, 1, 0;
+  const std::function<gtsam::Vector2(gtsam::Point3)> f =
+      [H_xy](const gtsam::Point3 &A) { return H_xy * A; };
+  Vector2_ point_on_ground = gtsam::linearExpression(f, p_w, H_xy);
+
+  Double_ ground_height(params->terrain_height_function, point_on_ground);
+  std::string name = "cz[" + link_name + "]" + std::to_string(k + ratio);
+  return std::make_shared<DoubleExpressionInequality>(z - ground_height,
+                                                      params->tol_cf, name);
+}
+
+/* ************************************************************************* */
 DoubleExpressionInequality::shared_ptr
 IEVision60Robot::jointUpperLimitConstraint(const std::string &j_name,
                                            const size_t k,
@@ -628,6 +655,49 @@ IEVision60Robot::stepGroundCollisionFreeConstraints(const size_t k) const {
         continue;
       }
       constraints.push_back(groundCollisionFreeConstraint(link_name, k, p_l));
+    }
+  }
+  return constraints;
+}
+
+/* ************************************************************************* */
+InequalityConstraints
+IEVision60Robot::interStepGroundCollisionFreeConstraints(const size_t k) const {
+  InequalityConstraints constraints;
+  for (double ratio = params->step_div_ratio; ratio < 1;
+       ratio += params->step_div_ratio) {
+    if (params->i_constraints_symmetry) {
+      for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
+        if (isRight(link_name)) {
+          continue;
+        }
+        uint8_t link_idx = robot.link(link_name)->id();
+        if (std::find(contact_link_ids.begin(), contact_link_ids.end(),
+                      link_idx) != contact_link_ids.end()) {
+          continue;
+        }
+        auto constraint =
+            groundCollisionFreeInterStepConstraint(link_name, k, ratio, p_l);
+        if (isLeft(link_name)) {
+          std::string counterpart_name = counterpart(link_name);
+          auto counterpart_constraint = groundCollisionFreeInterStepConstraint(
+              counterpart_name, k, ratio, p_l);
+          constraints.emplace_shared<TwinDoubleExpressionInequality>(
+              constraint, counterpart_constraint);
+        } else {
+          constraints.push_back(constraint);
+        }
+      }
+    } else {
+      for (const auto &[link_name, p_l] : params->collision_checking_points_z) {
+        uint8_t link_idx = robot.link(link_name)->id();
+        if (std::find(contact_link_ids.begin(), contact_link_ids.end(),
+                      link_idx) != contact_link_ids.end()) {
+          continue;
+        }
+        constraints.push_back(
+            groundCollisionFreeInterStepConstraint(link_name, k, ratio, p_l));
+      }
     }
   }
   return constraints;

@@ -190,12 +190,16 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
       auto lambdas = ComputeLagrangianMultipliers(cost, constraints, x_new,
                                                   active_indices);
       auto [min_idx, min_lambda] = GetMinimum(lambdas);
-      if (min_lambda >= 0) {
+      if (min_lambda >= -1e-2) {
         // all constraints are tight
         return {x_new, active_indices, num_solves, true};
       } else {
         // can relieve constriant
         active_indices.erase(min_idx);
+        if (num_solves > max_iters) {
+          std::cout << "min_lambda: " << min_lambda << "\n";
+          std::cout << "removing_idx: " << min_idx << "\n";
+        }
       }
     } else {
       // has a non-zero update
@@ -205,6 +209,11 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
         // new constriants blocking
         active_indices.insert(blocking_idx);
         x = x + alpha * p;
+        if (num_solves > max_iters) {
+          std::cout << "alpha: " << alpha << "\n";
+          std::cout << "blocking index: " << blocking_idx << "\n";
+          // constraints.at(blocking_idx)->print(gtdynamics::GTDKeyFormatter);
+        }
       } else {
         // no constraints blocking
         x = x_new;

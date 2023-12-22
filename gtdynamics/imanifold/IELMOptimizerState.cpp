@@ -303,6 +303,7 @@ std::pair<std::string, size_t> SplitStr(const std::string &str) {
   return {category_str, std::stoi(k_str)};
 }
 
+/* ************************************************************************* */
 std::string ColoredStr(const std::string &str, const size_t constraint_type,
                        const std::string &default_color_str) {
   std::string color_str;
@@ -707,26 +708,21 @@ void IELMItersDetails::exportFile(const std::string &state_file_path,
   trial_file.open(trial_file_path);
 
   state_file << "iterations"
-             << ","
-             << "lambda"
-             << ","
-             << "error"
+             << ",lambda"
+             << ",error"
              << "\n";
   trial_file << "iterations"
-             << ","
-             << "lambda"
-             << ","
-             << "error"
-             << ","
-             << "step_is_successful"
-             << ","
-             << "linear_cost_change"
-             << ","
-             << "nonlinear_cost_change"
-             << ","
-             << "model_fidelity"
-             << ","
-             << "tangent_vector_norm"
+             << ",lambda"
+             << ",error"
+             << ",step_is_successful"
+             << ",linear_cost_change"
+             << ",nonlinear_cost_change"
+             << ",model_fidelity"
+             << ",tangent_vector_norm"
+             << ",num_solves_linear"
+             << ",num_solves_retraction"
+             << ",avg_retract_deviation_rate"
+             << ",max_retract_deviation_rate"
              << "\n";
 
   for (const auto &iter_details : *this) {
@@ -740,7 +736,13 @@ void IELMItersDetails::exportFile(const std::string &state_file_path,
                  << trial.linear_update.cost_change << ","
                  << trial.nonlinear_update.cost_change << ","
                  << trial.model_fidelity << ","
-                 << trial.linear_update.tangent_vector.norm() << "\n";
+                 << trial.linear_update.tangent_vector.norm() << ","
+                 << trial.linear_update.num_solves << ","
+                 << trial.nonlinear_update.num_retract_iters << ","
+                 << VectorMean(trial.nonlinear_update.retract_divate_rates)
+                 << ","
+                 << VectorMax(trial.nonlinear_update.retract_divate_rates)
+                 << "\n";
     }
   }
   state_file.close();

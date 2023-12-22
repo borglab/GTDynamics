@@ -16,16 +16,61 @@
 
 namespace gtdynamics {
 
+/* <=======================================================================> */
+/* <===================== LinearInequalityConstraint ======================> */
+/* <=======================================================================> */
+
 /* ************************************************************************* */
-void InequalityConstraint::print(
-    const gtsam::KeyFormatter &key_formatter) const {
-  gtsam::PrintKeySet(keys(), name_ + "\t", key_formatter);
+bool LinearInequalityConstraint::feasible(const gtsam::VectorValues &x,
+                                          double threshold) const {
+  for (const double &entry : (*this)(x)) {
+    if (entry < -threshold) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /* ************************************************************************* */
 void LinearInequalityConstraint::print(
     const gtsam::KeyFormatter &key_formatter) const {
   createL2Factor()->print("", key_formatter);
+}
+
+/* <=======================================================================> */
+/* <================= JacobianLinearInequalityConstraint ==================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+gtsam::JacobianFactor::shared_ptr
+JacobianLinearInequalityConstraint::createConstrainedFactor() const {
+  auto factor = std::make_shared<gtsam::JacobianFactor>(*factor_);
+  auto sigmas = gtsam::Vector::Zero(dim());
+  factor->setModel(true, sigmas);
+  return factor;
+}
+
+/* ************************************************************************* */
+gtsam::MultiJacobian JacobianLinearInequalityConstraint::jacobian() const {
+  gtsam::MultiJacobian jac;
+  size_t start_col = 0;
+  gtsam::Matrix jac_mat = factor_->jacobian().first;
+  for (auto it = factor_->begin(); it != factor_->end(); it++) {
+    size_t dim = factor_->getDim(it);
+    jac.addJacobian(*it, jac_mat.middleCols(start_col, dim));
+    start_col += dim;
+  }
+  return jac;
+}
+
+/* <=======================================================================> */
+/* <======================== InequalityConstraint =========================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+void InequalityConstraint::print(
+    const gtsam::KeyFormatter &key_formatter) const {
+  gtsam::PrintKeySet(keys(), name_ + "\t", key_formatter);
 }
 
 /* ************************************************************************* */
@@ -36,6 +81,52 @@ InequalityConstraint::linearize(const gtsam::Values &values) const {
   auto jacobian_factor =
       std::static_pointer_cast<gtsam::JacobianFactor>(linear_factor);
   return std::make_shared<JacobianLinearInequalityConstraint>(jacobian_factor);
+}
+
+/* <=======================================================================> */
+/* <===================== DoubleExpressionInequality ======================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+DoubleExpressionInequality::shared_ptr
+DoubleExpressionInequality::geq(const gtsam::Double_ &expression,
+                                const double &tolerance) {
+  return std::make_shared<DoubleExpressionInequality>(expression, tolerance);
+}
+
+/* ************************************************************************* */
+DoubleExpressionInequality::shared_ptr
+DoubleExpressionInequality::leq(const gtsam::Double_ &expression,
+                                const double &tolerance) {
+  gtsam::Double_ neg_expr = gtsam::Double_(0.0) - expression;
+  return std::make_shared<DoubleExpressionInequality>(neg_expr, tolerance);
+}
+
+/* ************************************************************************* */
+bool DoubleExpressionInequality::feasible(const gtsam::Values &x) const {
+  return expression_.value(x) >= 0;
+}
+
+/* ************************************************************************* */
+double DoubleExpressionInequality::operator()(const gtsam::Values &x) const {
+  return expression_.value(x);
+}
+
+/* ************************************************************************* */
+double DoubleExpressionInequality::toleranceScaledViolation(
+    const gtsam::Values &x) const {
+  double error = expression_.value(x);
+  if (error >= 0) {
+    return 0;
+  } else {
+    return -error / tolerance_;
+  }
+}
+
+/* ************************************************************************* */
+bool DoubleExpressionInequality::isActive(const gtsam::Values &x) const {
+  double error = expression_.value(x);
+  return abs(error / tolerance_) < 1e-5;
 }
 
 /* ************************************************************************* */
@@ -50,6 +141,112 @@ DoubleExpressionInequality::jacobians(const gtsam::Values &x) const {
     jac.addJacobian(keyvector.at(i), H.at(i)); // TODO: divide by tolerance?
   }
   return jac;
+}
+
+/* ************************************************************************* */
+EqualityConstraint::shared_ptr
+DoubleExpressionInequality::createEqualityConstraint() const {
+  return std::make_shared<DoubleExpressionEquality>(expression_, tolerance_);
+}
+
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+DoubleExpressionInequality::createBarrierFactor(const double mu) const {
+  return std::make_shared<gtsam::BarrierFactor>(createL2Factor(mu), true);
+}
+
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+DoubleExpressionInequality::createL2Factor(const double mu) const {
+  auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
+  return std::make_shared<gtsam::ExpressionFactor<double>>(noise, 0.0,
+                                                           expression_);
+}
+
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+DoubleExpressionInequality::createSmoothBarrierFactor(const double mu) const {
+  auto smooth_barrier_function = gtsam::SmoothBarrierFunction(0, tolerance_);
+  gtsam::Double_ error(smooth_barrier_function, expression_);
+  auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
+  return std::make_shared<gtsam::ExpressionFactor<double>>(noise, 0.0, error);
+}
+
+/* <=======================================================================> */
+/* <=================== TwinDoubleExpressionInequality ====================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+double
+TwinDoubleExpressionInequality::operator()(const gtsam::Values &x) const {
+  // TODO: this should return a vector
+  double eval1 = (*ineq1_)(x);
+  double eval2 = (*ineq2_)(x);
+  return sqrt(eval1 * eval1 + eval2 * eval2);
+}
+
+/* ************************************************************************* */
+double TwinDoubleExpressionInequality::toleranceScaledViolation(
+    const gtsam::Values &x) const {
+  double error1 = ineq1_->toleranceScaledViolation(x);
+  double error2 = ineq2_->toleranceScaledViolation(x);
+  return sqrt(error1 * error1 + error2 * error2);
+}
+
+/* ************************************************************************* */
+bool TwinDoubleExpressionInequality::isActive(const gtsam::Values &x) const {
+  return ineq1_->isActive(x) || ineq2_->isActive(x);
+}
+
+/* ************************************************************************* */
+size_t TwinDoubleExpressionInequality::dim() const { return 2; }
+
+/* ************************************************************************* */
+std::set<gtsam::Key> TwinDoubleExpressionInequality::keys() const {
+  std::set<gtsam::Key> all_keys = ineq1_->keys();
+  all_keys.merge(ineq2_->keys());
+  return all_keys;
+}
+
+/* ************************************************************************* */
+EqualityConstraint::shared_ptr
+TwinDoubleExpressionInequality::createEqualityConstraint() const {
+  return std::make_shared<VectorExpressionEquality<2>>(expression_, tolerance_);
+}
+
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+TwinDoubleExpressionInequality::createBarrierFactor(const double mu) const {
+  return std::make_shared<gtsam::BarrierFactor>(createL2Factor(mu), true);
+}
+
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+TwinDoubleExpressionInequality::createL2Factor(const double mu) const {
+  auto noise = gtsam::noiseModel::Isotropic::Sigmas(1 / sqrt(mu) * tolerance_);
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector2>>(
+      noise, gtsam::Vector2::Zero(), expression_);
+}
+
+/* ************************************************************************* */
+gtsam::MultiJacobian
+TwinDoubleExpressionInequality::jacobians(const gtsam::Values &x) const {
+  auto jac1 = ineq1_->jacobians(x);
+  auto jac2 = ineq2_->jacobians(x);
+  return gtsam::MultiJacobian::VerticalStack(jac1, jac2);
+}
+
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+TwinDoubleExpressionInequality::createSmoothBarrierFactor(
+    const double mu) const {
+  auto smooth_barrier_function = gtsam::SmoothBarrierFunction(0, tolerance_(0));
+  gtsam::Double_ error1(smooth_barrier_function, ineq1_->expression());
+  gtsam::Double_ error2(smooth_barrier_function, ineq2_->expression());
+  gtsam::Vector2_ error(gtsam::double_stack, error1, error2);
+  auto noise = gtsam::noiseModel::Isotropic::Sigmas(1 / sqrt(mu) * tolerance_);
+  return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector2>>(
+      noise, gtsam::Vector2::Zero(), error);
 }
 
 /* ************************************************************************* */
@@ -68,6 +265,10 @@ gtsam::Vector2_ TwinDoubleExpressionInequality::ConstructExpression(
   gtsam::Vector2_ expr2_v2 = gtsam::linearExpression(combine2, expr2, H2);
   return expr1_v2 + expr2_v2;
 }
+
+/* <=======================================================================> */
+/* <======================= InequalityConstraints =========================> */
+/* <=======================================================================> */
 
 /* ************************************************************************* */
 bool InequalityConstraints::feasible(const gtsam::Values &x) const {
@@ -127,6 +328,28 @@ InequalityConstraints::meritGraph(const double mu) const {
 }
 
 /* ************************************************************************* */
+gtsam::NonlinearFactorGraph
+InequalityConstraints::smoothMeritGraph(const double mu) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto &constraint : *this) {
+    graph.add(constraint->createSmoothBarrierFactor(mu));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+void InequalityConstraints::print(
+    const gtsam::KeyFormatter &key_formatter) const {
+  for (const auto &constraint : *this) {
+    constraint->print(key_formatter);
+  }
+}
+
+/* <=======================================================================> */
+/* <==================== LinearInequalityConstraints ======================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
 gtsam::GaussianFactorGraph LinearInequalityConstraints::constraintGraph(
     const gtsam::IndexSet &active_indices) const {
   gtsam::GaussianFactorGraph graph;
@@ -138,14 +361,6 @@ gtsam::GaussianFactorGraph LinearInequalityConstraints::constraintGraph(
 
 /* ************************************************************************* */
 void LinearInequalityConstraints::print(
-    const gtsam::KeyFormatter &key_formatter) const {
-  for (const auto &constraint : *this) {
-    constraint->print(key_formatter);
-  }
-}
-
-/* ************************************************************************* */
-void InequalityConstraints::print(
     const gtsam::KeyFormatter &key_formatter) const {
   for (const auto &constraint : *this) {
     constraint->print(key_formatter);

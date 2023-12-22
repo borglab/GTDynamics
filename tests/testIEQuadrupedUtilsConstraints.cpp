@@ -151,6 +151,53 @@ TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
   }
 }
 
+TEST(groundCollisionFreeInterStepConstraint, obstacles_on_ground) {
+  using namespace vision60_test;
+
+  std::string link_name = "fl_lower";
+  auto link_id = robot.robot.link(link_name)->id();
+  robot.params->terrain_height_function =
+      IEVision60Robot::sinHurdleTerrainFunc(1.0, 1.0, 0.3);
+  Point3 p_l(0.2, 0, 0);
+  double ratio = 0.5;
+  auto constraint =
+      robot.groundCollisionFreeInterStepConstraint(link_name, k, ratio, p_l);
+  auto factor = constraint->createL2Factor(1.0);
+
+  // check hurdle height
+  {
+    Values values1;
+    values1.insert(PoseKey(link_id, k),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(0.9, 0.2, 0.5)));
+    values1.insert(PoseKey(link_id, k + 1),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.1, 0.2, 0.5)));
+    Values values2;
+    values2.insert(PoseKey(link_id, k),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.7, 0.1, 0.5)));
+    values2.insert(PoseKey(link_id, k + 1),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.3, 0.2, 0.5)));
+    Values values3;
+    values3.insert(PoseKey(link_id, k),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.0 + 0.5 / 3, 0.2, 0.6)));
+    values3.insert(PoseKey(link_id, k + 1),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(1.0 + 0.5 / 3, 0.2, 0.4)));
+    Values values4;
+    values4.insert(PoseKey(link_id, k),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(-0.2, 0.2, 0.5)));
+    values4.insert(PoseKey(link_id, k + 1),
+                   Pose3(Rot3::Ry(M_PI_2), Point3(0.6, 0.2, 0.5)));
+    EXPECT(assert_equal(0.0, (*constraint)(values1)));
+    EXPECT(assert_equal(0.3, (*constraint)(values2)));
+    EXPECT(assert_equal(0.075, (*constraint)(values3)));
+    EXPECT(assert_equal(0.3, (*constraint)(values4)));
+
+    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values1, 1e-7, 1e-5);
+    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values2, 1e-7, 1e-5);
+    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values3, 1e-7, 1e-5);
+    EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values4, 1e-7, 1e-5);
+  }
+}
+
 TEST(obstacleCollisionFreeConstraint, feasible) {
   using namespace vision60_test;
 
