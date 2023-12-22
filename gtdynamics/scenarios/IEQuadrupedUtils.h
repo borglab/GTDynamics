@@ -139,6 +139,7 @@ public:
     TerrainHeightFunction terrain_height_function = flatTerrainFunc(0.0);
     double accel_panalty_threshold = 100.0;
     double cf_jerk_threshold = 100.0;
+
     // Option for costs
     bool include_collocation_costs = false;
     bool include_actuation_costs = false;
@@ -148,8 +149,13 @@ public:
     bool include_cf_jerk_costs = false;
     bool include_phase_duration_prior_costs = false;
     bool include_symmetry_costs = false;
-    bool collision_as_cost = false;
     bool include_collision_free_z_inter_cost = false;
+    bool collision_as_cost = false;
+    bool joint_limits_as_cost = false;
+    bool torque_limits_as_cost = false;
+    bool friction_cone_as_cost = false;
+    bool phase_duration_limit_as_cost = false;
+
     int actuation_cost_option = ACTUATION_RMSE_TORQUE;
     int jerk_cost_option = JERK_AS_DIFF;
     Values state_cost_values;
@@ -159,7 +165,10 @@ public:
     std::vector<double> phase_prior_dt;
     double dt_threshold = 1.0;
     double step_div_ratio = 0.5;
+    bool use_smooth_barrier_for_cost = false;
+    double smooth_barrier_buffer_width = 1.0;
 
+    // Option for logging
     bool eval_details = true;
     bool eval_collo_step = false;
 

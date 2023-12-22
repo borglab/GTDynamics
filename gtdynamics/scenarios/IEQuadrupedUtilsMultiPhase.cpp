@@ -205,15 +205,45 @@ IEVision60RobotMultiPhase::classifiedCosts() const {
   }
   if (params()->collision_as_cost) {
     NonlinearFactorGraph graph;
-    graph.add(groundCollisionFreeConstraints().meritGraph());
-    graph.add(obstacleCollisionFreeConstraints().meritGraph());
-    graph.add(hurdleCollisionFreeConstraints().meritGraph());
+    graph.add(groundCollisionFreeConstraints().meritGraph(
+        1.0, params()->use_smooth_barrier_for_cost,
+        params()->smooth_barrier_buffer_width));
+    graph.add(obstacleCollisionFreeConstraints().meritGraph(
+        1.0, params()->use_smooth_barrier_for_cost,
+        params()->smooth_barrier_buffer_width));
+    graph.add(hurdleCollisionFreeConstraints().meritGraph(
+        1.0, params()->use_smooth_barrier_for_cost,
+        params()->smooth_barrier_buffer_width));
     classified_costs.emplace_back("collision", graph);
+  }
+  if (params()->joint_limits_as_cost) {
+    auto graph = jointLimitConstraints().meritGraph(
+        1.0, params()->use_smooth_barrier_for_cost,
+        params()->smooth_barrier_buffer_width);
+    classified_costs.emplace_back("joint_limit", graph);
+  }
+  if (params()->torque_limits_as_cost) {
+    auto graph = torqueLimitConstraints().meritGraph(
+        1.0, params()->use_smooth_barrier_for_cost,
+        params()->smooth_barrier_buffer_width);
+    classified_costs.emplace_back("torque_limit", graph);
+  }
+  if (params()->friction_cone_as_cost) {
+    auto graph = frictionConeConstraints().meritGraph(
+        1.0, params()->use_smooth_barrier_for_cost,
+        params()->smooth_barrier_buffer_width);
+    classified_costs.emplace_back("friction_cone", graph);
+  }
+  if (params()->phase_duration_limit_as_cost) {
+    auto graph = phaseMinDurationConstraints().meritGraph(
+        1.0, params()->use_smooth_barrier_for_cost,
+        params()->smooth_barrier_buffer_width);
+    classified_costs.emplace_back("phase_min_dt", graph);
   }
   if (params()->include_collision_free_z_inter_cost) {
     NonlinearFactorGraph graph;
     graph.add(
-        groundCollisionFreeInterStepConstraints().smoothMeritGraph(1.0, 5.0));
+        groundCollisionFreeInterStepConstraints().meritGraph(1.0, true, 5.0));
     classified_costs.emplace_back("collision_inter", graph);
   }
   if (params()->include_symmetry_costs) {
@@ -419,7 +449,7 @@ EqConsOptProblem::EvalFunc IEVision60RobotMultiPhase::costsEvalFunc() const {
   auto classified_i_constraints = classifiedIConstraints();
   auto collocation_factors = collocationFactorsByStep();
 
-  std::map<std::string, double> graph_sigma_map{
+  std::map<std::string, double> sigma_map{
       {"collocation", params_->sigma_q_col},
       {"actuation", params_->sigma_actuation},
       {"jerk", params_->sigma_jerk},
@@ -429,8 +459,7 @@ EqConsOptProblem::EvalFunc IEVision60RobotMultiPhase::costsEvalFunc() const {
       {"collision", params_->tol_cf},
       {"collision_inter", params_->tol_cf},
       {"cf_jerk", params_->sigma_cf_jerk},
-      {"symmetry", params_->sigma_symmetry}};
-  std::map<std::string, double> constraint_sigma_map{
+      {"symmetry", params_->sigma_symmetry},
       {"joint_limit", params_->tol_jl},
       {"collision_free_obstacle", params_->tol_cf},
       {"collision_free_hurdle", params_->tol_cf},
@@ -444,7 +473,7 @@ EqConsOptProblem::EvalFunc IEVision60RobotMultiPhase::costsEvalFunc() const {
               << graph.error(values) << "\033[0m\n";
     if (params_->eval_details) {
       for (const auto &[name, graph] : classified_costs) {
-        PrintGraphError(name, graph.error(values), graph_sigma_map.at(name));
+        PrintGraphError(name, graph.error(values), sigma_map.at(name));
       }
     }
     if (params_->eval_collo_step) {
@@ -467,7 +496,7 @@ EqConsOptProblem::EvalFunc IEVision60RobotMultiPhase::costsEvalFunc() const {
       for (const auto &[name, constraints] : classified_i_constraints) {
         PrintConstraintViolation(name,
                                  constraints.evaluateViolationL2Norm(values),
-                                 constraint_sigma_map.at(name));
+                                 sigma_map.at(name));
       }
     }
   };

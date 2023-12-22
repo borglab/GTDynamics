@@ -375,11 +375,9 @@ public:
   /// Evaluate the constraint violation (as L2 norm).
   double evaluateViolationL2Norm(const gtsam::Values &values) const;
 
-  gtsam::NonlinearFactorGraph meritGraph(const double mu = 1.0) const;
-
-  gtsam::NonlinearFactorGraph
-  smoothMeritGraph(const double mu = 1.0,
-                   const double buffer_width = 1.0) const;
+  gtsam::NonlinearFactorGraph meritGraph(const double mu = 1.0,
+                                         const bool smooth = false,
+                                         const double buffer_width = 1.0) const;
 
   void print(const gtsam::KeyFormatter &key_formatter =
                  gtdynamics::GTDKeyFormatter) const;

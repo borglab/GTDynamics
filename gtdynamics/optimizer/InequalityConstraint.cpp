@@ -322,21 +322,17 @@ double InequalityConstraints::evaluateViolationL2Norm(
 
 /* ************************************************************************* */
 gtsam::NonlinearFactorGraph
-InequalityConstraints::meritGraph(const double mu) const {
+InequalityConstraints::meritGraph(const double mu, const bool smooth,
+                                  const double buffer_width) const {
   gtsam::NonlinearFactorGraph graph;
-  for (const auto &constraint : *this) {
-    graph.add(constraint->createBarrierFactor(mu));
-  }
-  return graph;
-}
-
-/* ************************************************************************* */
-gtsam::NonlinearFactorGraph
-InequalityConstraints::smoothMeritGraph(const double mu,
-                                        const double buffer_width) const {
-  gtsam::NonlinearFactorGraph graph;
-  for (const auto &constraint : *this) {
-    graph.add(constraint->createSmoothBarrierFactor(mu, buffer_width));
+  if (smooth) {
+    for (const auto &constraint : *this) {
+      graph.add(constraint->createSmoothBarrierFactor(mu, buffer_width));
+    }
+  } else {
+    for (const auto &constraint : *this) {
+      graph.add(constraint->createBarrierFactor(mu));
+    }
   }
   return graph;
 }
