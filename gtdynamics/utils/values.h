@@ -457,6 +457,6 @@ gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j,
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t = 0);
 
 gtsam::Values DynamicsValuesFromPrev(const gtsam::Values &prev_values,
-                                     const size_t gap_steps = 1);
+                                     const int gap_steps = 1);
 
 }  // namespace gtdynamics

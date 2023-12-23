@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  QuadrupedVerticalJump.h
+ * @file  QuadrupedVerticalJumpLand.h
  * @brief Utilities for quadruped vertical jump experiments
  * @author Yetong Zhang
  */
@@ -19,7 +19,7 @@
 using namespace gtsam;
 using namespace gtdynamics;
 
-namespace quadruped_forward_jump {
+namespace quadruped_forward_jump_land {
 
 inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   auto vision60_params = std::make_shared<IEVision60Robot::Params>();
@@ -44,12 +44,10 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   // joint limits
   std::map<std::string, double> joint_lower_limits;
   std::map<std::string, double> joint_upper_limits;
-  double hip_joint_lower_limit = -M_PI_2;
+  double hip_joint_lower_limit = -0.1;
   double hip_joint_upper_limit = M_PI_2;
   double upper_joint_lower_limit = -1;
   double upper_joint_upper_limit = 4;
-  // double lower_joint_lower_limit = -1;
-  // double lower_joint_upper_limit = 4;
   double lower_joint_lower_limit = -0.76;
   double lower_joint_upper_limit = M_PI;
   for (const auto &leg : IEVision60Robot::legs) {
@@ -129,55 +127,36 @@ inline IEVision60Robot::Params::shared_ptr GetVision60Params() {
   return vision60_params;
 }
 
-struct ForwardJumpParams {
+struct ForwardJumpLandParams {
   IEVision60Robot::Params::shared_ptr vision60_params = GetVision60Params();
-  std::vector<size_t> phase_num_steps{20, 10, 20};
-  std::vector<double> phases_dt{0.01, 0.02, 0.02};
+  std::vector<size_t> phase_num_steps{20, 10, 20, 20};
+  std::vector<double> phases_dt{0.01, 0.02, 0.02, 0.02};
   bool init_values_include_i_constraints = false;
   bool init_values_ensure_feasible = false;
   double forward_distance = 1.5;
 };
 
 inline std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr,
-                  ForwardJumpParams>
-CreateProblem(const ForwardJumpParams &params) {
-  auto vision60_multi_phase =
-      GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
-  // const IEVision60Robot &vision60_4c =
-  // vision60_multi_phase->phase_robots_[0];
+                  ForwardJumpLandParams>
+CreateProblem(const ForwardJumpLandParams &params) {
+  auto vision60_multi_phase = GetVision60MultiPhase(
+      params.vision60_params, params.phase_num_steps, params.forward_distance);
+
   const IEVision60Robot &vision60_air = vision60_multi_phase->phase_robots_[1];
   size_t num_steps = vision60_multi_phase->numSteps();
 
   Values des_values;
-  // for (const auto &joint : vision60_air.robot.joints()) {
-  //   InsertJointAngle(&des_values, joint->id(), num_steps, 0.0);
-  // }
-  // for (const auto &joint : vision60_air.robot.joints()) {
-  //   InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
-  // }
-  // InsertTwist(&des_values, vision60_air.base_id, num_steps, Vector6::Zero());
-
-  Pose3 des_pose(Rot3::Identity(), Point3(params.forward_distance, 0.0,
-                                          vision60_air.nominal_height));
-  InsertPose(&des_values, vision60_air.base_id, num_steps, des_pose);
-
   for (const auto &joint : vision60_air.robot.joints()) {
     InsertJointAngle(&des_values, joint->id(), num_steps, 0.0);
   }
-  vision60_multi_phase->params()->state_cost_values = des_values;
-
-  for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
-    const auto &leg = IEVision60Robot::legs.at(leg_idx);
-    size_t link_id = leg.lower_link_id;
-    Point3 point_l = IEVision60Robot::contact_in_com;
-    Point3 point_w = vision60_air.nominal_contact_in_world.at(leg_idx) +
-                     Point3(params.forward_distance, 0, 0);
-    // Vector3 vel_w = Vector3::Zero();
-    vision60_multi_phase->params()->state_cost_points.emplace_back(
-        link_id, point_l, point_w, num_steps);
-    // vision60_multi_phase->params()->state_cost_point_vels.emplace_back(
-    //     link_id, point_l, vel_w, num_steps);
+  for (const auto &joint : vision60_air.robot.joints()) {
+    InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
   }
+  InsertTwist(&des_values, vision60_air.base_id, num_steps, Vector6::Zero());
+  Pose3 des_pose(Rot3::Identity(), Point3(params.forward_distance, 0.0,
+                                          vision60_air.nominal_height));
+  InsertPose(&des_values, vision60_air.base_id, num_steps, des_pose);
+  vision60_multi_phase->params()->state_cost_values = des_values;
 
   /// Constraints
   EqualityConstraints e_constraints = vision60_multi_phase->eConstraints();
@@ -196,4 +175,4 @@ CreateProblem(const ForwardJumpParams &params) {
   return {problem, vision60_multi_phase, params};
 }
 
-} // namespace quadruped_forward_jump
+} // namespace quadruped_forward_jump_land

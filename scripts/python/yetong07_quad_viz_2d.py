@@ -4,11 +4,19 @@ import matplotlib as mpl
 import matplotlib.animation as animation
 from yetong00_utils import load_csv
 
-folder = "data/yetong10_e_quadruped_jump/"
+# folder = "data/yetong10_ie_quadruped_jump/"
+folder = "data/yetong11_ie_quadruped_jump_land/"
 
 # data = load_csv(folder + "init_traj.csv")
 data= load_csv(folder + "manopt_traj.csv")
 
+def hurdle(center_x, width, height):
+    x = np.linspace(center_x-width/2, center_x+width/2, 100)
+    dist_to_center = x - center_x
+    rate = np.pi * 2 / width
+    theta = dist_to_center * rate
+    h = (np.cos(theta) + 1) * height / 2
+    return x, h
 
 class PauseAnimation:
     def __init__(self):
@@ -66,6 +74,8 @@ class PauseAnimation:
         self.ax_fcone.set_title('friction cone')
         self.ax_fcone.plot([0, 100], [0, 100], color='k', alpha=0.5)
         self.ax_fcone.plot([0, -100], [0, 100], color='k', alpha=0.5)
+        hurdle_x, hurdle_z = hurdle(0.75, 0.3, 0.2)
+        self.ax_side.plot(hurdle_x, hurdle_z, color='k')
 
         # general info
         self.end_point_names1 = [["fl_hip", "fl_upper"], ["fl_upper", "fl_lower"], ["fl_lower", "fl_lower_c"],

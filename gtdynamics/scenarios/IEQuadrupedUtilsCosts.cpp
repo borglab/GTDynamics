@@ -370,7 +370,16 @@ IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
   Vector2_ point_on_ground = gtsam::linearExpression(f, p_w, H_xy);
 
   Double_ ground_height(params->terrain_height_function, point_on_ground);
-  std::string name = "cz[" + link_name + "]" + std::to_string(k);
+  std::string name;
+  if (link_name == "body") {
+    if (p_l.x() < 0) {
+      name = "cz[" + link_name + "_r]" + std::to_string(k);
+    } else {
+      name = "cz[" + link_name + "_f]" + std::to_string(k);
+    }
+  } else {
+    name = "cz[" + link_name + "]" + std::to_string(k);
+  }
   return std::make_shared<DoubleExpressionInequality>(z - ground_height,
                                                       params->tol_cf, name);
 }

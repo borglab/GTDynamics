@@ -168,7 +168,7 @@ Vector6 Wrench(const Values &values, int i, int j, int t) {
 
 /* ************************************************************************* */
 Values DynamicsValuesFromPrev(const Values &prev_values,
-                              const size_t gap_steps) {
+                              const int gap_steps) {
   Values values;
   for (const gtsam::Key &key : prev_values.keys()) {
     values.insert(key + gap_steps, prev_values.at(key));

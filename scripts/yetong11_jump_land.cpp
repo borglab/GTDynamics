@@ -11,39 +11,42 @@
  * @author Yetong Zhang
  */
 
-#include "QuadrupedForwardJump.h"
+#include "QuadrupedForwardJumpLand.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 using namespace gtdynamics;
 using namespace gtsam;
-using namespace quadruped_forward_jump;
+using namespace quadruped_forward_jump_land;
 
 bool include_inequality = true;
 std::string constraint_str = include_inequality ? "ie" : "e";
-std::string scenario = "yetong10_" + constraint_str + "_quadruped_jump";
+std::string scenario = "yetong11_" + constraint_str + "_quadruped_jump_land";
 std::string scenario_folder = "../../data/" + scenario + "/";
 
 /* <=====================================================================> */
 /* <========================== Create Problem ===========================> */
 /* <=====================================================================> */
 std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr,
-           ForwardJumpParams>
+           ForwardJumpLandParams>
 CreateProblem() {
   std::filesystem::create_directory(scenario_folder);
 
   /* <=========== scenario setting ===========> */
-  ForwardJumpParams params;
+  ForwardJumpLandParams params;
   params.vision60_params->eval_details = true;
   params.vision60_params->eval_collo_step = true;
   params.vision60_params->i_constraints_symmetry = true;
-  params.phase_num_steps = std::vector<size_t>{20, 10, 20};
-  params.phases_dt = std::vector<double>{0.01, 0.02, 0.02};
+  params.phase_num_steps = std::vector<size_t>{20, 10, 20, 20};
+  params.phases_dt = std::vector<double>{0.01, 0.02, 0.02, 0.02};
+  params.vision60_params->phases_min_dt =
+      std::vector<double>{0.01, 0.001, 0.01, 0.01};
   params.init_values_include_i_constraints = true;
   params.init_values_ensure_feasible = true;
   params.vision60_params->terrain_height_function =
       IEVision60Robot::sinHurdleTerrainFunc(0.75, 0.3, 0.2);
   params.vision60_params->step_div_ratio = 0.5;
+  params.forward_distance = 1.5;
 
   /* <=========== costs ===========> */
   params.vision60_params->include_collocation_costs = true;
@@ -52,7 +55,6 @@ CreateProblem() {
   params.vision60_params->include_jerk_costs = true;
   params.vision60_params->include_cf_jerk_costs = true;
   params.vision60_params->include_symmetry_costs = true;
-  // params.vision60_params->collision_as_cost = true;
   params.vision60_params->include_collision_free_z_inter_cost = true;
 
   params.vision60_params->sigma_des_pose = 2e-3;
@@ -72,8 +74,6 @@ CreateProblem() {
 
   /* <=========== inequality constraints ===========> */
   params.vision60_params->include_phase_duration_limits = true;
-  params.vision60_params->phases_min_dt =
-      std::vector<double>{0.01, 0.001, 0.01};
   if (include_inequality) {
     params.vision60_params->include_friction_cone = true;
     params.vision60_params->include_joint_limits = true;
@@ -143,7 +143,6 @@ void TrajectoryOptimization() {
   ie_params.lm_params.setVerbosityLM("SUMMARY");
   ie_params.lm_params.setMaxIterations(200);
   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-  // ie_params.lm_params.setlambdaInitial(1e-2);
   ie_params.lm_params.setlambdaUpperBound(1e10);
   ie_params.iqp_max_iters = 100;
   ie_params.show_active_costraints = true;

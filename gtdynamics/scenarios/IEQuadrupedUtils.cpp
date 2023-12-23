@@ -87,6 +87,26 @@ IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
 }
 
 /* ************************************************************************* */
+void IEVision60Robot::moveContactPoints(const double forward_distance) {
+  for (int i = 0; i < contact_in_world.size(); i++) {
+    const auto &point = contact_in_world.at(i);
+    Point3 new_point = point + Point3(forward_distance, 0, 0);
+    contact_in_world.at(i) = new_point;
+  }
+  for (int i = 0; i < nominal_contact_in_world.size(); i++) {
+    const auto &point = nominal_contact_in_world.at(i);
+    Point3 new_point = point + Point3(forward_distance, 0, 0);
+    nominal_contact_in_world.at(i) = new_point;
+  }
+  Pose3 T_forward(Rot3::Identity(), Point3(forward_distance, 0, 0));
+  for (const auto &link : robot.links()) {
+    auto pose = Pose(nominal_values, link->id(), 0);
+    Pose3 new_pose = T_forward * pose;
+    nominal_values.update(PoseKey(link->id(), 0), new_pose);
+  }
+}
+
+/* ************************************************************************* */
 gtdynamics::Robot IEVision60Robot::getVision60Robot() {
   auto vision60_robot = gtdynamics::CreateRobotFromFile(
       gtdynamics::kUrdfPath + std::string("vision60.urdf"));

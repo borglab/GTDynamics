@@ -272,6 +272,8 @@ public:
   /// Constructor.
   IEVision60Robot(const Params::shared_ptr &_params,
                   const PhaseInfo::shared_ptr &_phase_info);
+  
+  void moveContactPoints(const double forward_distance);
 
   /** <=================== Single Equality Constraint  ===================> **/
   /** Transform contact wrench expressed in link frame to contact force
@@ -844,5 +846,19 @@ GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
 gtsam::Values InitValuesTrajectory(
     const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,
-    bool ensure_feasible, bool use_trapezoidal = false);
+    bool ensure_feasible, bool ignore_last_step = false);
 } // namespace quadruped_forward_jump
+
+namespace quadruped_forward_jump_land {
+gtsam::IEVision60RobotMultiPhase::shared_ptr
+GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+                      const std::vector<size_t> &phase_num_steps,
+                      const double jump_distance);
+
+/// Construct values of a robot forward jump trajectory. Consisting of 5 phases:
+/// on-ground -> back-contact -> in-air -> front-contact -> on-gorund.
+gtsam::Values InitValuesTrajectory(
+    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt, bool include_i_constriants,
+    bool ensure_feasible);
+} // namespace quadruped_forward_jump_land

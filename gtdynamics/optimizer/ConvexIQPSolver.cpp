@@ -199,6 +199,7 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
         if (num_solves > max_iters) {
           std::cout << "min_lambda: " << min_lambda << "\n";
           std::cout << "removing_idx: " << min_idx << "\n";
+          return {x_new, active_indices, num_solves, true};
         }
       }
     } else {

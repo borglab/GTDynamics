@@ -298,6 +298,25 @@ TEST(TrajectoryValuesForwardJump, constraints) {
       assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
 }
 
+TEST(TrajectoryValuesForwardJumpLand, constraints) {
+  using namespace quadruped_forward_jump_land;
+  std::vector<size_t> phase_num_steps{10, 10, 20, 10};
+  std::vector<double> phases_dt{0.02, 0.02, 0.05, 0.02};
+  double forward_distance = 1.5;
+
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
+  vision60_params->express_contact_force = true;
+  vision60_params->express_redundancy = true;
+  auto vision60_multi_phase =
+      GetVision60MultiPhase(vision60_params, phase_num_steps, forward_distance);
+
+  Values values =
+      InitValuesTrajectory(*vision60_multi_phase, phases_dt, false, false);
+  auto e_constraints = vision60_multi_phase->eConstraints();
+  EXPECT(
+      assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
+}
+
 TEST(IEQuadrupedUtils, general) {
   using namespace vision60_test;
   std::string str1 = "fr_hip";

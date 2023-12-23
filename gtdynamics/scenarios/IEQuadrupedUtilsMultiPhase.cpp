@@ -609,3 +609,38 @@ GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
       phase_robots, boundary_robots, phase_num_steps);
 }
 } // namespace quadruped_forward_jump
+
+namespace quadruped_forward_jump_land {
+IEVision60RobotMultiPhase::shared_ptr
+GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
+                      const std::vector<size_t> &phase_num_steps,
+                      const double jump_distance) {
+  auto phase_info_ground = IEVision60Robot::PhaseInfo::Ground();
+  auto phase_info_back = IEVision60Robot::PhaseInfo::BackOnGround();
+  auto phase_info_air = IEVision60Robot::PhaseInfo::InAir();
+  auto phase_info_boundary_gb = IEVision60Robot::PhaseInfo::BoundaryLeave(
+      *phase_info_ground, *phase_info_back);
+  auto phase_info_boundary_ba = IEVision60Robot::PhaseInfo::BoundaryLeave(
+      *phase_info_back, *phase_info_air);
+  auto phase_info_boundary_ag = IEVision60Robot::PhaseInfo::BoundaryLand(
+      *phase_info_air, *phase_info_ground);
+  IEVision60Robot vision60_ground(params, phase_info_ground);
+  IEVision60Robot vision60_back(params, phase_info_back);
+  IEVision60Robot vision60_air(params, phase_info_air);
+  IEVision60Robot vision60_ground_forward(params, phase_info_ground);
+
+  IEVision60Robot vision60_boundary_gb(params, phase_info_boundary_gb);
+  IEVision60Robot vision60_boundary_ba(params, phase_info_boundary_ba);
+  IEVision60Robot vision60_boundary_ag(params, phase_info_boundary_ag);
+
+  vision60_ground_forward.moveContactPoints(jump_distance);
+  vision60_boundary_ag.moveContactPoints(jump_distance);
+
+  std::vector<IEVision60Robot> phase_robots{
+      vision60_ground, vision60_back, vision60_air, vision60_ground_forward};
+  std::vector<IEVision60Robot> boundary_robots{
+      vision60_boundary_gb, vision60_boundary_ba, vision60_boundary_ag};
+  return std::make_shared<IEVision60RobotMultiPhase>(
+      phase_robots, boundary_robots, phase_num_steps);
+}
+} // namespace quadruped_forward_jump_land
