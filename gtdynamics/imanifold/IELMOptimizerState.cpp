@@ -206,13 +206,18 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
 /* ************************************************************************* */
 IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
                      const IndexSetMap &approach_indices_map) {
-  linear_update.lambda = state.lambda;
+  auto start = std::chrono::high_resolution_clock::now();
+
   forced_indices_map = approach_indices_map;
-  nonlinear_update.new_manifolds =
-      state.manifolds.moveToBoundaries(approach_indices_map);
-  nonlinear_update.new_unconstrained_values = state.unconstrainedValues();
-  nonlinear_update.computeError(graph, state.error);
+  linear_update = LinearUpdate::Zero(state);
+  nonlinear_update = NonlinearUpdate(state, forced_indices_map, graph);
   step_is_successful = true;
+
+  auto end = std::chrono::high_resolution_clock::now();
+  trial_time =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count() /
+      1e6;
 }
 
 /* ************************************************************************* */
@@ -381,10 +386,16 @@ void PrintIELMTrialTitle() {
 }
 
 double VectorMean(const std::vector<double> &vec) {
+  if (vec.size() == 0) {
+    return 0;
+  }
   return std::accumulate(vec.begin(), vec.end(), 0.0) / vec.size();
 }
 
 double VectorMax(const std::vector<double> &vec) {
+  if (vec.size() == 0) {
+    return 0;
+  }
   return *std::max_element(std::begin(vec), std::end(vec));
 }
 
@@ -499,6 +510,15 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
   old_error = linear->error(VectorValues::Zero(delta));
   new_error = linear->error(delta);
   cost_change = old_error - new_error;
+}
+
+/* ************************************************************************* */
+IELMTrial::LinearUpdate IELMTrial::LinearUpdate::Zero(const IELMState &state) {
+  LinearUpdate linear_update;
+  linear_update.lambda = state.lambda;
+  linear_update.delta = state.values.zeroVectors();
+  linear_update.tangent_vector = state.baseValues().zeroVectors();
+  return linear_update;
 }
 
 /* ************************************************************************* */
@@ -690,6 +710,16 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
       base_linear_error - base_linear_error_retract;
 }
 
+/* ************************************************************************* */
+IELMTrial::NonlinearUpdate::NonlinearUpdate(
+    const IELMState &state, const IndexSetMap &forced_indices_map,
+    const NonlinearFactorGraph &graph) {
+  new_manifolds = state.manifolds.moveToBoundaries(forced_indices_map);
+  new_unconstrained_values = state.unconstrainedValues();
+  computeError(graph, state.error);
+}
+
+/* ************************************************************************* */
 void IELMTrial::NonlinearUpdate::computeError(const NonlinearFactorGraph &graph,
                                               const double &old_error) {
 

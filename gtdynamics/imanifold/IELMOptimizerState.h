@@ -109,11 +109,11 @@ struct IELMTrial {
     IndexSetMap blocking_indices_map;
     VectorValues delta;
     VectorValues tangent_vector;
-    double old_error;
-    double new_error;
-    double cost_change;
-    bool solve_successful;
-    size_t num_solves; // number of solving linear systems
+    double old_error = 0;
+    double new_error = 0;
+    double cost_change = 0;
+    bool solve_successful = 0;
+    size_t num_solves = 0; // number of solving linear systems
 
     /** Default constructor. */
     LinearUpdate() {}
@@ -126,8 +126,9 @@ struct IELMTrial {
      * indicating if solving the linear system is successful
      */
     LinearUpdate(const double &_lambda, const NonlinearFactorGraph &graph,
-                 const IELMState &state,
-                 const IELMParams &params);
+                 const IELMState &state, const IELMParams &params);
+
+    static LinearUpdate Zero(const IELMState &state);
 
     /** Generate an initial estimate for the IQP problem using active
      * constraints that include the blocking constraint for neg-gradient.
@@ -183,9 +184,9 @@ struct IELMTrial {
     Values new_unconstrained_values;
     double new_error;
     double cost_change;
-    size_t num_retract_iters; // total number of iterations in LM opt.
+    size_t num_retract_iters = 0; // total number of iterations in LM opt.
     std::vector<double> retract_divate_rates;
-    double linear_cost_change_with_retract_delta;
+    double linear_cost_change_with_retract_delta = 0;
 
     /** Default constructor. */
     NonlinearUpdate() {}
@@ -193,6 +194,10 @@ struct IELMTrial {
     /** Compute the new manifolds using the linear update delta and blocking
      * indices. */
     NonlinearUpdate(const IELMState &state, const LinearUpdate &linear_update,
+                    const NonlinearFactorGraph &graph);
+
+    NonlinearUpdate(const IELMState &state,
+                    const IndexSetMap &forced_indices_map,
                     const NonlinearFactorGraph &graph);
 
     void computeError(const NonlinearFactorGraph &graph,
