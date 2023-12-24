@@ -45,7 +45,7 @@ CreateProblem() {
   params.init_values_ensure_feasible = true;
   params.vision60_params->terrain_height_function =
       IEVision60Robot::sinHurdleTerrainFunc(0.75, 0.3, 0.2);
-  params.vision60_params->step_div_ratio = 0.5;
+  params.vision60_params->step_div_ratio = 0.25;
   params.forward_distance = 1.5;
 
   /* <=========== costs ===========> */
