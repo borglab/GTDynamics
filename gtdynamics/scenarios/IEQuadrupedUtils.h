@@ -176,6 +176,23 @@ public:
     Params() = default;
 
     using shared_ptr = std::shared_ptr<Params>;
+
+    /// Nominal joint limits
+    static std::pair<std::map<std::string, double>,
+                     std::map<std::string, double>>
+    NominalJointLimits();
+
+    /// Nominal torque limits
+    static std::pair<std::map<std::string, double>,
+                     std::map<std::string, double>>
+    NominalTorqueLimits(const double lower_limit = -30,
+                        const double upper_limit = 30);
+
+    /// Nominal points on links for collision checking
+    static std::vector<std::pair<std::string, Point3>>
+    NominalCollisionCheckingPoints();
+
+    static Params::shared_ptr NominalParams();
   };
 
   struct PhaseInfo {
@@ -272,7 +289,8 @@ public:
   /// Constructor.
   IEVision60Robot(const Params::shared_ptr &_params,
                   const PhaseInfo::shared_ptr &_phase_info);
-  
+
+  /// Change the contact points by moving forward distance.
   void moveContactPoints(const double forward_distance);
 
   /** <=================== Single Equality Constraint  ===================> **/
@@ -608,6 +626,8 @@ public:
 
   const IEVision60Robot &robotAtStep(const size_t k) const;
 
+  double dtAtStep(const std::vector<double> &phases_dt, const size_t k) const;
+
   /** <================= costs =================> **/
   NonlinearFactorGraph collocationCosts() const;
 
@@ -671,8 +691,17 @@ public:
   /// error over the trajectory.
   void evaluateCollocation(const Values &values) const;
 
-  // void exportEvaluation(const Values &values,
-  //                       const std::string &file_path) const;
+  /** <======================= evaluation functions ======================> **/
+  /// nominal values for q, 0 for v. ad satsify constraints.
+  Values trajectoryValuesNominal(const std::vector<double> &phases_dt,
+                                 bool include_i_constriants,
+                                 bool ensure_feasible) const;
+
+  /// Interpolated values for q, v. ad satisfy constraints.
+  Values trajectoryValuesByInterpolation(
+      const std::vector<double> &phases_dt,
+      const std::vector<std::pair<size_t, Pose3>> &boundary_poses,
+      bool include_i_constriants, bool ensure_feasible) const;
 };
 
 /* ************************************************************************* */
@@ -782,6 +811,16 @@ TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
 /* ************************************************************************* */
 /* <========================= Experiment Utils ============================> */
 /* ************************************************************************* */
+struct JumpParams {
+  IEVision60Robot::Params::shared_ptr vision60_params =
+      IEVision60Robot::Params::NominalParams();
+  std::vector<size_t> phase_num_steps;
+  std::vector<double> phases_dt;
+  bool init_values_include_i_constraints;
+  bool init_values_ensure_feasible;
+  double forward_distance;
+};
+
 void EvaluateAndExportIELMResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
@@ -811,6 +850,9 @@ void ExportOptimizationProgress(
 /* ************************************************************************* */
 
 namespace quadruped_vertical_jump {
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const gtsam::Pose3 &des_pose);
+
 gtsam::IEVision60RobotMultiPhase::shared_ptr
 GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps);
@@ -831,18 +873,24 @@ gtsam::Values InitValuesTrajectoryInfeasible(
     const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt);
 
-gtsam::Values InitValuesTrajectoryDeprecated(
-    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::vector<double> &phases_dt, const double torso_accel_z = 15);
 } // namespace quadruped_vertical_jump
 
 namespace quadruped_forward_jump {
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const gtsam::Point3 &displacement);
+
+std::pair<
+    std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Point3, size_t>>,
+    std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Vector3, size_t>>>
+DesPoints(const std::vector<size_t> &phase_num_steps,
+          const gtsam::Point3 &displacement);
+
 gtsam::IEVision60RobotMultiPhase::shared_ptr
 GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps);
 
-/// Construct values of a robot forward jump trajectory. Consisting of 5 phases:
-/// on-ground -> back-contact -> in-air -> front-contact -> on-gorund.
+/// Construct values of a robot forward jump trajectory. Consisting of 3 phases:
+/// on-ground -> back-contact -> in-air.
 gtsam::Values InitValuesTrajectory(
     const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,
@@ -850,13 +898,23 @@ gtsam::Values InitValuesTrajectory(
 } // namespace quadruped_forward_jump
 
 namespace quadruped_forward_jump_land {
+/** Desired values for state costs.
+ * @param phase_num_steps number of steps for each phase.
+ * @param displacement final state torso displacement w.r.t. nominal pose.
+ */
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const gtsam::Point3 &displacement);
+
+/** Multi-phase consisting of 4 phases:
+ * on-ground -> back-contact -> in-air -> on-ground(forward).
+ */
 gtsam::IEVision60RobotMultiPhase::shared_ptr
 GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps,
                       const double jump_distance);
 
-/// Construct values of a robot forward jump trajectory. Consisting of 5 phases:
-/// on-ground -> back-contact -> in-air -> front-contact -> on-gorund.
+/// Construct values of a robot forward jump trajectory. Consisting of 4 phases:
+/// on-ground -> back-contact -> in-air -> on-gorund.
 gtsam::Values InitValuesTrajectory(
     const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,

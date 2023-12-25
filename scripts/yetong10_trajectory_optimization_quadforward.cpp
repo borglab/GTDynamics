@@ -11,7 +11,6 @@
  * @author Yetong Zhang
  */
 
-#include "QuadrupedForwardJump.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
@@ -23,27 +22,38 @@ bool include_inequality = true;
 std::string constraint_str = include_inequality ? "ie" : "e";
 std::string scenario = "yetong10_" + constraint_str + "_quadruped_jump";
 std::string scenario_folder = "../../data/" + scenario + "/";
+bool log_results = true;
 
 /* <=====================================================================> */
 /* <========================== Create Problem ===========================> */
 /* <=====================================================================> */
-std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr,
-           ForwardJumpParams>
+std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, JumpParams>
 CreateProblem() {
-  std::filesystem::create_directory(scenario_folder);
+  if (log_results) {
+    std::filesystem::create_directory(scenario_folder);
+  }
 
   /* <=========== scenario setting ===========> */
-  ForwardJumpParams params;
+  JumpParams params;
+  params.forward_distance = 1.5;
+  params.init_values_include_i_constraints = true;
+  params.init_values_ensure_feasible = true;
+  params.phase_num_steps = std::vector<size_t>{20, 10, 20};
+  params.phases_dt = std::vector<double>{0.01, 0.02, 0.02};
+  params.vision60_params->phases_min_dt =
+      std::vector<double>{0.01, 0.001, 0.01};
+
   params.vision60_params->eval_details = true;
   params.vision60_params->eval_collo_step = true;
   params.vision60_params->i_constraints_symmetry = true;
-  params.phase_num_steps = std::vector<size_t>{20, 10, 20};
-  params.phases_dt = std::vector<double>{0.01, 0.02, 0.02};
-  params.init_values_include_i_constraints = true;
-  params.init_values_ensure_feasible = true;
   params.vision60_params->terrain_height_function =
       IEVision60Robot::sinHurdleTerrainFunc(0.75, 0.3, 0.2);
   params.vision60_params->step_div_ratio = 0.5;
+  params.vision60_params->state_cost_values =
+      DesValues(params.phase_num_steps, Point3(params.forward_distance, 0, 0));
+  std::tie(params.vision60_params->state_cost_points,
+           params.vision60_params->state_cost_point_vels) =
+      DesPoints(params.phase_num_steps, Point3(params.forward_distance, 0, 0));
 
   /* <=========== costs ===========> */
   params.vision60_params->include_collocation_costs = true;
@@ -52,7 +62,6 @@ CreateProblem() {
   params.vision60_params->include_jerk_costs = true;
   params.vision60_params->include_cf_jerk_costs = true;
   params.vision60_params->include_symmetry_costs = true;
-  // params.vision60_params->collision_as_cost = true;
   params.vision60_params->include_collision_free_z_inter_cost = true;
 
   params.vision60_params->sigma_des_pose = 2e-3;
@@ -71,20 +80,39 @@ CreateProblem() {
   params.vision60_params->dt_threshold = 0.02;
 
   /* <=========== inequality constraints ===========> */
-  params.vision60_params->include_phase_duration_limits = true;
-  params.vision60_params->phases_min_dt =
-      std::vector<double>{0.01, 0.001, 0.01};
   if (include_inequality) {
+    params.vision60_params->include_phase_duration_limits = true;
     params.vision60_params->include_friction_cone = true;
     params.vision60_params->include_joint_limits = true;
     // params.vision60_params->include_torque_limits = true;
     params.vision60_params->include_collision_free_z = true;
-    // params.vision60_params->include_collision_free_s = true;
+  } else {
+    params.vision60_params->phase_duration_limit_as_cost = true;
+    params.vision60_params->friction_cone_as_cost = true;
+    params.vision60_params->joint_limits_as_cost = true;
+    // params.vision60_params->torque_limits_as_cost = true;
+    params.vision60_params->collision_as_cost = true;
   }
 
   /* <=========== create problem ===========> */
+  auto vision60_multi_phase =
+      GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
 
-  return CreateProblem(params);
+  /// Constraints
+  EqualityConstraints e_constraints = vision60_multi_phase->eConstraints();
+  InequalityConstraints i_constraints = vision60_multi_phase->iConstraints();
+  NonlinearFactorGraph costs = vision60_multi_phase->costs();
+
+  /// Initial Values
+  auto init_values =
+      InitValuesTrajectory(*vision60_multi_phase, params.phases_dt,
+                           params.init_values_include_i_constraints,
+                           params.init_values_ensure_feasible);
+
+  /// Problem
+  IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
+  problem.eval_func = vision60_multi_phase->costsEvalFunc();
+  return {problem, vision60_multi_phase, params};
 }
 
 void TrajectoryOptimization() {
@@ -146,7 +174,8 @@ void TrajectoryOptimization() {
   // ie_params.lm_params.setlambdaInitial(1e-2);
   ie_params.lm_params.setlambdaUpperBound(1e10);
   ie_params.iqp_max_iters = 100;
-  ie_params.show_active_costraints = true;
+  ie_params.show_active_constraints = true;
+  ie_params.active_constraints_group_as_categories = true;
 
   /* <=========== optimize ===========> */
   auto ielm_result = OptimizeIELM(problem, ie_params, iecm_params);

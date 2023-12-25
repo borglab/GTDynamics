@@ -202,6 +202,11 @@ struct IELMTrial {
 
     void computeError(const NonlinearFactorGraph &graph,
                       const double &old_error);
+
+    static std::pair<VectorValues, double>
+    evaluateRetractionDeviation(const IEConstraintManifold &manifold,
+                                const IEConstraintManifold &new_manifold,
+                                const VectorValues &tangent_vector);
   };
 
 public:

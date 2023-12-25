@@ -99,7 +99,9 @@ void ExportCostEval(std::map<std::string, std::vector<double>> &iters_cost_eval,
   cost_file.open(file_path);
   cost_file << "iterations";
   for (const auto &[category_name, iters_cost_eval] : iters_cost_eval) {
-    cost_file << "," << category_name;
+    if (category_name != "iterations") {
+      cost_file << "," << category_name;
+    }
   }
   cost_file << "\n";
   size_t num_iters = iters_cost_eval.at("iterations").size();
@@ -152,8 +154,8 @@ void ExportOptimizationProgress(
   std::filesystem::create_directory(progress_folder);
 
   //// Export state and trial info.
-  std::string manopt_state_file_path = progress_folder + "_states_info.csv";
-  std::string manopt_trial_file_path = progress_folder + "_trials_info.csv";
+  std::string manopt_state_file_path = progress_folder + "states_info.csv";
+  std::string manopt_trial_file_path = progress_folder + "trials_info.csv";
   iters_details.exportFile(manopt_state_file_path, manopt_trial_file_path);
 
   auto classified_costs = vision60_multi_phase.classifiedCosts();

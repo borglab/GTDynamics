@@ -24,6 +24,124 @@ using namespace gtdynamics;
 namespace gtsam {
 
 /* ************************************************************************* */
+std::pair<std::map<std::string, double>, std::map<std::string, double>>
+IEVision60Robot::Params::NominalJointLimits() {
+  std::map<std::string, double> joint_lower_limits;
+  std::map<std::string, double> joint_upper_limits;
+  double hip_joint_lower_limit = -0.1;
+  double hip_joint_upper_limit = M_PI_2;
+  double upper_joint_lower_limit = -1;
+  double upper_joint_upper_limit = 4;
+  double lower_joint_lower_limit = -0.76;
+  double lower_joint_upper_limit = M_PI;
+  for (const auto &leg : IEVision60Robot::legs) {
+    std::string hip_name = leg.hip_joint->name();
+    if (IEVision60Robot::isLeft(hip_name)) {
+      joint_lower_limits.insert({hip_name, hip_joint_lower_limit});
+      joint_upper_limits.insert({hip_name, hip_joint_upper_limit});
+    } else {
+      joint_lower_limits.insert({hip_name, -hip_joint_upper_limit});
+      joint_upper_limits.insert({hip_name, -hip_joint_lower_limit});
+    }
+    joint_lower_limits.insert(
+        {leg.upper_joint->name(), upper_joint_lower_limit});
+    joint_upper_limits.insert(
+        {leg.upper_joint->name(), upper_joint_upper_limit});
+    joint_lower_limits.insert(
+        {leg.lower_joint->name(), lower_joint_lower_limit});
+    joint_upper_limits.insert(
+        {leg.lower_joint->name(), lower_joint_upper_limit});
+  }
+  return {joint_lower_limits, joint_upper_limits};
+}
+
+/* ************************************************************************* */
+std::pair<std::map<std::string, double>, std::map<std::string, double>>
+IEVision60Robot::Params::NominalTorqueLimits(const double lower_limit,
+                                             const double upper_limit) {
+  std::map<std::string, double> torque_lower_limits;
+  std::map<std::string, double> torque_upper_limits;
+  double hip_torque_lower_limit = -20.0;
+  double hip_torque_upper_limit = 20.0;
+  double upper_torque_lower_limit = -20.0;
+  double upper_torque_upper_limit = 20.0;
+  double lower_torque_lower_limit = -20.0;
+  double lower_torque_upper_limit = 20.0;
+  for (const auto &leg : IEVision60Robot::legs) {
+    torque_lower_limits.insert({leg.hip_joint->name(), hip_torque_lower_limit});
+    torque_upper_limits.insert({leg.hip_joint->name(), hip_torque_upper_limit});
+    torque_lower_limits.insert(
+        {leg.upper_joint->name(), upper_torque_lower_limit});
+    torque_upper_limits.insert(
+        {leg.upper_joint->name(), upper_torque_upper_limit});
+    torque_lower_limits.insert(
+        {leg.lower_joint->name(), lower_torque_lower_limit});
+    torque_upper_limits.insert(
+        {leg.lower_joint->name(), lower_torque_upper_limit});
+  }
+  return {torque_lower_limits, torque_upper_limits};
+}
+
+/* ************************************************************************* */
+std::vector<std::pair<std::string, Point3>>
+IEVision60Robot::Params::NominalCollisionCheckingPoints() {
+  std::vector<std::pair<std::string, Point3>> collision_points;
+  collision_points.emplace_back("body", Point3(0.44, 0, -0.095));
+  collision_points.emplace_back("body", Point3(-0.44, 0, -0.095));
+  collision_points.emplace_back("fl_lower", Point3(0.14, 0, 0));
+  collision_points.emplace_back("fr_lower", Point3(0.14, 0, 0));
+  collision_points.emplace_back("rl_lower", Point3(0.14, 0, 0));
+  collision_points.emplace_back("rr_lower", Point3(0.14, 0, 0));
+  collision_points.emplace_back("fl_upper", Point3(-0.125, 0, 0));
+  collision_points.emplace_back("fr_upper", Point3(-0.125, 0, 0));
+  collision_points.emplace_back("rl_upper", Point3(-0.125, 0, 0));
+  collision_points.emplace_back("rr_upper", Point3(-0.125, 0, 0));
+  return collision_points;
+}
+
+/* ************************************************************************* */
+IEVision60Robot::Params::shared_ptr IEVision60Robot::Params::NominalParams() {
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
+  IEVision60Robot vision60_tmp(vision60_params,
+                               IEVision60Robot::PhaseInfo::Ground());
+
+  // values
+  vision60_params->express_redundancy = true;
+  vision60_params->express_contact_force = true;
+  vision60_params->ad_basis_using_torques = true;
+  vision60_params->collocation = CollocationScheme::Trapezoidal;
+
+  // e-constraints
+  vision60_params->include_state_constraints = true;
+  Values state_values;
+  InsertPose(
+      &state_values, IEVision60Robot::base_id, 0,
+      Pose3(Rot3::Identity(), Point3(0, 0, vision60_tmp.nominal_height)));
+  InsertTwist(&state_values, IEVision60Robot::base_id, 0, Vector6::Zero());
+  vision60_params->state_constrianed_values = state_values;
+
+  // i-constraints
+  // joint limits
+  std::tie(vision60_params->joint_lower_limits,
+           vision60_params->joint_upper_limits) =
+      IEVision60Robot::Params::NominalJointLimits();
+
+  // torque limits
+  std::tie(vision60_params->torque_lower_limits,
+           vision60_params->torque_upper_limits) =
+      IEVision60Robot::Params::NominalTorqueLimits();
+
+  // collision checking points
+  vision60_params->collision_checking_points_z =
+      IEVision60Robot::Params::NominalCollisionCheckingPoints();
+
+  // friction cone
+  vision60_params->mu = 1.0;
+
+  return vision60_params;
+}
+
+/* ************************************************************************* */
 IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
                                  const PhaseInfo::shared_ptr &_phase_info)
     : params(_params), phase_info(_phase_info),

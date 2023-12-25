@@ -138,15 +138,6 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   if (retract_info) {
     retract_info->num_lm_iters =
         opt_info.num_iters.back() + optimizer_np.iterations();
-    retract_info->retract_delta = manifold->values().localCoordinates(result);
-    auto vec_diff = retract_info->retract_delta - delta;
-    double delta_norm = delta.norm();
-    if (abs(delta_norm) < 1e-10) {
-      retract_info->deviate_rate = 0;
-    } else {
-      double diff_norm = vec_diff.norm();
-      retract_info->deviate_rate = diff_norm / delta_norm;
-    }
   }
 
   return manifold->createWithNewValues(result, active_indices);
@@ -340,25 +331,9 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     if (!CheckFeasible(merit_graph_, known_values, "all-levels" + k_string,
                        params_->feasible_threshold)) {
       if (params_->ensure_feasible) {
-        if (retract_info) {
-          retract_info->retract_delta = manifold->values().zeroVectors();
-          auto vec_diff = retract_info->retract_delta - delta;
-          double delta_norm = delta.norm();
-          double diff_norm = vec_diff.norm();
-          retract_info->deviate_rate = diff_norm / delta_norm;
-        }
         return *manifold;
       }
     }
-  }
-
-  if (retract_info) {
-    retract_info->retract_delta =
-        manifold->values().localCoordinates(known_values);
-    auto vec_diff = retract_info->retract_delta - delta;
-    double delta_norm = delta.norm();
-    double diff_norm = vec_diff.norm();
-    retract_info->deviate_rate = diff_norm / delta_norm;
   }
 
   return manifold->createWithNewValues(known_values, active_indices);

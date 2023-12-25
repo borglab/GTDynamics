@@ -252,6 +252,7 @@ int main(int argc, char **argv) {
   IELMParams ie_params;
   std::cout << "run lm...\n";
   ie_params.lm_params.setVerbosityLM("SUMMARY");
+  ie_params.show_active_constraints = true;
   auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);

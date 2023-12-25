@@ -332,12 +332,26 @@ std::string ConstraintInfoStr(const IEManifoldValues &state_manifolds,
                               const IndexSetMap blocking_indices_map,
                               const IEManifoldValues &new_manifolds,
                               const KeyFormatter &key_formatter,
-                              bool step_is_successful) {
+                              bool step_is_successful,
+                              bool group_as_categories) {
 
   std::string default_color_str = step_is_successful ? "\033[0m" : "\033[090m";
 
   auto constraint_type_map = IdentifyConstraintType(
       state_manifolds, blocking_indices_map, new_manifolds);
+
+  if (!group_as_categories) {
+    std::string str = "";
+    for (const auto &[key, manifold] : new_manifolds) {
+      for (const auto &constraint_idx : manifold.activeIndices()) {
+        const auto &constraint = manifold.iConstraints()->at(constraint_idx);
+        auto constraint_type = constraint_type_map.at({key, constraint_idx});
+        str += ColoredStr(" " + constraint->name_tmp(), constraint_type,
+                          default_color_str);
+      }
+    }
+    return str;
+  }
 
   std::map<std::string, std::vector<std::pair<size_t, size_t>>>
       category_constraints;
@@ -443,11 +457,11 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
          << "|";
     cout << setw(10) << setprecision(2) << trial.trial_time << "|";
     cout << setw(10) << setprecision(4) << linear_update.delta.norm() << "|";
-    if (params.show_active_costraints) {
+    if (params.show_active_constraints) {
       cout << ConstraintInfoStr(
           state.manifolds, linear_update.blocking_indices_map,
           nonlinear_update.new_manifolds, gtdynamics::GTDKeyFormatter,
-          trial.step_is_successful);
+          trial.step_is_successful, params.active_constraints_group_as_categories);
     }
     // cout << setw(10) << setprecision(4) <<
     // linear_update.tangent_vector.norm()
@@ -690,8 +704,10 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
       new_manifolds.emplace(key, manifold.retract(tv, {}, &retract_info));
     }
     num_retract_iters += retract_info.num_lm_iters;
-    retract_divate_rates.push_back(retract_info.deviate_rate);
-    retract_delta.insert(retract_info.retract_delta);
+    auto [manifold_retract_delta, retract_deviation_rate] =
+        evaluateRetractionDeviation(manifold, new_manifolds.at(key), tv);
+    retract_divate_rates.push_back(retract_deviation_rate);
+    retract_delta.insert(manifold_retract_delta);
   }
 
   // retract for unconstrained variables
@@ -704,6 +720,13 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
   // compute error
   computeError(graph, state.error);
   VectorValues zero_vec = VectorValues::Zero(retract_delta);
+  // KeyVector zero_vec_kv;
+  // for (const auto &[key, v] : zero_vec) {
+  //   zero_vec_kv.push_back(key);
+  // }
+  // PrintKeyVector(zero_vec_kv, "zero_vec", gtdynamics::GTDKeyFormatter);
+  // PrintKeySet(state.base_linear->keys(), "graph",
+  // gtdynamics::GTDKeyFormatter);
   double base_linear_error = state.base_linear->error(zero_vec);
   double base_linear_error_retract = state.base_linear->error(retract_delta);
   linear_cost_change_with_retract_delta =
@@ -717,6 +740,26 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(
   new_manifolds = state.manifolds.moveToBoundaries(forced_indices_map);
   new_unconstrained_values = state.unconstrainedValues();
   computeError(graph, state.error);
+}
+
+/* ************************************************************************* */
+std::pair<VectorValues, double>
+IELMTrial::NonlinearUpdate::evaluateRetractionDeviation(
+    const IEConstraintManifold &manifold,
+    const IEConstraintManifold &new_manifold,
+    const VectorValues &tangent_vector) {
+  VectorValues retract_delta =
+      manifold.values().localCoordinates(new_manifold.values());
+  auto vec_diff = retract_delta - tangent_vector;
+  double tangent_vector_norm = tangent_vector.norm();
+  double retract_deviation_rate;
+  if (abs(tangent_vector_norm) < 1e-10) {
+    retract_deviation_rate = 0;
+  } else {
+    double diff_norm = vec_diff.norm();
+    retract_deviation_rate = diff_norm / tangent_vector_norm;
+  }
+  return {retract_delta, retract_deviation_rate};
 }
 
 /* ************************************************************************* */
@@ -746,6 +789,7 @@ void IELMItersDetails::exportFile(const std::string &state_file_path,
              << ",error"
              << ",step_is_successful"
              << ",linear_cost_change"
+             << ",linear_cost_change_with_retract_delta"
              << ",nonlinear_cost_change"
              << ",model_fidelity"
              << ",tangent_vector_norm"
@@ -764,7 +808,8 @@ void IELMItersDetails::exportFile(const std::string &state_file_path,
                  << trial.nonlinear_update.new_error << ","
                  << trial.step_is_successful << ","
                  << trial.linear_update.cost_change << ","
-                 << trial.nonlinear_update.cost_change << ","
+                 << trial.nonlinear_update.linear_cost_change_with_retract_delta
+                 << "," << trial.nonlinear_update.cost_change << ","
                  << trial.model_fidelity << ","
                  << trial.linear_update.tangent_vector.norm() << ","
                  << trial.linear_update.num_solves << ","

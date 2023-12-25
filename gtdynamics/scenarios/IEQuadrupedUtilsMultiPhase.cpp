@@ -49,6 +49,18 @@ IEVision60RobotMultiPhase::robotAtStep(const size_t k) const {
   return phase_robots_.back();
 }
 
+/* ************************************************************************* */
+double IEVision60RobotMultiPhase::dtAtStep(const std::vector<double> &phases_dt,
+                                           const size_t k) const {
+  for (size_t i = 0; i < boundary_ks_.size(); i++) {
+    size_t boundary_k = boundary_ks_.at(i);
+    if (k < boundary_k) {
+      return phases_dt.at(i);
+    }
+  }
+  return phases_dt.back();
+}
+
 /* <=======================================================================> */
 /* <================================ costs ================================> */
 /* <=======================================================================> */

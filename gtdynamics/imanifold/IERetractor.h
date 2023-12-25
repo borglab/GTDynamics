@@ -76,9 +76,7 @@ struct IERetractorParams {
 };
 
 struct IERetractInfo {
-  size_t num_lm_iters;
-  double deviate_rate;
-  VectorValues retract_delta;
+  size_t num_lm_iters = 0;
 };
 
 /** Base class that implements the retraction operation for the constraint

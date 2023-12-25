@@ -12,7 +12,6 @@
  * @author Yetong Zhang
  */
 
-#include "QuadrupedVerticalJump.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtsam/linear/VectorValues.h>
@@ -133,18 +132,20 @@ void RunMultiStageOptimization(
 /* <=====================================================================> */
 /* <========================== Create Problem ===========================> */
 /* <=====================================================================> */
-std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, VerticalJumpParams>
+std::tuple<IEConsOptProblem, IEVision60RobotMultiPhase::shared_ptr, JumpParams>
 CreateProblem() {
   std::filesystem::create_directory(scenario_folder);
 
   /* <=========== scenario setting ===========> */
-  VerticalJumpParams params;
-  params.include_inequalities = include_inequality;
+  JumpParams params;
+  params.phase_num_steps = std::vector<size_t>{20, 10};
+  params.phases_dt = std::vector<double>{0.01, 0.02};
+  params.vision60_params->phases_min_dt = std::vector<double>{0.01, 0.005};
   params.vision60_params->eval_details = true;
   params.vision60_params->eval_collo_step = true;
   params.vision60_params->i_constraints_symmetry = true;
-  params.phase_num_steps = std::vector<size_t>{20, 10};
-  params.phases_dt = std::vector<double>{0.01, 0.02};
+  params.vision60_params->state_cost_values = DesValues(
+      params.phase_num_steps, Pose3(Rot3::Identity(), Point3(0, 0, 0.8)));
 
   /* <=========== costs ===========> */
   params.vision60_params->include_collocation_costs = true;
@@ -153,8 +154,9 @@ CreateProblem() {
   params.vision60_params->include_jerk_costs = true;
   params.vision60_params->include_cf_jerk_costs = true;
   params.vision60_params->include_symmetry_costs = true;
-  params.vision60_params->include_phase_duration_prior_costs = true;
-  params.vision60_params->phase_prior_dt = std::vector<double>{0.025, 0.025};
+  // params.vision60_params->include_accel_penalty = true;
+  // params.vision60_params->accel_panalty_threshold = 200;
+  // params.phase_prior_dt = std::vector<double>{0.025, 0.025};
 
   params.vision60_params->sigma_des_pose = 2e-3;
   params.vision60_params->sigma_des_twist = 1e-2;
@@ -170,31 +172,55 @@ CreateProblem() {
 
   /* <=========== inequality constraints ===========> */
   if (include_inequality) {
+    params.vision60_params->include_phase_duration_limits = true;
     params.vision60_params->include_friction_cone = true;
     params.vision60_params->include_joint_limits = true;
     params.vision60_params->include_torque_limits = true;
     params.vision60_params->include_collision_free_z = true;
-    params.vision60_params->include_phase_duration_limits = true;
-    params.vision60_params->phases_min_dt = std::vector<double>{0.01, 0.005};
+  } else {
+    params.vision60_params->phase_duration_limit_as_cost = true;
+    params.vision60_params->friction_cone_as_cost = true;
+    params.vision60_params->joint_limits_as_cost = true;
+    params.vision60_params->torque_limits_as_cost = true;
+    params.vision60_params->collision_as_cost = true;
   }
 
   /* <=========== create problem ===========> */
-  return CreateProblem(params);
+  auto vision60_multi_phase =
+      GetVision60MultiPhase(params.vision60_params, params.phase_num_steps);
+
+  /// Constraints and costs.
+  EqualityConstraints e_constraints = vision60_multi_phase->eConstraints();
+  InequalityConstraints i_constraints = vision60_multi_phase->iConstraints();
+  NonlinearFactorGraph costs = vision60_multi_phase->costs();
+
+  /// Initial Values
+  // auto init_values =
+  //     InitValuesTrajectory(vision60_multi_phase, params.phases_dt, 15, 5,
+  //                          params.init_values_with_trapezoidal);
+  auto init_values =
+      InitValuesTrajectoryInfeasible(*vision60_multi_phase, params.phases_dt);
+
+  /// Problem
+  IEConsOptProblem problem(costs, e_constraints, i_constraints, init_values);
+  problem.eval_func = vision60_multi_phase->costsEvalFunc();
+  return {problem, vision60_multi_phase, params};
 }
 
 /* <=====================================================================> */
 /* <====================== Experiment iecm_params =======================> */
 /* <=====================================================================> */
 IECM_PARAMS_LIST ConstructExpIECMParams(const EXP_SETTING_LIST &exp_settings,
-                                        const VerticalJumpParams &params) {
+                                        const JumpParams &params) {
   auto new_params = params;
   new_params.vision60_params =
       std::make_shared<IEVision60Robot::Params>(*params.vision60_params);
   new_params.vision60_params->ad_basis_using_torques = false;
-  auto vision60_multi_phase_a = GetVision60MultiPhase(new_params);
+  auto vision60_multi_phase_a = GetVision60MultiPhase(
+      new_params.vision60_params, new_params.phase_num_steps);
   new_params.vision60_params->ad_basis_using_torques = true;
-  auto vision60_multi_phase_T = GetVision60MultiPhase(new_params);
-
+  auto vision60_multi_phase_T = GetVision60MultiPhase(
+      new_params.vision60_params, new_params.phase_num_steps);
 
   IECM_PARAMS_LIST iecm_params_list;
   for (const auto &[basis_type, retractor_type, metric_type] : exp_settings) {
@@ -277,7 +303,8 @@ void RetractorBenchMark() {
   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
   ie_params.lm_params.setlambdaInitial(1e-2);
   ie_params.lm_params.setlambdaUpperBound(1e10);
-  ie_params.show_active_costraints = true;
+  ie_params.show_active_constraints = true;
+  ie_params.active_constraints_group_as_categories = true;
 
   /* <=========== experimental settings ===========> */
   EXP_SETTING_LIST exp_settings;
@@ -324,7 +351,8 @@ void MultiStageOptimization() {
   ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
   ie_params.lm_params.setlambdaInitial(1e-5);
   ie_params.lm_params.setlambdaUpperBound(1e10);
-  ie_params.show_active_costraints = true;
+  ie_params.show_active_constraints = true;
+  ie_params.active_constraints_group_as_categories = true;
 
   /* <=========== experimental settings ===========> */
   EXP_SETTING_LIST exp_settings1;
