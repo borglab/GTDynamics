@@ -117,10 +117,12 @@ SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
   // linear_eval_zero.print();
   nonlinear_merit_change = state.eval.merit - eval.merit;
   linear_merit_change = linear_eval_zero.merit - linear_eval_delta.merit;
-  if (nonlinear_merit_change > 0 && linear_merit_change < 0) {
+  if (linear_merit_change > 0) {
+    model_fidelity = nonlinear_merit_change / linear_merit_change;
+  } else if (nonlinear_merit_change > 0) {
     model_fidelity = 1;
   } else {
-    model_fidelity = nonlinear_merit_change / linear_merit_change;
+    model_fidelity = 0;
   }
 
   if (model_fidelity > params.lm_params.minModelFidelity) {
@@ -265,6 +267,7 @@ void PrintSQPTrial(const SQPState &state, const SQPTrial &trial,
   cout << setw(10) << setprecision(2) << trial.trial_time << "|";
   cout << setw(10) << setprecision(4) << trial.delta.norm() << "|";
   cout << endl;
+  cout << "\033[0m";
 }
 
 /* ************************************************************************* */
