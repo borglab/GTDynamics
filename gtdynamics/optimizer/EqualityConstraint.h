@@ -44,6 +44,9 @@ class EqualityConstraint {
   virtual gtsam::NoiseModelFactor::shared_ptr createFactor(
       const double mu, std::optional<gtsam::Vector> bias = {}) const = 0;
 
+  /** @brief Create a factor with constrained noise model. */
+  virtual gtsam::NoiseModelFactor::shared_ptr createConstrainedFactor() const;
+
   /**
    * @brief Check if constraint violation is within tolerance.
    *
@@ -238,6 +241,8 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
   gtsam::VariableIndex varIndex() const;
 
   gtsam::NonlinearFactorGraph meritGraph(const double mu = 1.0) const;
+
+  gtsam::NonlinearFactorGraph constrainedGraph() const;
 };
 
 /// Create FactorZeroErrorConstraintConstraints from the factors of a graph.

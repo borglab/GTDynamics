@@ -18,6 +18,7 @@
 #include <gtdynamics/optimizer/BarrierOptimizer.h>
 #include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/optimizer/SQPOptimizer.h>
 #include <gtsam/base/timing.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -98,7 +99,11 @@ struct IEResultSummary {
   double cost;
   double e_violation;
   double i_violation;
+  double projected_cost;
+
   std::vector<IEIterSummary> iters_summary;
+
+  void evaluate(const IEConsOptProblem &problem, const Values& values);
 
   void printLatex(std::ostream &latex_os) const;
 
@@ -130,6 +135,11 @@ std::pair<IEResultSummary, LMItersDetail> OptimizeSoftConstraints(
 std::pair<IEResultSummary, BarrierItersDetail>
 OptimizeBarrierMethod(const IEConsOptProblem &problem,
                       const gtdynamics::BarrierParameters::shared_ptr &params);
+
+/** Run SQP method. */
+std::pair<IEResultSummary, SQPItersDetails>
+OptimizeSQP(const IEConsOptProblem &problem,
+            const SQPParams::shared_ptr &params);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 std::pair<IEResultSummary, IEGDItersDetails>

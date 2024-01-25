@@ -14,6 +14,7 @@
 #include <gtdynamics/imanifold/IEGDOptimizer.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtdynamics/imanifold/IELMOptimizer.h>
+#include <gtdynamics/optimizer/SQPOptimizer.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -54,6 +55,13 @@ int main(int argc, char **argv) {
   barrier_params->num_iterations = 15;
   auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
 
+  auto sqp_params = std::make_shared<SQPParams>();
+  // sqp_params.merit_e_l2_mu = 1e-2;
+  // sqp_params.merit_i_l2_mu = 1e-2;
+  // sqp_params->lm_params.setVerbosityLM("SUMMARY");
+  sqp_params->lm_params.setlambdaUpperBound(1e10);
+  auto sqp_result = OptimizeSQP(problem, sqp_params);
+
   GDParams gd_params;
   auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
 
@@ -64,6 +72,7 @@ int main(int argc, char **argv) {
 
   soft_result.first.printLatex(std::cout);
   barrier_result.first.printLatex(std::cout);
+  sqp_result.first.printLatex(std::cout);
   gd_result.first.printLatex(std::cout);
   lm_result.first.printLatex(std::cout);
 

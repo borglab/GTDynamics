@@ -1,20 +1,38 @@
-#include "utils/DynamicsSymbol.h"
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
 #include <gtdynamics/optimizer/HistoryLMOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <numeric>
 
 namespace gtsam {
 
 /* ************************************************************************* */
+void IEResultSummary::evaluate(const IEConsOptProblem &problem,
+                               const Values &values) {
+  cost = problem.evaluateCost(values);
+  e_violation = problem.evaluateEConstraintViolationL2Norm(values);
+  i_violation = problem.evaluateIConstraintViolationL2Norm(values);
+
+  NonlinearFactorGraph graph = problem.eConstraints().meritGraph();
+  graph.add(problem.iConstraints().meritGraph());
+  LevenbergMarquardtParams lm_params;
+  lm_params.setlambdaUpperBound(1e10);
+  lm_params.setErrorTol(1e-30);
+  lm_params.setAbsoluteErrorTol(1e-30);
+  lm_params.setRelativeErrorTol(1e-30);
+  // lm_params.setVerbosityLM("SUMMARY");
+  LevenbergMarquardtOptimizer optimizer(graph, values, lm_params);
+  Values projected_values = optimizer.optimize();
+  projected_cost = problem.evaluateCost(projected_values);
+}
+
+/* ************************************************************************* */
 void IEResultSummary::printLatex(std::ostream &latex_os) const {
   latex_os << "& " + exp_name + " & $" << factor_dim << " \\times "
-           << variable_dim << "$ & " << total_inner_iters << " & "
-           << std::defaultfloat << std::setprecision(2) << cost
-           << std::scientific << " & " << std::fixed << std::setprecision(6)
-           << e_violation << std::scientific << " & " << std::fixed
-           << std::setprecision(6) << i_violation << std::defaultfloat
-           << "\\\\\n";
+           << variable_dim << "$ & " << total_iters << " & "
+           << std::defaultfloat << std::scientific << std::fixed
+           << std::setprecision(6) << e_violation << std::scientific << " & "
+           << std::fixed << std::setprecision(6) << i_violation << " & "
+           << std::setprecision(6) << cost << " & " << std::setprecision(6)
+           << projected_cost << "\\\\\n";
 }
 
 /* ************************************************************************* */
@@ -80,9 +98,7 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
                        problem.iConstraints().dim();
   summary.total_inner_iters = optimizer.getInnerIterations();
   summary.total_iters = optimizer.iterations();
-  summary.cost = problem.evaluateCost(result);
-  summary.e_violation = problem.evaluateEConstraintViolationL2Norm(result);
-  summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
+  summary.evaluate(problem, result);
 
   const auto &history_states = optimizer.states();
   for (const auto &state : history_states) {
@@ -116,10 +132,8 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
-  summary.cost = problem.evaluateCost(result);
-  summary.e_violation = problem.evaluateEConstraintViolationL2Norm(result);
-  summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
-
+  summary.evaluate(problem, result);
+  summary.total_iters = intermediate_result.num_iters.back();
   // double total_inner_iters;
   for (int i = 0; i < intermediate_result.mu_values.size(); i++) {
     // total_inner_iters += intermediate_result.num_inner_iters[i];
@@ -149,14 +163,33 @@ OptimizeBarrierMethod(const IEConsOptProblem &problem,
 }
 
 /* ************************************************************************* */
+std::pair<IEResultSummary, SQPItersDetails>
+OptimizeSQP(const IEConsOptProblem &problem,
+            const SQPParams::shared_ptr &params) {
+  SQPOptimizer optimizer(*params);
+  Values result =
+      optimizer.optimize(problem.costs(), problem.eConstraints(),
+                         problem.iConstraints(), problem.initValues());
+  auto iters_details = optimizer.details();
+  IEResultSummary summary;
+  summary.exp_name = "SQP";
+  summary.variable_dim = result.dim();
+  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
+                       problem.iConstraints().dim();
+  summary.evaluate(problem, result);
+  summary.total_iters = iters_details.back().state.iterations;
+  return {summary, iters_details};
+}
+
+/* ************************************************************************* */
 std::pair<IEResultSummary, IEGDItersDetails>
 OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params) {
 
   IEGDOptimizer optimizer(params, iecm_params);
-  Values result = optimizer.optimize(problem.costs(), problem.eConstraints(),
-                                     problem.iConstraints(),
-                                     problem.initValues());
+  Values result =
+      optimizer.optimize(problem.costs(), problem.eConstraints(),
+                         problem.iConstraints(), problem.initValues());
   const auto &iters_details = optimizer.details();
 
   IEResultSummary summary;
@@ -166,9 +199,7 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.size();
-  summary.cost = problem.evaluateCost(result);
-  summary.e_violation = problem.evaluateEConstraintViolationL2Norm(result);
-  summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
+  summary.evaluate(problem, result);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     Values state_values = state.manifolds.baseValues();
@@ -190,9 +221,9 @@ OptimizeIELM(const IEConsOptProblem &problem,
              const gtsam::IELMParams &ielm_params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params) {
   IELMOptimizer optimizer(ielm_params, iecm_params);
-  Values result = optimizer.optimize(problem.costs(), problem.eConstraints(),
-                                     problem.iConstraints(),
-                                     problem.initValues());
+  Values result =
+      optimizer.optimize(problem.costs(), problem.eConstraints(),
+                         problem.iConstraints(), problem.initValues());
   const auto &iters_details = optimizer.details();
 
   IEResultSummary summary;
@@ -202,9 +233,7 @@ OptimizeIELM(const IEConsOptProblem &problem,
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.size();
-  summary.cost = problem.evaluateCost(result);
-  summary.e_violation = problem.evaluateEConstraintViolationL2Norm(result);
-  summary.i_violation = problem.evaluateIConstraintViolationL2Norm(result);
+  summary.evaluate(problem, result);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     Values state_values = state.baseValues();

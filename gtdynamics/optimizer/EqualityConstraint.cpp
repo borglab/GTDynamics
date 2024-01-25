@@ -17,6 +17,15 @@
 
 namespace gtdynamics {
 
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+EqualityConstraint::createConstrainedFactor() const {
+  auto factor = createFactor(1.0);
+  auto constrained_noise = gtsam::noiseModel::Constrained::All(dim());
+  return factor->cloneWithNewNoiseModel(constrained_noise);
+}
+
+/* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
     const double mu, std::optional<gtsam::Vector> bias) const {
   auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
@@ -28,17 +37,20 @@ gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
       new gtsam::ExpressionFactor<double>(noise, measure, expression_));
 }
 
+/* ************************************************************************* */
 bool DoubleExpressionEquality::feasible(const gtsam::Values& x) const {
   double result = expression_.value(x);
   return abs(result) <= tolerance_;
 }
 
+/* ************************************************************************* */
 gtsam::Vector DoubleExpressionEquality::operator()(
     const gtsam::Values& x) const {
   double result = expression_.value(x);
   return (gtsam::Vector(1) << result).finished();
 }
 
+/* ************************************************************************* */
 gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
     const gtsam::Values& x) const {
   double result = expression_.value(x);
@@ -134,6 +146,15 @@ gtsam::NonlinearFactorGraph EqualityConstraints::meritGraph(const double mu) con
   gtsam::NonlinearFactorGraph graph;
   for (const auto &constraint : *this) {
     graph.add(constraint->createFactor(mu));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+gtsam::NonlinearFactorGraph EqualityConstraints::constrainedGraph() const {
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto &constraint : *this) {
+    graph.add(constraint->createConstrainedFactor());
   }
   return graph;
 }
