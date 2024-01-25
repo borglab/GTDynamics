@@ -45,7 +45,8 @@ struct Eval {
 
 class SQPIterDetails;
 
-struct SQPState {
+class SQPState {
+public:
   double lambda;
   double lambda_factor;
   gtsam::Values values;
@@ -56,6 +57,7 @@ struct SQPState {
   GaussianFactorGraph linear_e_constraints;
   GaussianFactorGraph linear_i_merit;
   GaussianFactorGraph linear_i_constraints;
+  VectorValues min_vector; // minimum vector that satisfy linear constraints
 
   SQPState() {}
 
@@ -71,6 +73,9 @@ struct SQPState {
                     const gtdynamics::EqualityConstraints &e_constraints,
                     const gtdynamics::InequalityConstraints &i_constraints,
                     const SQPParams &params);
+
+protected:
+  void computeMinVector();
 };
 
 class SQPTrial {
@@ -105,6 +110,15 @@ public:
                               const LevenbergMarquardtParams &params) const;
 
 protected:
+  GaussianFactorGraph constructConstrainedSystem(const SQPState &state,
+                                                 const SQPParams &params) const;
+
+  GaussianFactorGraph constructMeritSystem(const SQPState &state,
+                                           const SQPParams &params) const;
+
+  void resolveLinearUsingMeritSystem(const SQPState &state,
+                                     const SQPParams &params);
+
   mutable std::vector<LMCachedModel> noiseModelCache;
   LMCachedModel *getCachedModel(size_t dim) const;
 
@@ -157,8 +171,8 @@ public:
                 const gtsam::Values &values, const SQPParams &params);
 
   static Eval MeritFunctionApprox(const SQPState &state,
-                                    const VectorValues &delta,
-                                    const SQPParams &params);
+                                  const VectorValues &delta,
+                                  const SQPParams &params);
 
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph &graph,
                          const gtdynamics::EqualityConstraints &e_constraints,

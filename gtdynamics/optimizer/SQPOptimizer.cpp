@@ -47,6 +47,7 @@ SQPState::SQPState(const Values &_values,
           e_constraint->createFactor(1.0)->linearize(values));
     }
   }
+  computeMinVector();
 }
 
 /* ************************************************************************* */
@@ -73,6 +74,20 @@ SQPState SQPState::FromLastIteration(
 }
 
 /* ************************************************************************* */
+void SQPState::computeMinVector() {
+  GaussianFactorGraph graph;
+  graph.push_back(linear_e_constraints);
+  graph.push_back(linear_i_constraints);
+  for (const auto &key : values.keys()) {
+    size_t dim = values.at(key).dim();
+    graph.emplace_shared<JacobianFactor>(key, Matrix::Identity(dim, dim),
+                                         Vector::Zero(dim),
+                                         noiseModel::Unit::Create(dim));
+  }
+  min_vector = graph.optimize();
+}
+
+/* ************************************************************************* */
 /* <============================= SQPTrial ================================> */
 /* ************************************************************************* */
 
@@ -84,39 +99,36 @@ SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
                    const SQPParams &params)
     : lambda(_lambda) {
   // build damped system
-  GaussianFactorGraph qp_problem = state.linear_cost;
-  qp_problem.push_back(state.linear_e_constraints);
-  qp_problem.push_back(state.linear_i_constraints);
+  GaussianFactorGraph qp_problem = constructConstrainedSystem(state, params);
   GaussianFactorGraph damped_system =
       buildDampedSystem(qp_problem, state, params.lm_params);
   // damped_system.print();
 
   // solve linear update
   try {
-    delta = damped_system.optimize();
+    // delta = damped_system.optimize();
+    delta = SolveLinear(damped_system, params.lm_params);
     solve_successful = true;
   } catch (const IndeterminantLinearSystemException &) {
     return;
   }
-
-  // apply linear update
-  new_values = state.values.retract(delta);
-  // compute merit function
   VectorValues zero_delta = VectorValues::Zero(delta);
   auto linear_eval_zero =
       SQPOptimizer::MeritFunctionApprox(state, zero_delta, params);
   auto linear_eval_delta =
       SQPOptimizer::MeritFunctionApprox(state, delta, params);
+  linear_merit_change = linear_eval_zero.merit - linear_eval_delta.merit;
+  if (linear_merit_change < 0 && delta.norm() < 1.1 * state.min_vector.norm()) {
+    resolveLinearUsingMeritSystem(state, params);
+  }
+
+  // apply nonlinear update
+  new_values = state.values.retract(delta);
   eval = SQPOptimizer::MeritFunction(graph, e_constraints, i_constraints,
                                      new_values, params);
-  // model fidelity
-  // std::cout << state.eval.merit << "\t" << eval.merit << "\t" <<
-  // linear_eval_zero.merit << "\t" << linear_eval_delta.merit << "\n";
-  // std::cout << state.eval.merit << "\t" << linear_eval_zero.merit << "\n";
-  // state.eval.print();
-  // linear_eval_zero.print();
   nonlinear_merit_change = state.eval.merit - eval.merit;
-  linear_merit_change = linear_eval_zero.merit - linear_eval_delta.merit;
+
+  // model fidelity
   if (linear_merit_change > 0) {
     model_fidelity = nonlinear_merit_change / linear_merit_change;
   } else if (nonlinear_merit_change > 0) {
@@ -128,6 +140,79 @@ SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
   if (model_fidelity > params.lm_params.minModelFidelity) {
     step_is_successful = true;
   }
+}
+
+/* ************************************************************************* */
+GaussianFactorGraph
+SQPTrial::constructConstrainedSystem(const SQPState &state,
+                                     const SQPParams &params) const {
+  GaussianFactorGraph graph = state.linear_cost;
+  graph.push_back(state.linear_e_constraints);
+  graph.push_back(state.linear_i_constraints);
+  return graph;
+}
+
+/* ************************************************************************* */
+GaussianFactorGraph scaledBiasedFactors(const GaussianFactorGraph &graph_in,
+                                        double mu, double b_scale) {
+  GaussianFactorGraph graph;
+  double sigma = 1 / sqrt(mu);
+  for (const auto &factor : graph_in) {
+    auto [A, b] = factor->jacobian();
+    std::map<Key, Matrix> terms;
+    size_t start_col = 0;
+    for (auto it = factor->begin(); it != factor->end(); it++) {
+      size_t num_cols = factor->getDim(it);
+      terms.insert({*it, A.middleCols(start_col, num_cols)});
+      start_col += num_cols;
+    }
+    b *= b_scale;
+    graph.emplace_shared<JacobianFactor>(
+        terms, b, noiseModel::Isotropic::Sigma(b.size(), sigma));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+GaussianFactorGraph
+SQPTrial::constructMeritSystem(const SQPState &state,
+                               const SQPParams &params) const {
+  GaussianFactorGraph graph = state.linear_cost;
+  VectorValues zero_vec = state.values.zeroVectors();
+  double e_b_norm = sqrt(2 * state.linear_e_merit.error(zero_vec));
+  double e_b_scale = 1 + params.merit_e_l1_mu / params.merit_e_l2_mu / e_b_norm;
+  graph.push_back(scaledBiasedFactors(state.linear_e_merit,
+                                      params.merit_e_l2_mu, e_b_scale));
+  double i_b_norm = sqrt(2 * state.linear_i_merit.error(zero_vec));
+  double i_b_scale = 1 + params.merit_i_l1_mu / params.merit_i_l2_mu / i_b_norm;
+  graph.push_back(scaledBiasedFactors(state.linear_i_merit,
+                                      params.merit_i_l2_mu, i_b_scale));
+  return graph;
+}
+
+/* ************************************************************************* */
+void SQPTrial::resolveLinearUsingMeritSystem(const SQPState &state,
+                                             const SQPParams &params) {
+  GaussianFactorGraph qp_problem = constructMeritSystem(state, params);
+  GaussianFactorGraph damped_system =
+      buildDampedSystem(qp_problem, state, params.lm_params);
+
+  // solve linear update
+  try {
+    delta = SolveLinear(damped_system, params.lm_params);
+    solve_successful = true;
+  } catch (const IndeterminantLinearSystemException &) {
+    solve_successful = false;
+    return;
+  }
+  VectorValues zero_delta = VectorValues::Zero(delta);
+  auto linear_eval_zero =
+      SQPOptimizer::MeritFunctionApprox(state, zero_delta, params);
+  auto linear_eval_delta =
+      SQPOptimizer::MeritFunctionApprox(state, delta, params);
+  linear_eval_zero.merit = qp_problem.error(zero_delta);
+  linear_eval_delta.merit = qp_problem.error(delta);
+  linear_merit_change = linear_eval_zero.merit - linear_eval_delta.merit;
 }
 
 /* ************************************************************************* */
@@ -265,7 +350,8 @@ void PrintSQPTrial(const SQPState &state, const SQPTrial &trial,
   cout << setw(12) << setprecision(4) << trial.model_fidelity << "|";
   cout << setw(10) << setprecision(2) << trial.lambda << "|";
   cout << setw(10) << setprecision(2) << trial.trial_time << "|";
-  cout << setw(10) << setprecision(4) << trial.delta.norm() << "|";
+  cout << setw(10) << setprecision(4) << trial.delta.norm() << "|"
+       << "\t" << state.min_vector.norm();
   cout << endl;
   cout << "\033[0m";
 }
