@@ -140,7 +140,7 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
 
 /* ************************************************************************* */
 std::pair<IEResultSummary, BarrierItersDetail>
-OptimizeBarrierMethod(const IEConsOptProblem &problem,
+OptimizePenaltyMethod(const IEConsOptProblem &problem,
                       const gtdynamics::BarrierParameters::shared_ptr &params) {
 
   gtdynamics::BarrierOptimizer optimizer(params);
@@ -213,7 +213,7 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
   const auto &iters_details = optimizer.details();
 
   IEResultSummary summary;
-  summary.exp_name = "CMOpt(IEGD)";
+  summary.exp_name = "CMOpt(IE-GD)";
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
   summary.factor_dim = problem.costsDimension();
   summary.total_inner_iters =
@@ -245,9 +245,9 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeELM(
   const auto &iters_details = optimizer.details();
 
   IEResultSummary summary;
-  summary.exp_name = "CMOpt(E)";
+  summary.exp_name = "CMOpt(E-LM)";
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
-  summary.factor_dim = problem.costsDimension();
+  summary.factor_dim = problem.costsDimension() + problem.iConstraints().dim();
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.back().state.iterations;

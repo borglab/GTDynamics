@@ -137,7 +137,7 @@ std::pair<IEResultSummary, LMItersDetail> OptimizeSoftConstraints(
 
 /** Run constrained optimization using the penalty method. */
 std::pair<IEResultSummary, BarrierItersDetail>
-OptimizeBarrierMethod(const IEConsOptProblem &problem,
+OptimizePenaltyMethod(const IEConsOptProblem &problem,
                       const gtdynamics::BarrierParameters::shared_ptr &params);
 
 /** Run SQP method. */

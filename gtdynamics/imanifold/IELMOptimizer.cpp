@@ -159,7 +159,7 @@ bool IELMOptimizer::checkModeChange(
   bool failed_trial_exists = false;
   while (true) {
     const auto &trial = details_->at(iter_idx).trials.at(trial_idx);
-    if (!trial.step_is_successful) {
+    if (!trial.step_is_successful && trial.linear_update.solve_successful) {
       failed_trial_exists = true;
       break;
     }
