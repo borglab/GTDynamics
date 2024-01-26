@@ -32,7 +32,7 @@ SQPState::SQPState(const Values &_values,
     : lambda(_lambda), lambda_factor(_lambda_factor), values(_values),
       eval(SQPOptimizer::MeritFunction(graph, e_constraints, i_constraints,
                                        values, params)),
-      iterations(_iterations) {
+      iterations(_iterations), totalNumberInnerIterations(0) {
   linear_cost = *graph.linearize(values);
   linear_e_merit = *e_constraints.meritGraph().linearize(values);
   linear_e_constraints = *e_constraints.constrainedGraph().linearize(values);
@@ -65,6 +65,8 @@ SQPState SQPState::FromLastIteration(
     auto state = SQPState(last_trial.new_values, graph, e_constraints,
                           i_constraints, params, last_trial.lambda,
                           prev_state.lambda_factor, prev_state.iterations + 1);
+    state.totalNumberInnerIterations =
+        prev_state.totalNumberInnerIterations + iter_details.trials.size();
     last_trial.setNextLambda(state.lambda, state.lambda_factor,
                              params.lm_params);
     return state;
@@ -118,7 +120,8 @@ SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
   auto linear_eval_delta =
       SQPOptimizer::MeritFunctionApprox(state, delta, params);
   linear_merit_change = linear_eval_zero.merit - linear_eval_delta.merit;
-  if (linear_merit_change < 0 && delta.norm() < 1.1 * state.min_vector.norm()) {
+  bound_rate = delta.norm() / state.min_vector.norm();
+  if (linear_merit_change < 0 && bound_rate < 1.1) {
     resolveLinearUsingMeritSystem(state, params);
   }
 
@@ -193,6 +196,7 @@ SQPTrial::constructMeritSystem(const SQPState &state,
 /* ************************************************************************* */
 void SQPTrial::resolveLinearUsingMeritSystem(const SQPState &state,
                                              const SQPParams &params) {
+  use_merit_system = true;
   GaussianFactorGraph qp_problem = constructMeritSystem(state, params);
   GaussianFactorGraph damped_system =
       buildDampedSystem(qp_problem, state, params.lm_params);
@@ -319,12 +323,13 @@ void PrintSQPTrialTitle() {
        << "|" << setw(12) << "cost  "
        << "|" << setw(12) << "e_vio  "
        << "|" << setw(12) << "i_vio  "
+       << "|" << setw(10) << "m_system "
        << "|" << setw(12) << "merit_change"
        << "|" << setw(12) << "apprx_change"
        << "|" << setw(12) << "m_fidelity"
        << "|" << setw(10) << "lambda  "
        << "|" << setw(10) << "time  "
-       << "|" << setw(10) << "delta_norm "
+       << "|" << setw(10) << "delta_norm"
        << "|" << endl;
 }
 
@@ -345,13 +350,14 @@ void PrintSQPTrial(const SQPState &state, const SQPTrial &trial,
   cout << setw(12) << setprecision(4) << trial.eval.cost << "|";
   cout << setw(12) << setprecision(4) << trial.eval.e_violation << "|";
   cout << setw(12) << setprecision(4) << trial.eval.i_violation << "|";
+  cout << setw(10) << trial.use_merit_system << "|";
   cout << setw(12) << setprecision(4) << trial.nonlinear_merit_change << "|";
   cout << setw(12) << setprecision(4) << trial.linear_merit_change << "|";
   cout << setw(12) << setprecision(4) << trial.model_fidelity << "|";
   cout << setw(10) << setprecision(2) << trial.lambda << "|";
   cout << setw(10) << setprecision(2) << trial.trial_time << "|";
-  cout << setw(10) << setprecision(4) << trial.delta.norm() << "|"
-       << "\t" << state.min_vector.norm();
+  cout << setw(10) << setprecision(4) << trial.delta.norm() << "|";
+  cout << setw(10) << setprecision(4) << trial.bound_rate << "|";
   cout << endl;
   cout << "\033[0m";
 }

@@ -83,11 +83,15 @@ struct IEConsOptProblem : public gtdynamics::EqConsOptProblem {
 };
 
 struct IEIterSummary {
-  size_t num_inner_iters;
+  size_t iterations;
+  size_t inner_iters;
   double cost;
   double e_violation;
   double i_violation;
+  double projected_cost;
   double mu;
+
+  void evaluate(const IEConsOptProblem &problem, const Values &values);
 };
 
 struct IEResultSummary {
@@ -103,7 +107,7 @@ struct IEResultSummary {
 
   std::vector<IEIterSummary> iters_summary;
 
-  void evaluate(const IEConsOptProblem &problem, const Values& values);
+  void evaluate(const IEConsOptProblem &problem, const Values &values);
 
   void printLatex(std::ostream &latex_os) const;
 
@@ -141,6 +145,13 @@ std::pair<IEResultSummary, SQPItersDetails>
 OptimizeSQP(const IEConsOptProblem &problem,
             const SQPParams::shared_ptr &params);
 
+/** Run e-manifold optimization, with added penalty for i-constraints. */
+std::pair<IEResultSummary, IELMItersDetails>
+OptimizeELM(const IEConsOptProblem &problem,
+            const gtsam::IELMParams &ielm_params,
+            const IEConstraintManifold::Params::shared_ptr &iecm_params,
+            double mu = 100);
+
 /** Run constrained optimization using the Augmented Lagrangian method. */
 std::pair<IEResultSummary, IEGDItersDetails>
 OptimizeIEGD(const IEConsOptProblem &problem,
@@ -151,6 +162,7 @@ OptimizeIEGD(const IEConsOptProblem &problem,
 std::pair<IEResultSummary, IELMItersDetails>
 OptimizeIELM(const IEConsOptProblem &problem,
              const gtsam::IELMParams &ielm_params,
-             const IEConstraintManifold::Params::shared_ptr &iecm_params);
+             const IEConstraintManifold::Params::shared_ptr &iecm_params,
+             std::string exp_name = "CMOpt(IE)");
 
 } // namespace gtsam

@@ -30,11 +30,13 @@ def load_csv(file_name):
     data = {title[i]: data[:, i] for i in range(len(title))}
     return data
 
+
 def load_csv_no_title(file_name):
     with open(file_name, newline='') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         data = [row for row in spamreader]
         return data
+
 
 def draw_half_sphere(ax):
     phi, theta = np.mgrid[0.0:0.5*np.pi:180j,
@@ -70,25 +72,30 @@ def plot_error_vs_constraint(ax, scenario_folder: str):
     ax.legend()
 
 
-def plot_optimization_progress(axs, scenario_folder: str):
-    barrier_data = load_csv(scenario_folder + "barrier_summary.csv")
-    manopt_data = load_csv(scenario_folder + "manopt_summary.csv")
+def plot_optimization_progress(axs, scenario_folder: str, exp_names):
+    for exp_name in exp_names:
+        file_path = scenario_folder + exp_name + "_progress.csv"
+        data = load_csv(file_path)
+        axs[0].plot(data["iterations"], data["cost"], label=exp_name)
+        axs[1].plot(data["iterations"], data["proj_cost"], label=exp_name)
 
-    axs[0].plot(barrier_data["num_inner_iters"],
-                barrier_data["cost"], label="barrier")
-    axs[0].plot(manopt_data["num_inner_iters"],
-                manopt_data["cost"], label="manopt")
-    axs[0].set_yscale('log')
+    # axs[0].set_yscale('log')
     axs[0].set_xlabel("number of iterations")
     axs[0].set_ylabel("cost")
     axs[0].legend()
 
-    # axs[1].plot(manopt_data["num_inner_iters"], manopt_data["cost"])
-    axs[1].plot(barrier_data["num_inner_iters"],
-                barrier_data["e_violation"] ** 2 + barrier_data["i_violation"] ** 2)
-    axs[1].set_yscale('log')
+    # axs[1].set_yscale('log')
     axs[1].set_xlabel("number of iterations")
-    axs[1].set_ylabel("constraint violation")
+    axs[1].set_ylabel("proj_cost")
+    axs[1].legend()
+
+
+    # axs[1].plot(manopt_data["num_inner_iters"], manopt_data["cost"])
+    # axs[1].plot(barrier_data["num_inner_iters"],
+    #             barrier_data["e_violation"] ** 2 + barrier_data["i_violation"] ** 2)
+    # axs[1].set_yscale('log')
+    # axs[1].set_xlabel("number of iterations")
+    # axs[1].set_ylabel("constraint violation")
 
 
 def plot_trajectory(axs, scenario_folder):

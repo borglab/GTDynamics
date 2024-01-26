@@ -7,7 +7,7 @@
 
 /**
  * @file  SQPOptimizer.h
- * @brief SQP Optimizer.
+ * @brief Trust-region SQP Optimizer.
  * @author: Yetong Zhang
  */
 
@@ -52,6 +52,7 @@ public:
   gtsam::Values values;
   Eval eval;
   size_t iterations;
+  size_t totalNumberInnerIterations;
   GaussianFactorGraph linear_cost;
   GaussianFactorGraph linear_e_merit;
   GaussianFactorGraph linear_e_constraints;
@@ -89,6 +90,8 @@ public:
   double model_fidelity = 0;
   bool solve_successful = false;
   bool step_is_successful = false;
+  bool use_merit_system = false;
+  double bound_rate = 0;
   double trial_time = 0;
 
   SQPTrial(const SQPState &state, const double _lambda,
@@ -110,12 +113,16 @@ public:
                               const LevenbergMarquardtParams &params) const;
 
 protected:
+  /// Construct constrained QP problem.
   GaussianFactorGraph constructConstrainedSystem(const SQPState &state,
                                                  const SQPParams &params) const;
 
+  /// Construct quadratic approximation of merit function.
   GaussianFactorGraph constructMeritSystem(const SQPState &state,
                                            const SQPParams &params) const;
 
+  /// Re-solve linear system, using QP approximation of merit function as
+  /// objective function.
   void resolveLinearUsingMeritSystem(const SQPState &state,
                                      const SQPParams &params);
 

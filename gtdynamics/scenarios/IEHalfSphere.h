@@ -149,6 +149,32 @@ public:
   }
 };
 
+
+/** Manually defined retractor for half sphere manifold. */
+class SphereRetractor : public IERetractor {
+  double r_;
+
+public:
+  SphereRetractor(const IEHalfSphere &half_sphere)
+      : IERetractor(), r_(half_sphere.r) {}
+
+  IEConstraintManifold
+  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+          const std::optional<IndexSet> &blocking_indices = {},
+          IERetractInfo* retract_info = nullptr) const override {
+    Key key = manifold->values().keys().front();
+    Point3 p = manifold->values().at<Point3>(key);
+    Vector3 v = delta.at(key);
+    Point3 new_p = p + v;
+
+    new_p = normalize(new_p) * r_;
+    Values new_values;
+    new_values.insert(key, new_p);
+    return manifold->createWithNewValues(new_values);
+  }
+};
+
+
 /** Manually defined retractor for half sphere manifold. */
 class DomeRetractor : public IERetractor {
   double r_;
