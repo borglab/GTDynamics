@@ -16,9 +16,9 @@
 #include <gtdynamics/imanifold/IERetractor.h>
 #include <gtdynamics/optimizer/EqualityConstraint.h>
 #include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/expressions.h>
-#include <gtdynamics/utils/utils.h>
 
 namespace gtsam {
 
@@ -70,6 +70,16 @@ public:
     constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
         z_expr, z_tol, "positive_z");
     return constraints;
+  }
+
+  Point3 project(const Point3 &pt) const {
+    Point3 projected_pt = pt;
+    if (projected_pt.z() < 0) {
+      projected_pt.z() = 0;
+    }
+    double pt_norm = projected_pt.norm();
+    projected_pt = projected_pt * (r / pt_norm);
+    return projected_pt;
   }
 
   static void ExportValues(const Values &values, const size_t num_steps,
@@ -131,7 +141,7 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override {
+          IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -149,7 +159,6 @@ public:
   }
 };
 
-
 /** Manually defined retractor for half sphere manifold. */
 class SphereRetractor : public IERetractor {
   double r_;
@@ -161,7 +170,7 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override {
+          IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -174,7 +183,6 @@ public:
   }
 };
 
-
 /** Manually defined retractor for half sphere manifold. */
 class DomeRetractor : public IERetractor {
   double r_;
@@ -186,7 +194,7 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override {
+          IERetractInfo *retract_info = nullptr) const override {
 
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
@@ -206,7 +214,7 @@ public:
   IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
                  const IndexSet &blocking_indices,
-                 IERetractInfo* retract_info = nullptr) const override {
+                 IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
 

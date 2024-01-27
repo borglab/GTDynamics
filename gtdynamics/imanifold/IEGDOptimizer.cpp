@@ -81,16 +81,14 @@ void IEGDTrial::computeDelta(const IEGDState &state) {
 /* ************************************************************************* */
 void IEGDTrial::computeNewManifolds(const IEGDState &state) {
   new_manifolds = IEManifoldValues();
-  for (const auto &it : state.manifolds) {
-    const Key &key = it.first;
-    const Vector &xi = delta.at(key);
-    const IEConstraintManifold &manifold = it.second;
+  for (const auto &[key, manifold] : state.manifolds) {
+    auto manifold_tv = SubValues(tangent_vector, manifold.values().keys());
     if (state.blocking_indices_map.find(key) !=
         state.blocking_indices_map.end()) {
       const auto &blocking_indices = state.blocking_indices_map.at(key);
-      new_manifolds.emplace(key, manifold.retract(xi, blocking_indices));
+      new_manifolds.emplace(key, manifold.retract(manifold_tv, blocking_indices));
     } else {
-      new_manifolds.emplace(key, manifold.retract(xi));
+      new_manifolds.emplace(key, manifold.retract(manifold_tv));
     }
   }
 }
@@ -104,11 +102,23 @@ void IEGDTrial::computeNewError(const NonlinearFactorGraph &graph,
 }
 
 /* ************************************************************************* */
+void PrintIEGDTrialTitle() {
+  cout << setw(10) << "iter   "
+       << "|" << setw(12) << "error  "
+       << "|" << setw(12) << "nonlinear "
+       << "|" << setw(12) << "linear "
+       << "|" << setw(10) << "lambda  "
+       << "|" << setw(10) << "norm  " << endl;
+}
+
+/* ************************************************************************* */
 void IEGDTrial::print(const IEGDState &state) const {
-  cout << setw(4) << state.iterations << " " << setw(10) << setprecision(4)
-       << new_error << " " << setw(10) << setprecision(4)
-       << nonlinear_cost_change << " " << setw(5) << setprecision(2) << lambda
-       << endl;
+  cout << setw(10) << state.iterations << "|";
+  cout << setw(12) << setprecision(4) << new_error << "|";
+  cout << setw(12) << setprecision(4) << nonlinear_cost_change << "|";
+  cout << setw(12) << setprecision(4) << linear_cost_change << "|";
+  cout << setw(10) << setprecision(2) << lambda << "|";
+  cout << setw(10) << setprecision(2) << tangent_vector.norm() << endl;
 }
 
 // /* *************************************************************************
@@ -211,6 +221,10 @@ void IEGDOptimizer::tryLambda(const NonlinearFactorGraph &graph,
   if (trial.nonlinear_cost_change > trial.linear_cost_change * params_.alpha) {
     trial.step_is_successful = true;
   }
+
+  if (params_.verbose) {
+    trial.print(state);
+  }
 }
 
 /* ************************************************************************* */
@@ -228,6 +242,11 @@ Values IEGDOptimizer::optimizeManifolds(
   // Construct initial state
   IEGDState state(manifolds, graph, 0);
   state.lambda = params_.init_lambda;
+
+  if (params_.verbose) {
+    std::cout << "Initial error: " << state.error << "\n";
+    PrintIEGDTrialTitle();
+  }
 
   // check if we're already close enough
   if (state.error <= params_.errorTol) {
@@ -326,7 +345,8 @@ bool IEGDOptimizer::checkModeChange(
   IEGDTrial trial;
   trial.lambda = current_iter_details.state.lambda;
   trial.forced_indices_map = approach_indices_map;
-  trial.new_manifolds = current_iter_details.state.manifolds.moveToBoundaries(approach_indices_map);
+  trial.new_manifolds = current_iter_details.state.manifolds.moveToBoundaries(
+      approach_indices_map);
   trial.new_error = graph.error(trial.new_manifolds.baseValues());
   trial.step_is_successful = true;
   current_iter_details.trials.emplace_back(trial);
