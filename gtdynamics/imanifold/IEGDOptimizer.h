@@ -73,6 +73,8 @@ public:
 
   /// compute gradient, then project neg grad into tangent cone.
   void computeDescentDirection(const NonlinearFactorGraph &graph);
+
+  Values baseValues() const;
 };
 
 /** Trial for GD inner iteration with certain lambda setting. */

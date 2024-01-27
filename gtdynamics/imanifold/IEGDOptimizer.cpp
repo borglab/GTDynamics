@@ -59,6 +59,13 @@ void IEGDState::computeDescentDirection(const NonlinearFactorGraph &graph) {
 }
 
 /* ************************************************************************* */
+Values IEGDState::baseValues() const {
+  Values base_values = manifolds.baseValues();
+  // base_values.insert(unconstrainedValues());
+  return base_values;
+}
+
+/* ************************************************************************* */
 void IEGDTrial::setNextLambda(double &new_mu, const GDParams &params) const {
   if (forced_indices_map.size() > 0) {
     new_mu = lambda;

@@ -9,6 +9,24 @@ using namespace gtdynamics;
 std::string scenario = "rss01_estimation";
 std::string scenario_folder = "../../data/" + scenario + "/";
 IEHalfSphere half_sphere;
+size_t steps_per_edge = 10;
+size_t num_steps = 3 * steps_per_edge;
+
+/* ************************************************************************* */
+void SaveValues(const std::string file_name, const Values &values) {
+  {
+    std::ofstream file;
+    file.open(scenario_folder + file_name);
+    file << "step,x,y,z\n";
+    for (int k = 0; k < num_steps; k++) {
+      Key point_key = gtsam::Symbol('p', k);
+      Point3 point = values.at<Point3>(point_key);
+      file << k << "," << point.x() << "," << point.y() << "," << point.z()
+           << "\n";
+    }
+    file.close();
+  }
+}
 
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsManual() {
@@ -65,20 +83,17 @@ IEConstraintManifold::Params::shared_ptr GetIECMParamsCR() {
 
 /* ************************************************************************* */
 IEConsOptProblem CreateProblem() {
-  size_t steps_per_edge = 10;
-  size_t num_steps = 3 * steps_per_edge;
-  Point3 attractor_point(0.0, 0.0, -2.0);
-
   // ground-truth trajectory
   Values gt_values;
   for (size_t k = 0; k < steps_per_edge; k++) {
     double theta = (double)k / steps_per_edge * M_PI_2;
     gt_values.insert(PointKey(k), Point3(0, -sin(theta), cos(theta)));
     gt_values.insert(PointKey(k + steps_per_edge),
-                     Point3(-cos(theta), sin(theta), 0));
+                     Point3(sin(theta), -cos(theta), 0));
     gt_values.insert(PointKey(k + 2 * steps_per_edge),
                      Point3(cos(theta), 0, sin(theta)));
   }
+  SaveValues("gt_values.csv", gt_values);
 
   // generate gt odometry
   std::vector<Vector3> gt_odometrys;
@@ -151,10 +166,10 @@ int main(int argc, char **argv) {
   // SQP method
   std::cout << "optimize SQP...\n";
   auto sqp_params = std::make_shared<SQPParams>();
-  sqp_params->merit_e_l2_mu = 100;
-  sqp_params->merit_i_l2_mu = 100;
-  sqp_params->merit_e_l1_mu = 100;
-  sqp_params->merit_i_l1_mu = 100;
+  sqp_params->merit_e_l2_mu = 1e2;
+  sqp_params->merit_i_l2_mu = 1e1;
+  sqp_params->merit_e_l1_mu = 1e2;
+  sqp_params->merit_i_l1_mu = 1e1;
   // sqp_params->lm_params.setVerbosityLM("SUMMARY");
   sqp_params->lm_params.setlambdaUpperBound(1e10);
   auto sqp_result = OptimizeSQP(problem, sqp_params);
@@ -173,8 +188,8 @@ int main(int argc, char **argv) {
 
   // IELM standard projection
   std::cout << "optimize CMOpt(IE-LM-SP)...\n";
-  auto ielm_sp_result =
-      OptimizeIELM(problem, ie_params, GetIECMParamsManual(), "CMOpt(IE-LM-SP)");
+  auto ielm_sp_result = OptimizeIELM(problem, ie_params, GetIECMParamsManual(),
+                                     "CMOpt(IE-LM-SP)");
 
   // IELM cost-aware projection
   std::cout << "optimize CMOpt(IE-LM-CR)...\n";
@@ -198,5 +213,16 @@ int main(int argc, char **argv) {
   iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
   ielm_sp_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
   ielm_cr_result.first.exportFile(scenario_folder + "ielm_cr_progress.csv");
+
+  SaveValues("init_values.csv", problem.initValues());
+  SaveValues("soft_values.csv", soft_result.second.back().values);
+  SaveValues("penalty_values.csv", penalty_result.second.back().values);
+  SaveValues("sqp_values.csv", sqp_result.second.back().state.values);
+  SaveValues("elm_values.csv", elm_result.second.back().state.baseValues());
+  SaveValues("iegd_values.csv", iegd_result.second.back().state.baseValues());
+  SaveValues("ielm_sp_values.csv",
+             ielm_sp_result.second.back().state.baseValues());
+  SaveValues("ielm_cr_values.csv",
+             ielm_cr_result.second.back().state.baseValues());
   return 0;
 }

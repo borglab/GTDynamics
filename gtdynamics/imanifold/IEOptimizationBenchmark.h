@@ -104,7 +104,6 @@ struct IEResultSummary {
   double e_violation;
   double i_violation;
   double projected_cost;
-
   std::vector<IEIterSummary> iters_summary;
 
   void evaluate(const IEConsOptProblem &problem, const Values &values);

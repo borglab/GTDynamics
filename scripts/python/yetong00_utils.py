@@ -72,30 +72,18 @@ def plot_error_vs_constraint(ax, scenario_folder: str):
     ax.legend()
 
 
-def plot_optimization_progress(axs, scenario_folder: str, exp_names):
+def plot_optimization_progress(scenario_folder: str, exp_names, ax_cost=None, ax_constraint=None, ax_proj_cost=None):
     for exp_name in exp_names:
         file_path = scenario_folder + exp_name + "_progress.csv"
         data = load_csv(file_path)
-        axs[0].plot(data["iterations"], data["cost"], label=exp_name)
-        axs[1].plot(data["iterations"], data["proj_cost"], label=exp_name)
-
-    # axs[0].set_yscale('log')
-    axs[0].set_xlabel("number of iterations")
-    axs[0].set_ylabel("cost")
-    axs[0].legend()
-
-    # axs[1].set_yscale('log')
-    axs[1].set_xlabel("number of iterations")
-    axs[1].set_ylabel("proj_cost")
-    axs[1].legend()
-
-
-    # axs[1].plot(manopt_data["num_inner_iters"], manopt_data["cost"])
-    # axs[1].plot(barrier_data["num_inner_iters"],
-    #             barrier_data["e_violation"] ** 2 + barrier_data["i_violation"] ** 2)
-    # axs[1].set_yscale('log')
-    # axs[1].set_xlabel("number of iterations")
-    # axs[1].set_ylabel("constraint violation")
+        if ax_cost is not None:
+            ax_cost.plot(data["iterations"], data["cost"], label=exp_name)
+        if ax_constraint is not None:
+            ax_constraint.plot(data["iterations"],
+                               data["e_violation"] ** 2 + data["i_violation"] ** 2)
+        if ax_proj_cost is not None:
+            ax_proj_cost.plot(data["iterations"],
+                              data["proj_cost"], label=exp_name)
 
 
 def plot_trajectory(axs, scenario_folder):
