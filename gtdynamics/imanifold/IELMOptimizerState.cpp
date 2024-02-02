@@ -461,7 +461,8 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
       cout << ConstraintInfoStr(
           state.manifolds, linear_update.blocking_indices_map,
           nonlinear_update.new_manifolds, gtdynamics::GTDKeyFormatter,
-          trial.step_is_successful, params.active_constraints_group_as_categories);
+          trial.step_is_successful,
+          params.active_constraints_group_as_categories);
     }
     // cout << setw(10) << setprecision(4) <<
     // linear_update.tangent_vector.norm()
@@ -498,22 +499,33 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       SqrtHessianDiagonal(*linear, params.lm_params);
   auto damped_system = buildDampedSystem(*linear, sqrt_hessian_diagonal, state,
                                          params.lm_params);
-
-  // solve IQP init estimate
   IndexSet blocking_indices;
-  std::tie(delta, blocking_indices, num_solves, solve_successful) =
-      InitEstimate(damped_system, state, params.lm_params);
-  if (!solve_successful) {
-    return;
-  }
 
-  // solve IQP
-  if (params.iqp_max_iters > 0) {
-    size_t num_new_solves;
-    std::tie(delta, blocking_indices, num_new_solves, solve_successful) =
-        SolveConvexIQP(damped_system, state.linear_manifold_i_constraints,
-                       blocking_indices, delta, params.iqp_max_iters);
-    num_solves += num_new_solves;
+  // no active constraints
+  if (state.linear_base_i_constraints.size() == 0) {
+    try {
+      delta = SolveLinear(damped_system, params.lm_params);
+      solve_successful = true;
+    } catch (const IndeterminantLinearSystemException &) {
+      solve_successful = false;
+    }
+    num_solves = 1;
+  } else {
+    // solve IQP init estimate
+    std::tie(delta, blocking_indices, num_solves, solve_successful) =
+        InitEstimate(damped_system, state, params.lm_params);
+    if (!solve_successful) {
+      return;
+    }
+
+    // solve IQP
+    if (params.iqp_max_iters > 0) {
+      size_t num_new_solves;
+      std::tie(delta, blocking_indices, num_new_solves, solve_successful) =
+          SolveConvexIQP(damped_system, state.linear_manifold_i_constraints,
+                         blocking_indices, delta, params.iqp_max_iters);
+      num_solves += num_new_solves;
+    }
   }
 
   // record linear update info

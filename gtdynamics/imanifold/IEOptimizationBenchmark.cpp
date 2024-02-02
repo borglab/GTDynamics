@@ -7,7 +7,7 @@ namespace gtsam {
 
 /* ************************************************************************* */
 Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
-                     double sigma = 1e5) {
+                     double sigma) {
   NonlinearFactorGraph graph = problem.eConstraints().meritGraph();
   graph.add(problem.iConstraints().meritGraph());
 
@@ -32,12 +32,14 @@ Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
 
 /* ************************************************************************* */
 void IEIterSummary::evaluate(const IEConsOptProblem &problem,
-                             const Values &values) {
+                             const Values &values, bool eval_projected_cost) {
   cost = problem.evaluateCost(values);
   e_violation = problem.evaluateEConstraintViolationL2Norm(values);
   i_violation = problem.evaluateIConstraintViolationL2Norm(values);
-  Values projected_values = ProjectValues(problem, values);
-  projected_cost = problem.evaluateCost(projected_values);
+  if (eval_projected_cost) {
+    Values projected_values = ProjectValues(problem, values);
+    projected_cost = problem.evaluateCost(projected_values);
+  }
 }
 
 /* ************************************************************************* */
@@ -110,7 +112,8 @@ void IEResultSummary::exportFileWithMu(const std::string &file_path) const {
 /* ************************************************************************* */
 std::pair<IEResultSummary, LMItersDetail>
 OptimizeSoftConstraints(const IEConsOptProblem &problem,
-                        LevenbergMarquardtParams lm_params, double mu) {
+                        LevenbergMarquardtParams lm_params, double mu,
+                        bool eval_projected_cost) {
   NonlinearFactorGraph graph = problem.costs_;
   graph.add(problem.constraintsGraph(mu));
 
@@ -132,7 +135,7 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
     IEIterSummary iter_summary;
     iter_summary.iterations = state.iterations;
     iter_summary.inner_iters = state.totalNumberInnerIterations;
-    iter_summary.evaluate(problem, iter_values);
+    iter_summary.evaluate(problem, iter_values, eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }
   return std::make_pair(summary, history_states);
@@ -141,13 +144,15 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
 /* ************************************************************************* */
 std::pair<IEResultSummary, BarrierItersDetail>
 OptimizePenaltyMethod(const IEConsOptProblem &problem,
-                      const gtdynamics::BarrierParameters::shared_ptr &params) {
+                      const gtdynamics::BarrierParameters::shared_ptr &params,
+                      bool eval_projected_cost) {
 
   gtdynamics::BarrierOptimizer optimizer(params);
   gtdynamics::ConstrainedOptResult intermediate_result;
   Values result = optimizer.optimize(
       problem.costs(), problem.eConstraints(), problem.iConstraints(),
       problem.initValues(), &intermediate_result);
+  std::cout << "optimize finished\n";
 
   IEResultSummary summary;
   BarrierItersDetail iters_details;
@@ -164,7 +169,7 @@ OptimizePenaltyMethod(const IEConsOptProblem &problem,
     IEIterSummary iter_summary;
     iter_summary.iterations = intermediate_result.num_iters[i];
     iter_summary.inner_iters = intermediate_result.num_inner_iters[i];
-    iter_summary.evaluate(problem, iter_values);
+    iter_summary.evaluate(problem, iter_values, eval_projected_cost);
     iter_summary.mu = intermediate_result.mu_values[i];
     summary.iters_summary.emplace_back(iter_summary);
     iters_details.emplace_back(intermediate_result.mu_values[i],
@@ -177,7 +182,7 @@ OptimizePenaltyMethod(const IEConsOptProblem &problem,
 /* ************************************************************************* */
 std::pair<IEResultSummary, SQPItersDetails>
 OptimizeSQP(const IEConsOptProblem &problem,
-            const SQPParams::shared_ptr &params) {
+            const SQPParams::shared_ptr &params, bool eval_projected_cost) {
   SQPOptimizer optimizer(*params);
   Values result =
       optimizer.optimize(problem.costs(), problem.eConstraints(),
@@ -195,7 +200,7 @@ OptimizeSQP(const IEConsOptProblem &problem,
     IEIterSummary iter_summary;
     iter_summary.iterations = state.iterations;
     iter_summary.inner_iters = state.totalNumberInnerIterations;
-    iter_summary.evaluate(problem, state.values);
+    iter_summary.evaluate(problem, state.values, eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }
   return {summary, iters_details};
@@ -204,7 +209,8 @@ OptimizeSQP(const IEConsOptProblem &problem,
 /* ************************************************************************* */
 std::pair<IEResultSummary, IEGDItersDetails>
 OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
-             const IEConstraintManifold::Params::shared_ptr &iecm_params) {
+             const IEConstraintManifold::Params::shared_ptr &iecm_params,
+             bool eval_projected_cost) {
 
   IEGDOptimizer optimizer(params, iecm_params);
   Values result =
@@ -226,16 +232,18 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
     IEIterSummary iter_summary;
     iter_summary.iterations = state.iterations;
     iter_summary.inner_iters = state.totalNumberInnerIterations;
-    iter_summary.evaluate(problem, state_values);
+    iter_summary.evaluate(problem, state_values, eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }
   return std::make_pair(summary, iters_details);
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails> OptimizeELM(
-    const IEConsOptProblem &problem, const gtsam::IELMParams &ielm_params,
-    const IEConstraintManifold::Params::shared_ptr &iecm_params, double mu) {
+std::pair<IEResultSummary, IELMItersDetails>
+OptimizeELM(const IEConsOptProblem &problem,
+            const gtsam::IELMParams &ielm_params,
+            const IEConstraintManifold::Params::shared_ptr &iecm_params,
+            double mu, bool eval_projected_cost) {
   IELMOptimizer optimizer(ielm_params, iecm_params);
   NonlinearFactorGraph merit_graph = problem.costs();
   merit_graph.add(problem.iConstraints().meritGraph(mu));
@@ -245,7 +253,7 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeELM(
   const auto &iters_details = optimizer.details();
 
   IEResultSummary summary;
-  summary.exp_name = "CMOpt(E-LM)";
+  summary.exp_name = "CM-Opt";
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
   summary.factor_dim = problem.costsDimension() + problem.iConstraints().dim();
   summary.total_inner_iters =
@@ -257,7 +265,7 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeELM(
     IEIterSummary iter_summary;
     iter_summary.iterations = state.iterations;
     iter_summary.inner_iters = state.totalNumberInnerIterations;
-    iter_summary.evaluate(problem, state.baseValues());
+    iter_summary.evaluate(problem, state.baseValues(), eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }
   return std::make_pair(summary, iters_details);
@@ -268,7 +276,7 @@ std::pair<IEResultSummary, IELMItersDetails>
 OptimizeIELM(const IEConsOptProblem &problem,
              const gtsam::IELMParams &ielm_params,
              const IEConstraintManifold::Params::shared_ptr &iecm_params,
-             std::string exp_name) {
+             std::string exp_name, bool eval_projected_cost) {
   IELMOptimizer optimizer(ielm_params, iecm_params);
   Values result =
       optimizer.optimize(problem.costs(), problem.eConstraints(),
@@ -288,7 +296,7 @@ OptimizeIELM(const IEConsOptProblem &problem,
     IEIterSummary iter_summary;
     iter_summary.iterations = state.iterations;
     iter_summary.inner_iters = state.totalNumberInnerIterations;
-    iter_summary.evaluate(problem, state.baseValues());
+    iter_summary.evaluate(problem, state.baseValues(), eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }
   return std::make_pair(summary, iters_details);

@@ -165,4 +165,11 @@ public:
   IndexSetMap decodeIndices(const IndexSet &indices) const;
 };
 
+/// Return factors representing mu*\|Ax-b*b_scale\|^2.
+GaussianFactorGraph ScaledBiasedFactors(const GaussianFactorGraph &graph,
+                                        double mu, double b_scale);
+
+/// Return factor by setting b to zero.
+JacobianFactor::shared_ptr ZerobFactor(const JacobianFactor::shared_ptr factor);
+
 } // namespace gtsam

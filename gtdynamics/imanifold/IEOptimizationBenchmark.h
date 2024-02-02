@@ -82,16 +82,19 @@ struct IEConsOptProblem : public gtdynamics::EqConsOptProblem {
   }
 };
 
+Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
+                     double sigma = 1e3);
 struct IEIterSummary {
-  size_t iterations;
-  size_t inner_iters;
-  double cost;
-  double e_violation;
-  double i_violation;
-  double projected_cost;
-  double mu;
+  size_t iterations = 0;
+  size_t inner_iters = 0;
+  double cost = 0;
+  double e_violation = 0;
+  double i_violation = 0;
+  double projected_cost = 0;
+  double mu = 0;
 
-  void evaluate(const IEConsOptProblem &problem, const Values &values);
+  void evaluate(const IEConsOptProblem &problem, const Values &values,
+                bool eval_projected_cost = true);
 };
 
 struct IEResultSummary {
@@ -132,36 +135,38 @@ typedef std::vector<BarrierIterDetail> BarrierItersDetail;
 std::pair<IEResultSummary, LMItersDetail> OptimizeSoftConstraints(
     const IEConsOptProblem &problem,
     LevenbergMarquardtParams lm_params = LevenbergMarquardtParams(),
-    double mu = 100);
+    double mu = 100, bool eval_projected_cost = true);
 
 /** Run constrained optimization using the penalty method. */
 std::pair<IEResultSummary, BarrierItersDetail>
 OptimizePenaltyMethod(const IEConsOptProblem &problem,
-                      const gtdynamics::BarrierParameters::shared_ptr &params);
+                      const gtdynamics::BarrierParameters::shared_ptr &params,
+                      bool eval_projected_cost = true);
 
 /** Run SQP method. */
 std::pair<IEResultSummary, SQPItersDetails>
 OptimizeSQP(const IEConsOptProblem &problem,
-            const SQPParams::shared_ptr &params);
+            const SQPParams::shared_ptr &params,
+            bool eval_projected_cost = true);
 
 /** Run e-manifold optimization, with added penalty for i-constraints. */
 std::pair<IEResultSummary, IELMItersDetails>
 OptimizeELM(const IEConsOptProblem &problem,
             const gtsam::IELMParams &ielm_params,
             const IEConstraintManifold::Params::shared_ptr &iecm_params,
-            double mu = 100);
+            double mu = 100, bool eval_projected_cost = true);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 std::pair<IEResultSummary, IEGDItersDetails>
 OptimizeIEGD(const IEConsOptProblem &problem,
              const gtsam::GDParams &iegd_params,
-             const IEConstraintManifold::Params::shared_ptr &iecm_params);
+             const IEConstraintManifold::Params::shared_ptr &iecm_params,
+             bool eval_projected_cost = true);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
-std::pair<IEResultSummary, IELMItersDetails>
-OptimizeIELM(const IEConsOptProblem &problem,
-             const gtsam::IELMParams &ielm_params,
-             const IEConstraintManifold::Params::shared_ptr &iecm_params,
-             std::string exp_name = "CMOpt(IE)");
+std::pair<IEResultSummary, IELMItersDetails> OptimizeIELM(
+    const IEConsOptProblem &problem, const gtsam::IELMParams &ielm_params,
+    const IEConstraintManifold::Params::shared_ptr &iecm_params,
+    std::string exp_name = "CMOpt(IE)", bool eval_projected_cost = true);
 
 } // namespace gtsam

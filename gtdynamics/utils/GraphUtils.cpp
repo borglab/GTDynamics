@@ -158,4 +158,44 @@ IndexSetMapTranslator::decodeIndices(const IndexSet &indices) const {
   return index_set_map;
 }
 
+/* ************************************************************************* */
+GaussianFactorGraph ScaledBiasedFactors(const GaussianFactorGraph &graph_in,
+                                        double mu, double b_scale) {
+  GaussianFactorGraph graph;
+  double sigma = 1 / sqrt(mu);
+  for (const auto &factor : graph_in) {
+    auto [A, b] = factor->jacobian();
+    std::map<Key, Matrix> terms;
+    size_t start_col = 0;
+    for (auto it = factor->begin(); it != factor->end(); it++) {
+      size_t num_cols = factor->getDim(it);
+      terms.insert({*it, A.middleCols(start_col, num_cols)});
+      start_col += num_cols;
+    }
+    b *= b_scale;
+    graph.emplace_shared<JacobianFactor>(
+        terms, b, noiseModel::Isotropic::Sigma(b.size(), sigma));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+JacobianFactor::shared_ptr
+ZerobFactor(const JacobianFactor::shared_ptr factor) {
+  // auto [A, b] = factor->jacobian();
+  std::map<Key, Matrix> terms;
+  for (auto it = factor->begin(); it != factor->end(); it++) {
+    terms.insert({*it, factor->getA(it)});
+  }
+  // b = Vector::Zero(b.size());
+  // auto A = factor->getA();
+  auto b = Vector::Zero(factor->getb().size());
+  if (factor->get_model()) {
+    return std::make_shared<JacobianFactor>(terms, b, factor->get_model());
+  } else {
+    return std::make_shared<JacobianFactor>(terms, b,
+                                            noiseModel::Unit::Create(b.size()));
+  }
+}
+
 } // namespace gtsam

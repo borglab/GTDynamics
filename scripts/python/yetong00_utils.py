@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+import os
 
 # load optimization result data from file
 
@@ -72,18 +73,22 @@ def plot_error_vs_constraint(ax, scenario_folder: str):
     ax.legend()
 
 
-def plot_optimization_progress(scenario_folder: str, exp_names, ax_cost=None, ax_constraint=None, ax_proj_cost=None):
-    for exp_name in exp_names:
+def plot_optimization_progress(scenario_folder: str, exp_names, labels, colors, ax_cost=None, ax_constraint=None, ax_proj_cost=None):
+    for exp_name, label, color in zip(exp_names, labels, colors):
         file_path = scenario_folder + exp_name + "_progress.csv"
+        if not os.path.isfile(file_path):
+            continue
         data = load_csv(file_path)
         if ax_cost is not None:
-            ax_cost.plot(data["iterations"], data["cost"], label=exp_name)
+            ax_cost.plot(data["iterations"], data["cost"],
+                         label=label, color=color)
         if ax_constraint is not None:
-            ax_constraint.plot(data["iterations"],
-                               data["e_violation"] ** 2 + data["i_violation"] ** 2)
+            constraint_violation = (data["e_violation"] ** 2 + data["i_violation"] ** 2) ** 0.5
+            constraint_violation[constraint_violation<0] = 0
+            ax_constraint.plot(data["iterations"], constraint_violation, label=label, color=color)
         if ax_proj_cost is not None:
             ax_proj_cost.plot(data["iterations"],
-                              data["proj_cost"], label=exp_name)
+                              data["proj_cost"], label=label, color=color)
 
 
 def plot_trajectory(axs, scenario_folder):

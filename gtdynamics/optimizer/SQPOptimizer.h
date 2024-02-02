@@ -25,6 +25,8 @@ struct SQPParams {
   double merit_e_l2_mu = 1e0;
   double merit_i_l1_mu = 1e0;
   double merit_i_l2_mu = 1e0;
+  bool use_qp_constrained_mu = false;
+  double qp_constrained_mu = 1e8;
 
   using shared_ptr = std::shared_ptr<SQPParams>;
 };

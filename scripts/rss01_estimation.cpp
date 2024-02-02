@@ -155,13 +155,15 @@ int main(int argc, char **argv) {
   // soft constraints
   std::cout << "optimize soft...\n";
   LevenbergMarquardtParams lm_params;
-  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 1e4);
+  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 1e2);
 
   // penalty method
   std::cout << "optimize penalty...\n";
-  auto barrier_params = std::make_shared<BarrierParameters>();
-  barrier_params->num_iterations = 15;
-  auto penalty_result = OptimizePenaltyMethod(problem, barrier_params);
+  auto penalty_params = std::make_shared<BarrierParameters>();
+  penalty_params->initial_mu = 1;
+  penalty_params->num_iterations = 4;
+  penalty_params->mu_increase_rate = 10;
+  auto penalty_result = OptimizePenaltyMethod(problem, penalty_params);
 
   // SQP method
   std::cout << "optimize SQP...\n";
@@ -177,52 +179,52 @@ int main(int argc, char **argv) {
   // ELM with penalty for i-constraints
   std::cout << "optimize CMOpt(E-LM)...\n";
   // ie_params.lm_params.setVerbosityLM("SUMMARY");
-  auto elm_result = OptimizeELM(problem, ie_params, GetECMParamsManual(), 100);
+  auto elm_result = OptimizeELM(problem, ie_params, GetECMParamsManual(), 1e2);
 
-  // IEGD method
-  std::cout << "optimize CMOpt(IE-GD)...\n";
-  GDParams gd_params;
-  // gd_params.muLowerBound = 1e-10;
-  // gd_params.verbose = true;
-  auto iegd_result = OptimizeIEGD(problem, gd_params, GetIECMParamsManual());
+  // // IEGD method
+  // std::cout << "optimize CMOpt(IE-GD)...\n";
+  // GDParams gd_params;
+  // // gd_params.muLowerBound = 1e-10;
+  // // gd_params.verbose = true;
+  // auto iegd_result = OptimizeIEGD(problem, gd_params, GetIECMParamsManual());
 
   // IELM standard projection
   std::cout << "optimize CMOpt(IE-LM-SP)...\n";
   auto ielm_sp_result = OptimizeIELM(problem, ie_params, GetIECMParamsManual(),
-                                     "CMOpt(IE-LM-SP)");
+                                     "CMC-Opt");
 
-  // IELM cost-aware projection
-  std::cout << "optimize CMOpt(IE-LM-CR)...\n";
-  // ie_params.lm_params.setVerbosityLM("SUMMARY");
-  auto ielm_cr_result =
-      OptimizeIELM(problem, ie_params, GetIECMParamsCR(), "CMOpt(IE-LM-CR)");
+  // // IELM cost-aware projection
+  // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
+  // // ie_params.lm_params.setVerbosityLM("SUMMARY");
+  // auto ielm_cr_result =
+  //     OptimizeIELM(problem, ie_params, GetIECMParamsCR(), "CMOpt(IE-LM-CR)");
 
   soft_result.first.printLatex(std::cout);
   penalty_result.first.printLatex(std::cout);
   sqp_result.first.printLatex(std::cout);
   elm_result.first.printLatex(std::cout);
-  iegd_result.first.printLatex(std::cout);
+  // iegd_result.first.printLatex(std::cout);
   ielm_sp_result.first.printLatex(std::cout);
-  ielm_cr_result.first.printLatex(std::cout);
+  // ielm_cr_result.first.printLatex(std::cout);
 
   std::filesystem::create_directory(scenario_folder);
   soft_result.first.exportFile(scenario_folder + "soft_progress.csv");
   penalty_result.first.exportFile(scenario_folder + "penalty_progress.csv");
   sqp_result.first.exportFile(scenario_folder + "sqp_progress.csv");
   elm_result.first.exportFile(scenario_folder + "elm_progress.csv");
-  iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
+  // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
   ielm_sp_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
-  ielm_cr_result.first.exportFile(scenario_folder + "ielm_cr_progress.csv");
+  // ielm_cr_result.first.exportFile(scenario_folder + "ielm_cr_progress.csv");
 
   SaveValues("init_values.csv", problem.initValues());
   SaveValues("soft_values.csv", soft_result.second.back().values);
   SaveValues("penalty_values.csv", penalty_result.second.back().values);
   SaveValues("sqp_values.csv", sqp_result.second.back().state.values);
   SaveValues("elm_values.csv", elm_result.second.back().state.baseValues());
-  SaveValues("iegd_values.csv", iegd_result.second.back().state.baseValues());
+  // SaveValues("iegd_values.csv", iegd_result.second.back().state.baseValues());
   SaveValues("ielm_sp_values.csv",
              ielm_sp_result.second.back().state.baseValues());
-  SaveValues("ielm_cr_values.csv",
-             ielm_cr_result.second.back().state.baseValues());
+  // SaveValues("ielm_cr_values.csv",
+  //            ielm_cr_result.second.back().state.baseValues());
   return 0;
 }

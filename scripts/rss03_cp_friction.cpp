@@ -1,12 +1,21 @@
 #include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/scenarios/IECartPoleWithLimits.h>
+#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
 
-std::string scenario = "rss02_cp_limits";
+std::string scenario = "rss03_cp_friction";
 std::string scenario_folder = "../../data/" + scenario + "/";
-IECartPoleWithLimits cp;
+
+IECartPoleWithFriction GetCP() {
+  IECartPoleWithFriction cp;
+  cp.include_torque_limits = true;
+  return cp;
+}
+
+IECartPoleWithFriction cp = GetCP();
+size_t num_steps = 20;
+double dt = 0.05;
 
 /* ************************************************************************* */
 IERetractorParams::shared_ptr GetNominalRetractorParams() {
@@ -28,11 +37,10 @@ IERetractorParams::shared_ptr GetNominalRetractorParams() {
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsManual() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(cp.getBasisKeyFunc());
   iecm_params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(
-          std::make_shared<CartPoleWithLimitsRetractor>(cp));
+          std::make_shared<CPBarrierRetractor>(cp));
+  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
   return iecm_params;
 }
 
@@ -41,7 +49,7 @@ IEConstraintManifold::Params::shared_ptr GetIECMParamsSP() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->retractor_creator =
       std::make_shared<BarrierRetractorCreator>(GetNominalRetractorParams());
-  iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
+  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
   return iecm_params;
 }
 
@@ -58,12 +66,27 @@ IEConstraintManifold::Params::shared_ptr GetIECMParamsCR() {
 }
 
 /* ************************************************************************* */
-IEConsOptProblem CreateProblem() {
-  // Setting
-  size_t num_steps = 20;
-  double dt = 0.1;
+Values ComputeInitialValues() {
+  Values values;
+  for (size_t k = 0; k <= num_steps; k++) {
+    double q = M_PI * k / num_steps;
+    double v = 0;
+    double a = 0;
+    double tau = cp.computeTau(q, a);
+    double fx = cp.computeFx(q, v, a);
+    double fy = cp.computeFy(q, v, a);
+    values.insert(QKey(k), q);
+    values.insert(VKey(k), v);
+    values.insert(AKey(k), a);
+    values.insert(TauKey(k), tau);
+    values.insert(FxKey(k), fx);
+    values.insert(FyKey(k), fy);
+  }
+  return values;
+}
 
-  // Constraints
+/* ************************************************************************* */
+IEConsOptProblem CreateProblem() {
   EqualityConstraints e_constraints;
   InequalityConstraints i_constraints;
   for (size_t k = 0; k <= num_steps; k++) {
@@ -72,37 +95,43 @@ IEConsOptProblem CreateProblem() {
     e_constraints.add(e_constraints_k);
     i_constraints.add(i_constraints_k);
   }
-  e_constraints.add(cp.initStateConstraints());
-
-  // Costs
+  e_constraints.emplace_shared<DoubleExpressionEquality>(
+      Double_(QKey(0)) - Double_(0.0), 1.0);
+  e_constraints.emplace_shared<DoubleExpressionEquality>(Double_(VKey(0)), 1.0);
+  e_constraints.emplace_shared<DoubleExpressionEquality>(
+      Double_(QKey(num_steps)) - Double_(M_PI), 1.0);
+  e_constraints.emplace_shared<DoubleExpressionEquality>(
+      Double_(VKey(num_steps)), 1.0);
   NonlinearFactorGraph graph;
-  NonlinearFactorGraph collocation_costs = cp.collocationCosts(num_steps, dt);
-  NonlinearFactorGraph final_state_graph = cp.finalStateCosts(num_steps);
-  NonlinearFactorGraph min_torque_costs = cp.minTorqueCosts(num_steps);
-  graph.add(final_state_graph);
-  graph.add(collocation_costs);
-  graph.add(min_torque_costs);
-  auto EvaluateCosts = [=](const Values &values) {
-    std::cout << "collocation costs:\t" << collocation_costs.error(values)
-              << "\n";
-    std::cout << "final state costs:\t" << final_state_graph.error(values)
-              << "\n";
-    std::cout << "min torque costs:\t" << min_torque_costs.error(values)
-              << "\n";
-  };
+  auto collo_model = noiseModel::Isotropic::Sigma(1, 1e-1);
+  auto prior_model = noiseModel::Isotropic::Sigma(1, 1e-2);
+  auto cost_model = noiseModel::Isotropic::Sigma(1, 1e0);
+  // graph.addPrior<double>(QKey(0), M_PI_2, prior_model);
+  // graph.addPrior<double>(VKey(0), 0.0, prior_model);
+  // graph.addPrior<double>(QKey(num_steps), 0.0, prior_model);
+  // graph.addPrior<double>(VKey(num_steps), 0.0, prior_model);
+  for (size_t k = 0; k < num_steps; k++) {
+    Double_ q0_expr(QKey(k));
+    Double_ q1_expr(QKey(k + 1));
+    Double_ v0_expr(VKey(k));
+    Double_ v1_expr(VKey(k + 1));
+    Double_ a0_expr(AKey(k));
+    Double_ a1_expr(AKey(k + 1));
+    graph.add(
+        ExpressionFactor(collo_model, 0.0, q0_expr + dt * v0_expr - q1_expr));
+    graph.add(
+        ExpressionFactor(collo_model, 0.0, v0_expr + dt * a0_expr - v1_expr));
+  }
+  for (size_t k = 0; k <= num_steps; k++) {
+    graph.addPrior<double>(QKey(k), M_PI, cost_model);
+  }
 
-  // Initial Values
-  Values initial_values = cp.getInitValuesZero(num_steps);
-  EvaluateCosts(initial_values);
-
-  // Problem
+  Values initial_values = ComputeInitialValues();
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
   return problem;
 }
 
-/* ************************************************************************* */
 int main(int argc, char **argv) {
-  // Create problem
   auto problem = CreateProblem();
 
   // Parameters
@@ -114,41 +143,38 @@ int main(int argc, char **argv) {
   std::cout << "optimize soft...\n";
   LevenbergMarquardtParams lm_params;
   // lm_params.setVerbosityLM("SUMMARY");
-  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 1e8);
+  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 1e2);
 
   // penalty method
   std::cout << "optimize penalty...\n";
   auto penalty_params = std::make_shared<BarrierParameters>();
-  penalty_params->initial_mu = 1e0;
+  penalty_params->initial_mu = 1e2;
   penalty_params->mu_increase_rate = 4;
-  penalty_params->num_iterations = 20;
+  penalty_params->num_iterations = 8;
   auto penalty_result = OptimizePenaltyMethod(problem, penalty_params);
 
   // SQP method
   std::cout << "optimize SQP...\n";
   auto sqp_params = std::make_shared<SQPParams>();
-  sqp_params->merit_e_l2_mu = 1e4;
-  sqp_params->merit_i_l2_mu = 1e2;
-  sqp_params->merit_e_l1_mu = 1e4;
-  sqp_params->merit_i_l1_mu = 1e4;
+  sqp_params->merit_e_l2_mu = 1e0;
+  sqp_params->merit_i_l2_mu = 1e0;
+  sqp_params->merit_e_l1_mu = 1e0;
+  sqp_params->merit_i_l1_mu = 1e0;
   // sqp_params->lm_params.setVerbosityLM("SUMMARY");
   sqp_params->lm_params.setlambdaUpperBound(1e10);
   auto sqp_result = OptimizeSQP(problem, sqp_params);
 
   // ELM with penalty for i-constraints
-  std::cout << "optimize CMOpt(E-LM)...\n";
-  auto elm_result = OptimizeELM(problem, ie_params, GetIECMParamsSP(), 1e8);
+  std::cout << "optimize CM-Opt(E-LM)...\n";
+  auto elm_result = OptimizeELM(problem, ie_params, GetIECMParamsSP(), 1e2);
 
   // // IEGD method
   // std::cout << "optimize CMOpt(IE-GD)...\n";
   // GDParams gd_params;
-  // gd_params.verbose = true;
-  // gd_params.muLowerBound = 1e-10;
-  // gd_params.init_lambda = 1e-5;
   // auto iegd_result = OptimizeIEGD(problem, gd_params, GetIECMParamsSP());
 
   // IELM standard projection
-  std::cout << "optimize CMOpt(IE-LM-SP)...\n";
+  std::cout << "optimize CMC-Opt(IE-LM-SP)...\n";
   auto ielm_sp_result =
       OptimizeIELM(problem, ie_params, GetIECMParamsSP(), "CMC-Opt");
 

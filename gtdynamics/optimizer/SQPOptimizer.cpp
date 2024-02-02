@@ -109,7 +109,36 @@ SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
   // solve linear update
   try {
     // delta = damped_system.optimize();
+    // GaussianFactorGraph new_system;
+    // for (auto factor : damped_system) {
+    //   JacobianFactor::shared_ptr jacobian_factor(
+    //       std::dynamic_pointer_cast<JacobianFactor>(factor));
+    //   // if (jacobian_factor) {
+    //   auto noise_model = jacobian_factor->get_model();
+    //   if (noise_model && noise_model->isConstrained()) {
+    //     new_system.push_back(ZerobFactor(jacobian_factor));
+    //   } else {
+    //     new_system.push_back(factor);
+    //   }
+    // }
+    // for (const auto& key: state.values.keys()) {
+    //   size_t dim = state.values.at(key).dim();
+    //   new_system.emplace_shared<JacobianFactor>(key, Matrix::Identity(dim,
+    //   dim)*1e3, Vector::Ones(dim), noiseModel::Unit::Create(dim));
+    // }
     delta = SolveLinear(damped_system, params.lm_params);
+    // auto delta1 = SolveLinear(new_system, params.lm_params);
+    // // delta = damped_system.optimize();
+    // // auto delta1 = new_system.optimize();
+    // std::cout << "linear error zero: " <<
+    // damped_system.error(VectorValues::Zero(delta)) << "\n"; std::cout <<
+    // "linear error delta: " << damped_system.error(delta) << "\n"; std::cout
+    // << "linear error delta1: " << damped_system.error(delta1) << "\n";
+
+    // std::cout << "new linear error delta1: " << new_system.error(delta1) <<
+    // "\n"; std::cout << "new linear error zero: " <<
+    // new_system.error(VectorValues::Zero(delta)) << "\n"; std::cout <<
+    // "delta1_norm: " << delta1.norm() << "\n";
     solve_successful = true;
   } catch (const IndeterminantLinearSystemException &) {
     return;
@@ -150,28 +179,14 @@ GaussianFactorGraph
 SQPTrial::constructConstrainedSystem(const SQPState &state,
                                      const SQPParams &params) const {
   GaussianFactorGraph graph = state.linear_cost;
-  graph.push_back(state.linear_e_constraints);
-  graph.push_back(state.linear_i_constraints);
-  return graph;
-}
-
-/* ************************************************************************* */
-GaussianFactorGraph scaledBiasedFactors(const GaussianFactorGraph &graph_in,
-                                        double mu, double b_scale) {
-  GaussianFactorGraph graph;
-  double sigma = 1 / sqrt(mu);
-  for (const auto &factor : graph_in) {
-    auto [A, b] = factor->jacobian();
-    std::map<Key, Matrix> terms;
-    size_t start_col = 0;
-    for (auto it = factor->begin(); it != factor->end(); it++) {
-      size_t num_cols = factor->getDim(it);
-      terms.insert({*it, A.middleCols(start_col, num_cols)});
-      start_col += num_cols;
-    }
-    b *= b_scale;
-    graph.emplace_shared<JacobianFactor>(
-        terms, b, noiseModel::Isotropic::Sigma(b.size(), sigma));
+  if (params.use_qp_constrained_mu) {
+    graph.push_back(
+        ScaledBiasedFactors(state.linear_e_merit, params.qp_constrained_mu, 1));
+    graph.push_back(
+        ScaledBiasedFactors(state.linear_i_merit, params.qp_constrained_mu, 1));
+  } else {
+    graph.push_back(state.linear_e_constraints);
+    graph.push_back(state.linear_i_constraints);
   }
   return graph;
 }
@@ -184,11 +199,11 @@ SQPTrial::constructMeritSystem(const SQPState &state,
   VectorValues zero_vec = state.values.zeroVectors();
   double e_b_norm = sqrt(2 * state.linear_e_merit.error(zero_vec));
   double e_b_scale = 1 + params.merit_e_l1_mu / params.merit_e_l2_mu / e_b_norm;
-  graph.push_back(scaledBiasedFactors(state.linear_e_merit,
+  graph.push_back(ScaledBiasedFactors(state.linear_e_merit,
                                       params.merit_e_l2_mu, e_b_scale));
   double i_b_norm = sqrt(2 * state.linear_i_merit.error(zero_vec));
   double i_b_scale = 1 + params.merit_i_l1_mu / params.merit_i_l2_mu / i_b_norm;
-  graph.push_back(scaledBiasedFactors(state.linear_i_merit,
+  graph.push_back(ScaledBiasedFactors(state.linear_i_merit,
                                       params.merit_i_l2_mu, i_b_scale));
   return graph;
 }
