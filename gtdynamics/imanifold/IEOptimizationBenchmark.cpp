@@ -33,9 +33,13 @@ Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
 /* ************************************************************************* */
 void IEIterSummary::evaluate(const IEConsOptProblem &problem,
                              const Values &values, bool eval_projected_cost) {
+  std::cout << "evaluate iter " << iterations << "\n";
   cost = problem.evaluateCost(values);
   e_violation = problem.evaluateEConstraintViolationL2Norm(values);
   i_violation = problem.evaluateIConstraintViolationL2Norm(values);
+  if (iterations > 60) {
+    return;
+  }
   if (eval_projected_cost) {
     Values projected_values = ProjectValues(problem, values);
     projected_cost = problem.evaluateCost(projected_values);
@@ -43,24 +47,75 @@ void IEIterSummary::evaluate(const IEConsOptProblem &problem,
 }
 
 /* ************************************************************************* */
-void IEResultSummary::evaluate(const IEConsOptProblem &problem,
-                               const Values &values) {
+void IEResultSummary::evaluate(const IEConsOptProblem &problem) {
+  std::cout << "evaluate summary " << total_iters << "\n";
   cost = problem.evaluateCost(values);
   e_violation = problem.evaluateEConstraintViolationL2Norm(values);
   i_violation = problem.evaluateIConstraintViolationL2Norm(values);
-  Values projected_values = ProjectValues(problem, values);
+  projected_values = ProjectValues(problem, values);
   projected_cost = problem.evaluateCost(projected_values);
 }
 
 /* ************************************************************************* */
 void IEResultSummary::printLatex(std::ostream &latex_os) const {
   latex_os << "& " + exp_name + " & $" << factor_dim << " \\times "
-           << variable_dim << "$ & " << total_iters << " & "
-           << std::defaultfloat << std::scientific << std::fixed
-           << std::setprecision(6) << e_violation << std::scientific << " & "
-           << std::fixed << std::setprecision(6) << i_violation << " & "
-           << std::setprecision(3) << cost << " & " << std::setprecision(3)
-           << projected_cost << "\\\\\n";
+           << variable_dim << "$ & " << total_iters << " & ";
+  if (e_violation < 1e-8) {
+    latex_os << 0 << " & ";
+  } else {
+    latex_os << std::scientific << std::setprecision(1) << e_violation << " & ";
+  }
+
+  if (i_violation < 1e-8) {
+    latex_os << 0 << " & ";
+  } else {
+    latex_os << std::scientific << std::setprecision(1) << i_violation << " & ";
+  }
+
+  if (cost > 1e3) {
+    latex_os << std::scientific << std::setprecision(1) << cost << " & ";
+  } else {
+    latex_os << std::fixed << std::setprecision(2) << cost << " & ";
+  }
+
+  if (projected_cost > 1e3) {
+    latex_os << std::scientific << std::setprecision(1) << projected_cost
+             << "\\\\\n";
+  } else {
+    latex_os << std::fixed << std::setprecision(2) << projected_cost
+             << "\\\\\n";
+  }
+}
+
+/* ************************************************************************* */
+void EvaluateCostTerms(std::ostream &latex_os,
+                       const std::vector<NonlinearFactorGraph> &graphs,
+                       const Values &values, const Values &proj_values,
+                       std::string exp_name) {
+  latex_os << "& " + exp_name;
+  for (const auto &graph : graphs) {
+    double error = graph.error(values);
+    double error_proj = graph.error(proj_values);
+    latex_os << " & ";
+    if (error < 1e-8) {
+      latex_os << 0;
+    }
+    else if (error > 1e3) {
+      latex_os << std::scientific << std::setprecision(1) << error;
+    } else {
+      latex_os << std::fixed << std::setprecision(2) << error;
+    }
+    latex_os << " & ";
+    if (error_proj < 1e-8) {
+      latex_os << 0;
+    }
+    else if (error_proj > 1e3) {
+      latex_os << std::scientific << std::setprecision(1) << error_proj;
+    } else {
+      latex_os << std::fixed << std::setprecision(2) << error_proj;
+    }
+  }
+  latex_os << "\\\\\n";
 }
 
 /* ************************************************************************* */
@@ -121,13 +176,14 @@ OptimizeSoftConstraints(const IEConsOptProblem &problem,
   auto result = optimizer.optimize();
 
   IEResultSummary summary;
-  summary.exp_name = "soft";
+  summary.exp_name = "Soft";
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
   summary.total_inner_iters = optimizer.getInnerIterations();
   summary.total_iters = optimizer.iterations();
-  summary.evaluate(problem, result);
+  summary.values = result;
+  summary.evaluate(problem);
 
   const auto &history_states = optimizer.states();
   for (const auto &state : history_states) {
@@ -156,11 +212,12 @@ OptimizePenaltyMethod(const IEConsOptProblem &problem,
 
   IEResultSummary summary;
   BarrierItersDetail iters_details;
-  summary.exp_name = "penalty";
+  summary.exp_name = "Penalty";
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
-  summary.evaluate(problem, result);
+  summary.values = result;
+  summary.evaluate(problem);
   summary.total_iters = intermediate_result.num_iters.back();
   // double total_inner_iters;
   for (int i = 0; i < intermediate_result.mu_values.size(); i++) {
@@ -193,7 +250,8 @@ OptimizeSQP(const IEConsOptProblem &problem,
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
-  summary.evaluate(problem, result);
+  summary.values = result;
+  summary.evaluate(problem);
   summary.total_iters = iters_details.back().state.iterations;
   for (const auto &iter_details : optimizer.details()) {
     const auto &state = iter_details.state;
@@ -225,7 +283,8 @@ OptimizeIEGD(const IEConsOptProblem &problem, const gtsam::GDParams &params,
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.back().state.iterations;
-  summary.evaluate(problem, result);
+  summary.values = result;
+  summary.evaluate(problem);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     Values state_values = state.manifolds.baseValues();
@@ -259,7 +318,8 @@ OptimizeELM(const IEConsOptProblem &problem,
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.back().state.iterations;
-  summary.evaluate(problem, result);
+  summary.values = result;
+  summary.evaluate(problem);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     IEIterSummary iter_summary;
@@ -290,7 +350,8 @@ OptimizeIELM(const IEConsOptProblem &problem,
   summary.total_inner_iters =
       iters_details.back().state.totalNumberInnerIterations;
   summary.total_iters = iters_details.back().state.iterations;
-  summary.evaluate(problem, result);
+  summary.values = result;
+  summary.evaluate(problem);
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     IEIterSummary iter_summary;

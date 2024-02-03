@@ -208,14 +208,17 @@ void IECartPoleWithFriction::ExportValues(const Values &values,
                                           const std::string &file_path) {
   std::ofstream file;
   file.open(file_path);
+  file << "time,q,v,a,tau,fx,fy\n";
+  double dt = 0.05;
   for (int k = 0; k <= num_steps; k++) {
+    double t = dt * k;
     double q = values.atDouble(QKey(k));
     double v = values.atDouble(VKey(k));
     double a = values.atDouble(AKey(k));
     double tau = values.atDouble(TauKey(k));
     double fx = values.atDouble(FxKey(k));
     double fy = values.atDouble(FyKey(k));
-    file << q << " " << v << " " << a << " " << tau << " " << fx << " " << fy
+    file << t << "," << q << "," << v << "," << a << "," << tau << "," << fx << "," << fy
          << "\n";
   }
   file.close();

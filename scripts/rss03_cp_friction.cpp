@@ -6,6 +6,8 @@ using namespace gtdynamics;
 
 std::string scenario = "rss03_cp_friction";
 std::string scenario_folder = "../../data/" + scenario + "/";
+bool second_phase_opt = true;
+bool evaluate_cost_terms = true;
 
 IECartPoleWithFriction GetCP() {
   IECartPoleWithFriction cp;
@@ -131,6 +133,53 @@ IEConsOptProblem CreateProblem() {
   return problem;
 }
 
+/* ************************************************************************* */
+std::vector<NonlinearFactorGraph> GetCostTerms() {
+  NonlinearFactorGraph collo_cost;
+  NonlinearFactorGraph state_cost;
+  NonlinearFactorGraph actuation_cost;
+  NonlinearFactorGraph jerk_cost;
+  NonlinearFactorGraph total_cost;
+
+  auto collo_model = noiseModel::Isotropic::Sigma(1, 1e-1);
+  auto prior_model = noiseModel::Isotropic::Sigma(1, 1e-2);
+  auto cost_model = noiseModel::Isotropic::Sigma(1, 1e0);
+
+  for (size_t k = 0; k < num_steps; k++) {
+    Double_ q0_expr(QKey(k));
+    Double_ q1_expr(QKey(k + 1));
+    Double_ v0_expr(VKey(k));
+    Double_ v1_expr(VKey(k + 1));
+    Double_ a0_expr(AKey(k));
+    Double_ a1_expr(AKey(k + 1));
+    collo_cost.add(
+        ExpressionFactor(collo_model, 0.0, q0_expr + dt * v0_expr - q1_expr));
+    collo_cost.add(
+        ExpressionFactor(collo_model, 0.0, v0_expr + dt * a0_expr - v1_expr));
+  }
+  for (size_t k = 0; k <= num_steps; k++) {
+    state_cost.addPrior<double>(QKey(k), M_PI, cost_model);
+  }
+  total_cost.add(collo_cost);
+  total_cost.add(state_cost);
+  total_cost.add(actuation_cost);
+  total_cost.add(jerk_cost);
+
+  return std::vector<NonlinearFactorGraph>{
+      collo_cost, state_cost, actuation_cost, jerk_cost, total_cost};
+}
+
+/* ************************************************************************* */
+std::pair<IEResultSummary, IELMItersDetails>
+SecondPhaseOptimization(const Values values, std::string exp_name) {
+  auto problem = CreateProblem();
+  problem.values_ = values;
+
+  IELMParams ie_params;
+  ie_params.boundary_approach_rate_threshold = 1e10;
+  return OptimizeIELM(problem, ie_params, GetIECMParamsCR(), exp_name, false);
+}
+
 int main(int argc, char **argv) {
   auto problem = CreateProblem();
 
@@ -184,12 +233,10 @@ int main(int argc, char **argv) {
   //     OptimizeIELM(problem, ie_params, GetIECMParamsCR(), "CMOpt(IE-LM-CR)");
 
   soft_result.first.printLatex(std::cout);
-  penalty_result.first.printLatex(std::cout);
-  sqp_result.first.printLatex(std::cout);
   elm_result.first.printLatex(std::cout);
-  // iegd_result.first.printLatex(std::cout);
+  sqp_result.first.printLatex(std::cout);
+  penalty_result.first.printLatex(std::cout);
   ielm_sp_result.first.printLatex(std::cout);
-  // ielm_cr_result.first.printLatex(std::cout);
 
   std::filesystem::create_directory(scenario_folder);
   soft_result.first.exportFile(scenario_folder + "soft_progress.csv");
@@ -199,5 +246,43 @@ int main(int argc, char **argv) {
   // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
   ielm_sp_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
   // ielm_cr_result.first.exportFile(scenario_folder + "ielm_cr_progress.csv");
+
+  IECartPoleWithFriction::ExportValues(problem.initValues(), num_steps,
+                                       scenario_folder + "init_traj.csv");
+  IECartPoleWithFriction::ExportValues(ielm_sp_result.first.values, num_steps,
+                                       scenario_folder + "ielm_traj.csv");
+
+  if (second_phase_opt) {
+    auto soft_continued = SecondPhaseOptimization(
+        soft_result.first.projected_values, "soft-continued");
+    auto penalty_continued = SecondPhaseOptimization(
+        penalty_result.first.projected_values, "penalty-continued");
+    auto sqp_continued = SecondPhaseOptimization(
+        sqp_result.first.projected_values, "sqp-continued");
+    auto elm_continued = SecondPhaseOptimization(
+        elm_result.first.projected_values, "CM-Opt-continued");
+
+    soft_continued.first.printLatex(std::cout);
+    elm_continued.first.printLatex(std::cout);
+    sqp_continued.first.printLatex(std::cout);
+    penalty_continued.first.printLatex(std::cout);
+
+    soft_continued.first.exportFile(scenario_folder + "soft_continued.csv");
+    elm_continued.first.exportFile(scenario_folder + "elm_continued.csv");
+    sqp_continued.first.exportFile(scenario_folder + "sqp_continued.csv");
+    penalty_continued.first.exportFile(scenario_folder +
+                                       "penalty_continued.csv");
+  }
+
+  if (evaluate_cost_terms) {
+    auto cost_terms = GetCostTerms();
+    EvaluateCostTerms(std::cout, cost_terms, problem.initValues(), problem.initValues(), "Init values");
+    EvaluateCostTerms(std::cout, cost_terms, soft_result.first.values, soft_result.first.projected_values, "Soft");
+    EvaluateCostTerms(std::cout, cost_terms, elm_result.first.values, elm_result.first.projected_values, "CM-Opt");
+    EvaluateCostTerms(std::cout, cost_terms, sqp_result.first.values, sqp_result.first.projected_values, "SQP");
+    EvaluateCostTerms(std::cout, cost_terms, penalty_result.first.values, penalty_result.first.projected_values, "Penalty");
+    EvaluateCostTerms(std::cout, cost_terms, ielm_sp_result.first.values, ielm_sp_result.first.projected_values, "CMC-Opt");
+  }
+
   return 0;
 }

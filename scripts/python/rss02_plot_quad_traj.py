@@ -42,8 +42,10 @@ class QuadPlotter:
                         "k", "g", "b", "k", "r", "orange", "k", "g", "b"]
 
         self.joint_names = ["fl_upper", "fl_lower", "rl_upper", "rl_lower"]
+        self.joint_labels = ["front hip", "front knee", "rear hip", "rear knee"]
         self.joint_colors = ['r', 'orange', 'g', 'b']
         self.contact_names = ["fl_lower_c", "rl_lower_c"]
+        self.contact_labels = ["front foot", "rear foot"]
         self.contact_colors = ['orange', 'b']
 
         self.step_plots_entry_name_x1 = []
@@ -65,7 +67,7 @@ class QuadPlotter:
         ax.plot(hurdle_x, hurdle_z, color='k')
         ax.plot([-1, 3], [0, 0], color='k', alpha=0.5)
 
-    def plot_step(self, ax, k):
+    def plot_step(self, ax, k, set_color=None):
         colormap = mpl.colormaps["jet"]
         boundary_steps = [0, 20, 30, 50, 70]
         for entry_name_x1, entry_name_x2, entry_name_y1, entry_name_y2, color in zip(
@@ -78,7 +80,7 @@ class QuadPlotter:
             x2 = self.data[entry_name_x2][k]
             y1 = self.data[entry_name_y1][k]
             y2 = self.data[entry_name_y2][k]
-            robot_color = colormap(k/70)
+            robot_color = colormap((70-k)/70) if set_color is None else set_color
             alpha = 1 if k in boundary_steps else 0.7
             linewidth = 3 if k in boundary_steps else 2
             ax.plot((x1, x2), (y1, y2), color=robot_color,
@@ -86,23 +88,23 @@ class QuadPlotter:
 
     def plot_quantity(self, ax, entry_name):
         rate = 180/np.pi if entry_name == "_q" else 1
-        for joint_name, color in zip(self.joint_names, self.joint_colors):
+        for joint_name, color, label in zip(self.joint_names, self.joint_colors, self.joint_labels):
             ax.plot(self.data["time"], self.data[joint_name+entry_name] * rate,
-                    color=color, alpha=1, label=joint_name)
+                    color=color, alpha=1, label=label)
 
     def plot_contact_force(self, ax):
-        for contact_name, color in zip(self.contact_names, self.contact_colors):
+        for contact_name, color, label in zip(self.contact_names, self.contact_colors, self.contact_labels):
             contact_fx = self.data[contact_name+"_fx"]
             contact_fy = self.data[contact_name+"_fy"]
             contact_fz = self.data[contact_name+"_fz"]
             contact_f = (contact_fx**2 + contact_fy**2 + contact_fz**2) ** 0.5
             ax.plot(self.data["time"], contact_f,
-                    color=color, alpha=1, label=contact_name)
+                    color=color, alpha=1, label=label)
 
     def plot_friction_cone(self, ax):
-        for contact_name, color in zip(self.contact_names, self.contact_colors):
+        for contact_name, color, label in zip(self.contact_names, self.contact_colors, self.contact_labels):
             ax.plot(self.data[contact_name+"_fx"], self.data[contact_name+"_fz"],
-                    color=color, alpha=1, label=contact_name)
+                    color=color, alpha=1, label=label)
 
 
 def plot_scenario():
@@ -110,11 +112,12 @@ def plot_scenario():
     ax.set_xlim(-1, 2.3)
     ax.set_ylim(-0, 0.5)
     ax.set_aspect('equal')
-    quad_plotter = QuadPlotter()
+    quad_plotter = QuadPlotter("manopt")
 
     k_list = [0, 70]
-    for k in k_list:
-        quad_plotter.plot_step(ax, k)
+    color_list = ["red", "mediumblue"]
+    for k, color in zip(k_list, color_list):
+        quad_plotter.plot_step(ax, k, color)
 
     hurdle_x, hurdle_z = hurdle(0.75, 0.3, 0.2)
     ax.plot(hurdle_x, hurdle_z, color='k')
@@ -137,6 +140,7 @@ def plot_trajectory_comparisoin():
 
     quad_plotter_manopt = QuadPlotter("manopt")
     quad_plotter_penalty = QuadPlotter("penalty")
+    quad_plotter_init = QuadPlotter("init")
 
     k_list = [0, 15, 20, 30, 36, 44, 50, 60, 70]
 
@@ -147,6 +151,7 @@ def plot_trajectory_comparisoin():
     plt.tight_layout()
 
     plt.savefig('figures/quad_traj_comp.pdf')
+    # plt.savefig('figures/quad_traj_init_manopt.pdf')
 
     plt.show()
 
@@ -181,8 +186,8 @@ def plot_quantities():
 
     ax_q.set_title('joint angle')
     ax_T.set_title('torque')
-    ax_fcone.set_title('contact force')
-    ax_cforce.set_title('contact force')
+    ax_fcone.set_title('contact force in friction cone')
+    ax_cforce.set_title('contact force magnitude')
 
     ax_q.set_ylabel('$q$ ($^\circ$)')
     ax_T.set_ylabel('$\\tau$ ($N\cdot m$)')
@@ -198,7 +203,7 @@ def plot_quantities():
     ax_fcone.plot([0, 100], [0, 100], color='k', alpha=0.5)
     ax_fcone.plot([0, -100], [0, 100], color='k', alpha=0.5)
 
-    quad_plotter = QuadPlotter()
+    quad_plotter = QuadPlotter("manopt")
     quad_plotter.plot_quantity(ax_q, "_q")
     quad_plotter.plot_quantity(ax_T, "_T")
     quad_plotter.plot_friction_cone(ax_fcone)
@@ -206,7 +211,8 @@ def plot_quantities():
     # quad_plotter.plot_quantity(ax_q, "_q")
     # quad_plotter.plot_quantity(ax_q, "_q")
 
-    ax_q.legend()
+    ax_q.legend(loc = [.7, .5])
+    ax_fcone.legend(loc=[.9,.7])
     for ax in [ax_q, ax_T, ax_fcone, ax_cforce]:
         ax.title.set_fontsize(16)
         ax.xaxis.label.set_fontsize(14)
@@ -214,12 +220,17 @@ def plot_quantities():
         for item in ax.get_xticklabels() + ax.get_yticklabels():
             item.set_fontsize(12)
 
+    plt.gcf().text(0.02, 0.94, "(a)", fontsize=14)
+    plt.gcf().text(0.52, 0.94, "(b)", fontsize=14)
+    plt.gcf().text(0.02, 0.46, "(c)", fontsize=14)
+    plt.gcf().text(0.52, 0.46, "(d)", fontsize=14)
+
     plt.tight_layout()
     plt.savefig('figures/quad_quantities.pdf')
     plt.show()
 
 
-plot_trajectory_comparisoin()
+# plot_trajectory_comparisoin()
 # plot_trajectory()
-# plot_quantities()
+plot_quantities()
 # plot_scenario()

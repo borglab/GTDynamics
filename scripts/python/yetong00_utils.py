@@ -90,6 +90,14 @@ def plot_optimization_progress(scenario_folder: str, exp_names, labels, colors, 
             ax_proj_cost.plot(data["iterations"],
                               data["proj_cost"], label=label, color=color)
 
+def plot_optimization_continued(scenario_folder: str, exp_names, labels, colors, ax):
+    for exp_name, label, color in zip(exp_names, labels, colors):
+        file_path = scenario_folder + exp_name + "_continued.csv"
+        if not os.path.isfile(file_path):
+            continue
+        data = load_csv(file_path)
+        ax.plot(data["iterations"], data["cost"], color=color)
+
 
 def plot_trajectory(axs, scenario_folder):
     init_data = load_csv(scenario_folder + "init_traj.csv")

@@ -8,6 +8,7 @@ using namespace gtdynamics;
 
 std::string scenario = "rss01_estimation";
 std::string scenario_folder = "../../data/" + scenario + "/";
+bool second_phase_opt = true;
 IEHalfSphere half_sphere;
 size_t steps_per_edge = 10;
 size_t num_steps = 3 * steps_per_edge;
@@ -146,6 +147,17 @@ IEConsOptProblem CreateProblem() {
 }
 
 /* ************************************************************************* */
+std::pair<IEResultSummary, IELMItersDetails>
+SecondPhaseOptimization(const Values values, std::string exp_name) {
+  auto problem = CreateProblem();
+  problem.values_ = values;
+
+  IELMParams ie_params;
+  ie_params.boundary_approach_rate_threshold = 1e10;
+  return OptimizeIELM(problem, ie_params, GetIECMParamsCR(), exp_name, false);
+}
+
+/* ************************************************************************* */
 int main(int argc, char **argv) {
   auto problem = CreateProblem();
 
@@ -200,12 +212,10 @@ int main(int argc, char **argv) {
   //     OptimizeIELM(problem, ie_params, GetIECMParamsCR(), "CMOpt(IE-LM-CR)");
 
   soft_result.first.printLatex(std::cout);
-  penalty_result.first.printLatex(std::cout);
-  sqp_result.first.printLatex(std::cout);
   elm_result.first.printLatex(std::cout);
-  // iegd_result.first.printLatex(std::cout);
+  sqp_result.first.printLatex(std::cout);
+  penalty_result.first.printLatex(std::cout);
   ielm_sp_result.first.printLatex(std::cout);
-  // ielm_cr_result.first.printLatex(std::cout);
 
   std::filesystem::create_directory(scenario_folder);
   soft_result.first.exportFile(scenario_folder + "soft_progress.csv");
@@ -226,5 +236,29 @@ int main(int argc, char **argv) {
              ielm_sp_result.second.back().state.baseValues());
   // SaveValues("ielm_cr_values.csv",
   //            ielm_cr_result.second.back().state.baseValues());
+
+
+  if (second_phase_opt) {
+    auto soft_continued =
+        SecondPhaseOptimization(soft_result.first.projected_values, "soft-continued");
+    auto penalty_continued = SecondPhaseOptimization(
+        penalty_result.first.projected_values, "penalty-continued");
+    auto sqp_continued =
+        SecondPhaseOptimization(sqp_result.first.projected_values, "sqp-continued");
+    auto elm_continued =
+        SecondPhaseOptimization(elm_result.first.projected_values, "CM-Opt-continued");
+
+    soft_continued.first.printLatex(std::cout);
+    elm_continued.first.printLatex(std::cout);
+    sqp_continued.first.printLatex(std::cout);
+    penalty_continued.first.printLatex(std::cout);
+
+    soft_continued.first.exportFile(scenario_folder + "soft_continued.csv");
+    elm_continued.first.exportFile(scenario_folder + "elm_continued.csv");
+    sqp_continued.first.exportFile(scenario_folder + "sqp_continued.csv");
+    penalty_continued.first.exportFile(scenario_folder +
+                                       "penalty_continued.csv");
+  }
+
   return 0;
 }

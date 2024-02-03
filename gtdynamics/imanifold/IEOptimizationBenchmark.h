@@ -84,6 +84,12 @@ struct IEConsOptProblem : public gtdynamics::EqConsOptProblem {
 
 Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
                      double sigma = 1e3);
+
+void EvaluateCostTerms(std::ostream &latex_os,
+                       const std::vector<NonlinearFactorGraph> &graphs,
+                       const Values &values, const Values &proj_values,
+                       std::string exp_name);
+
 struct IEIterSummary {
   size_t iterations = 0;
   size_t inner_iters = 0;
@@ -103,13 +109,15 @@ struct IEResultSummary {
   size_t factor_dim;
   size_t total_inner_iters;
   size_t total_iters;
+  Values values;
+  Values projected_values;
   double cost;
   double e_violation;
   double i_violation;
   double projected_cost;
   std::vector<IEIterSummary> iters_summary;
 
-  void evaluate(const IEConsOptProblem &problem, const Values &values);
+  void evaluate(const IEConsOptProblem &problem);
 
   void printLatex(std::ostream &latex_os) const;
 
