@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/imanifold/TangentCone.h>
+#include <gtdynamics/cmcopt/TangentCone.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>

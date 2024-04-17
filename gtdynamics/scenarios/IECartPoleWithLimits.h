@@ -1,8 +1,8 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/imanifold/IERetractor.h>
+#include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
 
 namespace gtsam {
 
@@ -75,17 +75,17 @@ public:
 
   // Equality constriants include all dynamic constraints, and 0 torque
   // constraints.
-  gtdynamics::EqualityConstraints eConstraints(const int k) const;
+  gtsam::EqualityConstraints eConstraints(const int k) const;
 
   // Inequality constraints include position limits and force limits
   // constraints.
-  gtdynamics::InequalityConstraints iConstraints(const int k) const;
+  gtsam::InequalityConstraints iConstraints(const int k) const;
 
   // Equality constraints that specify q,v of initial state.
-  gtdynamics::EqualityConstraints initStateConstraints() const;
+  gtsam::EqualityConstraints initStateConstraints() const;
 
   // Equality constriants that specify q,v of final state.
-  gtdynamics::EqualityConstraints finalStateConstraints(size_t num_steps) const;
+  gtsam::EqualityConstraints finalStateConstraints(size_t num_steps) const;
 
   // Cost for achieving q,v in final state.
   NonlinearFactorGraph finalStateCosts(size_t num_steps) const ;

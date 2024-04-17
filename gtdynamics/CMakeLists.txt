@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors optimizer kinematics statics dynamics manifold imanifold scenarios)
+set(SOURCE_SUBDIRS universal_robot utils factors constraints optimizer constrained_optimizer kinematics statics dynamics cmopt cmcopt scenarios)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -64,6 +64,7 @@ find_package(CHOLMOD REQUIRED)
 find_package(CAMD REQUIRED)
 find_package(CCOLAMD REQUIRED)
 find_package(SPQR REQUIRED)
+find_package(ifopt)
 
 set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -81,7 +82,7 @@ target_link_libraries (gtdynamics PUBLIC SuiteSparse::SPQR SuiteSparse::CHOLMOD)
 target_link_libraries(gtdynamics PUBLIC ${GTSAM_LIBS}) 
 target_link_libraries(gtdynamics PUBLIC ${SDFormat_LIBRARIES})
 target_link_libraries(gtdynamics PUBLIC ${GTDYNAMICS_ADDITIONAL_LIBRARIES})
-
+target_link_libraries(gtdynamics PUBLIC ifopt::ifopt_ipopt) 
 
 ## Include headers needed
 

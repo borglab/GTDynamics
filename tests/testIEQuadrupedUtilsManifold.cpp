@@ -5,7 +5,7 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 

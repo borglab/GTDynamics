@@ -1,14 +1,14 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/PoseFactor.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-// #include <gtdynamics/manifold/CartPoleWithFriction.h>
+// #include <gtdynamics/cmopt/CartPoleWithFriction.h>
 
 using namespace gtsam;
 

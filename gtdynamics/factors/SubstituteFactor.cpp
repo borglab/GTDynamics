@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/factors/SubstituteFactor.h>
 
 namespace gtsam {

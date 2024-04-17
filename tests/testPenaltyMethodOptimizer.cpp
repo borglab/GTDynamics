@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
+#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
 
 #include "constrainedExample.h"
 
@@ -22,7 +22,7 @@ using gtsam::assert_equal;
 using std::map;
 using std::string;
 
-TEST(PenaltyMethodOptimizer, ConstrainedExample) {
+TEST(PenaltyOptimizer, ConstrainedExample) {
   using namespace constrained_example;
 
   /// Create a constrained optimization problem with 2 cost factors and 1
@@ -46,7 +46,7 @@ TEST(PenaltyMethodOptimizer, ConstrainedExample) {
   init_values.insert(x2_key, -0.2);
 
   /// Solve the constraint problem with Penalty method optimizer.
-  gtdynamics::PenaltyMethodOptimizer optimizer;
+  gtsam::PenaltyOptimizer optimizer;
   Values results = optimizer.optimize(graph, constraints, init_values);
 
   /// Check the result is correct within tolerance.

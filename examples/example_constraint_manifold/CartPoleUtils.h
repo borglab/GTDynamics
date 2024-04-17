@@ -15,7 +15,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
-#include <gtdynamics/manifold/NonlinearMOptimizer.h>
+#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
@@ -24,8 +24,8 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 
 namespace gtsam{
 

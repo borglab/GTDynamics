@@ -14,7 +14,7 @@
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/Chain.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -22,6 +22,7 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 using namespace gtdynamics;
+using gtsam::VectorExpressionEquality;
 using gtsam::assert_equal;
 using gtsam::Matrix;
 using gtsam::Point3;

@@ -13,10 +13,10 @@
  */
 
 #pragma once
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IERetractor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/nonlinear/expressions.h>
 
 namespace gtsam {
@@ -75,8 +75,8 @@ public:
   Double_ frictionConeExpr2(const Double_ &fx_expr,
                             const Double_ &fy_expr) const;
 
-  gtdynamics::EqualityConstraints eConstraints(const int k) const;
-  gtdynamics::InequalityConstraints iConstraints(const int k) const;
+  gtsam::EqualityConstraints eConstraints(const int k) const;
+  gtsam::InequalityConstraints iConstraints(const int k) const;
 
   Values computeValues(const size_t &k, const double &q, const double &v,
                        const double &a) const;

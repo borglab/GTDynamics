@@ -13,8 +13,8 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/manifold/Retractor.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
@@ -24,10 +24,9 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include "gtdynamics/manifold/TspaceBasis.h"
+#include "gtdynamics/cmopt/TspaceBasis.h"
 
 using namespace gtsam;
-using namespace gtdynamics;
 
 /** Simple example Pose3 with between constraints. */
 TEST(TspaceBasis, connected_poses) {
@@ -36,14 +35,14 @@ TEST(TspaceBasis, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  auto constraints = std::make_shared<gtdynamics::EqualityConstraints>();
+  auto constraints = std::make_shared<gtsam::EqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  constraints->emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
-  constraints->emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
+  constraints->emplace_shared<FactorZeroErrorConstraint>(factor12);
+  constraints->emplace_shared<FactorZeroErrorConstraint>(factor23);
 
   // Create manifold values for testing.
   Values base_values;

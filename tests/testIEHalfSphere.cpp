@@ -1,9 +1,9 @@
 
 
-#include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
-#include "gtdynamics/optimizer/InequalityConstraint.h"
+#include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/cmopt/TspaceBasis.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>

@@ -13,7 +13,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/PoseFactor.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -22,7 +22,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include "constrainedExample.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
+#include "gtdynamics/constraints/EqualityConstraint.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -109,10 +109,10 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
 
   EXPECT(constraint.keys().size() == 2);
 
-  auto barrier_factor = constraint.createBarrierFactor(1.0);
-  EXPECT(assert_equal(Vector2(0, 0), barrier_factor->unwhitenedError(values1)));
-  EXPECT(assert_equal(Vector2(2, 1), barrier_factor->unwhitenedError(values2)));
-  EXPECT(assert_equal(Vector2(0, 0), barrier_factor->unwhitenedError(values3)));
+  auto penalty_factor = constraint.createPenaltyFactor(1.0);
+  EXPECT(assert_equal(Vector2(0, 0), penalty_factor->unwhitenedError(values1)));
+  EXPECT(assert_equal(Vector2(2, 1), penalty_factor->unwhitenedError(values2)));
+  EXPECT(assert_equal(Vector2(0, 0), penalty_factor->unwhitenedError(values3)));
 
   auto l2_factor = constraint.createL2Factor(1.0);
   EXPECT_CORRECT_FACTOR_JACOBIANS(*l2_factor, values1, 1e-7, 1e-5);

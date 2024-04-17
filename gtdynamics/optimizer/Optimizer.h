@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
@@ -68,7 +68,7 @@ class Optimizer {
    * @return Values The result of the optimization.
    */
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
-                         const EqualityConstraints& constraints,
+                         const gtsam::EqualityConstraints& constraints,
                          const gtsam::Values& initial_values) const;
 };
 }  // namespace gtdynamics

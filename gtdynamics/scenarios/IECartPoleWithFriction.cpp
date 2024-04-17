@@ -105,41 +105,41 @@ IECartPoleWithFriction::frictionConeExpr2(const Double_ &fx_expr,
 }
 
 /* ************************************************************************* */
-gtdynamics::EqualityConstraints
+gtsam::EqualityConstraints
 IECartPoleWithFriction::eConstraints(const int k) const {
-  gtdynamics::EqualityConstraints constraints;
+  gtsam::EqualityConstraints constraints;
   Double_ q_expr(QKey(k));
   Double_ v_expr(VKey(k));
   Double_ a_expr(AKey(k));
   Double_ tau_expr(TauKey(k));
   Double_ fx_expr(FxKey(k));
   Double_ fy_expr(FyKey(k));
-  constraints.emplace_shared<gtdynamics::DoubleExpressionEquality>(
+  constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
       balanceFxExpr(q_expr, v_expr, a_expr, fx_expr), 1.0);
-  constraints.emplace_shared<gtdynamics::DoubleExpressionEquality>(
+  constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
       balanceFyExpr(q_expr, v_expr, a_expr, fy_expr), 1.0);
-  constraints.emplace_shared<gtdynamics::DoubleExpressionEquality>(
+  constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
       balanceRotExpr(q_expr, a_expr, tau_expr), 1.0);
   return constraints;
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IECartPoleWithFriction::iConstraints(const int k) const {
-  gtdynamics::InequalityConstraints constraints;
+  gtsam::InequalityConstraints constraints;
   Double_ fx_expr(FxKey(k));
   Double_ fy_expr(FyKey(k));
-  constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+  constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
       frictionConeExpr1(fx_expr, fy_expr), 1.0);
-  constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+  constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
       frictionConeExpr2(fx_expr, fy_expr), 1.0);
   if (include_torque_limits) {
     Double_ torque_expr(TauKey(k));
     Double_ lower_limit_expr = torque_expr - Double_(tau_min);
     Double_ upper_limit_expr = Double_(tau_max) - torque_expr;
-    constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
         lower_limit_expr, 1.0);
-    constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
         upper_limit_expr, 1.0);
   }
   return constraints;
@@ -336,14 +336,14 @@ IEConstraintManifold
 CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
                                         const VectorValues &delta) const {
 
-  const gtdynamics::InequalityConstraints &i_constraints =
+  const gtsam::InequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const gtdynamics::EqualityConstraints &e_constraints =
+  const gtsam::EqualityConstraints &e_constraints =
       *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
 
-  // optimize barrier
+  // optimize penalty
   Values new_values = manifold->values().retract(delta);
   // std::cout << "new_values\n";
   // PrintValues(new_values, 0);
@@ -364,7 +364,7 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
     graph.add(constraint->createFactor(10.0));
   }
   for (const auto &constraint : i_constraints) {
-    graph.add(constraint->createBarrierFactor(10.0));
+    graph.add(constraint->createPenaltyFactor(10.0));
   }
 
   LevenbergMarquardtParams params;
@@ -431,14 +431,14 @@ IEConstraintManifold CPBarrierRetractor::retract(
     const std::optional<IndexSet> &blocking_indices,
     IERetractInfo* retract_info) const {
 
-  const gtdynamics::InequalityConstraints &i_constraints =
+  const gtsam::InequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const gtdynamics::EqualityConstraints &e_constraints =
+  const gtsam::EqualityConstraints &e_constraints =
       *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
 
-  // optimize barrier
+  // optimize penalty
   Values new_values = manifold->values().retract(delta);
   auto prior_noise = noiseModel::Unit::Create(1);
   double mu = 1e2;
@@ -456,7 +456,7 @@ IEConstraintManifold CPBarrierRetractor::retract(
     if (blocking_indices && blocking_indices->exists(idx)) {
       graph.add(constraint->createL2Factor(mu));
     } else {
-      graph.add(constraint->createBarrierFactor(mu));
+      graph.add(constraint->createPenaltyFactor(mu));
     }
   }
 

@@ -14,7 +14,7 @@
  * @author Gerry Chen
  */
 
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
 #include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
 #include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
@@ -131,7 +131,7 @@ void kinematic_planning() {
   auto costs = get_costs();
   auto init_values = get_init_values();
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto problem = EqConsOptProblem(costs, constraints, init_values);
+  auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
@@ -139,32 +139,32 @@ void kinematic_planning() {
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0);
+      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
 
   // optimize penalty method
   std::cout << "penalty method:\n";
-  PenaltyMethodParameters penalty_params;
-  penalty_params.lm_parameters = lm_params;
+  PenaltyParameters penalty_params;
+  penalty_params.lm_params = lm_params;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+      OptimizeE_Penalty(problem, latex_os, penalty_params);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
   AugmentedLagrangianParameters augl_params;
-  augl_params.lm_parameters = lm_params;
+  augl_params.lm_params = lm_params;
   auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
+      OptimizeE_AugmentedLagrangian(problem, latex_os, augl_params);
 
   // optimize constraint manifold specify variables (feasbile)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParams();
-  auto cm_basis_result = OptimizeConstraintManifold(
+  auto cm_basis_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
 
   // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+  auto cm_basis_infeasible_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
 
   std::cout << latex_os.str();

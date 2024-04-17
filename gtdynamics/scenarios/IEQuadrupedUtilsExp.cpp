@@ -61,20 +61,18 @@ void EvaluateAndExportIELMResult(
 void EvaluateAndExportBarrierResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::pair<IEResultSummary, BarrierItersDetail> &barrier_result,
+    const std::pair<IEResultSummary, PenaltyItersDetails> &penalty_result,
     const std::string &scenario_folder, bool print_values) {
   size_t num_steps = vision60_multi_phase.numSteps();
-  const Values &barrier_result_values = barrier_result.second.rbegin()->values;
-  problem.eval_func(barrier_result_values);
+  const Values &penalty_result_values = penalty_result.second.rbegin()->values;
+  problem.eval_func(penalty_result_values);
   if (print_values) {
-    IEVision60Robot::PrintValues(barrier_result_values, num_steps);
+    IEVision60Robot::PrintValues(penalty_result_values, num_steps);
   }
-  IEVision60Robot::ExportValuesMultiPhase(barrier_result_values,
+  IEVision60Robot::ExportValuesMultiPhase(penalty_result_values,
                                           vision60_multi_phase.phase_num_steps_,
                                           scenario_folder + "barrier_traj.csv");
-  barrier_result.first.exportFile(scenario_folder + "barrier_summary.csv");
-  barrier_result.first.exportFileWithMu(scenario_folder +
-                                        "barrier_summary_outerloop.csv");
+  penalty_result.first.exportFile(scenario_folder + "barrier_summary.csv");
 }
 
 /* ************************************************************************* */

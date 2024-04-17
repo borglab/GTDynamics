@@ -12,10 +12,10 @@
  */
 
 #pragma once
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IERetractor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/expressions.h>
@@ -38,36 +38,36 @@ public:
   IEHalfSphere(const double _r = 1.0) : r(_r) {}
 
   /// Equality constraints defining the manifold.
-  gtdynamics::EqualityConstraints eConstraints(const int k) const {
-    gtdynamics::EqualityConstraints constraints;
+  gtsam::EqualityConstraints eConstraints(const int k) const {
+    gtsam::EqualityConstraints constraints;
     gtsam::Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(&norm3, point_expr);
     Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.emplace_shared<gtdynamics::DoubleExpressionEquality>(
+    constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
         sphere_expr, sphere_tol);
     return constraints;
   }
 
   /// Inequality constraints defining the manifold.
-  gtdynamics::InequalityConstraints iConstraints(const int k) const {
-    gtdynamics::InequalityConstraints constraints;
+  gtsam::InequalityConstraints iConstraints(const int k) const {
+    gtsam::InequalityConstraints constraints;
     gtsam::Expression<Point3> point_expr(PointKey(k));
     gtsam::Expression<double> z_expr(&point3_z, point_expr);
-    constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(z_expr,
+    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(z_expr,
                                                                        z_tol);
     return constraints;
   }
 
   /// Inequality constraints defining the dome manifold.
-  gtdynamics::InequalityConstraints iDomeConstraints(const int k) const {
-    gtdynamics::InequalityConstraints constraints;
+  gtsam::InequalityConstraints iDomeConstraints(const int k) const {
+    gtsam::InequalityConstraints constraints;
     gtsam::Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(norm3, point_expr);
     Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
         sphere_expr, sphere_tol, "sphere");
     Double_ z_expr(&point3_z, point_expr);
-    constraints.emplace_shared<gtdynamics::DoubleExpressionInequality>(
+    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
         z_expr, z_tol, "positive_z");
     return constraints;
   }

@@ -2,7 +2,7 @@
 
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/Initializer.h>
 

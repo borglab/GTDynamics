@@ -13,7 +13,7 @@
 
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
@@ -218,38 +218,38 @@ IEVision60RobotMultiPhase::classifiedCosts() const {
   if (params()->collision_as_cost) {
     NonlinearFactorGraph graph;
     graph.add(groundCollisionFreeConstraints().meritGraph(
-        1.0, params()->use_smooth_barrier_for_cost,
-        params()->smooth_barrier_buffer_width));
+        1.0, params()->use_smooth_penalty_for_cost,
+        params()->smooth_penalty_buffer_width));
     graph.add(obstacleCollisionFreeConstraints().meritGraph(
-        1.0, params()->use_smooth_barrier_for_cost,
-        params()->smooth_barrier_buffer_width));
+        1.0, params()->use_smooth_penalty_for_cost,
+        params()->smooth_penalty_buffer_width));
     graph.add(hurdleCollisionFreeConstraints().meritGraph(
-        1.0, params()->use_smooth_barrier_for_cost,
-        params()->smooth_barrier_buffer_width));
+        1.0, params()->use_smooth_penalty_for_cost,
+        params()->smooth_penalty_buffer_width));
     classified_costs.emplace_back("collision", graph);
   }
   if (params()->joint_limits_as_cost) {
     auto graph = jointLimitConstraints().meritGraph(
-        1.0, params()->use_smooth_barrier_for_cost,
-        params()->smooth_barrier_buffer_width);
+        1.0, params()->use_smooth_penalty_for_cost,
+        params()->smooth_penalty_buffer_width);
     classified_costs.emplace_back("joint_limit", graph);
   }
   if (params()->torque_limits_as_cost) {
     auto graph = torqueLimitConstraints().meritGraph(
-        1.0, params()->use_smooth_barrier_for_cost,
-        params()->smooth_barrier_buffer_width);
+        1.0, params()->use_smooth_penalty_for_cost,
+        params()->smooth_penalty_buffer_width);
     classified_costs.emplace_back("torque_limit", graph);
   }
   if (params()->friction_cone_as_cost) {
     auto graph = frictionConeConstraints().meritGraph(
-        1.0, params()->use_smooth_barrier_for_cost,
-        params()->smooth_barrier_buffer_width);
+        1.0, params()->use_smooth_penalty_for_cost,
+        params()->smooth_penalty_buffer_width);
     classified_costs.emplace_back("friction_cone", graph);
   }
   if (params()->phase_duration_limit_as_cost) {
     auto graph = phaseMinDurationConstraints().meritGraph(
-        1.0, params()->use_smooth_barrier_for_cost,
-        params()->smooth_barrier_buffer_width);
+        1.0, params()->use_smooth_penalty_for_cost,
+        params()->smooth_penalty_buffer_width);
     classified_costs.emplace_back("phase_min_dt", graph);
   }
   if (params()->include_collision_free_z_inter_cost) {
@@ -450,7 +450,7 @@ void PrintConstraintViolation(const std::string &name, const double &violation,
 }
 
 /* ************************************************************************* */
-EqConsOptProblem::EvalFunc IEVision60RobotMultiPhase::costsEvalFunc() const {
+EConsOptProblem::EvalFunc IEVision60RobotMultiPhase::costsEvalFunc() const {
   auto params_ = params();
   size_t num_steps = numSteps();
   auto graph = costs();

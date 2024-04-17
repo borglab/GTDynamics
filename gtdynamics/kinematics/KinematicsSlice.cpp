@@ -19,6 +19,8 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
+using gtsam::VectorExpressionEquality;
+
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;

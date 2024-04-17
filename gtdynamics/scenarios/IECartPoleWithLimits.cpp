@@ -1,11 +1,11 @@
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>
 
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/utils/Initializer.h>
 
-using gtdynamics::DoubleExpressionEquality, gtdynamics::EqualityConstraints;
-using gtdynamics::DoubleExpressionInequality, gtdynamics::InequalityConstraints;
+using gtsam::DoubleExpressionEquality, gtsam::EqualityConstraints;
+using gtsam::DoubleExpressionInequality, gtsam::InequalityConstraints;
 using gtdynamics::InsertTorque, gtdynamics::InsertJointAngle,
     gtdynamics::InsertJointVel;
 using gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
@@ -82,17 +82,17 @@ void IECartPoleWithLimits::ExportValues(const Values &values, size_t num_steps,
 }
 
 /* ************************************************************************* */
-gtdynamics::EqualityConstraints
+gtsam::EqualityConstraints
 IECartPoleWithLimits::eConstraints(const int k) const {
   auto graph = graph_builder.dynamicsFactorGraph(robot, k);
   graph.addPrior(TorqueKey(r_joint_id, k), 0.0,
                  graph_builder.opt().prior_t_cost_model);
-  auto e_constraints = gtdynamics::ConstraintsFromGraph(graph);
+  auto e_constraints = gtsam::ConstraintsFromGraph(graph);
   return e_constraints;
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IECartPoleWithLimits::iConstraints(const int k) const {
   Key p_joint_key = JointAngleKey(p_joint_id, k);
   Key force_key = TorqueKey(p_joint_id, k);
@@ -126,7 +126,7 @@ IECartPoleWithLimits::finalStateCosts(size_t num_steps) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::EqualityConstraints
+gtsam::EqualityConstraints
 IECartPoleWithLimits::initStateConstraints() const {
   EqualityConstraints constraints;
   Key r_joint_key = JointAngleKey(r_joint_id, 0);
@@ -149,7 +149,7 @@ IECartPoleWithLimits::initStateConstraints() const {
 }
 
 /* ************************************************************************* */
-gtdynamics::EqualityConstraints
+gtsam::EqualityConstraints
 IECartPoleWithLimits::finalStateConstraints(size_t num_steps) const {
   EqualityConstraints constraints;
   Key r_joint_key = gtdynamics::JointAngleKey(r_joint_id, num_steps);

@@ -17,10 +17,10 @@
 #include "gtdynamics/dynamics/OptimizerSetting.h"
 #include "gtdynamics/universal_robot/Link.h"
 #include <gtdynamics/factors/ConstVarFactor.h>
-#include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtdynamics/cmopt/MultiJacobian.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
-#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
-#include <gtdynamics/manifold/ManifoldOptimizer.h>
+#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
+#include <gtdynamics/cmopt/ManifoldOptimizer.h>
 
 #include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>

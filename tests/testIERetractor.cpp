@@ -1,7 +1,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/PoseFactor.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -9,8 +9,8 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IERetractor.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IERetractor.h>
 
 using namespace gtsam;
 using namespace gtdynamics;

@@ -15,7 +15,7 @@
 
 #include "SerialChain.h"
 
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
@@ -24,6 +24,35 @@
 
 using namespace gtsam;
 using namespace gtdynamics;
+
+/** Functor version of JointLimitFactor, for creating expressions. Compute error
+ * for joint limit error, to reproduce joint limit factor in expressions. */
+class JointLimitFunctor {
+protected:
+  double low_, high_;
+
+public:
+  JointLimitFunctor(const double &low, const double &high)
+      : low_(low), high_(high) {}
+
+  double operator()(const double &q,
+                    OptionalJacobian<1, 1> H_q = nullptr) const {
+    if (q < low_) {
+      if (H_q)
+        *H_q = -I_1x1;
+      return low_ - q;
+    } else if (q <= high_) {
+      if (H_q)
+        *H_q = Z_1x1;
+      return 0.0;
+    } else {
+      if (H_q)
+        *H_q = I_1x1;
+      return q - high_;
+    }
+  }
+};
+
 
 // Kuka arm planning scenario setting.
 const size_t num_steps = 10;
@@ -248,7 +277,7 @@ void kinematic_planning() {
   auto costs = get_costs();
   auto init_values = get_init_values();
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto problem = EqConsOptProblem(costs, constraints, init_values);
+  auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
@@ -256,33 +285,33 @@ void kinematic_planning() {
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0);
+      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
 
   // optimize penalty method
   std::cout << "penalty method:\n";
-  PenaltyMethodParameters penalty_params;
-  penalty_params.lm_parameters = lm_params;
+  PenaltyParameters penalty_params;
+  penalty_params.lm_params = lm_params;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+      OptimizeE_Penalty(problem, latex_os, penalty_params);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
   AugmentedLagrangianParameters augl_params;
-  augl_params.lm_parameters = lm_params;
+  augl_params.lm_params = lm_params;
   auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
+      OptimizeE_AugmentedLagrangian(problem, latex_os, augl_params);
 
   // optimize constraint manifold specify variables (feasbile)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParamsSV(&FindBasisKeys);
   mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  auto cm_basis_result = OptimizeConstraintManifold(
+  auto cm_basis_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
 
   // // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+  auto cm_basis_infeasible_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
 
   // // optimize serial chain manifold

@@ -218,7 +218,7 @@ IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::DoubleExpressionInequality::shared_ptr
+gtsam::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::frictionConeConstraint(const std::string &link_name,
                                         const size_t k) const {
   auto link_id = robot.link(link_name)->id();
@@ -243,7 +243,7 @@ IEVision60Robot::frictionConeConstraint(const std::string &link_name,
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IEVision60Robot::stepFrictionConeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
@@ -275,7 +275,7 @@ IEVision60Robot::stepFrictionConeConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::DoubleExpressionInequality::shared_ptr
+gtsam::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
                                                  const size_t k,
                                                  const Point3 &p_l,
@@ -292,7 +292,7 @@ IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
 }
 
 /* ************************************************************************* */
-gtdynamics::DoubleExpressionInequality::shared_ptr
+gtsam::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::hurdleCollisionFreeConstraint(const size_t link_idx,
                                                const size_t k,
                                                const Point3 &p_l,
@@ -354,7 +354,7 @@ IEVision60Robot::sinHurdleTerrainFunc(const double center_x, const double width,
 }
 
 /* ************************************************************************* */
-gtdynamics::DoubleExpressionInequality::shared_ptr
+gtsam::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
                                                const size_t k,
                                                const Point3 &p_l) const {
@@ -385,7 +385,7 @@ IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
 }
 
 /* ************************************************************************* */
-gtdynamics::DoubleExpressionInequality::shared_ptr
+gtsam::DoubleExpressionInequality::shared_ptr
 IEVision60Robot::groundCollisionFreeInterStepConstraint(
     const std::string &link_name, const size_t k, const double ratio,
     const Point3 &p_l) const {
@@ -468,7 +468,7 @@ IEVision60Robot::torqueLowerLimitConstraint(const std::string &j_name,
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IEVision60Robot::stepJointLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
@@ -523,7 +523,7 @@ IEVision60Robot::stepJointLimitConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IEVision60Robot::stepTorqueLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
@@ -576,7 +576,7 @@ IEVision60Robot::stepTorqueLimitConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IEVision60Robot::stepObstacleCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
@@ -591,7 +591,7 @@ IEVision60Robot::stepObstacleCollisionFreeConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IEVision60Robot::stepHurdleCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
@@ -632,7 +632,7 @@ IEVision60Robot::stepHurdleCollisionFreeConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::InequalityConstraints
+gtsam::InequalityConstraints
 IEVision60Robot::stepGroundCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
@@ -851,7 +851,7 @@ EqualityConstraints IEVision60Robot::eConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtdynamics::EqualityConstraints IEVision60Robot::stateConstraints() const {
+gtsam::EqualityConstraints IEVision60Robot::stateConstraints() const {
   NonlinearFactorGraph graph;
   const auto &values = params->state_constrianed_values;
   for (const auto &key : values.keys()) {

@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/JacobianFactor.h>
 #include <gtsam/linear/NoiseModel.h>
 
-using gtdynamics::LinearInequalityConstraints;
+using gtsam::LinearInequalityConstraints;
 
 namespace gtsam {
 

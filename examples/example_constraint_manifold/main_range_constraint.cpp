@@ -11,7 +11,7 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
@@ -157,7 +157,7 @@ void kinematic_planning() {
   auto costs = get_costs(gt);
   auto init_values = get_init_values(gt);
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto problem = EqConsOptProblem(costs, constraints, init_values);
+  auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
@@ -169,7 +169,7 @@ void kinematic_planning() {
     // optimize soft constraints
     std::cout << "soft constraints:\n";
     auto soft_result =
-        OptimizeSoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
+        OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
     std::cout << "pose error: " << EvaluatePoseError(gt, soft_result) << "\n";
   // }
   
@@ -177,20 +177,20 @@ void kinematic_planning() {
 
   // optimize penalty method
   std::cout << "penalty method:\n";
-  PenaltyMethodParameters penalty_params;
-  penalty_params.lm_parameters = lm_params;
+  PenaltyParameters penalty_params;
+  penalty_params.lm_params = lm_params;
   // penalty_params.num_iterations=4;
   penalty_params.initial_mu=10000;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
+      OptimizeE_Penalty(problem, latex_os, penalty_params, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, penalty_result) << "\n";
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
   AugmentedLagrangianParameters augl_params;
-  augl_params.lm_parameters = lm_params;
+  augl_params.lm_params = lm_params;
   auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
+      OptimizeE_AugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, augl_result) << "\n";
 
   // for (size_t i=0; i<10; i++) {
@@ -198,7 +198,7 @@ void kinematic_planning() {
     std::cout << "constraint manifold basis variables (feasible):\n";
     auto mopt_params = DefaultMoptParams();
     mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-    auto cm_basis_result = OptimizeConstraintManifold(
+    auto cm_basis_result = OptimizeE_CMOpt(
         problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
     std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_result) << "\n";
   // }
@@ -208,7 +208,7 @@ void kinematic_planning() {
     std::cout << "constraint manifold basis variables (infeasible):\n";
     // auto mopt_params = DefaultMoptParams();
     mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
-    auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+    auto cm_basis_infeasible_result = OptimizeE_CMOpt(
         problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
     std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_infeasible_result) << "\n";
   // }

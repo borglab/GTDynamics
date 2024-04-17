@@ -14,10 +14,10 @@
 #pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/imanifold/IEConstraintManifold.h>
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/imanifold/IERetractor.h>
-#include <gtdynamics/manifold/ManifoldOptimizer.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/cmopt/ManifoldOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/PointOnLink.h>
@@ -31,7 +31,7 @@
 #define JERK_AS_DIFF 0
 #define JERK_DIV_DT 1
 
-using gtdynamics::InequalityConstraints;
+using gtsam::InequalityConstraints;
 
 namespace gtsam {
 
@@ -165,8 +165,8 @@ public:
     std::vector<double> phase_prior_dt;
     double dt_threshold = 1.0;
     double step_div_ratio = 0.5;
-    bool use_smooth_barrier_for_cost = false;
-    double smooth_barrier_buffer_width = 1.0;
+    bool use_smooth_penalty_for_cost = false;
+    double smooth_penalty_buffer_width = 1.0;
 
     // Option for logging
     bool eval_details = true;
@@ -315,45 +315,45 @@ public:
   /** <================= Single Inequality Constraint  ===================> **/
 
   /// Collision free with a spherical object.
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   obstacleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                   const Point3 &p_l, const Point3 &center,
                                   const double radius) const;
 
   /// Collision free with a spherical object.
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   hurdleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                 const Point3 &p_l, const Point2 &center,
                                 const double radius) const;
 
   /// Collision free with ground.
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   groundCollisionFreeConstraint(const std::string &link_name, const size_t k,
                                 const Point3 &p_l) const;
 
   /// Collision free with ground.
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   groundCollisionFreeInterStepConstraint(const std::string &link_name,
                                          const size_t k, const double ratio,
                                          const Point3 &p_l) const;
 
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   jointUpperLimitConstraint(const std::string &j_name, const size_t k,
                             const double upper_limit) const;
 
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   jointLowerLimitConstraint(const std::string &j_name, const size_t k,
                             const double lower_limit) const;
 
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   torqueUpperLimitConstraint(const std::string &j_name, const size_t k,
                              const double upper_limit) const;
 
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   torqueLowerLimitConstraint(const std::string &j_name, const size_t k,
                              const double lower_limit) const;
 
-  gtdynamics::DoubleExpressionInequality::shared_ptr
+  gtsam::DoubleExpressionInequality::shared_ptr
   frictionConeConstraint(const std::string &link_name, const size_t k) const;
 
   /** <======================= Single Cost Factor ========================> **/
@@ -463,11 +463,11 @@ public:
 public:
   /** <================= Constraints and Costs =================> **/
   /// Kinodynamic constraints at the specified time step.
-  gtdynamics::EqualityConstraints eConstraints(const size_t k) const;
+  gtsam::EqualityConstraints eConstraints(const size_t k) const;
 
   InequalityConstraints iConstraints(const size_t k) const;
 
-  gtdynamics::EqualityConstraints stateConstraints() const;
+  gtsam::EqualityConstraints stateConstraints() const;
 
   /// Costs for collocation across steps.
   NonlinearFactorGraph collocationCosts(const size_t num_steps,
@@ -685,7 +685,7 @@ public:
   EqualityConstraints eConstraints() const;
 
   /** <======================= evaluation functions ======================> **/
-  gtdynamics::EqConsOptProblem::EvalFunc costsEvalFunc() const;
+  gtsam::EConsOptProblem::EvalFunc costsEvalFunc() const;
 
   /// evaluate the error of collocation of each time step, and accumulative
   /// error over the trajectory.
@@ -831,7 +831,7 @@ void EvaluateAndExportIELMResult(
 void EvaluateAndExportBarrierResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::pair<IEResultSummary, BarrierItersDetail> &barrier_result,
+    const std::pair<IEResultSummary, PenaltyItersDetails> &penalty_result,
     const std::string &scenario_folder, bool print_values = false);
 
 void EvaluateAndExportInitValues(
@@ -850,7 +850,7 @@ void ExportOptimizationProgress(
 /* ************************************************************************* */
 
 namespace quadruped_vertical_jump {
-Values DesValues(const std::vector<size_t> &phase_num_steps,
+gtsam::Values DesValues(const std::vector<size_t> &phase_num_steps,
                  const gtsam::Pose3 &des_pose);
 
 gtsam::IEVision60RobotMultiPhase::shared_ptr
@@ -876,7 +876,7 @@ gtsam::Values InitValuesTrajectoryInfeasible(
 } // namespace quadruped_vertical_jump
 
 namespace quadruped_forward_jump {
-Values DesValues(const std::vector<size_t> &phase_num_steps,
+gtsam::Values DesValues(const std::vector<size_t> &phase_num_steps,
                  const gtsam::Point3 &displacement);
 
 std::pair<
@@ -902,7 +902,7 @@ namespace quadruped_forward_jump_land {
  * @param phase_num_steps number of steps for each phase.
  * @param displacement final state torso displacement w.r.t. nominal pose.
  */
-Values DesValues(const std::vector<size_t> &phase_num_steps,
+gtsam::Values DesValues(const std::vector<size_t> &phase_num_steps,
                  const gtsam::Point3 &displacement);
 
 /** Multi-phase consisting of 4 phases:
