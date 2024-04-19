@@ -2,6 +2,7 @@
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/optimizer/HistoryLMOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtdynamics/utils/Timer.h>
 
 namespace gtsam {
 
@@ -76,7 +77,7 @@ void IEResultSummary::evaluate(const IEConsOptProblem &problem) {
 void IEResultSummary::printLatex(std::ostream &latex_os) const {
   latex_os << "& " + exp_name + " & ";
   latex_os << "$" << factor_dim << " \\times " << variable_dim << "$ & ";
-  latex_os << std::scientific << std::setprecision(5) << optimization_time
+  latex_os << std::scientific << std::setprecision(1) << optimization_time
            << " & ";
   latex_os << total_iters << " & ";
   if (e_violation < 1e-8) {
@@ -163,19 +164,18 @@ OptimizeIE_Soft(const IEConsOptProblem &problem,
   /// Run optimization.
   NonlinearFactorGraph graph = problem.costs_;
   graph.add(problem.constraints().meritGraph(mu));
+  graph.add(problem.iConstraints().meritGraph(mu));
   HistoryLMOptimizer optimizer(graph, problem.initValues(), lm_params);
 
-  auto optimization_start = std::chrono::system_clock::now();
+  Timer timer;
+  timer.start();
   auto result = optimizer.optimize();
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
+  timer.stop();
 
   /// Summary of optimization result.
   IEResultSummary summary;
   summary.exp_name = "Soft";
-  summary.optimization_time = optimization_time_ms.count() * 1e-6;
+  summary.optimization_time = timer.seconds();
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
@@ -206,20 +206,18 @@ OptimizeIE_Penalty(const IEConsOptProblem &problem,
   params->store_iter_details = true;
   gtsam::PenaltyOptimizer optimizer(params);
 
-  auto optimization_start = std::chrono::system_clock::now();
+  Timer timer;
+  timer.start();
   Values result =
       optimizer.optimize(problem.costs(), problem.eConstraints(),
                          problem.iConstraints(), problem.initValues());
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
+  timer.stop();
   std::cout << "optimize finished\n";
 
   /// Summary of optimization result.
   IEResultSummary summary;
   summary.exp_name = "Penalty";
-  summary.optimization_time = optimization_time_ms.count() * 1e-6;
+  summary.optimization_time = timer.seconds();
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
@@ -256,20 +254,18 @@ OptimizeIE_AugmentedLagrangian(
   /// Run optimization.
   params->store_iter_details = true;
   gtsam::AugmentedLagrangianOptimizer optimizer(params);
-  auto optimization_start = std::chrono::system_clock::now();
+  Timer timer;
+  timer.start();
   Values result =
       optimizer.optimize(problem.costs(), problem.eConstraints(),
                          problem.iConstraints(), problem.initValues());
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
+  timer.stop();
   std::cout << "optimize finished\n";
 
   /// Summary of optimization result.
   IEResultSummary summary;
   summary.exp_name = "AugL";
-  summary.optimization_time = optimization_time_ms.count() * 1e-6;
+  summary.optimization_time = timer.seconds();
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
@@ -303,19 +299,17 @@ OptimizeIE_SQP(const IEConsOptProblem &problem,
                const SQPParams::shared_ptr &params, bool eval_projected_cost) {
   /// Run optimization.
   SQPOptimizer optimizer(params);
-  auto optimization_start = std::chrono::system_clock::now();
+  Timer timer;
+  timer.start();
   Values result =
       optimizer.optimize(problem.costs(), problem.eConstraints(),
                          problem.iConstraints(), problem.initValues());
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
+  timer.stop();
 
   /// Summary of optimization result.
   IEResultSummary summary;
   summary.exp_name = "SQP";
-  summary.optimization_time = optimization_time_ms.count() * 1e-6;
+  summary.optimization_time = timer.seconds();
   summary.variable_dim = result.dim();
   summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
                        problem.iConstraints().dim();
@@ -344,19 +338,17 @@ OptimizeIE_CMCOptGD(const IEConsOptProblem &problem,
                     bool eval_projected_cost) {
   /// Run optimization.
   IEGDOptimizer optimizer(params, iecm_params);
-  auto optimization_start = std::chrono::system_clock::now();
+  Timer timer;
+  timer.start();
   Values result =
       optimizer.optimize(problem.costs(), problem.eConstraints(),
                          problem.iConstraints(), problem.initValues());
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
+  timer.stop();
 
   /// Summary of optimization result.
   IEResultSummary summary;
   summary.exp_name = "CMOpt(IE-GD)";
-  summary.optimization_time = optimization_time_ms.count() * 1e-6;
+  summary.optimization_time = timer.seconds();
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
   summary.factor_dim = problem.costsDimension();
 
@@ -391,18 +383,16 @@ OptimizeIE_CMOpt(const IEConsOptProblem &problem,
   NonlinearFactorGraph merit_graph = problem.costs();
   merit_graph.add(problem.iConstraints().meritGraph(mu));
   gtsam::InequalityConstraints i_constraints;
-  auto optimization_start = std::chrono::system_clock::now();
+  Timer timer;
+  timer.start();
   Values result = optimizer.optimize(merit_graph, problem.eConstraints(),
                                      i_constraints, problem.initValues());
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
+  timer.stop();
 
   /// Summary of optimization result.
   IEResultSummary summary;
   summary.exp_name = "CM-Opt";
-  summary.optimization_time = optimization_time_ms.count() * 1e-6;
+  summary.optimization_time = timer.seconds();
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
   summary.factor_dim = problem.costsDimension() + problem.iConstraints().dim();
   summary.values = result;
@@ -432,19 +422,17 @@ OptimizeIE_CMCOptLM(const IEConsOptProblem &problem,
                     std::string exp_name, bool eval_projected_cost) {
   /// Run optimization.
   IELMOptimizer optimizer(ielm_params, iecm_params);
-  auto optimization_start = std::chrono::system_clock::now();
+  Timer timer;
+  timer.start();
   Values result =
       optimizer.optimize(problem.costs(), problem.eConstraints(),
                          problem.iConstraints(), problem.initValues());
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
+  timer.stop();
 
   /// Summary of optimization result.
   IEResultSummary summary;
   summary.exp_name = exp_name;
-  summary.optimization_time = optimization_time_ms.count() * 1e-6;
+  summary.optimization_time = timer.seconds();
   summary.variable_dim = result.dim() - problem.eConstraints().dim();
   summary.factor_dim = problem.costsDimension();
   summary.values = result;
