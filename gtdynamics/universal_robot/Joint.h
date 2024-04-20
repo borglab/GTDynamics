@@ -229,6 +229,10 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return joint name.
   const std::string &name() const { return name_; }
 
+  void rename(const std::string& new_name) {name_ = new_name; }
+
+  void reassign(const uint8_t new_id) {id_ = new_id; }
+
   /// Return the connected link other than the one provided.
   LinkSharedPtr otherLink(const LinkSharedPtr &link) const {
     return isChildLink(link) ? parent_link_.lock() : child_link_.lock();

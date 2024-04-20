@@ -179,6 +179,10 @@ class Link : public std::enable_shared_from_this<Link> {
     return unfixed_link;
   }
 
+  void rename(const std::string& new_name) {name_ = new_name; }
+
+  void reassign(const uint8_t new_id) {id_ = new_id; }
+
   /// Print to ostream
   friend std::ostream &operator<<(std::ostream &os, const Link &link);
 
