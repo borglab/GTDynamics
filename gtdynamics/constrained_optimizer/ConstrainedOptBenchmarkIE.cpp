@@ -1,8 +1,8 @@
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/optimizer/HistoryLMOptimizer.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtdynamics/utils/Timer.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtsam {
 
@@ -50,7 +50,7 @@ Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
 /* ************************************************************************* */
 void IEIterSummary::evaluate(const IEConsOptProblem &problem,
                              const Values &values, bool eval_projected_cost) {
-  std::cout << "evaluate iter " << accum_iters << "\n";
+  // std::cout << "evaluate iter " << accum_iters << "\n";
   cost = problem.evaluateCost(values);
   e_violation = problem.evaluateEConstraintViolationL2Norm(values);
   i_violation = problem.evaluateIConstraintViolationL2Norm(values);
@@ -332,8 +332,7 @@ OptimizeIE_SQP(const IEConsOptProblem &problem,
 
 /* ************************************************************************* */
 std::pair<IEResultSummary, IPItersDetails>
-OptimizeIE_IPOPT(const IEConsOptProblem &problem,
-                 bool eval_projected_cost) {
+OptimizeIE_IPOPT(const IEConsOptProblem &problem, bool eval_projected_cost) {
   /// Run optimization.
   IPOptimizer optimizer;
   Timer timer;
@@ -347,9 +346,10 @@ OptimizeIE_IPOPT(const IEConsOptProblem &problem,
   IEResultSummary summary;
   summary.exp_name = "IPOPT";
   summary.optimization_time = timer.seconds();
-  summary.variable_dim = result.dim();
-  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
-                       problem.iConstraints().dim();
+  summary.variable_dim = problem.initValues().dim() +
+                         problem.eConstraints().dim() +
+                         problem.iConstraints().dim() * 2;
+  summary.factor_dim = summary.variable_dim;
   summary.values = result;
   summary.evaluate(problem);
 
@@ -359,7 +359,6 @@ OptimizeIE_IPOPT(const IEConsOptProblem &problem,
   IPItersDetails iters_details;
   return {summary, iters_details};
 }
-
 
 /* ************************************************************************* */
 std::pair<IEResultSummary, IEGDItersDetails>
