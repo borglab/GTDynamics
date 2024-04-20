@@ -53,6 +53,7 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
 
   // Check that violation evaluates as 0 at values1.
   EXPECT(assert_equal(Vector::Zero(1), constraint(values1)));
+  EXPECT(assert_equal(Vector::Zero(1), constraint.evaluate(values1)));
   EXPECT(assert_equal(Vector::Zero(1),
                       constraint.toleranceScaledViolation(values1)));
 
@@ -61,6 +62,7 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
 
   // Check constraint violation is indeed g(x) at values2.
   EXPECT(assert_equal(Vector::Constant(1, 4.0), constraint(values2)));
+  EXPECT(assert_equal(Vector::Constant(1, 4.0)/tolerance, constraint.evaluate(values2)));
 
   // Check scaled violation is indeed g(x)/tolerance at values2.
   EXPECT(assert_equal(Vector::Constant(1, 40.0),

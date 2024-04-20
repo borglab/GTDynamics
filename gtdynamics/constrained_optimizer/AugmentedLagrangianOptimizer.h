@@ -27,6 +27,10 @@ struct AugmentedLagrangianParameters
   double initial_mu_i = 1.0;
   double mu_e_increase_rate = 2.0;
   double mu_i_increase_rate = 2.0;
+  double max_dual_step_size_e = 10; // maximum step size for dual ascent
+  double max_dual_step_size_i = 10; // maximum step size for dual ascent
+  double dual_step_size_factor_e = 0.1;
+  double dual_step_size_factor_i = 0.1;
   std::vector<LevenbergMarquardtParams>
       iters_lm_params; // use different lm parameters for different iterations.
 

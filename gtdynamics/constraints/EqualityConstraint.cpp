@@ -26,6 +26,16 @@ EqualityConstraint::createConstrainedFactor() const {
 }
 
 /* ************************************************************************* */
+gtsam::Vector EqualityConstraint::evaluate(const gtsam::Values& x) const {
+  Vector eval = (*this)(x);
+  Vector tol = tolerance();
+  for (int i = 0; i < dim(); i++) {
+    eval(i) = eval(i) / tol(i);
+  }
+  return eval;
+}
+
+/* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
     const double mu, std::optional<gtsam::Vector> bias) const {
   auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));

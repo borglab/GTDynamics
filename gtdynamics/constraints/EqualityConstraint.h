@@ -66,6 +66,8 @@ class EqualityConstraint {
    */
   virtual gtsam::Vector operator()(const gtsam::Values& x) const = 0;
 
+  gtsam::Vector evaluate(const gtsam::Values& x) const;
+
   /** @brief Constraint violation scaled by tolerance, e.g. g(x)/tolerance. */
   virtual gtsam::Vector toleranceScaledViolation(
       const gtsam::Values& x) const = 0;

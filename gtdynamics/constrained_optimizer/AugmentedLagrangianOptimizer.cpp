@@ -28,7 +28,9 @@ void AugmentedLagrangianOptimizer::updateEParameters(
        constraint_index++) {
     auto constraint = constraints.at(constraint_index);
     auto violation = constraint->toleranceScaledViolation(current_values);
-    z[constraint_index] -= mu * violation;
+    double dual_step_size =
+        std::min(p_->max_dual_step_size_e, mu * p_->dual_step_size_factor_e);
+    z[constraint_index] -= dual_step_size * violation;
   }
 
   // Update penalty parameter.
@@ -133,8 +135,10 @@ void AugmentedLagrangianOptimizer::updateIParameters(
   for (size_t c_idx = 0; c_idx < constraints.size(); c_idx++) {
     auto constraint = constraints.at(c_idx);
     double violation = constraint->toleranceScaledEvaluation(current_values);
+    double dual_step_size =
+        std::min(p_->max_dual_step_size_i, mu * p_->dual_step_size_factor_i);
     // std::cout << "violation: " << violation << "\n";
-    lambda[c_idx] = std::max(0.0, lambda[c_idx] - mu * violation);
+    lambda[c_idx] = std::max(0.0, lambda[c_idx] - dual_step_size * violation);
     // std::cout << "lambda: " << lambda[c_idx] << "\n";
   }
 

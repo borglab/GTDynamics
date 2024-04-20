@@ -17,6 +17,7 @@
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtdynamics/constrained_optimizer/IPOptOptimizer.h>
 #include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
 #include <gtdynamics/constrained_optimizer/SQPOptimizer.h>
 #include <gtdynamics/constraints/InequalityConstraint.h>
@@ -128,6 +129,10 @@ std::pair<IEResultSummary, SQPItersDetails>
 OptimizeIE_SQP(const IEConsOptProblem &problem,
                const SQPParams::shared_ptr &params,
                bool eval_projected_cost = true);
+
+std::pair<IEResultSummary, IPItersDetails>
+OptimizeIE_IPOPT(const IEConsOptProblem &problem,
+                 bool eval_projected_cost = true);
 
 /** Run e-manifold optimization, with added penalty for i-constraints. */
 std::pair<IEResultSummary, IELMItersDetails>

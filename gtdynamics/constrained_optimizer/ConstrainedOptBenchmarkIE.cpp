@@ -331,6 +331,37 @@ OptimizeIE_SQP(const IEConsOptProblem &problem,
 }
 
 /* ************************************************************************* */
+std::pair<IEResultSummary, IPItersDetails>
+OptimizeIE_IPOPT(const IEConsOptProblem &problem,
+                 bool eval_projected_cost) {
+  /// Run optimization.
+  IPOptimizer optimizer;
+  Timer timer;
+  timer.start();
+  Values result =
+      optimizer.optimize(problem.costs(), problem.eConstraints(),
+                         problem.iConstraints(), problem.initValues());
+  timer.stop();
+
+  /// Summary of optimization result.
+  IEResultSummary summary;
+  summary.exp_name = "IPOPT";
+  summary.optimization_time = timer.seconds();
+  summary.variable_dim = result.dim();
+  summary.factor_dim = problem.costsDimension() + problem.eConstraints().dim() +
+                       problem.iConstraints().dim();
+  summary.values = result;
+  summary.evaluate(problem);
+
+  summary.total_iters = 0;
+  summary.total_inner_iters = 0;
+
+  IPItersDetails iters_details;
+  return {summary, iters_details};
+}
+
+
+/* ************************************************************************* */
 std::pair<IEResultSummary, IEGDItersDetails>
 OptimizeIE_CMCOptGD(const IEConsOptProblem &problem,
                     const gtsam::GDParams &params,
