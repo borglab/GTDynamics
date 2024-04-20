@@ -44,6 +44,29 @@ Vector6 IFOptTranslator::PoseToVec(const Pose3 &pose) {
 }
 
 /* ************************************************************************* */
+Matrix IFOptTranslator::PoseJacobian(const Vector &vec, const Matrix &H_pose) {
+  Matrix66 H_pose_vec;
+  VecToPose(vec, H_pose_vec);
+  return H_pose * H_pose_vec;
+}
+
+/* ************************************************************************* */
+Vector IFOptTranslator::PoseGradient(const Vector& vec, const Vector& g_pose) {
+  Matrix66 H_pose_vec;
+  VecToPose(vec, H_pose_vec);
+  return H_pose_vec.transpose() * g_pose;
+}
+
+/* ************************************************************************* */
+bool IFOptTranslator::IsPoseKey(const Key key) {
+  gtdynamics::DynamicsSymbol symb(key);
+  if (symb.label() == "p") {
+    return true;
+  }
+  return false;
+}
+
+/* ************************************************************************* */
 Vector IFOptTranslator::valueToVec(const gtsam::Values &values,
                                    const Key &key) {
   size_t dim = values.at(key).dim();
@@ -54,15 +77,9 @@ Vector IFOptTranslator::valueToVec(const gtsam::Values &values,
     Vector3 val = values.at<Vector3>(key);
     return val;
   } else if (dim == 6) {
-    gtdynamics::DynamicsSymbol symb(key);
-    if (symb.label() == "p") {
+    if (IsPoseKey(key)) {
       Pose3 val = values.at<Pose3>(key);
-      Vector3 trans = val.translation();
-      Rot3 rot = val.rotation();
-      Vector3 euler_angles = rot.rpy();
-      Vector6 vec;
-      vec << euler_angles, trans;
-      return vec;
+      return PoseToVec(val);
     } else {
       Vector6 val = values.at<Vector6>(key);
       return val;
@@ -83,12 +100,8 @@ Values IFOptTranslator::vecToValue(const Vector &vec, const Key &key) {
     Vector3 val = vec;
     values.insert(key, val);
   } else if (dim == 6) {
-    gtdynamics::DynamicsSymbol symb(key);
-    if (symb.label() == "p") {
-      Vector3 euler_angles(vec(0), vec(1), vec(2));
-      Vector3 trans(vec(3), vec(4), vec(5));
-      Rot3 rot = Rot3::RzRyRx(euler_angles);
-      Pose3 pose(rot, trans);
+    if (IsPoseKey(key)) {
+      Pose3 pose = VecToPose(vec);
       values.insert(key, pose);
     } else {
       Vector6 val = vec;
@@ -201,6 +214,8 @@ Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
 /* ************************************************************************* */
 /* ******************************  utils  ********************************** */
 /* ************************************************************************* */
+
+/* ************************************************************************* */
 KeySet ConstructKeySet(const KeyVector &kv) {
   KeySet key_set;
   for (const auto &key : kv) {
@@ -209,10 +224,9 @@ KeySet ConstructKeySet(const KeyVector &kv) {
   return key_set;
 }
 
-void FillJacobianHelper(
-    const GaussianFactor::shared_ptr &linear_factor, const Key &key,
-    Eigen::SparseMatrix<double, Eigen::RowMajor> &jac_block) {
-  /// Identify start and end slots
+/* ************************************************************************* */
+Matrix RetrieveVarJacobian(const GaussianFactor::shared_ptr &linear_factor,
+                           const Key &key) {
   size_t start_col = 0;
   size_t var_dim = 0;
   for (auto it = linear_factor->begin(); it != linear_factor->end(); it++) {
@@ -226,10 +240,17 @@ void FillJacobianHelper(
   /// Compute jacobian
   auto jacobian = linear_factor->jacobian().first;
 
+  return jacobian.middleCols(start_col, var_dim);
+}
+
+/* ************************************************************************* */
+void FillJacobianHelper(
+    const Matrix &jacobian,
+    Eigen::SparseMatrix<double, Eigen::RowMajor> &jac_block) {
   /// Fill entries
   for (size_t i = 0; i < jacobian.rows(); i++) {
-    for (size_t j = 0; j < var_dim; j++) {
-      jac_block.coeffRef(i, j) = jacobian(i, start_col + j);
+    for (size_t j = 0; j < jacobian.cols(); j++) {
+      jac_block.coeffRef(i, j) = jacobian(i, j);
     }
   }
 }
@@ -295,7 +316,13 @@ void IFOptEConstraint::FillJacobianBlock(std::string var_set,
   }
   Values values = GetValuesGTSAM();
   auto linear_factor = factor_->linearize(values);
-  FillJacobianHelper(linear_factor, key, jac_block);
+  auto jacobian = RetrieveVarJacobian(linear_factor, key);
+  if (values.at(key).dim() == 6 && translator_->IsPoseKey(key)) {
+    std::string name = translator_->keyToName(key);
+    auto x = GetVariables()->GetComponent(name)->GetValues();
+    jacobian = translator_->PoseJacobian(x, jacobian);
+  }
+  FillJacobianHelper(jacobian, jac_block);
 }
 
 /* ************************************************************************* */
@@ -346,7 +373,13 @@ void IFOptIConstraint::FillJacobianBlock(std::string var_set,
   }
   Values values = GetValuesGTSAM();
   auto linear_factor = factor_->linearize(values);
-  FillJacobianHelper(linear_factor, key, jac_block);
+  auto jacobian = RetrieveVarJacobian(linear_factor, key);
+  if (values.at(key).dim() == 6 && translator_->IsPoseKey(key)) {
+    std::string name = translator_->keyToName(key);
+    auto x = GetVariables()->GetComponent(name)->GetValues();
+    jacobian = translator_->PoseJacobian(x, jacobian);
+  }
+  FillJacobianHelper(jacobian, jac_block);
 }
 
 /* ************************************************************************* */
@@ -389,6 +422,11 @@ void IFOptCost::FillJacobianBlock(std::string var_set, Jacobian &jac) const {
   auto linear_factor = factor_->linearize(values);
   VectorValues gradient_all = linear_factor->gradientAtZero();
   Vector gradient = gradient_all.at(key);
+  if (values.at(key).dim() == 6 && translator_->IsPoseKey(key)) {
+    std::string name = translator_->keyToName(key);
+    auto x = GetVariables()->GetComponent(name)->GetValues();
+    gradient = translator_->PoseGradient(x, gradient);
+  }
   for (size_t j = 0; j < gradient.size(); j++) {
     jac.coeffRef(0, j) = gradient(j);
   }

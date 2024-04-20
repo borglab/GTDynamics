@@ -37,6 +37,13 @@ public:
   static Pose3 VecToPose(const Vector6& vec, OptionalJacobian<6,6> H=nullptr);
 
   static Vector6 PoseToVec(const Pose3& pose);
+
+  /// Transform the Jacobian w.r.t. pose into Jacobian w.r.t. vector.
+  static Matrix PoseJacobian(const Vector& vec, const Matrix& H_pose);
+
+  static Vector PoseGradient(const Vector& vec, const Vector& g_pose);
+
+  static bool IsPoseKey(const Key key);
 };
 
 class IPIterDetails {
