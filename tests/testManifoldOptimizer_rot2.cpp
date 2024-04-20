@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmopt/ManifoldOptimizer.h>
+#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -184,7 +184,7 @@ TEST(ManifoldOptProblem, SO2) {
 
   LevenbergMarquardtParams nopt_params;
   ManifoldOptimizerParameters mopt_params;
-  ManifoldOptimizer optimizer(mopt_params, nopt_params);
+  NonlinearMOptimizer optimizer(mopt_params, nopt_params);
   auto mopt_problem =
       optimizer.initializeMoptProblem(*costs, *constraints, init_values);
 
@@ -224,7 +224,7 @@ TEST(ManifoldOptimization, SO2) {
 }
 
 /** Optimization using Type1 manifold optimizer. */
-TEST(ManifoldOptimizer, SO2) {
+TEST(NonlinearMOptimizer, SO2) {
   using namespace so2_scenario;
   auto costs = get_graph(-2, 0);
   auto constraints = get_constraints();
@@ -237,12 +237,16 @@ TEST(ManifoldOptimizer, SO2) {
   nopt_params.minModelFidelity = 0.5;
   // nopt_params.setVerbosityLM("SUMMARY");
   ManifoldOptimizerParameters mopt_params;
-  ManifoldOptimizer optimizer(mopt_params, nopt_params);
-  THROWS_EXCEPTION(optimizer.optimize(*costs, *constraints, init_values));
+  NonlinearMOptimizer optimizer(mopt_params, nopt_params);
+  auto result = optimizer.optimize(*costs, *constraints, init_values);
+  // result.print();
+
+  EXPECT(assert_equal(-1.0, result.atDouble(x1_key), 1e-5));
+  EXPECT(assert_equal(0.0, result.atDouble(x2_key), 1e-5));
 }
 
 /** Optimization using Type1 manifold optimizer, infeasible. */
-TEST(ManifoldOptimizerType1_infeasible, SO2) {
+TEST(NonlinearMOptimizer_infeasible, SO2) {
   using namespace so2_scenario;
   auto costs = get_graph(-2, 0);
   auto constraints = get_constraints();
@@ -255,9 +259,14 @@ TEST(ManifoldOptimizerType1_infeasible, SO2) {
   nopt_params.minModelFidelity = 0.5;
   // nopt_params.setVerbosityLM("SUMMARY");
   ManifoldOptimizerParameters mopt_params;
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(4);
-  ManifoldOptimizer optimizer(mopt_params, nopt_params);
-  THROWS_EXCEPTION(optimizer.optimize(*costs, *constraints, init_values));
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(4);
+  NonlinearMOptimizer optimizer(mopt_params, nopt_params);
+  auto result = optimizer.optimize(*costs, *constraints, init_values);
+  // result.print();
+
+  // TODO: check why this does not converge as good as Type2.
+  EXPECT(assert_equal(-1.0, result.atDouble(x1_key), 1e-3));
+  EXPECT(assert_equal(0.0, result.atDouble(x2_key), 1e-3));
 }
 
 /** For infeasible methods, all 3 methods shall generate the same Gauss-Newton
@@ -295,7 +304,7 @@ TEST(ManifoldOptimizer, GaussNewtonEquality) {
   GaussNewtonParams nopt_params;
   GaussNewtonOptimizer optimizer_m(graph_rot2, init_values_rot2, nopt_params);
   ManifoldOptimizerParameters mopt_params;
-  ManifoldOptimizer optimizer_type1(mopt_params, nopt_params);
+  NonlinearMOptimizer optimizer_type1(mopt_params, nopt_params);
   auto mopt_problem = optimizer_type1.initializeMoptProblem(
       *costs_cm, *constraints_cm, init_values_cm);
   auto mopt_noptimizer =

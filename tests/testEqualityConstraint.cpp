@@ -11,6 +11,7 @@
  * @author: Yetong Zhang
  */
 
+#include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/PoseFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -18,6 +19,7 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/inference/VariableIndex.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
@@ -47,9 +49,25 @@ TEST(EqualityConstraint, DoubleExpressionEquality) {
   values2.insert(x1_key, 1.0);
   values2.insert(x2_key, 1.0);
 
-  // Check unwhitened error evaluates as g(x) at values2.
-  EXPECT(assert_equal(Vector::Constant(1, 4.0),
-                      constraint.unwhitenedError(values2)));
+  // Check that values1 are feasible.
+  EXPECT(constraint.feasible(values1));
+
+  // Check that violation evaluates as 0 at values1.
+  EXPECT(assert_equal(Vector::Zero(1), constraint(values1)));
+  EXPECT(assert_equal(Vector::Zero(1), constraint.evaluate(values1)));
+  EXPECT(assert_equal(Vector::Zero(1),
+                      constraint.toleranceScaledViolation(values1)));
+
+  // Check that values2 are indeed deemed infeasible.
+  EXPECT(!constraint.feasible(values2));
+
+  // Check constraint violation is indeed g(x) at values2.
+  EXPECT(assert_equal(Vector::Constant(1, 4.0), constraint(values2)));
+  EXPECT(assert_equal(Vector::Constant(1, 4.0)/tolerance, constraint.evaluate(values2)));
+
+  // Check scaled violation is indeed g(x)/tolerance at values2.
+  EXPECT(assert_equal(Vector::Constant(1, 40.0),
+                      constraint.toleranceScaledViolation(values2)));
 
   // Check dimension is 1 for scalar g.
   EXPECT(constraint.dim() == 1);
@@ -126,8 +144,6 @@ TEST(EqualityConstraint, Container) {
 
   double tolerance1 = 0.1;
   auto g1 = x1 + pow(x1, 3) + x2 + pow(x2, 2);
-  ;
-
   Vector2_ x1_vec_expr(x1_key);
   Vector2_ x2_vec_expr(x2_key);
   auto g2 = x1_vec_expr + x2_vec_expr;
@@ -139,7 +155,24 @@ TEST(EqualityConstraint, Container) {
       gtsam::ExpressionEqualityConstraint<gtsam::Vector2>>(
       g2, gtsam::Vector2::Zero(), tolerance2);
 
+  // Check size.
   EXPECT_LONGS_EQUAL(2, constraints.size());
+
+  // Check dimension.
+  EXPECT_LONGS_EQUAL(3, constraints.dim());
+
+  // Check keys.
+  KeySet expected_keys;
+  expected_keys.insert(x1_key);
+  expected_keys.insert(x2_key);
+  EXPECT(assert_container_equality(expected_keys, constraints.keys()));
+
+  // Check VariableIndex.
+  VariableIndex vi = constraints.varIndex();
+  FactorIndices expected_vi_x1{0, 1};
+  FactorIndices expected_vi_x2{0, 1};
+  EXPECT(assert_container_equality(expected_vi_x1, vi[x1_key]));
+  EXPECT(assert_container_equality(expected_vi_x2, vi[x2_key]));
 }
 
 // Test methods of FactorZeroErrorConstraint.

@@ -13,7 +13,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
-#include <gtdynamics/cmopt/SubstituteFactor.h>
+#include <gtdynamics/factors/SubstituteFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -50,8 +50,7 @@ TEST(SubstituteFactor, pose) {
   cm_base_values.insert(x3_key, Point3(0, 1, 1));
 
   // Construct manifold.
-  auto component = std::make_shared<ConnectedComponent>(constraints);
-  ConstraintManifold manifold(component, cm_base_values);
+  ConstraintManifold manifold(constraints, cm_base_values);
 
   // Construct cost factor.
   auto cost_factor1 = std::make_shared<BetweenFactor<Point3>>(
@@ -120,8 +119,7 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
   cm_base_values.insert(x3_key, Point3(0, 1, 1));
 
   // Construct manifold.
-  auto component = std::make_shared<ConnectedComponent>(constraints);
-  ConstraintManifold manifold(component, cm_base_values);
+  ConstraintManifold manifold(constraints, cm_base_values);
 
   // Construct cost factor.
   auto cost_factor1 = std::make_shared<BetweenFactor<Point3>>(

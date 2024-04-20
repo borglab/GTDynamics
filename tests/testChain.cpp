@@ -27,6 +27,7 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 using namespace gtdynamics;
+using gtsam::VectorExpressionEquality;
 using gtsam::assert_equal;
 using gtsam::Matrix;
 using gtsam::Point3;
