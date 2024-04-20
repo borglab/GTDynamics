@@ -36,7 +36,7 @@ void AugmentedLagrangianOptimizer::updateEParameters(
   // Update penalty parameter.
   double previous_error = constraints.evaluateViolationL2Norm(previous_values);
   double current_error = constraints.evaluateViolationL2Norm(current_values);
-  if (current_error >= 0.25 * previous_error) {
+  if (current_error >= p_->mu_increase_threshold * previous_error) {
     mu *= p_->mu_e_increase_rate;
   }
 }
@@ -147,7 +147,7 @@ void AugmentedLagrangianOptimizer::updateIParameters(
   double current_error = constraints.evaluateViolationL2Norm(current_values);
   // std::cout << "previous_error: " << previous_error << "\tcurrent_error: " <<
   // current_error << "\n";
-  if (current_error >= 0.25 * previous_error) {
+  if (current_error >= p_->mu_increase_threshold * previous_error) {
     mu *= p_->mu_i_increase_rate;
   }
 }
@@ -157,7 +157,24 @@ Values AugmentedLagrangianOptimizer::optimize(
     const NonlinearFactorGraph &graph, const EqualityConstraints &e_constraints,
     const InequalityConstraints &i_constraints,
     const Values &init_values) const {
-  Values values = init_values;
+
+  // Ensure that all i-constraints are 1-dimensional
+  if (i_constraints.size() != i_constraints.dim()) {
+    InequalityConstraints new_i_constraints;
+    for (const auto &constraint : i_constraints) {
+      if (constraint->dim() == 1) {
+        new_i_constraints.push_back(constraint);
+      } else {
+        auto twin_constraint =
+            std::static_pointer_cast<TwinDoubleExpressionInequality>(
+                constraint);
+        new_i_constraints.push_back(twin_constraint->constraint1());
+        new_i_constraints.push_back(twin_constraint->constraint2());
+      }
+    }
+    return optimize(graph, e_constraints, new_i_constraints, init_values);
+  }
+
 
   // Set initial values for penalty parameter and Lagrangian multipliers.
   double mu_e = p_->initial_mu_e;
@@ -170,6 +187,7 @@ Values AugmentedLagrangianOptimizer::optimize(
 
   // Solve the constrained optimization problem by solving a sequence of
   // unconstrained optimization problems.
+  Values values = init_values;
   for (int i = 0; i < p_->num_iterations; i++) {
     // Minimize Lagrange dual function.
     NonlinearFactorGraph dual_function = LagrangeDualFunction(
@@ -184,7 +202,9 @@ Values AugmentedLagrangianOptimizer::optimize(
     // Update values.
     values = result;
 
-    // std::cout << "mu_e: " << mu_e << "\tmu_i: " << mu_i << "\n";
+    if (p_->verbose) {
+      std::cout << "mu_e: " << mu_e << "\tmu_i: " << mu_i << "\n";
+    }
 
     /// Store intermediate results.
     if (p_->store_iter_details) {

@@ -33,6 +33,10 @@ public:
   static std::string keyToName(const Key &key);
 
   static Key nameToKey(const std::string &name);
+
+  static Pose3 VecToPose(const Vector6& vec, OptionalJacobian<6,6> H=nullptr);
+
+  static Vector6 PoseToVec(const Pose3& pose);
 };
 
 class IPIterDetails {
@@ -72,7 +76,7 @@ public:
 
   VectorXd GetValues() const override { return vec_; }
 
-  VecBound GetBounds() const override { return VecBound{}; }
+  VecBound GetBounds() const override;
 };
 
 /// Equality constraint compatible with ifopt

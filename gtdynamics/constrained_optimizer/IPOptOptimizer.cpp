@@ -11,6 +11,39 @@ namespace gtsam {
 /* ************************************************************************* */
 
 /* ************************************************************************* */
+Pose3 IFOptTranslator::VecToPose(const Vector6 &vec, OptionalJacobian<6, 6> H) {
+  if (H) {
+    Vector3 euler_angles(vec(0), vec(1), vec(2));
+    Vector3 trans(vec(3), vec(4), vec(5));
+    Matrix36 H_angles_vec, H_trans_vec;
+    H_angles_vec << I_3x3, Z_3x3;
+    H_trans_vec << Z_3x3, I_3x3;
+    Matrix33 H_rot_angles;
+    Rot3 rot = Rot3::RzRyRx(euler_angles, H_rot_angles);
+    Matrix63 H_pose_rot, H_pose_trans;
+    Pose3 pose = Pose3::Create(rot, trans, H_pose_rot, H_pose_trans);
+    *H = H_pose_rot * H_rot_angles * H_angles_vec + H_pose_trans * H_trans_vec;
+    return pose;
+  } else {
+    Vector3 euler_angles(vec(0), vec(1), vec(2));
+    Vector3 trans(vec(3), vec(4), vec(5));
+    Rot3 rot = Rot3::RzRyRx(euler_angles);
+    Pose3 pose = Pose3::Create(rot, trans);
+    return pose;
+  }
+}
+
+/* ************************************************************************* */
+Vector6 IFOptTranslator::PoseToVec(const Pose3 &pose) {
+  Vector3 trans = pose.translation();
+  Rot3 rot = pose.rotation();
+  Vector3 euler_angles = rot.rpy();
+  Vector6 vec;
+  vec << euler_angles, trans;
+  return vec;
+}
+
+/* ************************************************************************* */
 Vector IFOptTranslator::valueToVec(const gtsam::Values &values,
                                    const Key &key) {
   size_t dim = values.at(key).dim();
@@ -21,8 +54,19 @@ Vector IFOptTranslator::valueToVec(const gtsam::Values &values,
     Vector3 val = values.at<Vector3>(key);
     return val;
   } else if (dim == 6) {
-    Vector6 val = values.at<Vector6>(key);
-    return val;
+    gtdynamics::DynamicsSymbol symb(key);
+    if (symb.label() == "p") {
+      Pose3 val = values.at<Pose3>(key);
+      Vector3 trans = val.translation();
+      Rot3 rot = val.rotation();
+      Vector3 euler_angles = rot.rpy();
+      Vector6 vec;
+      vec << euler_angles, trans;
+      return vec;
+    } else {
+      Vector6 val = values.at<Vector6>(key);
+      return val;
+    }
   } else {
     throw std::runtime_error("undefined dimension");
   }
@@ -39,8 +83,17 @@ Values IFOptTranslator::vecToValue(const Vector &vec, const Key &key) {
     Vector3 val = vec;
     values.insert(key, val);
   } else if (dim == 6) {
-    Vector6 val = vec;
-    values.insert(key, val);
+    gtdynamics::DynamicsSymbol symb(key);
+    if (symb.label() == "p") {
+      Vector3 euler_angles(vec(0), vec(1), vec(2));
+      Vector3 trans(vec(3), vec(4), vec(5));
+      Rot3 rot = Rot3::RzRyRx(euler_angles);
+      Pose3 pose(rot, trans);
+      values.insert(key, pose);
+    } else {
+      Vector6 val = vec;
+      values.insert(key, val);
+    }
   } else {
     throw std::runtime_error("undefined dimension");
   }
@@ -69,6 +122,23 @@ Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
                              const InequalityConstraints &i_constraints,
                              const Values &initial_values) const {
 
+  // Ensure that all i-constraints are 1-dimensional
+  if (i_constraints.size() != i_constraints.dim()) {
+    InequalityConstraints new_i_constraints;
+    for (const auto &constraint : i_constraints) {
+      if (constraint->dim() == 1) {
+        new_i_constraints.push_back(constraint);
+      } else {
+        auto twin_constraint =
+            std::static_pointer_cast<TwinDoubleExpressionInequality>(
+                constraint);
+        new_i_constraints.push_back(twin_constraint->constraint1());
+        new_i_constraints.push_back(twin_constraint->constraint2());
+      }
+    }
+    return optimize(cost, e_constraints, new_i_constraints, initial_values);
+  }
+
   // 0. translate cost, constraints, values to ipopt format.
   auto translator = std::make_shared<IFOptTranslator>();
 
@@ -93,7 +163,7 @@ Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
   for (size_t i = 0; i < cost.size(); i++) {
     const auto &factor = cost.at(i);
     std::string name = "cost" + std::to_string(i);
-    nlp.AddConstraintSet(std::make_shared<IFOptCost>(factor, name, translator));
+    nlp.AddCostSet(std::make_shared<IFOptCost>(factor, name, translator));
   }
   // nlp.AddVariableSet(std::make_shared<ExVariables>());
   // nlp.AddConstraintSet(std::make_shared<ExConstraint>());
@@ -104,6 +174,7 @@ Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
   ifopt::IpoptSolver ipopt;
   ipopt.SetOption("linear_solver", "mumps");
   ipopt.SetOption("jacobian_approximation", "exact");
+  // ipopt.SetOption("hessian_approximation", "limited-memory");
 
   // 3 . solve
   ipopt.Solve(nlp);
@@ -172,6 +243,12 @@ IFOptVariable::IFOptVariable(const Values &values, const Key key,
                              const IFOptTranslator::shared_ptr translator)
     : VariableSet(values.at(key).dim(), translator->keyToName(key)),
       vec_(translator->valueToVec(values, key)) {}
+
+/* ************************************************************************* */
+IFOptVariable::VecBound IFOptVariable::GetBounds() const {
+  VecBound bounds(GetRows(), ifopt::NoBound);
+  return bounds;
+}
 
 /* ************************************************************************* */
 /* ****************************  e-constraint  ***************************** */
