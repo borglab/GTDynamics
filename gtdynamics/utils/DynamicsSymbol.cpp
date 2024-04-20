@@ -131,6 +131,16 @@ std::string _GTDKeyFormatter(Key key) {
   return std::string(DynamicsSymbol(key));
 }
 
+bool IsQLevel(const gtsam::Key &key) {
+  gtdynamics::DynamicsSymbol symb(key);
+  return symb.label() == "p" || symb.label() == "q";
+}
+
+bool IsVLevel(const gtsam::Key &key) {
+  gtdynamics::DynamicsSymbol symb(key);
+  return symb.label() == "V" || symb.label() == "v";
+}
+
 /* ************************************************************************* */
 
 }  // namespace gtdynamics

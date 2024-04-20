@@ -83,6 +83,11 @@ inline gtsam::Key ContactWrenchKey(int i, int c, int k = 0) {
   return DynamicsSymbol::LinkJointSymbol("C", i, c, k);
 }
 
+/// Shorthand for C_i_c_k, for contact force c on i-th link at time step k.
+inline gtsam::Key ContactForceKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("CF", i, c, k);
+}
+
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
 inline gtsam::Key PhaseKey(int k) {
   return DynamicsSymbol::SimpleSymbol("dt", k);
@@ -450,5 +455,8 @@ gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j,
  * @return gtsam::Vector6
  */
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t = 0);
+
+gtsam::Values DynamicsValuesFromPrev(const gtsam::Values &prev_values,
+                                     const int gap_steps = 1);
 
 }  // namespace gtdynamics

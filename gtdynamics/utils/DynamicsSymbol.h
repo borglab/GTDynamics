@@ -158,4 +158,52 @@ std::string _GTDKeyFormatter(gtsam::Key key);
 
 static const gtsam::KeyFormatter GTDKeyFormatter = &_GTDKeyFormatter;
 
+bool IsQLevel(const gtsam::Key &key);
+
+bool IsVLevel(const gtsam::Key &key);
+
+template <typename CONTAINER>
+inline int IdentifyLevel(const CONTAINER &keys) {
+  int lvl = 0;
+  for (const auto &key : keys) {
+    if (IsQLevel(key)) {
+      lvl = std::max(lvl, 0);
+    } else if (IsVLevel(key)) {
+      lvl = std::max(lvl, 1);
+    } else {
+      lvl = std::max(lvl, 2);
+    }
+  }
+  return lvl;
+}
+
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeySet &q_keys,
+                         gtsam::KeySet &v_keys, gtsam::KeySet &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.insert(key);
+    } else if (IsVLevel(key)) {
+      v_keys.insert(key);
+    } else {
+      ad_keys.insert(key);
+    }
+  }
+}
+
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeyVector &q_keys,
+                         gtsam::KeyVector &v_keys, gtsam::KeyVector &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.push_back(key);
+    } else if (IsVLevel(key)) {
+      v_keys.push_back(key);
+    } else {
+      ad_keys.push_back(key);
+    }
+  }
+}
+
+
 }  // namespace gtdynamics
