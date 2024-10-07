@@ -88,7 +88,7 @@ jobs:
       - name: Python Dependencies
         run: |
           # Install dependencies for gtwrap
-          pip3 install -U pip setuptools numpy pyparsing pyyaml pybind11-stubgen
+          pip3 install -U pip setuptools numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
@@ -100,6 +100,11 @@ jobs:
           # Build & Install gtsam
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
+
+          pip3 list
+          pip3 show pybind11-stubgen
+          pybind11-stubgen -h
+
           sudo make -j$(nproc) install && sudo make python-install
           sudo ldconfig
 
