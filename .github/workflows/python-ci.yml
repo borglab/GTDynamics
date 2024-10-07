@@ -142,10 +142,10 @@ jobs:
         run: make -j4
         working-directory: ./build
 
-      - name: Test
-        run: make -j4 python-test
-        working-directory: ./build
-
       - name: Install
         run: sudo make -j4 python-install
+        working-directory: ./build
+
+      - name: Test
+        run: make -j4 python-test
         working-directory: ./build
