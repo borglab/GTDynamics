@@ -90,9 +90,6 @@ jobs:
           # Install dependencies for gtwrap
           pip3 install -U pip setuptools numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
-
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -103,9 +100,7 @@ jobs:
           # Build & Install gtsam
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
-
-          sudo make -j6 install
-          sudo make python-install
+          sudo make -j$(nproc) install && make python-install
           sudo ldconfig
 
           cd $GITHUB_WORKSPACE # go back to home directory
