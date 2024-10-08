@@ -138,7 +138,8 @@ class ContactHeightFactor : gtsam::NoiseModelFactor {
 class Link  {
   Link();
   Link(int id, const string &name, const double mass,
-       const Matrix &inertia, const gtsam::Pose3 &bMcom, const gtsam::Pose3 &bMlink, bool is_fixed = false) ;    
+       const gtsam::Matrix &inertia, const gtsam::Pose3 &bMcom,
+       const gtsam::Pose3 &bMlink, bool is_fixed = false);
 
   gtdynamics::Link *shared();
   int id() const;
@@ -152,7 +153,7 @@ class Link  {
   string name() const;
   double mass() const;
   const gtsam::Pose3 &centerOfMass();
-  const Matrix &inertia();
+  const gtsam::Matrix &inertia();
   gtsam::Matrix6 inertiaMatrix();
 
   void print(const std::string &s = "") const;
@@ -191,22 +192,22 @@ virtual class Joint {
   gtsam::Pose3 pMc() const;
   string name() const;
   gtdynamics::Type type() const;
-  const Vector& pScrewAxis() const;
-  const Vector& cScrewAxis() const;
-  Vector screwAxis(const gtdynamics::Link *link) const;
+  const gtsam::Vector &pScrewAxis() const;
+  const gtsam::Vector &cScrewAxis() const;
+  gtsam::Vector screwAxis(const gtdynamics::Link *link) const;
   gtsam::Key key() const;
   string name() const;
-  gtdynamics::Link* otherLink(const gtdynamics::Link* link);
-  std::vector<gtdynamics::Link*> links() const;
-  gtdynamics::Link* parent() const;
-  gtdynamics::Link* child() const;
+  gtdynamics::Link *otherLink(const gtdynamics::Link *link);
+  std::vector<gtdynamics::Link *> links() const;
+  gtdynamics::Link *parent() const;
+  gtdynamics::Link *child() const;
 };
 
 virtual class RevoluteJoint : gtdynamics::Joint {
   RevoluteJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
-      const Vector &axis,
+      const gtsam::Vector &axis,
       const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
@@ -215,7 +216,7 @@ virtual class PrismaticJoint : gtdynamics::Joint {
   PrismaticJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
-      const Vector &axis,
+      const gtsam::Vector &axis,
       const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
@@ -224,7 +225,7 @@ virtual class HelicalJoint : gtdynamics::Joint {
   HelicalJoint(
       int id, const string &name, const gtsam::Pose3 &wTj,
       const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
-      const Vector &axis, double thread_pitch,
+      const gtsam::Vector &axis, double thread_pitch,
       const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
@@ -512,19 +513,19 @@ class DynamicsGraph {
       const gtdynamics::Robot &robot, const int t, const string &link_name,
       const gtsam::Pose3 &target_pose) const;
 
-  static Vector jointAccels(const gtdynamics::Robot &robot,
+  static gtsam::Vector jointAccels(const gtdynamics::Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /* return joint velocities. */
-  static Vector jointVels(const gtdynamics::Robot &robot,
+  static gtsam::Vector jointVels(const gtdynamics::Robot &robot,
                                  const gtsam::Values &result, const int t);
 
   /* return joint angles. */
-  static Vector jointAngles(const gtdynamics::Robot &robot,
+  static gtsam::Vector jointAngles(const gtdynamics::Robot &robot,
                                    const gtsam::Values &result, const int t);
 
   /* return joint torques. */
-  static Vector jointTorques(const gtdynamics::Robot &robot,
+  static gtsam::Vector jointTorques(const gtdynamics::Robot &robot,
                                     const gtsam::Values &result, const int t);
 
   static gtdynamics::JointValueMap jointAccelsMap(const gtdynamics::Robot &robot,
