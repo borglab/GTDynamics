@@ -90,6 +90,9 @@ jobs:
           # Install dependencies for gtwrap
           pip3 install -U pip setuptools numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
+
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
