@@ -101,11 +101,7 @@ jobs:
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
 
-          which python
-          `which python` -V
-          cat CMakeCache.txt
-
-          sudo make -j$(nproc) install
+          sudo make -j6 install
           sudo make python-install
           sudo ldconfig
 
