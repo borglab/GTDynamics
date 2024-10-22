@@ -50,7 +50,8 @@ TEST(TwistAccelFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  auto joint = make_joint(cMp, screw_axis);
+  auto joint_and_links = make_joint(cMp, screw_axis);
+  auto joint = joint_and_links.first;
 
   // create factor
   auto factor = TwistAccelFactor(example::cost_model, joint, 0);
@@ -85,7 +86,8 @@ TEST(TwistAccelFactor, error_1) {
   gtsam::Pose3 cMp = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(-1, 0, 0));
   gtsam::Vector6 screw_axis = (gtsam::Vector(6) << 0, 0, 1, 0, 1, 0).finished();
 
-  auto joint = make_joint(cMp, screw_axis);
+  auto joint_and_links = make_joint(cMp, screw_axis);
+  auto joint = joint_and_links.first;
 
   auto factor = TwistAccelFactor(example::cost_model, joint, 0);
   double q = 0, qVel = 0, qAccel = -9.8;
