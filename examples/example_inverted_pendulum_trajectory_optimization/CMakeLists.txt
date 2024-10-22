@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(example_inverted_pendulum_trajectory_optimization C CXX)
 
 # Build Executable
