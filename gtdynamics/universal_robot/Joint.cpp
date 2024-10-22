@@ -28,24 +28,24 @@ namespace gtdynamics {
 
 /* ************************************************************************* */
 Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
-             const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+             const LinkWeakPtr &parent_link, const LinkWeakPtr &child_link,
              const Vector6 &jScrewAxis, const JointParams &parameters)
     : id_(id),
       name_(name),
       parent_link_(parent_link),
       child_link_(child_link),
-      jMp_(bTj.inverse() * parent_link->bMcom()),
-      jMc_(bTj.inverse() * child_link->bMcom()),
+      jMp_(bTj.inverse() * parent_link.lock()->bMcom()),
+      jMc_(bTj.inverse() * child_link.lock()->bMcom()),
       pScrewAxis_(-jMp_.inverse().AdjointMap() * jScrewAxis),
       cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis),
       parameters_(parameters) {}
 
 /* ************************************************************************* */
 bool Joint::isChildLink(const LinkSharedPtr &link) const {
-  if (link != child_link_ && link != parent_link_)
+  if (link != child_link_.lock() && link != parent_link_.lock())
     throw std::runtime_error("link " + link->name() +
                              " is not connected to this joint " + name_);
-  return link == child_link_;
+  return link == child_link_.lock();
 }
 
 /* ************************************************************************* */
@@ -160,7 +160,7 @@ gtsam::GaussianFactorGraph Joint::linearAFactors(
   const Pose3 T_wi2 = Pose(known_values, child()->id(), t);
   const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
   const Vector6 V_i2 = Twist(known_values, child()->id(), t);
-  const Vector6 S_i2_j = screwAxis(child_link_);
+  const Vector6 S_i2_j = screwAxis(child_link_.lock());
   const double v_j = JointVel(known_values, id(), t);
 
   // twist acceleration factor
@@ -183,7 +183,7 @@ gtsam::GaussianFactorGraph Joint::linearDynamicsFactors(
   const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);
   const Pose3 T_wi2 = Pose(known_values, child()->id(), t);
   const Pose3 T_i2i1 = T_wi2.inverse() * T_wi1;
-  const Vector6 S_i2_j = screwAxis(child_link_);
+  const Vector6 S_i2_j = screwAxis(child_link_.lock());
 
   // torque factor
   // S_i_j^T * F_i_j - tau = 0
