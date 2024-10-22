@@ -38,8 +38,7 @@ TEST(TorqueFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  auto joint_and_links = make_joint(kMj, screw_axis);
-  auto joint = joint_and_links.first;
+  auto [joint, links] = make_joint(kMj, screw_axis);
 
   // Create factor.
   auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);

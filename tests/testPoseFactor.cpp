@@ -49,8 +49,7 @@ TEST(PoseFactor, error) {
   Pose3 cMp = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint_and_links = make_joint(cMp, screw_axis);
-  auto joint = joint_and_links.first;
+  auto [joint, links] = make_joint(cMp, screw_axis);
 
   // Create factor
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
@@ -78,8 +77,7 @@ TEST(PoseFactor, breaking) {
   Pose3 cMp = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint_and_links = make_joint(cMp, screw_axis);
-  auto joint = joint_and_links.first;
+  auto [joint, links] = make_joint(cMp, screw_axis);
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
                            example::cost_model, joint);
 
@@ -113,8 +111,7 @@ TEST(PoseFactor, breaking_rr) {
 
   Vector6 screw_axis = (Vector6() << 1, 0, 0, 0, -1, 0).finished();
   Pose3 cMp = j1->relativePoseOf(l1, 0.0);
-  auto joint_and_links = make_joint(cMp, screw_axis);
-  auto joint = joint_and_links.first;
+  auto [joint, links] = make_joint(cMp, screw_axis);
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
                            example::cost_model, joint);
 
@@ -132,8 +129,7 @@ TEST(PoseFactor, nonzero_rest) {
   Pose3 cMp = Pose3(Rot3::Rx(1), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint_and_links = make_joint(cMp, screw_axis);
-  auto joint = joint_and_links.first;
+  auto [joint, links] = make_joint(cMp, screw_axis);
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
                            example::cost_model, joint);
 
