@@ -32,7 +32,6 @@ jobs:
             os: ubuntu-22.04
             compiler: clang
             version: "12"
-            python_version: "3"
 
           - name: macOS-14-xcode-15.4
             os: macOS-14
