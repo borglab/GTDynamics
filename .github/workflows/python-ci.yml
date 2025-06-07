@@ -84,6 +84,7 @@ jobs:
           echo "Setting up Python virtual environment on macOS..."
           python${{ env.PYTHON_VERSION }} -m venv venv
           source venv/bin/activate
+          # Set VENV_PYTHON_EXECUTABLE for subsequent steps
           echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
           echo "Adding ${{ github.workspace }}/venv/bin to GITHUB_PATH"
           echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
@@ -108,7 +109,7 @@ jobs:
         shell: bash 
         run: |
           echo "GTSAM C++ components will be installed to: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
-          echo "GTSAM Python components will be built against and installed to Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
+          echo "GTSAM Python components will be built against Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
           git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam_source 
           cd /Users/runner/work/gtsam_source
           mkdir build && cd $_
@@ -121,6 +122,9 @@ jobs:
           make -j$(sysctl -n hw.physicalcpu) install 
           make -j$(sysctl -n hw.physicalcpu) python-install 
           cd $GITHUB_WORKSPACE
+          # Debug: List contents of GTSAM install directory to verify CMake files
+          echo "Listing contents of GTSAM install directory: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
+          ls -R ${{ env.GTSAM_INSTALL_DIR_MACOS }}
 
       - name: Checkout
         uses: actions/checkout@v4 
@@ -138,11 +142,15 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash 
         run: |
+          # Define the expected directory for GTSAMConfig.cmake
+          GTSAM_CONFIG_DIR="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM"
           echo "Configuring GTDynamics with Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
-          echo "CMAKE_PREFIX_PATH will include: ${{ env.GTSAM_INSTALL_DIR_MACOS }} and $(brew --prefix)"
+          echo "Setting GTSAM_DIR to: ${GTSAM_CONFIG_DIR}"
+          echo "CMAKE_PREFIX_PATH will also include: $(brew --prefix) for other dependencies"
           cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
                 -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
-                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }};$(brew --prefix)" \
+                -DGTSAM_DIR="${GTSAM_CONFIG_DIR}" \
+                -DCMAKE_PREFIX_PATH="$(brew --prefix)" \
                 ..
         working-directory: ./build
 
