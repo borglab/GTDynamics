@@ -32,18 +32,12 @@ jobs:
             os: ubuntu-22.04
             compiler: clang
             version: "12"
-
-          - name: ubuntu-22.04-clang-12
-            os: ubuntu-22.04
-            compiler: clang
-            version: "12"
-            build_type: Debug
             python_version: "3"
 
-          - name: macOS-12-xcode-14.2
-            os: macOS-12
+          - name: macOS-14-xcode-15.4
+            os: macOS-14
             compiler: xcode
-            version: "14.2"
+            version: "15.4"
 
     steps:
       - name: Install Dependencies (Linux)
