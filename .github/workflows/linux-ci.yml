@@ -17,17 +17,17 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-22.04-gcc-14, ubuntu-22.04-clang-16]
+        name: [ubuntu-24.04-gcc-14, ubuntu-24.04-clang-16]
 
         build_type: [Debug, Release]
         include:
-          - name: ubuntu-22.04-gcc-14
-            os: ubuntu-22.04
+          - name: ubuntu-24.04-gcc-14
+            os: ubuntu-24.04
             compiler: gcc
             version: "14"
 
-          - name: ubuntu-22.04-clang-16
-            os: ubuntu-22.04
+          - name: ubuntu-24.04-clang-16
+            os: ubuntu-24.04
             compiler: clang
             version: "16"
 
