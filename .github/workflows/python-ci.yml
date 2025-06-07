@@ -119,6 +119,7 @@ jobs:
           # Install GTSAM to a custom prefix to avoid sudo and ensure GTDynamics can find it.
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
                 -D GTSAM_BUILD_PYTHON=ON \
+                -D GTSAM_WITH_TBB=OFF \
                 -D PYTHON_EXECUTABLE=/usr/local/bin/python3 \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR_MACOS }} \
                 ..
