@@ -24,12 +24,12 @@ jobs:
           - name: ubuntu-22.04-gcc-14
             os: ubuntu-22.04
             compiler: gcc
-            version: "9"
+            version: "14"
 
           - name: ubuntu-22.04-clang-16
             os: ubuntu-22.04
             compiler: clang
-            version: "10"
+            version: "16"
 
     steps:
       - name: Setup Compiler
