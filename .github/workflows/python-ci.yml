@@ -12,6 +12,8 @@ jobs:
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
       PYTHON_VERSION: ${{ matrix.python_version }}
+      # Define GTSAM install directory for macOS
+      GTSAM_INSTALL_DIR_MACOS: ${{ github.workspace }}/gtsam_install_prefix
 
     strategy:
       fail-fast: false
@@ -114,13 +116,18 @@ jobs:
           git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam
           cd /Users/runner/work/gtsam
           mkdir build && cd $_
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
-          make -j$(sysctl -n hw.physicalcpu) install && make python-install
-
-          cd $GITHUB_WORKSPACE # go back to home directory
+          # Install GTSAM to a custom prefix to avoid sudo and ensure GTDynamics can find it.
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -D GTSAM_BUILD_PYTHON=ON \
+                -D PYTHON_EXECUTABLE=/usr/local/bin/python3 \
+                -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR_MACOS }} \
+                ..
+          make -j$(sysctl -n hw.physicalcpu) install 
+          make -j$(sysctl -n hw.physicalcpu) python-install # Assumes this installs to PYTHON_EXECUTABLE's site-packages
+          cd $GITHUB_WORKSPACE
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Build Directory
         run: mkdir build
@@ -134,17 +141,23 @@ jobs:
       - name: Configure (macOS)
         if: runner.os == 'macOS'
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
+          # Point CMAKE_PREFIX_PATH to our custom GTSAM install
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
+                -DPYTHON_EXECUTABLE=/usr/local/bin/python3 \
+                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}" \
+                ..
         working-directory: ./build
 
       - name: Build
-        run: make -j4
+        run: make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi)
         working-directory: ./build
 
-      - name: Install
-        run: sudo make -j4 python-install
+      - name: Install GTDynamics Python Wrappers
+        # If GTDynamics python-install needs to write to system locations, sudo might be needed.
+        # If it installs to user site-packages or a venv, sudo might not be.
+        run: sudo make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi) python-install
         working-directory: ./build
 
-      - name: Test
-        run: make -j4 python-test
+      - name: Test GTDynamics Python
+        run: make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi) python-test
         working-directory: ./build
