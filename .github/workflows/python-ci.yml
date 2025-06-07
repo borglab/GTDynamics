@@ -86,65 +86,71 @@ jobs:
           # Install dependencies for gtwrap
           pip3 install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
         
-      - name: Python Dependencies (macOS)
+      - name: Python Dependencies and venv Setup (macOS)
         if: runner.os == 'macOS'
+        shell: bash
         run: |
-          pip3 install --break-system-packages -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
+          echo "Setting up Python virtual environment on macOS..."
+          python${{ env.PYTHON_VERSION }} -m venv venv
+          source venv/bin/activate
+          echo "Adding $(pwd)/venv/bin to GITHUB_PATH"
+          echo "$(pwd)/venv/bin" >> $GITHUB_PATH
+          python -m pip install --upgrade pip
+          echo "Installing Python dependencies into venv..."
+          python -m pip install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
           # Clone gtsam
-          git clone https://github.com/borglab/gtsam.git $GITHUB_WORKSPACE/gtsam
-          cd $GITHUB_WORKSPACE/gtsam
-
+          git clone https://github.com/borglab/gtsam.git $GITHUB_WORKSPACE/gtsam_source
+          cd $GITHUB_WORKSPACE/gtsam_source
           # Build & Install gtsam
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
-          sudo make -j$(nproc) install && make python-install
+          sudo make -j$(nproc) install && make python-install # GTSAM python to system python
           sudo ldconfig
-
           cd $GITHUB_WORKSPACE # go back to home directory
-
-          # Clean up after ourselves since we used `sudo`.
-          sudo rm -rf $GITHUB_WORKSPACE/gtsam
+          sudo rm -rf $GITHUB_WORKSPACE/gtsam_source
 
       - name: GTSAM (macOS)
         if: runner.os == 'macOS'
+        shell: bash # To ensure $(which python3) uses the venv Python
         run: |
-          # Install gtsam
-          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam
-          cd /Users/runner/work/gtsam
+          echo "GTSAM C++ components will be installed to: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
+          echo "GTSAM Python components will be built against and installed to: $(which python3)"
+          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam_source # Changed target dir name
+          cd /Users/runner/work/gtsam_source
           mkdir build && cd $_
-          # Install GTSAM to a custom prefix to avoid sudo and ensure GTDynamics can find it.
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
                 -D GTSAM_BUILD_PYTHON=ON \
                 -D GTSAM_WITH_TBB=OFF \
-                -D PYTHON_EXECUTABLE=/usr/local/bin/python3 \
+                -D PYTHON_EXECUTABLE=$(which python3) \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR_MACOS }} \
                 ..
-          make -j$(sysctl -n hw.physicalcpu) install 
-          make -j$(sysctl -n hw.physicalcpu) python-install # Assumes this installs to PYTHON_EXECUTABLE's site-packages
+          make -j$(sysctl -n hw.physicalcpu) install # Installs C++ components to GTSAM_INSTALL_DIR_MACOS
+          make -j$(sysctl -n hw.physicalcpu) python-install # Installs Python components to venv
           cd $GITHUB_WORKSPACE
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # Assuming this checks out GTDynamics to ${{ github.workspace }}
 
       - name: Build Directory
-        run: mkdir build
+        run: mkdir build # This is ${{ github.workspace }}/build
 
       - name: Configure (Linux)
         if: runner.os == 'Linux'
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON  ..
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
         working-directory: ./build
 
       - name: Configure (macOS)
         if: runner.os == 'macOS'
+        shell: bash # To ensure $(which python3) uses the venv Python
         run: |
-          # Point CMAKE_PREFIX_PATH to our custom GTSAM install
+          echo "Configuring GTDynamics with Python from venv: $(which python3)"
           cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
-                -DPYTHON_EXECUTABLE=/usr/local/bin/python3 \
+                -DPYTHON_EXECUTABLE=$(which python3) \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}" \
                 ..
         working-directory: ./build
@@ -154,9 +160,15 @@ jobs:
         working-directory: ./build
 
       - name: Install GTDynamics Python Wrappers
-        # If GTDynamics python-install needs to write to system locations, sudo might be needed.
-        # If it installs to user site-packages or a venv, sudo might not be.
-        run: sudo make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi) python-install
+        shell: bash # For the conditional logic
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "Installing GTDynamics Python wrappers into venv (no sudo)"
+            make -j$(sysctl -n hw.physicalcpu) python-install
+          else
+            echo "Installing GTDynamics Python wrappers with sudo"
+            sudo make -j$(nproc) python-install
+          fi
         working-directory: ./build
 
       - name: Test GTDynamics Python
