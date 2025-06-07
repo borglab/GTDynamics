@@ -11,19 +11,16 @@ jobs:
       CTEST_OUTPUT_ON_FAILURE: ON
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
-      PYTHON_VERSION: ${{ matrix.python_version }}
-      # Define GTSAM install directory for macOS
+      PYTHON_VERSION: ${{ matrix.python_version }} # This will be '3' based on the matrix
+      # Define GTSAM install directory for macOS C++ components
       GTSAM_INSTALL_DIR_MACOS: ${{ github.workspace }}/gtsam_install_prefix
 
     strategy:
       fail-fast: false
       matrix:
-        # Github Actions requires a single row to be added to the build matrix.
-        # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
         name: [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12, macOS-14-xcode-15.4]
-
         build_type: [Debug, Release]
-        python_version: [3]
+        python_version: [3] # Corresponds to env.PYTHON_VERSION
         include:
           - name: ubuntu-22.04-gcc-9
             os: ubuntu-22.04
@@ -49,18 +46,14 @@ jobs:
             sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
-
           else
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
-
-          # For SDFormat
           sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
-
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
 
       - name: Install Dependencies (macOS)
@@ -75,7 +68,6 @@ jobs:
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
-
           brew install boost
           brew tap osrf/simulation
           brew install sdformat12
@@ -83,7 +75,6 @@ jobs:
       - name: Python Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Install dependencies for gtwrap
           pip3 install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
         
       - name: Python Dependencies and venv Setup (macOS)
@@ -93,8 +84,9 @@ jobs:
           echo "Setting up Python virtual environment on macOS..."
           python${{ env.PYTHON_VERSION }} -m venv venv
           source venv/bin/activate
-          echo "Adding $(pwd)/venv/bin to GITHUB_PATH"
-          echo "$(pwd)/venv/bin" >> $GITHUB_PATH
+          echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
+          echo "Adding ${{ github.workspace }}/venv/bin to GITHUB_PATH"
+          echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
           python -m pip install --upgrade pip
           echo "Installing Python dependencies into venv..."
           python -m pip install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
@@ -102,41 +94,39 @@ jobs:
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Clone gtsam
           git clone https://github.com/borglab/gtsam.git $GITHUB_WORKSPACE/gtsam_source
           cd $GITHUB_WORKSPACE/gtsam_source
-          # Build & Install gtsam
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
-          sudo make -j$(nproc) install && make python-install # GTSAM python to system python
+          sudo make -j$(nproc) install && make python-install
           sudo ldconfig
-          cd $GITHUB_WORKSPACE # go back to home directory
+          cd $GITHUB_WORKSPACE
           sudo rm -rf $GITHUB_WORKSPACE/gtsam_source
 
       - name: GTSAM (macOS)
         if: runner.os == 'macOS'
-        shell: bash # To ensure $(which python3) uses the venv Python
+        shell: bash 
         run: |
           echo "GTSAM C++ components will be installed to: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
-          echo "GTSAM Python components will be built against and installed to: $(which python3)"
-          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam_source # Changed target dir name
+          echo "GTSAM Python components will be built against and installed to Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
+          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam_source 
           cd /Users/runner/work/gtsam_source
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
                 -D GTSAM_BUILD_PYTHON=ON \
                 -D GTSAM_WITH_TBB=OFF \
-                -D PYTHON_EXECUTABLE=$(which python3) \
+                -D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR_MACOS }} \
                 ..
-          make -j$(sysctl -n hw.physicalcpu) install # Installs C++ components to GTSAM_INSTALL_DIR_MACOS
-          make -j$(sysctl -n hw.physicalcpu) python-install # Installs Python components to venv
+          make -j$(sysctl -n hw.physicalcpu) install 
+          make -j$(sysctl -n hw.physicalcpu) python-install 
           cd $GITHUB_WORKSPACE
 
       - name: Checkout
-        uses: actions/checkout@v4 # Assuming this checks out GTDynamics to ${{ github.workspace }}
+        uses: actions/checkout@v4 
 
       - name: Build Directory
-        run: mkdir build # This is ${{ github.workspace }}/build
+        run: mkdir build 
 
       - name: Configure (Linux)
         if: runner.os == 'Linux'
@@ -146,12 +136,13 @@ jobs:
 
       - name: Configure (macOS)
         if: runner.os == 'macOS'
-        shell: bash # To ensure $(which python3) uses the venv Python
+        shell: bash 
         run: |
-          echo "Configuring GTDynamics with Python from venv: $(which python3)"
+          echo "Configuring GTDynamics with Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
+          echo "CMAKE_PREFIX_PATH will include: ${{ env.GTSAM_INSTALL_DIR_MACOS }} and $(brew --prefix)"
           cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
-                -DPYTHON_EXECUTABLE=$(which python3) \
-                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}" \
+                -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }};$(brew --prefix)" \
                 ..
         working-directory: ./build
 
@@ -160,7 +151,7 @@ jobs:
         working-directory: ./build
 
       - name: Install GTDynamics Python Wrappers
-        shell: bash # For the conditional logic
+        shell: bash 
         run: |
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             echo "Installing GTDynamics Python wrappers into venv (no sudo)"
