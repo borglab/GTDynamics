@@ -78,10 +78,17 @@ jobs:
           brew tap osrf/simulation
           brew install sdformat12
 
-      - name: Python Dependencies
+      - name: Python Dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           # Install dependencies for gtwrap
           pip3 install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
+        
+      - name: Python Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          pip3 install --break-system-packages -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
+
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
