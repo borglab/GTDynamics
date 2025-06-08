@@ -12,7 +12,6 @@ jobs:
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
       PYTHON_VERSION: ${{ matrix.python_version }} 
-      # GTSAM C++ components are installed into a subdirectory of the main project checkout on macOS
       GTSAM_INSTALL_DIR_MACOS: ${{ github.workspace }}/gtsam_install_prefix 
 
     strategy:
@@ -38,7 +37,6 @@ jobs:
     steps:
       - name: Checkout GTDynamics (Your Project)
         uses: actions/checkout@v4
-        # This is the primary checkout of your project. Subsequent steps build dependencies.
 
       - name: Install System Dependencies (Linux)
         if: runner.os == 'Linux'
@@ -100,7 +98,7 @@ jobs:
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
           sudo make -j$(nproc) install 
-          make python-install # Python components to current Python env's site-packages
+          make python-install 
           sudo ldconfig
           cd ${{ github.workspace }} 
           sudo rm -rf /tmp/gtsam_source_linux
@@ -110,7 +108,6 @@ jobs:
         shell: bash 
         run: |
           set -e 
-          # Clone GTSAM source to a temporary location
           git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_macos
           cd /tmp/gtsam_source_macos
           mkdir build && cd $_
@@ -121,7 +118,7 @@ jobs:
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR_MACOS }} \
                 ..
           make -j$(sysctl -n hw.physicalcpu) install 
-          make -j$(sysctl -n hw.physicalcpu) python-install # Python components to venv
+          make -j$(sysctl -n hw.physicalcpu) python-install 
           cd ${{ github.workspace }} 
           rm -rf /tmp/gtsam_source_macos 
 
@@ -157,12 +154,29 @@ jobs:
         run: |
           set -e
           if [[ "$RUNNER_OS" == "macOS" ]]; then
-            make -j$(sysctl -n hw.physicalcpu) python-install # Installs to venv
+            make -j$(sysctl -n hw.physicalcpu) python-install 
           else
             sudo make -j$(nproc) python-install
           fi
         working-directory: ./build
 
       - name: Test GTDynamics Python
-        run: make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi) python-test
+        # For macOS, set DYLD_LIBRARY_PATH so the dynamic linker can find the installed GTSAM libraries.
+        # Also, ensure the venv is active for the context of running the tests.
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e
+          source venv/bin/activate # Ensure venv Python and its site-packages are primary
+          export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          echo "DYLD_LIBRARY_PATH is set to: $DYLD_LIBRARY_PATH"
+          make -j$(sysctl -n hw.physicalcpu) python-test
+        working-directory: ./build
+      - name: Test GTDynamics Python (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          # On Linux, sudo ldconfig during GTSAM install should handle library paths for system-wide installs.
+          # If GTSAM was installed to a custom prefix not in ldconfig paths, LD_LIBRARY_PATH would be needed.
+          make -j$(nproc) python-test
         working-directory: ./build
