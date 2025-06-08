@@ -109,6 +109,8 @@ jobs:
           set -e 
           echo "GTSAM C++ components will be installed to: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
           echo "GTSAM Python components will be built against Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
+          # Note: We are NOT checking out GTDynamics here. GTSAM is built first.
+          # Its install prefix is within GITHUB_WORKSPACE.
           git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam_source 
           cd /Users/runner/work/gtsam_source
           mkdir build && cd $_
@@ -121,24 +123,25 @@ jobs:
           make -j$(sysctl -n hw.physicalcpu) install 
           make -j$(sysctl -n hw.physicalcpu) python-install 
           
-          echo "DEBUG: Listing contents of GTSAM install directory structure IMMEDIATELY AFTER INSTALL:"
-          echo "--- Listing root of install prefix: ${{ env.GTSAM_INSTALL_DIR_MACOS }} ---"
-          ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }} || echo "DEBUG: ls for root prefix failed."
-          echo "--- Listing ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib ---"
-          ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib || echo "DEBUG: ls for lib failed."
-          echo "--- Listing ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake (recursive) ---"
-          ls -R ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake || echo "DEBUG: ls -R for lib/cmake failed."
+          echo "DEBUG: Listing contents of GTSAM install directory structure related to CMake files IMMEDIATELY AFTER INSTALL:"
+          echo "Path being listed: ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake"
+          ls -R ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake || echo "DEBUG: ls command failed for ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake, directory might not exist."
           
           if [ -d "${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM" ]; then
             echo "DEBUG: Directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM FOUND."
           else
             echo "ERROR: Directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM NOT FOUND immediately after install."
+            ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/ || echo "DEBUG: ls command failed for parent, directory might not exist."
+            ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/     || echo "DEBUG: ls command failed for one level higher, directory might not exist."
+            ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }}/         || echo "DEBUG: ls command failed for install prefix root, directory might not exist."
             exit 1 
           fi
           cd $GITHUB_WORKSPACE
 
       - name: Checkout GTDynamics
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v4
+        with:
+          clean: false # <--- THE CRITICAL FIX IS HERE
 
       - name: Build Directory for GTDynamics
         run: mkdir build 
@@ -161,6 +164,9 @@ jobs:
           echo "DEBUG: Verifying GTSAMConfig.cmake for GTDynamics configuration at: ${GTSAM_CONFIG_FILE_TO_CHECK}"
           if [ ! -f "${GTSAM_CONFIG_FILE_TO_CHECK}" ]; then
             echo "ERROR: CRITICAL - GTSAMConfig.cmake NOT FOUND at ${GTSAM_CONFIG_FILE_TO_CHECK} just before GTDynamics configure."
+            echo "This could be due to 'actions/checkout' cleaning the workspace if 'clean: false' was not set."
+            ls -la "${GTSAM_CONFIG_DIR_PATH}/" || echo "Directory ${GTSAM_CONFIG_DIR_PATH} does not exist or is empty."
+            ls -la "${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/" || echo "Directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/ does not exist or is empty."
             exit 1 
           fi
           echo "DEBUG: GTSAMConfig.cmake seems to be present for GTDynamics configure."
