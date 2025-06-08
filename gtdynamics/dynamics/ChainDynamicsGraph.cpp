@@ -15,6 +15,12 @@
 
 namespace gtdynamics {
 
+using gtsam::Vector3_;
+using gtsam::Vector6;
+using gtsam::Vector6_;
+using gtsam::Point3;
+using gtsam::Key;
+
 std::vector<std::vector<JointSharedPtr>> ChainDynamicsGraph::getChainJoints(const Robot& robot) {
   std::vector<JointSharedPtr> FR(3), FL(3), RR(3), RL(3);
 

@@ -25,15 +25,7 @@
 namespace gtdynamics {
 
 using gtsam::Vector3;
-using gtsam::Vector3_;
-using gtsam::Vector6;
-using gtsam::Vector6_;
-using gtsam::Double_;
-using gtsam::Pose3;
-using gtsam::Point3;
-using gtsam::Rot3;
-using gtsam::Key;
-using gtsam::NonlinearFactorGraph ;
+using gtsam::NonlinearFactorGraph;
 
 class ChainDynamicsGraph : public DynamicsGraph {
 
@@ -59,7 +51,9 @@ class ChainDynamicsGraph : public DynamicsGraph {
        const OptimizerSetting &opt,
        const std::optional<Vector3> &gravity = {},
        const std::optional<Vector3> &planar_axis = {})
-       : DynamicsGraph(opt, gravity, planar_axis),
+       : DynamicsGraph(opt, 
+                      gravity.value_or(Vector3(0, 0, -9.8)),
+                      planar_axis),
          chain_joints_(getChainJoints(robot)),
          composed_chains_(getComposedChains(chain_joints_)),
          trunk_mass_(robot.link("trunk")->mass()) {}
@@ -69,7 +63,7 @@ class ChainDynamicsGraph : public DynamicsGraph {
 
 
   /// Return q-level nonlinear factor graph (pose related factors)
-    gtsam::NonlinearFactorGraph qFactors(
+    NonlinearFactorGraph qFactors(
         const Robot &robot, const int t,
         const std::optional<PointOnLinks> &contact_points = {}) const override;
 
@@ -94,7 +88,7 @@ class ChainDynamicsGraph : public DynamicsGraph {
    * @param contact_points optional vector of contact points.
    * @param mu             optional coefficient of static friction.
    */
-  gtsam::NonlinearFactorGraph dynamicsFactorGraph(
+  NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
       const std::optional<PointOnLinks> &contact_points = {},
       const std::optional<double> &mu = {}) const override;
