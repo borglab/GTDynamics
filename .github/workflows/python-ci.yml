@@ -122,9 +122,8 @@ jobs:
           make -j$(sysctl -n hw.physicalcpu) install 
           make -j$(sysctl -n hw.physicalcpu) python-install 
           cd $GITHUB_WORKSPACE
-          # Debug: List contents of GTSAM install directory to verify CMake files
-          echo "Listing contents of GTSAM install directory: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
-          ls -R ${{ env.GTSAM_INSTALL_DIR_MACOS }}
+          echo "DEBUG: Listing contents of GTSAM install directory structure related to CMake files:"
+          ls -R ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake
 
       - name: Checkout
         uses: actions/checkout@v4 
@@ -142,15 +141,34 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash 
         run: |
-          # Define the expected directory for GTSAMConfig.cmake
           GTSAM_CONFIG_DIR_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM"
+          GTSAM_CONFIG_FILE_TO_CHECK="${GTSAM_CONFIG_DIR_PATH}/GTSAMConfig.cmake"
+
+          echo "DEBUG: Checking for GTSAMConfig.cmake at: ${GTSAM_CONFIG_FILE_TO_CHECK}"
+          if [ -f "${GTSAM_CONFIG_FILE_TO_CHECK}" ]; then
+            echo "DEBUG: GTSAMConfig.cmake FOUND at ${GTSAM_CONFIG_FILE_TO_CHECK}"
+            echo "DEBUG: --- Start of GTSAMConfig.cmake content ---"
+            cat "${GTSAM_CONFIG_FILE_TO_CHECK}"
+            echo "DEBUG: --- End of GTSAMConfig.cmake content ---"
+          else
+            echo "ERROR: GTSAMConfig.cmake NOT FOUND at ${GTSAM_CONFIG_FILE_TO_CHECK}"
+            echo "Listing contents of suspected directory ${GTSAM_CONFIG_DIR_PATH}/:"
+            ls -la "${GTSAM_CONFIG_DIR_PATH}/"
+            # List one level up too, in case the "GTSAM" subfolder is not what we expect
+            echo "Listing contents of ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/:"
+            ls -la "${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/"
+            exit 1 # Fail fast if file not found by shell
+          fi
+          
           echo "Configuring GTDynamics with Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
           echo "Setting GTSAM_DIR to: ${GTSAM_CONFIG_DIR_PATH}"
           echo "Setting CMAKE_PREFIX_PATH to include: ${{ env.GTSAM_INSTALL_DIR_MACOS }} and $(brew --prefix)"
+          
           cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
                 -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
                 -DGTSAM_DIR="${GTSAM_CONFIG_DIR_PATH}" \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }};$(brew --prefix)" \
+                --debug-output \
                 ..
         working-directory: ./build
 
