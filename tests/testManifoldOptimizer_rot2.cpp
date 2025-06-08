@@ -72,6 +72,15 @@ class Rot2Projection {
   /** copy constructor */
   Rot2Projection(const Rot2Projection& r) : Rot2Projection(r.c_, r.s_) {}
 
+  /** copy assignment operator */
+  Rot2Projection& operator=(const Rot2Projection& r) {
+    if (this != &r) {
+      c_ = r.c_;
+      s_ = r.s_;
+    }
+    return *this;
+  }
+
   /// Constructor from angle in radians == exponential map at identity
   Rot2Projection(double theta) : c_(cos(theta)), s_(sin(theta)) {}
 
