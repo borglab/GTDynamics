@@ -78,7 +78,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          set -e # Ensure script exits on error
+          set -e 
           echo "Setting up Python virtual environment on macOS..."
           python${{ env.PYTHON_VERSION }} -m venv venv
           source venv/bin/activate
@@ -106,7 +106,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash 
         run: |
-          set -e # Ensure script exits on any error in this block
+          set -e 
           echo "GTSAM C++ components will be installed to: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
           echo "GTSAM Python components will be built against Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
           git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam_source 
@@ -121,24 +121,24 @@ jobs:
           make -j$(sysctl -n hw.physicalcpu) install 
           make -j$(sysctl -n hw.physicalcpu) python-install 
           
-          echo "DEBUG: Listing contents of GTSAM install directory structure related to CMake files IMMEDIATELY AFTER INSTALL:"
-          echo "Path being listed: ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake"
-          ls -R ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake
-          # Check specifically for the GTSAM subdirectory
+          echo "DEBUG: Listing contents of GTSAM install directory structure IMMEDIATELY AFTER INSTALL:"
+          echo "--- Listing root of install prefix: ${{ env.GTSAM_INSTALL_DIR_MACOS }} ---"
+          ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }} || echo "DEBUG: ls for root prefix failed."
+          echo "--- Listing ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib ---"
+          ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib || echo "DEBUG: ls for lib failed."
+          echo "--- Listing ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake (recursive) ---"
+          ls -R ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake || echo "DEBUG: ls -R for lib/cmake failed."
+          
           if [ -d "${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM" ]; then
             echo "DEBUG: Directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM FOUND."
           else
             echo "ERROR: Directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM NOT FOUND immediately after install."
-            # List the parent to see what IS there
-            echo "Listing parent: ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/"
-            ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/
-            exit 1 # Fail fast if this crucial directory isn't there
+            exit 1 
           fi
           cd $GITHUB_WORKSPACE
 
       - name: Checkout GTDynamics
         uses: actions/checkout@v4 
-        # path: GTDynamics # If your repo GTDynamics is checked out into a subdirectory GTDynamics
 
       - name: Build Directory for GTDynamics
         run: mkdir build 
@@ -161,11 +161,6 @@ jobs:
           echo "DEBUG: Verifying GTSAMConfig.cmake for GTDynamics configuration at: ${GTSAM_CONFIG_FILE_TO_CHECK}"
           if [ ! -f "${GTSAM_CONFIG_FILE_TO_CHECK}" ]; then
             echo "ERROR: CRITICAL - GTSAMConfig.cmake NOT FOUND at ${GTSAM_CONFIG_FILE_TO_CHECK} just before GTDynamics configure."
-            echo "This indicates an issue between GTSAM install and GTDynamics configure, or the path is wrong."
-            echo "Listing contents of ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM/ if it exists:"
-            ls -la "${GTSAM_CONFIG_DIR_PATH}/" || echo "Directory ${GTSAM_CONFIG_DIR_PATH} does not exist or is empty."
-            echo "Listing contents of parent directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/:"
-            ls -la "${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/" || echo "Directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/ does not exist or is empty."
             exit 1 
           fi
           echo "DEBUG: GTSAMConfig.cmake seems to be present for GTDynamics configure."
