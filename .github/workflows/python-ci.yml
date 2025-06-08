@@ -167,7 +167,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          source venv/bin/activate # Ensure venv Python and its site-packages are primary
+          source ${{ github.workspace }}/venv/bin/activate # Ensure venv Python and its site-packages are primary
           export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
           echo "DYLD_LIBRARY_PATH is set to: $DYLD_LIBRARY_PATH"
           make -j$(sysctl -n hw.physicalcpu) python-test
