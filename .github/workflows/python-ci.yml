@@ -12,7 +12,7 @@ jobs:
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
       PYTHON_VERSION: ${{ matrix.python_version }} 
-      GTSAM_INSTALL_DIR_MACOS: ${{ github.workspace }}/gtsam_install_prefix
+      GTSAM_INSTALL_DIR_MACOS: ${{ github.workspace }}/gtsam_install_prefix # Installs inside the main repo checkout
 
     strategy:
       fail-fast: false
@@ -35,6 +35,11 @@ jobs:
             version: "15.4"
 
     steps:
+      - name: Checkout GTDynamics (Your Project)
+        uses: actions/checkout@v4
+        # 'clean: false' is not strictly necessary here since it's the first checkout to this path,
+        # but doesn't hurt. The key is its position.
+
       - name: Install Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -80,6 +85,7 @@ jobs:
         run: |
           set -e 
           echo "Setting up Python virtual environment on macOS..."
+          # venv is created within ${{ github.workspace }}, which is already checked out
           python${{ env.PYTHON_VERSION }} -m venv venv
           source venv/bin/activate
           echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
@@ -93,14 +99,17 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -e
-          git clone https://github.com/borglab/gtsam.git $GITHUB_WORKSPACE/gtsam_source
-          cd $GITHUB_WORKSPACE/gtsam_source
+          # Clone GTSAM to a temporary location outside the main workspace to avoid conflict
+          # if we were to install GTSAM into the main workspace and then rm -rf it.
+          # For Linux, it installs to system paths, so source location is less critical after install.
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_linux 
+          cd /tmp/gtsam_source_linux
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
           sudo make -j$(nproc) install && make python-install
           sudo ldconfig
-          cd $GITHUB_WORKSPACE
-          sudo rm -rf $GITHUB_WORKSPACE/gtsam_source
+          cd ${{ github.workspace }} # Go back to the main workspace
+          sudo rm -rf /tmp/gtsam_source_linux
 
       - name: GTSAM (macOS)
         if: runner.os == 'macOS'
@@ -109,10 +118,10 @@ jobs:
           set -e 
           echo "GTSAM C++ components will be installed to: ${{ env.GTSAM_INSTALL_DIR_MACOS }}"
           echo "GTSAM Python components will be built against Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
-          # Note: We are NOT checking out GTDynamics here. GTSAM is built first.
-          # Its install prefix is within GITHUB_WORKSPACE.
-          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam_source 
-          cd /Users/runner/work/gtsam_source
+          # Clone GTSAM source to a temporary location separate from the main repo checkout
+          # to avoid any potential nesting issues before installing into a subdir of the main repo.
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_macos
+          cd /tmp/gtsam_source_macos
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
                 -D GTSAM_BUILD_PYTHON=ON \
@@ -136,15 +145,13 @@ jobs:
             ls -la ${{ env.GTSAM_INSTALL_DIR_MACOS }}/         || echo "DEBUG: ls command failed for install prefix root, directory might not exist."
             exit 1 
           fi
-          cd $GITHUB_WORKSPACE
+          cd ${{ github.workspace }} # Go back to the main workspace
+          rm -rf /tmp/gtsam_source_macos # Clean up GTSAM source
 
-      - name: Checkout GTDynamics
-        uses: actions/checkout@v4
-        with:
-          clean: false # <--- THE CRITICAL FIX IS HERE
+      # This Checkout GTDynamics step was moved to the top.
 
       - name: Build Directory for GTDynamics
-        run: mkdir build 
+        run: mkdir build # This is ${{ github.workspace }}/build
 
       - name: Configure GTDynamics (Linux)
         if: runner.os == 'Linux'
@@ -164,7 +171,6 @@ jobs:
           echo "DEBUG: Verifying GTSAMConfig.cmake for GTDynamics configuration at: ${GTSAM_CONFIG_FILE_TO_CHECK}"
           if [ ! -f "${GTSAM_CONFIG_FILE_TO_CHECK}" ]; then
             echo "ERROR: CRITICAL - GTSAMConfig.cmake NOT FOUND at ${GTSAM_CONFIG_FILE_TO_CHECK} just before GTDynamics configure."
-            echo "This could be due to 'actions/checkout' cleaning the workspace if 'clean: false' was not set."
             ls -la "${GTSAM_CONFIG_DIR_PATH}/" || echo "Directory ${GTSAM_CONFIG_DIR_PATH} does not exist or is empty."
             ls -la "${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/" || echo "Directory ${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/ does not exist or is empty."
             exit 1 
