@@ -143,14 +143,14 @@ jobs:
         shell: bash 
         run: |
           # Define the expected directory for GTSAMConfig.cmake
-          GTSAM_CONFIG_DIR="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM"
+          GTSAM_CONFIG_DIR_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM"
           echo "Configuring GTDynamics with Python: ${{ env.VENV_PYTHON_EXECUTABLE }}"
-          echo "Setting GTSAM_DIR to: ${GTSAM_CONFIG_DIR}"
-          echo "CMAKE_PREFIX_PATH will also include: $(brew --prefix) for other dependencies"
+          echo "Setting GTSAM_DIR to: ${GTSAM_CONFIG_DIR_PATH}"
+          echo "Setting CMAKE_PREFIX_PATH to include: ${{ env.GTSAM_INSTALL_DIR_MACOS }} and $(brew --prefix)"
           cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
                 -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
-                -DGTSAM_DIR="${GTSAM_CONFIG_DIR}" \
-                -DCMAKE_PREFIX_PATH="$(brew --prefix)" \
+                -DGTSAM_DIR="${GTSAM_CONFIG_DIR_PATH}" \
+                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }};$(brew --prefix)" \
                 ..
         working-directory: ./build
 
