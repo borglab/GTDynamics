@@ -17,6 +17,7 @@
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/slam/expressions.h>
 
 #include <optional>
 
@@ -96,7 +97,7 @@ class Chain {
    * Exponentials
    */
   Pose3 poe(const Vector &q, std::optional<Pose3> fTe = {},
-            gtsam::OptionalJacobian<-1, -1> J = {});
+            gtsam::OptionalJacobian<-1, -1> J = {}) const;
 
   /**
    * This function implements the dynamic dependency between the
@@ -116,27 +117,86 @@ class Chain {
       const gtsam::Vector3 &torques,
       gtsam::OptionalJacobian<3, 6> H_wrench = {},
       gtsam::OptionalJacobian<3, 3> H_angles = {},
-      gtsam::OptionalJacobian<3, 3> H_torques = {});
+      gtsam::OptionalJacobian<3, 3> H_torques = {}) const;
 
   /**
    * This function creates a gtsam expression of the Chain constraint FOR A
    * 3-LINK CHAIN.
    *
-   * @param joints ............... Vector of joints in the kinematic chain, FROM
-   * END-EFFECTOR TO BODY (first element in the vector is the joint whos child
-   * is the end-effector).
+   * @param joints ............... Vector of joints in the kinematic chain,FROM
+   *  BODY TO END-EFFECTOR.
    * @param wrench_key ........... Key of the wrench applied on the body by the
    * joint closest to the body.
    * @param k .................... Time slice.
    * @return ..................... GTSAM expression of the chain constraint.
    */
   gtsam::Vector3_ ChainConstraint3(const std::vector<JointSharedPtr> &joints,
-                                   const gtsam::Key wrench_key, size_t k);
-};
+                                   const gtsam::Key wrench_key, size_t k) const;
+
+  /**
+   * This function creates a gtsam expression of the End-Effector wrench using
+   * a Chain under massless leg assumption and Product of Exponentials.
+   *
+   * @param joints ............... Vector of joints in the kinematic chain, FROM
+   *  BODY TO END-EFFECTOR.
+   * @param wrench_key ........... Key of the wrench applied on the body by the
+   * joint closest to the body.
+   * @param k .................... Time slice.
+   * @return ..................... GTSAM expression of the chain constraint.
+   */
+  gtsam::Vector6_ AdjointWrenchConstraint3(
+      const std::vector<JointSharedPtr> &joints,
+      const gtsam::Key body_wrench_key, size_t k) const;
+
+  /**
+   *  This function calculates the end-effector wrench using POE and chain.
+   *
+   *
+   *
+   * @param angles .............. angles of the joints in the chain FROM
+   *  BODY TO END-EFFECTOR.
+   * @param wrench_body ......... wrench applied by the first joint in the chain
+   * on the body link
+   * @return ...................  gtsam expression of the  end-effector wrench
+   */
+  gtsam::Vector6 AdjointWrenchEquality3(
+      const gtsam::Vector3 &angles, const gtsam::Vector6 &wrench_body,
+      gtsam::OptionalJacobian<6, 3> H_angles = {},
+      gtsam::OptionalJacobian<6, 6> H_wrench_body = {}) const;
+
+  /**
+   * This function creates a gtsam expression factor of the End-Effector pose
+   * using Product of Exponentials and Chain (forward kinematics).
+   *
+   * @param joints ............... Vector of joints in the kinematic chain, FROM
+   *  BODY TO END-EFFECTOR.
+   * @param wTb_key............... Key of body link pose
+   * @param wTe_key............... Key of end-effector pose
+   * @param cost_model............ cost model for factor
+   * @param k .................... Time slice.
+   * @return ..................... GTSAM expression of the chain constraint.
+   */
+  gtsam::Vector6_ Poe3Factor(const std::vector<JointSharedPtr> &joints,
+                             const gtsam::Key wTb_key, const gtsam::Key wTe_key,
+                             size_t k) const;
+
+  /**
+   *  This function calculates the end-effector pose using POE and chain
+   * (forward kinematics).
+   *
+   * @param angles .............. angles of the joints in the chain FROM
+   *  BODY TO END-EFFECTOR.
+   * @return ...................  gtsam expression of the  end-effector wrench
+   */
+  gtsam::Pose3 PoeEquality3(
+      const gtsam::Vector3 &angles,
+      gtsam::OptionalJacobian<6, 3> H_angles = {}) const;
+
+};  // Chain class
 
 // Helper function to create expression with a vector, used in
 // ChainConstraint3.
-gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
+inline gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
                            const double &value2,
                            gtsam::OptionalJacobian<3, 1> J0 = {},
                            gtsam::OptionalJacobian<3, 1> J1 = {},

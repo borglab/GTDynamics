@@ -373,6 +373,20 @@ gtsam::Vector6_ Joint::twistAccelConstraint(uint64_t t) const {
 }
 
 /* ************************************************************************* */
+gtsam::Vector6_ Joint::childWrenchAdjoint(gtsam::Vector6_ &wrench_p,
+                                          uint64_t t) const {
+  gtsam::Double_ q(JointAngleKey(id(), t));
+
+  gtsam::Vector6_ wrench_c_adjoint(
+      std::bind(&Joint::transformWrenchCoordinate, this, parent(),
+                std::placeholders::_1, std::placeholders::_2,
+                std::placeholders::_3, std::placeholders::_4),
+      q, wrench_p);
+
+  return wrench_c_adjoint;
+}
+
+/* ************************************************************************* */
 gtsam::Vector6_ Joint::wrenchEquivalenceConstraint(uint64_t t) const {
   gtsam::Vector6_ wrench_p(WrenchKey(parent()->id(), id(), t));
   gtsam::Vector6_ wrench_c(WrenchKey(child()->id(), id(), t));

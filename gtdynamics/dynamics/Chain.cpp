@@ -13,6 +13,7 @@
 
 #include <gtdynamics/dynamics/Chain.h>
 
+
 namespace gtdynamics {
 
 Chain operator*(const Chain &chainA, const Chain &chainB) {
@@ -46,7 +47,7 @@ Chain Chain::compose(std::vector<Chain> &chains) {
 }
 
 Pose3 Chain::poe(const Vector &q, std::optional<Pose3> fTe,
-                 gtsam::OptionalJacobian<-1, -1> J) {
+                 gtsam::OptionalJacobian<-1, -1> J) const {
   // Check that input has good size
   if (q.size() != length()) {
     throw std::runtime_error(
@@ -119,7 +120,7 @@ gtsam::Vector3 Chain::DynamicalEquality3(
     const gtsam::Vector6 &wrench, const gtsam::Vector3 &angles,
     const gtsam::Vector3 &torques, gtsam::OptionalJacobian<3, 6> H_wrench,
     gtsam::OptionalJacobian<3, 3> H_angles,
-    gtsam::OptionalJacobian<3, 3> H_torques) {
+    gtsam::OptionalJacobian<3, 3> H_torques) const {
   Matrix J;
   poe(angles, {}, J);
   if (H_wrench) {
@@ -167,9 +168,18 @@ gtsam::Vector3 Chain::DynamicalEquality3(
 
 gtsam::Vector3_ Chain::ChainConstraint3(
     const std::vector<JointSharedPtr> &joints, const gtsam::Key wrench_key,
-    size_t k) {
+    size_t k) const {
   // Get Expression for wrench
-  gtsam::Vector6_ wrench(wrench_key);
+  gtsam::Vector6_ wrench_0_T(wrench_key);
+
+  // The constraint is true for the wrench exerted on the end-effector frame, so
+  // we need to adjoint from base to end-effector
+  gtsam::Vector6_ wrench_0_H =
+      (-1) * joints[0]->childWrenchAdjoint(wrench_0_T, k);
+  gtsam::Vector6_ wrench_1_U =
+      (-1) * joints[1]->childWrenchAdjoint(wrench_0_H, k);
+  gtsam::Vector6_ wrench_2_L =
+      (-1) * joints[2]->childWrenchAdjoint(wrench_1_U, k);
 
   // Get expression for joint angles as a column vector of size 3.
   gtsam::Double_ angle0(JointAngleKey(joints[0]->id(), k)),
@@ -189,9 +199,94 @@ gtsam::Vector3_ Chain::ChainConstraint3(
                 std::placeholders::_2, std::placeholders::_3,
                 std::placeholders::_4, std::placeholders::_5,
                 std::placeholders::_6),
-      wrench, angles, torques);
+      wrench_2_L, angles, torques);
 
   return torque_diff;
+}
+
+gtsam::Vector6_ Chain::AdjointWrenchConstraint3(
+    const std::vector<JointSharedPtr> &joints, const gtsam::Key body_wrench_key,
+    size_t k) const {
+  // Get Expression for wrench
+  gtsam::Vector6_ wrench_0_T(body_wrench_key);
+
+  // Get expression for joint angles as a column vector of size 3.
+  gtsam::Double_ angle0(JointAngleKey(joints[0]->id(), k)),
+      angle1(JointAngleKey(joints[1]->id(), k)),
+      angle2(JointAngleKey(joints[2]->id(), k));
+  gtsam::Vector3_ angles(MakeVector3, angle0, angle1, angle2);
+
+  // Get expression of the dynamical equality
+  gtsam::Vector6_ wrench_end_effector(
+      std::bind(&Chain::AdjointWrenchEquality3, this, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3,
+                std::placeholders::_4),
+      angles, wrench_0_T);
+
+  return wrench_end_effector;
+}
+
+gtsam::Vector6 Chain::AdjointWrenchEquality3(
+    const gtsam::Vector3 &angles, const gtsam::Vector6 &wrench_body,
+    gtsam::OptionalJacobian<6, 3> H_angles,
+    gtsam::OptionalJacobian<6, 6> H_wrench_body) const {
+  Matrix J_theta;
+  gtsam::Matrix6 H_T;
+
+  // Get POE transformation from body to end-effector.
+  Pose3 T_theta = poe(angles, {}, H_angles ? &J_theta : nullptr);
+
+  // Get end-effector wrench by Adjoint. This is true for a massless leg.
+  gtsam::Vector6 transformed_wrench =
+      T_theta.AdjointTranspose(wrench_body,H_angles ? &H_T : nullptr , H_wrench_body);
+
+  if (H_angles) {
+    *H_angles =  H_T * J_theta;
+  }
+
+  return transformed_wrench;
+}
+
+gtsam::Vector6_ Chain::Poe3Factor(const std::vector<JointSharedPtr> &joints,
+                                  const gtsam::Key wTb_key,
+                                  const gtsam::Key wTe_key, size_t k) const {
+  // Get Expression for poses
+  gtsam::Pose3_ wTb(wTb_key);
+  gtsam::Pose3_ wTe(wTe_key);
+
+  // Get expression for joint angles as a column vector of size 3.
+  gtsam::Double_ angle0(JointAngleKey(joints[0]->id(), k)),
+      angle1(JointAngleKey(joints[1]->id(), k)),
+      angle2(JointAngleKey(joints[2]->id(), k));
+  gtsam::Vector3_ angles(MakeVector3, angle0, angle1, angle2);
+
+  // Get expression for forward kinematics
+  gtsam::Pose3_ end_effector_pose(
+      std::bind(&Chain::PoeEquality3, this, std::placeholders::_1,
+                std::placeholders::_2),
+      angles);
+
+  // compose 
+  gtsam::Pose3_ wTe_hat = wTb * end_effector_pose;
+
+  // get error expression
+  gtsam::Vector6_ error_expression = gtsam::logmap(wTe_hat, wTe);
+  
+  return error_expression;
+}
+
+gtsam::Pose3 Chain::PoeEquality3(const gtsam::Vector3 &angles,
+                                 gtsam::OptionalJacobian<6, 3> H_angles) const {
+  Matrix J_theta;
+
+  // Get POE transformation from body to end-effector.
+  Pose3 T_theta = poe(angles, {}, H_angles ? &J_theta : nullptr);
+
+  if (H_angles) {
+    *H_angles =J_theta;
+  }
+
+  return T_theta;
 }
 
 }  // namespace gtdynamics

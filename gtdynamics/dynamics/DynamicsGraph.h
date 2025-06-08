@@ -110,7 +110,7 @@ class DynamicsGraph {
                               const gtsam::Values &known_values);
 
   /// Return q-level nonlinear factor graph (pose related factors)
-  gtsam::NonlinearFactorGraph qFactors(
+  virtual gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
       const std::optional<PointOnLinks> &contact_points = {}) const;
 
@@ -125,7 +125,7 @@ class DynamicsGraph {
       const std::optional<PointOnLinks> &contact_points = {}) const;
 
   /// Return dynamics-level nonlinear factor graph (wrench related factors)
-  gtsam::NonlinearFactorGraph dynamicsFactors(
+  virtual gtsam::NonlinearFactorGraph dynamicsFactors(
       const Robot &robot, const int t,
       const std::optional<PointOnLinks> &contact_points = {},
       const std::optional<double> &mu = {}) const;
@@ -138,7 +138,7 @@ class DynamicsGraph {
    * @param contact_points optional vector of contact points.
    * @param mu             optional coefficient of static friction.
    */
-  gtsam::NonlinearFactorGraph dynamicsFactorGraph(
+  virtual gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
       const std::optional<PointOnLinks> &contact_points = {},
       const std::optional<double> &mu = {}) const;
@@ -289,6 +289,8 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph targetPoseFactors(
       const Robot &robot, const int t, const std::string &link_name,
       const gtsam::Pose3 &target_pose) const;
+
+  const gtsam::Vector3& gravity() const { return gravity_; }
 
   /**
    * Return the joint accelerations
