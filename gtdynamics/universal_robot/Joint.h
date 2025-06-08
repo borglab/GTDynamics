@@ -452,7 +452,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /**
    * @brief Create expression for child wrench adjoint from parent link
    */
-  gtsam::Vector6_ childAdjointWrench(gtsam::Vector6_ &wrench_p,
+  gtsam::Vector6_ childWrenchAdjoint(gtsam::Vector6_ &wrench_p,
                                      uint64_t t = 0) const;
 
   /**

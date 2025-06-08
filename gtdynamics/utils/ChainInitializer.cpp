@@ -28,16 +28,17 @@ gtsam::Values ChainInitializer::ZeroValues(
   // Initialize link dynamics to 0.
   for (auto&& link : robot.links()) {
     const int i = link->id();
-    if (i==0 || i==3 || i==6 || i==9 || i==12)
+    // TODO(Varun): Not sure what's happening here.
+    // The link IDs are not guaranteed to be consistent across robots.
+    // If these IDs are for the feet, they should be passed in as an argument.
+    if (i == 0 || i == 3 || i == 6 || i == 9 || i == 12)
       InsertPose(&values, i, t, AddGaussianNoiseToPose(link->bMcom(), sampler));
-    //InsertTwist(&values, i, t, sampler.sample());
-    //InsertTwistAccel(&values, i, t, sampler.sample());
   }
-    InsertTwist(&values, 0, t, sampler.sample());
-    InsertTwistAccel(&values, 0, t, sampler.sample());
+  InsertTwist(&values, 0, t, sampler.sample());
+  InsertTwistAccel(&values, 0, t, sampler.sample());
 
   // Initialize joint kinematics/dynamics to 0.
-  for (auto&& joint : robot.joints()) {
+  for (auto &&joint : robot.joints()) {
     const int j = joint->id();
     if (joint->parent()->name().find("trunk") != std::string::npos) {
       InsertWrench(&values, joint->parent()->id(), j, t, sampler.sample());
@@ -48,6 +49,7 @@ gtsam::Values ChainInitializer::ZeroValues(
       values.insert(keys[i], sampler.sample()[0]);
   }
 
+  // TODO(Varun): Why are these commented out?
   //if (contact_points) {
     //for (auto&& cp : *contact_points) {
       // TODO(frank): allow multiple contact points on one link, id = 0,1,2...

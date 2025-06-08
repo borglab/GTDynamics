@@ -175,11 +175,11 @@ gtsam::Vector3_ Chain::ChainConstraint3(
   // The constraint is true for the wrench exerted on the end-effector frame, so
   // we need to adjoint from base to end-effector
   gtsam::Vector6_ wrench_0_H =
-      (-1) * joints[0]->childAdjointWrench(wrench_0_T, k);
+      (-1) * joints[0]->childWrenchAdjoint(wrench_0_T, k);
   gtsam::Vector6_ wrench_1_U =
-      (-1) * joints[1]->childAdjointWrench(wrench_0_H, k);
+      (-1) * joints[1]->childWrenchAdjoint(wrench_0_H, k);
   gtsam::Vector6_ wrench_2_L =
-      (-1) * joints[2]->childAdjointWrench(wrench_1_U, k);
+      (-1) * joints[2]->childWrenchAdjoint(wrench_1_U, k);
 
   // Get expression for joint angles as a column vector of size 3.
   gtsam::Double_ angle0(JointAngleKey(joints[0]->id(), k)),

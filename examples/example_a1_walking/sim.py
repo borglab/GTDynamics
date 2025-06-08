@@ -1,4 +1,5 @@
 """Run kinematic motion planning using GTDynamics outputs."""
+# TODO(Varun): This whole file needs some cleaning up
 
 import time
 
@@ -217,6 +218,7 @@ axs[5].set_ylabel('tau lower')
 plt.xlabel("time (s.)")
 
 plt.show()
+# uncomment to output pdflatex
 #plt.rc('pgf', texsystem='pdflatex')
 #plt.savefig('/home/dan/Desktop/my_papers/thesis/create_simulation/pyb_sim.pgf')
 
