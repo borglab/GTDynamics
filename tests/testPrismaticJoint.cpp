@@ -44,61 +44,58 @@ TEST(Joint, params_constructor_prismatic) {
 
   const gtsam::Vector3 j1_axis(0, 0, 1);
 
-  auto j1 = std::make_shared<PrismaticJoint>(
-      1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)), l1, l2, j1_axis,
-      parameters);
-
-  // get shared ptr
-  EXPECT(j1->shared() == j1);
+  auto j1 =
+      PrismaticJoint(1, "j1", Pose3(Rot3::Rx(1.5707963268), Point3(0, 0, 2)),
+                     l1, l2, j1_axis, parameters);
 
   // get, set ID
-  EXPECT(j1->id() == 1);
+  EXPECT(j1.id() == 1);
 
   // name
-  EXPECT(assert_equal(j1->name(), "j1"));
+  EXPECT(assert_equal(j1.name(), "j1"));
 
   // joint effort type
-  EXPECT(j1->parameters().effort_type == JointEffortType::Actuated);
+  EXPECT(j1.parameters().effort_type == JointEffortType::Actuated);
 
   // other link
-  EXPECT(j1->otherLink(l2) == l1);
-  EXPECT(j1->otherLink(l1) == l2);
+  EXPECT(j1.otherLink(l2) == l1);
+  EXPECT(j1.otherLink(l1) == l2);
 
   // rest transform
   Pose3 T_12comRest(Rot3::Rx(1.5707963268), Point3(0, -1, 1));
   Pose3 T_21comRest(Rot3::Rx(-1.5707963268), Point3(0, -1, -1));
-  EXPECT(assert_equal(T_12comRest, j1->relativePoseOf(l2, 0.0), 1e-5));
-  EXPECT(assert_equal(T_21comRest, j1->relativePoseOf(l1, 0.0), 1e-5));
+  EXPECT(assert_equal(T_12comRest, j1.relativePoseOf(l2, 0.0), 1e-5));
+  EXPECT(assert_equal(T_21comRest, j1.relativePoseOf(l1, 0.0), 1e-5));
 
   // transform to (translating +1)
   Pose3 T_12com(Rot3::Rx(1.5707963268), Point3(0, -2, 1));
   Pose3 T_21com(Rot3::Rx(-1.5707963268), Point3(0, -1, -2));
-  EXPECT(assert_equal(T_12com, j1->relativePoseOf(l2, 1), 1e-5));
-  EXPECT(assert_equal(T_21com, j1->relativePoseOf(l1, 1), 1e-5));
+  EXPECT(assert_equal(T_12com, j1.relativePoseOf(l2, 1), 1e-5));
+  EXPECT(assert_equal(T_21com, j1.relativePoseOf(l1, 1), 1e-5));
 
   // screw axis
   gtsam::Vector6 screw_axis_l1, screw_axis_l2;
   screw_axis_l1 << 0, 0, 0, 0, 1, 0;
   screw_axis_l2 << 0, 0, 0, 0, 0, 1;
-  EXPECT(assert_equal(screw_axis_l1, j1->screwAxis(l1)));
-  EXPECT(assert_equal(screw_axis_l2, j1->screwAxis(l2), 1e-5));
+  EXPECT(assert_equal(screw_axis_l1, j1.screwAxis(l1)));
+  EXPECT(assert_equal(screw_axis_l2, j1.screwAxis(l2), 1e-5));
 
   // links
-  auto links = j1->links();
+  auto links = j1.links();
   EXPECT(links[0] == l1);
   EXPECT(links[1] == l2);
 
   // parent & child link
-  EXPECT(j1->parent() == l1);
-  EXPECT(j1->child() == l2);
+  EXPECT(j1.parent() == l1);
+  EXPECT(j1.child() == l2);
 
   // joint limit
   EXPECT(assert_equal(parameters.scalar_limits.value_lower_limit,
-                      j1->parameters().scalar_limits.value_lower_limit));
+                      j1.parameters().scalar_limits.value_lower_limit));
   EXPECT(assert_equal(parameters.scalar_limits.value_upper_limit,
-                      j1->parameters().scalar_limits.value_upper_limit));
+                      j1.parameters().scalar_limits.value_upper_limit));
   EXPECT(assert_equal(parameters.scalar_limits.value_limit_threshold,
-                      j1->parameters().scalar_limits.value_limit_threshold));
+                      j1.parameters().scalar_limits.value_limit_threshold));
 }
 
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION

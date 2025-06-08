@@ -52,7 +52,7 @@ TEST(WrenchEquivalenceFactor, error_1) {
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
   auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
@@ -79,7 +79,7 @@ TEST(WrenchEquivalenceFactor, error_2) {
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
   auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
@@ -107,7 +107,7 @@ TEST(WrenchEquivalenceFactor, error_3) {
   Pose3 kMj = Pose3(Rot3(), Point3(0, 0, -2));
   Vector6 screw_axis;
   screw_axis << 1, 0, 0, 0, -1, 0;
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
   auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.

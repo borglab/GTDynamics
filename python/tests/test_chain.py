@@ -12,12 +12,12 @@
 import unittest
 from pathlib import Path
 
-import gtdynamics as gtd
 import numpy as np
 from gtsam import Point3, Pose3, Rot3, Values
 from gtsam.utils.test_case import GtsamTestCase
-
 from prototype.chain import Chain
+
+import gtdynamics as gtd
 
 
 def axis(*A):

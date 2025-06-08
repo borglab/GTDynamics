@@ -54,9 +54,11 @@ int main(int argc, char** argv) {
   InsertJointVel(&theta_and_theta_dot, j2, 0, 0.1);
   InsertJointVel(&theta_and_theta_dot, j3, 0, 0.0);
 
-  std::vector<gtsam::Vector> taus;
+  // Insert torque values for all timesteps
   for (int t = 0; t <= T; t++) {
-    taus.push_back(gtsam::Vector::Zero(3));
+    InsertTorque(&theta_and_theta_dot, j1, t, 0.0);
+    InsertTorque(&theta_and_theta_dot, j2, t, 0.0);
+    InsertTorque(&theta_and_theta_dot, j3, t, 0.0);
   }
   auto fd_priors =
       graph_builder.trajectoryFDPriors(simple_rpr, T, theta_and_theta_dot);

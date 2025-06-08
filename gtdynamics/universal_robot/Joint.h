@@ -150,9 +150,12 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Rest transform to child link CoM frame from joint frame.
   Pose3 jMc_;
 
-  using LinkSharedPtr = std::shared_ptr<Link>;
-  LinkSharedPtr parent_link_;
-  LinkSharedPtr child_link_;
+  // NOTE: We use a weak_ptr here since Link has shared_ptrs
+  // to joints, and this way we can avoid reference cyles.
+  // https://en.cppreference.com/w/cpp/memory/weak_ptr
+  using LinkWeakPtr = std::weak_ptr<Link>;
+  LinkWeakPtr parent_link_;
+  LinkWeakPtr child_link_;
 
   // Screw axis in parent and child CoM frames.
   Vector6 pScrewAxis_;
@@ -182,7 +185,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @param[in] parameters   The joint parameters.
    */
   Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
-        const LinkSharedPtr &parent_link, const LinkSharedPtr &child_link,
+        const LinkWeakPtr &parent_link, const LinkWeakPtr &child_link,
         const Vector6 &jScrewAxis,
         const JointParams &parameters = JointParams());
 
@@ -228,19 +231,19 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   /// Return the connected link other than the one provided.
   LinkSharedPtr otherLink(const LinkSharedPtr &link) const {
-    return isChildLink(link) ? parent_link_ : child_link_;
+    return isChildLink(link) ? parent_link_.lock() : child_link_.lock();
   }
 
   /// Return the links connected to this joint.
   std::vector<LinkSharedPtr> links() const {
-    return std::vector<LinkSharedPtr>{parent_link_, child_link_};
+    return std::vector<LinkSharedPtr>{parent_link_.lock(), child_link_.lock()};
   }
 
   /// Return a shared ptr to the parent link.
-  LinkSharedPtr parent() const { return parent_link_; }
+  LinkSharedPtr parent() const { return parent_link_.lock(); }
 
   /// Return a shared ptr to the child link.
-  LinkSharedPtr child() const { return child_link_; }
+  LinkSharedPtr child() const { return child_link_.lock(); }
 
   /// Return joint parameters.
   const JointParams &parameters() const { return parameters_; }

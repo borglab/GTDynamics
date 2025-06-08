@@ -44,7 +44,7 @@ TEST(TwistFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  auto joint = make_joint(cMp, screw_axis);
+  auto [joint, links] = make_joint(cMp, screw_axis);
 
   auto factor = TwistFactor(example::cost_model, joint, 0);
   double q = M_PI / 4, qVel = 10;

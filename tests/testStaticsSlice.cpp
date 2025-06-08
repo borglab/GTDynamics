@@ -117,16 +117,13 @@ TEST(Statics, Quadruped) {
   EXPECT_LONGS_EQUAL(37, graph.size());
 
   // Test initialization
-  auto values = statics.initialValues(slice, robot);
+  auto values = statics.initialValues(slice, robot, 0.0);
   EXPECT_LONGS_EQUAL(36, values.size());
 
   // Solve for wrenches, with known kinematics
   auto result = statics.solve(slice, robot, ik_solution);
   EXPECT_LONGS_EQUAL(61, result.size());
-  // TODO(Varun) Issue #233
-  // Regression
-  result.print("", GTDKeyFormatter);
-  // EXPECT_DOUBLES_EQUAL(0.0670426, Torque(result, 0, k), 1e-5);
+  EXPECT_DOUBLES_EQUAL(0.054764, Torque(result, 0, k), 1e-5);
 
   // Optimize kinematics while minimizing torque
   auto minimal = statics.minimizeTorques(slice, robot);

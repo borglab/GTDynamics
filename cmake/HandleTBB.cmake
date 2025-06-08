@@ -14,7 +14,7 @@ if (GTDYNAMICS_WITH_TBB)
         endif()
         # all definitions and link requisites will go via imported targets:
         # tbb & tbbmalloc
-        list(APPEND GTDYNAMICS_ADDITIONAL_LIBRARIES tbb tbbmalloc)
+        list(APPEND GTDYNAMICS_ADDITIONAL_LIBRARIES TBB::tbb TBB::tbbmalloc)
     else()
         set(GTDYNAMICS_USE_TBB 0)  # This will go into config.h
     endif()

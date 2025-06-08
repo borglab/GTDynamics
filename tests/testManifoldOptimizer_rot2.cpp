@@ -72,6 +72,15 @@ class Rot2Projection {
   /** copy constructor */
   Rot2Projection(const Rot2Projection& r) : Rot2Projection(r.c_, r.s_) {}
 
+  /** copy assignment operator */
+  Rot2Projection& operator=(const Rot2Projection& r) {
+    if (this != &r) {
+      c_ = r.c_;
+      s_ = r.s_;
+    }
+    return *this;
+  }
+
   /// Constructor from angle in radians == exponential map at identity
   Rot2Projection(double theta) : c_(cos(theta)), s_(sin(theta)) {}
 
@@ -144,6 +153,7 @@ class Rot2Projection {
   double theta() const { return ::atan2(s_, c_); }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -151,6 +161,7 @@ class Rot2Projection {
     ar& BOOST_SERIALIZATION_NVP(c_);
     ar& BOOST_SERIALIZATION_NVP(s_);
   }
+#endif
 };
 
 // Specialize Rot2Projection traits to use a Retract/Local

@@ -35,7 +35,7 @@ gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
 const DynamicsSymbol wrench_key = WrenchKey(2, 1, 777);
 gtsam::Pose3 kMj;  // doesn't matter
-auto joint = make_joint(kMj, gtsam::Z_6x1);
+auto [joint, links] = make_joint(kMj, gtsam::Z_6x1);
 }  // namespace example
 
 // Test wrench planar factor for x-axis

@@ -32,10 +32,10 @@ namespace gtdynamics {
  * contact.
  */
 class ContactPointFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3> {
  private:
   using This = ContactPointFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Point3>;
 
   // The contact point in the link's CoM frame.
   gtsam::Point3 contact_in_com_;
@@ -122,10 +122,10 @@ class ContactPointFactor
  * This factor is useful for implementing flat foot constraints.
  */
 class ContactPoseFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3> {
  private:
   using This = ContactPoseFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>;
 
   // The contact point reference frame in the link's CoM frame.
   gtsam::Pose3 comTcontact_;
@@ -213,10 +213,10 @@ class ContactPoseFactor
 };
 
 /** Contact Point Factor with a static contact point. */
-class FixedContactPointFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
+class FixedContactPointFactor : public gtsam::NoiseModelFactorN<gtsam::Pose3> {
  private:
   using This = FixedContactPointFactor;
-  using Base = gtsam::NoiseModelFactor1<gtsam::Pose3>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3>;
 
   // The contact point in the link's CoM frame.
   gtsam::Point3 contact_in_world_;

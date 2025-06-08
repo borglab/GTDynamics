@@ -12,9 +12,10 @@
 import os.path as osp
 import unittest
 
-import gtdynamics as gtd
 import gtsam
 import numpy as np
+
+import gtdynamics as gtd
 
 
 class TestDynamicsGraph(unittest.TestCase):

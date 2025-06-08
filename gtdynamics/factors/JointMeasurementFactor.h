@@ -24,10 +24,10 @@ namespace gtdynamics {
  * the joint coordinate as a measurement.
  */
 class JointMeasurementFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3> {
  private:
   using This = JointMeasurementFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>;
 
   JointConstSharedPtr joint_;
   double measured_joint_coordinate_;

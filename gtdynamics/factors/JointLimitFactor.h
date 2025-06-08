@@ -30,10 +30,10 @@ namespace gtdynamics {
  * JointLimitFactor is a class which enforces joint angle value
  * to be within specified limits.
  */
-class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
+class JointLimitFactor : public gtsam::NoiseModelFactorN<double> {
  private:
   using This = JointLimitFactor;
-  using Base = gtsam::NoiseModelFactor1<double>;
+  using Base = gtsam::NoiseModelFactorN<double>;
   double low_, high_;
 
  public:
@@ -100,7 +100,7 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
     ar &low_;
     ar &high_;
   }

@@ -83,7 +83,7 @@ class Chain {
   inline const Matrix &axes() const { return axes_; }
 
   // Return number of columns in axes_ matrix
-  const size_t length() const { return axes_.cols(); }
+  size_t length() const { return axes_.cols(); }
 
   /**
    * Perform forward kinematics given q, return Pose of end-effector and

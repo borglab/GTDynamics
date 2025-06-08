@@ -22,12 +22,12 @@ namespace gtdynamics {
  * end effector pose and cable length
  */
 class CableLengthFactor
-    : public gtsam::NoiseModelFactor2<double, gtsam::Pose3> {
+    : public gtsam::NoiseModelFactorN<double, gtsam::Pose3> {
  private:
   using Pose3 = gtsam::Pose3;
   using Point3 = gtsam::Point3;
   using This = CableLengthFactor;
-  using Base = gtsam::NoiseModelFactor2<double, Pose3>;
+  using Base = gtsam::NoiseModelFactorN<double, Pose3>;
 
   Point3 wPa_, xPb_;
 
@@ -86,7 +86,7 @@ class CableLengthFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor2", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };

@@ -11,15 +11,13 @@ jobs:
       CTEST_OUTPUT_ON_FAILURE: ON
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
-      PYTHON_VERSION: ${{ matrix.python_version }}
+      PYTHON_VERSION: ${{ matrix.python_version }} 
+      GTSAM_INSTALL_DIR_MACOS: ${{ github.workspace }}/gtsam_install_prefix 
 
     strategy:
       fail-fast: false
       matrix:
-        # Github Actions requires a single row to be added to the build matrix.
-        # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12, macOS-12-xcode-14.2]
-
+        name: [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12, macOS-14-xcode-15.4]
         build_type: [Debug, Release]
         python_version: [3]
         include:
@@ -27,26 +25,20 @@ jobs:
             os: ubuntu-22.04
             compiler: gcc
             version: "9"
-
           - name: ubuntu-22.04-clang-12
             os: ubuntu-22.04
             compiler: clang
             version: "12"
-
-          - name: ubuntu-22.04-clang-12
-            os: ubuntu-22.04
-            compiler: clang
-            version: "12"
-            build_type: Debug
-            python_version: "3"
-
-          - name: macOS-12-xcode-14.2
-            os: macOS-12
+          - name: macOS-14-xcode-15.4
+            os: macOS-14
             compiler: xcode
-            version: "14.2"
+            version: "15.4"
 
     steps:
-      - name: Install Dependencies (Linux)
+      - name: Checkout GTDynamics (Your Project)
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get -y update
@@ -54,21 +46,17 @@ jobs:
             sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
-
           else
             sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
-
-          # For SDFormat
           sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
-
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
 
-      - name: Install Dependencies (macOS)
+      - name: Install System Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
@@ -80,65 +68,115 @@ jobs:
             echo "CC=clang" >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           fi
-
           brew install boost
           brew tap osrf/simulation
           brew install sdformat12
 
-      - name: Python Dependencies
+      - name: Python Dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
-          # Install dependencies for gtwrap
-          pip3 install -U setuptools numpy pyparsing pyyaml
+          pip3 install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
+        
+      - name: Python Dependencies and venv Setup (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e 
+          python${{ env.PYTHON_VERSION }} -m venv venv
+          source venv/bin/activate
+          echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
+          python -m pip install --upgrade pip
+          python -m pip install --break-system-packages -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
       - name: GTSAM (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Install gtsam
-          git clone https://github.com/borglab/gtsam.git /home/runner/work/gtsam
-          cd /home/runner/work/gtsam
+          set -e
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_linux 
+          cd /tmp/gtsam_source_linux
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
-          sudo make -j$(nproc) install && sudo make python-install
+          sudo make -j$(nproc) install 
+          make python-install 
           sudo ldconfig
-          cd $GITHUB_WORKSPACE # go back to home directory
+          cd ${{ github.workspace }} 
+          sudo rm -rf /tmp/gtsam_source_linux
 
       - name: GTSAM (macOS)
         if: runner.os == 'macOS'
+        shell: bash 
         run: |
-          # Install gtsam
-          git clone https://github.com/borglab/gtsam.git /Users/runner/work/gtsam
-          cd /Users/runner/work/gtsam
+          set -e 
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_macos
+          cd /tmp/gtsam_source_macos
           mkdir build && cd $_
-          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
-          make -j$(sysctl -n hw.physicalcpu) install && make python-install
-          cd $GITHUB_WORKSPACE # go back to home directory
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -D GTSAM_BUILD_PYTHON=ON \
+                -D GTSAM_WITH_TBB=OFF \
+                -D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR_MACOS }} \
+                ..
+          make -j$(sysctl -n hw.physicalcpu) install 
+          make -j$(sysctl -n hw.physicalcpu) python-install 
+          cd ${{ github.workspace }} 
+          rm -rf /tmp/gtsam_source_macos 
 
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Build Directory for GTDynamics
+        run: mkdir build 
 
-      - name: Build Directory
-        run: mkdir build
-
-      - name: Configure (Linux)
+      - name: Configure GTDynamics (Linux)
         if: runner.os == 'Linux'
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON  ..
+          set -e
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON ..
         working-directory: ./build
 
-      - name: Configure (macOS)
+      - name: Configure GTDynamics (macOS)
         if: runner.os == 'macOS'
+        shell: bash 
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DPYTHON_EXECUTABLE=/usr/local/bin/python3 ..
+          set -e
+          GTSAM_CONFIG_DIR_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib/cmake/GTSAM"
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
+                -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                -DGTSAM_DIR="${GTSAM_CONFIG_DIR_PATH}" \
+                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }};$(brew --prefix)" \
+                ..
         working-directory: ./build
 
-      - name: Build
-        run: make -j4
+      - name: Build GTDynamics
+        run: make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi)
         working-directory: ./build
 
-      - name: Test
-        run: make -j4 python-test
+      - name: Install GTDynamics Python Wrappers
+        shell: bash 
+        run: |
+          set -e
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            make -j$(sysctl -n hw.physicalcpu) python-install 
+          else
+            sudo make -j$(nproc) python-install
+          fi
         working-directory: ./build
 
-      - name: Install
-        run: sudo make -j4 python-install
+      - name: Test GTDynamics Python
+        # For macOS, set DYLD_LIBRARY_PATH so the dynamic linker can find the installed GTSAM libraries.
+        # Also, ensure the venv is active for the context of running the tests.
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e
+          source ${{ github.workspace }}/venv/bin/activate # Ensure venv Python and its site-packages are primary
+          export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          echo "DYLD_LIBRARY_PATH is set to: $DYLD_LIBRARY_PATH"
+          make -j$(sysctl -n hw.physicalcpu) python-test
+        working-directory: ./build
+      - name: Test GTDynamics Python (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          # On Linux, sudo ldconfig during GTSAM install should handle library paths for system-wide installs.
+          # If GTSAM was installed to a custom prefix not in ldconfig paths, LD_LIBRARY_PATH would be needed.
+          make -j$(nproc) python-test
         working-directory: ./build

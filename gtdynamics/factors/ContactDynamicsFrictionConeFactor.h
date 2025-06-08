@@ -31,10 +31,10 @@ namespace gtdynamics {
  * that the linear contact force lies within a friction cone.
  */
 class ContactDynamicsFrictionConeFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Vector6> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Vector6> {
  private:
   using This = ContactDynamicsFrictionConeFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Vector6>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Vector6>;
 
   int up_axis_;  // Which axis is up (assuming flat ground)? {0: x, 1: y, 2: z}.
   double mu_prime_;  // static friction coefficient squared.
@@ -161,7 +161,7 @@ class ContactDynamicsFrictionConeFactor
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
 #endif
 };
