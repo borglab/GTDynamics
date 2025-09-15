@@ -13,7 +13,7 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 * [GTSAM4](https://github.com/borglab/gtsam)
 * [gtwrap](https://github.com/borglab/wrap)
-* [sdformat12](https://github.com/osrf/sdformat)
+* [sdformat13](https://github.com/osrf/sdformat)
 
 ## Installing SDFormat
 
@@ -26,9 +26,9 @@ Using Homebrew is the easiest way to get SDFormat installed and it also makes sw
 ```sh
 $ # Install homebrew.
 $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-$ # Set up the tap ind install sdformat12
+$ # Set up the tap ind install sdformat13
 $ brew tap osrf/simulation
-$ brew install sdformat12
+$ brew install sdformat13
 ```
 
 ### Source
@@ -51,7 +51,7 @@ sudo apt-get update
 sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libignition-cmake2-dev libignition-tools-dev libignition-math6-dev
 
 # Set the version to install
-export GTD_SDFormat_VERSION="10.5.0"
+export GTD_SDFormat_VERSION="13.0.0"
 
 # Download specific version of SDFormat
 wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
@@ -72,9 +72,12 @@ $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
 # We can specify the install path with -DCMAKE_INSTALL_PREFIX
+# To compile with Python wrapper support, ensure that GTSAM was built with Python
+#   and use -DGTDYNAMICS_BUILD_PYTHON=ON
 $ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 $ make
 $ sudo make install
+# Run make python-install for installation with Python
 ```
 
 ## Running Tests
@@ -91,11 +94,22 @@ We recommend going through the examples to get a better understanding of how to 
 
 *NOTE* The examples are made to run within the GTDynamics source folder and are not standalone projects.
 
-Run these examples with
-```sh
-$ make example_XXX.run
-```
-where `XXX` corresponds to a folder name in `examples`.  For example, `make example_forward_dynamics.run`.
+1. Build GTDynamics and navigate to the `build` folder:
+    ```sh
+    $ cd build
+    ```
+
+2. Run the example using:
+    ```sh
+    $ make example_XXX.run
+    ```
+    where `XXX` corresponds to the example name. Example names align with folder names in `examples`, but some of them have added suffixes.  For example, `make example_forward_dynamics.run` or `make example_spider_walking_forward`.
+
+3. Run the animation using:
+    ```sh
+    $ make example_XXX.animate
+    ```
+    where `XXX` corresponds to the folder name in `examples`. For example, `make example_quadruped_mp.animate` or `make example_spider_walking.animate`. Make sure you have `pybullet` and `matplotlib` installed in your Python environment. 
 
 ## Including GTDynamics With CMake
 
