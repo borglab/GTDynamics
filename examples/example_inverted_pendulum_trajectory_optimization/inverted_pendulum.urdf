@@ -1,0 +1,44 @@
+<!-- DO NOT MODIFY OR REMOVE -->
+<!-- 
+    Inverted pendulum robot model. Consists of a single actuated continuous
+    joint. The goal of the inverted pendulum problem is to swing the pendulum
+    up.
+-->
+<robot name="inverted_pendulum">
+
+    <link name="l1">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <geometry>
+                <box size="0.05 0.05 0.05"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <mass value="20" />
+            <inertia ixx="0.0083333" ixy="0" ixz="0" iyy="0.0083333" iyz="0" izz="0.0083333"/>
+        </inertial>
+    </link>
+
+    <link name="l2">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0.15" />
+            <geometry>
+                <cylinder length="0.3" radius="0.01"/>
+            </geometry>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 .15" />
+            <mass value="0.3" />
+            <inertia ixx=".00225" ixy="0" ixz="0" iyy=".00225" iyz="0" izz=".000015"/>
+        </inertial>
+    </link>
+
+    <joint name="j1" type="continuous">
+        <parent link="l1"/>
+        <child link="l2"/>
+        <axis xyz="1 0 0"/>
+        <dynamics damping="500"/>
+        <origin rpy="3.1415 0 0" xyz="0 0 0"/>
+    </joint>
+</robot>

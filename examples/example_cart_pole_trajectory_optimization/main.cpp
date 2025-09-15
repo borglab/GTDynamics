@@ -31,6 +31,7 @@ using gtsam::noiseModel::Isotropic, gtsam::noiseModel::Constrained;
 
 int main(int argc, char** argv) {
   // Load the inverted pendulum.
+  std::cout << kUrdfPath << std::endl;
   auto cp = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"));
   int j0_id = cp.joint("j0")->id(), j1_id = cp.joint("j1")->id();
   cp = cp.fixLink("l0");

@@ -35,7 +35,7 @@ for i in range(p.getNumJoints(robot_id)):
 #Read walk forward trajectory file
 df = pd.read_csv('forward_traj.csv')
 # Read rotation trajectory file
-# df = pd.read_csv('rotation_traj.csv')
+#df = pd.read_csv('rotation_traj.csv')
 print(df.columns)
 
 input("Press ENTER to continue.")

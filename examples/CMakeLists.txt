@@ -1,5 +1,7 @@
 # CMake file to make compiling all the examples easier.
 
+#find_package(GTSAM REQUIRED)
+
 # Variable to hold all the example directories
 set(EXAMPLE_SUBDIRS
     scripts
@@ -18,4 +20,24 @@ set(EXAMPLE_SUBDIRS
 # Add each example subdirectory for compilation
 foreach(EXAMPLE ${EXAMPLE_SUBDIRS})
   add_subdirectory(${EXAMPLE})
+endforeach()
+
+# --- Process Python Animation Scripts ---
+# This automatically finds 'animate.py' scripts and creates .animate targets.
+message(STATUS "Searching for python animation scripts...")
+foreach(EXAMPLE_NAME ${EXAMPLE_SUBDIRS})
+  set(ANIMATION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${EXAMPLE_NAME}/animate.py")
+
+  if(EXISTS ${ANIMATION_SCRIPT})
+    message(STATUS "  -- Found animation script for ${EXAMPLE_NAME}, creating '.animate' target")
+    add_custom_target(${EXAMPLE_NAME}.animate
+      COMMAND
+      python3 ${ANIMATION_SCRIPT}
+      WORKING_DIRECTORY
+      "${CMAKE_CURRENT_SOURCE_DIR}/${EXAMPLE_NAME}"
+      COMMENT
+      "Running animation for ${EXAMPLE_NAME}..."
+      VERBATIM
+    )
+  endif()
 endforeach()

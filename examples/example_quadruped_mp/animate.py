@@ -28,7 +28,7 @@ for i in range(p.getNumJoints(quad_id)):
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
 
-df = pd.read_csv('traj.csv')
+df = pd.read_csv('build/traj.csv')
 
 input("Press ENTER to continue.")
 
