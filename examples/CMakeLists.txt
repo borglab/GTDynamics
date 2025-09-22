@@ -1,7 +1,5 @@
 # CMake file to make compiling all the examples easier.
 
-#find_package(GTSAM REQUIRED)
-
 # Variable to hold all the example directories
 set(EXAMPLE_SUBDIRS
     scripts
