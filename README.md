@@ -105,11 +105,11 @@ We recommend going through the examples to get a better understanding of how to 
     ```
     where `XXX` corresponds to the example name. Example names align with folder names in `examples`, but some of them have added suffixes.  For example, `make example_forward_dynamics.run` or `make example_spider_walking_forward`.
 
-3. Run the animation using:
+3. Run the simulation using:
     ```sh
-    $ make example_XXX.animate
+    $ make example_XXX.sim
     ```
-    where `XXX` corresponds to the folder name in `examples`. For example, `make example_quadruped_mp.animate` or `make example_spider_walking.animate`. Make sure you have `pybullet` and `matplotlib` installed in your Python environment. 
+    where `XXX` corresponds to the folder name in `examples`. For example, `make example_quadruped_mp.sim` or `make example_spider_walking.sim`. Make sure you have `pybullet` and `matplotlib` installed in your Python environment. 
 
 ## Including GTDynamics With CMake
 
