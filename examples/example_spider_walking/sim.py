@@ -32,10 +32,10 @@ for i in range(p.getNumJoints(robot_id)):
     jinfo = p.getJointInfo(robot_id, i)
     joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
-#Read walk forward trajectory file
+# Read trajectory file
+#   Use 'forward_traj.csv' for forward
+#   Use 'rotation_traj.csv' for rotation
 df = pd.read_csv('forward_traj.csv')
-# Read rotation trajectory file
-#df = pd.read_csv('rotation_traj.csv')
 print(df.columns)
 
 input("Press ENTER to continue.")
