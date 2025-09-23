@@ -1,6 +1,6 @@
 name: Python CI
 
-on: [pull_request]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -54,7 +54,7 @@ jobs:
           sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat13-dev
 
       - name: Install System Dependencies (macOS)
         if: runner.os == 'macOS'
@@ -70,7 +70,7 @@ jobs:
           fi
           brew install boost
           brew tap osrf/simulation
-          brew install sdformat12
+          brew install sdformat13
 
       - name: Python Dependencies (Linux)
         if: runner.os == 'Linux'
