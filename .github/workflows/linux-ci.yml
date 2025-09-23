@@ -54,7 +54,7 @@ jobs:
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
 
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat13-dev
 
           # Install CppUnitLite.
           git clone https://github.com/borglab/CppUnitLite.git
