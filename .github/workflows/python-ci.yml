@@ -70,7 +70,7 @@ jobs:
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
           # Install required libraries: TBB (threading), Boost (utilities), and SDF (robot description format)
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat12-dev
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat13-dev
 
       # Step 3: Install system-level dependencies on macOS
       - name: Install System Dependencies (macOS)
@@ -91,7 +91,7 @@ jobs:
           brew install boost
           # Add OSRF tap for robotics packages and install SDF
           brew tap osrf/simulation
-          brew install sdformat12
+          brew install sdformat13
 
       # Step 4: Install Python dependencies on Linux (system-wide installation)
       - name: Python Dependencies (Linux)

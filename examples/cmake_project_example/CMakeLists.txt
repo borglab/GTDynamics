@@ -8,7 +8,7 @@ find_package(GTSAM REQUIRED)
 find_path(gtdynamics_include gtdynamics)
 find_library(gtdynamics_lib gtdynamics)
 # these next 3 lines are temporary until we create a proper cmake module for gtdynamics.
-set(SDFormat_VERSION 12)
+set(SDFormat_VERSION 13)
 find_package(sdformat${SDFormat_VERSION} REQUIRED)
 list(APPEND gtdynamics_lib ${SDFormat_LIBRARIES})
 
