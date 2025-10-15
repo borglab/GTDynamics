@@ -15,7 +15,7 @@
 
 #include <gtdynamics/universal_robot/Robot.h>
 
-#include <ignition/math/Pose3.hh>
+#include <gz/math/Pose3.hh>
 #include <sdf/sdf.hh>
 #include <string>
 
@@ -64,11 +64,11 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
                             const sdf::Joint &sdf_joint);
 
 /**
- * Parse a ignition::math Pose object into a gtsam::Pose.
+ * Parse a gz::math Pose object into a gtsam::Pose.
  *
- * @param ignition_pose An ignition::math::Pose object to be parsed.
+ * @param gazebo_pose An gz::math::Pose object to be parsed.
  */
-gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d &ignition_pose);
+gtsam::Pose3 Pose3FromGazebo(const gz::math::Pose3d &gazebo_pose);
 
 /**
  * @fn Extract joint parameter values from an input sdf::Joint.

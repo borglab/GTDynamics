@@ -20,7 +20,7 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <ignition/math/Pose3.hh>
+#include <gz/math/Pose3.hh>
 #include <string>
 
 using namespace gtdynamics;

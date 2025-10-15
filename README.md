@@ -13,7 +13,7 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 * [GTSAM4](https://github.com/borglab/gtsam)
 * [gtwrap](https://github.com/borglab/wrap)
-* [sdformat13](https://github.com/osrf/sdformat)
+* [sdformat15](https://github.com/osrf/sdformat)
 
 ## Installing SDFormat
 
@@ -26,9 +26,9 @@ Using Homebrew is the easiest way to get SDFormat installed and it also makes sw
 ```sh
 $ # Install homebrew.
 $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-$ # Set up the tap ind install sdformat13
+$ # Set up the tap and install sdformat15
 $ brew tap osrf/simulation
-$ brew install sdformat13
+$ brew install sdformat15
 ```
 
 ### Source
@@ -48,10 +48,10 @@ wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
 sudo apt-get update
 
 # Install SDFormat dependencies
-sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libignition-cmake2-dev libignition-tools-dev libignition-math6-dev
+sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libgz-cmake2-dev libgz-tools-dev libgz-math6-dev
 
 # Set the version to install
-export GTD_SDFormat_VERSION="13.0.0"
+export GTD_SDFormat_VERSION="15.0.0"
 
 # Download specific version of SDFormat
 wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
