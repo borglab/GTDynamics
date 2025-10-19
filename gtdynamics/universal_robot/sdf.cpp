@@ -78,9 +78,9 @@ sdf::Model GetSdf(const std::string &sdf_file_path,
   throw std::runtime_error("Model not found in: " + sdf_file_path);
 }
 
-gtsam::Pose3 Pose3FromIgnition(const ignition::math::Pose3d &ignition_pose) {
-  const auto &rot = ignition_pose.Rot();
-  const auto &pos = ignition_pose.Pos();
+gtsam::Pose3 Pose3FromGazebo(const gz::math::Pose3d &gazebo_pose) {
+  const auto &rot = gazebo_pose.Rot();
+  const auto &pos = gazebo_pose.Pos();
   return gtsam::Pose3(
       gtsam::Rot3(gtsam::Quaternion(rot.W(), rot.X(), rot.Y(), rot.Z())),
       gtsam::Point3(pos[0], pos[1], pos[2]));
@@ -115,7 +115,7 @@ Pose3 GetSdfLinkFrame(const sdf::Link *sdf_link) {
   }
 
   // Pose is updated from joint frame to base frame.
-  const Pose3 bMl = Pose3FromIgnition(raw_pose);
+  const Pose3 bMl = Pose3FromGazebo(raw_pose);
   return bMl;
 }
 
@@ -128,7 +128,7 @@ Pose3 GetJointFrame(const sdf::Joint &sdf_joint,
 
   // Get the pose of the joint in the parent or child link's frame depending on
   // the value of `frame_name`.
-  Pose3 lTj = Pose3FromIgnition(sdf_joint.RawPose());
+  Pose3 lTj = Pose3FromGazebo(sdf_joint.RawPose());
 
   if (frame_name.empty() || frame_name == child_sdf_link->Name()) {
     // If `frame_name` is empty or has the same name as the child_link, it means
@@ -175,12 +175,12 @@ LinkSharedPtr LinkFromSdf(uint8_t id, const sdf::Link &sdf_link) {
   // Get the pose of the link in the base frame
   // we only save the bMcom rest matrix as part of the Link class
   const Pose3 bMl = GetSdfLinkFrame(&sdf_link);
-  const Pose3 lMcom = Pose3FromIgnition(sdf_link.Inertial().Pose());
+  const Pose3 lMcom = Pose3FromGazebo(sdf_link.Inertial().Pose());
   const Pose3 bMcom = bMl * lMcom;
 
   return std::make_shared<Link>(id, sdf_link.Name(),
-                                  sdf_link.Inertial().MassMatrix().Mass(),
-                                  inertia, bMcom, bMl);
+                                sdf_link.Inertial().MassMatrix().Mass(),
+                                inertia, bMcom, bMl);
 }
 
 LinkSharedPtr LinkFromSdf(uint8_t id, const std::string &link_name,
@@ -214,11 +214,11 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
   switch (sdf_joint.Type()) {
     case sdf::JointType::PRISMATIC:
       joint = std::make_shared<PrismaticJoint>(id, name, bMj, parent_link,
-                                                 child_link, axis, parameters);
+                                               child_link, axis, parameters);
       break;
     case sdf::JointType::REVOLUTE:
       joint = std::make_shared<RevoluteJoint>(id, name, bMj, parent_link,
-                                                child_link, axis, parameters);
+                                              child_link, axis, parameters);
       break;
     case sdf::JointType::SCREW:
       joint = std::make_shared<HelicalJoint>(
@@ -226,8 +226,8 @@ JointSharedPtr JointFromSdf(uint8_t id, const LinkSharedPtr &parent_link,
           parameters);
       break;
     case sdf::JointType::FIXED:
-      joint = std::make_shared<FixedJoint>(id, name, bMj, parent_link,
-                                             child_link);
+      joint =
+          std::make_shared<FixedJoint>(id, name, bMj, parent_link, child_link);
       break;
     default:
       throw std::runtime_error("Joint type for [" + name +
@@ -256,8 +256,8 @@ static LinkJointPair ExtractRobotFromSdf(const sdf::Model &sdf) {
     sdf::Joint sdf_joint = *sdf.JointByIndex(j);
 
     // Get this joint's parent and child links.
-    std::string parent_link_name = sdf_joint.ParentLinkName();
-    std::string child_link_name = sdf_joint.ChildLinkName();
+    std::string parent_link_name = sdf_joint.ParentName();
+    std::string child_link_name = sdf_joint.ChildName();
     if (parent_link_name == "world") {
       // This joint fixes the child link in the world frame.
       LinkSharedPtr child_link = name_to_link[child_link_name];
