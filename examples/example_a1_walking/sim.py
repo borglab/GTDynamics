@@ -16,7 +16,7 @@ p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 print(pybullet_data.getDataPath())
 p.setGravity(0, 0, -9.8)
 p.setRealTimeSimulation(1)
-planeId = p.loadURDF("plane.urdf")
+planeId = p.loadURDF(gtd.URDF_PATH + "plane.urdf", useFixedBase=True)
 p.changeDynamics(planeId, -1, lateralFriction=0.4)
 robot = p.loadURDF(gtd.URDF_PATH + "/a1/a1.urdf",[0,0,0.45],[0,0,0,1.0])
 
@@ -30,7 +30,7 @@ for i in range(p.getNumJoints(robot_id)):
         joint_to_jid_map[jinfo[1].decode("utf-8")] = jinfo[0]
 
 #Read walk forward trajectory file from build (after running the example)
-df = pd.read_csv(gtd.URDF_PATH + '/../../build/examples/example_a1_walking/a1_traj_DG_mass.csv')
+df = pd.read_csv('a1_traj_DG_mass.csv')
 
 pos, orn = p.getBasePositionAndOrientation(robot_id)
 

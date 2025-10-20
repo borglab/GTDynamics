@@ -44,7 +44,7 @@ jobs:
         run: |
           brew install boost
           brew tap osrf/simulation
-          brew install sdformat12
+          brew install sdformat15
           brew tap borglab/core
 
       - name: GTSAM

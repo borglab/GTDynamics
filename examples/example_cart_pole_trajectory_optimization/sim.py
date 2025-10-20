@@ -6,12 +6,14 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 
+import gtdynamics as gtd
+
 # pylint: disable=I1101, C0103
 
 _ = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
-robot = p.loadURDF("cart_pole.urdf", [0, 0, 0], [0, 0, 0, 1], False, True)
+robot = p.loadURDF(gtd.URDF_PATH + "cart_pole.urdf", [0, 0, 0], [0, 0, 0, 1], False, True)
 t = 0
 
 

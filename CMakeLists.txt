@@ -45,8 +45,8 @@ endif()
 # For Python wrapper.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
-# For parsing urdf/sdf files.
-set(SDFormat_VERSION 12)
+# For parsing urdf/sdf files. # TODO: hardcoded sdformat version
+set(SDFormat_VERSION 15)
 find_package(sdformat${SDFormat_VERSION} REQUIRED)
 
 # ##############################################################################

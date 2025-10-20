@@ -80,10 +80,10 @@ TEST(Sdf, load_and_parse_sdf_world_file) {
   EXPECT(assert_equal(0.03, l1.Inertial().Moi()(2, 2)));
 }
 
-TEST(Sdf, Pose3FromIgnition) {
-  ignition::math::Pose3d pose_to_parse(-1, 1, -1, M_PI / 2, 0, -M_PI);
+TEST(Sdf, Pose3FromGazebo) {
+  gz::math::Pose3d pose_to_parse(-1, 1, -1, M_PI / 2, 0, -M_PI);
 
-  gtsam::Pose3 parsed_pose = Pose3FromIgnition(pose_to_parse);
+  gtsam::Pose3 parsed_pose = Pose3FromGazebo(pose_to_parse);
 
   EXPECT(assert_equal(gtsam::Pose3(gtsam::Rot3::RzRyRx(M_PI / 2, 0, -M_PI),
                                    gtsam::Point3(-1, 1, -1)),
@@ -430,10 +430,14 @@ TEST(Sdf, limit_params) {
       std::make_shared<RevoluteJoint>(1, "joint_1", joint_1_bTj, link_0, link_1,
                                       joint_1_axis, joint_1_parameters);
 
-  EXPECT(assert_equal(-1e16,
-                      joint_1->parameters().scalar_limits.value_lower_limit));
-  EXPECT(assert_equal(1e16,
-                      joint_1->parameters().scalar_limits.value_upper_limit));
+  // Check the lower limit, expect negative infinity
+  EXPECT(std::isinf(joint_1->parameters().scalar_limits.value_lower_limit));
+  EXPECT(joint_1->parameters().scalar_limits.value_lower_limit < 0);
+
+  // Check the upper limit, expect positive infinity
+  EXPECT(std::isinf(joint_1->parameters().scalar_limits.value_upper_limit));
+  EXPECT(joint_1->parameters().scalar_limits.value_upper_limit > 0);
+    
   EXPECT(assert_equal(
       1e-9, joint_1->parameters().scalar_limits.value_limit_threshold));
 }

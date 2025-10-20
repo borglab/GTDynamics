@@ -1,0 +1,17 @@
+# Examples build status
+
+## GTD Examples Status
+
+| Name | Cpp Status | Animation Status |
+| :--- | :--- | :--- |
+| `quadruped_mp` | 🟢 Working | 🟢 Working |
+| `a1_walking_forward` | 🔴 Runtime Error | ⚫️ Not started |
+| `a1_walking_forward_combined` | 🔴 Runtime Error | ⚫️ Not started |
+| `cart_pole_trajectory_optimization` | 🟢 Working | 🟢 Working |
+| `forward_dynamics` | 🟢 Working | ⚫️ Not Implemented |
+| `full_kinodynamic_balancing` | 🟢 Working | 🟢 Working |
+| `full_kinodynamic_walking_walk_forward` | 🟢 Working | 🟡 Runs With Errors |
+| `full_kinodynamic_walking_rotate` | 🟢 Working | 🟡 Runs With Errors |
+| `inverted_pendulum_trajectory_optimization` | 🟢 Working | 🔴 Not Working |
+| `spider_walking_forward` | 🟢 Working | 🔴 Not Working |
+| `spider_walking_rotate` | 🟢 Working | 🔴 Not Working |

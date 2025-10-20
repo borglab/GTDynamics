@@ -17,9 +17,9 @@ import gtdynamics as gtd
 _ = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # To load plane SDF.
 p.setGravity(0, 0, -9.8)
-planeId = p.loadURDF("plane.urdf")
+planeId = p.loadURDF(gtd.URDF_PATH + "plane.urdf")
 p.changeDynamics(planeId, -1, lateralFriction=1)
-quad_id = p.loadURDF("vision60.urdf", [0, 0, 0.21], [0, 0, 0, 1], False,
+quad_id = p.loadURDF(gtd.URDF_PATH + "vision60.urdf", [0, 0, 0.21], [0, 0, 0, 1], False,
                      False)
 
 joint_to_jid_map = {}
