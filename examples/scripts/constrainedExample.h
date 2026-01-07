@@ -18,7 +18,6 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 
 namespace gtdynamics {

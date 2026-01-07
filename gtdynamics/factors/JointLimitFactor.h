@@ -16,7 +16,7 @@
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 
 #include <cmath>
 #include <iostream>
