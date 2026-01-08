@@ -679,7 +679,7 @@ gtsam::Key ContactWrenchKey(int i, int k, int t=0);
 gtsam::Key PhaseKey(int k);
 gtsam::Key TimeKey(int t);
 
-///////////////////// Key Methods /////////////////////
+/******************** Key Methods ********************/
 void InsertJointAngle(gtsam::Values@ values, int j, int t, double value);
 
 void InsertJointAngle(gtsam::Values @values, int j, double value);
