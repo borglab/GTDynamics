@@ -2,10 +2,22 @@ name: Linux CI
 
 on: [pull_request]
 
+# Cancels any in-progress workflow runs for the same PR when a new push is made,
+# allowing the runner to become available more quickly for the latest changes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: ${{ matrix.name }} ${{ matrix.build_type }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    container:
+      image: borglab/gtsam:latest
+      env:
+        CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
+      volumes:
+        - ${{ github.workspace }}:/gtdynamics
 
     env:
       CTEST_OUTPUT_ON_FAILURE: ON
@@ -17,19 +29,17 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12]
+        name: [ubuntu-24.04-gcc-9, ubuntu-24.04-clang-12]
 
         build_type: [Debug, Release]
         include:
-          - name: ubuntu-22.04-gcc-9
-            os: ubuntu-22.04
+          - name: ubuntu-24.04-gcc-11
             compiler: gcc
-            version: "9"
+            version: "11"
 
-          - name: ubuntu-22.04-clang-12
-            os: ubuntu-22.04
+          - name: ubuntu-24.04-clang-16
             compiler: clang
-            version: "12"
+            version: "16"
 
     steps:
       - name: Setup Compiler
@@ -54,19 +64,13 @@ jobs:
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           sudo apt-get -y update
 
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat15-dev
+          sudo apt-get -y install libsdformat15-dev
 
           # Install CppUnitLite.
           git clone https://github.com/borglab/CppUnitLite.git
           cd CppUnitLite && mkdir build && cd $_
           cmake .. && sudo make -j4 install
           cd ../../
-
-      - name: GTSAM
-        run: |
-          sudo add-apt-repository -y ppa:borglab/gtsam-develop
-          sudo apt-get -y update
-          sudo apt-get -y install libgtsam-no-tbb-dev libgtsam-no-tbb-unstable-dev
 
       - name: Checkout
         uses: actions/checkout@master
