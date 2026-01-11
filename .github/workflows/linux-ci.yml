@@ -60,6 +60,7 @@ jobs:
       - name: Install Dependencies
         run: |
           # For SDFormat
+          apt-get install -y lsb-release
           sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
           apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
           apt-get -y update
