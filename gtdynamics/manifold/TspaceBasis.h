@@ -18,6 +18,7 @@
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/inference/Key.h>
+#include <gtsam/inference/Ordering.h>
 #include <gtsam/linear/VectorValues.h>
 
 #include <Eigen/Sparse>

@@ -72,7 +72,7 @@ class ContactHeightFactor : public gtsam::ExpressionFactor<double> {
 
   virtual ~ContactHeightFactor() {}
 
-  //// @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));

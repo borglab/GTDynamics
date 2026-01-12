@@ -125,7 +125,7 @@ gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
   for (auto&& link : robot.links()) {
     auto key = PoseKey(link->id(), slice.k);
     auto pose = configuration.at<Pose3>(key);
-    graph.emplace_shared<gtsam::NonlinearEquality1<Pose3>>(pose, key);
+    graph.emplace_shared<gtsam::NonlinearEquality<Pose3>>(key, pose);
     initial_values.insert(key, pose);
   }
 
@@ -133,7 +133,7 @@ gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
   for (auto&& joint : robot.joints()) {
     auto key = JointAngleKey(joint->id(), slice.k);
     auto q = configuration.at<double>(key);
-    graph.emplace_shared<gtsam::NonlinearEquality1<double>>(q, key);
+    graph.emplace_shared<gtsam::NonlinearEquality<double>>(key, q);
     initial_values.insert(key, q);
   }
 

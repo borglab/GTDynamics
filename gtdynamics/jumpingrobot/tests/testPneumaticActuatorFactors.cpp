@@ -264,7 +264,6 @@ TEST(SmoothActuatorFactor, zero_force) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-//// following tests are deprecated
 TEST(ClippingActuatorFactor, Factor) {
   const double delta_x = 1;
   const double p = 120;
