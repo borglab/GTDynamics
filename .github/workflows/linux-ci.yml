@@ -2,10 +2,22 @@ name: Linux CI
 
 on: [pull_request]
 
+# Cancels any in-progress workflow runs for the same PR when a new push is made,
+# allowing the runner to become available more quickly for the latest changes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: ${{ matrix.name }} ${{ matrix.build_type }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    container:
+      image: borglab/gtsam:latest
+      env:
+        CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
+      volumes:
+        - ${{ github.workspace }}:/gtdynamics
 
     env:
       CTEST_OUTPUT_ON_FAILURE: ON
@@ -17,32 +29,30 @@ jobs:
       matrix:
         # Github Actions requires a single row to be added to the build matrix.
         # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-22.04-gcc-9, ubuntu-22.04-clang-12]
+        name: [ubuntu-24.04-gcc-11, ubuntu-24.04-clang-16]
 
         build_type: [Debug, Release]
         include:
-          - name: ubuntu-22.04-gcc-9
-            os: ubuntu-22.04
+          - name: ubuntu-24.04-gcc-11
             compiler: gcc
-            version: "9"
+            version: "11"
 
-          - name: ubuntu-22.04-clang-12
-            os: ubuntu-22.04
+          - name: ubuntu-24.04-clang-16
             compiler: clang
-            version: "12"
+            version: "16"
 
     steps:
       - name: Setup Compiler
         run: |
-          sudo apt-get -y clean && sudo apt-get -y update
+          apt-get -y clean && apt-get -y update
 
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
+            apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
 
           else
-            sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
+            apt-get install -y clang-${{ matrix.version }} g++-multilib
             echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV
           fi
@@ -50,23 +60,18 @@ jobs:
       - name: Install Dependencies
         run: |
           # For SDFormat
-          sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
-          sudo apt-get -y update
+          apt-get install -y lsb-release
+          sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
+          apt-get -y update
 
-          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat15-dev
+          apt-get -y install libsdformat15-dev
 
           # Install CppUnitLite.
           git clone https://github.com/borglab/CppUnitLite.git
           cd CppUnitLite && mkdir build && cd $_
-          cmake .. && sudo make -j4 install
+          cmake .. && make -j4 install
           cd ../../
-
-      - name: GTSAM
-        run: |
-          sudo add-apt-repository -y ppa:borglab/gtsam-develop
-          sudo apt-get -y update
-          sudo apt-get -y install libgtsam-no-tbb-dev libgtsam-no-tbb-unstable-dev
 
       - name: Checkout
         uses: actions/checkout@master
@@ -88,5 +93,5 @@ jobs:
         working-directory: ./build
 
       - name: Install
-        run: sudo make -j$(nproc) install
+        run: make -j$(nproc) install
         working-directory: ./build
