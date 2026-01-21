@@ -95,7 +95,7 @@ GaussianFactorGraph MutableLMOptimizer::buildDampedSystem(
     std::cout << "building damped system with lambda " << currentState->lambda
               << std::endl;
 
-  if (params_.diagonalDamping)
+  if (params_.getDiagonalDamping())
     return currentState->buildDampedSystem(linear, sqrtHessianDiagonal);
   else
     return currentState->buildDampedSystem(linear);
@@ -287,12 +287,12 @@ GaussianFactorGraph::shared_ptr MutableLMOptimizer::iterate() {
   // Only calculate diagonal of Hessian (expensive) once per outer iteration, if
   // we need it
   VectorValues sqrtHessianDiagonal;
-  if (params_.diagonalDamping) {
+  if (params_.getDiagonalDamping()) {
     sqrtHessianDiagonal = linear->hessianDiagonal();
     for (auto& kvp : sqrtHessianDiagonal) {
       Vector& v = kvp.second;
-      v = v.cwiseMax(params_.minDiagonal)
-              .cwiseMin(params_.maxDiagonal)
+      v = v.cwiseMax(params_.dampingParams.minDiagonal)
+              .cwiseMin(params_.dampingParams.maxDiagonal)
               .cwiseSqrt();
     }
   }
