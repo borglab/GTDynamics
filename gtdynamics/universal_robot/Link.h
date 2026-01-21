@@ -119,8 +119,12 @@ class Link : public std::enable_shared_from_this<Link> {
   /// Relative pose at rest from link’s COM to the base frame.
   inline const gtsam::Pose3 &bMcom() const { return bMcom_; }
 
-  /// Relative pose at rest from link frame to the base frame. mainly for
-  /// interoperability uses
+  /**
+   * @brief Relative pose at rest from link frame to the base frame.
+   * Mainly for interoperability uses.
+   * 
+   * @return const gtsam::Pose3 
+   */
   inline const gtsam::Pose3 bMlink() const { return bMlink_; }
 
   /// the fixed pose of the link
