@@ -13,7 +13,6 @@
 #include "gtsam/base/utilities.h"  // for RedirectCout.
 
 {includes}
-#include <boost/serialization/export.hpp>
 
 {boost_class_export}
 

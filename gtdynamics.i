@@ -31,7 +31,6 @@ class JointMeasurementFactor : gtsam::NoiseModelFactor {
 };
 
 #include <gtdynamics/factors/PoseFactor.h>
-
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
 class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
@@ -161,7 +160,6 @@ class Link  {
   static gtdynamics::Link fix(const gtdynamics::Link& link);
   static gtdynamics::Link fix(const gtdynamics::Link& link, gtsam::Pose3 &fixed_pose);
   static gtdynamics::Link unfix(const gtdynamics::Link& link);
-  
 };
 
 /********************** joint **********************/

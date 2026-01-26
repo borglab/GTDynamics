@@ -50,17 +50,17 @@ TEST(ContactPointFactor, Error) {
   PointOnLink point_on_link{end_link, Point3(0, 0, 1)};
 
   Key point_key = gtdynamics::PoseKey(1, 0);
-  Point3 wPc(0, 0, 1);
+  Point3 wPc(0, 0, 1.1);
 
   ContactPointFactor factor(point_on_link, point_key, kPointModel, 0);
 
   Vector error = factor.evaluateError(point_on_link.link->bMcom(), wPc);
-  EXPECT(assert_equal(Vector3(0, 0, -0.1), error, 1e-9));
+  EXPECT(assert_equal(Vector3::Zero(), error, 1e-9));
 
   // Check error when contact point is not consistent
-  Point3 wPc2(1, 1, 2);
+  Point3 wPc2(1, 1, 2.1);
   error = factor.evaluateError(point_on_link.link->bMcom(), wPc2);
-  EXPECT(assert_equal(Vector3(1.0, 1.0, 0.9), error, 1e-9));
+  EXPECT(assert_equal(Vector3::Ones(), error, 1e-9));
 }
 
 TEST(ContactPointFactor, Jacobians) {
