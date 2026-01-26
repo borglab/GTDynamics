@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.9...3.29)
 enable_testing()
 project(gtdynamics
         LANGUAGES CXX C
