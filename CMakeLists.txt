@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.9...3.29)
 enable_testing()
 project(gtdynamics
         LANGUAGES CXX C
@@ -6,6 +6,22 @@ project(gtdynamics
         DESCRIPTION "Full kinodynamics constraints for arbitrary robot configurations with factor graphs.")
 
 add_compile_options(-faligned-new)
+
+# Configuration options should appear even if dependency checks fail.
+option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
+set_property(CACHE GTDYNAMICS_ENABLE_BOOST_SERIALIZATION PROPERTY ADVANCED OFF)
+option(GTDYNAMICS_WITH_TBB "Use Intel Threaded Building Blocks (TBB) if available" OFF)
+set_property(CACHE GTDYNAMICS_WITH_TBB PROPERTY ADVANCED OFF)
+option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
+set_property(CACHE GTDYNAMICS_BUILD_CABLE_ROBOT PROPERTY ADVANCED OFF)
+option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
+set_property(CACHE GTDYNAMICS_BUILD_JUMPING_ROBOT PROPERTY ADVANCED OFF)
+option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
+set_property(CACHE GTDYNAMICS_BUILD_PANDA_ROBOT PROPERTY ADVANCED OFF)
+option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
+set_property(CACHE GTDYNAMICS_BUILD_PYTHON PROPERTY ADVANCED OFF)
+option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
+set_property(CACHE GTDYNAMICS_BUILD_EXAMPLES PROPERTY ADVANCED OFF)
 
 # Enforce c++17 standards
 add_compile_options(-std=c++17) # CMake 3.1 and earlier
@@ -33,13 +49,15 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${GTSAM_DIR}/../GTSAMCMakeTools")
 
 # Boost is automatically added when we add GTSAM above.
 # This ensures both GTSAM and GTDynamics have the same Boost version.
-include_directories(${Boost_INCLUDE_DIR})
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIR})
 
-if(NOT (${Boost_VERSION} LESS 105600))
-  message(
-    "Ignoring Boost restriction on optional lvalue assignment from rvalues")
-  add_definitions(-DBOOST_OPTIONAL_ALLOW_BINDING_TO_RVALUES
-                  -DBOOST_OPTIONAL_CONFIG_ALLOW_BINDING_TO_RVALUES)
+  if(NOT (Boost_VERSION LESS 105600))
+    message(
+      "Ignoring Boost restriction on optional lvalue assignment from rvalues")
+    add_definitions(-DBOOST_OPTIONAL_ALLOW_BINDING_TO_RVALUES
+                    -DBOOST_OPTIONAL_CONFIG_ALLOW_BINDING_TO_RVALUES)
+  endif()
 endif()
 
 # For Python wrapper.
@@ -52,13 +70,6 @@ find_package(sdformat${SDFormat_VERSION} REQUIRED)
 # ##############################################################################
 # Dynamics library
 # ##############################################################################
-option(GTDYNAMICS_WITH_TBB                       "Use Intel Threaded Building Blocks (TBB) if available" OFF)
-option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
-option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
-option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
-
-# Enable or disable serialization with GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
-option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
 if(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION)
   add_compile_definitions(GTSAM_ENABLE_BOOST_SERIALIZATION)
   add_compile_definitions(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION)
@@ -68,7 +79,6 @@ include(cmake/HandleTBB.cmake)              # TBB
 
 add_subdirectory(gtdynamics)
 
-option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
 message(STATUS "Build Python Wrapper: ${GTDYNAMICS_BUILD_PYTHON}")
 
 if(GTDYNAMICS_BUILD_PYTHON)
@@ -78,7 +88,6 @@ endif()
 # Process subdirectories.
 add_subdirectory(tests)
 
-option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
 if(GTDYNAMICS_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
