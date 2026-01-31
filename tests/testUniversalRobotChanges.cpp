@@ -63,14 +63,14 @@ TEST(Robot, RenameReassign) {
   robot.renameLinks(link_name_map);
   EXPECT(robot.link("link1"));
   EXPECT(robot.link("link2"));
-  EXPECT(!robot.link("l1"));
-  EXPECT(!robot.link("l2"));
+  THROWS_EXCEPTION(robot.link("l1"));
+  THROWS_EXCEPTION(robot.link("l2"));
 
   // Test Rename Joints
   std::map<std::string, std::string> joint_name_map = {{"j1", "joint1"}};
   robot.renameJoints(joint_name_map);
   EXPECT(robot.joint("joint1"));
-  EXPECT(!robot.joint("j1"));
+  THROWS_EXCEPTION(robot.joint("j1"));
 
   // Test Reassign Links
   std::vector<std::string> ordered_link_names = {"link2", "link1"};
