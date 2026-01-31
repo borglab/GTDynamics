@@ -13,9 +13,9 @@
 
 #pragma once
 
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 
-namespace gtdynamics {
+namespace gtsam {
 
 template <int P>
 gtsam::NoiseModelFactor::shared_ptr VectorExpressionEquality<P>::createFactor(
@@ -63,4 +63,4 @@ size_t VectorExpressionEquality<P>::dim() const {
   return P;
 }
 
-}  // namespace gtdynamics
+}  // namespace gtsam

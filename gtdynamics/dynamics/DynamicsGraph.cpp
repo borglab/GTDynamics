@@ -50,7 +50,7 @@ using gtsam::Z_6x1;
 namespace gtdynamics {
 
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
-    const Robot &robot, const int t, const gtsam::Values &known_values) {
+    const Robot &robot, const int t, const gtsam::Values &known_values) const {
   GaussianFactorGraph graph;
   auto all_constrained = gtsam::noiseModel::Constrained::All(6);
   for (auto &&link : robot.links()) {
@@ -123,7 +123,7 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
 }
 
 Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
-                                    const gtsam::Values &known_values) {
+                                    const gtsam::Values &known_values) const {
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearFDPriors(robot, t, known_values);
@@ -435,9 +435,10 @@ double multDouble(const double &d1, const double &d2,
   return d1 * d2;
 }
 
-void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-    NonlinearFactorGraph *graph, const Key x0_key, const Key x1_key,
-    const Key v0_key, const Key v1_key, const Key phase_key,
+std::shared_ptr<gtsam::ExpressionFactor<double>>
+DynamicsGraph::collocationFactorDouble(
+    const gtsam::Key x0_key, const gtsam::Key x1_key, const gtsam::Key v0_key,
+    const gtsam::Key v1_key, const gtsam::Key phase_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const CollocationScheme collocation) {
   Double_ phase_expr(phase_key);
@@ -448,15 +449,45 @@ void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
   Double_ v0dt(multDouble, phase_expr, v0_expr);
 
   if (collocation == CollocationScheme::Euler) {
-    graph->add(ExpressionFactor(cost_model, 0.0, x0_expr + v0dt - x1_expr));
+    return std::make_shared<ExpressionFactor<double>>(cost_model, 0.0,
+                                                      x0_expr + v0dt - x1_expr);
   } else if (collocation == CollocationScheme::Trapezoidal) {
     Double_ v1dt(multDouble, phase_expr, v1_expr);
-    graph->add(ExpressionFactor(cost_model, 0.0,
-                                x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr));
+    return std::make_shared<ExpressionFactor<double>>(
+        cost_model, 0.0, x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr);
   } else {
     throw std::runtime_error(
         "runge-kutta and hermite-simpson not implemented yet");
   }
+}
+
+std::shared_ptr<gtsam::ExpressionFactor<double>>
+DynamicsGraph::multiPhaseJointCollocationQFactor(const size_t j, const size_t k,
+                        const gtsam::Key phase_key,
+                        const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                        const CollocationScheme collocation) {
+  return collocationFactorDouble(JointAngleKey(j, k), JointAngleKey(j, k + 1),
+                                 JointVelKey(j, k), JointVelKey(j, k + 1),
+                                 phase_key, cost_model, collocation);
+}
+
+std::shared_ptr<gtsam::ExpressionFactor<double>>
+DynamicsGraph::multiPhaseJointCollocationVFactor(
+    const size_t j, const size_t k, const gtsam::Key phase_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const CollocationScheme collocation) {
+  return collocationFactorDouble(JointVelKey(j, k), JointVelKey(j, k + 1),
+                                 JointAccelKey(j, k), JointAccelKey(j, k + 1),
+                                 phase_key, cost_model, collocation);
+}
+
+void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
+    NonlinearFactorGraph *graph, const Key x0_key, const Key x1_key,
+    const Key v0_key, const Key v1_key, const Key phase_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const CollocationScheme collocation) {
+  graph->add(collocationFactorDouble(x0_key, x1_key, v0_key, v1_key, phase_key,
+                                     cost_model, collocation));
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::jointCollocationFactors(
