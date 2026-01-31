@@ -13,6 +13,8 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/utils/Timer.h>
+
+#include <chrono>
 #include <thread>
 
 using namespace gtsam;
