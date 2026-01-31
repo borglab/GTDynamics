@@ -11,6 +11,7 @@
  * @author Yetong Zhang
  */
 
+#include <chrono>
 #include <gtsam/base/timing.h>
 
 #pragma once
