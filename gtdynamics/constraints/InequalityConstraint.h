@@ -15,7 +15,7 @@
 
 #include <gtdynamics/factors/PenaltyFactor.h>
 #include <gtdynamics/factors/SmoothPenaltyFactor.h>
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
@@ -147,7 +147,7 @@ public:
   virtual gtsam::Vector tolerance() const = 0;
 
   /// Return keys of variables involved in the constraint.
-  virtual std::set<gtsam::Key> keys() const { return std::set<gtsam::Key>(); }
+  virtual gtsam::KeySet keys() const { return gtsam::KeySet(); }
 
   virtual EqualityConstraint::shared_ptr createEqualityConstraint() const = 0;
 
@@ -212,7 +212,7 @@ public:
 
   bool isActive(const gtsam::Values &x) const override;
 
-  std::set<gtsam::Key> keys() const override { return expression_.keys(); }
+  gtsam::KeySet keys() const override { return expression_.keys(); }
 
   EqualityConstraint::shared_ptr createEqualityConstraint() const override;
 
@@ -283,7 +283,7 @@ public:
 
   size_t dim() const override;
 
-  std::set<gtsam::Key> keys() const override;
+  gtsam::KeySet keys() const override;
 
   EqualityConstraint::shared_ptr createEqualityConstraint() const override;
 

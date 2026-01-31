@@ -204,8 +204,8 @@ bool TwinDoubleExpressionInequality::isActive(const gtsam::Values &x) const {
 size_t TwinDoubleExpressionInequality::dim() const { return 2; }
 
 /* ************************************************************************* */
-std::set<gtsam::Key> TwinDoubleExpressionInequality::keys() const {
-  std::set<gtsam::Key> all_keys = ineq1_->keys();
+gtsam::KeySet TwinDoubleExpressionInequality::keys() const {
+  gtsam::KeySet all_keys = ineq1_->keys();
   all_keys.merge(ineq2_->keys());
   return all_keys;
 }
