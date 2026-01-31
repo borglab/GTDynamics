@@ -229,8 +229,18 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Return joint name.
   const std::string &name() const { return name_; }
 
+  /**
+   * @brief Rename the joint.
+   *
+   * @param new_name The new name of the joint.
+   */
   void rename(const std::string& new_name) {name_ = new_name; }
 
+  /**
+   * @brief Reassign the joint ID.
+   *
+   * @param new_id The new ID of the joint.
+   */
   void reassign(const uint8_t new_id) {id_ = new_id; }
 
   /// Return the connected link other than the one provided.

@@ -79,16 +79,46 @@ class Robot {
   /// remove specified joint from the robot
   void removeJoint(const JointSharedPtr &joint);
 
+  /**
+   * @brief Rename the links.
+   *
+   * @param name_map Map from old link name to new link name.
+   */
   void renameLinks(const std::map<std::string, std::string>& name_map);
 
+  /**
+   * @brief Rename the joints.
+   *
+   * @param name_map Map from old joint name to new joint name.
+   */
   void renameJoints(const std::map<std::string, std::string>& name_map);
 
+  /**
+   * @brief Reassign the link IDs.
+   *
+   * @param ordered_link_names List of link names in the new order.
+   */
   void reassignLinks(const std::vector<std::string>& ordered_link_names);
 
+  /**
+   * @brief Reassign the joint IDs.
+   *
+   * @param ordered_joint_names List of joint names in the new order.
+   */
   void reassignJoints(const std::vector<std::string>& ordered_joint_names);
 
+  /**
+   * @brief Return links ordered by their IDs.
+   *
+   * @return std::vector<LinkSharedPtr>
+   */
   std::vector<LinkSharedPtr> orderedLinks() const;
 
+  /**
+   * @brief Return joints ordered by their IDs.
+   *
+   * @return std::vector<JointSharedPtr>
+   */
   std::vector<JointSharedPtr> orderedJoints() const;
 
   /// Return the link corresponding to the input string.

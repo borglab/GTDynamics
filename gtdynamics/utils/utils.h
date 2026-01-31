@@ -130,16 +130,56 @@ gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
 }  // namespace gtdynamics
 
 namespace gtsam {
+
+/**
+ * @brief Get z coordinate of a Point3.
+ *
+ * @param p The Point3 object.
+ * @param H Optional Jacobian.
+ * @return double The z coordinate.
+ */
 double point3_z(const gtsam::Point3 &p, gtsam::OptionalJacobian<1, 3> H = {});
 
+/**
+ * @brief Division of two doubles, with derivatives.
+ *
+ * @param x1 Numerator.
+ * @param x2 Denominator.
+ * @param H_1 Optional Jacobian w.r.t x1.
+ * @param H_2 Optional Jacobian w.r.t x2.
+ * @return double x1 / x2.
+ */
 double double_division(const double &x1, const double &x2,
                        gtsam::OptionalJacobian<1, 1> H_1 = {},
                        gtsam::OptionalJacobian<1, 1> H_2 = {});
 
+/**
+ * @brief Reciprocal of a double, with derivatives.
+ *
+ * @param x The input value.
+ * @param H Optional Jacobian.
+ * @return double 1 / x.
+ */
 double reciprocal(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
 
+/**
+ * @brief Clip the value to be at least 1, with derivatives.
+ *
+ * @param x The input value.
+ * @param H Optional Jacobian.
+ * @return double max(x, 1.0).
+ */
 double clip_by_one(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
 
+/**
+ * @brief Stack two doubles into a Vector2.
+ *
+ * @param x1 First value.
+ * @param x2 Second value.
+ * @param H_1 Optional Jacobian w.r.t x1.
+ * @param H_2 Optional Jacobian w.r.t x2.
+ * @return Vector2 [x1, x2].
+ */
 Vector2 double_stack(const double &x1, const double &x2,
                      gtsam::OptionalJacobian<2, 1> H_1 = {},
                      gtsam::OptionalJacobian<2, 1> H_2 = {});

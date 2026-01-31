@@ -6,12 +6,13 @@
 #include <gtsam/linear/SubgraphSolver.h>
 #include <gtsam/nonlinear/NonlinearEquality.h>
 
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
 GTSAM_VALUE_EXPORT(double)
 GTSAM_VALUE_EXPORT(gtsam::Point3)
 GTSAM_VALUE_EXPORT(gtsam::Rot3)
 GTSAM_VALUE_EXPORT(gtsam::Pose3)
 GTSAM_VALUE_EXPORT(gtsam::Vector6)
-
+#endif
 namespace gtsam {
 
 /* ************************************************************************* */
@@ -48,11 +49,11 @@ bool CheckFeasible(const NonlinearFactorGraph &graph, const Values &values,
 VectorValues SqrtHessianDiagonal(const GaussianFactorGraph &graph,
                                  const LevenbergMarquardtParams &params) {
   VectorValues sqrt_hessian_diagonal;
-  if (params.diagonalDamping) {
+  if (params.getDiagonalDamping()) {
     sqrt_hessian_diagonal = graph.hessianDiagonal();
     for (auto &[key, value] : sqrt_hessian_diagonal) {
-      value = value.cwiseMax(params.minDiagonal)
-                  .cwiseMin(params.maxDiagonal)
+      value = value.cwiseMax(params.dampingParams.minDiagonal)
+                  .cwiseMin(params.dampingParams.maxDiagonal)
                   .cwiseSqrt();
     }
   }
@@ -112,7 +113,7 @@ VectorValues SolveLinear(const GaussianFactorGraph &gfg,
 
 /* ************************************************************************* */
 
-/* ************************************************************************* */
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
 void ExportValuesToFile(const Values &values, const std::string &file_path) {
   serializeToBinaryFile(values, file_path);
 }
@@ -123,6 +124,7 @@ Values LoadValuesFromFile(const std::string &file_path) {
   deserializeFromBinaryFile(file_path, values);
   return values;
 }
+#endif
 
 /* ************************************************************************* */
 double ComputeErrorNorm(const double &graph_error, const double &sigma) {

@@ -179,8 +179,18 @@ class Link : public std::enable_shared_from_this<Link> {
     return unfixed_link;
   }
 
+  /**
+   * @brief Rename the link.
+   *
+   * @param new_name The new name of the link.
+   */
   void rename(const std::string& new_name) {name_ = new_name; }
 
+  /**
+   * @brief Reassign the link ID.
+   *
+   * @param new_id The new ID of the link.
+   */
   void reassign(const uint8_t new_id) {id_ = new_id; }
 
   /// Print to ostream

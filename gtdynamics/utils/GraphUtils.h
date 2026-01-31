@@ -48,6 +48,13 @@ bool CheckFeasible(
 VectorValues SolveLinear(const GaussianFactorGraph &gfg,
                          const NonlinearOptimizerParams &params);
 
+/**
+ * @brief Compute the diagonal of the square root Hessian.
+ *
+ * @param graph The Gaussian factor graph.
+ * @param params The Levenberg-Marquardt parameters.
+ * @return VectorValues The diagonal of the square root Hessian.
+ */
 VectorValues SqrtHessianDiagonal(const GaussianFactorGraph &graph,
                                  const LevenbergMarquardtParams &params);
 
@@ -81,6 +88,10 @@ inline Values PickValues(const CONTAINER &keys, const Values &priority_values,
   return values;
 }
 
+/**
+ * @struct LMCachedModel
+ * @brief Cached matrices and noise model for Levenberg-Marquardt optimization.
+ */
 struct LMCachedModel {
   LMCachedModel() {} // default int makes zero-size matrices
   LMCachedModel(int dim, double sigma)
@@ -94,6 +105,12 @@ struct LMCachedModel {
   SharedDiagonal model;
 };
 
+/**
+ * @brief Calculate the total dimension of the graph factors.
+ *
+ * @param graph The nonlinear factor graph.
+ * @return size_t The total dimension.
+ */
 inline size_t GraphDim(const NonlinearFactorGraph &graph) {
   size_t dim = 0;
   for (const auto &factor : graph) {
@@ -105,10 +122,28 @@ inline size_t GraphDim(const NonlinearFactorGraph &graph) {
 /// Compute the error norm in standard units given graph error
 double ComputeErrorNorm(const double &graph_error, const double &sigma);
 
+/**
+ * @brief Export values to a file.
+ *
+ * @param values The values to export.
+ * @param file_path The path to the file.
+ */
 void ExportValuesToFile(const Values &values, const std::string &file_path);
 
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
+/**
+ * @brief Load values from a file.
+ *
+ * @param file_path The path to the file.
+ * @return Values The loaded values.
+ */
 Values LoadValuesFromFile(const std::string &file_path);
 
+/**
+ * @class IndexSet
+ * @brief A set of indices.
+ */
+#endif
 class IndexSet : public std::set<size_t> {
 public:
   using base = std::set<size_t>;
@@ -125,6 +160,10 @@ public:
   }
 };
 
+/**
+ * @class IndexSetMap
+ * @brief A map from Key to IndexSet.
+ */
 class IndexSetMap : public std::map<Key, IndexSet> {
 public:
   bool exists(const Key &key) const { return find(key) != end(); }
@@ -151,6 +190,10 @@ public:
   }
 };
 
+/**
+ * @class IndexSetMapTranslator
+ * @brief Translates between global index and (Key, index_in_key) pair.
+ */
 class IndexSetMapTranslator {
 public:
   std::map<std::pair<Key, size_t>, size_t> encoder;
@@ -164,6 +207,7 @@ public:
 
   IndexSetMap decodeIndices(const IndexSet &indices) const;
 };
+
 
 /// Return factors representing mu*\|Ax-b*b_scale\|^2.
 GaussianFactorGraph ScaledBiasedFactors(const GaussianFactorGraph &graph,
