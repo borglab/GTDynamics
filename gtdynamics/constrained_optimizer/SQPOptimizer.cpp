@@ -286,7 +286,7 @@ GaussianFactorGraph
 SQPTrial::buildDampedSystem(const GaussianFactorGraph &linear,
                             const SQPState &state,
                             const LevenbergMarquardtParams &lm_params) const {
-  if (lm_params.diagonalDamping)
+  if (lm_params.getDiagonalDamping())
     return buildDampedSystemDiagonal(linear, state, lm_params);
   else
     return buildDampedSystemUniform(linear, state);
