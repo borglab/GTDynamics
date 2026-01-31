@@ -178,7 +178,7 @@ double double_division(const double &x1, const double &x2,
   if (H_2) {
     H_2->setConstant(-result / x2);
   }
-  return x1 / x2;
+  return result;
 }
 
 double reciprocal(const double &x, gtsam::OptionalJacobian<1, 1> H) {

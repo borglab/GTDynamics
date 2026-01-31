@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  utils.h
+ * @file  GraphUtils.h
  * @brief Utility methods.
  * @author Yetong Zhang
  */
@@ -18,6 +18,8 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/NoiseModel.h>
+#include <gtsam/linear/JacobianFactor.h>
+#include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
@@ -138,12 +140,12 @@ void ExportValuesToFile(const Values &values, const std::string &file_path);
  * @return Values The loaded values.
  */
 Values LoadValuesFromFile(const std::string &file_path);
+#endif
 
 /**
  * @class IndexSet
  * @brief A set of indices.
  */
-#endif
 class IndexSet : public std::set<size_t> {
 public:
   using base = std::set<size_t>;
