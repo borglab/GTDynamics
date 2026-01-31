@@ -13,7 +13,7 @@
 
 #include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 NonlinearFactorGraph
@@ -134,4 +134,4 @@ Values PenaltyOptimizer::optimize(const NonlinearFactorGraph &cost,
   return values;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -21,8 +21,6 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
-using gtsam::EqualityConstraint, gtsam::EqualityConstraints;
-
 namespace gtdynamics {
 
 /**

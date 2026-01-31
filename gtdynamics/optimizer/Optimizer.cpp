@@ -30,7 +30,7 @@ Values Optimizer::optimize(const NonlinearFactorGraph& graph,
 }
 
 Values Optimizer::optimize(const gtsam::NonlinearFactorGraph& graph,
-                           const gtsam::EqualityConstraints& constraints,
+                           const gtdynamics::EqualityConstraints& constraints,
                            const gtsam::Values& initial_values) const {
   if (p_.method == OptimizationParameters::Method::SOFT_CONSTRAINTS) {
     auto merit_graph = graph;
@@ -40,15 +40,16 @@ Values Optimizer::optimize(const gtsam::NonlinearFactorGraph& graph,
     return optimize(merit_graph, initial_values);
 
   } else if (p_.method == OptimizationParameters::Method::PENALTY) {
-    auto params = std::make_shared<gtsam::PenaltyParameters>(p_.lm_parameters);
-    gtsam::PenaltyOptimizer optimizer(params);
+    auto params =
+        std::make_shared<PenaltyParameters>(p_.lm_parameters);
+    PenaltyOptimizer optimizer(params);
     return optimizer.optimize(graph, constraints, initial_values);
 
   } else if (p_.method ==
              OptimizationParameters::Method::AUGMENTED_LAGRANGIAN) {
-    auto params = std::make_shared<gtsam::AugmentedLagrangianParameters>(
+    auto params = std::make_shared<AugmentedLagrangianParameters>(
         p_.lm_parameters);
-    gtsam::AugmentedLagrangianOptimizer optimizer(params);
+    AugmentedLagrangianOptimizer optimizer(params);
     return optimizer.optimize(graph, constraints, initial_values);
 
   } else {

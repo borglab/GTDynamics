@@ -18,7 +18,16 @@
 #include <ifopt/cost_term.h>
 #include <ifopt/variable_set.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Key;
+using gtsam::Matrix;
+using gtsam::NonlinearFactorGraph;
+using gtsam::OptionalJacobian;
+using gtsam::Pose3;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::Vector6;
 
 class IFOptTranslator {
 public:
@@ -147,4 +156,4 @@ protected:
   Values GetValuesGTSAM() const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

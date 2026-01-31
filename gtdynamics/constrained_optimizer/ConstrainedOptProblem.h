@@ -18,7 +18,10 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
 
 /** Equality-constrained optimization problem, in the form of
  * argmin_x 0.5||f(X)||^2
@@ -53,12 +56,14 @@ struct EConsOptProblem {
   /// Evaluate the dimension of costs.
   size_t costsDimension() const;
 
-  /// Evaluate the dimension of constriants.
+  /// Evaluate the dimension of constraints.
   size_t constraintsDimension() const { return e_constraints_.dim(); }
 
   /// Evaluate the dimension of variables.
   size_t valuesDimension() const { return values_.dim(); }
 };
+
+using EqConsOptProblem = EConsOptProblem;
 
 /** Equality-Inequality-constrained optimization problem, in the form of
  * argmin_x 0.5||f(X)||^2
@@ -91,4 +96,4 @@ struct IEConsOptProblem : public EConsOptProblem {
   EConsOptProblem auxiliaryProblem() const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

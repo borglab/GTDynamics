@@ -4,7 +4,7 @@
 
 #include <gtdynamics/utils/DynamicsSymbol.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 /* ****************************  translator  ******************************* */
@@ -433,4 +433,4 @@ void IFOptCost::FillJacobianBlock(std::string var_set, Jacobian &jac) const {
   // std::cout << "FillJacobianBlock cost finish\n";
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

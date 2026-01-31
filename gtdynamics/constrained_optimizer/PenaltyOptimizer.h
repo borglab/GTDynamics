@@ -15,7 +15,12 @@
 
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::LevenbergMarquardtParams;
+using gtsam::LevenbergMarquardtOptimizer;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
 
 /// Parameters for penalty method
 struct PenaltyParameters : public ConstrainedOptimizationParameters {
@@ -96,4 +101,4 @@ public:
                       const Values &values) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

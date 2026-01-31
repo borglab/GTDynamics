@@ -13,7 +13,9 @@
 
 #include <gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Vector1;
 
 /* ************************************************************************* */
 /* ********************  Equality Constraints Only  ************************ */
@@ -251,4 +253,4 @@ AugmentedLagrangianOptimizer::RetrieveIterDetails(
   return iter_details;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

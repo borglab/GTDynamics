@@ -17,7 +17,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/inference/VariableIndex.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /**
  * Equality constraint base class.
@@ -268,8 +268,6 @@ class EqualityConstraints : public std::vector<EqualityConstraint::shared_ptr> {
 EqualityConstraints ConstraintsFromGraph(
     const gtsam::NonlinearFactorGraph& graph);
 
-typedef std::function<KeyVector(const KeyVector &keys)> BasisKeyFunc;
-
-}  // namespace gtsam
+}  // namespace gtdynamics
 
 #include <gtdynamics/constraints/EqualityConstraint-inl.h>

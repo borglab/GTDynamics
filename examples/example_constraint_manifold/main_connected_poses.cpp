@@ -13,8 +13,7 @@
  * @author Yetong Zhang
  */
 
-#include "gtdynamics/optimizer/EqualityConstraint.h"
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>

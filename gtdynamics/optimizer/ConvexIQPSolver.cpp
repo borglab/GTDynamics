@@ -13,7 +13,15 @@
 
 #include <gtdynamics/optimizer/ConvexIQPSolver.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::GaussianFactorGraph;
+using gtsam::IndeterminantLinearSystemException;
+using gtsam::IndexSet;
+using gtsam::Key;
+using gtsam::Matrix;
+using gtsam::Vector;
+using gtsam::VectorValues;
 
 /* ************************************************************************* */
 GaussianFactorGraph
@@ -207,7 +215,7 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
       auto [alpha, blocking_idx] =
           ClipUpdate(x, p, constraints, active_indices);
       if (alpha < 1) {
-        // new constriants blocking
+        // new constraints blocking
         active_indices.insert(blocking_idx);
         x = x + alpha * p;
         if (num_solves > max_iters) {
@@ -226,4 +234,4 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
   }
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

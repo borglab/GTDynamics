@@ -19,9 +19,11 @@
 #include <gtsam/linear/JacobianFactor.h>
 #include <gtsam/linear/NoiseModel.h>
 
-using gtsam::LinearInequalityConstraints;
+namespace gtdynamics {
 
-namespace gtsam {
+using gtsam::GaussianFactorGraph;
+using gtsam::IndexSet;
+using gtsam::VectorValues;
 
 /** Solve a convex inequality constrained QP problem defined in
  * Nocedal Sec. 16.5 using the algorithm in Nocedal Alg. 16.3.
@@ -38,4 +40,4 @@ SolveConvexIQP(const GaussianFactorGraph &graph,
                const VectorValues &init_values,
                size_t max_iters = 100);
 
-} // namespace gtsam
+} // namespace gtdynamics

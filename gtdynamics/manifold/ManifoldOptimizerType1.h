@@ -75,7 +75,7 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
       const gtdynamics::EqualityConstraints& constraints,
       const gtsam::Values& initial_values,
       gtdynamics::ConstrainedOptResult* intermediate_result =
-          nullptr) const override;
+          nullptr) const;
 
   /// Optimization given manifold optimization problem.
   gtsam::Values optimize(

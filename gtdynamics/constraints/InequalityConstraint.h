@@ -27,7 +27,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/expressions.h>
 
-namespace gtsam {
+namespace gtdynamics {
 /**
  * Linear inequality constraint base class.
  */
@@ -387,4 +387,4 @@ public:
                  gtdynamics::GTDKeyFormatter) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -14,7 +14,11 @@
 #include <gtdynamics/constrained_optimizer/ConstrainedOptProblem.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Double_;
+using gtsam::Key;
+using gtsam::Values;
 
 /* ************************************************************************* */
 size_t EConsOptProblem::costsDimension() const {
@@ -89,4 +93,4 @@ EConsOptProblem IEConsOptProblem::auxiliaryProblem() const {
   return EConsOptProblem(costs(), all_constraints, all_values);
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

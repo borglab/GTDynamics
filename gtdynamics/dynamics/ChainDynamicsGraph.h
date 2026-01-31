@@ -18,7 +18,7 @@
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 
 namespace gtdynamics {
 

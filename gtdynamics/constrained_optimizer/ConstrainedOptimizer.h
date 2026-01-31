@@ -17,7 +17,12 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::LevenbergMarquardtParams;
+using gtsam::LevenbergMarquardtOptimizer;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
 
 /// Constrained optimization parameters shared between all solvers.
 struct ConstrainedOptimizationParameters {
@@ -40,6 +45,11 @@ struct ConstrainedOptIterDetails {
   Values values;    // values after each inner loop
   int num_lm_iters; // number of LM iterations for each inner loop
   int num_lm_inner_iters;
+};
+
+/// Results from constrained optimization runs.
+struct ConstrainedOptResult {
+  std::vector<size_t> num_iters;
 };
 
 /// Base class for constrained optimizer.
@@ -113,4 +123,4 @@ protected:
       std::shared_ptr<LevenbergMarquardtOptimizer> optimizer) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

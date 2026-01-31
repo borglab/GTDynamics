@@ -13,9 +13,9 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
-#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
+#include <gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h>
+#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 
 #include <fstream>
 #include <iostream>
@@ -49,16 +49,14 @@ int main(int argc, char** argv) {
   init_values.insert(x2_key, -0.2);
 
   /// Solve the constraint problem with Penalty Method optimizer.
-  gtdynamics::PenaltyMethodOptimizer penalty_optimizer;
-  gtdynamics::ConstrainedOptResult penalty_info;
-  Values penalty_results = penalty_optimizer.optimize(
-      graph, constraints, init_values, &penalty_info);
+  gtdynamics::PenaltyOptimizer penalty_optimizer;
+  Values penalty_results =
+      penalty_optimizer.optimize(graph, constraints, init_values);
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
   gtdynamics::AugmentedLagrangianOptimizer augl_optimizer;
-  gtdynamics::ConstrainedOptResult augl_info;
   Values augl_results =
-      augl_optimizer.optimize(graph, constraints, init_values, &augl_info);
+      augl_optimizer.optimize(graph, constraints, init_values);
 
   /// Function to evaluate constraint violation.
   auto evaluate_constraint = [&constraints](const gtsam::Values& values) {
@@ -76,25 +74,10 @@ int main(int argc, char** argv) {
   };
 
   /// Write results to files for plotting.
-  std::cout << "Writing resutls to penalty_data.txt and augl_data.txt for plotting" << std::endl;
-  std::ofstream penalty_file;
-  penalty_file.open("penalty_data.txt");
-  for (size_t i = 0; i < penalty_info.num_iters.size(); i++) {
-    penalty_file << penalty_info.num_iters[i] << " "
-                 << penalty_info.mu_values[i] << " "
-                 << evaluate_constraint(penalty_info.intermediate_values[i])
-                 << " " << evaluate_cost(penalty_info.intermediate_values[i])
-                 << "\n";
-  }
-  penalty_file.close();
-
-  std::ofstream augl_file;
-  augl_file.open("augl_data.txt");
-  for (size_t i = 0; i < augl_info.num_iters.size(); i++) {
-    augl_file << augl_info.num_iters[i] << " " << augl_info.mu_values[i] << " "
-              << evaluate_constraint(augl_info.intermediate_values[i]) << " "
-              << evaluate_cost(augl_info.intermediate_values[i]) << "\n";
-  }
-  augl_file.close();
+  std::cout << "Penalty result: cost=" << evaluate_cost(penalty_results)
+            << " constraint=" << evaluate_constraint(penalty_results) << "\n";
+  std::cout << "Augmented Lagrangian result: cost="
+            << evaluate_cost(augl_results)
+            << " constraint=" << evaluate_constraint(augl_results) << "\n";
   return 0;
 }

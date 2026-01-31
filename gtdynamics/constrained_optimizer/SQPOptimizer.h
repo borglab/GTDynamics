@@ -17,7 +17,15 @@
 #include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::LevenbergMarquardtParams;
+using gtsam::GaussianFactorGraph;
+using gtsam::LMCachedModel;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::VectorValues;
 
 struct SQPParams : public ConstrainedOptimizationParameters {
   using Base = ConstrainedOptimizationParameters;
@@ -198,4 +206,4 @@ public:
   bool checkSuccessfulTrial(const SQPIterDetails &iter_details) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

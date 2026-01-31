@@ -14,7 +14,7 @@
 #include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* <=======================================================================> */
 /* <===================== LinearInequalityConstraint ======================> */
@@ -367,4 +367,4 @@ void LinearInequalityConstraints::print(
   }
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

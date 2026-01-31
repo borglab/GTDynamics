@@ -14,7 +14,14 @@
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/HistoryLMOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::LevenbergMarquardtOptimizer;
+using gtsam::LevenbergMarquardtParams;
+using gtsam::HistoryLMOptimizer;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
+
 /* ************************************************************************* */
 std::shared_ptr<LevenbergMarquardtOptimizer>
 ConstrainedOptimizer::CreateLMOptimizer(
@@ -51,4 +58,4 @@ ConstrainedOptimizer::RetrieveLMItersValues(
   return std::make_pair(lm_iters_values, lm_inner_iters);
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -68,7 +68,7 @@ class Optimizer {
    * @return Values The result of the optimization.
    */
   gtsam::Values optimize(const gtsam::NonlinearFactorGraph& graph,
-                         const gtsam::EqualityConstraints& constraints,
+                         const EqualityConstraints& constraints,
                          const gtsam::Values& initial_values) const;
 };
 }  // namespace gtdynamics

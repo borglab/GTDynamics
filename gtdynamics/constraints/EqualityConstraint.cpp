@@ -15,7 +15,9 @@
 #include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtsam/inference/Key.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Vector;
 
 /* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr
@@ -178,4 +180,4 @@ size_t EqualityConstraints::dim() const {
   return dimension;
 }
 
-}  // namespace gtsam
+}  // namespace gtdynamics

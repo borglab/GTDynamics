@@ -16,7 +16,13 @@
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/constraints/InequalityConstraint.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::LevenbergMarquardtParams;
+using gtsam::LevenbergMarquardtOptimizer;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
+using gtsam::Vector;
 
 /// Parameters for Augmented Lagrangian method
 struct AugmentedLagrangianParameters
@@ -147,4 +153,4 @@ public:
                       const Values &values) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

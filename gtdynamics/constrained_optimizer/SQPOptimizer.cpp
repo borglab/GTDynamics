@@ -16,7 +16,12 @@
 using namespace gtdynamics;
 using std::cout, std::setprecision, std::setw, std::endl;
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::IndeterminantLinearSystemException;
+using gtsam::JacobianFactor;
+using gtsam::Key;
+using gtsam::Matrix;
 
 /* ************************************************************************* */
 /* <============================= SQPState ================================> */
@@ -82,7 +87,7 @@ void SQPState::computeMinVector() {
     size_t dim = values.at(key).dim();
     graph.emplace_shared<JacobianFactor>(key, Matrix::Identity(dim, dim),
                                          Vector::Zero(dim),
-                                         noiseModel::Unit::Create(dim));
+                                         gtsam::noiseModel::Unit::Create(dim));
   }
   min_vector = graph.optimize();
 }
@@ -535,4 +540,4 @@ bool SQPOptimizer::checkSuccessfulTrial(
   return false;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics
