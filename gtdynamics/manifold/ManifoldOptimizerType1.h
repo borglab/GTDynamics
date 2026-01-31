@@ -22,7 +22,7 @@
 
 #include <variant>
 
-using gtdynamics::EqConsOptProblem;
+using gtdynamics::EConsOptProblem;
 
 namespace gtsam {
 
@@ -102,26 +102,26 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
    * the cosntraint manifold is fully constrained; (3) collect unconstrained
    * variables.
    */
-  void constructMoptValues(const EqConsOptProblem& ecopt_problem,
+  void constructMoptValues(const EConsOptProblem& ecopt_problem,
                            ManifoldOptProblem& mopt_problem) const;
 
   /// Create initial values for the constraint manifold variables.
-  void constructManifoldValues(const EqConsOptProblem& ecopt_problem,
+  void constructManifoldValues(const EConsOptProblem& ecopt_problem,
                                ManifoldOptProblem& mopt_problem) const;
 
   /// Collect values for unconstrained variables.
-  void constructUnconstrainedValues(const EqConsOptProblem& ecopt_problem,
+  void constructUnconstrainedValues(const EConsOptProblem& ecopt_problem,
                                     ManifoldOptProblem& mopt_problem) const;
 
   /** Create a factor graph of cost function with the constraint manifold
    * variables. */
-  void constructMoptGraph(const EqConsOptProblem& ecopt_problem,
+  void constructMoptGraph(const EConsOptProblem& ecopt_problem,
                           ManifoldOptProblem& mopt_problem) const;
 
   /** Transform an equality-constrained optimization problem into a manifold
    * optimization problem by creating constraint manifolds. */
   ManifoldOptProblem problemTransform(
-      const EqConsOptProblem& ecopt_problem) const;
+      const EConsOptProblem& ecopt_problem) const;
 };
 
 }  // namespace gtsam

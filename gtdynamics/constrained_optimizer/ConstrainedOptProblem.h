@@ -63,8 +63,6 @@ struct EConsOptProblem {
   size_t valuesDimension() const { return values_.dim(); }
 };
 
-using EqConsOptProblem = EConsOptProblem;
-
 /** Equality-Inequality-constrained optimization problem, in the form of
  * argmin_x 0.5||f(X)||^2
  * s.t.     h(X) = 0

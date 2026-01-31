@@ -75,13 +75,13 @@ ManifoldOptProblem ManifoldOptimizerType1::initializeMoptProblem(
     const gtsam::NonlinearFactorGraph& costs,
     const gtdynamics::EqualityConstraints& constraints,
     const gtsam::Values& init_values) const {
-  EqConsOptProblem ecopt_problem(costs, constraints, init_values);
+  EConsOptProblem ecopt_problem(costs, constraints, init_values);
   return problemTransform(ecopt_problem);
 }
 
 /* ************************************************************************* */
 ManifoldOptProblem ManifoldOptimizerType1::problemTransform(
-    const EqConsOptProblem& ecopt_problem) const {
+    const EConsOptProblem& ecopt_problem) const {
   ManifoldOptProblem mopt_problem;
   mopt_problem.components_ =
       identifyConnectedComponents(ecopt_problem.constraints());
@@ -92,7 +92,7 @@ ManifoldOptProblem ManifoldOptimizerType1::problemTransform(
 
 /* ************************************************************************* */
 void ManifoldOptimizerType1::constructMoptValues(
-    const EqConsOptProblem& ecopt_problem,
+    const EConsOptProblem& ecopt_problem,
     ManifoldOptProblem& mopt_problem) const {
   constructManifoldValues(ecopt_problem, mopt_problem);
   constructUnconstrainedValues(ecopt_problem, mopt_problem);
@@ -100,7 +100,7 @@ void ManifoldOptimizerType1::constructMoptValues(
 
 /* ************************************************************************* */
 void ManifoldOptimizerType1::constructManifoldValues(
-    const EqConsOptProblem& ecopt_problem,
+    const EConsOptProblem& ecopt_problem,
     ManifoldOptProblem& mopt_problem) const {
   for (size_t i = 0; i < mopt_problem.components_.size(); i++) {
     // Find the values of variables in the component.
@@ -125,7 +125,7 @@ void ManifoldOptimizerType1::constructManifoldValues(
 
 /* ************************************************************************* */
 void ManifoldOptimizerType1::constructUnconstrainedValues(
-    const EqConsOptProblem& ecopt_problem,
+    const EConsOptProblem& ecopt_problem,
     ManifoldOptProblem& mopt_problem) const {
   // Find out which variables are unconstrained
   mopt_problem.unconstrained_keys_ = ecopt_problem.costs_.keys();
@@ -145,7 +145,7 @@ void ManifoldOptimizerType1::constructUnconstrainedValues(
 
 /* ************************************************************************* */
 void ManifoldOptimizerType1::constructMoptGraph(
-    const EqConsOptProblem& ecopt_problem,
+    const EConsOptProblem& ecopt_problem,
     ManifoldOptProblem& mopt_problem) const {
   // Construct base key to component map.
   std::map<Key, Key> key_component_map;

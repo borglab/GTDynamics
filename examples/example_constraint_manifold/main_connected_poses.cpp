@@ -14,6 +14,9 @@
  */
 
 #include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptProblem.h>
+#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/manifold/ConnectedComponent.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
@@ -174,7 +177,7 @@ KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
 void kinematic_planning() {
-  // Create constraiend optimization problem.
+  // Create constrained optimization problem.
   auto gt = get_gt_values();
   auto constraints_graph = get_constraints_graph(gt);
   std::vector<std::vector<Pose2>> odo_measurements = GetOdoMeasurements(gt);
@@ -182,7 +185,7 @@ void kinematic_planning() {
   auto init_values = get_init_values(gt, odo_measurements);
   auto constraints = ConstraintsFromGraph(constraints_graph);
   // constraints = gtdynamics::EqualityConstraints();
-  auto problem = EqConsOptProblem(costs, constraints, init_values);
+  auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
@@ -199,16 +202,16 @@ void kinematic_planning() {
 
   // optimize penalty method
   std::cout << "penalty method:\n";
-  PenaltyMethodParameters penalty_params;
-  penalty_params.lm_parameters = lm_params;
+  auto penalty_params = std::make_shared<PenaltyParameters>();
+  penalty_params->lm_params = lm_params;
   auto penalty_result =
       OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, penalty_result) << "\n";
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
-  AugmentedLagrangianParameters augl_params;
-  augl_params.lm_parameters = lm_params;
+  auto augl_params = std::make_shared<AugmentedLagrangianParameters>();
+  augl_params->lm_params = lm_params;
   auto augl_result =
       OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, augl_result) << "\n";
