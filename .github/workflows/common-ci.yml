@@ -23,25 +23,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ubuntu-24.04-gcc-11, ubuntu-24.04-clang-16, macOS-14-xcode-15.4]
+        name: [ubuntu-24.04-gcc-14, ubuntu-24.04-clang-16, macOS-14-xcode-16.4]
         build_type: [Debug, Release]
         python_version: [3]
         include:
-          - name: ubuntu-24.04-gcc-11
+          - name: ubuntu-24.04-gcc-14
             os: ubuntu-24.04
             compiler: gcc
-            version: "11"
+            version: "14"
           - name: ubuntu-24.04-clang-16
             os: ubuntu-24.04
             compiler: clang
             version: "16"
-          - name: macOS-14-xcode-15.4
-            os: macOS-14
+          - name: macos-15-xcode-15.4
+            os: macos-15
             compiler: xcode
-            version: "15.4"
+            version: "16.4"
 
     steps:
-      - name: Checkout GTDynamics (Your Project)
+      - name: Checkout GTDynamics Repository
         uses: actions/checkout@v4
 
       - name: Install System Dependencies (Linux)
