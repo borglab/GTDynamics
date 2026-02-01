@@ -1,4 +1,4 @@
-name: Python CI
+name: Common CI
 
 on: [pull_request]
 
@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.name }} ${{ matrix.build_type }} Python ${{ matrix.python_version }}
+    name: ${{ matrix.name }} ${{ matrix.build_type }} C++/Python ${{ matrix.python_version }}
     runs-on: ${{ matrix.os }}
 
     env:
@@ -47,6 +47,7 @@ jobs:
       - name: Install System Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
+          set -e
           sudo apt-get -y update
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
             sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
@@ -62,9 +63,22 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat15-dev
 
+          # GTDynamics C++ tests use CppUnitLite (not provided by default on the runner).
+          git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
+          cd /tmp/CppUnitLite
+          mkdir build && cd build
+          # CppUnitLite's CMakeLists uses an old minimum CMake version; newer CMake
+          # requires explicitly opting into older policy compatibility.
+          # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
+          cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
+          sudo make -j$(nproc) install
+          cd ${{ github.workspace }}
+          sudo rm -rf /tmp/CppUnitLite
+
       - name: Install System Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
+          set -e
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
             brew install gcc@${{ matrix.version }}
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
@@ -77,6 +91,18 @@ jobs:
           brew install boost
           brew tap osrf/simulation
           brew install sdformat15
+
+          # GTDynamics C++ tests use CppUnitLite (install it once per job).
+          git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
+          cd /tmp/CppUnitLite
+          mkdir build && cd build
+          # CppUnitLite's CMakeLists uses an old minimum CMake version; newer CMake
+          # requires explicitly opting into older policy compatibility.
+          # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
+          cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
+          sudo make -j$(sysctl -n hw.physicalcpu) install
+          cd ${{ github.workspace }}
+          rm -rf /tmp/CppUnitLite
 
       - name: Python Dependencies (Linux)
         if: runner.os == 'Linux'
@@ -153,6 +179,23 @@ jobs:
 
       - name: Build GTDynamics
         run: make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi)
+        working-directory: ./build
+
+      - name: Test GTDynamics C++ (macOS)
+        # Mirror the python-test linker settings: GTSAM is installed to a local prefix.
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e
+          export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          make -j$(sysctl -n hw.physicalcpu) check
+        working-directory: ./build
+
+      - name: Test GTDynamics C++ (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          make -j$(nproc) check
         working-directory: ./build
 
       - name: Install GTDynamics Python Wrappers
