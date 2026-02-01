@@ -15,9 +15,9 @@
 
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
 #include <gtdynamics/manifold/ManifoldOptimizerType1.h>
-#include <gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h>
-#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
 #include <gtsam/base/timing.h>
+#include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
+#include <gtsam/constrained/PenaltyOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
@@ -55,15 +55,15 @@ Values OptimizeConstraintManifold(
 /** Run constrained optimization using the penalty method. */
 Values OptimizePenaltyMethod(
     const EConsOptProblem &problem, std::ostream &latex_os,
-    PenaltyParameters::shared_ptr params =
-                             std::make_shared<PenaltyParameters>(),
+    gtsam::PenaltyOptimizerParams::shared_ptr params =
+        std::make_shared<gtsam::PenaltyOptimizerParams>(),
     double constraint_unit_scale = 1.0);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 Values OptimizeAugmentedLagrangian(
     const EConsOptProblem &problem, std::ostream &latex_os,
-    AugmentedLagrangianParameters::shared_ptr params =
-        std::make_shared<AugmentedLagrangianParameters>(),
+    gtsam::AugmentedLagrangianParams::shared_ptr params =
+        std::make_shared<gtsam::AugmentedLagrangianParams>(),
     double constraint_unit_scale = 1.0);
 
 /** Functor version of JointLimitFactor, for creating expressions. Compute error

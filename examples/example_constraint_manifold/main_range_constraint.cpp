@@ -177,18 +177,18 @@ void kinematic_planning() {
 
   // optimize penalty method
   std::cout << "penalty method:\n";
-  auto penalty_params = std::make_shared<PenaltyParameters>();
-  penalty_params->lm_params = lm_params;
+  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
+  penalty_params->lmParams = lm_params;
   // penalty_params.num_iterations=4;
-  penalty_params->initial_mu=10000;
+  penalty_params->initialMuEq = 10000;
   auto penalty_result =
       OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, penalty_result) << "\n";
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
-  auto augl_params = std::make_shared<AugmentedLagrangianParameters>();
-  augl_params->lm_params = lm_params;
+  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  augl_params->lmParams = lm_params;
   auto augl_result =
       OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, augl_result) << "\n";

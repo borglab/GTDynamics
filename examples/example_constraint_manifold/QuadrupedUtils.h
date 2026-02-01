@@ -20,7 +20,6 @@
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
-#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
 #include <gtdynamics/manifold/ManifoldOptimizer.h>
 
 #include <gtdynamics/factors/ContactPointFactor.h>

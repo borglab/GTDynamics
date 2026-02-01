@@ -143,15 +143,15 @@ void kinematic_planning() {
 
   // optimize penalty method
   std::cout << "penalty method:\n";
-  auto penalty_params = std::make_shared<PenaltyParameters>();
-  penalty_params->lm_params = lm_params;
+  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
+  penalty_params->lmParams = lm_params;
   auto penalty_result =
       OptimizePenaltyMethod(problem, latex_os, penalty_params);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
-  auto augl_params = std::make_shared<AugmentedLagrangianParameters>();
-  augl_params->lm_params = lm_params;
+  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  augl_params->lmParams = lm_params;
   auto augl_result =
       OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
 

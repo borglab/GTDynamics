@@ -13,12 +13,49 @@
 
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 
+#include <gtsam/constrained/ConstrainedOptProblem.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+
 #include <iomanip>
 
 using gtsam::LevenbergMarquardtParams, gtsam::LevenbergMarquardtOptimizer;
 using gtsam::NonlinearFactorGraph, gtsam::Values;
 
 namespace gtdynamics {
+
+namespace {
+
+gtsam::NonlinearEqualityConstraints ToGtsamConstraints(
+    const gtdynamics::EqualityConstraints& constraints) {
+  gtsam::NonlinearEqualityConstraints gtsam_constraints;
+  for (const auto& constraint : constraints) {
+    auto factor = constraint->createFactor(1.0);
+    gtsam_constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor);
+  }
+  return gtsam_constraints;
+}
+
+gtsam::ConstrainedOptProblem ToGtsamProblem(const EConsOptProblem& problem) {
+  auto gtsam_constraints = ToGtsamConstraints(problem.constraints());
+  return gtsam::ConstrainedOptProblem::EqConstrainedOptProblem(
+      problem.costs(), gtsam_constraints);
+}
+
+size_t CountIterations(const gtsam::PenaltyOptimizer& optimizer) {
+  if (optimizer.progress().empty()) {
+    return 0;
+  }
+  return optimizer.progress().back().iteration;
+}
+
+size_t CountIterations(const gtsam::AugmentedLagrangianOptimizer& optimizer) {
+  if (optimizer.progress().empty()) {
+    return 0;
+  }
+  return optimizer.progress().back().iteration;
+}
+
+}  // namespace
 
 void PrintLatex(std::ostream& latex_os, std::string exp_name, size_t f_dim,
                 size_t v_dim, double time, size_t num_iters,
@@ -106,14 +143,14 @@ Values OptimizeConstraintManifold(
 /* ************************************************************************* */
 Values OptimizePenaltyMethod(const EConsOptProblem& problem,
                              std::ostream& latex_os,
-                             PenaltyParameters::shared_ptr params,
+                             gtsam::PenaltyOptimizerParams::shared_ptr params,
                              double constraint_unit_scale) {
-  PenaltyOptimizer optimizer(params);
-  gtdynamics::ConstrainedOptResult intermediate_result;
+  params->storeOptProgress = true;
+  gtsam::PenaltyOptimizer optimizer(ToGtsamProblem(problem),
+                                    problem.initValues(), params);
 
   auto optimization_start = std::chrono::system_clock::now();
-  auto result = optimizer.optimize(problem.costs(), problem.constraints(),
-                                   problem.initValues());
+  auto result = optimizer.optimize();
   auto optimization_end = std::chrono::system_clock::now();
   auto optimization_time_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
@@ -124,9 +161,7 @@ Values OptimizePenaltyMethod(const EConsOptProblem& problem,
       latex_os, "Penalty Method",
       problem.costsDimension() + problem.constraintsDimension(),
       problem.valuesDimension(), optimization_time,
-      //   std::accumulate(intermediate_result.num_iters.begin(),
-      //                   intermediate_result.num_iters.end(), 0), TODO
-      0,
+      CountIterations(optimizer),
       problem.evaluateEConstraintViolationL2Norm(result) * constraint_unit_scale,
       problem.evaluateCost(result));
 
@@ -136,14 +171,14 @@ Values OptimizePenaltyMethod(const EConsOptProblem& problem,
 /* ************************************************************************* */
 Values OptimizeAugmentedLagrangian(const EConsOptProblem& problem,
                                    std::ostream& latex_os,
-                                   AugmentedLagrangianParameters::shared_ptr params,
+                                   gtsam::AugmentedLagrangianParams::shared_ptr params,
                                    double constraint_unit_scale) {
-  AugmentedLagrangianOptimizer optimizer(params);
-  gtdynamics::ConstrainedOptResult intermediate_result;
+  params->storeOptProgress = true;
+  gtsam::AugmentedLagrangianOptimizer optimizer(ToGtsamProblem(problem),
+                                                problem.initValues(), params);
 
   auto optimization_start = std::chrono::system_clock::now();
-  auto result = optimizer.optimize(problem.costs(), problem.constraints(),
-                                   problem.initValues());
+  auto result = optimizer.optimize();
   auto optimization_end = std::chrono::system_clock::now();
   auto optimization_time_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
@@ -154,7 +189,7 @@ Values OptimizeAugmentedLagrangian(const EConsOptProblem& problem,
       latex_os, "Augmented Lagrangian",
       problem.costsDimension() + problem.constraintsDimension(),
       problem.valuesDimension(), optimization_time,
-      0,
+      CountIterations(optimizer),
       problem.evaluateEConstraintViolationL2Norm(result) * constraint_unit_scale,
       problem.evaluateCost(result));
 

@@ -13,9 +13,6 @@
 
 #include "CartPoleUtils.h"
 
-#include "gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h"
-#include "gtdynamics/constrained_optimizer/PenaltyOptimizer.h"
-#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtsam/linear/IterativeSolver.h>
 #include <gtsam/linear/PCGSolver.h>

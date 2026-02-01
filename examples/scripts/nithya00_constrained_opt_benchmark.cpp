@@ -13,21 +13,58 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h>
-#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
+#include <gtsam/constrained/ConstrainedOptProblem.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/PenaltyOptimizer.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
+#include <gtsam/nonlinear/expressions.h>
 
 #include <fstream>
 #include <iostream>
 
-#include "constrainedExample.h"
-
 using namespace gtsam;
-using namespace gtdynamics;
+
+namespace {
+
+/// Exponential function e^x.
+double exp_func(const double& x, gtsam::OptionalJacobian<1, 1> H1 = {}) {
+  double result = exp(x);
+  if (H1) H1->setConstant(result);
+  return result;
+}
+
+/// Exponential expression e^x.
+Double_ exp(const Double_& x) { return Double_(exp_func, x); }
+
+/// Pow functor used for pow function.
+class PowFunctor {
+ private:
+  double c_;
+
+ public:
+  PowFunctor(const double& c) : c_(c) {}
+
+  double operator()(const double& x,
+                    gtsam::OptionalJacobian<1, 1> H1 = {}) const {
+    if (H1) H1->setConstant(c_ * pow(x, c_ - 1));
+    return pow(x, c_);
+  }
+};
+
+/// Pow function.
+Double_ pow(const Double_& x, const double& c) {
+  PowFunctor pow_functor(c);
+  return Double_(pow_functor, x);
+}
+
+Symbol x1_key('x', 1);
+Symbol x2_key('x', 2);
+Double_ x1(x1_key), x2(x2_key);
+
+}  // namespace
 
 int main(int argc, char** argv) {
-  using namespace constrained_example;
-
   /// Create a constrained optimization problem with 2 cost factors and 1
   /// constraint.
   NonlinearFactorGraph graph;
@@ -37,34 +74,33 @@ int main(int argc, char** argv) {
   graph.add(ExpressionFactor<double>(cost_noise, 0., f1));
   graph.add(ExpressionFactor<double>(cost_noise, 0., f2));
 
-  EqualityConstraints constraints;
-  double tolerance = 1.0;
+  NonlinearEqualityConstraints constraints;
+  double sigma = 1.0;
   gtsam::Double_ g1 = x1 + pow(x1, 3) + x2 + pow(x2, 2);
-  constraints.push_back(EqualityConstraint::shared_ptr(
-      new DoubleExpressionEquality(g1, tolerance)));
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      g1, 0.0, Vector1(sigma));
 
   /// Create initial values.
   Values init_values;
   init_values.insert(x1_key, -0.2);
   init_values.insert(x2_key, -0.2);
 
+  auto problem = ConstrainedOptProblem::EqConstrainedOptProblem(graph, constraints);
+
   /// Solve the constraint problem with Penalty Method optimizer.
-  gtdynamics::PenaltyOptimizer penalty_optimizer;
-  Values penalty_results =
-      penalty_optimizer.optimize(graph, constraints, init_values);
+  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
+  gtsam::PenaltyOptimizer penalty_optimizer(problem, init_values, penalty_params);
+  Values penalty_results = penalty_optimizer.optimize();
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
-  gtdynamics::AugmentedLagrangianOptimizer augl_optimizer;
-  Values augl_results =
-      augl_optimizer.optimize(graph, constraints, init_values);
+  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  gtsam::AugmentedLagrangianOptimizer augl_optimizer(problem, init_values,
+                                                     augl_params);
+  Values augl_results = augl_optimizer.optimize();
 
   /// Function to evaluate constraint violation.
   auto evaluate_constraint = [&constraints](const gtsam::Values& values) {
-    double violation = 0;
-    for (auto& constraint : constraints) {
-      violation += (*constraint)(values)(0);
-    }
-    return violation;
+    return constraints.violationNorm(values);
   };
 
   /// Function to evaluate cost.
