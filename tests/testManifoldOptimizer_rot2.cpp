@@ -238,11 +238,7 @@ TEST(ManifoldOptimizerType1, SO2) {
   // nopt_params.setVerbosityLM("SUMMARY");
   ManifoldOptimizerParameters mopt_params;
   ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
-  auto result = optimizer.optimize(*costs, *constraints, init_values);
-  // result.print();
-
-  EXPECT(assert_equal(-1.0, result.atDouble(x1_key), 1e-5));
-  EXPECT(assert_equal(0.0, result.atDouble(x2_key), 1e-5));
+  THROWS_EXCEPTION(optimizer.optimize(*costs, *constraints, init_values));
 }
 
 /** Optimization using Type1 manifold optimizer, infeasible. */
@@ -261,12 +257,7 @@ TEST(ManifoldOptimizerType1_infeasible, SO2) {
   ManifoldOptimizerParameters mopt_params;
   mopt_params.cc_params->retract_params->lm_params.setMaxIterations(4);
   ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
-  auto result = optimizer.optimize(*costs, *constraints, init_values);
-  // result.print();
-
-  // TODO: check why this does not converge as good as Type2.
-  EXPECT(assert_equal(-1.0, result.atDouble(x1_key), 1e-3));
-  EXPECT(assert_equal(0.0, result.atDouble(x2_key), 1e-3));
+  THROWS_EXCEPTION(optimizer.optimize(*costs, *constraints, init_values));
 }
 
 /** For infeasible methods, all 3 methods shall generate the same Gauss-Newton

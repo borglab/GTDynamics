@@ -73,7 +73,7 @@ public:
                           const EqualityConstraints &constraints,
                           const Values &initial_values) const {
     throw std::runtime_error(
-        "Equality constrained optimization not implemeneted.");
+        "Equality constrained optimization not implemented");
   }
 
   /**
@@ -91,7 +91,7 @@ public:
                           const InequalityConstraints &i_constraints,
                           const Values &initial_values) const {
     throw std::runtime_error(
-        "Inequality constrained optimization not implemeneted.");
+        "Inequality constrained optimization not implemented");
   }
 
   /// Solve a constrained optimization problem with equality constraints only.
