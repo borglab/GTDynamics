@@ -13,6 +13,9 @@
 
 #include <gtdynamics/constrained_optimizer/SQPOptimizer.h>
 
+#include <iostream>
+#include <iomanip>
+
 using namespace gtdynamics;
 using std::cout, std::setprecision, std::setw, std::endl;
 
