@@ -23,11 +23,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [macOS-14-xcode-16.4]
+        name: [macos-15-xcode-16.4]
         build_type: [Debug, Release]
         python_version: [3]
         include:
-          - name: macos-15-xcode-15.4
+          - name: macos-15-xcode-16.4
             os: macos-15
             compiler: xcode
             version: "16.4"
