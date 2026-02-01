@@ -44,6 +44,13 @@ jobs:
       - name: Checkout GTDynamics (Your Project)
         uses: actions/checkout@v4
 
+      # Match GTSAM's Python CI approach: add swap on Linux runners to reduce OOM risk.
+      - name: Set Swap Space (Linux)
+        if: runner.os == 'Linux'
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 6
+
       - name: Install System Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -71,7 +78,7 @@ jobs:
           # requires explicitly opting into older policy compatibility.
           # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
           cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
-          sudo make -j$(nproc) install
+          sudo make -j4 install
           cd ${{ github.workspace }}
           sudo rm -rf /tmp/CppUnitLite
 
@@ -100,7 +107,7 @@ jobs:
           # requires explicitly opting into older policy compatibility.
           # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
           cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
-          sudo make -j$(sysctl -n hw.physicalcpu) install
+          sudo make -j2 install
           cd ${{ github.workspace }}
           rm -rf /tmp/CppUnitLite
 
@@ -129,7 +136,8 @@ jobs:
           cd /tmp/gtsam_source_linux
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DGTSAM_BUILD_PYTHON=ON ..
-          sudo make -j$(nproc) install 
+          # Cap parallelism to reduce peak memory, similar to GTSAM CI's unix.sh defaults.
+          sudo make -j4 install 
           make python-install 
           sudo ldconfig
           cd ${{ github.workspace }} 
@@ -149,8 +157,9 @@ jobs:
                 -D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR_MACOS }} \
                 ..
-          make -j$(sysctl -n hw.physicalcpu) install 
-          make -j$(sysctl -n hw.physicalcpu) python-install 
+          # Cap parallelism to reduce peak memory usage on GitHub-hosted macOS runners.
+          make -j2 install 
+          make -j2 python-install 
           cd ${{ github.workspace }} 
           rm -rf /tmp/gtsam_source_macos 
 
@@ -178,7 +187,13 @@ jobs:
         working-directory: ./build
 
       - name: Build GTDynamics
-        run: make -j$(if [[ "$(uname)" == "Darwin" ]]; then sysctl -n hw.physicalcpu; else nproc; fi)
+        # Cap parallelism to reduce peak memory usage on GitHub-hosted runners.
+        run: |
+          if [[ "$(uname)" == "Darwin" ]]; then
+            make -j2
+          else
+            make -j4
+          fi
         working-directory: ./build
 
       - name: Test GTDynamics C++ (macOS)
@@ -188,14 +203,14 @@ jobs:
         run: |
           set -e
           export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-          make -j$(sysctl -n hw.physicalcpu) check
+          make -j2 check
         working-directory: ./build
 
       - name: Test GTDynamics C++ (Linux)
         if: runner.os == 'Linux'
         run: |
           set -e
-          make -j$(nproc) check
+          make -j4 check
         working-directory: ./build
 
       - name: Install GTDynamics Python Wrappers
@@ -203,9 +218,9 @@ jobs:
         run: |
           set -e
           if [[ "$RUNNER_OS" == "macOS" ]]; then
-            make -j$(sysctl -n hw.physicalcpu) python-install 
+            make -j2 python-install 
           else
-            sudo make -j$(nproc) python-install
+            sudo make -j4 python-install
           fi
         working-directory: ./build
 
@@ -219,7 +234,7 @@ jobs:
           source ${{ github.workspace }}/venv/bin/activate # Ensure venv Python and its site-packages are primary
           export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR_MACOS }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
           echo "DYLD_LIBRARY_PATH is set to: $DYLD_LIBRARY_PATH"
-          make -j$(sysctl -n hw.physicalcpu) python-test
+          make -j2 python-test
         working-directory: ./build
       - name: Test GTDynamics Python (Linux)
         if: runner.os == 'Linux'
@@ -227,5 +242,5 @@ jobs:
           set -e
           # On Linux, sudo ldconfig during GTSAM install should handle library paths for system-wide installs.
           # If GTSAM was installed to a custom prefix not in ldconfig paths, LD_LIBRARY_PATH would be needed.
-          make -j$(nproc) python-test
+          make -j4 python-test
         working-directory: ./build

@@ -25,6 +25,7 @@ That means the GTSAM version under test is always whatever commit is at the tip 
 - **macOS:** installed into a local prefix under the workspace (see the `GTSAM_INSTALL_DIR_MACOS` env var), using a Python virtual environment so the built bindings and `pip` share the same interpreter.
 
 ### What GTDynamics runs
+- **Resource limits:** adds 6GB swap on Linux and caps build parallelism (Linux: `-j4`, macOS: `-j2`) to reduce OOM failures on GitHub-hosted runners.
 - **Test deps:** installs `CppUnitLite` (required for `make check` C++ test targets)
 - **C++ build:** `cmake -DGTDYNAMICS_BUILD_PYTHON=ON ...` then `make`
 - **C++ tests:** `make check` (macOS sets `DYLD_LIBRARY_PATH` to find the locally installed GTSAM libraries)
