@@ -14,7 +14,6 @@
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
 #include <gtsam/constrained/ConstrainedOptProblem.h>
-#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/constrained/PenaltyOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -25,22 +24,11 @@ using gtsam::Values;
 
 namespace {
 
-gtsam::NonlinearEqualityConstraints ToGtsamConstraints(
-    const gtdynamics::EqualityConstraints& constraints) {
-  gtsam::NonlinearEqualityConstraints gtsam_constraints;
-  for (const auto& constraint : constraints) {
-    auto factor = constraint->createFactor(1.0);
-    gtsam_constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor);
-  }
-  return gtsam_constraints;
-}
-
 gtsam::ConstrainedOptProblem ToGtsamProblem(
     const gtsam::NonlinearFactorGraph& graph,
-    const gtdynamics::EqualityConstraints& constraints) {
-  auto gtsam_constraints = ToGtsamConstraints(constraints);
+    const gtsam::NonlinearEqualityConstraints& constraints) {
   return gtsam::ConstrainedOptProblem::EqConstrainedOptProblem(graph,
-                                                               gtsam_constraints);
+                                                               constraints);
 }
 
 }  // namespace
@@ -54,13 +42,11 @@ Values Optimizer::optimize(const NonlinearFactorGraph& graph,
 }
 
 Values Optimizer::optimize(const gtsam::NonlinearFactorGraph& graph,
-                           const gtdynamics::EqualityConstraints& constraints,
+                           const gtsam::NonlinearEqualityConstraints& constraints,
                            const gtsam::Values& initial_values) const {
   if (p_.method == OptimizationParameters::Method::SOFT_CONSTRAINTS) {
     auto merit_graph = graph;
-    for (const auto& constraint : constraints) {
-      merit_graph.add(constraint->createFactor(1.0));
-    }
+    merit_graph.add(constraints.penaltyGraph(1.0));
     return optimize(merit_graph, initial_values);
 
   } else if (p_.method == OptimizationParameters::Method::PENALTY) {

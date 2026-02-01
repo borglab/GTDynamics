@@ -69,12 +69,12 @@ public:
 
   /// Run optimization with equality constraints only.
   Values optimize(const NonlinearFactorGraph &cost,
-                  const EqualityConstraints &constraints,
+                  const gtsam::NonlinearEqualityConstraints &constraints,
                   const Values &initial_values) const override;
 
   /// Run optimization with equality and inequality constraints.
   Values optimize(const NonlinearFactorGraph &cost,
-                  const EqualityConstraints &e_constraints,
+                  const gtsam::NonlinearEqualityConstraints &e_constraints,
                   const InequalityConstraints &i_constraints,
                   const Values &initial_values) const override;
 };
@@ -98,13 +98,13 @@ public:
 /// Equality constraint compatible with ifopt
 class IFOptEConstraint : public ifopt::ConstraintSet {
 protected:
-  EqualityConstraint::shared_ptr constraint_;
+  gtsam::NonlinearEqualityConstraint::shared_ptr constraint_;
   NonlinearFactor::shared_ptr factor_;
   KeySet keys_;
   IFOptTranslator::shared_ptr translator_;
 
 public:
-  IFOptEConstraint(EqualityConstraint::shared_ptr constraint,
+  IFOptEConstraint(gtsam::NonlinearEqualityConstraint::shared_ptr constraint,
                    const std::string &name,
                    const IFOptTranslator::shared_ptr translator);
 

@@ -16,7 +16,7 @@
 #include <gtdynamics/factors/PenaltyFactor.h>
 #include <gtdynamics/factors/SmoothPenaltyFactor.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/utils.h>
@@ -149,7 +149,8 @@ public:
   /// Return keys of variables involved in the constraint.
   virtual gtsam::KeySet keys() const { return gtsam::KeySet(); }
 
-  virtual EqualityConstraint::shared_ptr createEqualityConstraint() const = 0;
+  virtual gtsam::NonlinearEqualityConstraint::shared_ptr
+  createEqualityConstraint() const = 0;
 
   virtual gtsam::NoiseModelFactor::shared_ptr
   createL2Factor(const double mu = 1.0) const = 0;
@@ -214,7 +215,8 @@ public:
 
   gtsam::KeySet keys() const override { return expression_.keys(); }
 
-  EqualityConstraint::shared_ptr createEqualityConstraint() const override;
+  gtsam::NonlinearEqualityConstraint::shared_ptr
+  createEqualityConstraint() const override;
 
   gtsam::NoiseModelFactor::shared_ptr
   createPenaltyFactor(const double mu = 1.0) const override;
@@ -285,7 +287,8 @@ public:
 
   gtsam::KeySet keys() const override;
 
-  EqualityConstraint::shared_ptr createEqualityConstraint() const override;
+  gtsam::NonlinearEqualityConstraint::shared_ptr
+  createEqualityConstraint() const override;
 
   gtsam::NoiseModelFactor::shared_ptr
   createPenaltyFactor(const double mu = 1.0) const override;

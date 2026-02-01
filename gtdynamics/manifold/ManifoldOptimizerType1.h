@@ -72,7 +72,7 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
    * the constraint manifold variables. */
   virtual gtsam::Values optimizeWithIntermediate(
       const gtsam::NonlinearFactorGraph& graph,
-      const gtdynamics::EqualityConstraints& constraints,
+      const gtsam::NonlinearEqualityConstraints& constraints,
       const gtsam::Values& initial_values,
       gtdynamics::ConstrainedOptResult* intermediate_result =
           nullptr) const;
@@ -85,7 +85,7 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
   /// Initialize the manifold optimization problem.
   ManifoldOptProblem initializeMoptProblem(
       const gtsam::NonlinearFactorGraph& costs,
-      const gtdynamics::EqualityConstraints& constraints,
+      const gtsam::NonlinearEqualityConstraints& constraints,
       const gtsam::Values& init_values) const;
 
   /// Create the underlying nonlinear optimizer for manifold optimization.

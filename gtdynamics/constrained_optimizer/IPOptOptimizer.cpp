@@ -131,7 +131,7 @@ Key IFOptTranslator::nameToKey(const std::string &name) {
 
 /* ************************************************************************* */
 Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
-                             const EqualityConstraints &e_constraints,
+                             const gtsam::NonlinearEqualityConstraints &e_constraints,
                              const InequalityConstraints &i_constraints,
                              const Values &initial_values) const {
 
@@ -205,7 +205,7 @@ Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
 
 /* ************************************************************************* */
 Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
-                             const EqualityConstraints &constraints,
+                             const gtsam::NonlinearEqualityConstraints &constraints,
                              const Values &initial_values) const {
   InequalityConstraints i_constraints;
   return optimize(cost, constraints, i_constraints, initial_values);
@@ -276,11 +276,12 @@ IFOptVariable::VecBound IFOptVariable::GetBounds() const {
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-IFOptEConstraint::IFOptEConstraint(EqualityConstraint::shared_ptr constraint,
+IFOptEConstraint::IFOptEConstraint(
+    gtsam::NonlinearEqualityConstraint::shared_ptr constraint,
                                    const std::string &name,
                                    const IFOptTranslator::shared_ptr translator)
     : ConstraintSet(constraint->dim(), name), constraint_(constraint),
-      factor_(constraint->createFactor(1.0)),
+      factor_(constraint->penaltyFactor(1.0)),
       keys_(ConstructKeySet(factor_->keys())), translator_(translator) {}
 
 /* ************************************************************************* */
@@ -298,7 +299,7 @@ Values IFOptEConstraint::GetValuesGTSAM() const {
 IFOptEConstraint::VectorXd IFOptEConstraint::GetValues() const {
   // std::cout << "get values e-constraint\n";
   Values values = GetValuesGTSAM();
-  return constraint_->evaluate(values);
+  return constraint_->whitenedError(values);
 }
 
 /* ************************************************************************* */

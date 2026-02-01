@@ -16,12 +16,12 @@
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/FootContactConstraintSpec.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -186,16 +186,15 @@ TEST(Chain, ChainConstraint) {
   // Set tolerance
   Vector3 tolerance(0.1, 0.1, 0.1);
 
-  // Create VectorExpressionEquality Constraint
-  auto constraint = VectorExpressionEquality<3>(expression, tolerance);
+  // Create equality constraint
+  gtsam::ExpressionEqualityConstraint<gtsam::Vector3> constraint(
+      expression, gtsam::Vector3::Zero(), tolerance);
   Vector3 expected_values(-1, -0.3, 0.3);  // regression
-  bool constraint_violation = constraint.feasible(init_values);
-  Vector values = constraint(init_values);
-  EXPECT(!constraint_violation);
+  Vector values = constraint.unwhitenedError(init_values);
   EXPECT(assert_equal(values, expected_values, 1e-6));
 
   // Create Factor same as in Optimizer for SOFT_CONSTRAINT
-  auto factor = constraint.createFactor(1.0);
+  auto factor = constraint.penaltyFactor(1.0);
 
   // Check error
   auto error = factor->unwhitenedError(init_values);
@@ -871,16 +870,15 @@ TEST(Chain, ChainConstraintFactorJacobians) {
   // Set tolerance
   Vector3 tolerance(0.1, 0.1, 0.1);
 
-  // Create VectorExpressionEquality Constraint
-  auto constraint = VectorExpressionEquality<3>(expression, tolerance);
+  // Create equality constraint
+  gtsam::ExpressionEqualityConstraint<gtsam::Vector3> constraint(
+      expression, gtsam::Vector3::Zero(), tolerance);
   Vector3 expected_values(-1, -0.3, 0.3);  // regression
-  bool constraint_violation = constraint.feasible(init_values);
-  Vector values = constraint(init_values);
-  EXPECT(!constraint_violation);
+  Vector values = constraint.unwhitenedError(init_values);
   EXPECT(assert_equal(values, expected_values, 1e-6));
 
   // Create Factor same as in Optimizer for SOFT_CONSTRAINT
-  auto factor = constraint.createFactor(1.0);
+  auto factor = constraint.penaltyFactor(1.0);
 
   // Check Jacobians
   EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, init_values, 1e-7, 1e-3);
@@ -1022,7 +1020,7 @@ gtsam::Values OldGraphOneLeg() {
 
   // Constraint angles to zero
   Optimizer optimizer;
-  EqualityConstraints eqs;
+  gtsam::NonlinearEqualityConstraints eqs;
   auto cost_model = gtsam::noiseModel::Unit::Create(1);
   for (auto&& joint : robot.joints()) {
     const int joint_id = joint->id();
@@ -1049,7 +1047,7 @@ gtsam::Values NewGraphOneLeg() {
   auto composed_chains = ChainDynamicsGraph::getComposedChains(chain_joints);
 
   // Initialize Constraints
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
 
   // Set Gravity Wrench
   gtsam::Vector6 gravity;
@@ -1074,8 +1072,9 @@ gtsam::Values NewGraphOneLeg() {
   trunk_wrench_constraint += wrench_0_T;
 
   // Add trunk wrench constraint to constraints
-  constraints.emplace_shared<VectorExpressionEquality<6>>(
-      trunk_wrench_constraint, wrench_tolerance);
+  constraints.emplace_shared<
+      gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
+      trunk_wrench_constraint, gtsam::Vector6::Zero(), wrench_tolerance);
 
   // Get expression for chain on the leg
   gtsam::Vector6_ wrench_end_effector =
@@ -1085,8 +1084,9 @@ gtsam::Values NewGraphOneLeg() {
   Point3 contact_in_com(0.0, 0.0, -0.07);
   gtsam::Vector3_ contact_constraint = ContactDynamicsMomentConstraint(
       wrench_end_effector, gtsam::Pose3(gtsam::Rot3(), (-1) * contact_in_com));
-  constraints.emplace_shared<VectorExpressionEquality<3>>(contact_constraint,
-                                                          contact_tolerance);
+  constraints.emplace_shared<
+      gtsam::ExpressionEqualityConstraint<gtsam::Vector3>>(
+      contact_constraint, gtsam::Vector3::Zero(), contact_tolerance);
 
   // Create initial values.
   gtsam::Values init_values;
@@ -1247,7 +1247,7 @@ gtsam::Values OldGraphFourLegs() {
   /// Solve the constraint problem with LM optimizer.
   OptimizationParameters params;
   auto optimizer = Optimizer(params);
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   gtsam::Values results = optimizer.optimize(graph, constraints, init_vals);
 
   return results;

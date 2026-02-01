@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
@@ -156,7 +157,8 @@ void kinematic_planning() {
   auto constraints_graph = get_constraints_graph(gt);
   auto costs = get_costs(gt);
   auto init_values = get_init_values(gt);
-  auto constraints = ConstraintsFromGraph(constraints_graph);
+  auto constraints =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
   auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;

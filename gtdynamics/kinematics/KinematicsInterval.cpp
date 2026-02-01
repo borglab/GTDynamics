@@ -35,11 +35,14 @@ NonlinearFactorGraph Kinematics::graph<Interval>(const Interval& interval,
 }
 
 template <>
-EqualityConstraints Kinematics::constraints<Interval>(
+gtsam::NonlinearEqualityConstraints Kinematics::constraints<Interval>(
     const Interval& interval, const Robot& robot) const {
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    constraints.add(this->constraints(Slice(k), robot));
+    auto slice_constraints = this->constraints(Slice(k), robot);
+    for (const auto& constraint : slice_constraints) {
+      constraints.push_back(constraint);
+    }
   }
   return constraints;
 }
@@ -55,11 +58,14 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
 }
 
 template <>
-EqualityConstraints Kinematics::pointGoalConstraints<Interval>(
+gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Interval>(
     const Interval& interval, const ContactGoals& contact_goals) const {
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    constraints.add(pointGoalConstraints(Slice(k), contact_goals));
+    auto slice_constraints = pointGoalConstraints(Slice(k), contact_goals);
+    for (const auto& constraint : slice_constraints) {
+      constraints.push_back(constraint);
+    }
   }
   return constraints;
 }

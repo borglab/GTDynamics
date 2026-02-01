@@ -35,11 +35,14 @@ NonlinearFactorGraph Kinematics::graph<Trajectory>(const Trajectory& trajectory,
 }
 
 template <>
-EqualityConstraints Kinematics::constraints<Trajectory>(const Trajectory& trajectory,
-                                                   const Robot& robot) const {
-  EqualityConstraints constraints;
+gtsam::NonlinearEqualityConstraints Kinematics::constraints<Trajectory>(
+    const Trajectory& trajectory, const Robot& robot) const {
+  gtsam::NonlinearEqualityConstraints constraints;
   for (auto&& phase : trajectory.phases()) {
-    constraints.add(this->constraints<Interval>(phase, robot));
+    auto phase_constraints = this->constraints<Interval>(phase, robot);
+    for (const auto& constraint : phase_constraints) {
+      constraints.push_back(constraint);
+    }
   }
   return constraints;
 }
@@ -55,11 +58,15 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Trajectory>(
 }
 
 template <>
-EqualityConstraints Kinematics::pointGoalConstraints<Trajectory>(
+gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Trajectory>(
     const Trajectory& trajectory, const ContactGoals& contact_goals) const {
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   for (auto&& phase : trajectory.phases()) {
-    constraints.add(pointGoalConstraints<Interval>(phase, contact_goals));
+    auto phase_constraints =
+        pointGoalConstraints<Interval>(phase, contact_goals);
+    for (const auto& constraint : phase_constraints) {
+      constraints.push_back(constraint);
+    }
   }
   return constraints;
 }

@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
@@ -33,16 +33,19 @@ struct EConsOptProblem {
   typedef std::function<void(const Values &values)> EvalFunc;
 
   NonlinearFactorGraph costs_;        // cost function, ||f(X)||^2
-  EqualityConstraints e_constraints_; // equality constraints. h(X)=0
+  gtsam::NonlinearEqualityConstraints e_constraints_; // equality constraints. h(X)=0
   Values values_;                     // values of all variables, X
   EvalFunc eval_func;
   /// Constructor.
   EConsOptProblem(const NonlinearFactorGraph &costs,
-                  const EqualityConstraints &constraints, const Values &values)
+                  const gtsam::NonlinearEqualityConstraints &constraints,
+                  const Values &values)
       : costs_(costs), e_constraints_(constraints), values_(values) {}
 
   const NonlinearFactorGraph &costs() const { return costs_; }
-  const EqualityConstraints &constraints() const { return e_constraints_; }
+  const gtsam::NonlinearEqualityConstraints &constraints() const {
+    return e_constraints_;
+  }
   const Values &initValues() const { return values_; }
 
   double evaluateCost(const Values &values) const {
@@ -50,7 +53,7 @@ struct EConsOptProblem {
   }
 
   double evaluateEConstraintViolationL2Norm(const Values &values) const {
-    return e_constraints_.evaluateViolationL2Norm(values);
+    return e_constraints_.violationNorm(values);
   }
 
   /// Evaluate the dimension of costs.
@@ -75,13 +78,15 @@ struct IEConsOptProblem : public EConsOptProblem {
 
   /// Constructor.
   IEConsOptProblem(const NonlinearFactorGraph &costs,
-                   const EqualityConstraints &e_constraints,
+                   const gtsam::NonlinearEqualityConstraints &e_constraints,
                    const InequalityConstraints &i_constraints,
                    const Values &values)
       : EConsOptProblem(costs, e_constraints, values),
         i_constraints_(i_constraints) {}
 
-  const EqualityConstraints &eConstraints() const { return constraints(); }
+  const gtsam::NonlinearEqualityConstraints &eConstraints() const {
+    return constraints();
+  }
   const InequalityConstraints &iConstraints() const { return i_constraints_; }
 
   double evaluateIConstraintViolationL2Norm(const Values &values) const {

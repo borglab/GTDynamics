@@ -24,7 +24,7 @@ namespace gtsam {
 /* ************************************************************************* */
 Values ManifoldOptimizerType1::optimizeWithIntermediate(
     const NonlinearFactorGraph& costs,
-    const gtdynamics::EqualityConstraints& constraints,
+    const gtsam::NonlinearEqualityConstraints& constraints,
     const Values& init_values,
     gtdynamics::ConstrainedOptResult* intermediate_result) const {
   auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
@@ -73,7 +73,7 @@ Values ManifoldOptimizerType1::baseValues(
 /* ************************************************************************* */
 ManifoldOptProblem ManifoldOptimizerType1::initializeMoptProblem(
     const gtsam::NonlinearFactorGraph& costs,
-    const gtdynamics::EqualityConstraints& constraints,
+    const gtsam::NonlinearEqualityConstraints& constraints,
     const gtsam::Values& init_values) const {
   EConsOptProblem ecopt_problem(costs, constraints, init_values);
   return problemTransform(ecopt_problem);

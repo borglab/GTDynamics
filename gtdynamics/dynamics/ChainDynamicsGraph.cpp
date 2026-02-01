@@ -151,11 +151,11 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
     Vector3_ contact_constraint = ContactDynamicsMomentConstraint(
         wrench_end_effector,
         gtsam::Pose3(gtsam::Rot3(), (-1) * contact_in_com));
-    auto contact_expression =
-        VectorExpressionEquality<3>(contact_constraint, contact_tolerance);
-    if (foot_in_contact)
-      graph.add(contact_expression.createFactor(1));
-    else {
+    gtsam::ExpressionEqualityConstraint<gtsam::Vector3> contact_expression(
+        contact_constraint, gtsam::Vector3::Zero(), contact_tolerance);
+    if (foot_in_contact) {
+      graph.add(contact_expression.penaltyFactor(1.0));
+    } else {
       Vector6 wrench_zero = gtsam::Z_6x1;
       graph.addPrior(wrench_key_3i_T, wrench_zero, opt().f_cost_model);
     }
@@ -187,10 +187,10 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
     gtsam::Vector6_ chain_expression = composed_chains_[i].Poe3Factor(
         chain_joints_[i], base_key, end_effector_key, t);
 
-    auto chain_constraint =
-        VectorExpressionEquality<6>(chain_expression, tolerance);
+    gtsam::ExpressionEqualityConstraint<gtsam::Vector6> chain_constraint(
+        chain_expression, gtsam::Vector6::Zero(), tolerance);
 
-    graph.add(chain_constraint.createFactor(1.0));
+    graph.add(chain_constraint.penaltyFactor(1.0));
   }
 
   // Add contact factors.

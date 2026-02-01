@@ -58,13 +58,13 @@ class ManifoldOptimizer : public gtdynamics::ConstrainedOptimizer {
    * also erase all the keys in the connected component from keys.
    */
   ConnectedComponent::shared_ptr findConnectedComponent(
-      const gtdynamics::EqualityConstraints& constraints,
+      const gtsam::NonlinearEqualityConstraints& constraints,
       const gtsam::Key start_key, gtsam::KeySet& keys,
       const gtsam::VariableIndex& var_index) const;
 
   /// Identify the connected components by constraints.
   std::vector<ConnectedComponent::shared_ptr> identifyConnectedComponents(
-      const gtdynamics::EqualityConstraints& constraints) const;
+      const gtsam::NonlinearEqualityConstraints& constraints) const;
 };
 
 }  // namespace gtsam

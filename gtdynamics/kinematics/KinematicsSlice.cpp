@@ -51,16 +51,17 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
 }
 
 template <>
-EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
-                                                   const Robot& robot) const {
-  EqualityConstraints constraints;
+gtsam::NonlinearEqualityConstraints Kinematics::constraints<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  gtsam::NonlinearEqualityConstraints constraints;
 
   // Constrain kinematics at joints.
   gtsam::Vector6 tolerance = p_.p_cost_model->sigmas();
   for (auto&& joint : robot.joints()) {
     auto constraint_expr = joint->poseConstraint(slice.k);
-    constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
-                                                            tolerance);
+    constraints.emplace_shared<
+        gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
+        constraint_expr, gtsam::Vector6::Zero(), tolerance);
   }
 
   return constraints;
@@ -82,9 +83,9 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
 }
 
 template <>
-EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
+gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
     const Slice& slice, const ContactGoals& contact_goals) const {
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
 
   // Add objectives.
   gtsam::Vector3 tolerance = p_.g_cost_model->sigmas();
@@ -92,8 +93,9 @@ EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
     const gtsam::Key pose_key = PoseKey(goal.link()->id(), slice.k);
     auto constraint_expr =
         PointGoalConstraint(pose_key, goal.contactInCoM(), goal.goal_point);
-    constraints.emplace_shared<VectorExpressionEquality<3>>(constraint_expr,
-                                                            tolerance);
+    constraints.emplace_shared<
+        gtsam::ExpressionEqualityConstraint<gtsam::Vector3>>(
+        constraint_expr, gtsam::Vector3::Zero(), tolerance);
   }
   return constraints;
 }
@@ -145,7 +147,10 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
 
   // Contact goals
   if (contact_goals_as_constraints) {
-    constraints.add(this->pointGoalConstraints(slice, contact_goals));
+    auto goal_constraints = this->pointGoalConstraints(slice, contact_goals);
+    for (const auto& constraint : goal_constraints) {
+      constraints.push_back(constraint);
+    }
   } else {
     graph.add(pointGoalObjectives(slice, contact_goals));
   }

@@ -14,6 +14,7 @@
 #include "CartPoleUtils.h"
 
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/linear/IterativeSolver.h>
 #include <gtsam/linear/PCGSolver.h>
 #include <gtsam/linear/Preconditioner.h>
@@ -59,7 +60,8 @@ void dynamic_planning() {
   // cartpole.printJointAngles(init_values, num_steps);
 
 
-  auto constraints = ConstraintsFromGraph(constraints_graph);
+  auto constraints =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
   auto problem = EConsOptProblem(costs, constraints, init_values);
   std::ostringstream latex_os;
 

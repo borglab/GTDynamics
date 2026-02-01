@@ -25,16 +25,6 @@ using namespace gtdynamics;
 
 namespace {
 
-gtsam::NonlinearEqualityConstraints ToGtsamConstraints(
-    const gtdynamics::EqualityConstraints& constraints) {
-  gtsam::NonlinearEqualityConstraints gtsam_constraints;
-  for (const auto& constraint : constraints) {
-    auto factor = constraint->createFactor(1.0);
-    gtsam_constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor);
-  }
-  return gtsam_constraints;
-}
-
 bool AllViolationsFinite(const gtsam::NonlinearEqualityConstraints& constraints,
                          const gtsam::Values& values) {
   for (size_t i = 0; i < constraints.size(); ++i) {
@@ -60,12 +50,14 @@ TEST(KinematicsConstraints, SliceViolation) {
   Kinematics kinematics(parameters);
 
   auto constraints = kinematics.constraints(slice, robot);
-  constraints.add(kinematics.pointGoalConstraints(slice, contact_goals));
+  auto goal_constraints = kinematics.pointGoalConstraints(slice, contact_goals);
+  for (const auto& constraint : goal_constraints) {
+    constraints.push_back(constraint);
+  }
 
   auto values = kinematics.initialValues(slice, robot, 0.0);
-  auto gtsam_constraints = ToGtsamConstraints(constraints);
 
-  EXPECT(AllViolationsFinite(gtsam_constraints, values));
+  EXPECT(AllViolationsFinite(constraints, values));
 }
 
 TEST(KinematicsConstraints, IntervalViolation) {
@@ -78,12 +70,15 @@ TEST(KinematicsConstraints, IntervalViolation) {
   Kinematics kinematics(parameters);
 
   auto constraints = kinematics.constraints(interval, robot);
-  constraints.add(kinematics.pointGoalConstraints(interval, contact_goals));
+  auto goal_constraints =
+      kinematics.pointGoalConstraints(interval, contact_goals);
+  for (const auto& constraint : goal_constraints) {
+    constraints.push_back(constraint);
+  }
 
   auto values = kinematics.initialValues(interval, robot, 0.0);
-  auto gtsam_constraints = ToGtsamConstraints(constraints);
 
-  EXPECT(AllViolationsFinite(gtsam_constraints, values));
+  EXPECT(AllViolationsFinite(constraints, values));
 }
 
 int main() {

@@ -14,10 +14,10 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtdynamics/manifold/SubstituteFactor.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/factorTesting.h>
@@ -34,14 +34,14 @@ TEST(SubstituteFactor, pose) {
   Key cm_key = 2;
 
   // Constraints.
-  gtdynamics::EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(3);
   auto factor12 = std::make_shared<BetweenFactor<Point3>>(
       x1_key, x2_key, Point3(0, 0, 1), noise);
   auto factor23 = std::make_shared<BetweenFactor<Point3>>(
       x2_key, x3_key, Point3(0, 1, 0), noise);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
+  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor12);
+  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
   // Create manifold values for testing.
   Values cm_base_values;
@@ -101,7 +101,7 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
   Key cm_key = 2;
 
   // Constraints.
-  gtdynamics::EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(3);
   auto factor1 =
       std::make_shared<PriorFactor<Point3>>(x1_key, Point3(0, 0, 0), noise);
@@ -109,9 +109,9 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
       x1_key, x2_key, Point3(0, 0, 1), noise);
   auto factor23 = std::make_shared<BetweenFactor<Point3>>(
       x2_key, x3_key, Point3(0, 1, 0), noise);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor1);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
+  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor1);
+  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor12);
+  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
   // Create manifold values for testing.
   Values cm_base_values;

@@ -144,9 +144,10 @@ DoubleExpressionInequality::jacobians(const gtsam::Values &x) const {
 }
 
 /* ************************************************************************* */
-EqualityConstraint::shared_ptr
+gtsam::NonlinearEqualityConstraint::shared_ptr
 DoubleExpressionInequality::createEqualityConstraint() const {
-  return std::make_shared<DoubleExpressionEquality>(expression_, tolerance_);
+  return std::make_shared<gtsam::ExpressionEqualityConstraint<double>>(
+      expression_, 0.0, gtsam::Vector1(tolerance_));
 }
 
 /* ************************************************************************* */
@@ -211,9 +212,10 @@ gtsam::KeySet TwinDoubleExpressionInequality::keys() const {
 }
 
 /* ************************************************************************* */
-EqualityConstraint::shared_ptr
+gtsam::NonlinearEqualityConstraint::shared_ptr
 TwinDoubleExpressionInequality::createEqualityConstraint() const {
-  return std::make_shared<VectorExpressionEquality<2>>(expression_, tolerance_);
+  return std::make_shared<gtsam::ExpressionEqualityConstraint<gtsam::Vector2>>(
+      expression_, gtsam::Vector2::Zero(), tolerance_);
 }
 
 /* ************************************************************************* */

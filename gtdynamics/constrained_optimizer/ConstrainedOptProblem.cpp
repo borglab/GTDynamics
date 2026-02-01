@@ -47,19 +47,19 @@ ComputeAuxiliaryValue(DoubleExpressionInequality::shared_ptr i_constraint,
 }
 
 /* ************************************************************************* */
-EqualityConstraint::shared_ptr
-CreateAuxiliaryConstraint(DoubleExpressionInequality::shared_ptr i_constraint,
-                          Key aux_key) {
+gtsam::NonlinearEqualityConstraint::shared_ptr CreateAuxiliaryConstraint(
+    DoubleExpressionInequality::shared_ptr i_constraint, Key aux_key) {
   auto expr = i_constraint->expression();
   Double_ aux_expr(aux_key);
   Double_ new_expr = expr - aux_expr * aux_expr;
   double tolerance = i_constraint->tolerance()(0);
-  return std::make_shared<DoubleExpressionEquality>(new_expr, tolerance);
+  return std::make_shared<gtsam::ExpressionEqualityConstraint<double>>(
+      new_expr, 0.0, gtsam::Vector1(tolerance));
 }
 
 /* ************************************************************************* */
 EConsOptProblem IEConsOptProblem::auxiliaryProblem() const {
-  EqualityConstraints aux_constraints;
+  gtsam::NonlinearEqualityConstraints aux_constraints;
   Values aux_values;
 
   uint64_t k = 0;
@@ -68,25 +68,26 @@ EConsOptProblem IEConsOptProblem::auxiliaryProblem() const {
             std::dynamic_pointer_cast<DoubleExpressionInequality>(
                 i_constraint)) {
       Key aux_key = AuxilaryKey(k++);
-      aux_constraints.emplace_back(CreateAuxiliaryConstraint(p, aux_key));
+      aux_constraints.push_back(CreateAuxiliaryConstraint(p, aux_key));
       aux_values.insert(aux_key, ComputeAuxiliaryValue(p, values_));
     } else if (TwinDoubleExpressionInequality::shared_ptr p =
                    std::dynamic_pointer_cast<TwinDoubleExpressionInequality>(
                        i_constraint)) {
       DoubleExpressionInequality::shared_ptr p1 = p->constraint1();
       Key aux_key1 = AuxilaryKey(k++);
-      aux_constraints.emplace_back(CreateAuxiliaryConstraint(p1, aux_key1));
+      aux_constraints.push_back(CreateAuxiliaryConstraint(p1, aux_key1));
       aux_values.insert(aux_key1, ComputeAuxiliaryValue(p1, values_));
       DoubleExpressionInequality::shared_ptr p2 = p->constraint2();
       Key aux_key2 = AuxilaryKey(k++);
-      aux_constraints.emplace_back(CreateAuxiliaryConstraint(p2, aux_key2));
+      aux_constraints.push_back(CreateAuxiliaryConstraint(p2, aux_key2));
       aux_values.insert(aux_key2, ComputeAuxiliaryValue(p2, values_));
     }
   }
 
-  EqualityConstraints all_constraints = eConstraints();
-  all_constraints.insert(all_constraints.end(), aux_constraints.begin(),
-                         aux_constraints.end());
+  gtsam::NonlinearEqualityConstraints all_constraints = eConstraints();
+  for (const auto& constraint : aux_constraints) {
+    all_constraints.push_back(constraint);
+  }
   Values all_values = values_;
   all_values.insert(aux_values);
 
