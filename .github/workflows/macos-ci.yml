@@ -1,0 +1,144 @@
+name: macOS CI
+
+on: [pull_request]
+
+# Cancels any in-progress workflow runs for the same PR when a new push is made,
+# allowing the runner to become available more quickly for the latest changes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }} ${{ matrix.build_type }} C++/Python ${{ matrix.python_version }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CTEST_OUTPUT_ON_FAILURE: ON
+      CTEST_PARALLEL_LEVEL: 2
+      CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
+      PYTHON_VERSION: ${{ matrix.python_version }} 
+      GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install 
+
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [macOS-14-xcode-16.4]
+        build_type: [Debug, Release]
+        python_version: [3]
+        include:
+          - name: macos-15-xcode-15.4
+            os: macos-15
+            compiler: xcode
+            version: "16.4"
+
+    steps:
+      - name: Checkout GTDynamics Repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            brew install gcc@${{ matrix.version }}
+            echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
+            echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
+          else
+            sudo xcode-select -switch /Applications/Xcode_${{ matrix.version }}.app
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+          brew install boost
+          brew tap osrf/simulation
+          brew install sdformat15
+
+          # GTDynamics C++ tests use CppUnitLite (install it once per job).
+          git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
+          cd /tmp/CppUnitLite
+          mkdir build && cd build
+          # CppUnitLite's CMakeLists uses an old minimum CMake version; newer CMake
+          # requires explicitly opting into older policy compatibility.
+          # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
+          cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
+          sudo make -j$(sysctl -n hw.physicalcpu) install
+          cd ${{ github.workspace }}
+          rm -rf /tmp/CppUnitLite
+
+      - name: Python Dependencies
+        
+        shell: bash
+        run: |
+          set -e 
+          python${{ env.PYTHON_VERSION }} -m venv venv
+          source venv/bin/activate
+          echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
+          python -m pip install --upgrade pip
+          python -m pip install --break-system-packages -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
+
+      - name: Build & Install GTSAM
+        shell: bash 
+        run: |
+          set -e 
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_macos
+          cd /tmp/gtsam_source_macos
+          mkdir build && cd $_
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -D GTSAM_BUILD_PYTHON=ON \
+                -D GTSAM_WITH_TBB=OFF \
+                -D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
+                ..
+          make -j$(sysctl -n hw.physicalcpu) install 
+          make -j$(sysctl -n hw.physicalcpu) python-install 
+          cd ${{ github.workspace }} 
+          rm -rf /tmp/gtsam_source_macos 
+
+      - name: Create build directory
+        run: mkdir build 
+
+      - name: Configure GTDynamics
+        if: runner.os == 'macOS'
+        shell: bash 
+        run: |
+          set -e
+          GTSAM_CONFIG_DIR_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM"
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
+                -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                -DGTSAM_DIR="${GTSAM_CONFIG_DIR_PATH}" \
+                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }};$(brew --prefix)" \
+                ..
+        working-directory: ./build
+
+      - name: Build
+        run: make -j$(sysctl -n hw.physicalcpu)
+        working-directory: ./build
+
+      - name: Test C++
+        shell: bash
+        run: |
+          # Mirror the python-test linker settings: GTSAM is installed to a local prefix.
+          set -e
+          export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          make -j$(sysctl -n hw.physicalcpu) check
+        working-directory: ./build
+
+      - name: Install Python Wrappers
+        shell: bash 
+        run: |
+          set -e
+          make -j$(sysctl -n hw.physicalcpu) python-install 
+        working-directory: ./build
+
+      - name: Test Python
+        # For macOS, set DYLD_LIBRARY_PATH so the dynamic linker can find the installed GTSAM libraries.
+        # Also, ensure the venv is active for the context of running the tests.
+        shell: bash
+        run: |
+          set -e
+          source ${{ github.workspace }}/venv/bin/activate # Ensure venv Python and its site-packages are primary
+          export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          echo "DYLD_LIBRARY_PATH is set to: $DYLD_LIBRARY_PATH"
+          make -j$(sysctl -n hw.physicalcpu) python-test
+        working-directory: ./build
