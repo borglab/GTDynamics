@@ -84,6 +84,7 @@ jobs:
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
                 -D GTSAM_BUILD_PYTHON=ON \
                 -D GTSAM_WITH_TBB=OFF \
+                -D CMAKE_CXX_FLAGS="-faligned-new" \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
                 ..
           sudo make -j$(nproc) install 
