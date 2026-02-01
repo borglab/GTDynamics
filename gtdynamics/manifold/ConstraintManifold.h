@@ -18,6 +18,7 @@
 #include <gtdynamics/manifold/TspaceBasis.h>
 
 #include <cstddef>
+#include <mutex>
 
 namespace gtsam {
 
@@ -154,7 +155,11 @@ class ConstraintManifold {
   /// Make sure the tangent space basis is constructed.
   void makeSureBasisConstructed() const {
     if (!basis_->isConstructed()) {
-      basis_->construct(cc_, values_);
+      static std::mutex basis_mutex;
+      std::lock_guard<std::mutex> lock(basis_mutex);
+      if (!basis_->isConstructed()) {
+        basis_->construct(cc_, values_);
+      }
     }
   }
 

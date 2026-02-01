@@ -111,6 +111,35 @@ We recommend going through the examples to get a better understanding of how to 
     ```
     where `XXX` corresponds to the folder name in `examples`. For example, `make example_quadruped_mp.sim` or `make example_spider_walking.sim`. Make sure you have `pybullet` and `matplotlib` installed in your Python environment. 
 
+## Constrained Optimization (GTSAM-backed)
+
+GTDynamics now routes some constrained optimization methods through GTSAM's constrained optimizers.
+
+Typical entry points:
+
+- **Optimizer API:** set `OptimizationParameters::Method` to `PENALTY` or `AUGMENTED_LAGRANGIAN` and call `Optimizer::optimize(...)`.
+- **Benchmark helpers:** use `OptimizePenaltyMethod(...)` / `OptimizeAugmentedLagrangian(...)` in `gtdynamics/optimizer/OptimizationBenchmark.h`.
+
+### Benchmark: Kuka Arm (Trajectory Optimization)
+
+We ran the Kuka arm example to compare **Soft Constraints** vs **Penalty** vs **Augmented Lagrangian**.
+
+Run it from the build directory:
+
+```sh
+$ make example_constraint_manifold_arm.run
+```
+
+Example output (times in seconds; your machine will differ):
+
+```
+Soft Constraint           0.334 s
+Penalty Method            2.045 s
+Augmented Lagrangian      1.663 s
+Constraint Manifold (F)   0.107 s
+Constraint Manifold (I)   0.061 s
+```
+
 ## Including GTDynamics With CMake
 
 The `examples/cmake_project_example` directory contains an example CMake-based project that demonstrates how to include GTDynamics in your application.
@@ -197,4 +226,3 @@ Please cite the following paper if you use this code as part of any published re
     Eprint = {arXiv:2011.06194},
 }
 ```
-

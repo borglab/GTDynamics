@@ -58,6 +58,14 @@ Double_ pow(const Double_& x, const double& c) {
   return Double_(pow_functor, x);
 }
 
+/// Plus between Double expression and double.
+Double_ operator+(const Double_& x, const double& d) {
+  return x + Double_(d);
+}
+
+/// Negative sign operator.
+Double_ operator-(const Double_& x) { return Double_(0.0) - x; }
+
 Symbol x1_key('x', 1);
 Symbol x2_key('x', 2);
 Double_ x1(x1_key), x2(x2_key);
