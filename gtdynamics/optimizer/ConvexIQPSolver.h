@@ -27,11 +27,11 @@ using gtsam::VectorValues;
 
 /** Solve a convex inequality constrained QP problem defined in
  * Nocedal Sec. 16.5 using the algorithm in Nocedal Alg. 16.3.
- * @param graph Cost for IQP probelm.
+ * @param graph Cost for IQP problem.
  * @param constraints Linear inequality constraints of IQP problem.
  * @param init_active_indices Initial indices of inequality constraints.
  * @param init_values Initial values for optimization.
- * @return [solution vector, active constriant indices, num solves, solve
+ * @return [solution vector, active constraint indices, num solves, solve
  * successful]. */
 std::tuple<VectorValues, IndexSet, size_t, bool>
 SolveConvexIQP(const GaussianFactorGraph &graph,

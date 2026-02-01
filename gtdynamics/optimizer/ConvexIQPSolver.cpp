@@ -202,7 +202,7 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
         // all constraints are tight
         return {x_new, active_indices, num_solves, true};
       } else {
-        // can relieve constriant
+        // can relieve constraint
         active_indices.erase(min_idx);
         if (num_solves > max_iters) {
           std::cout << "min_lambda: " << min_lambda << "\n";

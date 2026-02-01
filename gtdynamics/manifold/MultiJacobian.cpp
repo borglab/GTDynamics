@@ -38,14 +38,14 @@ MultiJacobian MultiJacobian::VerticalStack(const MultiJacobian &jac1,
 
   MultiJacobian jac;
   for (const auto &[key, matrix] : jac1) {
-    Matrix expaned_mat(dim, matrix.cols());
-    expaned_mat << matrix, Matrix::Zero(dim2, matrix.cols());
-    jac.addJacobian(key, expaned_mat);
+    Matrix expanded_mat(dim, matrix.cols());
+    expanded_mat << matrix, Matrix::Zero(dim2, matrix.cols());
+    jac.addJacobian(key, expanded_mat);
   }
   for (const auto &[key, matrix] : jac2) {
-    Matrix expaned_mat(dim, matrix.cols());
-    expaned_mat << Matrix::Zero(dim1, matrix.cols()), matrix;
-    jac.addJacobian(key, expaned_mat);
+    Matrix expanded_mat(dim, matrix.cols());
+    expanded_mat << Matrix::Zero(dim1, matrix.cols()), matrix;
+    jac.addJacobian(key, expanded_mat);
   }
   return jac;
 }
