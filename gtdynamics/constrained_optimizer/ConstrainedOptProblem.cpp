@@ -77,7 +77,7 @@ EConsOptProblem IEConsOptProblem::auxiliaryProblem() const {
       Key aux_key1 = AuxilaryKey(k++);
       aux_constraints.emplace_back(CreateAuxiliaryConstraint(p1, aux_key1));
       aux_values.insert(aux_key1, ComputeAuxiliaryValue(p1, values_));
-      DoubleExpressionInequality::shared_ptr p2 = p->constraint1();
+      DoubleExpressionInequality::shared_ptr p2 = p->constraint2();
       Key aux_key2 = AuxilaryKey(k++);
       aux_constraints.emplace_back(CreateAuxiliaryConstraint(p2, aux_key2));
       aux_values.insert(aux_key2, ComputeAuxiliaryValue(p2, values_));
