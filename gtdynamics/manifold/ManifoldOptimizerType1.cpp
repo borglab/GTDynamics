@@ -22,17 +22,17 @@
 namespace gtsam {
 
 /* ************************************************************************* */
-Values ManifoldOptimizerType1::optimize(
+Values ManifoldOptimizerType1::optimizeWithIntermediate(
     const NonlinearFactorGraph& costs,
     const gtdynamics::EqualityConstraints& constraints,
     const Values& init_values,
     gtdynamics::ConstrainedOptResult* intermediate_result) const {
   auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
-  return optimize(mopt_problem, intermediate_result);
+  return optimizeWithIntermediate(mopt_problem, intermediate_result);
 }
 
 /* ************************************************************************* */
-Values ManifoldOptimizerType1::optimize(
+Values ManifoldOptimizerType1::optimizeWithIntermediate(
     const ManifoldOptProblem& mopt_problem,
     gtdynamics::ConstrainedOptResult* intermediate_result) const {
   auto nonlinear_optimizer = constructNonlinearOptimizer(mopt_problem);

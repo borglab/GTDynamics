@@ -14,7 +14,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 
 #include "constrainedExample.h"
 

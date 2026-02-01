@@ -85,7 +85,7 @@ Values OptimizeConstraintManifold(
   gtdynamics::ConstrainedOptResult intermediate_result;
 
   auto optimization_start = std::chrono::system_clock::now();
-  auto result = optimizer.optimize(mopt_problem, &intermediate_result);
+  auto result = optimizer.optimizeWithIntermediate(mopt_problem, &intermediate_result);
   auto optimization_end = std::chrono::system_clock::now();
   auto optimization_time_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -

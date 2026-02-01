@@ -13,7 +13,7 @@
 
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/manifold/MultiJacobian.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>

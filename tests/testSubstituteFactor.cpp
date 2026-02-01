@@ -14,7 +14,7 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/manifold/ConstraintManifold.h>
 #include <gtdynamics/manifold/SubstituteFactor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
