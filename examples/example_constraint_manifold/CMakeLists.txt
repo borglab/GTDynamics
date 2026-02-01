@@ -8,8 +8,7 @@ project(example_constraint_manifold C CXX)
 set(CONNECTED_POSES ${PROJECT_NAME}_connected_poses)
 add_executable(${CONNECTED_POSES} main_connected_poses.cpp)
 target_link_libraries(${CONNECTED_POSES} PUBLIC gtdynamics)
-target_include_directories(${CONNECTED_POSES} PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
-target_include_directories(${CONNECTED_POSES} SYSTEM PUBLIC ${CMAKE_PREFIX_PATH}/include)
+target_include_directories(${CONNECTED_POSES} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
   ${CONNECTED_POSES}.run
@@ -22,8 +21,7 @@ add_custom_target(
 set(RANGE_CONSTRAINT ${PROJECT_NAME}_range_constraint)
 add_executable(${RANGE_CONSTRAINT} main_range_constraint.cpp)
 target_link_libraries(${RANGE_CONSTRAINT} PUBLIC gtdynamics)
-target_include_directories(${RANGE_CONSTRAINT} PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
-target_include_directories(${RANGE_CONSTRAINT} SYSTEM PUBLIC ${CMAKE_PREFIX_PATH}/include)
+target_include_directories(${RANGE_CONSTRAINT} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
   ${RANGE_CONSTRAINT}.run
@@ -36,8 +34,7 @@ add_custom_target(
 set(ARM ${PROJECT_NAME}_arm)
 add_executable(${ARM} main_arm_kinematic_planning.cpp SerialChain.h)
 target_link_libraries(${ARM} PUBLIC gtdynamics)
-target_include_directories(${ARM} PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
-target_include_directories(${ARM} SYSTEM PUBLIC ${CMAKE_PREFIX_PATH}/include)
+target_include_directories(${ARM} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
   ${ARM}.run
@@ -49,8 +46,7 @@ add_custom_target(
 set(CABLE_ROBOT ${PROJECT_NAME}_cable_robot)
 add_executable(${CABLE_ROBOT} main_cablerobot.cpp)
 target_link_libraries(${CABLE_ROBOT} PUBLIC gtdynamics)
-target_include_directories(${CABLE_ROBOT} PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
-target_include_directories(${CABLE_ROBOT} SYSTEM PUBLIC ${CMAKE_PREFIX_PATH}/include)
+target_include_directories(${CABLE_ROBOT} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
   ${CABLE_ROBOT}.run
@@ -62,8 +58,7 @@ add_custom_target(
 set(CART_POLE ${PROJECT_NAME}_cart_pole)
 add_executable(${CART_POLE} main_cartpole.cpp CartPoleUtils.h CartPoleUtils.cpp)
 target_link_libraries(${CART_POLE} PUBLIC gtdynamics)
-target_include_directories(${CART_POLE} PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
-target_include_directories(${CART_POLE} SYSTEM PUBLIC ${CMAKE_PREFIX_PATH}/include)
+target_include_directories(${CART_POLE} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
   ${CART_POLE}.run
@@ -76,11 +71,11 @@ add_custom_target(
 set(QUADRUPED_MP ${PROJECT_NAME}_quadruped_mp)
 add_executable(${QUADRUPED_MP} main_quadruped.cpp QuadrupedUtils.h QuadrupedUtils.cpp)
 target_link_libraries(${QUADRUPED_MP} PUBLIC gtdynamics)
-target_include_directories(${QUADRUPED_MP} PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
-target_include_directories(${QUADRUPED_MP} SYSTEM PUBLIC ${CMAKE_PREFIX_PATH}/include)
+target_include_directories(${QUADRUPED_MP} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(
   ${QUADRUPED_MP}.run
   COMMAND ./${QUADRUPED_MP}
   DEPENDS ${QUADRUPED_MP}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
+
