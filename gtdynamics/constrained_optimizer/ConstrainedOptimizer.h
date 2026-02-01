@@ -65,7 +65,7 @@ public:
    * only.
    *
    * @param graph A Nonlinear factor graph representing cost.
-   * @param cosntraints All the constraints.
+   * @param constraints All the constraints.
    * @param initial_values Initial values for all variables.
    * @return Values The result of the constrained optimization.
    */
@@ -81,7 +81,7 @@ public:
    * inequality constraints.
    *
    * @param graph A Nonlinear factor graph representing cost.
-   * @param e_cosntraints All the nonlinear equality constraints.
+   * @param e_constraints All the nonlinear equality constraints.
    * @param i_constraints All the nonlinear inequality constraints.
    * @param initial_values Initial values for all variables.
    * @return Values The result of the constrained optimization.

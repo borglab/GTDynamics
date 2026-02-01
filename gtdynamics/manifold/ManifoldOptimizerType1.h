@@ -97,9 +97,9 @@ class ManifoldOptimizerType1 : public ManifoldOptimizer {
                     const Values& nopt_values) const;
 
  protected:
-  /** Create values for the manifold optimization probelm by (1) create
+  /** Create values for the manifold optimization problem by (1) create
    * constraint manifolds for constraint-connected components; (2) identify if
-   * the cosntraint manifold is fully constrained; (3) collect unconstrained
+   * the constraint manifold is fully constrained; (3) collect unconstrained
    * variables.
    */
   void constructMoptValues(const EConsOptProblem& ecopt_problem,

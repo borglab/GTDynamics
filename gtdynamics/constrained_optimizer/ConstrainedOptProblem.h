@@ -88,7 +88,7 @@ struct IEConsOptProblem : public EConsOptProblem {
     return i_constraints_.evaluateViolationL2Norm(values);
   }
 
-  /// Equivalent equality-constrained optimization probelm with auxiliary
+  /// Equivalent equality-constrained optimization problem with auxiliary
   /// variables z. Inequality constraints g(x)>=0 are transformed into equality
   /// constraints g(x)-z^2=0.
   EConsOptProblem auxiliaryProblem() const;
