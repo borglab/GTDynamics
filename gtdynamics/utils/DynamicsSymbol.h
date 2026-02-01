@@ -158,4 +158,92 @@ std::string _GTDKeyFormatter(gtsam::Key key);
 
 static const gtsam::KeyFormatter GTDKeyFormatter = &_GTDKeyFormatter;
 
+/**
+ * @brief Check if the key corresponds to a configuration level variable (q, p).
+ *
+ * @param key The key to check.
+ * @return true If the key is a Q level variable.
+ * @return false otherwise.
+ */
+bool IsQLevel(const gtsam::Key &key);
+
+/**
+ * @brief Check if the key corresponds to a velocity level variable (v, V).
+ *
+ * @param key The key to check.
+ * @return true If the key is a V level variable.
+ * @return false otherwise.
+ */
+bool IsVLevel(const gtsam::Key &key);
+
+/**
+ * @brief Identify the highest level of the keys in the container.
+ * 0: configuration level, 1: velocity level, 2: acceleration/dynamics level.
+ *
+ * @tparam CONTAINER Type of the container.
+ * @param keys The container of keys.
+ * @return int The highest level found.
+ */
+template <typename CONTAINER>
+inline int IdentifyLevel(const CONTAINER &keys) {
+  int lvl = 0;
+  for (const auto &key : keys) {
+    if (IsQLevel(key)) {
+      lvl = std::max(lvl, 0);
+    } else if (IsVLevel(key)) {
+      lvl = std::max(lvl, 1);
+    } else {
+      lvl = std::max(lvl, 2);
+    }
+  }
+  return lvl;
+}
+
+/**
+ * @brief Classify keys into three levels: configuration, velocity, and acceleration/dynamics.
+ *
+ * @tparam CONTAINER Type of the container.
+ * @param keys The container of keys.
+ * @param q_keys Output set of configuration level keys.
+ * @param v_keys Output set of velocity level keys.
+ * @param ad_keys Output set of acceleration/dynamics level keys.
+ */
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeySet &q_keys,
+                         gtsam::KeySet &v_keys, gtsam::KeySet &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.insert(key);
+    } else if (IsVLevel(key)) {
+      v_keys.insert(key);
+    } else {
+      ad_keys.insert(key);
+    }
+  }
+}
+
+/**
+ * @brief Classify keys into three levels: configuration, velocity, and acceleration/dynamics.
+ *
+ * @tparam CONTAINER Type of the container.
+ * @param keys The container of keys.
+ * @param q_keys Output vector of configuration level keys.
+ * @param v_keys Output vector of velocity level keys.
+ * @param ad_keys Output vector of acceleration/dynamics level keys.
+ */
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeyVector &q_keys,
+                         gtsam::KeyVector &v_keys, gtsam::KeyVector &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.push_back(key);
+    } else if (IsVLevel(key)) {
+      v_keys.push_back(key);
+    } else {
+      ad_keys.push_back(key);
+    }
+  }
+}
+
+
 }  // namespace gtdynamics

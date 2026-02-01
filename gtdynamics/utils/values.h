@@ -83,6 +83,18 @@ inline gtsam::Key ContactWrenchKey(int i, int c, int k = 0) {
   return DynamicsSymbol::LinkJointSymbol("C", i, c, k);
 }
 
+/**
+ * @brief Shorthand for CF_i_c_k, for contact force c on i-th link at time step k.
+ *
+ * @param i Link ID.
+ * @param c Contact ID.
+ * @param k Time step.
+ * @return gtsam::Key
+ */
+inline gtsam::Key ContactForceKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("CF", i, c, k);
+}
+
 /* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
 inline gtsam::Key PhaseKey(int k) {
   return DynamicsSymbol::SimpleSymbol("dt", k);
@@ -450,5 +462,15 @@ gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j,
  * @return gtsam::Vector6
  */
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t = 0);
+
+/**
+ * @brief Create values for the next time step by incrementing the time index of keys.
+ *
+ * @param prev_values Values at the previous time step.
+ * @param gap_steps The number of steps to increment.
+ * @return gtsam::Values
+ */
+gtsam::Values DynamicsValuesFromPrev(const gtsam::Values &prev_values,
+                                     const int gap_steps = 1);
 
 }  // namespace gtdynamics

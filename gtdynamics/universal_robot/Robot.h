@@ -79,6 +79,66 @@ class Robot {
   /// remove specified joint from the robot
   void removeJoint(const JointSharedPtr &joint);
 
+  /**
+   * @brief Rename the links.
+   *
+   * @param name_map Map from old link name to new link name. This map must
+   * contain entries for all links in the robot; if a link name is missing,
+   * the implementation will throw (e.g., due to use of std::map::at()).
+   */
+  void renameLinks(const std::map<std::string, std::string>& name_map);
+
+  /**
+   * @brief Rename the joints.
+   *
+   * The provided map must contain an entry for every joint in the robot.
+   * Internally, this function uses std::map::at() to look up the new name
+   * for each existing joint name, so missing keys will result in an
+   * exception being thrown.
+   *
+   * @param name_map Map from old joint name to new joint name, containing
+   *                 entries for all joints in the robot.
+   */
+  void renameJoints(const std::map<std::string, std::string>& name_map);
+
+  /**
+   * @brief Reassign the link IDs.
+   *
+   * The provided list must contain the names of all links in the robot,
+   * with no omissions or duplicates. Internally the implementation uses
+   * a map lookup that will throw if any name is missing. The index of
+   * each name in the vector (0-indexed) determines the new ID assigned
+   * to the corresponding link.
+   *
+   * @param ordered_link_names List of all link names in the desired new
+   *        ID order (0-indexed).
+   */
+  void reassignLinks(const std::vector<std::string>& ordered_link_names);
+
+  /**
+   * @brief Reassign the joint IDs.
+   *
+   * @param ordered_joint_names List of joint names in the desired new order.
+   *        This vector must contain the names of all joints in the robot,
+   *        each appearing exactly once. The index of each name in the vector
+   *        determines the joint's new ID (0-indexed).
+   */
+  void reassignJoints(const std::vector<std::string>& ordered_joint_names);
+
+  /**
+   * @brief Return links ordered by their IDs.
+   *
+   * @return std::vector<LinkSharedPtr>
+   */
+  std::vector<LinkSharedPtr> orderedLinks() const;
+
+  /**
+   * @brief Return joints ordered by their IDs.
+   *
+   * @return std::vector<JointSharedPtr>
+   */
+  std::vector<JointSharedPtr> orderedJoints() const;
+
   /// Return the link corresponding to the input string.
   LinkSharedPtr link(const std::string &name) const;
 

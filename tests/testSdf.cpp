@@ -24,6 +24,8 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 
+#include <array>
+
 using namespace gtdynamics;
 using gtsam::assert_equal;
 using gtsam::Point3;
@@ -52,6 +54,18 @@ TEST(Sdf, load_and_parse_urdf_file) {
   EXPECT(assert_equal(1, simple_urdf.LinkByName("l2")->Inertial().Moi()(0, 0)));
   EXPECT(assert_equal(2, simple_urdf.LinkByName("l2")->Inertial().Moi()(1, 1)));
   EXPECT(assert_equal(3, simple_urdf.LinkByName("l2")->Inertial().Moi()(2, 2)));
+}
+
+TEST(Sdf, load_vision60_urdf_contact_goal_links) {
+  const auto robot =
+      CreateRobotFromFile(kUrdfPath + std::string("vision60.urdf"));
+
+  const std::array<std::string, 4> link_names = {"lower1", "lower0", "lower2",
+                                                 "lower3"};
+  for (const auto& name : link_names) {
+    const auto link = robot.link(name);
+    EXPECT(assert_equal(name, link->name()));
+  }
 }
 
 TEST(Sdf, load_and_parse_sdf_file) {
@@ -437,7 +451,7 @@ TEST(Sdf, limit_params) {
   // Check the upper limit, expect positive infinity
   EXPECT(std::isinf(joint_1->parameters().scalar_limits.value_upper_limit));
   EXPECT(joint_1->parameters().scalar_limits.value_upper_limit > 0);
-    
+
   EXPECT(assert_equal(
       1e-9, joint_1->parameters().scalar_limits.value_limit_threshold));
 }

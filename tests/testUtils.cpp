@@ -62,6 +62,35 @@ TEST(utils, calcQ) {
   EXPECT(assert_equal(expected_Q, actual_Q, 1e-6));
 }
 
+TEST(utils, Derivatives) {
+  using namespace gtsam;
+  Point3 p(1, 2, 3);
+  Matrix H_p;
+  EXPECT_DOUBLES_EQUAL(3.0, point3_z(p, H_p), 1e-9);
+  EXPECT(assert_equal((Matrix(1, 3) << 0, 0, 1).finished(), H_p));
+
+  double x1 = 10.0, x2 = 2.0;
+  Matrix H1, H2;
+  EXPECT_DOUBLES_EQUAL(5.0, double_division(x1, x2, H1, H2), 1e-9);
+  EXPECT(assert_equal((Matrix(1, 1) << 0.5).finished(), H1));
+  EXPECT(assert_equal((Matrix(1, 1) << -2.5).finished(), H2));
+
+  double x = 2.0;
+  Matrix H;
+  EXPECT_DOUBLES_EQUAL(0.5, reciprocal(x, H), 1e-9);
+  EXPECT(assert_equal((Matrix(1, 1) << -0.25).finished(), H));
+
+  EXPECT_DOUBLES_EQUAL(1.0, clip_by_one(0.5, H), 1e-9);
+  EXPECT(assert_equal((Matrix(1, 1) << 0.0).finished(), H));
+  EXPECT_DOUBLES_EQUAL(2.0, clip_by_one(2.0, H), 1e-9);
+  EXPECT(assert_equal((Matrix(1, 1) << 1.0).finished(), H));
+
+  Matrix H1s, H2s;
+  EXPECT(assert_equal(Vector2(10.0, 2.0), double_stack(x1, x2, H1s, H2s)));
+  EXPECT(assert_equal((Matrix(2, 1) << 1, 0).finished(), H1s));
+  EXPECT(assert_equal((Matrix(2, 1) << 0, 1).finished(), H2s));
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
