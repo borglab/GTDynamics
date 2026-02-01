@@ -185,7 +185,6 @@ void kinematic_planning() {
   auto init_values = get_init_values(gt, odo_measurements);
   auto constraints =
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  // constraints = gtdynamics::EqualityConstraints();
   auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
