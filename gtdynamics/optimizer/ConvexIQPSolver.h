@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtdynamics/constraints/LinearInequalityConstraint.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/JacobianFactor.h>
 #include <gtsam/linear/NoiseModel.h>

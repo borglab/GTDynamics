@@ -33,7 +33,7 @@ using gtsam::Matrix;
 /* ************************************************************************* */
 SQPState::SQPState(const Values &_values, const NonlinearFactorGraph &graph,
                    const gtsam::NonlinearEqualityConstraints &e_constraints,
-                   const InequalityConstraints &i_constraints,
+                   const gtsam::NonlinearInequalityConstraints &i_constraints,
                    const SQPParams &params, const double _lambda,
                    const double _lambda_factor, const size_t _iterations)
     : lambda(_lambda), lambda_factor(_lambda_factor), values(_values),
@@ -65,7 +65,7 @@ SQPState::SQPState(const Values &_values, const NonlinearFactorGraph &graph,
 SQPState SQPState::FromLastIteration(const SQPIterDetails &iter_details,
                                      const NonlinearFactorGraph &graph,
                                      const gtsam::NonlinearEqualityConstraints &e_constraints,
-                                     const InequalityConstraints &i_constraints,
+                                     const gtsam::NonlinearInequalityConstraints &i_constraints,
                                      const SQPParams &params) {
   double lambda;
   const auto &last_trial = iter_details.trials.back();
@@ -107,7 +107,7 @@ void SQPState::computeMinVector() {
 SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
                    const NonlinearFactorGraph &graph,
                    const gtsam::NonlinearEqualityConstraints &e_constraints,
-                   const InequalityConstraints &i_constraints,
+                   const gtsam::NonlinearInequalityConstraints &i_constraints,
                    const SQPParams &params)
     : lambda(_lambda) {
   // build damped system
@@ -390,13 +390,13 @@ void PrintSQPTrial(const SQPState &state, const SQPTrial &trial,
 /* ************************************************************************* */
 Eval SQPOptimizer::MeritFunction(const NonlinearFactorGraph &graph,
                                  const gtsam::NonlinearEqualityConstraints &e_constraints,
-                                 const InequalityConstraints &i_constraints,
+                                 const gtsam::NonlinearInequalityConstraints &i_constraints,
                                  const Values &values,
                                  const SQPParams &params) {
   Eval eval;
   eval.cost = graph.error(values);
   eval.e_violation = e_constraints.violationNorm(values);
-  eval.i_violation = i_constraints.evaluateViolationL2Norm(values);
+  eval.i_violation = i_constraints.violationNorm(values);
   double e_vio_l2 = 0.5 * pow(eval.e_violation, 2);
   double i_vio_l2 = 0.5 * pow(eval.i_violation, 2);
   eval.merit = eval.cost + params.merit_e_l1_mu * eval.e_violation +
@@ -430,7 +430,7 @@ Eval SQPOptimizer::MeritFunctionApprox(const SQPState &state,
 /* ************************************************************************* */
 Values SQPOptimizer::optimize(const NonlinearFactorGraph &graph,
                               const gtsam::NonlinearEqualityConstraints &e_constraints,
-                              const InequalityConstraints &i_constraints,
+                              const gtsam::NonlinearInequalityConstraints &i_constraints,
                               const Values &init_values) {
   SQPState state(init_values, graph, e_constraints, i_constraints, *p_,
                  p_->lm_params.lambdaInitial, p_->lm_params.lambdaFactor, 0);
@@ -464,7 +464,7 @@ Values SQPOptimizer::optimize(const NonlinearFactorGraph &graph,
 /* ************************************************************************* */
 SQPIterDetails SQPOptimizer::iterate(const NonlinearFactorGraph &graph,
                                      const gtsam::NonlinearEqualityConstraints &e_constraints,
-                                     const InequalityConstraints &i_constraints,
+                                     const gtsam::NonlinearInequalityConstraints &i_constraints,
                                      const SQPState &state) {
   const LevenbergMarquardtParams &lm_params = p_->lm_params;
   SQPIterDetails iter_details(state);

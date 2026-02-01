@@ -88,7 +88,7 @@ public:
    */
   virtual Values optimize(const NonlinearFactorGraph &graph,
                           const gtsam::NonlinearEqualityConstraints &e_constraints,
-                          const InequalityConstraints &i_constraints,
+                          const gtsam::NonlinearInequalityConstraints &i_constraints,
                           const Values &initial_values) const {
     throw std::runtime_error(
         "Inequality constrained optimization not implemented");

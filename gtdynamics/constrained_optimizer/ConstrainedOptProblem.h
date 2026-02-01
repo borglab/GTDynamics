@@ -13,14 +13,15 @@
 
 #pragma once
 
-#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
+using gtsam::NonlinearInequalityConstraints;
 using gtsam::Values;
 
 /** Equality-constrained optimization problem, in the form of
@@ -69,17 +70,17 @@ struct EConsOptProblem {
 /** Equality-Inequality-constrained optimization problem, in the form of
  * argmin_x 0.5||f(X)||^2
  * s.t.     h(X) = 0
- *          g(X) >= 0
+ *          g(X) <= 0
  * where X represents the variables, 0.5||f(X)||^2 represents the quadratic cost
  * functions, h(X)=0 represents the constraints.
  */
 struct IEConsOptProblem : public EConsOptProblem {
-  InequalityConstraints i_constraints_;
+  NonlinearInequalityConstraints i_constraints_;
 
   /// Constructor.
   IEConsOptProblem(const NonlinearFactorGraph &costs,
                    const gtsam::NonlinearEqualityConstraints &e_constraints,
-                   const InequalityConstraints &i_constraints,
+                   const NonlinearInequalityConstraints &i_constraints,
                    const Values &values)
       : EConsOptProblem(costs, e_constraints, values),
         i_constraints_(i_constraints) {}
@@ -87,15 +88,17 @@ struct IEConsOptProblem : public EConsOptProblem {
   const gtsam::NonlinearEqualityConstraints &eConstraints() const {
     return constraints();
   }
-  const InequalityConstraints &iConstraints() const { return i_constraints_; }
+  const NonlinearInequalityConstraints &iConstraints() const {
+    return i_constraints_;
+  }
 
   double evaluateIConstraintViolationL2Norm(const Values &values) const {
-    return i_constraints_.evaluateViolationL2Norm(values);
+    return i_constraints_.violationNorm(values);
   }
 
   /// Equivalent equality-constrained optimization problem with auxiliary
-  /// variables z. Inequality constraints g(x)>=0 are transformed into equality
-  /// constraints g(x)-z^2=0.
+  /// variables z. Inequality constraints g(x)<=0 are transformed into equality
+  /// constraints g(x)+z^2=0.
   EConsOptProblem auxiliaryProblem() const;
 };
 

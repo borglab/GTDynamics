@@ -132,24 +132,15 @@ Key IFOptTranslator::nameToKey(const std::string &name) {
 /* ************************************************************************* */
 Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
                              const gtsam::NonlinearEqualityConstraints &e_constraints,
-                             const InequalityConstraints &i_constraints,
+                             const gtsam::NonlinearInequalityConstraints &i_constraints,
                              const Values &initial_values) const {
 
   // Ensure that all i-constraints are 1-dimensional
-  if (i_constraints.size() != i_constraints.dim()) {
-    InequalityConstraints new_i_constraints;
-    for (const auto &constraint : i_constraints) {
-      if (constraint->dim() == 1) {
-        new_i_constraints.push_back(constraint);
-      } else {
-        auto twin_constraint =
-            std::static_pointer_cast<TwinDoubleExpressionInequality>(
-                constraint);
-        new_i_constraints.push_back(twin_constraint->constraint1());
-        new_i_constraints.push_back(twin_constraint->constraint2());
-      }
+  for (const auto &constraint : i_constraints) {
+    if (constraint->dim() != 1) {
+      throw std::runtime_error(
+          "IPOptimizer only supports scalar inequality constraints");
     }
-    return optimize(cost, e_constraints, new_i_constraints, initial_values);
   }
 
   // 0. translate cost, constraints, values to ipopt format.
@@ -207,7 +198,7 @@ Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
 Values IPOptimizer::optimize(const NonlinearFactorGraph &cost,
                              const gtsam::NonlinearEqualityConstraints &constraints,
                              const Values &initial_values) const {
-  InequalityConstraints i_constraints;
+  gtsam::NonlinearInequalityConstraints i_constraints;
   return optimize(cost, constraints, i_constraints, initial_values);
 }
 
@@ -331,11 +322,12 @@ void IFOptEConstraint::FillJacobianBlock(std::string var_set,
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-IFOptIConstraint::IFOptIConstraint(InequalityConstraint::shared_ptr constraint,
+IFOptIConstraint::IFOptIConstraint(
+    gtsam::NonlinearInequalityConstraint::shared_ptr constraint,
                                    const std::string &name,
                                    const IFOptTranslator::shared_ptr translator)
     : ConstraintSet(constraint->dim(), name), constraint_(constraint),
-      factor_(constraint->createL2Factor()),
+      factor_(constraint->createEqualityConstraint()),
       keys_(ConstructKeySet(factor_->keys())), translator_(translator) {}
 
 /* ************************************************************************* */
@@ -353,14 +345,18 @@ Values IFOptIConstraint::GetValuesGTSAM() const {
 IFOptIConstraint::VectorXd IFOptIConstraint::GetValues() const {
   // std::cout << "get values i-constraint\n";
   Values values = GetValuesGTSAM();
-  double eval = constraint_->toleranceScaledEvaluation(values);
-  return Vector1(eval);
+  gtsam::Vector eval = constraint_->unwhitenedExpr(values);
+  gtsam::Vector sigmas = constraint_->sigmas();
+  for (size_t i = 0; i < static_cast<size_t>(eval.size()); i++) {
+    eval(i) /= sigmas(i);
+  }
+  return eval;
 }
 
 /* ************************************************************************* */
 IFOptIConstraint::VecBound IFOptIConstraint::GetBounds() const {
   // std::cout << "get bounds i-constraint\n";
-  VecBound b(GetRows(), ifopt::Bounds(0.0, ifopt::inf));
+  VecBound b(GetRows(), ifopt::Bounds(-ifopt::inf, 0.0));
   return b;
 }
 

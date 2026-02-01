@@ -18,6 +18,7 @@ namespace gtdynamics {
 
 using gtsam::Double_;
 using gtsam::Key;
+using gtsam::ScalarExpressionInequalityConstraint;
 using gtsam::Values;
 
 /* ************************************************************************* */
@@ -35,24 +36,24 @@ Key AuxilaryKey(uint64_t k) {
 }
 
 /* ************************************************************************* */
-double
-ComputeAuxiliaryValue(DoubleExpressionInequality::shared_ptr i_constraint,
-                      const Values &values) {
-  double constraint_violation = (*i_constraint)(values);
-  if (constraint_violation < 0) {
+double ComputeAuxiliaryValue(
+    const ScalarExpressionInequalityConstraint::shared_ptr &i_constraint,
+    const Values &values) {
+  double constraint_value = i_constraint->expression().value(values);
+  if (constraint_value > 0) {
     return 0;
   }
-  double aux_val = sqrt(constraint_violation);
-  return aux_val;
+  return sqrt(-constraint_value);
 }
 
 /* ************************************************************************* */
 gtsam::NonlinearEqualityConstraint::shared_ptr CreateAuxiliaryConstraint(
-    DoubleExpressionInequality::shared_ptr i_constraint, Key aux_key) {
+    const ScalarExpressionInequalityConstraint::shared_ptr &i_constraint,
+    Key aux_key) {
   auto expr = i_constraint->expression();
   Double_ aux_expr(aux_key);
-  Double_ new_expr = expr - aux_expr * aux_expr;
-  double tolerance = i_constraint->tolerance()(0);
+  Double_ new_expr = expr + aux_expr * aux_expr;
+  double tolerance = i_constraint->sigmas()(0);
   return std::make_shared<gtsam::ExpressionEqualityConstraint<double>>(
       new_expr, 0.0, gtsam::Vector1(tolerance));
 }
@@ -64,24 +65,18 @@ EConsOptProblem IEConsOptProblem::auxiliaryProblem() const {
 
   uint64_t k = 0;
   for (const auto &i_constraint : iConstraints()) {
-    if (DoubleExpressionInequality::shared_ptr p =
-            std::dynamic_pointer_cast<DoubleExpressionInequality>(
-                i_constraint)) {
-      Key aux_key = AuxilaryKey(k++);
-      aux_constraints.push_back(CreateAuxiliaryConstraint(p, aux_key));
-      aux_values.insert(aux_key, ComputeAuxiliaryValue(p, values_));
-    } else if (TwinDoubleExpressionInequality::shared_ptr p =
-                   std::dynamic_pointer_cast<TwinDoubleExpressionInequality>(
-                       i_constraint)) {
-      DoubleExpressionInequality::shared_ptr p1 = p->constraint1();
-      Key aux_key1 = AuxilaryKey(k++);
-      aux_constraints.push_back(CreateAuxiliaryConstraint(p1, aux_key1));
-      aux_values.insert(aux_key1, ComputeAuxiliaryValue(p1, values_));
-      DoubleExpressionInequality::shared_ptr p2 = p->constraint2();
-      Key aux_key2 = AuxilaryKey(k++);
-      aux_constraints.push_back(CreateAuxiliaryConstraint(p2, aux_key2));
-      aux_values.insert(aux_key2, ComputeAuxiliaryValue(p2, values_));
+    auto scalar_constraint =
+        std::dynamic_pointer_cast<ScalarExpressionInequalityConstraint>(
+            i_constraint);
+    if (!scalar_constraint) {
+      throw std::runtime_error(
+          "auxiliaryProblem only supports ScalarExpressionInequalityConstraint");
     }
+    Key aux_key = AuxilaryKey(k++);
+    aux_constraints.push_back(CreateAuxiliaryConstraint(scalar_constraint,
+                                                        aux_key));
+    aux_values.insert(aux_key,
+                      ComputeAuxiliaryValue(scalar_constraint, values_));
   }
 
   gtsam::NonlinearEqualityConstraints all_constraints = eConstraints();
