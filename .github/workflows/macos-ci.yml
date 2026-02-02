@@ -37,7 +37,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install System Dependencies
-        if: runner.os == 'macOS'
         run: |
           set -e
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
@@ -61,7 +60,7 @@ jobs:
           # requires explicitly opting into older policy compatibility.
           # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
           cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
-          sudo make -j$(sysctl -n hw.physicalcpu) install
+          sudo make -j2 install
           cd ${{ github.workspace }}
           rm -rf /tmp/CppUnitLite
 
@@ -75,14 +74,14 @@ jobs:
           echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
           echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
           python -m pip install --upgrade pip
-          python -m pip install --break-system-packages -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
+          python -m pip install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
       - name: Build & Install GTSAM
         shell: bash
         run: |
           set -e 
-          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_macos
-          cd /tmp/gtsam_source_macos
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source
+          cd /tmp/gtsam_source
           mkdir build && cd $_
           if [ "${{ matrix.build_type }}" = "Release" ]; then
             MARCH_NATIVE=ON
@@ -102,22 +101,20 @@ jobs:
                 ${PYTHON_ARGS} \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
                 ..
-          make -j$(sysctl -n hw.physicalcpu) install 
+          make -j2 install 
           if [ "${{ matrix.build_type }}" = "Release" ]; then
-            make -j$(sysctl -n hw.physicalcpu) python-install
+            make -j2 python-install
           fi
           cd ${{ github.workspace }} 
-          rm -rf /tmp/gtsam_source_macos
+          rm -rf /tmp/gtsam_source
 
       - name: Create build directory
         run: mkdir build
 
       - name: Configure GTDynamics
-        if: runner.os == 'macOS'
         shell: bash
         run: |
           set -e
-          GTSAM_CONFIG_DIR_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM"
           if [ "${{ matrix.build_type }}" = "Release" ]; then
             BUILD_PYTHON=ON
             PYTHON_ARGS="-DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }}"
@@ -127,14 +124,14 @@ jobs:
           fi
           cmake -DGTDYNAMICS_BUILD_PYTHON=${BUILD_PYTHON} \
                 ${PYTHON_ARGS} \
-                -DGTSAM_DIR="${GTSAM_CONFIG_DIR_PATH}" \
+                -DGTSAM_DIR="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM" \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }};$(brew --prefix)" \
                 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
                 ..
         working-directory: ./build
 
       - name: Build
-        run: make -j$(sysctl -n hw.physicalcpu)
+        run: make -j2
         working-directory: ./build
 
       - name: Test C++
@@ -143,7 +140,7 @@ jobs:
           # Mirror the python-test linker settings: GTSAM is installed to a local prefix.
           set -e
           export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-          make -j$(sysctl -n hw.physicalcpu) check
+          make -j2 check
         working-directory: ./build
 
       - name: Install Python Wrappers (Release only)
@@ -151,7 +148,7 @@ jobs:
         if: matrix.build_type == 'Release'
         run: |
           set -e
-          make -j$(sysctl -n hw.physicalcpu) python-install
+          make -j2 python-install
         working-directory: ./build
 
       - name: Test Python (Release only)
@@ -164,5 +161,5 @@ jobs:
           source ${{ github.workspace }}/venv/bin/activate # Ensure venv Python and its site-packages are primary
           export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
           echo "DYLD_LIBRARY_PATH is set to: $DYLD_LIBRARY_PATH"
-          make -j$(sysctl -n hw.physicalcpu) python-test
+          make -j2 python-test
         working-directory: ./build
