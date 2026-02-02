@@ -10,15 +10,15 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.name }} ${{ matrix.build_type }} C++/Python ${{ matrix.python_version }}
+    name: ${{ matrix.name }} ${{ matrix.build_type }} (${{ matrix.build_type == 'Release' && 'native+py' || 'no-native C++-only' }})
     runs-on: ${{ matrix.os }}
 
     env:
       CTEST_OUTPUT_ON_FAILURE: ON
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
-      PYTHON_VERSION: ${{ matrix.python_version }} 
-      GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install 
+      PYTHON_VERSION: ${{ matrix.python_version }}
+      GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install
 
     strategy:
       fail-fast: false
@@ -65,8 +65,8 @@ jobs:
           cd ${{ github.workspace }}
           rm -rf /tmp/CppUnitLite
 
-      - name: Python Dependencies
-        
+      - name: Python Dependencies (Release only)
+        if: matrix.build_type == 'Release'
         shell: bash
         run: |
           set -e 
@@ -78,39 +78,58 @@ jobs:
           python -m pip install --break-system-packages -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
       - name: Build & Install GTSAM
-        shell: bash 
+        shell: bash
         run: |
           set -e 
           git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_macos
           cd /tmp/gtsam_source_macos
           mkdir build && cd $_
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            MARCH_NATIVE=ON
+            BUILD_PYTHON=ON
+            PYTHON_ARGS="-D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }}"
+          else
+            MARCH_NATIVE=OFF
+            BUILD_PYTHON=OFF
+            PYTHON_ARGS=""
+          fi
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
-                -D GTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
-                -D GTSAM_BUILD_PYTHON=ON \
+                -D GTSAM_BUILD_WITH_MARCH_NATIVE=${MARCH_NATIVE} \
+                -D GTSAM_BUILD_PYTHON=${BUILD_PYTHON} \
                 -D GTSAM_WITH_TBB=OFF \
                 -D CMAKE_CXX_FLAGS="-faligned-new" \
-                -D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                -D CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                ${PYTHON_ARGS} \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
                 ..
           make -j$(sysctl -n hw.physicalcpu) install 
-          make -j$(sysctl -n hw.physicalcpu) python-install 
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            make -j$(sysctl -n hw.physicalcpu) python-install
+          fi
           cd ${{ github.workspace }} 
-          rm -rf /tmp/gtsam_source_macos 
+          rm -rf /tmp/gtsam_source_macos
 
       - name: Create build directory
-        run: mkdir build 
+        run: mkdir build
 
       - name: Configure GTDynamics
         if: runner.os == 'macOS'
-        shell: bash 
+        shell: bash
         run: |
           set -e
           GTSAM_CONFIG_DIR_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM"
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
-                -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
-                -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            BUILD_PYTHON=ON
+            PYTHON_ARGS="-DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }}"
+          else
+            BUILD_PYTHON=OFF
+            PYTHON_ARGS=""
+          fi
+          cmake -DGTDYNAMICS_BUILD_PYTHON=${BUILD_PYTHON} \
+                ${PYTHON_ARGS} \
                 -DGTSAM_DIR="${GTSAM_CONFIG_DIR_PATH}" \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }};$(brew --prefix)" \
+                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
                 ..
         working-directory: ./build
 
@@ -127,14 +146,16 @@ jobs:
           make -j$(sysctl -n hw.physicalcpu) check
         working-directory: ./build
 
-      - name: Install Python Wrappers
-        shell: bash 
+      - name: Install Python Wrappers (Release only)
+        shell: bash
+        if: matrix.build_type == 'Release'
         run: |
           set -e
-          make -j$(sysctl -n hw.physicalcpu) python-install 
+          make -j$(sysctl -n hw.physicalcpu) python-install
         working-directory: ./build
 
-      - name: Test Python
+      - name: Test Python (Release only)
+        if: matrix.build_type == 'Release'
         # For macOS, set DYLD_LIBRARY_PATH so the dynamic linker can find the installed GTSAM libraries.
         # Also, ensure the venv is active for the context of running the tests.
         shell: bash

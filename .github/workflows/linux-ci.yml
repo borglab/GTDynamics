@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.name }} ${{ matrix.build_type }} C++/Python ${{ matrix.python_version }}
+    name: ${{ matrix.name }} ${{ matrix.build_type }} (${{ matrix.build_type == 'Release' && 'native+py' || 'no-native C++-only' }})
     runs-on: ${{ matrix.os }}
 
     env:
@@ -70,7 +70,8 @@ jobs:
           cd ${{ github.workspace }}
           sudo rm -rf /tmp/CppUnitLite
 
-      - name: Python Dependencies
+      - name: Python Dependencies (Release only)
+        if: matrix.build_type == 'Release'
         run: |
           pip3 install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
@@ -81,15 +82,25 @@ jobs:
           git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source_linux 
           cd /tmp/gtsam_source_linux
           mkdir build && cd $_
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            MARCH_NATIVE=ON
+            BUILD_PYTHON=ON
+          else
+            MARCH_NATIVE=OFF
+            BUILD_PYTHON=OFF
+          fi
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
-                -D GTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
-                -D GTSAM_BUILD_PYTHON=ON \
+                -D GTSAM_BUILD_WITH_MARCH_NATIVE=${MARCH_NATIVE} \
+                -D GTSAM_BUILD_PYTHON=${BUILD_PYTHON} \
                 -D GTSAM_WITH_TBB=OFF \
                 -D CMAKE_CXX_FLAGS="-faligned-new" \
+                -D CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
                 ..
           sudo make -j$(nproc) install 
-          make python-install 
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            make python-install
+          fi
           sudo ldconfig
           cd ${{ github.workspace }} 
           sudo rm -rf /tmp/gtsam_source_linux
@@ -100,10 +111,15 @@ jobs:
       - name: Configure GTDynamics
         run: |
           set -e
-          cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
-                -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            BUILD_PYTHON=ON
+          else
+            BUILD_PYTHON=OFF
+          fi
+          cmake -DGTDYNAMICS_BUILD_PYTHON=${BUILD_PYTHON} \
                 -DGTSAM_DIR="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM" \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }}" \
+                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
                 ..
         working-directory: ./build
 
@@ -117,14 +133,16 @@ jobs:
           make -j$(nproc) check
         working-directory: ./build
 
-      - name: Install Python Wrappers
+      - name: Install Python Wrappers (Release only)
         shell: bash 
+        if: matrix.build_type == 'Release'
         run: |
           set -e
           sudo make -j$(nproc) python-install
         working-directory: ./build
 
-      - name: Test Python
+      - name: Test Python (Release only)
+        if: matrix.build_type == 'Release'
         run: |
           set -e
           # On Linux, `sudo ldconfig` during GTSAM install should handle library paths for system-wide installs.
