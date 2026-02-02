@@ -9,6 +9,7 @@ on:
       - main
       - master
       - develop
+      - feature/python-wheels-ci # For testing purposes
     tags:
       - 'v*'
   workflow_dispatch:
