@@ -1,0 +1,193 @@
+# This workflow builds the Python wheels.
+# It can be triggered on push or manually via Github Actions.
+
+name: Build Python Wheels
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+# Default minimal permissions for all jobs
+permissions:
+  contents: read
+
+jobs:
+  build_wheels:
+    name: Build wheel - ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    env:
+      GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Pin setuptools<70 to avoid breaking changes in setuptools 70+ with PEP 660 builds
+          python -m pip install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1" build
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          sudo apt-get -y update
+          sudo apt-get install -y g++ libtbb-dev libboost-all-dev cmake
+
+          # Add SDFormat repository and install
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL http://packages.osrfoundation.org/gazebo.key | sudo gpg --dearmor -o /etc/apt/keyrings/gazebo-stable.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/gazebo-stable.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+          sudo apt-get -y update
+          sudo apt-get -y install libsdformat15-dev
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          brew install boost cmake
+          brew tap osrf/simulation
+          brew install sdformat15
+
+      - name: Build and install GTSAM
+        shell: bash
+        run: |
+          set -e
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source
+          cd /tmp/gtsam_source
+          mkdir build && cd build
+
+          CMAKE_PREFIX_PATH_ARG=""
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            CMAKE_PREFIX_PATH_ARG="-DCMAKE_PREFIX_PATH=$(brew --prefix)"
+          fi
+
+          cmake -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -DGTSAM_BUILD_PYTHON=ON \
+                -DGTSAM_WITH_TBB=OFF \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DPYTHON_EXECUTABLE=$(which python) \
+                ${CMAKE_PREFIX_PATH_ARG} \
+                -DCMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
+                ..
+
+          make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu) install
+          make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu) python-install
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            sudo ldconfig
+          fi
+          cd ${{ github.workspace }}
+          rm -rf /tmp/gtsam_source
+
+      - name: Configure GTDynamics
+        shell: bash
+        run: |
+          set -e
+          mkdir -p build
+          cd build
+
+          CMAKE_PREFIX_PATH_ARG=""
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            CMAKE_PREFIX_PATH_ARG="-DCMAKE_PREFIX_PATH=${{ env.GTSAM_INSTALL_DIR }};$(brew --prefix)"
+          else
+            CMAKE_PREFIX_PATH_ARG="-DCMAKE_PREFIX_PATH=${{ env.GTSAM_INSTALL_DIR }}"
+          fi
+
+          cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
+                -DGTDYNAMICS_BUILD_EXAMPLES=OFF \
+                -DPYTHON_EXECUTABLE=$(which python) \
+                -DGTSAM_DIR="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM" \
+                ${CMAKE_PREFIX_PATH_ARG} \
+                -DCMAKE_BUILD_TYPE=Release \
+                ..
+
+      - name: Build GTDynamics
+        run: make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+        working-directory: ./build
+
+      - name: Build wheel
+        shell: bash
+        run: |
+          set -e
+          cd build/python
+
+          # Set library path for wheel building
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib:${{ github.workspace }}/build/gtdynamics${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          else
+            export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib:${{ github.workspace }}/build/gtdynamics${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          fi
+
+          # Build the wheel
+          python -m build --wheel --outdir ${{ github.workspace }}/wheelhouse
+
+      - name: Verify wheel
+        shell: bash
+        run: |
+          set -e
+          # Install the wheel in a fresh environment
+          python -m pip install wheelhouse/*.whl
+
+          # Set library path for testing
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          else
+            export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          fi
+
+          # Test import
+          python -c "import gtdynamics; print('GTDynamics version:', gtdynamics.__file__)"
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: wheelhouse/*.whl
+
+  # Combine all wheel artifacts into a single artifact
+  combine_wheels:
+    name: Combine wheel artifacts
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all_wheels
+          pattern: wheel-*
+          merge-multiple: true
+
+      - name: List wheels
+        run: ls -la all_wheels/
+
+      - name: Upload combined wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-wheels
+          path: all_wheels/*.whl
