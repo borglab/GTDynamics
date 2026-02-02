@@ -56,20 +56,20 @@ class OptimizerSetting {
       jl_cost_model;             // joint limit factor
 
   /// optimization settings
-  IterationType opt_type;        // optimizer type
-  VerbosityLevel opt_verbosity;  // optimizer print out
-  double rel_thresh;  // relative error decrease threshold for stopping
-                      // optimization
-  int max_iter;       // max iteration for stopping optimization
+  IterationType opt_type = GaussNewton;  // optimizer type
+  VerbosityLevel opt_verbosity = None;   // optimizer print out
+  double rel_thresh = 1e-2;  // relative error decrease threshold for stopping
+                             // optimization
+  int max_iter = 50;         // max iteration for stopping optimization
 
   /// collision checking setting
-  double epsilon;   // obstacle clearance
-  double obsSigma;  // obstacle cost model covariance
+  double epsilon = 0.0;     // obstacle clearance
+  double obsSigma = 0.001;  // obstacle cost model covariance
 
   /// default constructor
   OptimizerSetting();
 
-  //TODO: Make this accept an object like OptimizerParams.
+  // TODO: Make this accept an object like OptimizerParams.
   /**
    * Constructor which accepts various noise sigma values.
    *
