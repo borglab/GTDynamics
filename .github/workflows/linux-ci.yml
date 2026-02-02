@@ -82,6 +82,7 @@ jobs:
           cd /tmp/gtsam_source_linux
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -D GTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
                 -D GTSAM_BUILD_PYTHON=ON \
                 -D GTSAM_WITH_TBB=OFF \
                 -D CMAKE_CXX_FLAGS="-faligned-new" \
@@ -100,6 +101,7 @@ jobs:
         run: |
           set -e
           cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
+                -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
                 -DGTSAM_DIR="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM" \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }}" \
                 ..

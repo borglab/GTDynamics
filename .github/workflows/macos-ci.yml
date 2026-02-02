@@ -85,6 +85,7 @@ jobs:
           cd /tmp/gtsam_source_macos
           mkdir build && cd $_
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -D GTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
                 -D GTSAM_BUILD_PYTHON=ON \
                 -D GTSAM_WITH_TBB=OFF \
                 -D CMAKE_CXX_FLAGS="-faligned-new" \
@@ -106,6 +107,7 @@ jobs:
           set -e
           GTSAM_CONFIG_DIR_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM"
           cmake -DGTDYNAMICS_BUILD_PYTHON=ON \
+                -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
                 -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
                 -DGTSAM_DIR="${GTSAM_CONFIG_DIR_PATH}" \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }};$(brew --prefix)" \
