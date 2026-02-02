@@ -10,88 +10,166 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.name }} ${{ matrix.build_type }}
-    runs-on: ubuntu-latest
-    container:
-      image: borglab/gtsam:latest
-      env:
-        CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
-      volumes:
-        - ${{ github.workspace }}:/gtdynamics
+    name: ${{ matrix.name }} ${{ matrix.build_type }} (${{ matrix.build_type == 'Release' && 'native+py' || 'no-native C++-only' }})
+    runs-on: ${{ matrix.os }}
 
     env:
       CTEST_OUTPUT_ON_FAILURE: ON
       CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
+      PYTHON_VERSION: ${{ matrix.python_version }} 
+      GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install 
 
     strategy:
       fail-fast: false
       matrix:
-        # Github Actions requires a single row to be added to the build matrix.
-        # See https://help.github.com/en/articles/workflow-syntax-for-github-actions.
-        name: [ubuntu-24.04-gcc-11, ubuntu-24.04-clang-16]
-
+        name: [ubuntu-24.04-gcc-14, ubuntu-24.04-clang-16]
         build_type: [Debug, Release]
+        python_version: [3]
         include:
-          - name: ubuntu-24.04-gcc-11
+          - name: ubuntu-24.04-gcc-14
+            os: ubuntu-24.04
             compiler: gcc
-            version: "11"
-
+            version: "14"
           - name: ubuntu-24.04-clang-16
+            os: ubuntu-24.04
             compiler: clang
             version: "16"
 
     steps:
-      - name: Setup Compiler
-        run: |
-          apt-get -y clean && apt-get -y update
+      - name: Checkout GTDynamics Repository
+        uses: actions/checkout@v4
 
+      - name: Install System Dependencies
+        run: |
+          set -e
+          sudo apt-get -y update
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
-            apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
+            sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
             echo "CC=gcc-${{ matrix.version }}" >> $GITHUB_ENV
             echo "CXX=g++-${{ matrix.version }}" >> $GITHUB_ENV
-
           else
-            apt-get install -y clang-${{ matrix.version }} g++-multilib
-            echo "CC=clang-${{ matrix.version }}" >> $GITHUB_ENV
-            echo "CXX=clang++-${{ matrix.version }}" >> $GITHUB_ENV
+            sudo apt-get install -y clang-${{ matrix.version }} g++-multilib
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
           fi
+          sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
+          sudo apt-get -y update
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat15-dev
 
-      - name: Install Dependencies
+          # GTDynamics C++ tests use CppUnitLite (not provided by default on the runner).
+          git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
+          cd /tmp/CppUnitLite
+          mkdir build && cd build
+          # CppUnitLite's CMakeLists uses an old minimum CMake version; newer CMake
+          # requires explicitly opting into older policy compatibility.
+          # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
+          cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
+          sudo make -j2 install
+          cd ${{ github.workspace }}
+          sudo rm -rf /tmp/CppUnitLite
+
+      - name: Python Dependencies (Release only)
+        if: matrix.build_type == 'Release'
+        shell: bash
         run: |
-          # For SDFormat
-          apt-get install -y lsb-release
-          sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
-          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
-          apt-get -y update
+          set -e
+          python${{ env.PYTHON_VERSION }} -m venv venv
+          source venv/bin/activate
+          echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
+          python -m pip install --upgrade pip
+          python -m pip install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1"
 
-          apt-get -y install libsdformat15-dev
-
-          # Install CppUnitLite.
-          git clone https://github.com/borglab/CppUnitLite.git
-          cd CppUnitLite && mkdir build && cd $_
-          cmake .. && make -j4 install
-          cd ../../
-
-      - name: Checkout
-        uses: actions/checkout@master
-
-      - name: Build Directory
-        run: mkdir build
-
-      - name: Configure
+      - name: Build & Install GTSAM
+        shell: bash 
         run: |
-          cmake -DGTDYNAMICS_BUILD_PYTHON=OFF -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF ..
+          set -e
+          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source 
+          cd /tmp/gtsam_source
+          mkdir build && cd $_
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            if [ "${{ matrix.compiler }}" = "gcc" ]; then
+              MARCH_NATIVE=OFF
+            else
+              MARCH_NATIVE=ON
+            fi
+            BUILD_PYTHON=ON
+            PYTHON_ARGS="-D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }}"
+          else
+            MARCH_NATIVE=OFF
+            BUILD_PYTHON=OFF
+            PYTHON_ARGS=""
+          fi
+          cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -D GTSAM_BUILD_WITH_MARCH_NATIVE=${MARCH_NATIVE} \
+                -D GTSAM_BUILD_PYTHON=${BUILD_PYTHON} \
+                -D GTSAM_WITH_TBB=OFF \
+                -D CMAKE_CXX_FLAGS="-faligned-new" \
+                -D CMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                ${PYTHON_ARGS} \
+                -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
+                ..
+          sudo make -j2 install 
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            make -j2 python-install
+          fi
+          sudo ldconfig
+          cd ${{ github.workspace }} 
+          sudo rm -rf /tmp/gtsam_source
+
+      - name: Create build directory
+        run: mkdir build 
+
+      - name: Configure GTDynamics
+        run: |
+          set -e
+          if [ "${{ matrix.build_type }}" = "Release" ]; then
+            BUILD_PYTHON=ON
+            PYTHON_ARGS="-DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }}"
+          else
+            BUILD_PYTHON=OFF
+            PYTHON_ARGS=""
+          fi
+          cmake -DGTDYNAMICS_BUILD_PYTHON=${BUILD_PYTHON} \
+                ${PYTHON_ARGS} \
+                -DGTSAM_DIR="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM" \
+                -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }}" \
+                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                ..
         working-directory: ./build
 
       - name: Build
-        run: make -j$(nproc)
+        run: make -j2
         working-directory: ./build
 
-      - name: Test
-        run: make -j$(nproc) check
+      - name: Test C++
+        run: |
+          set -e
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            if [ -d "${{ env.GTSAM_INSTALL_DIR }}/lib64" ]; then
+              export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib64:$LD_LIBRARY_PATH"
+            fi
+          fi
+          make -j2 check
         working-directory: ./build
 
-      - name: Install
-        run: make -j$(nproc) install
+      - name: Install Python Wrappers (Release only)
+        shell: bash 
+        if: matrix.build_type == 'Release'
+        run: |
+          set -e
+          make -j2 python-install
+        working-directory: ./build
+
+      - name: Test Python (Release only)
+        if: matrix.build_type == 'Release'
+        shell: bash
+        run: |
+          set -e
+          source ${{ github.workspace }}/venv/bin/activate
+          export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          make -j2 python-test
         working-directory: ./build
