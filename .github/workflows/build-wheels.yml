@@ -33,6 +33,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
         python-version: ['3.10', '3.11', '3.12', '3.13']
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+          - os: macos-latest
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
 
     env:
       GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install
@@ -144,24 +153,45 @@ jobs:
           fi
 
           # Build the wheel
-          python -m build --wheel --outdir ${{ github.workspace }}/wheelhouse
+          python -m build --wheel --outdir ${{ github.workspace }}/dist
+
+      - name: Repair Wheels (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install auditwheel
+
+          # This pulls libgtsam.so and libgtdynamics.so INTO the wheel
+          auditwheel repair ${{ github.workspace }}/dist/*.whl --plat manylinux_2_31_${{ matrix.arch }} -w ${{ github.workspace }}/wheelhouse/
+
+      - name: Repair Wheels (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          python -m pip install delocate
+
+          # This pulls .dylib files into the wheel
+          delocate-wheel -v -w ${{ github.workspace }}/wheelhouse/ ${{ github.workspace }}/dist/*.whl
 
       - name: Verify wheel
         shell: bash
         run: |
           set -e
-          # Install the wheel in a fresh environment
-          python -m pip install wheelhouse/*.whl
 
-          # Set library path for testing
-          if [ "${{ runner.os }}" = "Linux" ]; then
-            export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          else
-            export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-          fi
+          # Hide build folders to prevent Python from connecting to the built libraries
+          mv build build_hidden
+          mv ${{ env.GTSAM_INSTALL_DIR }} gtsam_install_hidden
 
-          # Test import
-          python -c "import gtdynamics; print('GTDynamics version:', gtdynamics.__file__)"
+          # Ensure NO library paths are set
+          unset LD_LIBRARY_PATH
+          unset DYLD_LIBRARY_PATH
+          
+          # Install the repaired wheel
+          python -m pip install wheelhouse/*.whl --pre
+
+          python -c "import gtdynamics; print('SUCCESS: Self-contained wheel verified!')"
+          
+          # Restore for cleanup
+          mv build_hidden build
+          mv gtsam_install_hidden ${{ env.GTSAM_INSTALL_DIR }}
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
