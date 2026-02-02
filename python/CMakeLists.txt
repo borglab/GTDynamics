@@ -13,10 +13,8 @@ set(GTDYNAMICS_PYTHON_PATH ${PROJECT_SOURCE_DIR}/python/)
 
 file(TO_NATIVE_PATH "${PROJECT_BINARY_DIR}/python" GTD_PYTHON_BINARY_DIR)
 
-configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/setup.py.in
-               ${GTD_PYTHON_BINARY_DIR}/setup.py)
-configure_file(${GTDYNAMICS_PYTHON_PATH}/requirements.txt
-               ${GTD_PYTHON_BINARY_DIR}/requirements.txt COPYONLY)
+configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/pyproject.toml.in
+               ${GTD_PYTHON_BINARY_DIR}/pyproject.toml)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 file(COPY ${GTDYNAMICS_PYTHON_PATH}/${PROJECT_NAME}
