@@ -147,6 +147,12 @@ jobs:
       - name: Test C++
         run: |
           set -e
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            if [ -d "${{ env.GTSAM_INSTALL_DIR }}/lib64" ]; then
+              export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib64:$LD_LIBRARY_PATH"
+            fi
+          fi
           make -j2 check
         working-directory: ./build
 
