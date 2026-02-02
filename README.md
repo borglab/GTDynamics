@@ -74,6 +74,9 @@ $ mkdir build; cd build
 # We can specify the install path with -DCMAKE_INSTALL_PREFIX
 # To compile with Python wrapper support, ensure that GTSAM was built with Python
 #   and use -DGTDYNAMICS_BUILD_PYTHON=ON
+$ # If GTSAM is installed to a non-system prefix, point CMake to it, e.g.:
+$ #   -DGTSAM_DIR=/path/to/gtsam_install/lib/cmake/GTSAM
+$ #   -DCMAKE_PREFIX_PATH=/path/to/gtsam_install
 $ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 $ make
 $ sudo make install
@@ -188,6 +191,9 @@ To compile and install the GTDynamics python library:
 2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`. It is highly advised for the GTDynamics CMake prefix to match the CMake prefix used for GTSAM. Again, use the `CMAKE_INSTALL_PREFIX=/path/to/install/dir` flag to specify the updated prefix.
 
     ```sh
+    # If GTSAM was installed to a non-system prefix, also provide:
+    #   -DGTSAM_DIR=/path/to/install/dir/lib/cmake/GTSAM
+    #   -DCMAKE_PREFIX_PATH=/path/to/install/dir
     cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
     ```
 
