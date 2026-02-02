@@ -83,7 +83,11 @@ jobs:
           cd /tmp/gtsam_source_linux
           mkdir build && cd $_
           if [ "${{ matrix.build_type }}" = "Release" ]; then
-            MARCH_NATIVE=ON
+            if [ "${{ matrix.compiler }}" = "gcc" ]; then
+              MARCH_NATIVE=OFF
+            else
+              MARCH_NATIVE=ON
+            fi
             BUILD_PYTHON=ON
           else
             MARCH_NATIVE=OFF
