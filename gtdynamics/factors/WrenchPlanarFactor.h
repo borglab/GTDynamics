@@ -33,15 +33,20 @@ namespace gtdynamics {
  * Constraint that enforces the wrench to be planar.
  */
 inline gtsam::Vector3_ WrenchPlanarConstraint(gtsam::Vector3 planar_axis,
-                                              const JointConstSharedPtr &joint,
+                                              const JointConstSharedPtr& joint,
                                               size_t k = 0) {
-  gtsam::Matrix36 H_wrench;
+  // Initialize H_wrench by default to zeros.
+  gtsam::Matrix36 H_wrench = gtsam::Matrix36::Zero();
   if (planar_axis[0] == 1) {  // x axis
     H_wrench << 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0;
   } else if (planar_axis[1] == 1) {  // y axis
     H_wrench << 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0;
   } else if (planar_axis[2] == 1) {  // z axis
     H_wrench << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
+  } else {
+    throw std::invalid_argument(
+        "WrenchPlanarConstraint: planar_axis must be a unit vector along x, y, "
+        "or z axis.");
   }
 
   auto wrench_key = WrenchKey(joint->child()->id(), joint->id(), k);
@@ -60,8 +65,8 @@ inline gtsam::Vector3_ WrenchPlanarConstraint(gtsam::Vector3 planar_axis,
  * wrench to be planar
  */
 inline gtsam::NoiseModelFactor::shared_ptr WrenchPlanarFactor(
-    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-    gtsam::Vector3 planar_axis, const JointConstSharedPtr &joint,
+    const gtsam::noiseModel::Base::shared_ptr& cost_model,
+    gtsam::Vector3 planar_axis, const JointConstSharedPtr& joint,
     size_t k = 0) {
   return std::make_shared<gtsam::ExpressionFactor<gtsam::Vector3>>(
       cost_model, gtsam::Vector3::Zero(),
