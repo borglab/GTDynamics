@@ -139,23 +139,6 @@ jobs:
           brew tap osrf/simulation
           brew install sdformat15
 
-      # We first build the Python wrapper module on the host machine. This is done because cibuildwheel
-      # expects a setup.py file to be present in the project directory.
-      #
-      # The Python wrapper module is then rebuilt within the cibuildwheel container before building
-      # the wheels to ensure platform compatibility.
-      - name: Configure GTDynamics (creates setup.py)
-        run: |
-          cmake . -B build -DGTDYNAMICS_BUILD_PYTHON=1 -DGTDYNAMICS_PYTHON_VERSION=${{ matrix.python_version }}
-
-      # If on macOS, we previously installed boost using homebrew for the first build.
-      # We need to uninstall it before building the wheels with cibuildwheel, which will
-      # install boost from source to ensure ABI compatibility.
-      - name: Uninstall Boost (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew uninstall boost
-
       - name: Build wheels with cibuildwheel
         env:
           # Generate the platform identifier. See https://cibuildwheel.pypa.io/en/stable/options/#build-skip.
@@ -182,7 +165,7 @@ jobs:
           
           CIBW_BUILD_VERBOSITY: 1
         run: |
-          python3 -m cibuildwheel build/python --output-dir wheelhouse
+          python3 -m cibuildwheel --output-dir wheelhouse
 
       - name: Store artifacts
         uses: actions/upload-artifact@v4
