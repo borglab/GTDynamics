@@ -14,8 +14,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      CTEST_OUTPUT_ON_FAILURE: ON
-      CTEST_PARALLEL_LEVEL: 2
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
       PYTHON_VERSION: ${{ matrix.python_version }} 
       GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install 
@@ -43,6 +41,8 @@ jobs:
       - name: Install System Dependencies
         run: |
           set -e
+          NTHREADS="$(nproc)"
+          echo "NTHREADS=${NTHREADS}" >> $GITHUB_ENV
           sudo apt-get -y update
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
             sudo apt-get install -y g++-${{ matrix.version }} g++-${{ matrix.version }}-multilib
@@ -66,7 +66,7 @@ jobs:
           # requires explicitly opting into older policy compatibility.
           # Force a modern C++ standard for newer Boost headers (Homebrew Boost requires C++11+).
           cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
-          sudo make -j2 install
+          sudo make -j${NTHREADS} install
           cd ${{ github.workspace }}
           sudo rm -rf /tmp/CppUnitLite
 
@@ -111,9 +111,9 @@ jobs:
                 ${PYTHON_ARGS} \
                 -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }} \
                 ..
-          sudo make -j2 install 
+          sudo make -j${NTHREADS} install 
           if [ "${{ matrix.build_type }}" = "Release" ]; then
-            make -j2 python-install
+            make -j${NTHREADS} python-install
           fi
           sudo ldconfig
           cd ${{ github.workspace }} 
@@ -141,7 +141,7 @@ jobs:
         working-directory: ./build
 
       - name: Build
-        run: make -j2
+        run: make -j${NTHREADS}
         working-directory: ./build
 
       - name: Test C++
@@ -153,7 +153,7 @@ jobs:
               export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib64:$LD_LIBRARY_PATH"
             fi
           fi
-          make -j2 check
+          make -j${NTHREADS} check
         working-directory: ./build
 
       - name: Install Python Wrappers (Release only)
@@ -161,7 +161,7 @@ jobs:
         if: matrix.build_type == 'Release'
         run: |
           set -e
-          make -j2 python-install
+          make -j${NTHREADS} python-install
         working-directory: ./build
 
       - name: Test Python (Release only)
@@ -171,5 +171,5 @@ jobs:
           set -e
           source ${{ github.workspace }}/venv/bin/activate
           export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          make -j2 python-test
+          make -j${NTHREADS} python-test
         working-directory: ./build
