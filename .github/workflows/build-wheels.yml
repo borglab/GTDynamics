@@ -1,5 +1,5 @@
-# This workflow builds the Python wheels using cibuildwheel.
-# It can be triggered on push or manually via Github Actions.
+# This workflow builds the Python wheels manually and uses auditwheel/delocate to make them portable.
+# It can be triggered on push to the develop branch or manually via Github Actions.
 
 name: Build Python Wheels
 
@@ -7,27 +7,32 @@ on:
   push:
     branches:
       - main
-      - master
       - develop
-      - feature/python-wheels-ci # For testing purposes
-    tags:
-      - 'v*'
+      - feature/python-wheels-ci
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
-# Default minimal permissions for all jobs
-permissions:
-  contents: read
-
 jobs:
+  # Get the system time and store it in an output. This is used to tag the wheels.
+  get_system_time:
+    name: Get System Time
+    runs-on: ubuntu-latest
+    outputs:
+      timestamp: ${{ steps.get_time.outputs.timestamp }}
+    steps:
+      - name: Get system time
+        id: get_time
+        run: echo "timestamp=$(date +'%Y%m%d%H%M')" >> "$GITHUB_OUTPUT"
+
   build_wheels:
-    name: Build Wheels - ${{ matrix.os }} - Python ${{ matrix.python_version }}
+    name: Build Wheels
+    needs: get_system_time
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
+    
+    env:
+      PYTHON_VERSION: ${{ matrix.python_version }}
+      GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install
+      INSTALL_PREFIX: ${{ github.workspace }}/opt
+    
     strategy:
       fail-fast: false
       matrix:
@@ -35,85 +40,61 @@ jobs:
           # Linux x86_64
           - os: ubuntu-latest
             python_version: "3.10"
-            cibw_python_version: 310
             platform_id: manylinux_x86_64
-            manylinux_image: manylinux2014
           - os: ubuntu-latest
             python_version: "3.11"
-            cibw_python_version: 311
             platform_id: manylinux_x86_64
-            manylinux_image: manylinux2014
           - os: ubuntu-latest
             python_version: "3.12"
-            cibw_python_version: 312
             platform_id: manylinux_x86_64
-            manylinux_image: manylinux2014
           - os: ubuntu-latest
             python_version: "3.13"
-            cibw_python_version: 313
             platform_id: manylinux_x86_64
-            manylinux_image: manylinux2014
 
           # Linux aarch64
           - os: ubuntu-24.04-arm
             python_version: "3.10"
-            cibw_python_version: 310
             platform_id: manylinux_aarch64
-            manylinux_image: manylinux2014
           - os: ubuntu-24.04-arm
             python_version: "3.11"
-            cibw_python_version: 311
             platform_id: manylinux_aarch64
-            manylinux_image: manylinux2014
           - os: ubuntu-24.04-arm
             python_version: "3.12"
-            cibw_python_version: 312
             platform_id: manylinux_aarch64
-            manylinux_image: manylinux2014
           - os: ubuntu-24.04-arm
             python_version: "3.13"
-            cibw_python_version: 313
             platform_id: manylinux_aarch64
-            manylinux_image: manylinux2014
 
           # MacOS x86_64
           - os: macos-15-intel
             python_version: "3.10"
-            cibw_python_version: 310
             platform_id: macosx_x86_64
           - os: macos-15-intel
             python_version: "3.11"
-            cibw_python_version: 311
             platform_id: macosx_x86_64
           - os: macos-15-intel
             python_version: "3.12"
-            cibw_python_version: 312
             platform_id: macosx_x86_64
           - os: macos-15-intel
             python_version: "3.13"
-            cibw_python_version: 313
             platform_id: macosx_x86_64
 
           # MacOS arm64
           - os: macos-latest
             python_version: "3.10"
-            cibw_python_version: 310
             platform_id: macosx_arm64
           - os: macos-latest
             python_version: "3.11"
-            cibw_python_version: 311
             platform_id: macosx_arm64
           - os: macos-latest
             python_version: "3.12"
-            cibw_python_version: 312
             platform_id: macosx_arm64
           - os: macos-latest
             python_version: "3.13"
-            cibw_python_version: 313
             platform_id: macosx_arm64
 
     steps:
-      - name: Checkout repository
+      - name: Checkout GTDynamics Repository
         uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python_version }}
@@ -121,56 +102,210 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
-      - name: Install cibuildwheel
+      # Set the DEVELOP flag and the TIMESTAMP environment variables
+      - name: Set Environment Variables
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r python/dev_requirements.txt
+          echo "DEVELOP=1" >> $GITHUB_ENV
+          echo "TIMESTAMP=${{ needs.get_system_time.outputs.timestamp }}" >> $GITHUB_ENV
 
-      - name: Install host system dependencies (Linux)
+      - name: Install System Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build
+          set -e
+          sudo apt-get -y update
+          sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys D2486D2DD83DB69272AFE98867170598AF249743
+          sudo apt-get -y update
+          sudo apt-get -y install libtbb-dev libboost-all-dev libsdformat15-dev cmake git wget
 
-      - name: Install host system dependencies (macOS)
+          # GTDynamics C++ tests use CppUnitLite (not provided by default on the runner)
+          git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
+          cd /tmp/CppUnitLite
+          mkdir build && cd build
+          cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
+          sudo make -j2 install
+          cd ${{ github.workspace }}
+          sudo rm -rf /tmp/CppUnitLite
+
+      - name: Install System Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install cmake ninja boost
+          set -e
+          brew install boost cmake git wget
           brew tap osrf/simulation
           brew install sdformat15
+          
+          # Set MACOSX_DEPLOYMENT_TARGET
+          if [[ -z "${MACOSX_DEPLOYMENT_TARGET}" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET="10.15"
+            echo "MACOSX_DEPLOYMENT_TARGET=10.15" >> $GITHUB_ENV
+          fi
 
-      - name: Build wheels with cibuildwheel
-        env:
-          # Generate the platform identifier. See https://cibuildwheel.pypa.io/en/stable/options/#build-skip.
-          CIBW_BUILD: cp${{ matrix.cibw_python_version }}-${{ matrix.platform_id }}
-          CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.manylinux_image }}
-          CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.manylinux_image }}
-          CIBW_ARCHS: all
-          
-          # Set the minimum required macOS version for the wheels.
-          MACOSX_DEPLOYMENT_TARGET: "10.15"
+          # GTDynamics C++ tests use CppUnitLite (install it once per job)
+          git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
+          cd /tmp/CppUnitLite
+          mkdir build && cd build
+          cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON ..
+          sudo make -j2 install
+          cd ${{ github.workspace }}
+          rm -rf /tmp/CppUnitLite
 
-          # Set DYLD_LIBRARY_PATH to REPAIR_LIBRARY_PATH for macOS wheel repair
-          CIBW_REPAIR_WHEEL_COMMAND_MACOS: "DYLD_LIBRARY_PATH=$REPAIR_LIBRARY_PATH delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+      - name: Create Installation Prefix
+        run: mkdir -p ${{ env.INSTALL_PREFIX }}
 
-          # Use build frontend (recommended by PyPA)
-          # See https://cibuildwheel.pypa.io/en/stable/options/#build-frontend.
-          CIBW_BUILD_FRONTEND: "build"
-          
-          # Install dependencies before building wheel
-          CIBW_BEFORE_ALL: "bash {project}/.github/scripts/cibw_before_all.sh ${{ matrix.python_version }} {project}"
-          
-          # Build from the build/python directory where setup.py is located
-          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.10"
-          
-          CIBW_BUILD_VERBOSITY: 1
+      - name: Install Boost from source (Linux)
+        if: runner.os == 'Linux'
         run: |
-          python3 -m cibuildwheel --output-dir wheelhouse
+          set -e
+          wget https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz --quiet
+          tar -xzf boost_1_87_0.tar.gz
+          cd boost_1_87_0
+          
+          BOOST_PREFIX="${{ env.INSTALL_PREFIX }}/boost"
+          ./bootstrap.sh --prefix=${BOOST_PREFIX}
+          ./b2 install --prefix=${BOOST_PREFIX} --with=all -d0 -j$(nproc)
+          
+          echo "BOOST_ROOT=${BOOST_PREFIX}" >> $GITHUB_ENV
+          echo "BOOST_INCLUDEDIR=${BOOST_PREFIX}/include" >> $GITHUB_ENV
+          echo "BOOST_LIBRARYDIR=${BOOST_PREFIX}/lib" >> $GITHUB_ENV
+
+      - name: Python Dependencies
+        shell: bash
+        run: |
+          set -e
+          python${{ env.PYTHON_VERSION }} -m venv venv
+          source venv/bin/activate
+          echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
+          python -m pip install --upgrade pip
+          python -m pip install -U "setuptools<70" wheel numpy pyparsing pyyaml "pybind11-stubgen>=2.5.1" build
+          
+          # Install auditwheel for Linux, delocate for macOS
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            python -m pip install auditwheel
+          else
+            python -m pip install delocate
+          fi
+
+      - name: Build & Install GTSAM
+        shell: bash
+        run: |
+          set -e
+          git clone --branch 4.2 --depth 1 https://github.com/borglab/gtsam.git /tmp/gtsam_source
+          cd /tmp/gtsam_source
+          mkdir build && cd build
+          
+          CMAKE_ARGS="-D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                      -D GTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
+                      -D GTSAM_BUILD_PYTHON=ON \
+                      -D GTSAM_WITH_TBB=OFF \
+                      -D CMAKE_CXX_FLAGS=\"-faligned-new\" \
+                      -D CMAKE_BUILD_TYPE=Release \
+                      -D PYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                      -D CMAKE_INSTALL_PREFIX=${{ env.GTSAM_INSTALL_DIR }}"
+          
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            CMAKE_ARGS="${CMAKE_ARGS} -D BOOST_ROOT=${{ env.BOOST_ROOT }}"
+          fi
+          
+          cmake ${CMAKE_ARGS} ..
+          
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            sudo make -j$(nproc) install
+            make -j$(nproc) python-install
+            sudo ldconfig
+          else
+            make -j$(sysctl -n hw.logicalcpu) install
+            make -j$(sysctl -n hw.logicalcpu) python-install
+          fi
+          
+          cd ${{ github.workspace }}
+          rm -rf /tmp/gtsam_source
+
+      - name: Configure GTDynamics
+        shell: bash
+        run: |
+          set -e
+          mkdir -p build
+          cd build
+          
+          CMAKE_ARGS="-DGTDYNAMICS_BUILD_PYTHON=ON \
+                      -DPYTHON_EXECUTABLE=${{ env.VENV_PYTHON_EXECUTABLE }} \
+                      -DGTSAM_DIR=${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM \
+                      -DCMAKE_PREFIX_PATH=${{ env.GTSAM_INSTALL_DIR }} \
+                      -DCMAKE_BUILD_TYPE=Release"
+          
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            CMAKE_ARGS="${CMAKE_ARGS} -DBOOST_ROOT=${{ env.BOOST_ROOT }}"
+          else
+            CMAKE_ARGS="${CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${{ env.GTSAM_INSTALL_DIR }};$(brew --prefix)"
+          fi
+          
+          cmake ${CMAKE_ARGS} ..
+
+      - name: Build GTDynamics
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            make -j$(nproc)
+          else
+            make -j$(sysctl -n hw.logicalcpu)
+          fi
+        working-directory: ./build
+
+      - name: Build Python Wheel
+        shell: bash
+        run: |
+          set -e
+          # Set library paths
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib:${{ env.BOOST_LIBRARYDIR }}:${LD_LIBRARY_PATH}"
+          else
+            export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib:${DYLD_LIBRARY_PATH}"
+          fi
+          
+          # Build the wheel using python -m build
+          python -m build --wheel --outdir wheelhouse/
+
+      - name: Repair Wheel (Linux - auditwheel)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -e
+          export LD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib:${{ env.BOOST_LIBRARYDIR }}:${LD_LIBRARY_PATH}"
+          
+          # Use auditwheel to bundle dependencies and create manylinux wheel
+          for wheel in wheelhouse/*.whl; do
+            auditwheel repair --plat manylinux_2_17_$(uname -m) -w wheelhouse_repaired/ "$wheel"
+          done
+          
+          # Replace original wheels with repaired ones
+          rm -rf wheelhouse
+          mv wheelhouse_repaired wheelhouse
+
+      - name: Repair Wheel (macOS - delocate)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e
+          export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib:${DYLD_LIBRARY_PATH}"
+          
+          # Use delocate to bundle dependencies
+          for wheel in wheelhouse/*.whl; do
+            delocate-wheel -w wheelhouse_repaired/ -v "$wheel"
+          done
+          
+          # Replace original wheels with repaired ones
+          rm -rf wheelhouse
+          mv wheelhouse_repaired wheelhouse
+
+      - name: List Wheels
+        run: ls -lah wheelhouse/
 
       - name: Store artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-cp${{ matrix.cibw_python_version }}-${{ matrix.platform_id }}
+          name: wheels-${{ matrix.python_version }}-${{ matrix.platform_id }}
           path: wheelhouse/*.whl
 
   upload_all:
@@ -184,7 +319,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist/
-          pattern: cibw-wheels-*
+          pattern: wheels-*
           merge-multiple: true
 
       - name: List wheels
