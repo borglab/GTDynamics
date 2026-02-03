@@ -18,7 +18,6 @@ namespace gtsam {
 std::pair<Vector, Vector> SolveEQP(const Matrix &A_cost, const Vector &b_cost,
                                    const Matrix &A_constraint,
                                    const Vector &b_constraint) {
-  /// Solve for x.
   GaussianFactorGraph graph;
   // Key key = 0;
   // size_t cost_dim = A_cost.rows();
