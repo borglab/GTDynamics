@@ -2,6 +2,11 @@
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/nvp.hpp>
+#endif
+
 namespace gtsam {
 
 inline std::function<double(const double &x, OptionalJacobian<1, 1> H)>

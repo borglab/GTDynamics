@@ -17,6 +17,11 @@
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/nvp.hpp>
+#endif
+
 namespace gtsam {
 
 /** A factor that substitute certain variables of a base factor with constraint
