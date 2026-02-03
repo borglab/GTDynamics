@@ -1,0 +1,10 @@
+numpy>=1.11.0
+pytest>=9.0.1
+pyparsing>=3.2.5
+pybind11-stubgen>=2.5.1
+cibuildwheel>=2.16.0
+build>=1.0.0
+setuptools>=70.0.0
+wheel
+delocate; sys_platform == 'darwin'
+auditwheel; sys_platform == 'linux'
