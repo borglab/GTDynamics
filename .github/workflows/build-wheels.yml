@@ -161,7 +161,7 @@ jobs:
           python -m pip install auditwheel
 
           # This pulls libgtsam.so and libgtdynamics.so INTO the wheel
-          auditwheel repair ${{ github.workspace }}/dist/*.whl --plat manylinux_2_31_${{ matrix.arch }} -w ${{ github.workspace }}/wheelhouse/
+          auditwheel repair ${{ github.workspace }}/dist/*.whl --plat manylinux_2_34_${{ matrix.arch }} -w ${{ github.workspace }}/wheelhouse/
 
       - name: Repair Wheels (macOS)
         if: runner.os == 'macOS'
