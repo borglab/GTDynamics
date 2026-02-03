@@ -81,7 +81,7 @@ SQPState SQPState::FromLastIteration(const SQPIterDetails &iter_details,
                              params.lm_params);
     return state;
   } else {
-    throw std::runtime_error("no success trials");
+    throw std::runtime_error("SQPState: No successful trials found");
   }
 }
 
