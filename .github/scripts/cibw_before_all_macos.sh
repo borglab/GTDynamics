@@ -30,7 +30,7 @@ GTSAM_VERSION="4.2"
 git clone --branch ${GTSAM_VERSION} --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
 # Write environment file for before-build scripts
-BOOST_PREFIX=$(brew --prefix boost)s Python-dependent)
+BOOST_PREFIX=$(brew --prefix boost)
 
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"

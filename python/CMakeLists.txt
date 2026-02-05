@@ -1,4 +1,10 @@
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+find_package(gtwrap REQUIRED)
+set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}")
+message(STATUS "GTDynamics building with Python: ${PYTHON_EXECUTABLE}")
+
 find_package(gtwrap)
+
 
 # If we are building via scikit-build/cibuildwheel, 
 # PYTHON_EXECUTABLE is already set.

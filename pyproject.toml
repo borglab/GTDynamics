@@ -64,8 +64,6 @@ backport.find-python = "3.26"
 GTDYNAMICS_BUILD_PYTHON = "ON"
 GTDYNAMICS_BUILD_EXAMPLES = "OFF"
 BUILD_TESTING = "OFF"
-Python_EXECUTABLE = "${PYTHON_EXECUTABLE}"
-PYTHON_EXECUTABLE = "${PYTHON_EXECUTABLE}"
 GTSAM_DIR = "/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 
 [tool.cibuildwheel]
@@ -86,6 +84,7 @@ INSTALL_PREFIX = "/opt/gtdynamics-deps"
 GTSAM_DIR = "/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 CMAKE_PREFIX_PATH = "/opt/gtdynamics-deps/gtsam_current:/opt/gtdynamics-deps/gz-cmake4:/opt/gtdynamics-deps/gz-utils:/opt/gtdynamics-deps/gz-math:/opt/gtdynamics-deps/sdformat"
 LD_LIBRARY_PATH = "/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib"
+Python_EXECUTABLE = "$(which python)"
 
 [tool.cibuildwheel.macos]
 before-all = "bash {project}/.github/scripts/cibw_before_all_macos.sh"
