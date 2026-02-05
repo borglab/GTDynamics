@@ -1,0 +1,107 @@
+#!/bin/bash
+# This script runs once per platform in cibuildwheel's before-all hook.
+# It installs all non-Python-dependent system dependencies.
+
+set -e
+set -x
+
+ARCH=$(uname -m)
+NUM_CORES=$(nproc)
+
+# Common installation prefix for all dependencies
+export INSTALL_PREFIX="/opt/gtdynamics-deps"
+mkdir -p ${INSTALL_PREFIX}
+
+
+# Install Base System Dependencies (manylinux_2_28 uses dnf)
+echo "Installing base system dependencies..."
+dnf install -y \
+    wget curl git \
+    tinyxml2-devel \
+    ruby \
+    boost-devel
+
+# manylinux_2_28 already has CMake 3.28+ via pipx, which meets SDFormat's requirements
+echo "CMake version:"
+cmake --version
+
+
+# Install Gazebo dependencies for SDFormat
+echo "Installing Gazebo dependencies..."
+cd /tmp
+
+# Install gz-cmake4
+GZ_CMAKE_VERSION="4.1.0"
+wget https://github.com/gazebosim/gz-cmake/archive/refs/tags/gz-cmake4_${GZ_CMAKE_VERSION}.tar.gz --quiet
+tar -xzf gz-cmake4_${GZ_CMAKE_VERSION}.tar.gz
+cd gz-cmake-gz-cmake4_${GZ_CMAKE_VERSION}
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}/gz-cmake4 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build . --config Release -j${NUM_CORES}
+cmake --install .
+cd /tmp && rm -rf gz-cmake*
+
+# Install gz-utils
+GZ_UTILS_VERSION="3.0.0"
+wget https://github.com/gazebosim/gz-utils/archive/refs/tags/gz-utils3_${GZ_UTILS_VERSION}.tar.gz --quiet
+tar -xzf gz-utils3_${GZ_UTILS_VERSION}.tar.gz
+cd gz-utils-gz-utils3_${GZ_UTILS_VERSION}
+mkdir -p build && cd build
+cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}/gz-utils \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/gz-cmake4" \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build . --config Release -j${NUM_CORES}
+cmake --install .
+cd /tmp && rm -rf gz-utils*
+
+# Install gz-math
+GZ_MATH_VERSION="8.0.0"
+wget https://github.com/gazebosim/gz-math/archive/refs/tags/gz-math8_${GZ_MATH_VERSION}.tar.gz --quiet
+tar -xzf gz-math8_${GZ_MATH_VERSION}.tar.gz
+cd gz-math-gz-math8_${GZ_MATH_VERSION}
+mkdir -p build && cd build
+cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}/gz-math \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/gz-cmake4;${INSTALL_PREFIX}/gz-utils" \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build . --config Release -j${NUM_CORES}
+cmake --install .
+cd /tmp && rm -rf gz-math*
+
+# Install SDFormat
+echo "Installing SDFormat..."
+SDFORMAT_VERSION="15.1.1"
+wget https://github.com/gazebosim/sdformat/archive/refs/tags/sdformat15_${SDFORMAT_VERSION}.tar.gz --quiet
+tar -xzf sdformat15_${SDFORMAT_VERSION}.tar.gz
+cd sdformat-sdformat15_${SDFORMAT_VERSION}
+mkdir -p build && cd build
+cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}/sdformat \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/gz-cmake4;${INSTALL_PREFIX}/gz-utils;${INSTALL_PREFIX}/gz-math" \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DSKIP_PYBIND11=ON \
+    -DBUILD_TESTING=OFF
+cmake --build . --config Release -j${NUM_CORES}
+cmake --install .
+cd /tmp && rm -rf sdformat*
+
+
+# Clone GTSAM (don't build yet, depends on Python)
+echo "Cloning GTSAM source..."
+GTSAM_VERSION="4.2"
+git clone --branch ${GTSAM_VERSION} --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
+
+# Write environment file for before-build scripts
+# Using system Boost from boost-devel package, no custom paths needed
+# gtsam_current symlink will be created by before-build after GTSAM is built
+cat > ${INSTALL_PREFIX}/env.sh << EOF
+export INSTALL_PREFIX="${INSTALL_PREFIX}"
+export CMAKE_PREFIX_PATH="${INSTALL_PREFIX}/gtsam_current:${INSTALL_PREFIX}/gz-cmake4:${INSTALL_PREFIX}/gz-utils:${INSTALL_PREFIX}/gz-math:${INSTALL_PREFIX}/sdformat:\${CMAKE_PREFIX_PATH}"
+export LD_LIBRARY_PATH="${INSTALL_PREFIX}/gtsam_current/lib:${INSTALL_PREFIX}/sdformat/lib:${INSTALL_PREFIX}/gz-utils/lib:${INSTALL_PREFIX}/gz-math/lib:\${LD_LIBRARY_PATH}"
+EOF
+
+echo "before-all completed successfully!"

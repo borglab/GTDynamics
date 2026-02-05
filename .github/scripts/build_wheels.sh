@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-
-# This script builds the wheels using cibuildwheel.
+# Build wheels using cibuildwheel.
+# Configuration is in pyproject.toml under [tool.cibuildwheel]
 
 set -e -x
 
