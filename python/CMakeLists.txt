@@ -1,7 +1,16 @@
+# 1. First, let scikit-build-core find Python correctly
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
-find_package(gtwrap REQUIRED)
+
+# 2. Tell gtwrap exactly which Python to use BEFORE calling find_package(gtwrap)
 set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}")
-message(STATUS "GTDynamics building with Python: ${PYTHON_EXECUTABLE}")
+set(Python_EXECUTABLE "${Python_EXECUTABLE}")
+
+# 3. Now find gtwrap (this should now succeed because Python is already 'found')
+find_package(gtwrap REQUIRED)
+
+# 4. Skip the gtwrap helper as it's redundant and error-prone here
+message(STATUS "GTDynamics building with Python: ${Python_EXECUTABLE}")
+message(STATUS "Python Version Found: ${Python_VERSION}")
 
 find_package(gtwrap)
 
