@@ -64,6 +64,9 @@ backport.find-python = "3.26"
 GTDYNAMICS_BUILD_PYTHON = "ON"
 GTDYNAMICS_BUILD_EXAMPLES = "OFF"
 BUILD_TESTING = "OFF"
+Python_EXECUTABLE = "${PYTHON_EXECUTABLE}"
+PYTHON_EXECUTABLE = "${PYTHON_EXECUTABLE}"
+GTSAM_DIR = "/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-*"

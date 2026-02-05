@@ -1,10 +1,14 @@
 find_package(gtwrap)
 
-set(WRAP_PYTHON_VERSION
-    "Default"
-    CACHE STRING "The Python version to use for wrapping")
-gtwrap_get_python_version(${WRAP_PYTHON_VERSION})
-message(STATUS "Wrapper Python Version: ${WRAP_PYTHON_VERSION}")
+# If we are building via scikit-build/cibuildwheel, 
+# PYTHON_EXECUTABLE is already set.
+if(NOT PYTHON_EXECUTABLE)
+    set(WRAP_PYTHON_VERSION
+        "Default"
+        CACHE STRING "The Python version to use for wrapping")
+    gtwrap_get_python_version(${WRAP_PYTHON_VERSION})
+    message(STATUS "Wrapper Python Version: ${WRAP_PYTHON_VERSION}")
+endif()
 
 set(PYTHON_REQUIREMENTS_PATH "requirements.txt")
 set(PYTHON_TESTS "${PROJECT_NAME}.tests")
