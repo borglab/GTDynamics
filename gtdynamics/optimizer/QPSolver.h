@@ -11,11 +11,11 @@
  * @author: Yetong Zhang
  */
 
+#pragma once
+
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/JacobianFactor.h>
 #include <gtsam/linear/NoiseModel.h>
-
-#pragma once
 
 namespace gtsam {
 
