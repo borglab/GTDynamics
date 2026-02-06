@@ -13,9 +13,6 @@
 
 #include "CartPoleUtils.h"
 
-#include "gtdynamics/optimizer/AugmentedLagrangianOptimizer.h"
-#include "gtdynamics/optimizer/PenaltyMethodOptimizer.h"
-#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtsam/linear/IterativeSolver.h>
 #include <gtsam/linear/PCGSolver.h>
@@ -63,7 +60,7 @@ void dynamic_planning() {
 
 
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto problem = EqConsOptProblem(costs, constraints, init_values);
+  auto problem = EConsOptProblem(costs, constraints, init_values);
   std::ostringstream latex_os;
 
   LevenbergMarquardtParams lm_params;
@@ -82,8 +79,8 @@ void dynamic_planning() {
   // // optimize penalty method
   lm_params.setMaxIterations(30);
   // std::cout << "penalty method:\n";
-  // PenaltyMethodParameters penalty_params;
-  // penalty_params.lm_parameters = lm_params;
+  // auto penalty_params = std::make_shared<PenaltyParameters>();
+  // penalty_params->lm_params = lm_params;
   // auto penalty_result =
   //     OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
 

@@ -18,6 +18,7 @@
 #include <gtdynamics/manifold/TspaceBasis.h>
 
 #include <cstddef>
+#include <mutex>
 
 namespace gtsam {
 
@@ -53,7 +54,7 @@ class ConstraintManifold {
   Retractor::shared_ptr retractor_;  // retraction operation
   gtsam::Values values_;             // values of variables in CCC
   size_t embedding_dim_;             // dimension of embedding space
-  size_t constraint_dim_;            // dimension of constriants
+  size_t constraint_dim_;            // dimension of constraints
   size_t dim_;                       // dimension of constraint manifold
   TspaceBasis::shared_ptr basis_;    // tangent space basis
 
@@ -154,7 +155,11 @@ class ConstraintManifold {
   /// Make sure the tangent space basis is constructed.
   void makeSureBasisConstructed() const {
     if (!basis_->isConstructed()) {
-      basis_->construct(cc_, values_);
+      static std::mutex basis_mutex;
+      std::lock_guard<std::mutex> lock(basis_mutex);
+      if (!basis_->isConstructed()) {
+        basis_->construct(cc_, values_);
+      }
     }
   }
 

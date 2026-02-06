@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 

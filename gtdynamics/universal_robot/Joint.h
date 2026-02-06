@@ -32,6 +32,11 @@
 #include <string>
 #include <vector>
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/nvp.hpp>
+#endif
+
 namespace gtdynamics {
 
 class Joint;  // forward declaration

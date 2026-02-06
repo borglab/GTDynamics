@@ -14,6 +14,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/inference/Symbol.h>
@@ -22,6 +23,91 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 
 using namespace gtsam;
+
+// Test add and mult operators for MultiJacobian
+TEST(MultiJacobian, Add_Mult) {
+  Key x1 = 1;
+  Key x2 = 2;
+  Key x3 = 3;
+  MultiJacobian jac1, jac2;
+  Matrix H1_x1 = (Matrix(2, 2) << 1, 2, 3, 4).finished();
+  Matrix H1_x2 = (Matrix(2, 1) << 3, 2).finished();
+  Matrix H2_x1 = (Matrix(2, 2) << 2, 2, 3, 3).finished();
+  Matrix H2_x3 = (Matrix(2, 2) << 4, 3, 2, 1).finished();
+  jac1.addJacobian(x1, H1_x1);
+  jac1.addJacobian(x2, H1_x2);
+  jac2.addJacobian(x1, H2_x1);
+  jac2.addJacobian(x3, H2_x3);
+
+  VectorValues expected_row;
+  expected_row.insert(x1, Vector2(1, 2));
+  expected_row.insert(x2, Vector1(3));
+  EXPECT(assert_equal(expected_row, jac1.row(0)));
+
+  MultiJacobian expected_sum;
+  expected_sum.insert({x1, (Matrix(2, 2) << 3, 4, 6, 7).finished()});
+  expected_sum.insert({x2, H1_x2});
+  expected_sum.insert({x3, H2_x3});
+  EXPECT(expected_sum.equals(jac1 + jac2));
+
+  MultiJacobian jac12_sum = jac1;
+  jac12_sum += jac2;
+  EXPECT(expected_sum.equals(jac12_sum));
+
+  Matrix m = I_2x2 * 2;
+  MultiJacobian expected_mult1;
+  expected_mult1.insert({x1, (Matrix(2, 2) << 2, 4, 6, 8).finished()});
+  expected_mult1.insert({x2, (Matrix(2, 1) << 6, 4).finished()});
+  EXPECT(expected_mult1.equals(m * jac1));
+
+  MultiJacobian jac12_stack = MultiJacobian::VerticalStack(jac1, jac2);
+  MultiJacobian expected_stack12;
+  expected_stack12.insert(
+      {x1, (Matrix(4, 2) << 1, 2, 3, 4, 2, 2, 3, 3).finished()});
+  expected_stack12.insert({x2, (Matrix(4, 1) << 3, 2, 0, 0).finished()});
+  expected_stack12.insert(
+      {x3, (Matrix(4, 2) << 0, 0, 0, 0, 4, 3, 2, 1).finished()});
+  EXPECT(expected_stack12.equals(jac12_stack));
+}
+
+
+// Test add and mult operators for MultiJacobian
+TEST(MultiJacobians, Mult) {
+  Key x1 = 1;
+  Key x2 = 2;
+  Key x3 = 3;
+  Key x4 = 4;
+
+  MultiJacobian jac1_x1, jac1_x2, jac1_x3, jac1_x4;
+  jac1_x1.insert({x1, I_2x2});
+  jac1_x2.insert({x2, I_2x2});
+  jac1_x3.insert({x3, I_2x2});
+  jac1_x4.insert({x1, (Matrix(1,2)<<1,2).finished()});
+  jac1_x4.insert({x2, (Matrix(1,2)<<2,1).finished()});
+  jac1_x4.insert({x3, (Matrix(1,2)<<1,-1).finished()});
+  MultiJacobians jacs1{{x1, jac1_x1}, {x2, jac1_x2}, {x3, jac1_x3}, {x4, jac1_x4}};
+
+  MultiJacobian jac2_x1, jac2_x2, jac2_x3;
+  jac2_x1.insert({x1, I_2x2});
+  jac2_x2.insert({x2, I_2x2});
+  jac2_x3.insert({x1, 2*I_2x2});
+  jac2_x3.insert({x2, -1*I_2x2});
+  MultiJacobians jacs2{{x1, jac2_x1}, {x2, jac2_x2}, {x3, jac2_x3}};
+
+  MultiJacobian expected_jac_x1, expected_jac_x2, expected_jac_x3, expected_jac_x4;
+  expected_jac_x1.insert({x1, I_2x2});
+  expected_jac_x2.insert({x2, I_2x2});
+  expected_jac_x3.insert({x1, 2*I_2x2});
+  expected_jac_x3.insert({x2, -1*I_2x2});
+  expected_jac_x4.insert({x1, (Matrix(1,2)<<1+2,2-2).finished()});
+  expected_jac_x4.insert({x2, (Matrix(1,2)<<2-1,1+1).finished()});
+
+  MultiJacobians jacs_mult = JacobiansMultiply(jacs1, jacs2);
+  EXPECT(expected_jac_x1.equals(jacs_mult.at(x1)));
+  EXPECT(expected_jac_x2.equals(jacs_mult.at(x2)));
+  EXPECT(expected_jac_x3.equals(jacs_mult.at(x3)));
+  EXPECT(expected_jac_x4.equals(jacs_mult.at(x4)));
+}
 
 /// Test computing jacobians from a bayes net.
 TEST(MultiJacobian, ComputeBayesNetJacobian) {

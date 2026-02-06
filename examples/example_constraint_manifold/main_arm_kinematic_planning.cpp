@@ -242,13 +242,13 @@ void print_joint_angles_sc(const Values& values) {
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
 void kinematic_planning() {
-  // Create constraiend optimization problem.
+  // Create constrained optimization problem.
   robot.fixLink(base_name);
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
   auto init_values = get_init_values();
   auto constraints = ConstraintsFromGraph(constraints_graph);
-  auto problem = EqConsOptProblem(costs, constraints, init_values);
+  auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
@@ -260,15 +260,15 @@ void kinematic_planning() {
 
   // optimize penalty method
   std::cout << "penalty method:\n";
-  PenaltyMethodParameters penalty_params;
-  penalty_params.lm_parameters = lm_params;
+  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
+  penalty_params->lmParams = lm_params;
   auto penalty_result =
       OptimizePenaltyMethod(problem, latex_os, penalty_params);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
-  AugmentedLagrangianParameters augl_params;
-  augl_params.lm_parameters = lm_params;
+  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  augl_params->lmParams = lm_params;
   auto augl_result =
       OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
 

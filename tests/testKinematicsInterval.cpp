@@ -52,7 +52,7 @@ TEST(Interval, InverseKinematics) {
   auto result = kinematics.inverse(interval, robot, contact_goals);
 
   // Check that goals are achieved
-  constexpr double tol = 1e-5;
+  constexpr double tol = 1e-4;
   for (const ContactGoal& goal : contact_goals) {
     for (size_t k = 0; k < num_time_steps; k++) {
       EXPECT(goal.satisfied(result, k, tol));

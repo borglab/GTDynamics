@@ -16,7 +16,7 @@
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/FootContactConstraintSpec.h>

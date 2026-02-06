@@ -75,7 +75,7 @@ class DynamicsGraph {
    * @param known_values Values with kinematics, must include poses and twists
    */
   gtsam::GaussianFactorGraph linearDynamicsGraph(
-      const Robot &robot, const int t, const gtsam::Values &known_values);
+      const Robot &robot, const int t, const gtsam::Values &known_values) const;
 
   /// Return linear factor graph with priors on torques.
   static gtsam::GaussianFactorGraph linearFDPriors(
@@ -96,7 +96,7 @@ class DynamicsGraph {
    * joint torques, and link twist accelerations
    */
   gtsam::Values linearSolveFD(const Robot &robot, const int t,
-                              const gtsam::Values &known_values);
+                              const gtsam::Values &known_values) const;
 
   /**
    * Solve inverse kinodynamics using linear factor graph, Values version.
@@ -199,6 +199,25 @@ class DynamicsGraph {
       const CollocationScheme collocation = Trapezoidal,
       const std::optional<std::vector<PointOnLinks>> &phase_contact_points = {},
       const std::optional<double> &mu = {}) const;
+
+  static std::shared_ptr<gtsam::ExpressionFactor<double>>
+  collocationFactorDouble(const gtsam::Key x0_key, const gtsam::Key x1_key,
+                          const gtsam::Key v0_key, const gtsam::Key v1_key,
+                          const gtsam::Key phase_key,
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const CollocationScheme collocation = Trapezoidal);
+
+  static std::shared_ptr<gtsam::ExpressionFactor<double>>
+  multiPhaseJointCollocationQFactor(const size_t j, const size_t k,
+                          const gtsam::Key phase_key,
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const CollocationScheme collocation = Trapezoidal);
+
+  static std::shared_ptr<gtsam::ExpressionFactor<double>>
+  multiPhaseJointCollocationVFactor(const size_t j, const size_t k,
+                          const gtsam::Key phase_key,
+                          const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                          const CollocationScheme collocation = Trapezoidal);
 
   /** Add collocation factor for doubles. */
   static void addCollocationFactorDouble(

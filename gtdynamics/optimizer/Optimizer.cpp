@@ -11,15 +11,39 @@
  * @author: Frank Dellaert
  */
 
-#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
 #include <gtdynamics/optimizer/Optimizer.h>
-#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
+#include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
+#include <gtsam/constrained/ConstrainedOptProblem.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/PenaltyOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
 using gtsam::Values;
+
+namespace {
+
+gtsam::NonlinearEqualityConstraints ToGtsamConstraints(
+    const gtdynamics::EqualityConstraints& constraints) {
+  gtsam::NonlinearEqualityConstraints gtsam_constraints;
+  for (const auto& constraint : constraints) {
+    auto factor = constraint->createFactor(1.0);
+    gtsam_constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor);
+  }
+  return gtsam_constraints;
+}
+
+gtsam::ConstrainedOptProblem ToGtsamProblem(
+    const gtsam::NonlinearFactorGraph& graph,
+    const gtdynamics::EqualityConstraints& constraints) {
+  auto gtsam_constraints = ToGtsamConstraints(constraints);
+  return gtsam::ConstrainedOptProblem::EqConstrainedOptProblem(graph,
+                                                               gtsam_constraints);
+}
+
+}  // namespace
 
 Values Optimizer::optimize(const NonlinearFactorGraph& graph,
                            const Values& initial_values) const {
@@ -30,7 +54,7 @@ Values Optimizer::optimize(const NonlinearFactorGraph& graph,
 }
 
 Values Optimizer::optimize(const gtsam::NonlinearFactorGraph& graph,
-                           const EqualityConstraints& constraints,
+                           const gtdynamics::EqualityConstraints& constraints,
                            const gtsam::Values& initial_values) const {
   if (p_.method == OptimizationParameters::Method::SOFT_CONSTRAINTS) {
     auto merit_graph = graph;
@@ -40,15 +64,19 @@ Values Optimizer::optimize(const gtsam::NonlinearFactorGraph& graph,
     return optimize(merit_graph, initial_values);
 
   } else if (p_.method == OptimizationParameters::Method::PENALTY) {
-    PenaltyMethodParameters params = p_.lm_parameters;
-    PenaltyMethodOptimizer optimizer(params);
-    return optimizer.optimize(graph, constraints, initial_values);
+    auto params = std::make_shared<gtsam::PenaltyOptimizerParams>();
+    params->lmParams = p_.lm_parameters;
+    gtsam::PenaltyOptimizer optimizer(ToGtsamProblem(graph, constraints),
+                                      initial_values, params);
+    return optimizer.optimize();
 
   } else if (p_.method ==
              OptimizationParameters::Method::AUGMENTED_LAGRANGIAN) {
-    AugmentedLagrangianParameters params = p_.lm_parameters;
-    AugmentedLagrangianOptimizer optimizer(params);
-    return optimizer.optimize(graph, constraints, initial_values);
+    auto params = std::make_shared<gtsam::AugmentedLagrangianParams>();
+    params->lmParams = p_.lm_parameters;
+    gtsam::AugmentedLagrangianOptimizer optimizer(
+        ToGtsamProblem(graph, constraints), initial_values, params);
+    return optimizer.optimize();
 
   } else {
     throw std::runtime_error("optimization method not recognized.");

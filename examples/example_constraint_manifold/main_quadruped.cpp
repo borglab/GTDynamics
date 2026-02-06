@@ -38,7 +38,7 @@
 
 #include "gtdynamics/factors/ContactPointFactor.h"
 #include "gtdynamics/manifold/ConnectedComponent.h"
-#include "gtdynamics/optimizer/ConstrainedOptimizer.h"
+#include "gtdynamics/constrained_optimizer/ConstrainedOptimizer.h"
 #include "gtdynamics/manifold/ConstraintManifold.h"
 #include "gtdynamics/manifold/TspaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
@@ -99,7 +99,7 @@ void TrajectoryOptimization() {
 
 
   /// Construct problem
-  auto problem = EqConsOptProblem(costs, constraints, init_values);
+  auto problem = EConsOptProblem(costs, constraints, init_values);
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
   lm_params.minModelFidelity = 0.3;
@@ -118,8 +118,8 @@ void TrajectoryOptimization() {
 
   // // optimize penalty method
   // std::cout << "penalty method:\n";
-  // PenaltyMethodParameters penalty_params;
-  // penalty_params.lm_parameters = lm_params;
+  // auto penalty_params = std::make_shared<PenaltyParameters>();
+  // penalty_params->lm_params = lm_params;
   // auto penalty_result =
   //     OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
   // EvaluateCosts(penalty_result);
@@ -127,7 +127,7 @@ void TrajectoryOptimization() {
   // // optimize augmented lagrangian
   // std::cout << "augmented lagrangian:\n";
   // AugmentedLagrangianParameters augl_params;
-  // augl_params.lm_parameters = lm_params;
+  // augl_params.lm_params = lm_params;
   // auto augl_result =
   //     OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
   // EvaluateCosts(augl_result);

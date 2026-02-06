@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>

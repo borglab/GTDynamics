@@ -12,10 +12,32 @@
  */
 
 #include <gtdynamics/factors/BiasedFactor.h>
-#include <gtdynamics/optimizer/EqualityConstraint.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/inference/Key.h>
 
 namespace gtdynamics {
 
+using gtsam::Vector;
+
+/* ************************************************************************* */
+gtsam::NoiseModelFactor::shared_ptr
+EqualityConstraint::createConstrainedFactor() const {
+  auto factor = createFactor(1.0);
+  auto constrained_noise = gtsam::noiseModel::Constrained::All(dim());
+  return factor->cloneWithNewNoiseModel(constrained_noise);
+}
+
+/* ************************************************************************* */
+gtsam::Vector EqualityConstraint::evaluate(const gtsam::Values& x) const {
+  Vector eval = (*this)(x);
+  Vector tol = tolerance();
+  for (int i = 0; i < dim(); i++) {
+    eval(i) = eval(i) / tol(i);
+  }
+  return eval;
+}
+
+/* ************************************************************************* */
 gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
     const double mu, std::optional<gtsam::Vector> bias) const {
   auto noise = gtsam::noiseModel::Isotropic::Sigma(1, tolerance_ / sqrt(mu));
@@ -27,17 +49,20 @@ gtsam::NoiseModelFactor::shared_ptr DoubleExpressionEquality::createFactor(
       new gtsam::ExpressionFactor<double>(noise, measure, expression_));
 }
 
+/* ************************************************************************* */
 bool DoubleExpressionEquality::feasible(const gtsam::Values& x) const {
   double result = expression_.value(x);
   return abs(result) <= tolerance_;
 }
 
+/* ************************************************************************* */
 gtsam::Vector DoubleExpressionEquality::operator()(
     const gtsam::Values& x) const {
   double result = expression_.value(x);
   return (gtsam::Vector(1) << result).finished();
 }
 
+/* ************************************************************************* */
 gtsam::Vector DoubleExpressionEquality::toleranceScaledViolation(
     const gtsam::Values& x) const {
   double result = expression_.value(x);
@@ -91,6 +116,59 @@ EqualityConstraints ConstraintsFromGraph(
     constraints.emplace_shared<FactorZeroErrorConstraint>(noise_factor);
   }
   return constraints;
+}
+
+/* ************************************************************************* */
+gtsam::KeySet EqualityConstraints::keys() const {
+  gtsam::KeySet keys;
+  for (const auto &constraint : *this) {
+    keys.merge(constraint->keys());
+  }
+  return keys;
+}
+
+/* ************************************************************************* */
+gtsam::KeyVector EqualityConstraints::keyVector() const {
+  auto keyset = keys();
+  return gtsam::KeyVector(keyset.begin(), keyset.end());
+}
+
+/* ************************************************************************* */
+double EqualityConstraints::evaluateViolationL2Norm(
+    const gtsam::Values &values) const {
+  double violation = 0;
+  for (const auto &constraint : *this) {
+    violation += pow(constraint->toleranceScaledViolation(values).norm(), 2);
+  }
+  return sqrt(violation);
+}
+
+/* ************************************************************************* */
+gtsam::VariableIndex EqualityConstraints::varIndex() const {
+  gtsam::VariableIndex var_index;
+  for (size_t constraint_idx = 0; constraint_idx < size(); constraint_idx++) {
+    const auto &constraint = at(constraint_idx);
+    var_index.augmentExistingFactor(constraint_idx, constraint->keys());
+  }
+  return var_index;
+}
+
+/* ************************************************************************* */
+gtsam::NonlinearFactorGraph EqualityConstraints::meritGraph(const double mu) const {
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto &constraint : *this) {
+    graph.add(constraint->createFactor(mu));
+  }
+  return graph;
+}
+
+/* ************************************************************************* */
+gtsam::NonlinearFactorGraph EqualityConstraints::constrainedGraph() const {
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto &constraint : *this) {
+    graph.add(constraint->createConstrainedFactor());
+  }
+  return graph;
 }
 
 /* ************************************************************************* */

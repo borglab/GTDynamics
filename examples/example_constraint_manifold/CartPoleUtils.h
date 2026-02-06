@@ -24,7 +24,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/optimizer/ConstrainedOptimizer.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 
 namespace gtsam{

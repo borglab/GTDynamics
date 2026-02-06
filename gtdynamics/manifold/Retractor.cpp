@@ -13,8 +13,6 @@
 
 #include <gtdynamics/manifold/GeneralPriorFactor.h>
 #include <gtdynamics/manifold/Retractor.h>
-#include <gtdynamics/optimizer/AugmentedLagrangianOptimizer.h>
-#include <gtdynamics/optimizer/PenaltyMethodOptimizer.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
