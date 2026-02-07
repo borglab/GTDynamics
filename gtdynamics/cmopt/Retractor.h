@@ -14,18 +14,18 @@
 
 #pragma once
 
+#include <gtdynamics/utils/values.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
-#include <gtdynamics/manifold/ConnectedComponent.h>
-#include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-namespace gtsam {
+using gtsam::EqualityConstraints;
 
-// Method to perform retraction
-enum RetractType { UOPT = 0, PROJ = 1, FIX_VARS = 2, DYNAMICS = 3 };
+namespace gtsam {
 
 /// Parameters for constraint manifold retraction operation.
 struct RetractParams {
@@ -36,7 +36,6 @@ struct RetractParams {
   bool check_feasible = false;
   double feasible_threshold = 1e-5;
   LevenbergMarquardtParams lm_params;
-  RetractType retract_type = RetractType::UOPT;
   bool use_basis_keys = false;
   double sigma = 1.0;
   bool apply_base_retraction = false;
@@ -44,53 +43,24 @@ struct RetractParams {
 
   // Constructor
   RetractParams() = default;
-
-  // Functions.
-  void setUopt() {
-    retract_type = RetractType::UOPT;
-    use_basis_keys = false;
-  }
-
-  void setProjection(bool _use_basis_keys = false, double _sigma = 1.0,
-                     bool _apply_base_retraction = false) {
-    retract_type = RetractType::PROJ;
-    use_basis_keys = _use_basis_keys;
-    sigma = _sigma;
-    apply_base_retraction = _apply_base_retraction;
-  }
-
-  void setFixVars() {
-    retract_type = RetractType::FIX_VARS;
-    use_basis_keys = true;
-  }
-
-  void setDynamics(bool _use_basis_keys = true, double _sigma = 1e-2) {
-    retract_type = RetractType::DYNAMICS;
-    use_basis_keys = _use_basis_keys;
-    sigma = _sigma;
-  }
 };
 
 /** Base class that implements the retraction operation for the constraint
  * manifold. */
 class Retractor {
  protected:
-  ConnectedComponent::shared_ptr cc_;
+  // ConnectedComponent::shared_ptr cc_;
   RetractParams::shared_ptr params_;
 
  public:
   using shared_ptr = std::shared_ptr<Retractor>;
 
   /// Default constructor.
-  Retractor(const ConnectedComponent::shared_ptr &cc,
-            const RetractParams::shared_ptr &params =
+  Retractor(const RetractParams::shared_ptr &params =
                 std::make_shared<RetractParams>())
-      : cc_(cc), params_(params) {}
+      : params_(params) {}
 
-  /// Convenient constructor.
-  static shared_ptr create(const RetractParams::shared_ptr &params,
-                           const ConnectedComponent::shared_ptr &cc,
-                           std::optional<const KeyVector> basis_keys = {});
+  virtual ~Retractor() {}
 
   /// Retract the base variables that compose the constraint manifold.
   virtual Values retractBaseVariables(const Values &values,
@@ -122,7 +92,7 @@ class Retractor {
     return retractConstraints((const Values &)values);
   };
 
-  /** Given values of variables in CCC that may violate the constraints, compute
+  /** Given values of variables in CCC that may violate the constraints, compute 
    * the values that satisfy the constraints. */
   virtual Values retractConstraints(const Values &values) = 0;
 
@@ -138,7 +108,7 @@ class UoptRetractor : public Retractor {
 
  public:
   /// Constructor.
-  UoptRetractor(const ConnectedComponent::shared_ptr &cc,
+  UoptRetractor(const EqualityConstraints::shared_ptr &constraints,
                 const RetractParams::shared_ptr &params =
                     std::make_shared<RetractParams>());
 
@@ -152,11 +122,12 @@ class UoptRetractor : public Retractor {
 /** Retractor with metric projection. */
 class ProjRetractor : public Retractor {
  protected:
+  NonlinearFactorGraph merit_graph_;
   KeyVector basis_keys_;
 
  public:
   /// Constructor.
-  ProjRetractor(const ConnectedComponent::shared_ptr &cc,
+  ProjRetractor(const EqualityConstraints::shared_ptr &constraints,
                 const RetractParams::shared_ptr &params,
                 std::optional<const KeyVector> basis_keys = {});
 
@@ -169,28 +140,31 @@ class ProjRetractor : public Retractor {
 /** Retractor by specifying the basis variables. */
 class BasisRetractor : public Retractor {
  protected:
+  NonlinearFactorGraph merit_graph_;
   KeyVector basis_keys_;
   MutableLMOptimizer optimizer_;
-  ConnectedComponent::shared_ptr cc_;
   std::vector<std::shared_ptr<ConstVarFactor>> factors_with_fixed_vars_;
 
  public:
   /// Constructor.
-  BasisRetractor(const ConnectedComponent::shared_ptr &cc,
+  BasisRetractor(const EqualityConstraints::shared_ptr &constraints,
                  const RetractParams::shared_ptr &params,
                  const KeyVector &basis_keys);
+
+  virtual ~BasisRetractor() {}
 
   /// Retraction operation.
   Values retractConstraints(const Values &values) override;
 
  protected:
-  void constructGraph(const ConnectedComponent::shared_ptr &cc,
+  void constructGraph(const EqualityConstraints::shared_ptr &constraints,
                       const KeyVector &basis_keys);
 };
 
 /** Customized retractor for kinodynamics manifold. */
 class DynamicsRetractor : public Retractor {
  protected:
+  NonlinearFactorGraph merit_graph_;
   MutableLMOptimizer optimizer_wp_q_, optimizer_wp_v_, optimizer_wp_ad_;
   MutableLMOptimizer optimizer_np_q_, optimizer_np_v_, optimizer_np_ad_;
   KeySet basis_q_keys_, basis_v_keys_, basis_ad_keys_;
@@ -199,7 +173,7 @@ class DynamicsRetractor : public Retractor {
 
  public:
   /// Constructor.
-  DynamicsRetractor(const ConnectedComponent::shared_ptr &cc,
+  DynamicsRetractor(const EqualityConstraints::shared_ptr &constraints,
                     const RetractParams::shared_ptr &params,
                     std::optional<const KeyVector> basis_keys = {});
 
@@ -213,6 +187,101 @@ class DynamicsRetractor : public Retractor {
 
   void updatePriors(const Values &values, const KeySet &keys,
                     NonlinearFactorGraph &graph);
+};
+
+
+/** Factory class used to create retractor. */
+class RetractorCreator {
+protected:
+  RetractParams::shared_ptr params_;
+
+public:
+  using shared_ptr = std::shared_ptr<RetractorCreator>;
+  RetractorCreator(RetractParams::shared_ptr params) : params_(params) {}
+
+  RetractParams::shared_ptr params() {return params_; }
+
+  virtual ~RetractorCreator() {}
+
+  virtual Retractor::shared_ptr
+  create(const EqualityConstraints::shared_ptr constraints) const = 0;
+};
+
+class UoptRetractorCreator : public RetractorCreator {
+public:
+  UoptRetractorCreator(
+      RetractParams::shared_ptr params = std::make_shared<RetractParams>())
+      : RetractorCreator(params) {}
+
+  virtual ~UoptRetractorCreator() {}
+
+  Retractor::shared_ptr
+  create(const EqualityConstraints::shared_ptr constraints) const override {
+    return std::make_shared<UoptRetractor>(constraints, params_);
+  }
+};
+
+class ProjRetractorCreator : public RetractorCreator {
+public:
+  ProjRetractorCreator(
+      RetractParams::shared_ptr params = std::make_shared<RetractParams>())
+      : RetractorCreator(params) {}
+
+  virtual ~ProjRetractorCreator() {}
+
+  Retractor::shared_ptr
+  create(const EqualityConstraints::shared_ptr constraints) const override {
+    return std::make_shared<ProjRetractor>(constraints, params_);
+  }
+};
+
+class BasisRetractorCreator : public RetractorCreator {
+public:
+  BasisKeyFunc basis_key_func_;
+
+public:
+  BasisRetractorCreator(
+      RetractParams::shared_ptr params = std::make_shared<RetractParams>())
+      : RetractorCreator(params) {}
+
+  BasisRetractorCreator(
+      BasisKeyFunc basis_key_func,
+      RetractParams::shared_ptr params = std::make_shared<RetractParams>())
+      : RetractorCreator(params), basis_key_func_(basis_key_func) {}
+
+  virtual ~BasisRetractorCreator() {}
+
+  Retractor::shared_ptr
+  create(const EqualityConstraints::shared_ptr constraints) const override {
+    KeyVector basis_keys = basis_key_func_(constraints->keyVector());
+    return std::make_shared<BasisRetractor>(constraints, params_, basis_keys);
+  }
+};
+
+class DynamicsRetractorCreator : public RetractorCreator {
+protected:
+  BasisKeyFunc basis_key_func_;
+
+public:
+  DynamicsRetractorCreator(RetractParams::shared_ptr params)
+      : RetractorCreator(params) {}
+
+  DynamicsRetractorCreator(RetractParams::shared_ptr params,
+                           BasisKeyFunc basis_key_func)
+      : RetractorCreator(params), basis_key_func_(basis_key_func) {}
+
+  virtual ~DynamicsRetractorCreator() {}
+
+  Retractor::shared_ptr
+  create(const EqualityConstraints::shared_ptr constraints) const override {
+    if (params_->use_basis_keys) {
+      KeyVector basis_keys = basis_key_func_(constraints->keyVector());
+      return std::make_shared<DynamicsRetractor>(constraints, params_, basis_keys);
+    }
+    else {
+      return std::make_shared<DynamicsRetractor>(constraints, params_);
+    }
+  }
 };
 
 }  // namespace gtsam

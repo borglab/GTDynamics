@@ -6,88 +6,61 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ManifoldOptimizer.cpp
- * @brief Implementation of manifold optimizer.
+ * @file  NonlinearMOptimizer.cpp
+ * @brief Manifold optimizer implementations.
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/manifold/ManifoldOptimizer.h>
-#include <gtsam/linear/GaussianEliminationTree.h>
-#include <gtsam/linear/GaussianFactorGraph.h>
-#include <gtsam/linear/PCGSolver.h>
-#include <gtsam/linear/SubgraphSolver.h>
-#include <gtsam/linear/VectorValues.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
+#include <gtdynamics/factors/SubstituteFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-
-#include <stack>
-
-#include "manifold/Retractor.h"
 
 namespace gtsam {
 
 /* ************************************************************************* */
-ManifoldOptimizerParameters::ManifoldOptimizerParameters()
-    : Base(),
-      cc_params(std::make_shared<ConstraintManifold::Params>()),
-      retract_init(true) {}
-
-/* ************************************************************************* */
-ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
-    const gtsam::NonlinearEqualityConstraints& constraints,
-    const gtsam::Key start_key, gtsam::KeySet& keys,
-    const gtsam::VariableIndex& var_index) const {
-  std::set<size_t> constraint_indices;
-
-  std::stack<gtsam::Key> key_stack;
-  key_stack.push(start_key);
-  while (!key_stack.empty()) {
-    gtsam::Key key = key_stack.top();
-    key_stack.pop();
-    // find all constraints connected to key
-    for (const auto& constraint_index : var_index[key]) {
-      constraint_indices.insert(constraint_index);
-      // TODO: use keys() in constraint
-      const auto& constraint = constraints.at(constraint_index);
-      for (const auto& neighbor_key : constraint->keys()) {
-        if (keys.find(neighbor_key) != keys.end()) {
-          keys.erase(neighbor_key);
-          key_stack.push(neighbor_key);
-        }
-      }
-    }
-  }
-
-  gtsam::NonlinearEqualityConstraints cc_constraints;
-  for (const auto& constraint_index : constraint_indices) {
-    cc_constraints.push_back(constraints.at(constraint_index));
-  }
-  return std::make_shared<ConnectedComponent>(cc_constraints);
+Values NonlinearMOptimizer::optimize(
+    const NonlinearFactorGraph& costs,
+    const gtsam::EqualityConstraints& constraints,
+    const Values& init_values) const {
+  auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
+  return optimize(mopt_problem);
 }
 
 /* ************************************************************************* */
-std::vector<ConnectedComponent::shared_ptr>
-ManifoldOptimizer::identifyConnectedComponents(
-    const gtsam::NonlinearEqualityConstraints& constraints) const {
-  // Get all the keys in constraints.
-  // TODO(yetong): create VariableIndex from EqualityConstraints
-  gtsam::NonlinearFactorGraph constraint_graph;
-  constraint_graph.add(constraints.penaltyGraph(1.0));
-  gtsam::VariableIndex constraint_var_index =
-      gtsam::VariableIndex(constraint_graph);
-  gtsam::KeySet constraint_keys;
-  for (const auto& it : constraint_var_index) {
-    constraint_keys.insert(it.first);
-  }
+Values NonlinearMOptimizer::optimize(
+    const ManifoldOptProblem& mopt_problem) const {
+  auto nonlinear_optimizer = constructNonlinearOptimizer(mopt_problem);
+  auto nopt_values = nonlinear_optimizer->optimize();
+  // if (intermediate_result) {
+  //   intermediate_result->num_iters.push_back(
+  //       std::dynamic_pointer_cast<LevenbergMarquardtOptimizer>(
+  //           nonlinear_optimizer)
+  //           ->getInnerIterations());
+  // }
+  return baseValues(mopt_problem, nopt_values);
+}
 
-  // Find connected component using DFS algorithm.
-  std::vector<ConnectedComponent::shared_ptr> components;
-  while (!constraint_keys.empty()) {
-    Key key = *constraint_keys.begin();
-    constraint_keys.erase(key);
-    components.emplace_back(findConnectedComponent(
-        constraints, key, constraint_keys, constraint_var_index));
+/* ************************************************************************* */
+std::shared_ptr<NonlinearOptimizer>
+NonlinearMOptimizer::constructNonlinearOptimizer(
+    const ManifoldOptProblem& mopt_problem) const {
+  if (std::holds_alternative<GaussNewtonParams>(nopt_params_)) {
+    return std::make_shared<GaussNewtonOptimizer>(
+        mopt_problem.graph_, mopt_problem.values_,
+        std::get<GaussNewtonParams>(nopt_params_));
+  } else if (std::holds_alternative<LevenbergMarquardtParams>(nopt_params_)) {
+    return std::make_shared<LevenbergMarquardtOptimizer>(
+        mopt_problem.graph_, mopt_problem.values_,
+        std::get<LevenbergMarquardtParams>(nopt_params_));
+  } else if (std::holds_alternative<DoglegParams>(nopt_params_)) {
+    return std::make_shared<DoglegOptimizer>(
+        mopt_problem.graph_, mopt_problem.values_,
+        std::get<DoglegParams>(nopt_params_));
+  } else {
+    return std::make_shared<LevenbergMarquardtOptimizer>(mopt_problem.graph_,
+                                                         mopt_problem.values_);
   }
-  return components;
 }
 
 }  // namespace gtsam

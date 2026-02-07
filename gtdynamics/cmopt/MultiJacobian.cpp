@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtdynamics/cmopt/MultiJacobian.h>
 
 namespace gtsam {
 

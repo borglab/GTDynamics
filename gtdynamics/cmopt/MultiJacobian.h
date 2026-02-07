@@ -26,7 +26,7 @@ namespace gtsam {
 class MultiJacobian : public std::unordered_map<Key, Matrix> {
  protected:
   int dim_ = -1;
-
+  
  public:
   using Base = std::unordered_map<Key, Matrix>;
 
@@ -40,8 +40,8 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
   static MultiJacobian Identity(const Key& key, const size_t& dim);
 
   /// Vertical stack of two jacobians.
-  static MultiJacobian VerticalStack(const MultiJacobian& jac1,
-                                     const MultiJacobian& jac2);
+  static MultiJacobian VerticalStack(const MultiJacobian &jac1,
+                                     const MultiJacobian &jac2);
 
   /** Add jacobian to a variable. If jacobian to that variable already
    * exists, will add the matrix to the existing jacobian. */
@@ -67,7 +67,7 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
 
   size_t numRows() const;
 
-  void operator+=(const MultiJacobian& other);
+  void operator += (const MultiJacobian& other);
 };
 
 MultiJacobian operator*(const Matrix& m, const MultiJacobian& jac);
@@ -77,8 +77,7 @@ MultiJacobian operator+(const MultiJacobian& jac1, const MultiJacobian& jac2);
 /** jacobian of multiple variables w.r.t. multiple variables. */
 typedef std::unordered_map<Key, MultiJacobian> MultiJacobians;
 
-MultiJacobians JacobiansMultiply(const MultiJacobians& multi_jac1,
-                                 const MultiJacobians& multi_jac2);
+MultiJacobians JacobiansMultiply(const MultiJacobians& multi_jac1, const MultiJacobians& multi_jac2);
 
 /** Given a bayes net, compute the jacobians of all variables w.r.t. basis
  * variables.
