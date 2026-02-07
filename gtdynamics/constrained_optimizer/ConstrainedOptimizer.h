@@ -70,7 +70,7 @@ public:
    * @return Values The result of the constrained optimization.
    */
   virtual Values optimize(const NonlinearFactorGraph &graph,
-                          const EqualityConstraints &constraints,
+                          const gtsam::NonlinearEqualityConstraints &constraints,
                           const Values &initial_values) const {
     throw std::runtime_error(
         "Equality constrained optimization not implemented");
@@ -87,8 +87,8 @@ public:
    * @return Values The result of the constrained optimization.
    */
   virtual Values optimize(const NonlinearFactorGraph &graph,
-                          const EqualityConstraints &e_constraints,
-                          const InequalityConstraints &i_constraints,
+                          const gtsam::NonlinearEqualityConstraints &e_constraints,
+                          const gtsam::NonlinearInequalityConstraints &i_constraints,
                           const Values &initial_values) const {
     throw std::runtime_error(
         "Inequality constrained optimization not implemented");

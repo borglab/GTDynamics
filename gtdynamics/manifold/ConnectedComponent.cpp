@@ -17,12 +17,8 @@ namespace gtsam {
 
 /* ************************************************************************* */
 NonlinearFactorGraph ConnectedComponent::constructMeritGraph(
-    const gtdynamics::EqualityConstraints &constraints) {
-  gtsam::NonlinearFactorGraph graph;
-  for (const auto &constraint : constraints) {
-    graph.add(constraint->createFactor(1.0));
-  }
-  return graph;
+    const gtsam::NonlinearEqualityConstraints &constraints) {
+  return constraints.penaltyGraph(1.0);
 }
 
 } // namespace gtsam

@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <ifopt/constraint_set.h>
 #include <ifopt/cost_term.h>
 #include <ifopt/variable_set.h>
@@ -69,13 +70,13 @@ public:
 
   /// Run optimization with equality constraints only.
   Values optimize(const NonlinearFactorGraph &cost,
-                  const EqualityConstraints &constraints,
+                  const gtsam::NonlinearEqualityConstraints &constraints,
                   const Values &initial_values) const override;
 
   /// Run optimization with equality and inequality constraints.
   Values optimize(const NonlinearFactorGraph &cost,
-                  const EqualityConstraints &e_constraints,
-                  const InequalityConstraints &i_constraints,
+                  const gtsam::NonlinearEqualityConstraints &e_constraints,
+                  const gtsam::NonlinearInequalityConstraints &i_constraints,
                   const Values &initial_values) const override;
 };
 
@@ -98,13 +99,13 @@ public:
 /// Equality constraint compatible with ifopt
 class IFOptEConstraint : public ifopt::ConstraintSet {
 protected:
-  EqualityConstraint::shared_ptr constraint_;
+  gtsam::NonlinearEqualityConstraint::shared_ptr constraint_;
   NonlinearFactor::shared_ptr factor_;
   KeySet keys_;
   IFOptTranslator::shared_ptr translator_;
 
 public:
-  IFOptEConstraint(EqualityConstraint::shared_ptr constraint,
+  IFOptEConstraint(gtsam::NonlinearEqualityConstraint::shared_ptr constraint,
                    const std::string &name,
                    const IFOptTranslator::shared_ptr translator);
 
@@ -120,13 +121,13 @@ protected:
 /// Inequality constraint compatible with ifopt
 class IFOptIConstraint : public ifopt::ConstraintSet {
 protected:
-  InequalityConstraint::shared_ptr constraint_;
+  gtsam::NonlinearInequalityConstraint::shared_ptr constraint_;
   NonlinearFactor::shared_ptr factor_;
   KeySet keys_;
   IFOptTranslator::shared_ptr translator_;
 
 public:
-  IFOptIConstraint(InequalityConstraint::shared_ptr constraint,
+  IFOptIConstraint(gtsam::NonlinearInequalityConstraint::shared_ptr constraint,
                    const std::string &name,
                    const IFOptTranslator::shared_ptr translator);
 

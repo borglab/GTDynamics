@@ -153,6 +153,10 @@ class ConstraintManifold {
                                 bool retract_init);
 
   /// Make sure the tangent space basis is constructed.
+  /// NOTE: The static mutex creates a global synchronization point across all
+  /// ConstraintManifold instances. This is a known limitation that could cause
+  /// unnecessary contention. A better design would move the mutex to the
+  /// TspaceBasis class itself.
   void makeSureBasisConstructed() const {
     if (!basis_->isConstructed()) {
       static std::mutex basis_mutex;

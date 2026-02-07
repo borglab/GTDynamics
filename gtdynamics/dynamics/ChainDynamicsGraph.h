@@ -18,13 +18,21 @@
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
 using gtsam::Vector3;
 
+/**
+ * ChainDynamicsGraph organizes a robot into chains (e.g., legs) and builds
+ * nonlinear factor graphs for pose (q-level) and dynamics at a given time
+ * step. It partitions the robot's joints into chain structures, composes
+ * chain-level dynamics, and aggregates factors including optional contact
+ * points and friction. The resulting graphs enable constrained optimization
+ * with GTSAM for robots that can be modeled as a trunk with multiple chains.
+ */
 class ChainDynamicsGraph : public DynamicsGraph {
  private:
   std::vector<std::vector<JointSharedPtr>> chain_joints_;
@@ -33,14 +41,11 @@ class ChainDynamicsGraph : public DynamicsGraph {
 
  public:
   /**
-   * Constructor
-   * @param  robot      the robot
-   * @param  opt          settings for optimizer
-   * @param  angle_tolerance   tolerance for angle estimation
-   * @param  torque_tolerance   tolerance for torque estimation
-   * @param  dynamics_tolerance   tolerance for dynamics estimation
-   * @param  gravity      gravity in world frame
-   * @param  planar_axis  axis of the plane, used only for planar robot
+   * Constructor.
+   * @param robot           the robot.
+   * @param opt             settings for optimizer.
+   * @param gravity         gravity in world frame.
+   * @param planar_axis     axis of the plane, used only for planar robot.
    */
   ChainDynamicsGraph(const Robot &robot, const OptimizerSetting &opt,
                      const Vector3 &gravity = Vector3(0, 0, -9.8),
@@ -59,10 +64,9 @@ class ChainDynamicsGraph : public DynamicsGraph {
       const std::optional<PointOnLinks> &contact_points = {}) const override;
 
   /**
-   * Create dynamics factors of the chain graph
-   * @param robot          the robot
-   * @param t              time step
-   * link and 0 denotes no contact.
+   * Return nonlinear factor graph of all dynamics factors.
+   * @param robot          the robot.
+   * @param t              time step.
    * @param contact_points optional vector of contact points.
    * @param mu             optional coefficient of static friction.
    */
@@ -72,10 +76,9 @@ class ChainDynamicsGraph : public DynamicsGraph {
       const std::optional<double> &mu = {}) const override;
 
   /**
-   * Return nonlinear factor graph of all dynamics factors
-   * @param robot          the robot
-   * @param t              time step
-   * link and 0 denotes no contact.
+   * Return nonlinear factor graph of all dynamics factors.
+   * @param robot          the robot.
+   * @param t              time step.
    * @param contact_points optional vector of contact points.
    * @param mu             optional coefficient of static friction.
    */

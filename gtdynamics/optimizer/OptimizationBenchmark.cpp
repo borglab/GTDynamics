@@ -25,20 +25,9 @@ namespace gtdynamics {
 
 namespace {
 
-gtsam::NonlinearEqualityConstraints ToGtsamConstraints(
-    const gtdynamics::EqualityConstraints& constraints) {
-  gtsam::NonlinearEqualityConstraints gtsam_constraints;
-  for (const auto& constraint : constraints) {
-    auto factor = constraint->createFactor(1.0);
-    gtsam_constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor);
-  }
-  return gtsam_constraints;
-}
-
 gtsam::ConstrainedOptProblem ToGtsamProblem(const EConsOptProblem& problem) {
-  auto gtsam_constraints = ToGtsamConstraints(problem.constraints());
   return gtsam::ConstrainedOptProblem::EqConstrainedOptProblem(
-      problem.costs(), gtsam_constraints);
+      problem.costs(), problem.constraints());
 }
 
 size_t CountIterations(const gtsam::PenaltyOptimizer& optimizer) {
@@ -74,7 +63,7 @@ Values OptimizeSoftConstraints(const EConsOptProblem& problem,
                                LevenbergMarquardtParams lm_params, double mu,
                                double constraint_unit_scale) {
   NonlinearFactorGraph graph = problem.costs_;
-  graph.add(problem.constraints().meritGraph(mu));
+  graph.add(problem.constraints().penaltyGraph(mu));
 
   LevenbergMarquardtOptimizer optimizer(graph, problem.initValues(), lm_params);
   auto optimization_start = std::chrono::system_clock::now();

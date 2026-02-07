@@ -1,4 +1,4 @@
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 
@@ -21,11 +21,11 @@ Double_ x2(x2_key);
 Double_ dist_square(dist_square_func, x1, x2);
 Double_ dist_error = dist_square - Double_(1.0);
 
-std::shared_ptr<gtdynamics::EqualityConstraints> get_constraints() {
-  auto constraints = std::make_shared<gtdynamics::EqualityConstraints>();
+std::shared_ptr<gtsam::NonlinearEqualityConstraints> get_constraints() {
+  auto constraints = std::make_shared<gtsam::NonlinearEqualityConstraints>();
   double tolerance = 1e-3;
-  constraints->emplace_shared<gtdynamics::DoubleExpressionEquality>(dist_error,
-                                                                    tolerance);
+  constraints->emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(
+      dist_error, 0.0, gtsam::Vector1(tolerance));
   return constraints;
 }
 

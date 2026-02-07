@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtsam {
@@ -25,7 +25,7 @@ namespace gtsam {
  * Each CCC will be repaced by a manifold variable for manifold optimization. */
 class ConnectedComponent {
 public:
-  const gtdynamics::EqualityConstraints
+  const gtsam::NonlinearEqualityConstraints
       constraints_; // constraints in CCC, h(X)=0
   const gtsam::NonlinearFactorGraph
       merit_graph_; // factor graph representing merit function ||h(X)||^2
@@ -33,7 +33,7 @@ public:
   using shared_ptr = std::shared_ptr<ConnectedComponent>;
 
   /// Constructor from constraints.
-  ConnectedComponent(const gtdynamics::EqualityConstraints &constraints)
+  ConnectedComponent(const gtsam::NonlinearEqualityConstraints &constraints)
       : constraints_(constraints),
         merit_graph_(constructMeritGraph(constraints)),
         keys_(merit_graph_.keys()) {}
@@ -41,7 +41,8 @@ public:
 protected:
   /// Create factor graph that represents merit function ||h(X)||^2.
   NonlinearFactorGraph
-  constructMeritGraph(const gtdynamics::EqualityConstraints &constraints);
+  constructMeritGraph(
+      const gtsam::NonlinearEqualityConstraints &constraints);
 };
 
 } // namespace gtsam

@@ -14,7 +14,8 @@
 #pragma once
 
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtdynamics/utils/GraphUtils.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
@@ -72,15 +73,16 @@ public:
   SQPState() {}
 
   SQPState(const Values &_values, const NonlinearFactorGraph &graph,
-           const EqualityConstraints &e_constraints,
-           const InequalityConstraints &i_constraints, const SQPParams &params,
+           const gtsam::NonlinearEqualityConstraints &e_constraints,
+           const gtsam::NonlinearInequalityConstraints &i_constraints,
+           const SQPParams &params,
            const double _lambda, const double _lambda_factor,
            const size_t _iterations = 0);
 
   static SQPState FromLastIteration(const SQPIterDetails &iter_details,
                                     const NonlinearFactorGraph &graph,
-                                    const EqualityConstraints &e_constraints,
-                                    const InequalityConstraints &i_constraints,
+                                    const gtsam::NonlinearEqualityConstraints &e_constraints,
+                                    const gtsam::NonlinearInequalityConstraints &i_constraints,
                                     const SQPParams &params);
 
 protected:
@@ -104,8 +106,9 @@ public:
 
   SQPTrial(const SQPState &state, const double _lambda,
            const NonlinearFactorGraph &graph,
-           const EqualityConstraints &e_constraints,
-           const InequalityConstraints &i_constraints, const SQPParams &params);
+           const gtsam::NonlinearEqualityConstraints &e_constraints,
+           const gtsam::NonlinearInequalityConstraints &i_constraints,
+           const SQPParams &params);
 
   /// Update lambda for the next trial/state.
   void setNextLambda(double &new_lambda, double &new_lambda_factor,
@@ -179,8 +182,8 @@ public:
       : p_(p), details_(std::make_shared<SQPItersDetails>()) {}
 
   static Eval MeritFunction(const NonlinearFactorGraph &graph,
-                            const EqualityConstraints &e_constraints,
-                            const InequalityConstraints &i_constraints,
+                            const gtsam::NonlinearEqualityConstraints &e_constraints,
+                            const gtsam::NonlinearInequalityConstraints &i_constraints,
                             const Values &values, const SQPParams &params);
 
   static Eval MeritFunctionApprox(const SQPState &state,
@@ -188,13 +191,13 @@ public:
                                   const SQPParams &params);
 
   Values optimize(const NonlinearFactorGraph &graph,
-                  const EqualityConstraints &e_constraints,
-                  const InequalityConstraints &i_constraints,
+                  const gtsam::NonlinearEqualityConstraints &e_constraints,
+                  const gtsam::NonlinearInequalityConstraints &i_constraints,
                   const Values &init_values);
 
   SQPIterDetails iterate(const NonlinearFactorGraph &graph,
-                         const EqualityConstraints &e_constraints,
-                         const InequalityConstraints &i_constraints,
+                         const gtsam::NonlinearEqualityConstraints &e_constraints,
+                         const gtsam::NonlinearInequalityConstraints &i_constraints,
                          const SQPState &state);
 
   /** Check if lambda is within limits. */

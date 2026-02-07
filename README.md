@@ -143,6 +143,11 @@ Constraint Manifold (F)   0.107 s
 Constraint Manifold (I)   0.061 s
 ```
 
+**Change note (Feb 1, 2026):** GTDynamics now uses GTSAM's nonlinear inequality constraints
+(`gtsam::NonlinearInequalityConstraint` / `NonlinearInequalityConstraints`) with the convention
+**g(x) <= 0**. The legacy GTDynamics nonlinear inequality classes were removed; linear inequality
+support remains in `gtdynamics/constraints/LinearInequalityConstraint.{h,cpp}`.
+
 ## Including GTDynamics With CMake
 
 The `examples/cmake_project_example` directory contains an example CMake-based project that demonstrates how to include GTDynamics in your application.

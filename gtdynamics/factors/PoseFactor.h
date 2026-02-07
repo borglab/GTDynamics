@@ -30,7 +30,7 @@ namespace gtdynamics {
 /**
  * Create single factor relating this link's pose (COM) with previous one.
  * Note: this function is provided for BW compatibility only, and will in time
- * be replaced with EqualityConstraint.
+ * be replaced with a gtsam equality constraint.
  *
  * PoseFactor is a three-way nonlinear factor between a joint's parent link
  * pose, child link pose, and the joint angle relating the two poses.
@@ -52,7 +52,7 @@ inline gtsam::NoiseModelFactor::shared_ptr PoseFactor(
 /**
  * Create single factor relating this link's pose (COM) with previous one.
  * Note: this function is provided for BW compatibility only, and will in time
- * be replaced with EqualityConstraint.
+ * be replaced with a gtsam equality constraint.
  *
  * @param wTp_key Key for parent link's CoM pose in world frame.
  * @param wTc_key Key for child link's CoM pose in world frame.

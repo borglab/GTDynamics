@@ -160,7 +160,7 @@ class Cdpr:
         """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
-            # TODO(yetong): Use EqualityConstraint.createFactor when wrapped.
+            # TODO(yetong): Use gtsam equality constraints when wrapped.
             dfg.add(
                 gtd.WrenchFactor(self.costmodel_wrench, self.eelink(), [
                     gtd.WrenchKey(self.ee_id(), 0, k),

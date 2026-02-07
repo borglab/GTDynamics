@@ -22,6 +22,7 @@
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
@@ -35,14 +36,14 @@ TEST(TspaceBasis, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  gtdynamics::EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor12);
-  constraints.emplace_shared<gtdynamics::FactorZeroErrorConstraint>(factor23);
+  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor12);
+  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
   // Create manifold values for testing.
   Values cm_base_values;

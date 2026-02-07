@@ -22,6 +22,7 @@
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -75,7 +76,8 @@ void TrajectoryOptimization() {
 
   /// Get constraints, costs, and initial values.
   auto constraints_graph = vision60.getConstraintsGraphTrajectory(num_steps);
-  auto constraints = ConstraintsFromGraph(constraints_graph);
+  auto constraints =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
   auto init_values = vision60.getInitValuesTrajectory(num_steps, dt, base_pose_init, des_poses, des_poses_t);
   NonlinearFactorGraph collocation_costs = vision60.collocationCosts(num_steps, dt);
   NonlinearFactorGraph boundary_costs = vision60.boundaryCosts(base_pose_init, base_twist_init, des_poses, des_poses_t, dt);
@@ -163,4 +165,3 @@ int main(int argc, char **argv) {
   TrajectoryOptimization();
   return 0;
 }
-

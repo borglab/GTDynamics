@@ -32,8 +32,8 @@ using gtsam::Matrix;
 
 /* ************************************************************************* */
 SQPState::SQPState(const Values &_values, const NonlinearFactorGraph &graph,
-                   const EqualityConstraints &e_constraints,
-                   const InequalityConstraints &i_constraints,
+                   const gtsam::NonlinearEqualityConstraints &e_constraints,
+                   const gtsam::NonlinearInequalityConstraints &i_constraints,
                    const SQPParams &params, const double _lambda,
                    const double _lambda_factor, const size_t _iterations)
     : lambda(_lambda), lambda_factor(_lambda_factor), values(_values),
@@ -41,17 +41,21 @@ SQPState::SQPState(const Values &_values, const NonlinearFactorGraph &graph,
                                        values, params)),
       iterations(_iterations), totalNumberInnerIterations(0) {
   linear_cost = *graph.linearize(values);
-  linear_e_merit = *e_constraints.meritGraph().linearize(values);
-  linear_e_constraints = *e_constraints.constrainedGraph().linearize(values);
+  linear_e_merit = *e_constraints.penaltyGraph().linearize(values);
+  gtsam::NonlinearFactorGraph e_constraint_graph;
+  for (const auto& constraint : e_constraints) {
+    e_constraint_graph.add(constraint);
+  }
+  linear_e_constraints = *e_constraint_graph.linearize(values);
   linear_i_constraints = GaussianFactorGraph();
   linear_i_merit = GaussianFactorGraph();
   for (const auto &i_constraint : i_constraints) {
     if (!i_constraint->feasible(values)) {
       auto e_constraint = i_constraint->createEqualityConstraint();
       linear_i_constraints.push_back(
-          e_constraint->createConstrainedFactor()->linearize(values));
+          e_constraint->linearize(values));
       linear_i_merit.push_back(
-          e_constraint->createFactor(1.0)->linearize(values));
+          e_constraint->penaltyFactor(1.0)->linearize(values));
     }
   }
   computeMinVector();
@@ -60,8 +64,8 @@ SQPState::SQPState(const Values &_values, const NonlinearFactorGraph &graph,
 /* ************************************************************************* */
 SQPState SQPState::FromLastIteration(const SQPIterDetails &iter_details,
                                      const NonlinearFactorGraph &graph,
-                                     const EqualityConstraints &e_constraints,
-                                     const InequalityConstraints &i_constraints,
+                                     const gtsam::NonlinearEqualityConstraints &e_constraints,
+                                     const gtsam::NonlinearInequalityConstraints &i_constraints,
                                      const SQPParams &params) {
   double lambda;
   const auto &last_trial = iter_details.trials.back();
@@ -77,7 +81,7 @@ SQPState SQPState::FromLastIteration(const SQPIterDetails &iter_details,
                              params.lm_params);
     return state;
   } else {
-    throw std::runtime_error("no success trials");
+    throw std::runtime_error("SQPState: No successful trials found");
   }
 }
 
@@ -102,8 +106,8 @@ void SQPState::computeMinVector() {
 /* ************************************************************************* */
 SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
                    const NonlinearFactorGraph &graph,
-                   const EqualityConstraints &e_constraints,
-                   const InequalityConstraints &i_constraints,
+                   const gtsam::NonlinearEqualityConstraints &e_constraints,
+                   const gtsam::NonlinearInequalityConstraints &i_constraints,
                    const SQPParams &params)
     : lambda(_lambda) {
   // build damped system
@@ -385,14 +389,14 @@ void PrintSQPTrial(const SQPState &state, const SQPTrial &trial,
 
 /* ************************************************************************* */
 Eval SQPOptimizer::MeritFunction(const NonlinearFactorGraph &graph,
-                                 const EqualityConstraints &e_constraints,
-                                 const InequalityConstraints &i_constraints,
+                                 const gtsam::NonlinearEqualityConstraints &e_constraints,
+                                 const gtsam::NonlinearInequalityConstraints &i_constraints,
                                  const Values &values,
                                  const SQPParams &params) {
   Eval eval;
   eval.cost = graph.error(values);
-  eval.e_violation = e_constraints.evaluateViolationL2Norm(values);
-  eval.i_violation = i_constraints.evaluateViolationL2Norm(values);
+  eval.e_violation = e_constraints.violationNorm(values);
+  eval.i_violation = i_constraints.violationNorm(values);
   double e_vio_l2 = 0.5 * pow(eval.e_violation, 2);
   double i_vio_l2 = 0.5 * pow(eval.i_violation, 2);
   eval.merit = eval.cost + params.merit_e_l1_mu * eval.e_violation +
@@ -425,8 +429,8 @@ Eval SQPOptimizer::MeritFunctionApprox(const SQPState &state,
 
 /* ************************************************************************* */
 Values SQPOptimizer::optimize(const NonlinearFactorGraph &graph,
-                              const EqualityConstraints &e_constraints,
-                              const InequalityConstraints &i_constraints,
+                              const gtsam::NonlinearEqualityConstraints &e_constraints,
+                              const gtsam::NonlinearInequalityConstraints &i_constraints,
                               const Values &init_values) {
   SQPState state(init_values, graph, e_constraints, i_constraints, *p_,
                  p_->lm_params.lambdaInitial, p_->lm_params.lambdaFactor, 0);
@@ -459,8 +463,8 @@ Values SQPOptimizer::optimize(const NonlinearFactorGraph &graph,
 
 /* ************************************************************************* */
 SQPIterDetails SQPOptimizer::iterate(const NonlinearFactorGraph &graph,
-                                     const EqualityConstraints &e_constraints,
-                                     const InequalityConstraints &i_constraints,
+                                     const gtsam::NonlinearEqualityConstraints &e_constraints,
+                                     const gtsam::NonlinearInequalityConstraints &i_constraints,
                                      const SQPState &state) {
   const LevenbergMarquardtParams &lm_params = p_->lm_params;
   SQPIterDetails iter_details(state);

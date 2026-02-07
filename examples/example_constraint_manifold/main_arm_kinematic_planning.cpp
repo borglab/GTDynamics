@@ -20,6 +20,7 @@
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
 
 using namespace gtsam;
@@ -247,7 +248,8 @@ void kinematic_planning() {
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
   auto init_values = get_init_values();
-  auto constraints = ConstraintsFromGraph(constraints_graph);
+  auto constraints =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
   auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;

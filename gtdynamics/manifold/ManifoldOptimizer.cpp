@@ -33,7 +33,7 @@ ManifoldOptimizerParameters::ManifoldOptimizerParameters()
 
 /* ************************************************************************* */
 ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
-    const gtdynamics::EqualityConstraints& constraints,
+    const gtsam::NonlinearEqualityConstraints& constraints,
     const gtsam::Key start_key, gtsam::KeySet& keys,
     const gtsam::VariableIndex& var_index) const {
   std::set<size_t> constraint_indices;
@@ -47,9 +47,8 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
     for (const auto& constraint_index : var_index[key]) {
       constraint_indices.insert(constraint_index);
       // TODO: use keys() in constraint
-      auto constraint_factor =
-          constraints.at(constraint_index)->createFactor(1.0);
-      for (const auto& neighbor_key : constraint_factor->keys()) {
+      const auto& constraint = constraints.at(constraint_index);
+      for (const auto& neighbor_key : constraint->keys()) {
         if (keys.find(neighbor_key) != keys.end()) {
           keys.erase(neighbor_key);
           key_stack.push(neighbor_key);
@@ -58,9 +57,9 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
     }
   }
 
-  gtdynamics::EqualityConstraints cc_constraints;
+  gtsam::NonlinearEqualityConstraints cc_constraints;
   for (const auto& constraint_index : constraint_indices) {
-    cc_constraints.emplace_back(constraints.at(constraint_index));
+    cc_constraints.push_back(constraints.at(constraint_index));
   }
   return std::make_shared<ConnectedComponent>(cc_constraints);
 }
@@ -68,13 +67,11 @@ ConnectedComponent::shared_ptr ManifoldOptimizer::findConnectedComponent(
 /* ************************************************************************* */
 std::vector<ConnectedComponent::shared_ptr>
 ManifoldOptimizer::identifyConnectedComponents(
-    const gtdynamics::EqualityConstraints& constraints) const {
+    const gtsam::NonlinearEqualityConstraints& constraints) const {
   // Get all the keys in constraints.
   // TODO(yetong): create VariableIndex from EqualityConstraints
   gtsam::NonlinearFactorGraph constraint_graph;
-  for (const auto& constraint : constraints) {
-    constraint_graph.add(constraint->createFactor(1.0));
-  }
+  constraint_graph.add(constraints.penaltyGraph(1.0));
   gtsam::VariableIndex constraint_var_index =
       gtsam::VariableIndex(constraint_graph);
   gtsam::KeySet constraint_keys;

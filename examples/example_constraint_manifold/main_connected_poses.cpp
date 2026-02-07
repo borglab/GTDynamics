@@ -13,10 +13,10 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptProblem.h>
 #include <gtdynamics/optimizer/OptimizationBenchmark.h>
 #include <gtdynamics/manifold/ConnectedComponent.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
@@ -183,8 +183,8 @@ void kinematic_planning() {
   std::vector<std::vector<Pose2>> odo_measurements = GetOdoMeasurements(gt);
   auto costs = get_costs(gt, odo_measurements);
   auto init_values = get_init_values(gt, odo_measurements);
-  auto constraints = ConstraintsFromGraph(constraints_graph);
-  // constraints = gtdynamics::EqualityConstraints();
+  auto constraints =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
   auto problem = EConsOptProblem(costs, constraints, init_values);
 
   std::ostringstream latex_os;
