@@ -63,7 +63,7 @@ class ConstraintManifold {
   Retractor::shared_ptr retractor_;  // retraction operation
   gtsam::Values values_;             // values of variables in CCC
   size_t embedding_dim_;             // dimension of embedding space
-  size_t constraint_dim_;            // dimension of constriants
+  size_t constraint_dim_;            // dimension of constraints
   size_t dim_;                       // dimension of constraint manifold
   TspaceBasis::shared_ptr basis_;    // tangent space basis
 

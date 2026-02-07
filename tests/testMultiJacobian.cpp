@@ -23,6 +23,7 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 
 using namespace gtsam;
+using namespace gtdynamics;
 
 // Test add and mult operators for MultiJacobian
 TEST(MultiJacobian, Add_Mult) {

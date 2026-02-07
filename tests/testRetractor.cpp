@@ -28,6 +28,7 @@
 #include "gtdynamics/cmopt/TspaceBasis.h"
 
 using namespace gtsam;
+using namespace gtdynamics;
 
 /** Simple example Pose3 with between constraints. */
 TEST(TspaceBasis, connected_poses) {
@@ -36,14 +37,14 @@ TEST(TspaceBasis, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  gtsam::NonlinearEqualityConstraints constraints;
+  auto constraints = std::make_shared<gtsam::NonlinearEqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor12);
-  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor23);
+  constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor12);
+  constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
   // Create manifold values for testing.
   Values base_values;

@@ -27,7 +27,6 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 using namespace gtdynamics;
-using gtsam::VectorExpressionEquality;
 using gtsam::assert_equal;
 using gtsam::Matrix;
 using gtsam::Point3;
@@ -1026,7 +1025,7 @@ gtsam::Values OldGraphOneLeg() {
   for (auto&& joint : robot.joints()) {
     const int joint_id = joint->id();
     gtsam::Double_ angle(JointAngleKey(joint_id, 0));
-    //eqs.emplace_shared<DoubleExpressionEquality>(angle, 1e-1);
+    //eqs.emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(angle, 0.0, 1e-1);
   }
 
   /// Solve the constraint problem with LM optimizer.

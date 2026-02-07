@@ -23,11 +23,11 @@ Values NonlinearMOptimizer::optimize(const NonlinearFactorGraph& costs,
                                      const EqualityConstraints& constraints,
                                      const Values& init_values) const {
   auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
-  return optimize(mopt_problem);
+  return optimizeMOpt(mopt_problem);
 }
 
 /* ************************************************************************* */
-Values NonlinearMOptimizer::optimize(
+Values NonlinearMOptimizer::optimizeMOpt(
     const ManifoldOptProblem& mopt_problem) const {
   auto nonlinear_optimizer = constructNonlinearOptimizer(mopt_problem);
   auto nopt_values = nonlinear_optimizer->optimize();

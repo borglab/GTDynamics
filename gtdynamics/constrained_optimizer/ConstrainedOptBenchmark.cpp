@@ -96,7 +96,7 @@ Values OptimizeE_CMOpt(const EConsOptProblem &problem, std::ostream &latex_os,
       problem.costs(), problem.constraints(), problem.initValues());
 
   auto optimization_start = std::chrono::system_clock::now();
-  auto result = optimizer.optimize(mopt_problem);
+  auto result = optimizer.optimizeMOpt(mopt_problem);
   auto optimization_end = std::chrono::system_clock::now();
   auto optimization_time_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -

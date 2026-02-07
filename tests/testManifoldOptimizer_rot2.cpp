@@ -171,6 +171,7 @@ struct traits<Rot2Projection> : gtsam::internal::Manifold<Rot2Projection> {};
 }  // namespace gtsam
 
 using namespace gtsam;
+using namespace gtdynamics;
 
 /** Check creation of manifold optimization problem. */
 TEST(ManifoldOptProblem, SO2) {

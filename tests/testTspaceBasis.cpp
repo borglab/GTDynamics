@@ -29,6 +29,7 @@
 #include <memory>
 
 using namespace gtsam;
+using namespace gtdynamics;
 
 /** Simple example Pose3 with between constraints. */
 TEST(TspaceBasis, connected_poses) {
@@ -37,14 +38,14 @@ TEST(TspaceBasis, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  gtsam::NonlinearEqualityConstraints constraints;
+  auto constraints = std::make_shared<gtsam::NonlinearEqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), noise);
-  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor12);
-  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor23);
+  constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor12);
+  constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
   // Create manifold values for testing.
   Values cm_base_values;
@@ -62,7 +63,7 @@ TEST(TspaceBasis, connected_poses) {
   auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
   auto basis_sm = sparse_creator->create(constraints, cm_base_values);
 
-  auto linear_graph = constraints->meritGraph().linearize(cm_base_values);
+  auto linear_graph = constraints->penaltyGraph().linearize(cm_base_values);
   std::vector<TspaceBasis::shared_ptr> basis_vec{basis_m, basis_e, basis_sm};
 
   // Check dimension.
@@ -83,8 +84,8 @@ TEST(TspaceBasis, connected_poses) {
       auto delta10 = basis->computeTangentVector(xi10);
       EXPECT(assert_equal(delta10, 10 * delta1));
       // check construct xi from tangent vector
-      auto recvoer_xi1 = basis->computeXi(delta1);
-      EXPECT(assert_equal(xi1, recvoer_xi1));
+      auto recover_xi1 = basis->computeXi(delta1);
+      EXPECT(assert_equal(xi1, recover_xi1));
     }
   }
 
@@ -133,10 +134,11 @@ TEST(TspaceBasis, linear_system) {
   Double_ x3(x3_key);
   Double_ x4(x4_key);
   double tol = 1.0;
-  auto constraints = std::make_shared<EqualityConstraints>();
-  constraints->emplace_shared<DoubleExpressionEquality>(x1 + x2 + x3, tol);
-  constraints->emplace_shared<DoubleExpressionEquality>(x1 + x2 + 2 * x3 + x4,
-                                                        tol);
+  auto constraints = std::make_shared<gtsam::NonlinearEqualityConstraints>();
+  constraints->emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(
+      x1 + x2 + x3, 0.0, (Vector(1) << tol).finished());
+  constraints->emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(x1 + x2 + 2 * x3 + x4,
+                                                        0.0, (Vector(1) << tol).finished());
 
   Values values;
   values.insertDouble(x1_key, 0.0);
@@ -152,14 +154,15 @@ TEST(TspaceBasis, linear_system) {
   auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
   auto basis_sm = sparse_creator->create(constraints, values);
 
-  // Construct new basis by adding addtional constraints
-  EqualityConstraints new_constraints;
-  new_constraints.emplace_shared<DoubleExpressionEquality>(x2, tol);
+  // Construct new basis by adding additional constraints
+  gtsam::NonlinearEqualityConstraints new_constraints;
+  new_constraints.emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(
+      x2, 0.0, (Vector(1) << tol).finished());
   auto new_basis_e = basis_e->createWithAdditionalConstraints(new_constraints, values);
   auto new_basis_m = basis_m->createWithAdditionalConstraints(new_constraints, values);
   auto new_basis_sm = basis_sm->createWithAdditionalConstraints(new_constraints, values);
-  NonlinearFactorGraph merit_graph = constraints->meritGraph();
-  merit_graph.add(new_constraints.meritGraph());
+  NonlinearFactorGraph merit_graph = constraints->penaltyGraph();
+  merit_graph.add(new_constraints.penaltyGraph());
   auto linear_graph = merit_graph.linearize(values);
   for (const auto& vector: new_basis_e->basisVectors()) {
     EXPECT(assert_equal(0.0, linear_graph->error(vector)));

@@ -33,20 +33,19 @@ TEST(PenaltyOptimizer, ConstrainedExample) {
   graph.add(ExpressionFactor<double>(cost_noise, 0., f1));
   graph.add(ExpressionFactor<double>(cost_noise, 0., f2));
 
-  EqualityConstraints constraints;
-  double tolerance = 1.0;
+  Vector sigmas = Vector1(0.1);
   auto g1 = x1 + pow(x1, 3) + x2 + pow(x2, 2);
-  constraints.push_back(EqualityConstraint::shared_ptr(
-      new DoubleExpressionEquality(g1, tolerance)));
+  graph.push_back(gtsam::NonlinearEqualityConstraint::shared_ptr(
+      new gtsam::ExpressionEqualityConstraint<double>(g1, 0.0, sigmas)));
 
   /// Create initial values.
-  Values init_values;
-  init_values.insert(x1_key, -0.2);
-  init_values.insert(x2_key, -0.2);
+  Values initialValues;
+  initialValues.insert(x1_key, -0.2);
+  initialValues.insert(x2_key, -0.2);
 
   /// Solve the constraint problem with Penalty method optimizer.
-  gtsam::PenaltyOptimizer optimizer;
-  Values results = optimizer.optimize(graph, constraints, init_values);
+  gtsam::PenaltyOptimizer optimizer(graph, initialValues);
+  Values results = optimizer.optimize();
 
   /// Check the result is correct within tolerance.
   Values gt_results;

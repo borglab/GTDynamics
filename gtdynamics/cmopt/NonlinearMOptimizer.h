@@ -60,7 +60,7 @@ class NonlinearMOptimizer : public ManifoldOptimizer {
                           const Values& initial_values) const override;
 
   /// Optimization given manifold optimization problem.
-  Values optimize(const ManifoldOptProblem& mopt_problem) const;
+  Values optimizeMOpt(const ManifoldOptProblem& mopt_problem) const;
 
   /// Create the underlying nonlinear optimizer for manifold optimization.
   std::shared_ptr<NonlinearOptimizer> constructNonlinearOptimizer(
