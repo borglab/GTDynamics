@@ -19,7 +19,7 @@
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Values.h>
 
-#define GTD_PRINT(x) ((x).print(#x, gtdynamics::_GTDKeyFormatter))
+#define GTD_PRINT(x) ((x).print(#x, _GTDKeyFormatter))
 
 namespace gtdynamics {
 

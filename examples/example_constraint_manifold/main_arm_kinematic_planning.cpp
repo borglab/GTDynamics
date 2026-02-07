@@ -15,7 +15,7 @@
 
 #include "SerialChain.h"
 
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
@@ -25,6 +25,35 @@
 
 using namespace gtsam;
 using namespace gtdynamics;
+
+/** Functor version of JointLimitFactor, for creating expressions. Compute error
+ * for joint limit error, to reproduce joint limit factor in expressions. */
+class JointLimitFunctor {
+protected:
+  double low_, high_;
+
+public:
+  JointLimitFunctor(const double &low, const double &high)
+      : low_(low), high_(high) {}
+
+  double operator()(const double &q,
+                    OptionalJacobian<1, 1> H_q = nullptr) const {
+    if (q < low_) {
+      if (H_q)
+        *H_q = -I_1x1;
+      return low_ - q;
+    } else if (q <= high_) {
+      if (H_q)
+        *H_q = Z_1x1;
+      return 0.0;
+    } else {
+      if (H_q)
+        *H_q = I_1x1;
+      return q - high_;
+    }
+  }
+};
+
 
 // Kuka arm planning scenario setting.
 const size_t num_steps = 10;
@@ -43,9 +72,9 @@ double joint_limit_low = -3.14;
 double joint_limit_high = 3.14;
 
 /** Function to manually define the basis keys for each constraint manifold. */
-KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
+KeyVector FindBasisKeys(const KeyVector& keys) {
   KeyVector basis_keys;
-  for (const Key& key : cc->keys_) {
+  for (const Key& key : keys) {
     auto symb = DynamicsSymbol(key);
     if (symb.label() == "q") {
       basis_keys.push_back(key);
@@ -243,7 +272,7 @@ void print_joint_angles_sc(const Values& values) {
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
 void kinematic_planning() {
-  // Create constrained optimization problem.
+  // Create constraiend optimization problem.
   robot.fixLink(base_name);
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
@@ -258,34 +287,33 @@ void kinematic_planning() {
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0);
+      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
 
   // optimize penalty method
   std::cout << "penalty method:\n";
   auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
   penalty_params->lmParams = lm_params;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+      OptimizeE_Penalty(problem, latex_os, penalty_params);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
-  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  augl_params->lmParams = lm_params;
-  auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
+  auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  almParams->lmParams = lm_params;
+  auto almResult =
+      OptimizeE_AugmentedLagrangian(problem, latex_os, almParams);
 
   // optimize constraint manifold specify variables (feasbile)
   std::cout << "constraint manifold basis variables (feasible):\n";
-  auto mopt_params = DefaultMoptParamsSV();
-  mopt_params.cc_params->basis_key_func = &FindBasisKeys;
-  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  auto cm_basis_result = OptimizeConstraintManifold(
+  auto mopt_params = DefaultMoptParamsSV(&FindBasisKeys);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+  auto cm_basis_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
 
   // // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
+  auto cm_basis_infeasible_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
 
   // // optimize serial chain manifold

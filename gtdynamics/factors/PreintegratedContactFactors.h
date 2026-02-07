@@ -179,7 +179,7 @@ class PreintegratedPointContactFactor
   /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtdynamics::GTDKeyFormatter) const override {
+                 GTDKeyFormatter) const override {
     std::cout << (s.empty() ? s : s + " ")
               << "Preintegrated Point Contact Factor" << std::endl;
     Base::print("", keyFormatter);
@@ -297,7 +297,7 @@ class PreintegratedRigidContactFactor
   /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtdynamics::GTDKeyFormatter) const override {
+                 GTDKeyFormatter) const override {
     std::cout << (s.empty() ? s : s + " ")
               << "Preintegrated Rigid Contact Factor" << std::endl;
     Base::print("", keyFormatter);

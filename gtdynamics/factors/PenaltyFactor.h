@@ -1,13 +1,25 @@
 #pragma once
 
+#include <gtsam/base/Matrix.h>
+#include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/Values.h>
+
+#include <functional>
 
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/nvp.hpp>
 #endif
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Matrix;
+using gtsam::NoiseModelFactor;
+using gtsam::OptionalJacobian;
+using gtsam::SharedNoiseModel;
+using gtsam::Values;
+using gtsam::Vector;
 
 inline std::function<double(const double &x, OptionalJacobian<1, 1> H)>
 RampFunction(const double offset) {
@@ -125,4 +137,4 @@ private:
 
 }; // \class PenaltyFactor
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -13,7 +13,7 @@
 
 #include <gtdynamics/cmopt/MultiJacobian.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 MultiJacobian::MultiJacobian(const Key &key, const Matrix &matrix)
@@ -107,20 +107,20 @@ bool MultiJacobian::equals(const MultiJacobian &other, double tol) const {
   for (const auto &it : *this) {
     const Key &key = it.first;
     if (other.find(key) == other.end()) {
-      if (!assert_equal(it.second,
-                        Matrix::Zero(it.second.rows(), it.second.cols()),
-                        tol)) {
+      if (!gtsam::assert_equal(it.second,
+                               Matrix::Zero(it.second.rows(), it.second.cols()),
+                               tol)) {
         return false;
       }
-    } else if (!assert_equal(it.second, other.at(key), tol)) {
+    } else if (!gtsam::assert_equal(it.second, other.at(key), tol)) {
       return false;
     }
   }
   for (const auto &it : other) {
     if (find(it.first) == end()) {
-      if (!assert_equal(it.second,
-                        Matrix::Zero(it.second.rows(), it.second.cols()),
-                        tol)) {
+      if (!gtsam::assert_equal(it.second,
+                               Matrix::Zero(it.second.rows(), it.second.cols()),
+                               tol)) {
         return false;
       }
     }
@@ -152,7 +152,7 @@ void ComputeBayesNetJacobian(const GaussianBayesNet &bn,
   // iteratively set jacobian of other variables
   for (auto cg : reversed_bn) {
     const Matrix S_mat = -cg->R().triangularView<Eigen::Upper>().solve(cg->S());
-    DenseIndex frontal_position = 0;
+    Eigen::DenseIndex frontal_position = 0;
     for (auto frontal = cg->beginFrontals(); frontal != cg->endFrontals();
          ++frontal) {
       const Key frontal_key = *frontal;
@@ -160,7 +160,7 @@ void ComputeBayesNetJacobian(const GaussianBayesNet &bn,
       // initialize jacobian for frontal variable
       jacobians[frontal_key] = MultiJacobian();
       // add the jacobian component from each parent
-      DenseIndex parent_position = 0;
+      Eigen::DenseIndex parent_position = 0;
       for (auto parent = cg->beginParents(); parent != cg->endParents();
            ++parent) {
         const Key parent_key = *parent;
@@ -228,4 +228,4 @@ MultiJacobians JacobiansMultiply(const MultiJacobians &jacs1,
   return result_jacs;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

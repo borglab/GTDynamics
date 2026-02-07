@@ -1,9 +1,17 @@
 #pragma once
 
+#include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 
-namespace gtsam {
+#include <functional>
+
+namespace gtdynamics {
+
+using gtsam::Key;
+using gtsam::NoiseModelFactor;
+using gtsam::OptionalJacobian;
+using gtsam::SharedNoiseModel;
 
 typedef std::function<double(const double &x, OptionalJacobian<1, 1> H)>
     DoublePenaltyFunc;
@@ -38,4 +46,4 @@ NoiseModelFactor::shared_ptr SmoothPenaltyFactor(const Key &key,
                                                  const double &b,
                                                  const SharedNoiseModel &model);
 
-} // namespace gtsam
+} // namespace gtdynamics

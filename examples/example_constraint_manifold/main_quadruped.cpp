@@ -13,9 +13,6 @@
 
 #include "QuadrupedUtils.h"
 
-#include <gtdynamics/utils/PointOnLink.h>
-#include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -38,13 +35,13 @@
 #include <gtdynamics/factors/TorqueFactor.h>
 
 #include "gtdynamics/factors/ContactPointFactor.h"
-#include "gtdynamics/manifold/ConnectedComponent.h"
 #include "gtdynamics/constrained_optimizer/ConstrainedOptimizer.h"
-#include "gtdynamics/manifold/ConstraintManifold.h"
-#include "gtdynamics/manifold/TspaceBasis.h"
+#include "gtdynamics/cmopt/ConstraintManifold.h"
+#include "gtdynamics/cmopt/TspaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/values.h"
-#include "gtdynamics/optimizer/OptimizationBenchmark.h"
+#include "gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h"
+#include "gtdynamics/universal_robot/Link.h"
 
 #include <fstream>
 #include <iostream>
@@ -114,47 +111,49 @@ void TrajectoryOptimization() {
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1e2, constraint_unit_scale);
+      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1e2, constraint_unit_scale);
   EvaluateCosts(soft_result);
   vision60.exportTrajectory(soft_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/soft_traj.csv");
 
   // // optimize penalty method
   // std::cout << "penalty method:\n";
-  // auto penalty_params = std::make_shared<PenaltyParameters>();
-  // penalty_params->lm_params = lm_params;
+  // PenaltyOptimizerParams penalty_params;
+  // penalty_params.lm_params = lm_params;
   // auto penalty_result =
-  //     OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
+  //     OptimizeE_Penalty(problem, latex_os, penalty_params, constraint_unit_scale);
   // EvaluateCosts(penalty_result);
 
   // // optimize augmented lagrangian
   // std::cout << "augmented lagrangian:\n";
-  // AugmentedLagrangianParameters augl_params;
-  // augl_params.lm_params = lm_params;
-  // auto augl_result =
-  //     OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
-  // EvaluateCosts(augl_result);
+  // AugmentedLagrangianParameters almParams;
+  // almParams.lm_params = lm_params;
+  // auto almResult =
+  //     OptimizeE_AugmentedLagrangian(problem, latex_os, almParams, constraint_unit_scale);
+  // EvaluateCosts(almResult);
 
   // std::cout << "constraint manifold basis variables feasible:\n";
   lm_params.setlambdaInitial(1e1);
-  auto mopt_params = DefaultMoptParamsSV();
+  auto mopt_params = DefaultMoptParamsSV(vision60.getBasisKeyFunc());
   // mopt_params.cc_params->retract_params->setDynamics(true);
-  mopt_params.cc_params->retract_params->setProjection(true, 1.0, true);
-  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+  mopt_params.cc_params->retractor_creator->params()->use_basis_keys=true;
+  mopt_params.cc_params->retractor_creator->params()->sigma=1.0;
+  mopt_params.cc_params->retractor_creator->params()->apply_base_retraction = true;
+
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   // mopt_params.cc_params->retract_params->setUopt();
-  mopt_params.cc_params->basis_key_func = vision60.getBasisKeyFunc();
-  mopt_params.cc_params->retract_params->check_feasible = true;
+  mopt_params.cc_params->retractor_creator->params()->check_feasible = true;
   auto cm_result =
-        OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
+        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
   EvaluateCosts(cm_result);
   vision60.exportTrajectory(cm_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv");
 
   std::cout << "constraint manifold basis variables infeasible:\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(10);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(10);
   mopt_params.retract_final = true;
-  auto cm_infeas_result =
-        OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
-  EvaluateCosts(cm_infeas_result);
-  vision60.exportTrajectory(cm_infeas_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_infeas_traj.csv");
+  auto cm_infeasible_result =
+        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
+  EvaluateCosts(cm_infeasible_result);
+  vision60.exportTrajectory(cm_infeasible_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_infeas_traj.csv");
 
 
   std::cout << latex_os.str();

@@ -22,7 +22,6 @@ namespace gtdynamics {
 
 using gtsam::LevenbergMarquardtParams;
 using gtsam::GaussianFactorGraph;
-using gtsam::LMCachedModel;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Values;
 using gtsam::Vector;

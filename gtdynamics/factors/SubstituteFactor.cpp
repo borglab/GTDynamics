@@ -14,7 +14,7 @@
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/factors/SubstituteFactor.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 KeyVector SubstituteFactor::computeNewKeys(
@@ -127,4 +127,4 @@ Vector SubstituteFactor::unwhitenedError(
   }
 }
 
-}  // namespace gtsam
+}  // namespace gtdynamics

@@ -13,16 +13,32 @@
 
 #pragma once
 
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/base/OptionalJacobian.h>
+#include <gtsam/base/Vector.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/inference/Key.h>
+#include <gtsam/linear/VectorValues.h>
+#include <gtsam/nonlinear/Values.h>
 #include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/cmopt/TspaceBasis.h>
 
 #include <cstddef>
+#include <map>
+#include <memory>
 #include <mutex>
+#include <optional>
 
-using gtsam::EqualityConstraints;
+namespace gtdynamics {
 
-namespace gtsam {
+using gtsam::Key;
+using gtsam::KeyVector;
+using gtsam::OptionalJacobian;
+using gtsam::Value;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::VectorValues;
+
+using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
 
 /** Manifold representing constraint-connected component. Any element on the
  * manifold is the values of variables in CCC satisfying the constraints, e.g.,
@@ -43,7 +59,7 @@ class ConstraintManifold {
 
  protected:
   Params::shared_ptr params_;
-  gtsam::EqualityConstraints::shared_ptr constraints_;
+  EqualityConstraints::shared_ptr constraints_;
   Retractor::shared_ptr retractor_;  // retraction operation
   gtsam::Values values_;             // values of variables in CCC
   size_t embedding_dim_;             // dimension of embedding space
@@ -156,17 +172,13 @@ class ConstraintManifold {
       static std::mutex basis_mutex;
       std::lock_guard<std::mutex> lock(basis_mutex);
       if (!basis_->isConstructed()) {
-        basis_->construct(cc_, values_);
+        basis_->construct(values_);
       }
     }
   }
 };
 
 // Specialize ConstraintManifold traits to use a Retract/Local
-template <>
-struct traits<ConstraintManifold>
-    : gtsam::internal::Manifold<ConstraintManifold> {};
-
 class EManifoldValues : public std::map<Key, ConstraintManifold> {
 public:
  using base = std::map<Key, ConstraintManifold>;
@@ -183,4 +195,10 @@ public:
  std::map<Key, size_t> dims() const;
 };
 
+}  // namespace gtdynamics
+
+namespace gtsam {
+template <>
+struct traits<gtdynamics::ConstraintManifold>
+    : gtsam::internal::Manifold<gtdynamics::ConstraintManifold> {};
 }  // namespace gtsam

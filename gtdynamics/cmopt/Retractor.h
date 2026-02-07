@@ -17,15 +17,27 @@
 #include <gtdynamics/utils/values.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/cmopt/MultiJacobian.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtdynamics/cmopt/TspaceBasis.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
+#include <gtsam/inference/Key.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-using gtsam::EqualityConstraints;
+#include <optional>
+#include <vector>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
+using gtsam::Key;
+using gtsam::KeySet;
+using gtsam::KeyVector;
+using gtsam::LevenbergMarquardtParams;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
+using gtsam::VectorValues;
 
 /// Parameters for constraint manifold retraction operation.
 struct RetractParams {
@@ -49,7 +61,6 @@ struct RetractParams {
  * manifold. */
 class Retractor {
  protected:
-  // ConnectedComponent::shared_ptr cc_;
   RetractParams::shared_ptr params_;
 
  public:
@@ -284,4 +295,4 @@ public:
   }
 };
 
-}  // namespace gtsam
+}  // namespace gtdynamics

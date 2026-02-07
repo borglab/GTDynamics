@@ -12,8 +12,10 @@
  */
 
 #include <Eigen/SparseQR>
+#if defined(GTDYNAMICS_WITH_SUITESPARSE)
 #include <SuiteSparseQR.hpp>
 #include <cholmod.h>
+#endif
 #include <gtdynamics/cmopt/TspaceBasis.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/linear/GaussianBayesNet.h>
@@ -23,7 +25,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 std::vector<VectorValues> TspaceBasis::basisVectors() const {
@@ -54,7 +56,7 @@ Matrix OrthonormalBasis::rearrangeMatrix(const Matrix &A,
 /* ************************************************************************* */
 Matrix OrthonormalBasis::computeConstraintJacobian(const Values &values) const {
   auto linear_graph = attributes_->merit_graph.linearize(values);
-  JacobianFactor combined(*linear_graph);
+  gtsam::JacobianFactor combined(*linear_graph);
   if (combined.keys().size() == values.keys().size()) {
     return combined.jacobian().first;
   }
@@ -74,7 +76,7 @@ OrthonormalBasis::OrthonormalBasis(
   attributes_->total_var_dim = values.dim();
   attributes_->total_basis_dim =
       attributes_->total_var_dim - attributes_->total_constraint_dim;
-  attributes_->merit_graph = constraints->meritGraph();
+  attributes_->merit_graph = constraints->penaltyGraph();
   size_t position = 0;
   for (const Key &key : values.keys()) {
     size_t var_dim = values.at(key).dim();
@@ -117,6 +119,7 @@ void OrthonormalBasis::constructSparse(const Values &values) {
   size_t nrows = attributes_->total_constraint_dim;
   size_t ncols = attributes_->total_var_dim + 1;
 
+#if defined(GTDYNAMICS_WITH_SUITESPARSE)
   cholmod_common common;
   cholmod_common *cc = &common;
   cholmod_l_start(cc);
@@ -138,6 +141,18 @@ void OrthonormalBasis::constructSparse(const Values &values) {
   cholmod_l_free_sparse(&selection_mat, cc);
   cholmod_l_free_sparse(&basis_cholmod, cc);
   cholmod_l_finish(cc);
+#else
+  SpMatrix A_t = SparseJacobianTranspose(nrows, ncols, triplets);
+  Eigen::SparseQR<SpMatrix, Eigen::COLAMDOrdering<int>> qr;
+  qr.compute(A_t);
+  if (qr.info() != Eigen::Success) {
+    throw std::runtime_error("Eigen SparseQR failed for tangent basis.");
+  }
+
+  SpMatrix selection_mat = LastColsSelectionMat(attributes_->total_var_dim,
+                                                attributes_->total_basis_dim);
+  basis_ = qr.matrixQ() * Matrix(selection_mat);
+#endif
 }
 
 /* ************************************************************************* */
@@ -145,7 +160,7 @@ TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
     const EqualityConstraints &constraints, const Values &values,
     bool create_from_scratch) const {
   // attributes
-  auto new_merit_graph = constraints.meritGraph();
+  auto new_merit_graph = constraints.penaltyGraph();
 
   auto new_attributes = std::make_shared<Attributes>();
   new_attributes->merit_graph = attributes_->merit_graph;
@@ -182,7 +197,7 @@ TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
 TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsDense(
     const GaussianFactorGraph &graph,
     const Attributes::shared_ptr &new_attributes) const {
-  JacobianFactor combined(graph);
+  gtsam::JacobianFactor combined(graph);
   Matrix A_new = combined.jacobian().first;
   A_new = rearrangeMatrix(A_new, combined.keys());
   Matrix AB_new = A_new * basis_;
@@ -247,6 +262,7 @@ Vector OrthonormalBasis::localCoordinates(const Values &values,
   return xi;
 }
 
+#if defined(GTDYNAMICS_WITH_SUITESPARSE)
 void PrintDense(const cholmod_dense *A, const cholmod_common *cc) {
   for (int i = 0; i < A->nrow; i++) {
     for (int j = 0; j < A->ncol; j++) {
@@ -261,8 +277,10 @@ void PrintSparse(cholmod_sparse *A, cholmod_common *cc) {
   PrintDense(A_dense, cc);
   cholmod_l_free_dense(&A_dense, cc);
 }
+#endif
 
 /* ************************************************************************* */
+#if defined(GTDYNAMICS_WITH_SUITESPARSE)
 cholmod_sparse *OrthonormalBasis::SparseJacobianTranspose(
     const size_t nrows, const size_t ncols,
     const std::vector<std::tuple<int, int, double>> &triplets,
@@ -323,7 +341,8 @@ OrthonormalBasis::SpMatrix
 OrthonormalBasis::CholmodToEigen(cholmod_sparse *A, cholmod_common *cc) {
 
   cholmod_triplet *T = cholmod_l_sparse_to_triplet(A, cc);
-  std::vector<Eigen::Triplet<double>> triplets(T->nnz);
+  std::vector<Eigen::Triplet<double>> triplets;
+  triplets.reserve(T->nnz);
   for (int idx = 0; idx < T->nnz; idx++) {
     triplets.emplace_back(((int64_t *)(T->i))[idx], ((int64_t *)(T->j))[idx],
                           ((double *)(T->x))[idx]);
@@ -334,6 +353,39 @@ OrthonormalBasis::CholmodToEigen(cholmod_sparse *A, cholmod_common *cc) {
   cholmod_l_free_triplet(&T, cc);
   return A_eigen;
 }
+#else
+OrthonormalBasis::SpMatrix OrthonormalBasis::SparseJacobianTranspose(
+    const size_t nrows, const size_t ncols,
+    const std::vector<std::tuple<int, int, double>> &triplets) {
+  const size_t last_col = ncols - 1;
+  std::vector<Eigen::Triplet<double>> entries;
+  entries.reserve(triplets.size());
+  for (const auto &triplet : triplets) {
+    if (std::get<1>(triplet) < last_col) {
+      entries.emplace_back(std::get<1>(triplet), std::get<0>(triplet),
+                           std::get<2>(triplet));
+    }
+  }
+
+  SpMatrix A_t(ncols - 1, nrows);
+  A_t.setFromTriplets(entries.begin(), entries.end());
+  return A_t;
+}
+
+OrthonormalBasis::SpMatrix
+OrthonormalBasis::LastColsSelectionMat(const size_t nrows, const size_t ncols) {
+  std::vector<Eigen::Triplet<double>> entries;
+  entries.reserve(ncols);
+  const size_t pad = nrows - ncols;
+  for (size_t idx = 0; idx < ncols; idx++) {
+    entries.emplace_back(pad + idx, idx, 1.0);
+  }
+
+  SpMatrix A(nrows, ncols);
+  A.setFromTriplets(entries.begin(), entries.end());
+  return A;
+}
+#endif
 
 /* ************************************************************************* */
 OrthonormalBasis::SpMatrix
@@ -390,7 +442,7 @@ EliminationBasis::EliminationBasis(
   // Set the location of each basis variable.
   attributes_->total_basis_dim = values.dim() - constraints->dim();
   attributes_->var_dim = values.dims();
-  attributes_->merit_graph = constraints->meritGraph();
+  attributes_->merit_graph = constraints->penaltyGraph();
 
   if (basis_keys) {
     attributes_->basis_keys = *basis_keys;
@@ -441,7 +493,7 @@ void EliminationBasis::construct(const Values &values) {
   // TODO: scenarios with unconstrained keys
   auto linear_graph = attributes_->merit_graph.linearize(values);
   auto elim_result = linear_graph->eliminatePartialSequential(
-      attributes_->ordering, EliminateQR);
+      attributes_->ordering, gtsam::EliminateQR);
   auto bayes_net = elim_result.first;
   ComputeBayesNetJacobian(*bayes_net, attributes_->basis_keys,
                           attributes_->var_dim, jacobians_);
@@ -454,7 +506,7 @@ TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
     bool create_from_scratch) const {
 
   // Identify the keys to eliminate
-  NonlinearFactorGraph new_merit_graph = constraints.meritGraph();
+  NonlinearFactorGraph new_merit_graph = constraints.penaltyGraph();
   KeyVector new_basis_keys;
   KeySet new_constraint_keys = constraints.keys();
   for (const Key &key : attributes_->basis_keys) {
@@ -573,4 +625,4 @@ Vector EliminationBasis::localCoordinates(const Values &values,
   return xi;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

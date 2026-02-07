@@ -11,11 +11,11 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/cmopt/Retractor.h>
-#include <gtdynamics/constrained_optimizer/AugmentedLagrangianOptimizer.h>
-#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
+#include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
+#include <gtsam/constrained/PenaltyOptimizer.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/VectorValues.h>
@@ -31,7 +31,7 @@
 #include "utils/DynamicsSymbol.h"
 #include "utils/values.h"
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 void Retractor::checkFeasible(const NonlinearFactorGraph &graph,
@@ -47,7 +47,7 @@ void Retractor::checkFeasible(const NonlinearFactorGraph &graph,
 UoptRetractor::UoptRetractor(const EqualityConstraints::shared_ptr &constraints,
                              const RetractParams::shared_ptr &params)
     : Retractor(params),
-      optimizer_(constraints->meritGraph(), params->lm_params) {}
+      optimizer_(constraints->penaltyGraph(), params->lm_params) {}
 
 /* ************************************************************************* */
 Values UoptRetractor::retractConstraints(const Values &values) {
@@ -69,7 +69,7 @@ Values UoptRetractor::retractConstraints(Values &&values) {
 ProjRetractor::ProjRetractor(const EqualityConstraints::shared_ptr &constraints,
                              const RetractParams::shared_ptr &params,
                              std::optional<const KeyVector> basis_keys)
-    : Retractor(params), merit_graph_(constraints->meritGraph()) {
+    : Retractor(params), merit_graph_(constraints->penaltyGraph()) {
   if (params->use_basis_keys) {
     basis_keys_ = *basis_keys;
   }
@@ -77,7 +77,7 @@ ProjRetractor::ProjRetractor(const EqualityConstraints::shared_ptr &constraints,
 
 /* ************************************************************************* */
 Values ProjRetractor::retractConstraints(const Values &values) {
-  LevenbergMarquardtOptimizer optimizer(merit_graph_, values);
+  gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph_, values);
   return optimizer.optimize();
 }
 
@@ -94,8 +94,8 @@ Values ProjRetractor::retract(const Values &values, const VectorValues &delta) {
   // const Values &init_values =
   //     params_->apply_base_retraction ? values_retract_base : values;
   const Values &init_values = values_retract_base;
-  LevenbergMarquardtOptimizer optimizer_with_priors(graph, init_values,
-                                                    params_->lm_params);
+  gtsam::LevenbergMarquardtOptimizer optimizer_with_priors(graph, init_values,
+                                                           params_->lm_params);
   const Values &result = optimizer_with_priors.optimize();
   if (params_->use_basis_keys &&
       optimizer_with_priors.error() < params_->feasible_threshold) {
@@ -103,7 +103,7 @@ Values ProjRetractor::retract(const Values &values, const VectorValues &delta) {
   }
 
   // optimize without priors
-  LevenbergMarquardtOptimizer optimizer_without_priors(
+  gtsam::LevenbergMarquardtOptimizer optimizer_without_priors(
       merit_graph_, result, params_->lm_params);
   const Values &final_result = optimizer_without_priors.optimize();
   checkFeasible(merit_graph_, final_result);
@@ -111,11 +111,11 @@ Values ProjRetractor::retract(const Values &values, const VectorValues &delta) {
 }
 
 /* ************************************************************************* */
-BasisRetractor::BasisRetractor(const EqualityConstraints::shared_ptr &constraints,
-                               const RetractParams::shared_ptr &params,
-                               const KeyVector &basis_keys)
+BasisRetractor::BasisRetractor(
+    const EqualityConstraints::shared_ptr &constraints,
+    const RetractParams::shared_ptr &params, const KeyVector &basis_keys)
     : Retractor(params),
-      merit_graph_(constraints->meritGraph()),
+      merit_graph_(constraints->penaltyGraph()),
       basis_keys_(basis_keys),
       optimizer_(params->lm_params) {
   NonlinearFactorGraph graph;
@@ -168,7 +168,7 @@ Values BasisRetractor::retractConstraints(const Values &values) {
       for (const Key &key : basis_keys_) {
         result.insert(key, values.at(key));
       }
-      auto optimizer = LevenbergMarquardtOptimizer(merit_graph_, result);
+      auto optimizer = gtsam::LevenbergMarquardtOptimizer(merit_graph_, result);
       result = optimizer.optimize();
       checkFeasible(merit_graph_, result);
       return result;
@@ -183,13 +183,13 @@ Values BasisRetractor::retractConstraints(const Values &values) {
 }
 
 bool isQLevel(const Key &key) {
-  gtdynamics::DynamicsSymbol symb(key);
-  return symb.label() == "p" || symb.label() == "q";
+  DynamicsSymbol symbol(key);
+  return symbol.label() == "p" || symbol.label() == "q";
 }
 
 bool isVLevel(const Key &key) {
-  gtdynamics::DynamicsSymbol symb(key);
-  return symb.label() == "V" || symb.label() == "v";
+  DynamicsSymbol symbol(key);
+  return symbol.label() == "V" || symbol.label() == "v";
 }
 
 /* ************************************************************************* */
@@ -197,21 +197,22 @@ template <typename CONTAINER>
 void AddLinearPriors(NonlinearFactorGraph &graph, const CONTAINER &keys,
                      const Values &values = Values()) {
   for (const Key &key : keys) {
-    gtdynamics::DynamicsSymbol symb(key);
-    if (symb.label() == "p") {
-      graph.addPrior<Pose3>(
-          key, values.exists(key) ? values.at<Pose3>(key) : Pose3(),
-          noiseModel::Isotropic::Sigma(6, 1e-2));
-    } else if (symb.label() == "q" || symb.label() == "v" ||
-               symb.label() == "a" || symb.label() == "T") {
+    DynamicsSymbol symbol(key);
+    if (symbol.label() == "p") {
+      graph.addPrior<gtsam::Pose3>(
+          key,
+          values.exists(key) ? values.at<gtsam::Pose3>(key) : gtsam::Pose3(),
+          gtsam::noiseModel::Isotropic::Sigma(6, 1e-2));
+    } else if (symbol.label() == "q" || symbol.label() == "v" ||
+               symbol.label() == "a" || symbol.label() == "T") {
       graph.addPrior<double>(key,
                              values.exists(key) ? values.atDouble(key) : 0.0,
-                             noiseModel::Isotropic::Sigma(1, 1e-2));
+                             gtsam::noiseModel::Isotropic::Sigma(1, 1e-2));
     } else {
-      Vector6 value =
-          values.exists(key) ? values.at<Vector6>(key) : Vector6::Zero();
-      graph.addPrior<Vector6>(key, value,
-                              noiseModel::Isotropic::Sigma(6, 1e-2));
+      gtsam::Vector6 value = values.exists(key) ? values.at<gtsam::Vector6>(key)
+                                                : gtsam::Vector6::Zero();
+      graph.addPrior<gtsam::Vector6>(
+          key, value, gtsam::noiseModel::Isotropic::Sigma(6, 1e-2));
     }
   }
 }
@@ -237,7 +238,7 @@ DynamicsRetractor::DynamicsRetractor(
     const RetractParams::shared_ptr &params,
     std::optional<const KeyVector> basis_keys)
     : Retractor(params),
-      merit_graph_(constraints->meritGraph()),
+      merit_graph_(constraints->penaltyGraph()),
       optimizer_wp_q_(params->lm_params),
       optimizer_wp_v_(params->lm_params),
       optimizer_wp_ad_(params->lm_params),
@@ -355,16 +356,16 @@ Values DynamicsRetractor::retractConstraints(const Values &values) {
   // all_basis_keys.merge(basis_ad_keys_);
   // AddGeneralPriors(values, all_basis_keys, params_->sigma, graph_wp_all);
 
-  // LevenbergMarquardtParams lm_parmas = params_->lm_params;
-  // lm_parmas.setMaxIterations(10);
+  // LevenbergMarquardtParams lm_params = params_->lm_params;
+  // lm_params.setMaxIterations(10);
   // LevenbergMarquardtOptimizer optimizer_wp_all(graph_wp_all, known_values,
   // params_->lm_params); auto result = optimizer_wp_all.optimize();
 
-  // LevenbergMarquardtOptimizer optimzier_np_all(cc_->merit_graph_, result,
-  // params_->lm_params); result = optimzier_np_all.optimize();
+  // LevenbergMarquardtOptimizer optimizer_np_all(cc_->merit_graph_, result,
+  // params_->lm_params); result = optimizer_np_all.optimize();
   // checkFeasible(cc_->merit_graph_, result);
 
   return known_values;
 }
 
-}  // namespace gtsam
+}  // namespace gtdynamics

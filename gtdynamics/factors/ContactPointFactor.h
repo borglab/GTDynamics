@@ -67,7 +67,7 @@ class ContactPointFactor
   ContactPointFactor(const PointOnLink &point_on_link, gtsam::Key point_key,
                      const gtsam::noiseModel::Base::shared_ptr &cost_model,
                      size_t t = 0)
-      : ContactPointFactor(gtdynamics::PoseKey(point_on_link.link->id(), t),
+      : ContactPointFactor(PoseKey(point_on_link.link->id(), t),
                            point_key, cost_model, point_on_link.point) {}
 
   virtual ~ContactPointFactor() {}
@@ -161,7 +161,7 @@ class ContactPoseFactor
                     const gtsam::noiseModel::Base::shared_ptr &cost_model,
                     size_t t = 0)
       : ContactPoseFactor(
-            gtdynamics::PoseKey(point_on_link.link->id(), t), contact_pose_key,
+            PoseKey(point_on_link.link->id(), t), contact_pose_key,
             cost_model,
             // Contact reference frame has same rotation as the link CoM
             gtsam::Pose3(gtsam::Rot3(), point_on_link.point)) {}

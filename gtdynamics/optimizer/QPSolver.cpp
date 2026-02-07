@@ -13,12 +13,15 @@
 
 #include <gtdynamics/optimizer/QPSolver.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Key;
+using gtsam::JacobianFactor;
 
 std::pair<Vector, Vector> SolveEQP(const Matrix &A_cost, const Vector &b_cost,
                                    const Matrix &A_constraint,
                                    const Vector &b_constraint) {
-  GaussianFactorGraph graph;
+  gtsam::GaussianFactorGraph graph;
   // Key key = 0;
   // size_t cost_dim = A_cost.rows();
   // size_t constraint_dim = A_constraint.rows();
@@ -38,12 +41,12 @@ std::pair<Vector, Vector> SolveEQP(const Matrix &A_cost, const Vector &b_cost,
   Key lambda_key = 1;
   Matrix G = A_cost.transpose() * A_cost;
   Vector c = -b_cost.transpose() * A_cost;
-  graph.emplace_shared<JacobianFactor>(x_key, G, lambda_key,
-                                       -A_constraint.transpose(), -c,
-                                       noiseModel::Unit::Create(c.size()));
+  graph.emplace_shared<JacobianFactor>(
+      x_key, G, lambda_key, -A_constraint.transpose(), -c,
+      gtsam::noiseModel::Unit::Create(c.size()));
   graph.emplace_shared<JacobianFactor>(
       x_key, A_constraint, b_constraint,
-      noiseModel::Unit::Create(b_constraint.size()));
+      gtsam::noiseModel::Unit::Create(b_constraint.size()));
 
   auto result = graph.optimize();
   Vector x = result.at(x_key);
@@ -51,4 +54,4 @@ std::pair<Vector, Vector> SolveEQP(const Matrix &A_cost, const Vector &b_cost,
   return std::make_pair(x, lambda);
 }
 
-} // namespace gtsam
+}  // namespace gtdynamics

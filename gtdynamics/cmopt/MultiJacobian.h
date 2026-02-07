@@ -17,9 +17,20 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 
+#include <map>
 #include <unordered_map>
+#include <vector>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::DefaultKeyFormatter;
+using gtsam::GaussianBayesNet;
+using gtsam::Key;
+using gtsam::KeyFormatter;
+using gtsam::KeySet;
+using gtsam::KeyVector;
+using gtsam::Matrix;
+using gtsam::VectorValues;
 
 /** Class that stores the jacobian of w.r.t. multiple variables. e.g. x = f(m,
  * n, o). The class will store the jacobians of dx/dm, dx/dn, dx/do. */
@@ -91,4 +102,4 @@ void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
                              const std::map<Key, size_t>& var_dim,
                              MultiJacobians& jacobians);
 
-}  // namespace gtsam
+}  // namespace gtdynamics

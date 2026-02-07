@@ -22,7 +22,6 @@
 namespace gtdynamics {
 
 using gtsam::GaussianFactorGraph;
-using gtsam::IndexSet;
 using gtsam::VectorValues;
 
 /** Solve a convex inequality constrained QP problem defined in

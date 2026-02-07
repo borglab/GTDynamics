@@ -13,17 +13,26 @@
 
 #pragma once
 
-#include <gtdynamics/constraints/EqualityConstraint.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/inference/VariableIndex.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
-using gtsam::EConsOptProblem, gtsam::EqualityConstraints;
+namespace gtdynamics {
 
-namespace gtsam {
+using gtsam::DefaultKeyFormatter;
+using gtsam::Key;
+using gtsam::KeyFormatter;
+using gtsam::KeySet;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
+using gtsam::VariableIndex;
+using gtsam::VectorValues;
 
+using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
 
 /// Manifold optimization problem.
 struct ManifoldOptProblem {
@@ -47,15 +56,12 @@ struct ManifoldOptProblem {
   EManifoldValues constManifolds() const;
 
   /// Customizable print function.
-  void print(const std::string& s = "",
-             const KeyFormatter& keyFormatter = DefaultKeyFormatter) const;
+  void print(const std::string &s = "",
+             const KeyFormatter &keyFormatter = DefaultKeyFormatter) const;
 };
 
-
-
 /// Parameters for manifold optimizer.
-struct ManifoldOptimizerParameters
-    : public ConstrainedOptimizationParameters {
+struct ManifoldOptimizerParameters : public ConstrainedOptimizationParameters {
   using Base = ConstrainedOptimizationParameters;
   ConstraintManifold::Params::shared_ptr
       cc_params;               // Parameter for constraint-connected components
@@ -80,59 +86,60 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
   ManifoldOptimizer() : p_(ManifoldOptimizerParameters()) {}
 
   /// Construct from parameters.
-  ManifoldOptimizer(const ManifoldOptimizerParameters& parameters)
+  ManifoldOptimizer(const ManifoldOptimizerParameters &parameters)
       : p_(parameters) {}
 
  public:
   /** Perform dfs to find the connected component that contains start_key. Will
    * also erase all the keys in the connected component from keys.
    */
-  static EqualityConstraints::shared_ptr
-  IdentifyConnectedComponent(const EqualityConstraints &constraints,
-                             const Key start_key, KeySet &keys,
-                             const VariableIndex &var_index);
+  static EqualityConstraints::shared_ptr IdentifyConnectedComponent(
+      const EqualityConstraints &constraints, const Key start_key, KeySet &keys,
+      const VariableIndex &var_index);
 
   /// Identify the connected components by constraints.
   static std::vector<EqualityConstraints::shared_ptr>
   IdentifyConnectedComponents(const EqualityConstraints &constraints);
 
   /// Create equivalent factor graph on manifold variables.
-  static NonlinearFactorGraph ManifoldGraph(const NonlinearFactorGraph &graph,
-                                            const std::map<Key, Key> &var2man_keymap,
-                                            const Values& fc_manifolds = Values());
+  static NonlinearFactorGraph ManifoldGraph(
+      const NonlinearFactorGraph &graph,
+      const std::map<Key, Key> &var2man_keymap,
+      const Values &fc_manifolds = Values());
 
-  /** Create values for the manifold optimization probelm by (1) create
+  /** Create values for the manifold optimization problem by (1) create
    * constraint manifolds for constraint-connected components; (2) identify if
    * the constraint manifold is fully constrained; (3) collect unconstrained
    * variables.
    */
-  void constructMoptValues(const EConsOptProblem &ecopt_problem,
+  void constructMoptValues(const EConsOptProblem &equalityConstrainedProblem,
                            ManifoldOptProblem &mopt_problem) const;
 
   /// Create initial values for the constraint manifold variables.
-  void constructManifoldValues(const EConsOptProblem &ecopt_problem,
-                               ManifoldOptProblem &mopt_problem) const;
+  void constructManifoldValues(
+      const EConsOptProblem &equalityConstrainedProblem,
+      ManifoldOptProblem &mopt_problem) const;
 
   /// Collect values for unconstrained variables.
-  static void
-  constructUnconstrainedValues(const EConsOptProblem &ecopt_problem,
-                               ManifoldOptProblem &mopt_problem);
+  static void constructUnconstrainedValues(
+      const EConsOptProblem &equalityConstrainedProblem,
+      ManifoldOptProblem &mopt_problem);
 
   /** Create a factor graph of cost function with the constraint manifold
    * variables. */
-  static void constructMoptGraph(const EConsOptProblem &ecopt_problem,
-                                 ManifoldOptProblem &mopt_problem);
+  static void constructMoptGraph(
+      const EConsOptProblem &equalityConstrainedProblem,
+      ManifoldOptProblem &mopt_problem);
 
   /** Transform an equality-constrained optimization problem into a manifold
    * optimization problem by creating constraint manifolds. */
-  ManifoldOptProblem
-  problemTransform(const EConsOptProblem &ecopt_problem) const;
+  ManifoldOptProblem problemTransform(
+      const EConsOptProblem &equalityConstrainedProblem) const;
 
-  /// Initialize the manifold optization problem.
-  ManifoldOptProblem
-  initializeMoptProblem(const NonlinearFactorGraph &costs,
-                        const EqualityConstraints &constraints,
-                        const Values &init_values) const;
+  /// Initialize the manifold optimization problem.
+  ManifoldOptProblem initializeMoptProblem(
+      const NonlinearFactorGraph &costs, const EqualityConstraints &constraints,
+      const Values &init_values) const;
 
   /// Construct values of original variables.
   Values baseValues(const ManifoldOptProblem &mopt_problem,
@@ -141,7 +148,6 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
   VectorValues baseTangentVector(const ManifoldOptProblem &mopt_problem,
                                  const Values &values,
                                  const VectorValues &delta) const;
-
 };
 
-}  // namespace gtsam
+}  // namespace gtdynamics

@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/manifold/ManifoldOptimizerType1.h>
+#include <gtdynamics/cmopt/ManifoldOptimizer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -184,7 +184,7 @@ TEST(ManifoldOptProblem, SO2) {
 
   LevenbergMarquardtParams nopt_params;
   ManifoldOptimizerParameters mopt_params;
-  ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
+  ManifoldOptimizer optimizer(mopt_params, nopt_params);
   auto mopt_problem =
       optimizer.initializeMoptProblem(*costs, *constraints, init_values);
 
@@ -224,7 +224,7 @@ TEST(ManifoldOptimization, SO2) {
 }
 
 /** Optimization using Type1 manifold optimizer. */
-TEST(ManifoldOptimizerType1, SO2) {
+TEST(ManifoldOptimizer, SO2) {
   using namespace so2_scenario;
   auto costs = get_graph(-2, 0);
   auto constraints = get_constraints();
@@ -237,7 +237,7 @@ TEST(ManifoldOptimizerType1, SO2) {
   nopt_params.minModelFidelity = 0.5;
   // nopt_params.setVerbosityLM("SUMMARY");
   ManifoldOptimizerParameters mopt_params;
-  ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
+  ManifoldOptimizer optimizer(mopt_params, nopt_params);
   THROWS_EXCEPTION(optimizer.optimize(*costs, *constraints, init_values));
 }
 
@@ -256,7 +256,7 @@ TEST(ManifoldOptimizerType1_infeasible, SO2) {
   // nopt_params.setVerbosityLM("SUMMARY");
   ManifoldOptimizerParameters mopt_params;
   mopt_params.cc_params->retract_params->lm_params.setMaxIterations(4);
-  ManifoldOptimizerType1 optimizer(mopt_params, nopt_params);
+  ManifoldOptimizer optimizer(mopt_params, nopt_params);
   THROWS_EXCEPTION(optimizer.optimize(*costs, *constraints, init_values));
 }
 
@@ -295,7 +295,7 @@ TEST(ManifoldOptimizer, GaussNewtonEquality) {
   GaussNewtonParams nopt_params;
   GaussNewtonOptimizer optimizer_m(graph_rot2, init_values_rot2, nopt_params);
   ManifoldOptimizerParameters mopt_params;
-  ManifoldOptimizerType1 optimizer_type1(mopt_params, nopt_params);
+  ManifoldOptimizer optimizer_type1(mopt_params, nopt_params);
   auto mopt_problem = optimizer_type1.initializeMoptProblem(
       *costs_cm, *constraints_cm, init_values_cm);
   auto mopt_noptimizer =

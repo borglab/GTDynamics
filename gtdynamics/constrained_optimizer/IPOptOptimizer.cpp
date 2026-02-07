@@ -59,7 +59,7 @@ Vector IFOptTranslator::PoseGradient(const Vector& vec, const Vector& g_pose) {
 
 /* ************************************************************************* */
 bool IFOptTranslator::IsPoseKey(const Key key) {
-  gtdynamics::DynamicsSymbol symb(key);
+  DynamicsSymbol symb(key);
   if (symb.label() == "p") {
     return true;
   }
@@ -116,7 +116,7 @@ Values IFOptTranslator::vecToValue(const Vector &vec, const Key &key) {
 
 /* ************************************************************************* */
 std::string IFOptTranslator::keyToName(const Key &key) {
-  // return gtdynamics::GTDKeyFormatter(key);
+  // return GTDKeyFormatter(key);
   return std::to_string(key);
 }
 

@@ -17,7 +17,6 @@ namespace gtdynamics {
 
 using gtsam::GaussianFactorGraph;
 using gtsam::IndeterminantLinearSystemException;
-using gtsam::IndexSet;
 using gtsam::Key;
 using gtsam::Matrix;
 using gtsam::Vector;
@@ -152,8 +151,8 @@ ClipUpdate(const VectorValues &x, const VectorValues &p,
 
     for (size_t row_idx = 0; row_idx < constraint->dim(); row_idx++) {
       VectorValues A_i = jacobian.row(row_idx);
-      // A_i.print("A_i", gtdynamics::GTDKeyFormatter);
-      // p.print("p", gtdynamics::GTDKeyFormatter);
+      // A_i.print("A_i", GTDKeyFormatter);
+      // p.print("p", GTDKeyFormatter);
       double Aip = SubDot(A_i, p);
       if (Aip < 0) {
         double clip_rate = -SubDot(A_i, x) / Aip;
@@ -221,7 +220,7 @@ SolveConvexIQP(const GaussianFactorGraph &cost,
         if (num_solves > max_iters) {
           std::cout << "alpha: " << alpha << "\n";
           std::cout << "blocking index: " << blocking_idx << "\n";
-          // constraints.at(blocking_idx)->print(gtdynamics::GTDKeyFormatter);
+          // constraints.at(blocking_idx)->print(GTDKeyFormatter);
         }
       } else {
         // no constraints blocking

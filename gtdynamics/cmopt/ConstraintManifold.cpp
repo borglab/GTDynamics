@@ -17,7 +17,7 @@
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 Values ConstraintManifold::constructValues(
@@ -95,7 +95,7 @@ bool ConstraintManifold::equals(const ConstraintManifold &other,
 
 /* ************************************************************************* */
 const Values ConstraintManifold::feasibleValues() const {
-  LevenbergMarquardtOptimizer optimizer(constraints_->meritGraph(), values_);
+  gtsam::LevenbergMarquardtOptimizer optimizer(constraints_->penaltyGraph(), values_);
   return optimizer.optimize();
 }
 
@@ -146,4 +146,4 @@ std::map<Key, size_t> EManifoldValues::dims() const {
   return dims_map;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

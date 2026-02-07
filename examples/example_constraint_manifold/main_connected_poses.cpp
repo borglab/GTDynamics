@@ -13,9 +13,7 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/constrained_optimizer/ConstrainedOptProblem.h>
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
-#include <gtdynamics/manifold/ConnectedComponent.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
@@ -162,9 +160,9 @@ Values get_init_values(const Values &gt, const std::vector<std::vector<Pose2>>& 
 }
 
 /** Function to manually define the basis keys for each constraint manifold. */
-KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
+KeyVector FindBasisKeys(const KeyVector& keys) {
   KeyVector basis_keys;
-  for (const Key& key : cc->keys_) {
+  for (const Key& key : keys) {
     auto symb = Symbol(key);
     if (symb.chr() == 'a') {
       basis_keys.push_back(key);
@@ -177,7 +175,7 @@ KeyVector FindBasisKeys(const ConnectedComponent::shared_ptr& cc) {
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
 void kinematic_planning() {
-  // Create constrained optimization problem.
+  // Create constraiend optimization problem.
   auto gt = get_gt_values();
   auto constraints_graph = get_constraints_graph(gt);
   std::vector<std::vector<Pose2>> odo_measurements = GetOdoMeasurements(gt);
@@ -197,7 +195,7 @@ void kinematic_planning() {
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
+      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1e4, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, soft_result) << "\n";
 
   // optimize penalty method
@@ -205,30 +203,30 @@ void kinematic_planning() {
   auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
   penalty_params->lmParams = lm_params;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
+      OptimizeE_Penalty(problem, latex_os, penalty_params, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, penalty_result) << "\n";
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
-  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  augl_params->lmParams = lm_params;
-  auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params, constraint_unit_scale);
-  std::cout << "pose error: " << EvaluatePoseError(gt, augl_result) << "\n";
+  auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  almParams->lmParams = lm_params;
+  auto almResult =
+      OptimizeE_AugmentedLagrangian(problem, latex_os, almParams, constraint_unit_scale);
+  std::cout << "pose error: " << EvaluatePoseError(gt, almResult) << "\n";
 
   // optimize constraint manifold specify variables (feasbile)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParams();
   // mopt_params.cc_params->basis_key_func = &FindBasisKeys;
-  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  auto cm_basis_result = OptimizeConstraintManifold(
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+  auto cm_basis_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_result) << "\n";
 
   // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
+  auto cm_basis_infeasible_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_infeasible_result) << "\n";
 

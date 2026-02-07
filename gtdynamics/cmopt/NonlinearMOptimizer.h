@@ -19,12 +19,17 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 
+#include <optional>
 #include <variant>
 
-using gtsam::EConsOptProblem;
+namespace gtdynamics {
 
-namespace gtsam {
-
+using gtsam::DoglegParams;
+using gtsam::GaussNewtonParams;
+using gtsam::LevenbergMarquardtParams;
+using gtsam::NonlinearFactorGraph;
+using gtsam::NonlinearOptimizer;
+using gtsam::Values;
 
 /** Manifold Optimizer that replace each constraint-connected component with a
  * constraint manifold variable */
@@ -50,14 +55,12 @@ class NonlinearMOptimizer : public ManifoldOptimizer {
 
   /** Run manifold optimization by substituting the constrained variables with
    * the constraint manifold variables. */
-  virtual gtsam::Values optimize(
-      const gtsam::NonlinearFactorGraph& graph,
-      const gtsam::EqualityConstraints& constraints,
-      const gtsam::Values& initial_values) const override;
+  virtual Values optimize(const NonlinearFactorGraph& graph,
+                          const EqualityConstraints& constraints,
+                          const Values& initial_values) const override;
 
   /// Optimization given manifold optimization problem.
-  gtsam::Values optimize(
-      const ManifoldOptProblem& mopt_problem) const;
+  Values optimize(const ManifoldOptProblem& mopt_problem) const;
 
   /// Create the underlying nonlinear optimizer for manifold optimization.
   std::shared_ptr<NonlinearOptimizer> constructNonlinearOptimizer(
@@ -67,4 +70,4 @@ class NonlinearMOptimizer : public ManifoldOptimizer {
 
 };
 
-}  // namespace gtsam
+}  // namespace gtdynamics

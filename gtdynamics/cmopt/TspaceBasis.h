@@ -15,21 +15,39 @@
 #pragma once
 
 #include <Eigen/Sparse>
+#if defined(GTDYNAMICS_WITH_SUITESPARSE)
 #include <SuiteSparseQR.hpp>
 #include <cholmod.h>
+#endif
 #include <gtdynamics/cmopt/MultiJacobian.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/inference/Key.h>
+#include <gtsam/inference/Ordering.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
-using gtsam::EqualityConstraints;
+namespace gtdynamics {
 
-namespace gtsam {
+using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
+using gtsam::DefaultKeyFormatter;
+using gtsam::GaussianFactorGraph;
+using gtsam::Key;
+using gtsam::KeyFormatter;
+using gtsam::KeyVector;
+using gtsam::Matrix;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Ordering;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::VectorValues;
+
+typedef std::function<KeyVector(const KeyVector &keys)> BasisKeyFunc;
 
 /// Manifold-specific parameters for tangent space basis.
 struct TspaceBasisParams {
@@ -170,7 +188,7 @@ public:
   /// Jacobian of recover function.
   Matrix recoverJacobian(const Key &key) const override;
 
-  /// Implmentation of localCoordinate for the constraint manifold.
+  /// Implementation of localCoordinate for the constraint manifold.
   Vector localCoordinates(const Values &values,
                           const Values &values_other) const override;
 
@@ -202,8 +220,8 @@ protected:
 
   Matrix computeConstraintJacobian(const Values &values) const;
 
-  /** Construct the jacobian (represented as cholmod sparse matrix) from the
-   * triplets of the augmented jacobian. */
+  /** Construct the transposed jacobian from sparse jacobian triplets. */
+#if defined(GTDYNAMICS_WITH_SUITESPARSE)
   static cholmod_sparse *SparseJacobianTranspose(
       const size_t nrows, const size_t ncols,
       const std::vector<std::tuple<int, int, double>> &triplets,
@@ -214,6 +232,13 @@ protected:
                                               cholmod_common *cc);
 
   static SpMatrix CholmodToEigen(cholmod_sparse *A, cholmod_common *cc);
+#else
+  static SpMatrix SparseJacobianTranspose(
+      const size_t nrows, const size_t ncols,
+      const std::vector<std::tuple<int, int, double>> &triplets);
+
+  static SpMatrix LastColsSelectionMat(const size_t nrows, const size_t ncols);
+#endif
 
   SpMatrix eigenSparseJacobian(const GaussianFactorGraph &graph) const;
 
@@ -245,7 +270,7 @@ protected:
 
 public:
   /** Constructor
-   * @param constraints cosntriants for the constraint manifold
+   * @param constraints constraints for the constraint manifold
    * @param values values of the variables in the connected component
    * @param basis_keys variables selected as basis variables
    */
@@ -281,7 +306,7 @@ public:
   /// Jacobian of recover function.
   Matrix recoverJacobian(const Key &key) const override;
 
-  /// Implmentation of localCoordinate for the constraint manifold.
+  /// Implementation of localCoordinate for the constraint manifold.
   Vector localCoordinates(const Values &values,
                           const Values &values_other) const override;
 
@@ -371,4 +396,4 @@ public:
   }
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

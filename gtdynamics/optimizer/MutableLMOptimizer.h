@@ -22,15 +22,27 @@
 
 #pragma once
 
+#include <gtsam/inference/Ordering.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
+#include <gtsam/nonlinear/Values.h>
 
 #include <chrono>
 
 class NonlinearOptimizerMoreOptimizationTest;
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::GaussianFactorGraph;
+using gtsam::LevenbergMarquardtParams;
+using gtsam::NonlinearFactorGraph;
+using gtsam::NonlinearOptimizer;
+using gtsam::NonlinearOptimizerParams;
+using gtsam::Ordering;
+using gtsam::Values;
+using gtsam::VectorValues;
 
 /**
  * This class performs Levenberg-Marquardt nonlinear optimization
@@ -147,4 +159,4 @@ class GTSAM_EXPORT MutableLMOptimizer : public NonlinearOptimizer {
   const NonlinearOptimizerParams& _params() const override { return params_; }
 };
 
-}  // namespace gtsam
+}  // namespace gtdynamics

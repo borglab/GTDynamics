@@ -13,8 +13,10 @@
 
 #include "CartPoleUtils.h"
 
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
-#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include "gtsam/constrained/AugmentedLagrangianOptimizer.h"
+#include "gtsam/constrained/PenaltyOptimizer.h"
+#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/linear/IterativeSolver.h>
 #include <gtsam/linear/PCGSolver.h>
 #include <gtsam/linear/Preconditioner.h>
@@ -74,41 +76,40 @@ void dynamic_planning() {
   // optimize soft constraints
   // std::cout << "soft constraints:\n";
   // auto soft_result =
-  //     OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0, constraint_unit_scale);
+  //     OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0, constraint_unit_scale);
   // EvaluateCosts(soft_result);
   // cartpole.exprotTrajectory(soft_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_soft_infeas.csv");
 
   // // optimize penalty method
   lm_params.setMaxIterations(30);
   // std::cout << "penalty method:\n";
-  // auto penalty_params = std::make_shared<PenaltyParameters>();
-  // penalty_params->lm_params = lm_params;
+  // PenaltyOptimizerParams penalty_params;
+  // penalty_params.lm_params = lm_params;
   // auto penalty_result =
-  //     OptimizePenaltyMethod(problem, latex_os, penalty_params, constraint_unit_scale);
+  //     OptimizeE_Penalty(problem, latex_os, penalty_params, constraint_unit_scale);
 
   // // optimize augmented lagrangian
   // std::cout << "augmented lagrangian:\n";
   // AugmentedLagrangianParameters al_params;
-  // al_params.lm_parameters = lm_params;
-  // auto augl_result =
-  //     OptimizeAugmentedLagrangian(problem, latex_os, al_params, constraint_unit_scale);
+  // al_params.lm_params = lm_params;
+  // auto almResult =
+  //     OptimizeE_AugmentedLagrangian(problem, latex_os, al_params, constraint_unit_scale);
 
   // optimize constraint manifold specify variables (feasbile)
   // std::cout << "constraint manifold basis variables (feasible):\n";
-  auto mopt_params = DefaultMoptParamsSV();
-  mopt_params.cc_params->retract_params->check_feasible=true;
-  mopt_params.cc_params->retract_params->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  mopt_params.cc_params->basis_key_func = cartpole.getBasisKeyFunc(true);
+  auto mopt_params = DefaultMoptParamsSV(cartpole.getBasisKeyFunc(true));
+  mopt_params.cc_params->retractor_creator->params()->check_feasible=true;
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   // auto cm_basis_result =
-  //     OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
+  //     OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
   // EvaluateCosts(cm_basis_result);
   // cartpole.exprotTrajectory(cm_basis_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj.csv");
 
   // // optimize constraint manifold specify variables (infeasbile)
   std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result =
-      OptimizeConstraintManifold(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
+      OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
 
   std::cout << latex_os.str();
 }

@@ -1,7 +1,7 @@
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 KeyVector ConstVarFactor::computeNewKeys(const Base::shared_ptr& base_factor,
@@ -63,7 +63,7 @@ Vector ConstVarFactor::unwhitenedError(const Values& x,
   // compute jacobian
   if (H) {
     // Compute Jacobian and error using base factor.
-    std::vector<Matrix> base_H(base_factor_->size());
+    std::vector<gtsam::Matrix> base_H(base_factor_->size());
     Vector unwhitened_error = base_factor_->unwhitenedError(base_x, base_H);
     // Compute Jacobian for new variables
     for (size_t variable_idx = 0; variable_idx < keys().size();
@@ -120,4 +120,4 @@ NonlinearFactorGraph ConstVarGraph(const NonlinearFactorGraph& graph,
   return new_graph;
 }
 
-}  // namespace gtsam
+}  // namespace gtdynamics

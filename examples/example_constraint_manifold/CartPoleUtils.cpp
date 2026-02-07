@@ -16,9 +16,12 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-using namespace gtdynamics;
+namespace gtdynamics {
 
-namespace gtsam {
+using gtsam::Key;
+using gtsam::KeyVector;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
 
 /* ************************************************************************* */
 NonlinearFactorGraph CartPole::getDynamicsGraph(size_t num_steps) const {
@@ -249,9 +252,9 @@ OptimizerSetting CartPole::getOptSetting() const {
 BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
   if (unactuated_as_constraint) {
     BasisKeyFunc basis_key_func =
-        [=](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
+        [=](const KeyVector& keys) -> KeyVector {
       KeyVector basis_keys;
-      for (const Key& key : cc->keys_) {
+      for (const Key& key : keys) {
         auto symb = DynamicsSymbol(key);
         if (symb.label() == "q") {
           basis_keys.push_back(key);
@@ -268,9 +271,9 @@ BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
     return basis_key_func;
   } else {
     BasisKeyFunc basis_key_func =
-        [](const ConnectedComponent::shared_ptr& cc) -> KeyVector {
+        [](const KeyVector& keys) -> KeyVector {
       KeyVector basis_keys;
-      for (const Key& key : cc->keys_) {
+      for (const Key& key : keys) {
         auto symb = DynamicsSymbol(key);
         if (symb.label() == "q") {
           basis_keys.push_back(key);
@@ -288,4 +291,4 @@ BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
   }
 }
 
-}  // namespace gtsam
+}  // namespace gtdynamics

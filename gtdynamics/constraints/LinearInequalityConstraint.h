@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtdynamics/cmopt/MultiJacobian.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/JacobianFactor.h>
@@ -31,7 +31,7 @@ namespace gtdynamics {
  * Linear inequality constraint base class.
  */
 class LinearInequalityConstraint {
-public:
+ public:
   typedef LinearInequalityConstraint This;
   typedef std::shared_ptr<This> shared_ptr;
 
@@ -60,21 +60,21 @@ public:
 
   virtual gtsam::JacobianFactor::shared_ptr createConstrainedFactor() const = 0;
 
-  virtual gtsam::MultiJacobian jacobian() const = 0;
+  virtual MultiJacobian jacobian() const = 0;
 
-  virtual void print(const gtsam::KeyFormatter &key_formatter =
-                         gtdynamics::GTDKeyFormatter) const;
+  virtual void print(
+      const gtsam::KeyFormatter &key_formatter = GTDKeyFormatter) const;
 };
 
 /**
  * Linear inequality constraint represented with a Jacobian factor.
  */
 class JacobianLinearInequalityConstraint : public LinearInequalityConstraint {
-protected:
+ protected:
   using base = LinearInequalityConstraint;
   gtsam::JacobianFactor::shared_ptr factor_;
 
-public:
+ public:
   JacobianLinearInequalityConstraint(
       const gtsam::JacobianFactor::shared_ptr &factor)
       : base(), factor_(factor) {}
@@ -91,12 +91,12 @@ public:
 
   gtsam::JacobianFactor::shared_ptr createConstrainedFactor() const override;
 
-  gtsam::MultiJacobian jacobian() const override;
+  MultiJacobian jacobian() const override;
 };
 
 class LinearInequalityConstraints
     : public std::vector<LinearInequalityConstraint::shared_ptr> {
-private:
+ private:
   using Base = std::vector<LinearInequalityConstraint::shared_ptr>;
 
   template <typename DERIVEDCONSTRAINT>
@@ -104,7 +104,7 @@ private:
       typename std::enable_if<std::is_base_of<LinearInequalityConstraint,
                                               DERIVEDCONSTRAINT>::value>::type;
 
-public:
+ public:
   typedef LinearInequalityConstraints This;
   typedef std::shared_ptr<This> shared_ptr;
 
@@ -118,14 +118,13 @@ public:
         std::forward<Args>(args)...));
   }
 
-  gtsam::GaussianFactorGraph
-  constraintGraph(const gtsam::IndexSet &active_indices) const;
+  gtsam::GaussianFactorGraph constraintGraph(
+      const IndexSet &active_indices) const;
 
-  void print(const gtsam::KeyFormatter &key_formatter =
-                 gtdynamics::GTDKeyFormatter) const;
+  void print(const gtsam::KeyFormatter &key_formatter = GTDKeyFormatter) const;
 };
 
 using LinearIConstraintMap =
     std::map<size_t, LinearInequalityConstraint::shared_ptr>;
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

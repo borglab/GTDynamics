@@ -14,7 +14,7 @@
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
@@ -25,7 +25,7 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include "gtdynamics/manifold/Retractor.h"
+#include "gtdynamics/cmopt/Retractor.h"
 
 using namespace gtsam;
 using namespace gtdynamics;

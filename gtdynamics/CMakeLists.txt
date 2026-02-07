@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors constraints optimizer constrained_optimizer kinematics statics dynamics cmopt cmcopt scenarios)
+set(SOURCE_SUBDIRS universal_robot utils factors constraints optimizer constrained_optimizer kinematics statics dynamics cmopt)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -36,14 +36,14 @@ include(GNUInstallDirs)
 foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   file(GLOB GLOB_RESULT_CPP
        ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.cpp)
-  if(SOURCE_SUBDIR STREQUAL "constrained_optimizer" AND NOT GTDYNAMICS_WITH_IFOPT)
+  if(SOURCE_SUBDIR STREQUAL "constrained_optimizer" AND NOT GTDYNAMICS_WITH_SUITESPARSE)
     list(REMOVE_ITEM GLOB_RESULT_CPP
          "${CMAKE_CURRENT_SOURCE_DIR}/constrained_optimizer/IPOptOptimizer.cpp")
   endif()
   list(APPEND sources ${GLOB_RESULT_CPP})
   file(GLOB GLOB_RESULT_H
        ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_SUBDIR}/*.h)
-  if(SOURCE_SUBDIR STREQUAL "constrained_optimizer" AND NOT GTDYNAMICS_WITH_IFOPT)
+  if(SOURCE_SUBDIR STREQUAL "constrained_optimizer" AND NOT GTDYNAMICS_WITH_SUITESPARSE)
     list(REMOVE_ITEM GLOB_RESULT_H
          "${CMAKE_CURRENT_SOURCE_DIR}/constrained_optimizer/IPOptOptimizer.h")
   endif()
@@ -65,7 +65,7 @@ install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}/config.h" DESTINATION ${CMA
 # Needs to be a SHARED library so that the wrapper can compile correctly
 add_library(gtdynamics SHARED ${sources} ${headers})
 
-if(GTDYNAMICS_WITH_IFOPT)
+if(GTDYNAMICS_WITH_SUITESPARSE)
   find_package(SuiteSparse_config REQUIRED)
   find_package(AMD REQUIRED)
   find_package(COLAMD REQUIRED)
@@ -81,10 +81,10 @@ set_target_properties(gtdynamics PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(gtdynamics PUBLIC ${SDFormat_LIBRARIES})
 target_link_libraries(gtdynamics PUBLIC ${GTDYNAMICS_ADDITIONAL_LIBRARIES})
 target_link_libraries(gtdynamics PUBLIC ${GTSAM_LIBS}) 
-if(GTDYNAMICS_WITH_IFOPT)
+if(GTDYNAMICS_WITH_SUITESPARSE)
   target_link_libraries (gtdynamics PUBLIC SuiteSparse::SPQR SuiteSparse::CHOLMOD)
   target_link_libraries(gtdynamics PUBLIC ifopt::ifopt_ipopt)
-  target_compile_definitions(gtdynamics PUBLIC GTDYNAMICS_WITH_IFOPT)
+  target_compile_definitions(gtdynamics PUBLIC GTDYNAMICS_WITH_SUITESPARSE)
 endif()
 
 ## Include headers needed

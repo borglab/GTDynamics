@@ -27,9 +27,9 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-using namespace gtdynamics;
+namespace gtdynamics {
 
-namespace gtsam {
+using namespace gtsam;
 
 /* ************************************************************************* */
 Vector3 get_contact_force(const Pose3 &pose, const Vector6 wrench,
@@ -37,7 +37,7 @@ Vector3 get_contact_force(const Pose3 &pose, const Vector6 wrench,
                           OptionalJacobian<3, 6> H_wrench) {
   Vector3 force_l(wrench(3), wrench(4), wrench(5));
   if (H_pose || H_wrench) {
-    gtsam::Matrix36 J_fl_wrench;
+    Matrix36 J_fl_wrench;
     J_fl_wrench << Z_3x3, I_3x3;
 
     Matrix36 J_rot_pose;
@@ -60,16 +60,16 @@ Vector3 get_contact_force(const Pose3 &pose, const Vector6 wrench,
 }
 
 /* ************************************************************************* */
-gtsam::Vector6_ ContactRedundancyConstraint(int t,
+Vector6_ ContactRedundancyConstraint(int t,
                                             const std::vector<int> &contact_ids,
                                             const double &a, const double &b) {
-  std::vector<gtsam::Vector6_> error;
+  std::vector<Vector6_> error;
   for (size_t i = 0; i < 4; i++) {
     auto link_id = contact_ids.at(i);
     Vector6_ c_wrench(gtdynamics::ContactWrenchKey(link_id, 0, t));
     Pose3_ pose(gtdynamics::PoseKey(link_id, t));
     Vector3_ c_force(get_contact_force, pose, c_wrench);
-    gtsam::Matrix63 H;
+    Matrix63 H;
     if (i == 0) {
       H << 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, a, b, 0;
     } else if (i == 1) {
@@ -79,10 +79,10 @@ gtsam::Vector6_ ContactRedundancyConstraint(int t,
     } else if (i == 3) {
       H << 0, 0, 1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, -1, 0, -a, -b, 0;
     }
-    const std::function<gtsam::Vector6(Vector3)> f = [H](const Vector3 &F) {
+    const std::function<Vector6(Vector3)> f = [H](const Vector3 &F) {
       return H * F;
     };
-    error.emplace_back(gtsam::linearExpression(f, c_force, H));
+    error.emplace_back(linearExpression(f, c_force, H));
   }
 
   return error[0] + error[1] + error[2] + error[3];
@@ -91,7 +91,7 @@ gtsam::Vector6_ ContactRedundancyConstraint(int t,
 /* ************************************************************************* */
 NoiseModelFactor::shared_ptr ContactRedundancyFactor(
     int t, const std::vector<int> &contact_ids, const double &a,
-    const double &b, const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const double &b, const noiseModel::Base::shared_ptr &cost_model,
     bool express_redundancy) {
   if (express_redundancy) {
     Vector6_ expected_redundancy =
@@ -133,7 +133,7 @@ NonlinearFactorGraph Vision60Robot::DynamicsFactors(
     int i = link->id();
     if (!link->isFixed()) {
       const auto &connected_joints = link->joints();
-      std::vector<gtsam::Key> wrench_keys;
+      std::vector<Key> wrench_keys;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
@@ -149,7 +149,7 @@ NonlinearFactorGraph Vision60Robot::DynamicsFactors(
 
           graph.emplace_shared<ContactDynamicsMomentFactor>(
               wrench_key, opt().cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -cp.point));
+              Pose3(Rot3(), -cp.point));
         }
       }
 
@@ -169,9 +169,9 @@ NonlinearFactorGraph Vision60Robot::DynamicsFactors(
 }
 
 /* ************************************************************************* */
-KeyVector FindBasisKeys4C(const ConnectedComponent::shared_ptr &cc) {
+KeyVector FindBasisKeys4C(const KeyVector &keys) {
   KeyVector basis_keys;
-  for (const Key &key : cc->keys_) {
+  for (const Key &key : keys) {
     auto symb = gtdynamics::DynamicsSymbol(key);
     if (symb.label() == "p" && symb.linkIdx() == 0) {
       basis_keys.push_back(key);
@@ -185,9 +185,9 @@ KeyVector FindBasisKeys4C(const ConnectedComponent::shared_ptr &cc) {
 }
 
 /* ************************************************************************* */
-KeyVector FindBasisKeysReduancy(const ConnectedComponent::shared_ptr &cc) {
+KeyVector findBasisKeysRedundancy(const KeyVector &keys) {
   KeyVector basis_keys;
-  for (const Key &key : cc->keys_) {
+  for (const Key &key : keys) {
     auto symb = gtdynamics::DynamicsSymbol(key);
     if (symb.label() == "p" && symb.linkIdx() == 0) {
       basis_keys.push_back(key);
@@ -205,37 +205,37 @@ KeyVector FindBasisKeysReduancy(const ConnectedComponent::shared_ptr &cc) {
 /* ************************************************************************* */
 gtdynamics::OptimizerSetting Vision60Robot::getOptSetting() const {
   auto opt = gtdynamics::OptimizerSetting();
-  opt.bp_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.bv_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.ba_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.p_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.v_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.a_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.f_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.fa_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.cp_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.bp_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.bv_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.ba_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.p_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.v_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.a_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.f_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.fa_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.t_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.cp_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.cfriction_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.cv_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
-  opt.ca_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.cv_cost_model = noiseModel::Isotropic::Sigma(3, sigma_dynamics);
+  opt.ca_cost_model = noiseModel::Isotropic::Sigma(3, sigma_dynamics);
   opt.planar_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(3, sigma_dynamics);
   opt.prior_q_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.prior_qv_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.prior_qa_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.prior_t_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.v_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.q_col_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.v_col_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.time_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.pose_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(6, sigma_dynamics);
   opt.twist_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(6, sigma_dynamics);
   return opt;
 }
 
@@ -375,11 +375,11 @@ Values Vision60Robot::getInitValuesStep(const int t, const Pose3 &base_pose,
 /* ************************************************************************* */
 Values Vision60Robot::getInitValuesTrajectory(
     const size_t num_steps, double dt, const Pose3 &base_pose_init,
-    const std::vector<gtsam::Pose3> &des_poses,
+    const std::vector<Pose3> &des_poses,
     std::vector<double> &des_poses_t,
     const std::string initialization_technique) const {
   // Initialize solution.
-  gtsam::Values init_vals;
+  Values init_vals;
   Initializer initializer;
 
   // solve 1 step value
@@ -536,10 +536,10 @@ NonlinearFactorGraph Vision60Robot::boundaryCosts(
   NonlinearFactorGraph graph;
 
   graph.addPrior<Pose3>(PoseKey(base_id, 0), init_pose,
-                        gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
+                        noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   graph.addPrior<Vector6>(
       TwistKey(base_id, 0), init_twist,
-      gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics));
+      noiseModel::Isotropic::Sigma(6, sigma_dynamics));
   for (size_t i = 0; i < des_poses.size(); i++)
     graph.addPrior(
         PoseKey(base_id, static_cast<int>(std::ceil(des_poses_t[i] / dt))),

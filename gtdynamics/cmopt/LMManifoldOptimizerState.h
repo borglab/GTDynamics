@@ -21,12 +21,19 @@
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
+#include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::GaussianFactorGraph;
+using gtsam::LevenbergMarquardtParams;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
+using gtsam::VectorValues;
 
 struct LMState;
 struct LMTrial;
@@ -182,4 +189,4 @@ public:
                   const std::string &trial_file_path) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -32,7 +32,7 @@ size_t EConsOptProblem::costsDimension() const {
 
 /* ************************************************************************* */
 Key AuxilaryKey(uint64_t k) {
-  return gtdynamics::DynamicsSymbol::SimpleSymbol("ax", k);
+  return DynamicsSymbol::SimpleSymbol("ax", k);
 }
 
 /* ************************************************************************* */

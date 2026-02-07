@@ -37,12 +37,12 @@
 
 using namespace std;
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 Values LMManifoldOptimizer::optimize(
     const NonlinearFactorGraph &costs,
-    const gtsam::EqualityConstraints &constraints,
+    const EqualityConstraints &constraints,
     const Values &init_values) const {
   auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
   return optimize(costs, mopt_problem);
@@ -153,4 +153,4 @@ bool LMManifoldOptimizer::checkConvergence(const LMState &prev_state,
   return converged;
 }
 
-} /* namespace gtsam */
+} /* namespace gtdynamics */

@@ -13,7 +13,7 @@ GTSAM_VALUE_EXPORT(gtsam::Rot3)
 GTSAM_VALUE_EXPORT(gtsam::Pose3)
 GTSAM_VALUE_EXPORT(gtsam::Vector6)
 #endif
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 void PrintGraphWithError(const NonlinearFactorGraph &graph,
@@ -89,14 +89,14 @@ VectorValues SolveLinear(const GaussianFactorGraph &gfg,
       throw std::runtime_error(
           "NonlinearOptimizer::solve: cg parameter has to be assigned ...");
 
-    if (auto pcg = std::dynamic_pointer_cast<PCGSolverParameters>(
+    if (auto pcg = std::dynamic_pointer_cast<gtsam::PCGSolverParameters>(
             params.iterativeParams)) {
-      delta = PCGSolver(*pcg).optimize(gfg);
-    } else if (auto spcg = std::dynamic_pointer_cast<SubgraphSolverParameters>(
+      delta = gtsam::PCGSolver(*pcg).optimize(gfg);
+    } else if (auto spcg = std::dynamic_pointer_cast<gtsam::SubgraphSolverParameters>(
                    params.iterativeParams)) {
       if (!params.ordering)
         throw std::runtime_error("SubgraphSolver needs an ordering");
-      delta = SubgraphSolver(gfg, *spcg, *params.ordering).optimize();
+      delta = gtsam::SubgraphSolver(gfg, *spcg, *params.ordering).optimize();
     } else {
       throw std::runtime_error(
           "NonlinearOptimizer::solve: special cg parameter type is not handled "
@@ -115,13 +115,13 @@ VectorValues SolveLinear(const GaussianFactorGraph &gfg,
 
 #if GTSAM_ENABLE_BOOST_SERIALIZATION
 void ExportValuesToFile(const Values &values, const std::string &file_path) {
-  serializeToBinaryFile(values, file_path);
+  gtsam::serializeToBinaryFile(values, file_path);
 }
 
 /* ************************************************************************* */
 Values LoadValuesFromFile(const std::string &file_path) {
   Values values;
-  deserializeFromBinaryFile(file_path, values);
+  gtsam::deserializeFromBinaryFile(file_path, values);
   return values;
 }
 #endif
@@ -176,7 +176,7 @@ GaussianFactorGraph ScaledBiasedFactors(const GaussianFactorGraph &graph_in,
     }
     b *= b_scale;
     graph.emplace_shared<JacobianFactor>(
-        terms, b, noiseModel::Isotropic::Sigma(b.size(), sigma));
+        terms, b, gtsam::noiseModel::Isotropic::Sigma(b.size(), sigma));
   }
   return graph;
 }
@@ -196,8 +196,9 @@ ZerobFactor(const JacobianFactor::shared_ptr factor) {
     return std::make_shared<JacobianFactor>(terms, b, factor->get_model());
   } else {
     return std::make_shared<JacobianFactor>(terms, b,
-                                            noiseModel::Unit::Create(b.size()));
+                                            gtsam::noiseModel::Unit::Create(
+                                                b.size()));
   }
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

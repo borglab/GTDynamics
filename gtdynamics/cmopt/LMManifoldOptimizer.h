@@ -17,6 +17,7 @@
  */
 
 #pragma once
+
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/cmopt/LMManifoldOptimizerState.h>
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
@@ -27,7 +28,11 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::LevenbergMarquardtParams;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
 
 /**
  * This class performs Levenberg-Marquardt nonlinear optimization
@@ -60,7 +65,7 @@ public:
    * the constraint manifold variables. */
   virtual gtsam::Values
   optimize(const gtsam::NonlinearFactorGraph &graph,
-           const gtsam::EqualityConstraints &constraints,
+           const EqualityConstraints &constraints,
            const gtsam::Values &initial_values) const override;
 
   /// Optimization given manifold optimization problem.
@@ -84,4 +89,4 @@ public:
   bool checkLambdaWithinLimits(const double &lambda) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

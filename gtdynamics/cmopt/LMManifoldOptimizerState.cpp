@@ -18,7 +18,7 @@
 
 using std::cout, std::setw, std::setprecision, std::endl;
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 /* <============================= LMState =================================> */
@@ -198,7 +198,7 @@ LMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
   try {
     delta = SolveLinear(damped_system, params);
     solve_successful = true;
-  } catch (const IndeterminantLinearSystemException &) {
+  } catch (const gtsam::IndeterminantLinearSystemException &) {
     solve_successful = false;
     return;
   }
@@ -261,7 +261,7 @@ GaussianFactorGraph LMTrial::LinearUpdate::buildDampedSystem(
 GaussianFactorGraph LMTrial::LinearUpdate::buildDampedSystem(
     const GaussianFactorGraph &linear, const VectorValues &sqrtHessianDiagonal,
     const LMState &state, const LevenbergMarquardtParams &params) const {
-  if (params.diagonalDamping)
+  if (params.getDiagonalDamping())
     return buildDampedSystem(linear, sqrtHessianDiagonal);
   else
     return buildDampedSystem(linear, state);
@@ -358,4 +358,4 @@ void LMItersDetails::exportFile(const std::string &state_file_path,
   trial_file.close();
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

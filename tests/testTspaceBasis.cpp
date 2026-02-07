@@ -14,8 +14,8 @@
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/manifold/TspaceBasis.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/TspaceBasis.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Matrix.h>
