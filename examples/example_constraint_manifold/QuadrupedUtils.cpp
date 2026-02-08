@@ -27,6 +27,9 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
+#include <filesystem>
+#include <stdexcept>
+
 namespace gtdynamics {
 
 using namespace gtsam;
@@ -561,6 +564,11 @@ void Vision60Robot::printJointAngles(const Values &values, int t) const {
 void Vision60Robot::exportTrajectory(const Values &results,
                                      const size_t num_steps,
                                      std::string file_path) {
+  const std::filesystem::path output_path(file_path);
+  if (!output_path.parent_path().empty()) {
+    std::filesystem::create_directories(output_path.parent_path());
+  }
+
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   std::vector<std::string> jnames;
   for (auto &&joint : robot.joints()) jnames.push_back(joint->name());
@@ -569,7 +577,10 @@ void Vision60Robot::exportTrajectory(const Values &results,
     jnames_str += jnames[j] + (j != jnames.size() - 1 ? "," : "");
   }
   std::ofstream traj_file;
-  traj_file.open(file_path);
+  traj_file.open(output_path);
+  if (!traj_file.is_open()) {
+    throw std::runtime_error("Failed to open trajectory file: " + file_path);
+  }
   // angles, vels, accels, torques.
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
             << jnames_str << ",base_x"

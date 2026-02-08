@@ -11,17 +11,18 @@
  * @author Yetong Zhang
  */
 
-#include "CartPoleUtils.h"
-
-#include "gtsam/constrained/AugmentedLagrangianOptimizer.h"
-#include "gtsam/constrained/PenaltyOptimizer.h"
-#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtsam/linear/ConjugateGradientSolver.h>
 #include <gtsam/linear/IterativeSolver.h>
 #include <gtsam/linear/PCGSolver.h>
 #include <gtsam/linear/Preconditioner.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/linear/ConjugateGradientSolver.h>
+
+#include "CartPoleUtils.h"
+#include "gtsam/constrained/AugmentedLagrangianOptimizer.h"
+#include "gtsam/constrained/PenaltyOptimizer.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -70,7 +71,8 @@ void dynamic_planning() {
   LevenbergMarquardtParams lm_params;
   // lm_params.setVerbosityLM("SUMMARY");
   lm_params.setlambdaUpperBound(1e10);
-  cartpole.exportTrajectory(init_values, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_init.csv");
+  cartpole.exportTrajectory(init_values, num_steps, dt,
+                            std::string(kDataPath) + "cartpole_traj_init.csv");
 
   const double kConstraintUnitScale = 1e-3;
   // optimize soft constraints
@@ -78,7 +80,9 @@ void dynamic_planning() {
   // auto soft_result =
   //     OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0, kConstraintUnitScale);
   // EvaluateCosts(soft_result);
-  // cartpole.exportTrajectory(soft_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_soft_infeas.csv");
+  // cartpole.exportTrajectory(soft_result, num_steps, dt,
+  //                           std::string(kDataPath) +
+  //                               "cartpole_traj_soft_infeas.csv");
 
   // // optimize penalty method
   lm_params.setMaxIterations(30);
@@ -103,7 +107,8 @@ void dynamic_planning() {
   // auto cm_basis_result =
   //     OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", kConstraintUnitScale);
   // EvaluateCosts(cm_basis_result);
-  // cartpole.exportTrajectory(cm_basis_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj.csv");
+  // cartpole.exportTrajectory(cm_basis_result, num_steps, dt,
+  //                           std::string(kDataPath) + "cartpole_traj.csv");
 
   // // optimize constraint manifold specify variables (infeasible)
   std::cout << "constraint manifold basis variables (infeasible):\n";
