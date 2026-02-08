@@ -1,6 +1,6 @@
 [build-system]
-requires = ["scikit-build-core>=0.10.0", "pybind11"]
-build-backend = "scikit_build_core.build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "gtdynamics"
@@ -11,7 +11,7 @@ authors = [
     { name = "Frank Dellaert", email = "dellaert@gatech.edu" }
 ]
 readme = "README.md"
-license = { text = "BSD-3-Clause" }
+license = "BSD-3-Clause"
 keywords = ["robotics", "kinematics", "dynamics", "factor graphs"]
 
 classifiers = [
@@ -35,10 +35,10 @@ dependencies = [
     "gtsam>=4.2",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
 ]
 
 [project.urls]
@@ -51,50 +51,45 @@ Repository = "https://github.com/borglab/GTDynamics"
 addopts = "--cov=gtdynamics --cov-report html --cov-report term"
 norecursedirs = []
 
-[tool.scikit-build]
-cmake.build-type = "Release"
-cmake.verbose = true
-wheel.packages = ["python/gtdynamics"]
-build-dir = "build/{wheel_tag}"
-# Pin CMake to 3.26.x-3.x to avoid CMake 4.x breaking changes with FindPython
-cmake.version = ">=3.26,<4"
-backport.find-python = "3.26"
+[tool.hatch.build]
+artifacts = [
+    "python/gtdynamics/*.so",
+    "python/gtdynamics/*.pyd",
+]
 
-[tool.scikit-build.cmake.define]
-GTDYNAMICS_BUILD_PYTHON = "ON"
-GTDYNAMICS_BUILD_EXAMPLES = "OFF"
-BUILD_TESTING = "OFF"
-GTSAM_DIR = "/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
+[tool.hatch.build.targets.wheel]
+packages = ["python/gtdynamics"]
+
+[tool.uv.build-backend]
+module-name = "gtdynamics"
 
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux_* *-win32 pp*"
-# Disable build isolation so CMake can find Python dev headers
-build-frontend = "pip; args: --no-build-isolation"
 
 [tool.cibuildwheel.linux]
-manylinux-x86_64-image = "manylinux_2_28"
-manylinux-aarch64-image = "manylinux_2_28"
+manylinux-x86_64-image = "manylinux_2_34"
+manylinux-aarch64-image = "manylinux_2_34"
 before-all = "bash {project}/.github/scripts/cibw_before_all_linux.sh"
 before-build = "bash {project}/.github/scripts/cibw_before_build_linux.sh {project}"
-repair-wheel-command = "LD_LIBRARY_PATH=/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib:$LD_LIBRARY_PATH auditwheel repair -w {dest_dir} {wheel}"
+repair-wheel-command = "LD_LIBRARY_PATH=/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib:$LD_LIBRARY_PATH auditwheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.linux.environment]
 INSTALL_PREFIX = "/opt/gtdynamics-deps"
 GTSAM_DIR = "/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 CMAKE_PREFIX_PATH = "/opt/gtdynamics-deps/gtsam_current:/opt/gtdynamics-deps/gz-cmake4:/opt/gtdynamics-deps/gz-utils:/opt/gtdynamics-deps/gz-math:/opt/gtdynamics-deps/sdformat"
-LD_LIBRARY_PATH = "/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib"
+LD_LIBRARY_PATH = "/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib"
 Python_EXECUTABLE = "$(which python)"
 PYTHON_EXECUTABLE = "$(which python)"
 
 [tool.cibuildwheel.macos]
 before-all = "bash {project}/.github/scripts/cibw_before_all_macos.sh"
 before-build = "bash {project}/.github/scripts/cibw_before_build_macos.sh {project}"
-repair-wheel-command = "DYLD_LIBRARY_PATH=$HOME/opt/gtdynamics-deps/gtsam_current/lib:$DYLD_LIBRARY_PATH delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+repair-wheel-command = "DYLD_LIBRARY_PATH=$HOME/opt/gtdynamics-deps/gtd_current/lib:$HOME/opt/gtdynamics-deps/gtsam_current/lib:$DYLD_LIBRARY_PATH delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
 
 [tool.cibuildwheel.macos.environment]
 MACOSX_DEPLOYMENT_TARGET = "11.0"
 INSTALL_PREFIX = "$HOME/opt/gtdynamics-deps"
 GTSAM_DIR = "$HOME/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 CMAKE_PREFIX_PATH = "$HOME/opt/gtdynamics-deps/gtsam_current"
-DYLD_LIBRARY_PATH = "$HOME/opt/gtdynamics-deps/gtsam_current/lib"
+DYLD_LIBRARY_PATH = "$HOME/opt/gtdynamics-deps/gtd_current/lib:$HOME/opt/gtdynamics-deps/gtsam_current/lib"

@@ -25,9 +25,9 @@ brew tap osrf/simulation
 brew install sdformat15
 
 # Clone GTSAM (don't build yet, depends on Python)
-echo "Cloning GTSAM source..."
-GTSAM_VERSION="4.2"
-git clone --branch ${GTSAM_VERSION} --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
+# GTDynamics requires gtsam-develop (not the 4.2 release tag)
+echo "Cloning GTSAM source (develop branch)..."
+git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
 # Write environment file for before-build scripts
 BOOST_PREFIX=$(brew --prefix boost)

@@ -13,7 +13,7 @@ export INSTALL_PREFIX="/opt/gtdynamics-deps"
 mkdir -p ${INSTALL_PREFIX}
 
 
-# Install Base System Dependencies (manylinux_2_28 uses dnf)
+# Install Base System Dependencies (manylinux_2_34 uses dnf)
 echo "Installing base system dependencies..."
 dnf install -y \
     wget curl git \
@@ -21,7 +21,6 @@ dnf install -y \
     ruby \
     boost-devel
 
-# manylinux_2_28 already has CMake 3.28+ via pipx, which meets SDFormat's requirements
 echo "CMake version:"
 cmake --version
 
@@ -91,12 +90,11 @@ cd /tmp && rm -rf sdformat*
 
 
 # Clone GTSAM (don't build yet, depends on Python)
-echo "Cloning GTSAM source..."
-GTSAM_VERSION="4.2"
-git clone --branch ${GTSAM_VERSION} --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
+# GTDynamics requires gtsam-develop (not the 4.2 release tag)
+echo "Cloning GTSAM source (develop branch)..."
+git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
 # Write environment file for before-build scripts
-# Using system Boost from boost-devel package, no custom paths needed
 # gtsam_current symlink will be created by before-build after GTSAM is built
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"

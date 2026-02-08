@@ -1,29 +1,23 @@
-# 1. First, let scikit-build-core find Python correctly
+# Find Python - use Development.Module (doesn't require full libpython,
+# which may not be available in manylinux containers).
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 
-# 2. Tell gtwrap exactly which Python to use BEFORE calling find_package(gtwrap)
-set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}")
-set(Python_EXECUTABLE "${Python_EXECUTABLE}")
+# Set the old-style variable for compatibility with gtwrap/pybind11 scripts.
+set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}" CACHE PATH "Python executable" FORCE)
 
-# 3. Now find gtwrap (this should now succeed because Python is already 'found')
+# Pre-set WRAP_PYTHON_VERSION so that gtwrap_get_python_version() (called
+# internally when gtwrapConfig.cmake is loaded) takes the "specific version"
+# branch and does not fall back to its own find_package(Python) call which
+# requests the full Development component and may fail in CI containers.
+set(WRAP_PYTHON_VERSION
+    "${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}.${Python_VERSION_PATCH}"
+    CACHE STRING "The version of Python to build the wrappers against." FORCE)
+
+# Find gtwrap (shipped with GTSAM).
 find_package(gtwrap REQUIRED)
 
-# 4. Skip the gtwrap helper as it's redundant and error-prone here
 message(STATUS "GTDynamics building with Python: ${Python_EXECUTABLE}")
 message(STATUS "Python Version Found: ${Python_VERSION}")
-
-find_package(gtwrap)
-
-
-# If we are building via scikit-build/cibuildwheel, 
-# PYTHON_EXECUTABLE is already set.
-if(NOT PYTHON_EXECUTABLE)
-    set(WRAP_PYTHON_VERSION
-        "Default"
-        CACHE STRING "The Python version to use for wrapping")
-    gtwrap_get_python_version(${WRAP_PYTHON_VERSION})
-    message(STATUS "Wrapper Python Version: ${WRAP_PYTHON_VERSION}")
-endif()
 
 set(PYTHON_REQUIREMENTS_PATH "requirements.txt")
 set(PYTHON_TESTS "${PROJECT_NAME}.tests")

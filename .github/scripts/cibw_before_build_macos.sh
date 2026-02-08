@@ -22,7 +22,7 @@ echo "Building for Python ${PYTHON_VERSION} at ${PYTHON_EXE}"
 # Install Python dependencies for GTSAM build and wheel build (no isolation)
 echo "Installing Python dependencies..."
 $PYTHON_EXE -m pip install --upgrade pip
-$PYTHON_EXE -m pip install numpy pyparsing pybind11 scikit-build-core ninja "cmake>=3.26,<4"
+$PYTHON_EXE -m pip install numpy pyparsing pybind11 hatchling ninja "cmake>=3.26,<4"
 
 
 # Define GTSAM paths for this Python version
@@ -84,8 +84,52 @@ export DYLD_LIBRARY_PATH="${GTSAM_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
 rm -f ${INSTALL_PREFIX}/gtsam_current
 ln -sf ${GTSAM_PREFIX} ${INSTALL_PREFIX}/gtsam_current
 
+# Patch gtwrap to use Development.Module instead of Development.
+# macOS Python from cibuildwheel may not ship full libpython.
+sed -i '' 's/Interpreter Development/Interpreter Development.Module/g' \
+    ${GTSAM_PREFIX}/lib/cmake/gtwrap/GtwrapUtils.cmake
+
+
+# Build GTDynamics C++ extension for this Python version
+echo "Building GTDynamics C++ extension..."
+GTD_BUILD="${INSTALL_PREFIX}/gtd_build_py${PYTHON_VERSION}"
+rm -rf ${GTD_BUILD}
+mkdir -p ${GTD_BUILD}
+
+cd ${GTD_BUILD}
+cmake ${PROJECT_DIR} \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
+    -DGTSAM_DIR="${GTSAM_PREFIX}/lib/cmake/GTSAM" \
+    -DGTDYNAMICS_BUILD_PYTHON=ON \
+    -DGTDYNAMICS_BUILD_EXAMPLES=OFF \
+    -DBUILD_TESTING=OFF \
+    -DPython_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
+    -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
+    -DBOOST_ROOT=${BOOST_ROOT} \
+    -DCMAKE_CXX_FLAGS="-faligned-new"
+
+cmake --build . --config Release --target gtdynamics_py -j${NUM_CORES}
+
+# Copy the built Python extension (.so) into the source tree so that
+# hatchling (a pure-Python build backend) can package it into the wheel.
+echo "Copying built extension to source tree..."
+find ${GTD_BUILD}/python/gtdynamics -name "gtdynamics*.so" \
+    -exec cp {} ${PROJECT_DIR}/python/gtdynamics/ \;
+
+# Install GTDynamics shared library where delocate-wheel can find it
+GTD_PREFIX="${INSTALL_PREFIX}/gtd_py${PYTHON_VERSION}"
+mkdir -p ${GTD_PREFIX}/lib
+find ${GTD_BUILD} -maxdepth 2 -name "libgtdynamics*.dylib" \
+    -exec cp {} ${GTD_PREFIX}/lib/ \;
+rm -f ${INSTALL_PREFIX}/gtd_current
+ln -sf ${GTD_PREFIX} ${INSTALL_PREFIX}/gtd_current
+
+export DYLD_LIBRARY_PATH="${GTD_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
+
 echo "============================================"
 echo "GTSAM installed to: ${GTSAM_PREFIX}"
+echo "GTDynamics built at: ${GTD_BUILD}"
 echo "GTSAM_DIR=${GTSAM_DIR}"
 echo "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}"
 echo "DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}"
