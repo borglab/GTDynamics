@@ -187,9 +187,11 @@ void ManifoldOptimizer::constructManifoldValues(
   for (size_t i = 0; i < mopt_problem.components_.size(); i++) {
     // Find the values of variables in the component.
     const auto& component = mopt_problem.components_.at(i);
-    const Key& component_key = *component->keys().begin();
+    const KeySet component_keys = component->keys();
+    if (component_keys.empty()) continue;
+    const Key component_key = *component_keys.begin();
     Values component_values;
-    for (const Key& key : component->keys()) {
+    for (const Key& key : component_keys) {
       component_values.insert(key, equalityConstrainedProblem.values_.at(key));
     }
     // Construct manifold value
