@@ -6,10 +6,9 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  kinematic_trajectory_planning.cpp
- * @brief Kinematic trajectory planning problem of reaching a target pose with a
- * kuka arm. Benchmarking dynamic factor graph, constraint manifold, manually
- * specified manifold.
+ * @file  main_arm_kinematic_planning.cpp
+ * @brief KUKA arm kinematic trajectory benchmark using constrained optimization
+ * methods.
  * @author Yetong Zhang
  */
 
@@ -32,6 +31,23 @@ using namespace gtsam;
 using namespace gtdynamics;
 
 namespace {
+constexpr size_t kNumSteps = 10;
+const auto kJointNoise = noiseModel::Isotropic::Sigma(1, 1.0);
+const auto kJointLimitNoise = noiseModel::Isotropic::Sigma(1, 1e-2);
+const auto kTargetNoise = noiseModel::Isotropic::Sigma(6, 1e-2);
+const std::string kSdfFile = "kuka_world.sdf";
+const std::string kRobotName = "lbr_iiwa";
+const std::string kBaseName = "lbr_iiwa_link_0";
+const std::string kEeName = "lbr_iiwa_link_7";
+const Pose3 kTargetPose = Pose3(Rot3(), Point3(0, 0.2, 1.0));
+const Pose3 kBasePose;
+constexpr double kJointLimitLow = -3.14;
+constexpr double kJointLimitHigh = 3.14;
+
+Robot& KukaRobot() {
+  static Robot robot = CreateRobotFromFile(kSdfPath + kSdfFile, kRobotName);
+  return robot;
+}
 
 struct ArmBenchmarkArgs {
   bool verbose_benchmark = false;
@@ -111,29 +127,12 @@ public:
   }
 };
 
-
-// Kuka arm planning scenario setting.
-const size_t num_steps = 10;
-auto joint_noise = noiseModel::Isotropic::Sigma(1, 1.0);
-auto joint_limit_noise = noiseModel::Isotropic::Sigma(1, 1e-2);
-auto target_noise = noiseModel::Isotropic::Sigma(6, 1e-2);
-const std::string sdf_file = "kuka_world.sdf";
-const std::string robot_name = "lbr_iiwa";
-const std::string base_name = "lbr_iiwa_link_0";
-const std::string ee_name = "lbr_iiwa_link_7";
-const Pose3 target_pose = Pose3(Rot3(), Point3(0, 0.2, 1.0));
-const Pose3 base_pose;
-auto robot =
-    CreateRobotFromFile(kSdfPath + std::string("kuka_world.sdf"), "lbr_iiwa");
-double joint_limit_low = -3.14;
-double joint_limit_high = 3.14;
-
 /** Function to manually define the basis keys for each constraint manifold. */
 KeyVector FindBasisKeys(const KeyVector& keys) {
   KeyVector basis_keys;
   for (const Key& key : keys) {
-    auto symb = DynamicsSymbol(key);
-    if (symb.label() == "q") {
+    auto symbol = DynamicsSymbol(key);
+    if (symbol.label() == "q") {
       basis_keys.push_back(key);
     }
   }
@@ -143,10 +142,11 @@ KeyVector FindBasisKeys(const KeyVector& keys) {
 /** Factor graph of all kinematic constraints. Include kinematic constraints at
  * each time step, and the priors for the first step. */
 NonlinearFactorGraph get_constraints_graph() {
+  auto& robot = KukaRobot();
   NonlinearFactorGraph constraints_graph;
   // kinematics constraints at each step
   auto graph_builder = DynamicsGraph();
-  for (size_t k = 0; k <= num_steps; k++) {
+  for (size_t k = 0; k <= kNumSteps; k++) {
     constraints_graph.add(graph_builder.qFactors(robot, k));
   }
 
@@ -162,37 +162,39 @@ NonlinearFactorGraph get_constraints_graph() {
 /** Cost function for planning, includes cost of rotation joints, joint limit
  * costs, and cost for reaching target pose at end-effector. */
 NonlinearFactorGraph get_costs() {
+  auto& robot = KukaRobot();
   NonlinearFactorGraph costs;
   // rotation costs
   NonlinearFactorGraph rotation_costs;
-  for (size_t k = 0; k < num_steps; k++) {
+  for (size_t k = 0; k < kNumSteps; k++) {
     for (const auto& joint : robot.joints()) {
       rotation_costs.emplace_shared<BetweenFactor<double>>(
           JointAngleKey(joint->id(), k), JointAngleKey(joint->id(), k + 1), 0.0,
-          joint_noise);
+          kJointNoise);
     }
   }
   // joint limit costs;
   NonlinearFactorGraph joint_limit_costs;
-  for (size_t k = 0; k <= num_steps; k++) {
+  for (size_t k = 0; k <= kNumSteps; k++) {
     for (const auto& joint : robot.joints()) {
       joint_limit_costs.emplace_shared<JointLimitFactor>(
-          JointAngleKey(joint->id(), k), joint_limit_noise, joint_limit_low,
-          joint_limit_high, 0.0);
+          JointAngleKey(joint->id(), k), kJointLimitNoise, kJointLimitLow,
+          kJointLimitHigh, 0.0);
     }
   }
   // target cost
   NonlinearFactorGraph target_costs;
-  const auto& ee_link = robot.link(ee_name);
-  costs.addPrior(PoseKey(ee_link->id(), num_steps), target_pose, target_noise);
+  const auto& ee_link = robot.link(kEeName);
+  costs.addPrior(PoseKey(ee_link->id(), kNumSteps), kTargetPose, kTargetNoise);
   costs.add(rotation_costs);
   costs.add(target_costs);
   costs.add(joint_limit_costs);
   return costs;
 }
 
-/** Initial values specifed by 0 for all joint angles. */
+/** Initial values specified by 0 for all joint angles. */
 Values get_init_values() {
+  auto& robot = KukaRobot();
   Values init_values;
   Values fk_values;
   size_t k0 = 0;
@@ -201,7 +203,7 @@ Values get_init_values() {
   }
   fk_values = robot.forwardKinematics(fk_values, k0);
   // fk_values.print("", GTDKeyFormatter);
-  for (size_t k = 0; k <= num_steps; k++) {
+  for (size_t k = 0; k <= kNumSteps; k++) {
     for (const auto& joint : robot.joints()) {
       double angle = JointAngle(fk_values, joint->id(), k0);
       InsertJointAngle(&init_values, joint->id(), k, angle);
@@ -214,24 +216,26 @@ Values get_init_values() {
   return init_values;
 }
 
-/** Initial values of serial chain specifed by 0 for all joint angles. */
+/** Initial values of serial chain specified by 0 for all joint angles. */
 Values get_init_values_sc() {
+  auto& robot = KukaRobot();
   Values init_values;
   auto shared_robot = std::make_shared<Robot>(robot);
   Values joint_angles;
   for (const auto& joint : robot.joints()) {
     gtdynamics::InsertJointAngle(&joint_angles, joint->id(), 0.0);
   }
-  for (size_t k = 1; k <= num_steps; k++) {
+  for (size_t k = 1; k <= kNumSteps; k++) {
     Key sc_key = k;
-    init_values.insert(sc_key, SerialChain<7>(shared_robot, base_name,
-                                              base_pose, joint_angles));
+    init_values.insert(sc_key, SerialChain<7>(shared_robot, kBaseName,
+                                              kBasePose, joint_angles));
   }
   return init_values;
 }
 
 /** Same cost function, but imposed on the serial chain manifold. */
 NonlinearFactorGraph get_costs_sc() {
+  auto& robot = KukaRobot();
   NonlinearFactorGraph costs;
   // rotation costs
   Expression<SerialChain<7>> state1(1);
@@ -239,9 +243,9 @@ NonlinearFactorGraph get_costs_sc() {
     auto joint_func = std::bind(&SerialChain<7>::joint, std::placeholders::_1,
                                 joint->name(), std::placeholders::_2);
     Expression<double> curr_joint(joint_func, state1);
-    costs.addExpressionFactor<double>(joint_noise, 0.0, curr_joint);
+    costs.addExpressionFactor<double>(kJointNoise, 0.0, curr_joint);
   }
-  for (size_t k = 1; k < num_steps; k++) {
+  for (size_t k = 1; k < kNumSteps; k++) {
     Key curr_key = k;
     Key next_key = k + 1;
     Expression<SerialChain<7>> curr_state(curr_key);
@@ -252,13 +256,13 @@ NonlinearFactorGraph get_costs_sc() {
       Expression<double> curr_joint(joint_func, curr_state);
       Expression<double> next_joint(joint_func, next_state);
       Expression<double> joint_rotation_expr = next_joint - curr_joint;
-      costs.addExpressionFactor<double>(joint_noise, 0.0, joint_rotation_expr);
+      costs.addExpressionFactor<double>(kJointNoise, 0.0, joint_rotation_expr);
     }
   }
 
   // joint limit costs
-  JointLimitFunctor joint_limit_functor(joint_limit_low, joint_limit_high);
-  for (size_t k = 1; k <= num_steps; k++) {
+  JointLimitFunctor joint_limit_functor(kJointLimitLow, kJointLimitHigh);
+  for (size_t k = 1; k <= kNumSteps; k++) {
     Key curr_key = k;
     Expression<SerialChain<7>> curr_state(curr_key);
     for (const auto& joint : robot.joints()) {
@@ -266,18 +270,18 @@ NonlinearFactorGraph get_costs_sc() {
                                   joint->name(), std::placeholders::_2);
       Expression<double> curr_joint(joint_func, curr_state);
       Expression<double> joint_limit_error(joint_limit_functor, curr_joint);
-      costs.addExpressionFactor<double>(joint_limit_noise, 0.0,
+      costs.addExpressionFactor<double>(kJointLimitNoise, 0.0,
                                         joint_limit_error);
     }
   }
 
   // target costs
-  Key last_key = num_steps;
+  Key last_key = kNumSteps;
   Expression<SerialChain<7>> last_state(last_key);
   auto pose_func = std::bind(&SerialChain<7>::linkPose, std::placeholders::_1,
-                             ee_name, std::placeholders::_2);
+                             kEeName, std::placeholders::_2);
   Expression<Pose3> target_pose_expr(pose_func, last_state);
-  costs.addExpressionFactor<Pose3>(target_noise, target_pose, target_pose_expr);
+  costs.addExpressionFactor<Pose3>(kTargetNoise, kTargetPose, target_pose_expr);
   return costs;
 }
 
@@ -301,7 +305,8 @@ Values optimize_serial_chain_manifold(const NonlinearFactorGraph& costs,
 
 /** Print joint angles for all steps. */
 void print_joint_angles(const Values& values) {
-  for (size_t k = 0; k <= num_steps; k++) {
+  auto& robot = KukaRobot();
+  for (size_t k = 0; k <= kNumSteps; k++) {
     std::cout << "step " << k << ":";
     for (const auto& joint : robot.joints()) {
       double angle = JointAngle(values, joint->id(), k);
@@ -313,7 +318,8 @@ void print_joint_angles(const Values& values) {
 
 /** Print joint angles of serial chain for all steps. */
 void print_joint_angles_sc(const Values& values) {
-  for (size_t k = 1; k <= num_steps; k++) {
+  auto& robot = KukaRobot();
+  for (size_t k = 1; k <= kNumSteps; k++) {
     Key state_key = k;
     auto state = values.at<SerialChain<7>>(state_key);
     std::cout << "step " << k << ":";
@@ -325,12 +331,11 @@ void print_joint_angles_sc(const Values& values) {
   }
 }
 
-/** Compare simple kinematic planning tasks of a robot arm using (1) dynamics
- * factor graph (2) constraint manifold (3) manually specifed serial chain
- * manifold. */
+/** Benchmark constrained optimizers on a KUKA arm kinematic planning problem. */
 void kinematic_planning(const ArmBenchmarkArgs& args) {
+  auto& robot = KukaRobot();
   // Create constrained optimization problem.
-  robot.fixLink(base_name);
+  robot.fixLink(kBaseName);
   const auto createProblem = []() {
     auto constraints_graph = get_constraints_graph();
     auto costs = get_costs();

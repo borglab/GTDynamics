@@ -90,7 +90,7 @@ public:
   Values getInitValues(size_t num_steps, std::string option = "zero");
 
   /// Export trajectory to external file.
-  void exprotTrajectory(const Values& results, size_t num_steps, double dt, std::string file_name = "traj.csv") const;
+  void exportTrajectory(const Values& results, size_t num_steps, double dt, std::string file_name = "traj.csv") const;
 
   /// Print joint angles for all steps.
   void printJointAngles(const Values& values, size_t num_steps) const;

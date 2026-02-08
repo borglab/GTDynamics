@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  cartpole_planning.cpp
+ * @file  main_cartpole.cpp
  * @brief Dynamic trajectory planning problem of rotating up a cart-pole.
  * @author Yetong Zhang
  */
@@ -70,15 +70,15 @@ void dynamic_planning() {
   LevenbergMarquardtParams lm_params;
   // lm_params.setVerbosityLM("SUMMARY");
   lm_params.setlambdaUpperBound(1e10);
-  cartpole.exprotTrajectory(init_values, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_init.csv");
+  cartpole.exportTrajectory(init_values, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_init.csv");
 
-  double constraint_unit_scale =1e-3;
+  const double kConstraintUnitScale = 1e-3;
   // optimize soft constraints
   // std::cout << "soft constraints:\n";
   // auto soft_result =
-  //     OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0, constraint_unit_scale);
+  //     OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0, kConstraintUnitScale);
   // EvaluateCosts(soft_result);
-  // cartpole.exprotTrajectory(soft_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_soft_infeas.csv");
+  // cartpole.exportTrajectory(soft_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj_soft_infeas.csv");
 
   // // optimize penalty method
   lm_params.setMaxIterations(30);
@@ -86,14 +86,14 @@ void dynamic_planning() {
   // PenaltyOptimizerParams penalty_params;
   // penalty_params.lm_params = lm_params;
   // auto penalty_result =
-  //     OptimizeE_Penalty(problem, latex_os, penalty_params, constraint_unit_scale);
+  //     OptimizeE_Penalty(problem, latex_os, penalty_params, kConstraintUnitScale);
 
   // // optimize augmented lagrangian
   // std::cout << "augmented lagrangian:\n";
   // AugmentedLagrangianParameters al_params;
   // al_params.lm_params = lm_params;
   // auto almResult =
-  //     OptimizeE_AugmentedLagrangian(problem, latex_os, al_params, constraint_unit_scale);
+  //     OptimizeE_AugmentedLagrangian(problem, latex_os, al_params, kConstraintUnitScale);
 
   // optimize constraint manifold specify variables (feasible)
   // std::cout << "constraint manifold basis variables (feasible):\n";
@@ -101,15 +101,15 @@ void dynamic_planning() {
   mopt_params.cc_params->retractor_creator->params()->check_feasible=true;
   mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   // auto cm_basis_result =
-  //     OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
+  //     OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", kConstraintUnitScale);
   // EvaluateCosts(cm_basis_result);
-  // cartpole.exprotTrajectory(cm_basis_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj.csv");
+  // cartpole.exportTrajectory(cm_basis_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj.csv");
 
   // // optimize constraint manifold specify variables (infeasible)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result =
-      OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
+      OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", kConstraintUnitScale);
 
   std::cout << latex_os.str();
 }

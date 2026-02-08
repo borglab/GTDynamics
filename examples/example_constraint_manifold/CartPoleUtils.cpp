@@ -173,7 +173,7 @@ Values CartPole::getInitValuesInfeasible(size_t num_steps) {
   return init_values_infeasible;
 }
 /* ************************************************************************* */
-void CartPole::exprotTrajectory(const Values& results, size_t num_steps,
+void CartPole::exportTrajectory(const Values& results, size_t num_steps,
                                 double dt, std::string file_name) const {
   std::ofstream traj_file;
   traj_file.open(file_name);

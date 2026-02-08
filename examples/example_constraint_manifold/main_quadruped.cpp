@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  main.cpp
+ * @file  main_quadruped.cpp
  * @brief Trajectory optimization for a legged robot with contacts.
  * @author Alejandro Escontrela
  */
@@ -106,12 +106,12 @@ void TrajectoryOptimization() {
   lm_params.setlambdaUpperBound(1e10);
   // lm_params.setMaxIterations(10);
 
-  double constraint_unit_scale =1e-3;
+  const double kConstraintUnitScale = 1e-3;
 
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1e2, constraint_unit_scale);
+      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1e2, kConstraintUnitScale);
   EvaluateCosts(soft_result);
   vision60.exportTrajectory(soft_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/soft_traj.csv");
 
@@ -120,7 +120,7 @@ void TrajectoryOptimization() {
   // PenaltyOptimizerParams penalty_params;
   // penalty_params.lm_params = lm_params;
   // auto penalty_result =
-  //     OptimizeE_Penalty(problem, latex_os, penalty_params, constraint_unit_scale);
+  //     OptimizeE_Penalty(problem, latex_os, penalty_params, kConstraintUnitScale);
   // EvaluateCosts(penalty_result);
 
   // // optimize augmented lagrangian
@@ -128,7 +128,7 @@ void TrajectoryOptimization() {
   // AugmentedLagrangianParameters almParams;
   // almParams.lm_params = lm_params;
   // auto almResult =
-  //     OptimizeE_AugmentedLagrangian(problem, latex_os, almParams, constraint_unit_scale);
+  //     OptimizeE_AugmentedLagrangian(problem, latex_os, almParams, kConstraintUnitScale);
   // EvaluateCosts(almResult);
 
   // std::cout << "constraint manifold basis variables feasible:\n";
@@ -143,7 +143,7 @@ void TrajectoryOptimization() {
   // mopt_params.cc_params->retract_params->setUopt();
   mopt_params.cc_params->retractor_creator->params()->check_feasible = true;
   auto cm_result =
-        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
+        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", kConstraintUnitScale);
   EvaluateCosts(cm_result);
   vision60.exportTrajectory(cm_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv");
 
@@ -151,7 +151,7 @@ void TrajectoryOptimization() {
   mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(10);
   mopt_params.retract_final = true;
   auto cm_infeasible_result =
-        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", constraint_unit_scale);
+        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", kConstraintUnitScale);
   EvaluateCosts(cm_infeasible_result);
   vision60.exportTrajectory(cm_infeasible_result, num_steps, "/Users/yetongzhang/packages/GTDynamics/data/cm_infeas_traj.csv");
 
