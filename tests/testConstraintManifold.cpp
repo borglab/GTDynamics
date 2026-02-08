@@ -13,9 +13,9 @@
 
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
@@ -27,6 +27,7 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
+
 #include <map>
 #include <sstream>
 
@@ -56,17 +57,15 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 1, 1)));
 
   // Create constraint manifold with various tspacebasis and retractors
-  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
+  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
     return KeyVector{x3_key};
   };
   std::vector<TspaceBasisCreator::shared_ptr> basis_creators{
-    std::make_shared<OrthonormalBasisCreator>(),
-    std::make_shared<EliminationBasisCreator>(basis_key_func)
-  };
+      std::make_shared<OrthonormalBasisCreator>(),
+      std::make_shared<EliminationBasisCreator>(basis_key_func)};
   std::vector<RetractorCreator::shared_ptr> retractor_creators{
-    std::make_shared<UoptRetractorCreator>(),
-    std::make_shared<BasisRetractorCreator>(basis_key_func)
-  };
+      std::make_shared<UoptRetractorCreator>(),
+      std::make_shared<BasisRetractorCreator>(basis_key_func)};
 
   for (const auto& basis_creator : basis_creators) {
     for (const auto& retractor_creator : retractor_creators) {
@@ -138,21 +137,23 @@ TEST(ConstraintManifold, benchmark_sequence_connected_poses_minimal) {
 
   ConstrainedOptBenchmark::Options runOptions;
   runOptions.id = "test_connected_poses_minimal";
-  runOptions.csvPath =
-      "/tmp/test_connected_poses_minimal_benchmark.csv";
-  runOptions.methods = {BenchmarkMethod::SOFT, BenchmarkMethod::PENALTY,
-                        BenchmarkMethod::AUGMENTED_LAGRANGIAN,
-                        BenchmarkMethod::CM_F, BenchmarkMethod::CM_I};
+  runOptions.csvPath = "/tmp/test_connected_poses_minimal_benchmark.csv";
+  runOptions.methods = {ConstrainedOptBenchmark::Method::SOFT,
+                        ConstrainedOptBenchmark::Method::PENALTY,
+                        ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN,
+                        ConstrainedOptBenchmark::Method::CM_F,
+                        ConstrainedOptBenchmark::Method::CM_I};
   runOptions.softMu = 1.0;
   runOptions.constraintUnitScale = 1.0;
 
   ConstrainedOptBenchmark runner(runOptions);
   runner.setProblemFactory(createProblem);
 
-  std::map<BenchmarkMethod, Values> resultsByMethod;
-  runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
-    resultsByMethod[method] = result;
-  });
+  std::map<ConstrainedOptBenchmark::Method, Values> resultsByMethod;
+  runner.setResultCallback(
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+        resultsByMethod[method] = result;
+      });
 
   bool success = true;
   std::string errorMessage;
@@ -170,15 +171,17 @@ TEST(ConstraintManifold, benchmark_sequence_connected_poses_minimal) {
   }
   EXPECT(success);
   if (success) {
-    EXPECT(resultsByMethod.count(BenchmarkMethod::SOFT) == 1);
-    EXPECT(resultsByMethod.count(BenchmarkMethod::PENALTY) == 1);
-    EXPECT(resultsByMethod.count(BenchmarkMethod::AUGMENTED_LAGRANGIAN) == 1);
-    EXPECT(resultsByMethod.count(BenchmarkMethod::CM_F) == 1);
-    EXPECT(resultsByMethod.count(BenchmarkMethod::CM_I) == 1);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::SOFT) == 1);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::PENALTY) ==
+           1);
+    EXPECT(resultsByMethod.count(
+               ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN) == 1);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::CM_F) == 1);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::CM_I) == 1);
 
     const auto problem = createProblem();
-    EXPECT(problem.evaluateEConstraintViolationL2Norm(
-               resultsByMethod.at(BenchmarkMethod::CM_I)) < 1e-3);
+    EXPECT(problem.evaluateEConstraintViolationL2Norm(resultsByMethod.at(
+               ConstrainedOptBenchmark::Method::CM_I)) < 1e-3);
   }
 }
 
@@ -231,33 +234,35 @@ TEST(ConstraintManifold, benchmark_sequence_multi_component_no_key_collision) {
   ConstrainedOptBenchmark::Options runOptions;
   runOptions.id = "test_multi_component";
   runOptions.csvPath = "/tmp/test_multi_component_benchmark.csv";
-  runOptions.methods = {BenchmarkMethod::SOFT, BenchmarkMethod::PENALTY,
-                        BenchmarkMethod::AUGMENTED_LAGRANGIAN,
-                        BenchmarkMethod::CM_F, BenchmarkMethod::CM_I};
+  runOptions.methods = {ConstrainedOptBenchmark::Method::SOFT,
+                        ConstrainedOptBenchmark::Method::PENALTY,
+                        ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN,
+                        ConstrainedOptBenchmark::Method::CM_F,
+                        ConstrainedOptBenchmark::Method::CM_I};
   runOptions.softMu = 1.0;
   runOptions.constraintUnitScale = 1.0;
 
   bool success = true;
   std::string errorMessage;
-  std::map<BenchmarkMethod, Values> firstRunResults;
-  std::map<BenchmarkMethod, Values> secondRunResults;
+  std::map<ConstrainedOptBenchmark::Method, Values> firstRunResults;
+  std::map<ConstrainedOptBenchmark::Method, Values> secondRunResults;
   std::ostringstream latexOs;
 
   try {
     ConstrainedOptBenchmark firstRunner(runOptions);
     firstRunner.setProblemFactory(createProblem);
     firstRunner.setResultCallback(
-        [&](BenchmarkMethod method, const Values& result) {
+        [&](ConstrainedOptBenchmark::Method method, const Values& result) {
           firstRunResults[method] = result;
         });
     firstRunner.run(latexOs);
 
     ConstrainedOptBenchmark::Options secondRunOptions = runOptions;
-    secondRunOptions.methods = {BenchmarkMethod::CM_I};
+    secondRunOptions.methods = {ConstrainedOptBenchmark::Method::CM_I};
     ConstrainedOptBenchmark secondRunner(secondRunOptions);
     secondRunner.setProblemFactory(createProblem);
     secondRunner.setResultCallback(
-        [&](BenchmarkMethod method, const Values& result) {
+        [&](ConstrainedOptBenchmark::Method method, const Values& result) {
           secondRunResults[method] = result;
         });
     secondRunner.run(latexOs);
@@ -272,16 +277,18 @@ TEST(ConstraintManifold, benchmark_sequence_multi_component_no_key_collision) {
   }
   EXPECT(success);
   if (success) {
-    EXPECT(firstRunResults.count(BenchmarkMethod::CM_I) == 1);
-    EXPECT(secondRunResults.count(BenchmarkMethod::CM_I) == 1);
+    EXPECT(firstRunResults.count(ConstrainedOptBenchmark::Method::CM_I) == 1);
+    EXPECT(secondRunResults.count(ConstrainedOptBenchmark::Method::CM_I) == 1);
     const auto problem = createProblem();
-    EXPECT(problem.evaluateEConstraintViolationL2Norm(
-               firstRunResults.at(BenchmarkMethod::CM_I)) < 1e-3);
-    EXPECT(problem.evaluateEConstraintViolationL2Norm(
-               secondRunResults.at(BenchmarkMethod::CM_I)) < 1e-3);
-    EXPECT(assert_equal(0.5,
-                        secondRunResults.at(BenchmarkMethod::CM_I).atDouble(uKey),
-                        1e-3));
+    EXPECT(problem.evaluateEConstraintViolationL2Norm(firstRunResults.at(
+               ConstrainedOptBenchmark::Method::CM_I)) < 1e-3);
+    EXPECT(problem.evaluateEConstraintViolationL2Norm(secondRunResults.at(
+               ConstrainedOptBenchmark::Method::CM_I)) < 1e-3);
+    EXPECT(
+        assert_equal(0.5,
+                     secondRunResults.at(ConstrainedOptBenchmark::Method::CM_I)
+                         .atDouble(uKey),
+                     1e-3));
   }
 }
 
@@ -313,10 +320,10 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
     if (k > 0) {
       initValues.insert(A(k), Pose2(0.0, 0.0, 0.0));
       initValues.insert(B(k), Pose2(0.0, 1.0, 0.0));
-      costs.emplace_shared<BetweenFactor<Pose2>>(A(k - 1), A(k),
-                                                 Pose2(0.1, 0.0, 0.0), odoNoise);
-      costs.emplace_shared<BetweenFactor<Pose2>>(B(k - 1), B(k),
-                                                 Pose2(0.1, 0.0, 0.0), odoNoise);
+      costs.emplace_shared<BetweenFactor<Pose2>>(
+          A(k - 1), A(k), Pose2(0.1, 0.0, 0.0), odoNoise);
+      costs.emplace_shared<BetweenFactor<Pose2>>(
+          B(k - 1), B(k), Pose2(0.1, 0.0, 0.0), odoNoise);
     }
   }
 
@@ -329,17 +336,16 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
   std::string errorMessage;
   ManifoldOptProblem moptProblem;
   try {
-    moptProblem = optimizer.initializeMoptProblem(problem.costs(),
-                                                  problem.constraints(),
-                                                  problem.initValues());
+    moptProblem = optimizer.initializeMoptProblem(
+        problem.costs(), problem.constraints(), problem.initValues());
   } catch (const std::exception& e) {
     success = false;
     errorMessage = e.what();
   }
 
   if (!success) {
-    std::cout << "connected-poses manifold-key regression failure: " << errorMessage
-              << std::endl;
+    std::cout << "connected-poses manifold-key regression failure: "
+              << errorMessage << std::endl;
   }
   EXPECT(success);
   if (success) {
@@ -385,9 +391,8 @@ TEST(ConstraintManifold, sv_mode_fully_constrained_component_no_throw) {
   std::string errorMessage;
   ManifoldOptProblem moptProblem;
   try {
-    moptProblem = optimizer.initializeMoptProblem(problem.costs(),
-                                                  problem.constraints(),
-                                                  problem.initValues());
+    moptProblem = optimizer.initializeMoptProblem(
+        problem.costs(), problem.constraints(), problem.initValues());
   } catch (const std::exception& e) {
     success = false;
     errorMessage = e.what();
@@ -444,7 +449,7 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   basis_keys.push_back(JointVelKey(j1_id, 0));
   basis_keys.push_back(JointAccelKey(j0_id, 0));
   basis_keys.push_back(JointAccelKey(j1_id, 0));
-  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
+  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
     return basis_keys;
   };
 
@@ -452,8 +457,10 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   auto constraints = std::make_shared<EqualityConstraints>(
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph));
   auto cc_params = std::make_shared<ConstraintManifold::Params>();
-  cc_params->retractor_creator = std::make_shared<BasisRetractorCreator>(basis_key_func);
-  cc_params->basis_creator = std::make_shared<EliminationBasisCreator>(basis_key_func);
+  cc_params->retractor_creator =
+      std::make_shared<BasisRetractorCreator>(basis_key_func);
+  cc_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(basis_key_func);
   auto cm = ConstraintManifold(constraints, init_values, cc_params, true);
 
   // retract

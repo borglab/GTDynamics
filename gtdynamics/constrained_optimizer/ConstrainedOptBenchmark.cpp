@@ -66,17 +66,20 @@ std::vector<std::string> Split(const std::string& text, char delim) {
   return parts;
 }
 
-std::vector<BenchmarkMethod> OrderedMethods() {
-  return {BenchmarkMethod::SOFT, BenchmarkMethod::PENALTY,
-          BenchmarkMethod::AUGMENTED_LAGRANGIAN, BenchmarkMethod::CM_F,
-          BenchmarkMethod::CM_I};
+std::vector<ConstrainedOptBenchmark::Method> OrderedMethods() {
+  return {ConstrainedOptBenchmark::Method::SOFT,
+          ConstrainedOptBenchmark::Method::PENALTY,
+          ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN,
+          ConstrainedOptBenchmark::Method::CM_F,
+          ConstrainedOptBenchmark::Method::CM_I};
 }
 
-std::string MethodsListString(const std::set<BenchmarkMethod>& methods) {
+std::string MethodsListString(
+    const std::set<ConstrainedOptBenchmark::Method>& methods) {
   std::vector<std::string> tokens;
-  for (BenchmarkMethod method : OrderedMethods()) {
+  for (ConstrainedOptBenchmark::Method method : OrderedMethods()) {
     if (methods.count(method) == 0) continue;
-    tokens.push_back(BenchmarkMethodToken(method));
+    tokens.push_back(ConstrainedOptBenchmark::MethodToken(method));
   }
 
   std::ostringstream oss;
@@ -87,33 +90,35 @@ std::string MethodsListString(const std::set<BenchmarkMethod>& methods) {
   return oss.str();
 }
 
-std::set<BenchmarkMethod> ParseMethods(const std::string& methodsText) {
-  std::set<BenchmarkMethod> methods;
+std::set<ConstrainedOptBenchmark::Method> ParseMethods(
+    const std::string& methodsText) {
+  std::set<ConstrainedOptBenchmark::Method> methods;
   for (const auto& tokenRaw : Split(methodsText, ',')) {
     const std::string token = ToLower(Trim(tokenRaw));
     if (token.empty()) continue;
     if (token == "all") {
       const auto methods = OrderedMethods();
-      return std::set<BenchmarkMethod>(methods.begin(), methods.end());
+      return std::set<ConstrainedOptBenchmark::Method>(methods.begin(),
+                                                       methods.end());
     }
     if (token == "soft") {
-      methods.insert(BenchmarkMethod::SOFT);
+      methods.insert(ConstrainedOptBenchmark::Method::SOFT);
       continue;
     }
     if (token == "penalty") {
-      methods.insert(BenchmarkMethod::PENALTY);
+      methods.insert(ConstrainedOptBenchmark::Method::PENALTY);
       continue;
     }
     if (token == "alm" || token == "augmented_lagrangian") {
-      methods.insert(BenchmarkMethod::AUGMENTED_LAGRANGIAN);
+      methods.insert(ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN);
       continue;
     }
     if (token == "f" || token == "cmf") {
-      methods.insert(BenchmarkMethod::CM_F);
+      methods.insert(ConstrainedOptBenchmark::Method::CM_F);
       continue;
     }
     if (token == "i" || token == "cmi") {
-      methods.insert(BenchmarkMethod::CM_I);
+      methods.insert(ConstrainedOptBenchmark::Method::CM_I);
       continue;
     }
     throw std::invalid_argument("Unknown method token: " + tokenRaw);
@@ -210,8 +215,9 @@ void PrintLatex(std::ostream& latexOs, const std::string& expName, size_t fDim,
 
 }  // namespace
 
-void PrintBenchmarkUsage(std::ostream& os, const char* programName,
-                         const BenchmarkCliDefaults& defaults) {
+void ConstrainedOptBenchmark::PrintUsage(
+    std::ostream& os, const char* programName,
+    const ConstrainedOptBenchmark::CliDefaults& defaults) {
   os << "Usage: " << programName << " [benchmark options] [example options]\n"
      << "Benchmark options:\n"
      << "  --methods LIST            Comma list from "
@@ -230,9 +236,10 @@ void PrintBenchmarkUsage(std::ostream& os, const char* programName,
      << ", methods=" << MethodsListString(defaults.defaultMethods) << "\n";
 }
 
-ParsedBenchmarkCli ParseBenchmarkCli(int argc, char** argv,
-                                     const BenchmarkCliDefaults& defaults) {
-  ParsedBenchmarkCli parsed;
+ConstrainedOptBenchmark::ParsedCli ConstrainedOptBenchmark::ParseCli(
+    int argc, char** argv,
+    const ConstrainedOptBenchmark::CliDefaults& defaults) {
+  ConstrainedOptBenchmark::ParsedCli parsed;
   parsed.runOptions.id = defaults.id;
   parsed.runOptions.methods = defaults.defaultMethods;
   parsed.numSteps = defaults.defaultNumSteps;
@@ -240,7 +247,7 @@ ParsedBenchmarkCli ParseBenchmarkCli(int argc, char** argv,
   for (int i = 1; i < argc; ++i) {
     const std::string arg(argv[i]);
     if (arg == "--help" || arg == "-h") {
-      PrintBenchmarkUsage(std::cout, argv[0], defaults);
+      ConstrainedOptBenchmark::PrintUsage(std::cout, argv[0], defaults);
       std::exit(0);
     } else if (arg == "--verbose-benchmark") {
       parsed.runOptions.verbose = true;
@@ -290,51 +297,54 @@ ParsedBenchmarkCli ParseBenchmarkCli(int argc, char** argv,
   return parsed;
 }
 
-std::string BenchmarkMethodToken(BenchmarkMethod method) {
+std::string ConstrainedOptBenchmark::MethodToken(
+    ConstrainedOptBenchmark::Method method) {
   switch (method) {
-    case BenchmarkMethod::SOFT:
+    case ConstrainedOptBenchmark::Method::SOFT:
       return "soft";
-    case BenchmarkMethod::PENALTY:
+    case ConstrainedOptBenchmark::Method::PENALTY:
       return "penalty";
-    case BenchmarkMethod::AUGMENTED_LAGRANGIAN:
+    case ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN:
       return "alm";
-    case BenchmarkMethod::CM_F:
+    case ConstrainedOptBenchmark::Method::CM_F:
       return "cm_f";
-    case BenchmarkMethod::CM_I:
+    case ConstrainedOptBenchmark::Method::CM_I:
       return "cm_i";
   }
   return "unknown";
 }
 
-std::string BenchmarkMethodLabel(BenchmarkMethod method) {
+std::string ConstrainedOptBenchmark::MethodLabel(
+    ConstrainedOptBenchmark::Method method) {
   switch (method) {
-    case BenchmarkMethod::SOFT:
+    case ConstrainedOptBenchmark::Method::SOFT:
       return "Soft Constraint";
-    case BenchmarkMethod::PENALTY:
+    case ConstrainedOptBenchmark::Method::PENALTY:
       return "Penalty Method";
-    case BenchmarkMethod::AUGMENTED_LAGRANGIAN:
+    case ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN:
       return "Augmented Lagrangian";
-    case BenchmarkMethod::CM_F:
+    case ConstrainedOptBenchmark::Method::CM_F:
       return "Constraint Manifold (F)";
-    case BenchmarkMethod::CM_I:
+    case ConstrainedOptBenchmark::Method::CM_I:
       return "Constraint Manifold (I)";
   }
   return "Unknown";
 }
 
-std::string BenchmarkMethodDataPath(
-    const ConstrainedOptBenchmark::Options& options, BenchmarkMethod method,
-    const std::string& suffix) {
+std::string ConstrainedOptBenchmark::MethodDataPath(
+    const ConstrainedOptBenchmark::Options& options,
+    ConstrainedOptBenchmark::Method method, const std::string& suffix) {
   const std::filesystem::path path =
       EnsureDataPath() /
-      (options.id + "_" + BenchmarkMethodToken(method) + suffix);
+      (options.id + "_" + ConstrainedOptBenchmark::MethodToken(method) +
+       suffix);
   return path.string();
 }
 
 ConstrainedOptBenchmark::ConstrainedOptBenchmark(
     ConstrainedOptBenchmark::Options options)
     : options_(std::move(options)) {
-  moptFactory_ = [](BenchmarkMethod) {
+  moptFactory_ = [](ConstrainedOptBenchmark::Method) {
     return ConstrainedOptBenchmark::DefaultMoptParams();
   };
 }
@@ -377,7 +387,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
   ScopedEnvVar benchCsvEnv(kBenchmarkCsvEnv, csvPath);
   ScopedEnvVar benchIdEnv(kBenchmarkIdEnv, options_.id);
 
-  for (BenchmarkMethod method : OrderedMethods()) {
+  for (ConstrainedOptBenchmark::Method method : OrderedMethods()) {
     if (options_.methods.count(method) == 0) continue;
 
     LevenbergMarquardtParams lmParams = outerLmParams_;
@@ -392,14 +402,14 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
 
     Values result;
     switch (method) {
-      case BenchmarkMethod::SOFT: {
+      case ConstrainedOptBenchmark::Method::SOFT: {
         std::cout << "soft constraints:\n";
         result =
             OptimizeSoftConstraints(problem, latexOs, lmParams, options_.softMu,
                                     options_.constraintUnitScale);
         break;
       }
-      case BenchmarkMethod::PENALTY: {
+      case ConstrainedOptBenchmark::Method::PENALTY: {
         std::cout << "penalty method:\n";
         auto penaltyParams = std::make_shared<gtsam::PenaltyOptimizerParams>();
         penaltyParams->lmParams = lmParams;
@@ -407,7 +417,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
                                  options_.constraintUnitScale);
         break;
       }
-      case BenchmarkMethod::AUGMENTED_LAGRANGIAN: {
+      case ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN: {
         std::cout << "augmented lagrangian:\n";
         auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
         almParams->lmParams = lmParams;
@@ -415,9 +425,9 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
                                              options_.constraintUnitScale);
         break;
       }
-      case BenchmarkMethod::CM_F:
-      case BenchmarkMethod::CM_I: {
-        const bool feasible = method == BenchmarkMethod::CM_F;
+      case ConstrainedOptBenchmark::Method::CM_F:
+      case ConstrainedOptBenchmark::Method::CM_I: {
+        const bool feasible = method == ConstrainedOptBenchmark::Method::CM_F;
         std::cout << "constraint manifold basis variables ("
                   << (feasible ? "feasible" : "infeasible") << "):\n";
 
@@ -437,7 +447,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
         }
 
         result = OptimizeCmOpt(problem, latexOs, moptParams, lmParams,
-                               BenchmarkMethodLabel(method),
+                               ConstrainedOptBenchmark::MethodLabel(method),
                                options_.constraintUnitScale);
         break;
       }

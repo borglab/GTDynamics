@@ -11,8 +11,6 @@
  * @author Yetong Zhang
  */
 
-#include "CartPoleUtils.h"
-
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
@@ -23,6 +21,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "CartPoleUtils.h"
+
 using namespace gtsam;
 using namespace gtdynamics;
 
@@ -32,30 +32,32 @@ constexpr double kHorizonTime = 2.0;
 constexpr double kDt = 1.0 / 100.0;
 
 struct CartPoleArgs {
-  ParsedBenchmarkCli benchmark_cli;
+  ConstrainedOptBenchmark::ParsedCli benchmark_cli;
 };
 
 void PrintUsage(const char* program_name) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "cartpole";
   defaults.enableNumSteps = true;
   defaults.defaultNumSteps = static_cast<size_t>(std::ceil(kHorizonTime / kDt));
-  defaults.defaultMethods = {BenchmarkMethod::CM_I};
-  PrintBenchmarkUsage(std::cout, program_name, defaults);
+  defaults.defaultMethods = {ConstrainedOptBenchmark::Method::CM_I};
+  ConstrainedOptBenchmark::PrintUsage(std::cout, program_name, defaults);
 }
 
 CartPoleArgs ParseArgs(int argc, char** argv) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "cartpole";
   defaults.enableNumSteps = true;
   defaults.defaultNumSteps = static_cast<size_t>(std::ceil(kHorizonTime / kDt));
-  defaults.defaultMethods = {BenchmarkMethod::CM_I};
-  return CartPoleArgs{ParseBenchmarkCli(argc, argv, defaults)};
+  defaults.defaultMethods = {ConstrainedOptBenchmark::Method::CM_I};
+  return CartPoleArgs{ConstrainedOptBenchmark::ParseCli(argc, argv, defaults)};
 }
 }  // namespace
 
-/** Cart-pole dynamic planning benchmark with shared constrained optimizer runner. */
-void dynamic_planning(size_t numSteps, const ConstrainedOptBenchmark::Options& runOptions) {
+/** Cart-pole dynamic planning benchmark with shared constrained optimizer
+ * runner. */
+void dynamic_planning(size_t numSteps,
+                      const ConstrainedOptBenchmark::Options& runOptions) {
   CartPole cartpole;
 
   NonlinearFactorGraph dynamicConstraintsGraph =
@@ -64,7 +66,8 @@ void dynamic_planning(size_t numSteps, const ConstrainedOptBenchmark::Options& r
   NonlinearFactorGraph initStateGraph = cartpole.initStateGraph();
 
   NonlinearFactorGraph finalStateGraph = cartpole.finalStateGraph(numSteps);
-  NonlinearFactorGraph collocationCosts = cartpole.getCollocation(numSteps, kDt);
+  NonlinearFactorGraph collocationCosts =
+      cartpole.getCollocation(numSteps, kDt);
   NonlinearFactorGraph minTorqueCosts = cartpole.minTorqueCosts(numSteps);
 
   NonlinearFactorGraph constraintsGraph;
@@ -78,8 +81,10 @@ void dynamic_planning(size_t numSteps, const ConstrainedOptBenchmark::Options& r
   costs.add(minTorqueCosts);
 
   auto evaluateCosts = [=](const Values& values) {
-    std::cout << "collocation costs:\t" << collocationCosts.error(values) << "\n";
-    std::cout << "final state costs:\t" << finalStateGraph.error(values) << "\n";
+    std::cout << "collocation costs:\t" << collocationCosts.error(values)
+              << "\n";
+    std::cout << "final state costs:\t" << finalStateGraph.error(values)
+              << "\n";
     std::cout << "min torque costs:\t" << minTorqueCosts.error(values) << "\n";
   };
 
@@ -100,21 +105,22 @@ void dynamic_planning(size_t numSteps, const ConstrainedOptBenchmark::Options& r
   runner.setProblemFactory(
       [=]() { return EConsOptProblem(costs, constraints, initValues); });
   runner.setOuterLmBaseParams(lmParams);
-  runner.setMoptFactory([&](BenchmarkMethod) {
-    auto moptParams =
-        ConstrainedOptBenchmark::DefaultMoptParamsSV(cartpole.getBasisKeyFunc(true));
+  runner.setMoptFactory([&](ConstrainedOptBenchmark::Method) {
+    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(
+        cartpole.getBasisKeyFunc(true));
     auto retractorParams = moptParams.cc_params->retractor_creator->params();
     retractorParams->check_feasible = true;
     retractorParams->lm_params.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     return moptParams;
   });
-  runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
-    evaluateCosts(result);
-    cartpole.exportTrajectory(
-        result, numSteps, kDt,
-        BenchmarkMethodDataPath(runOptions, method, "_traj.csv"));
-  });
+  runner.setResultCallback(
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+        evaluateCosts(result);
+        cartpole.exportTrajectory(result, numSteps, kDt,
+                                  ConstrainedOptBenchmark::MethodDataPath(
+                                      runOptions, method, "_traj.csv"));
+      });
 
   std::ostringstream latexOs;
   runner.run(latexOs);

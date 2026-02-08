@@ -11,14 +11,14 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/config.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
-#include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/sam/RangeFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 #include <fstream>
 #include <iostream>
@@ -51,44 +51,45 @@ Sampler& InitValueSampler() {
 }
 
 struct RangeConstraintArgs {
-  ParsedBenchmarkCli benchmark_cli;
+  ConstrainedOptBenchmark::ParsedCli benchmark_cli;
 };
 
 void PrintUsage(const char* program_name) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "range_constraint";
-  PrintBenchmarkUsage(std::cout, program_name, defaults);
+  ConstrainedOptBenchmark::PrintUsage(std::cout, program_name, defaults);
 }
 
 RangeConstraintArgs ParseArgs(int argc, char** argv) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "range_constraint";
-  return RangeConstraintArgs{ParseBenchmarkCli(argc, argv, defaults)};
+  return RangeConstraintArgs{
+      ConstrainedOptBenchmark::ParseCli(argc, argv, defaults)};
 }
 }  // namespace
 
-Pose2 add_noise(const Pose2 &pose, Sampler& sampler) {
+Pose2 add_noise(const Pose2& pose, Sampler& sampler) {
   auto xi = sampler.sample();
   return pose.expmap(xi);
 }
 
 /** Build range constraints between trajectories A and B at each step. */
-NonlinearFactorGraph get_constraints_graph(const Values &gt) {
+NonlinearFactorGraph get_constraints_graph(const Values& gt) {
   NonlinearFactorGraph constraints_graph;
 
   for (size_t k = 0; k <= kNumSteps; k++) {
     Pose2 pose_1 = gt.at<Pose2>(A(k));
     Pose2 pose_2 = gt.at<Pose2>(B(k));
     double range = pose_1.range(pose_2);
-    constraints_graph.emplace_shared<RangeFactor<Pose2, Pose2>>(A(k), B(k), range,
-                                                           kRangeNoise);
+    constraints_graph.emplace_shared<RangeFactor<Pose2, Pose2>>(
+        A(k), B(k), range, kRangeNoise);
   }
 
   return constraints_graph;
 }
 
 /** Build priors and noisy odometry costs for both trajectories. */
-NonlinearFactorGraph get_costs(const Values &gt) {
+NonlinearFactorGraph get_costs(const Values& gt) {
   NonlinearFactorGraph costs;
 
   costs.emplace_shared<PriorFactor<Pose2>>(A(0), gt.at<Pose2>(A(0)),
@@ -125,7 +126,7 @@ Values get_gt_values() {
 }
 
 /** Build initial values by adding noise to the ground-truth trajectories. */
-Values get_init_values(const Values &gt) {
+Values get_init_values(const Values& gt) {
   Values init_values;
   for (size_t k = 0; k <= kNumSteps; k++) {
     Pose2 pose_1 = gt.at<Pose2>(A(k));
@@ -150,11 +151,10 @@ KeyVector FindBasisKeys(const KeyVector& keys) {
   return basis_keys;
 }
 
-
-double EvaluatePoseError(const Values &gt, const Values &result) {
+double EvaluatePoseError(const Values& gt, const Values& result) {
   double error1 = 0;
   double error2 = 0;
-  for (size_t k=1; k<=kNumSteps; k++) {
+  for (size_t k = 1; k <= kNumSteps; k++) {
     {
       Pose2 gt_pose = gt.at<Pose2>(A(k));
       Pose2 est_pose = result.at<Pose2>(A(k));
@@ -172,7 +172,8 @@ double EvaluatePoseError(const Values &gt, const Values &result) {
       error2 += pow(diff.norm(), 2);
     }
   }
-  std::cout << sqrt(error1 / kNumSteps) << "\t" << sqrt(error2 / kNumSteps) << "\n";
+  std::cout << sqrt(error1 / kNumSteps) << "\t" << sqrt(error2 / kNumSteps)
+            << "\n";
   return sqrt(error1 / kNumSteps) + sqrt(error2 / kNumSteps);
 }
 
@@ -185,12 +186,13 @@ void ExportTrajectoryCsv(const Values& values, const std::string& file_path) {
   for (size_t k = 0; k <= kNumSteps; ++k) {
     const Pose2 a = values.at<Pose2>(A(k));
     const Pose2 b = values.at<Pose2>(B(k));
-    out << k << "," << a.x() << "," << a.y() << "," << a.theta() << ","
-        << b.x() << "," << b.y() << "," << b.theta() << "\n";
+    out << k << "," << a.x() << "," << a.y() << "," << a.theta() << "," << b.x()
+        << "," << b.y() << "," << b.theta() << "\n";
   }
 }
 
-/** Benchmark constrained optimizers on range-constrained trajectory estimation. */
+/** Benchmark constrained optimizers on range-constrained trajectory estimation.
+ */
 void kinematic_planning(const RangeConstraintArgs& args) {
   // problem
   auto gt = get_gt_values();
@@ -211,18 +213,19 @@ void kinematic_planning(const RangeConstraintArgs& args) {
   runner.setProblemFactory(
       [=]() { return EConsOptProblem(costs, constraints, initValues); });
   runner.setOuterLmBaseParams(LevenbergMarquardtParams());
-  runner.setMoptFactory([](BenchmarkMethod) {
+  runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
     moptParams.cc_params->retractor_creator->params()
         ->lm_params.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     return moptParams;
   });
-  runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
-    std::cout << "pose error: " << EvaluatePoseError(gt, result) << "\n";
-    ExportTrajectoryCsv(result,
-                        BenchmarkMethodDataPath(runOptions, method, "_traj.csv"));
-  });
+  runner.setResultCallback(
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+        std::cout << "pose error: " << EvaluatePoseError(gt, result) << "\n";
+        ExportTrajectoryCsv(result, ConstrainedOptBenchmark::MethodDataPath(
+                                        runOptions, method, "_traj.csv"));
+      });
 
   ExportTrajectoryCsv(
       initValues, std::string(kDataPath) + runOptions.id + "_init_traj.csv");
@@ -232,7 +235,7 @@ void kinematic_planning(const RangeConstraintArgs& args) {
   std::cout << latexOs.str();
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   try {
     const RangeConstraintArgs args = ParseArgs(argc, argv);
     if (!args.benchmark_cli.unknownArgs.empty()) {

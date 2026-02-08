@@ -47,23 +47,25 @@ Sampler& OdoSampler() {
 }
 
 struct ConnectedPosesArgs {
-  ParsedBenchmarkCli benchmark_cli;
+  ConstrainedOptBenchmark::ParsedCli benchmark_cli;
   bool debug_cm_components = false;
 };
 
 void PrintUsage(const char* program_name) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "connected_poses";
-  PrintBenchmarkUsage(std::cout, program_name, defaults);
-  std::cout << "Example-specific options:\n"
-            << "  --debug-cm-components Print CM component/manifold diagnostics.\n";
+  ConstrainedOptBenchmark::PrintUsage(std::cout, program_name, defaults);
+  std::cout
+      << "Example-specific options:\n"
+      << "  --debug-cm-components Print CM component/manifold diagnostics.\n";
 }
 
 ConnectedPosesArgs ParseArgs(int argc, char** argv) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "connected_poses";
 
-  ConnectedPosesArgs args{ParseBenchmarkCli(argc, argv, defaults)};
+  ConnectedPosesArgs args{
+      ConstrainedOptBenchmark::ParseCli(argc, argv, defaults)};
   std::vector<std::string> remaining;
   for (const auto& arg : args.benchmark_cli.unknownArgs) {
     if (arg == "--debug-cm-components") {
@@ -130,8 +132,8 @@ void ExportTrajectoryCsv(const Values& values, const std::string& file_path) {
   for (size_t k = 0; k <= kNumSteps; ++k) {
     const Pose2 a = values.at<Pose2>(A(k));
     const Pose2 b = values.at<Pose2>(B(k));
-    out << k << "," << a.x() << "," << a.y() << "," << a.theta() << ","
-        << b.x() << "," << b.y() << "," << b.theta() << "\n";
+    out << k << "," << a.x() << "," << a.y() << "," << a.theta() << "," << b.x()
+        << "," << b.y() << "," << b.theta() << "\n";
   }
 }
 
@@ -261,7 +263,7 @@ void kinematic_planning(const ConnectedPosesArgs& args) {
   runOptions.constraintUnitScale = kConstraintUnitScale;
   runOptions.softMu = 1e4;
 
-  auto moptFactory = [](BenchmarkMethod) {
+  auto moptFactory = [](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
     moptParams.cc_params->retractor_creator->params()
         ->lm_params.linearSolverType =
@@ -270,9 +272,9 @@ void kinematic_planning(const ConnectedPosesArgs& args) {
   };
 
   if (args.debug_cm_components &&
-      (runOptions.methods.count(BenchmarkMethod::CM_F) > 0 ||
-       runOptions.methods.count(BenchmarkMethod::CM_I) > 0)) {
-    auto debugMopt = moptFactory(BenchmarkMethod::CM_F);
+      (runOptions.methods.count(ConstrainedOptBenchmark::Method::CM_F) > 0 ||
+       runOptions.methods.count(ConstrainedOptBenchmark::Method::CM_I) > 0)) {
+    auto debugMopt = moptFactory(ConstrainedOptBenchmark::Method::CM_F);
     PrintCMComponentDebug(problem, debugMopt, lmParams, true);
   }
 
@@ -281,11 +283,12 @@ void kinematic_planning(const ConnectedPosesArgs& args) {
       [=]() { return EConsOptProblem(costs, constraints, initValues); });
   runner.setOuterLmBaseParams(lmParams);
   runner.setMoptFactory(moptFactory);
-  runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
-    std::cout << "pose error: " << EvaluatePoseError(gt, result) << "\n";
-    ExportTrajectoryCsv(result,
-                        BenchmarkMethodDataPath(runOptions, method, "_traj.csv"));
-  });
+  runner.setResultCallback(
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+        std::cout << "pose error: " << EvaluatePoseError(gt, result) << "\n";
+        ExportTrajectoryCsv(result, ConstrainedOptBenchmark::MethodDataPath(
+                                        runOptions, method, "_traj.csv"));
+      });
 
   std::ostringstream latexOs;
   runner.run(latexOs);

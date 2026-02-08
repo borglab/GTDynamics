@@ -13,10 +13,10 @@
  * @author Gerry Chen
  */
 
-#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
 #include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
 #include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
@@ -24,6 +24,7 @@
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
+
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -145,14 +146,16 @@ void kinematic_planning(const ConstrainedOptBenchmark::Options& runOptions) {
   LevenbergMarquardtParams lmParams;
   lmParams.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
   ConstrainedOptBenchmark runner(runOptions);
-  runner.setProblemFactory([=]() { return EConsOptProblem(costs, constraints, initValues); });
+  runner.setProblemFactory(
+      [=]() { return EConsOptProblem(costs, constraints, initValues); });
   runner.setOuterLmBaseParams(lmParams);
-  runner.setMoptFactory([](BenchmarkMethod) {
+  runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
-    moptParams.cc_params->retractor_creator->params()->lm_params.linearSolverType =
+    moptParams.cc_params->retractor_creator->params()
+        ->lm_params.linearSolverType =
         gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-    moptParams.cc_params->retractor_creator->params()->lm_params.setlambdaUpperBound(
-        1e2);
+    moptParams.cc_params->retractor_creator->params()
+        ->lm_params.setlambdaUpperBound(1e2);
     return moptParams;
   });
 
@@ -163,19 +166,20 @@ void kinematic_planning(const ConstrainedOptBenchmark::Options& runOptions) {
 
 int main(int argc, char** argv) {
   try {
-    BenchmarkCliDefaults defaults;
+    ConstrainedOptBenchmark::CliDefaults defaults;
     defaults.id = "cable_robot";
-    auto parsed = ParseBenchmarkCli(argc, argv, defaults);
+    auto parsed = ConstrainedOptBenchmark::ParseCli(argc, argv, defaults);
     if (!parsed.unknownArgs.empty()) {
-      throw std::invalid_argument("Unknown option: " + parsed.unknownArgs.front());
+      throw std::invalid_argument("Unknown option: " +
+                                  parsed.unknownArgs.front());
     }
     kinematic_planning(parsed.runOptions);
     return 0;
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
-    BenchmarkCliDefaults defaults;
+    ConstrainedOptBenchmark::CliDefaults defaults;
     defaults.id = "cable_robot";
-    PrintBenchmarkUsage(std::cerr, argv[0], defaults);
+    ConstrainedOptBenchmark::PrintUsage(std::cerr, argv[0], defaults);
     return 1;
   }
 }

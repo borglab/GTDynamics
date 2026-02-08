@@ -35,12 +35,12 @@ namespace gtdynamics {
 using gtsam::LevenbergMarquardtParams;
 using gtsam::Values;
 
-/// Supported optimization methods in constrained benchmark runs.
-enum class BenchmarkMethod { SOFT, PENALTY, AUGMENTED_LAGRANGIAN, CM_F, CM_I };
-
 /// Common benchmark runner to remove duplicated orchestration in examples.
 class ConstrainedOptBenchmark {
  public:
+  /// Supported optimization methods in constrained benchmark runs.
+  enum class Method { SOFT, PENALTY, AUGMENTED_LAGRANGIAN, CM_F, CM_I };
+
   /// Runtime options shared by constrained benchmark examples.
   struct Options {
     /// Identifier used as filename prefix and benchmark row label.
@@ -48,10 +48,9 @@ class ConstrainedOptBenchmark {
     /// Optional explicit CSV output path (defaults under kDataPath when empty).
     std::string csvPath;
     /// Set of optimization methods to execute for one benchmark run.
-    std::set<BenchmarkMethod> methods = {
-        BenchmarkMethod::SOFT, BenchmarkMethod::PENALTY,
-        BenchmarkMethod::AUGMENTED_LAGRANGIAN, BenchmarkMethod::CM_F,
-        BenchmarkMethod::CM_I};
+    std::set<Method> methods = {Method::SOFT, Method::PENALTY,
+                                Method::AUGMENTED_LAGRANGIAN, Method::CM_F,
+                                Method::CM_I};
     /// If true, enable summary logging for outer optimizers.
     bool verbose = false;
     /// If true, enable summary logging for manifold retractor optimizers.
@@ -68,13 +67,36 @@ class ConstrainedOptBenchmark {
     bool cmIRetractFinal = true;
   };
 
+  /// Defaults for CLI parsing shared by benchmark examples.
+  struct CliDefaults {
+    /// Default identifier used when not provided from CLI.
+    std::string id = "benchmark";
+    /// Default methods to run when --methods is not specified.
+    std::set<Method> defaultMethods = {Method::SOFT, Method::PENALTY,
+                                       Method::AUGMENTED_LAGRANGIAN,
+                                       Method::CM_F, Method::CM_I};
+    /// Whether parser accepts --num-steps.
+    bool enableNumSteps = false;
+    /// Default --num-steps value when enabled.
+    size_t defaultNumSteps = 0;
+  };
+
+  /// Parsed CLI options shared by benchmark examples.
+  struct ParsedCli {
+    /// Effective runtime options.
+    Options runOptions;
+    /// Effective number of steps (meaningful only when enabled by defaults).
+    size_t numSteps = 0;
+    /// Unrecognized args preserved for example-specific parsing/validation.
+    std::vector<std::string> unknownArgs;
+  };
+
   using ProblemFactory = std::function<EConsOptProblem()>;
   using LmConfig =
-      std::function<void(BenchmarkMethod method, LevenbergMarquardtParams*)>;
-  using MoptFactory =
-      std::function<ManifoldOptimizerParameters(BenchmarkMethod method)>;
+      std::function<void(Method method, LevenbergMarquardtParams*)>;
+  using MoptFactory = std::function<ManifoldOptimizerParameters(Method method)>;
   using ResultCallback =
-      std::function<void(BenchmarkMethod method, const Values& result)>;
+      std::function<void(Method method, const Values& result)>;
 
   /// Create a benchmark runner with selected runtime options.
   explicit ConstrainedOptBenchmark(Options options);
@@ -85,7 +107,7 @@ class ConstrainedOptBenchmark {
   /// Set baseline outer LM parameters before per-method customization.
   void setOuterLmBaseParams(LevenbergMarquardtParams params);
 
-  /// Set callback to customize outer LM parameters per benchmark method.
+  /// Set callback to customize outer LM parameters per method.
   void setOuterLmConfig(LmConfig callback);
 
   /// Set callback to construct manifold optimizer parameters per CM method.
@@ -94,7 +116,7 @@ class ConstrainedOptBenchmark {
   /// Set callback invoked after each method completes with resulting values.
   void setResultCallback(ResultCallback callback);
 
-  /// Run selected methods and append benchmark rows to CSV.
+  /// Run selected methods and append rows to CSV.
   void run(std::ostream& latexOs);
 
   /// Create default CM parameters using unconstrained retraction + dense basis.
@@ -104,6 +126,23 @@ class ConstrainedOptBenchmark {
   /// retraction.
   static ManifoldOptimizerParameters DefaultMoptParamsSV(
       const BasisKeyFunc& basisKeyFunc);
+
+  /// Print common CLI usage flags for benchmark examples.
+  static void PrintUsage(std::ostream& os, const char* programName,
+                         const CliDefaults& defaults);
+
+  /// Parse common CLI arguments and preserve unknown args for example parsing.
+  static ParsedCli ParseCli(int argc, char** argv, const CliDefaults& defaults);
+
+  /// Return the canonical short token for a method.
+  static std::string MethodToken(Method method);
+
+  /// Return the display label used in benchmark output.
+  static std::string MethodLabel(Method method);
+
+  /// Build a deterministic output file name under kDataPath for a method.
+  static std::string MethodDataPath(const Options& options, Method method,
+                                    const std::string& suffix);
 
  private:
   static Values OptimizeSoftConstraints(const EConsOptProblem& problem,
@@ -135,49 +174,5 @@ class ConstrainedOptBenchmark {
   MoptFactory moptFactory_;
   ResultCallback resultCallback_;
 };
-
-/// CLI defaults for benchmark examples.
-struct BenchmarkCliDefaults {
-  /// Default benchmark identifier used when not provided from CLI.
-  std::string id = "benchmark";
-  /// Default methods to run when --methods is not specified.
-  std::set<BenchmarkMethod> defaultMethods = {
-      BenchmarkMethod::SOFT, BenchmarkMethod::PENALTY,
-      BenchmarkMethod::AUGMENTED_LAGRANGIAN, BenchmarkMethod::CM_F,
-      BenchmarkMethod::CM_I};
-  /// Whether parser accepts --num-steps.
-  bool enableNumSteps = false;
-  /// Default --num-steps value when enabled.
-  size_t defaultNumSteps = 0;
-};
-
-/// Parsed CLI options shared by benchmark examples.
-struct ParsedBenchmarkCli {
-  /// Effective benchmark runtime options.
-  ConstrainedOptBenchmark::Options runOptions;
-  /// Effective number of steps (meaningful only when enabled by defaults).
-  size_t numSteps = 0;
-  /// Unrecognized args preserved for example-specific parsing/validation.
-  std::vector<std::string> unknownArgs;
-};
-
-/// Print common benchmark usage flags.
-void PrintBenchmarkUsage(std::ostream& os, const char* programName,
-                         const BenchmarkCliDefaults& defaults);
-
-/// Parse common benchmark CLI arguments, keeping unknown args for examples.
-ParsedBenchmarkCli ParseBenchmarkCli(int argc, char** argv,
-                                     const BenchmarkCliDefaults& defaults);
-
-/// Return the canonical short token for a benchmark method.
-std::string BenchmarkMethodToken(BenchmarkMethod method);
-
-/// Return the display label used in benchmark output.
-std::string BenchmarkMethodLabel(BenchmarkMethod method);
-
-/// Build a deterministic output file name under kDataPath for a method.
-std::string BenchmarkMethodDataPath(
-    const ConstrainedOptBenchmark::Options& options, BenchmarkMethod method,
-    const std::string& suffix);
 
 }  // namespace gtdynamics

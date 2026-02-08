@@ -12,8 +12,6 @@
  * @author Yetong Zhang
  */
 
-#include "SerialChain.h"
-
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -22,6 +20,7 @@
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
+
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -29,6 +28,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "SerialChain.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -53,27 +54,27 @@ Robot& KukaRobot() {
 }
 
 struct ArmBenchmarkArgs {
-  ParsedBenchmarkCli benchmark_cli;
+  ConstrainedOptBenchmark::ParsedCli benchmark_cli;
   bool cm_i_only = false;
   bool cm_f_only = false;
   bool skip_cm_f = false;
 };
 
 void PrintUsage(const char* program_name) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "arm";
-  PrintBenchmarkUsage(std::cout, program_name, defaults);
-  std::cout
-      << "Legacy compatibility options:\n"
-      << "  --cm-i-only             Run only CM(I) benchmark variant.\n"
-      << "  --cm-f-only             Run only CM(F) benchmark variant.\n"
-      << "  --skip-cm-f             Skip CM(F) in mixed run.\n";
+  ConstrainedOptBenchmark::PrintUsage(std::cout, program_name, defaults);
+  std::cout << "Legacy compatibility options:\n"
+            << "  --cm-i-only             Run only CM(I) benchmark variant.\n"
+            << "  --cm-f-only             Run only CM(F) benchmark variant.\n"
+            << "  --skip-cm-f             Skip CM(F) in mixed run.\n";
 }
 
 ArmBenchmarkArgs ParseArgs(int argc, char** argv) {
-  BenchmarkCliDefaults defaults;
+  ConstrainedOptBenchmark::CliDefaults defaults;
   defaults.id = "arm";
-  ArmBenchmarkArgs args{ParseBenchmarkCli(argc, argv, defaults)};
+  ArmBenchmarkArgs args{
+      ConstrainedOptBenchmark::ParseCli(argc, argv, defaults)};
 
   std::vector<std::string> remaining;
   for (const auto& arg : args.benchmark_cli.unknownArgs) {
@@ -90,17 +91,20 @@ ArmBenchmarkArgs ParseArgs(int argc, char** argv) {
   args.benchmark_cli.unknownArgs = remaining;
 
   if (args.cm_i_only && args.cm_f_only) {
-    throw std::invalid_argument(
-        "Cannot combine --cm-i-only and --cm-f-only.");
+    throw std::invalid_argument("Cannot combine --cm-i-only and --cm-f-only.");
   }
 
   if (args.cm_i_only) {
-    args.benchmark_cli.runOptions.methods = {BenchmarkMethod::CM_I};
+    args.benchmark_cli.runOptions.methods = {
+        ConstrainedOptBenchmark::Method::CM_I};
   } else if (args.cm_f_only) {
-    args.benchmark_cli.runOptions.methods = {BenchmarkMethod::CM_F};
+    args.benchmark_cli.runOptions.methods = {
+        ConstrainedOptBenchmark::Method::CM_F};
   } else if (args.skip_cm_f) {
-    args.benchmark_cli.runOptions.methods.erase(BenchmarkMethod::CM_F);
-    args.benchmark_cli.runOptions.methods.insert(BenchmarkMethod::CM_I);
+    args.benchmark_cli.runOptions.methods.erase(
+        ConstrainedOptBenchmark::Method::CM_F);
+    args.benchmark_cli.runOptions.methods.insert(
+        ConstrainedOptBenchmark::Method::CM_I);
   }
 
   return args;
@@ -110,26 +114,23 @@ ArmBenchmarkArgs ParseArgs(int argc, char** argv) {
 /** Functor version of JointLimitFactor, for creating expressions. Compute error
  * for joint limit error, to reproduce joint limit factor in expressions. */
 class JointLimitFunctor {
-protected:
+ protected:
   double low_, high_;
 
-public:
-  JointLimitFunctor(const double &low, const double &high)
+ public:
+  JointLimitFunctor(const double& low, const double& high)
       : low_(low), high_(high) {}
 
-  double operator()(const double &q,
+  double operator()(const double& q,
                     OptionalJacobian<1, 1> H_q = nullptr) const {
     if (q < low_) {
-      if (H_q)
-        *H_q = -I_1x1;
+      if (H_q) *H_q = -I_1x1;
       return low_ - q;
     } else if (q <= high_) {
-      if (H_q)
-        *H_q = Z_1x1;
+      if (H_q) *H_q = Z_1x1;
       return 0.0;
     } else {
-      if (H_q)
-        *H_q = I_1x1;
+      if (H_q) *H_q = I_1x1;
       return q - high_;
     }
   }
@@ -361,7 +362,8 @@ void ExportJointAnglesCsv(const Values& values, const std::string& file_path) {
   }
 }
 
-/** Benchmark constrained optimizers on a KUKA arm kinematic planning problem. */
+/** Benchmark constrained optimizers on a KUKA arm kinematic planning problem.
+ */
 void kinematic_planning(const ArmBenchmarkArgs& args) {
   auto& robot = KukaRobot();
   robot.fixLink(kBaseName);
@@ -390,26 +392,27 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
   runner.setProblemFactory(
       [=]() { return EConsOptProblem(costs, constraints, init_values); });
   runner.setOuterLmBaseParams(baseLmParams);
-  runner.setOuterLmConfig(
-      [&](BenchmarkMethod method, LevenbergMarquardtParams* params) {
-        if (args.cm_i_only ||
-            (args.skip_cm_f && method == BenchmarkMethod::CM_I)) {
-          params->linearSolverType =
-              gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-          params->setMaxIterations(20);
-          params->relativeErrorTol = 1e-3;
-          params->setlambdaUpperBound(1e2);
-        }
-        if (args.cm_f_only) {
-          params->linearSolverType =
-              gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-          params->setMaxIterations(30);
-          params->relativeErrorTol = 1e-3;
-          params->setlambdaUpperBound(1e2);
-        }
-      });
-  runner.setMoptFactory([](BenchmarkMethod) {
-    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(&FindBasisKeys);
+  runner.setOuterLmConfig([&](ConstrainedOptBenchmark::Method method,
+                              LevenbergMarquardtParams* params) {
+    if (args.cm_i_only ||
+        (args.skip_cm_f && method == ConstrainedOptBenchmark::Method::CM_I)) {
+      params->linearSolverType =
+          gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+      params->setMaxIterations(20);
+      params->relativeErrorTol = 1e-3;
+      params->setlambdaUpperBound(1e2);
+    }
+    if (args.cm_f_only) {
+      params->linearSolverType =
+          gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+      params->setMaxIterations(30);
+      params->relativeErrorTol = 1e-3;
+      params->setlambdaUpperBound(1e2);
+    }
+  });
+  runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
+    auto moptParams =
+        ConstrainedOptBenchmark::DefaultMoptParamsSV(&FindBasisKeys);
     auto* retractLm =
         &moptParams.cc_params->retractor_creator->params()->lm_params;
     retractLm->linearSolverType =
@@ -417,10 +420,11 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
     retractLm->setlambdaUpperBound(1e2);
     return moptParams;
   });
-  runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
-    ExportJointAnglesCsv(result,
-                         BenchmarkMethodDataPath(runOptions, method, "_traj.csv"));
-  });
+  runner.setResultCallback(
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+        ExportJointAnglesCsv(result, ConstrainedOptBenchmark::MethodDataPath(
+                                         runOptions, method, "_traj.csv"));
+      });
 
   ExportJointAnglesCsv(
       init_values, std::string(kDataPath) + runOptions.id + "_init_traj.csv");
