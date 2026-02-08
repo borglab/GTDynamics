@@ -13,7 +13,6 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/constrained_optimizer/SQPOptimizer.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
 
 #include "constrainedExample.h"
 

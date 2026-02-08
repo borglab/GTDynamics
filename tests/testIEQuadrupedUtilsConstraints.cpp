@@ -56,7 +56,7 @@ TEST(frictionConeConstraint, error_jacobian) {
   EXPECT(fc_constraint->feasible(values5));
 
   // Check jacobian.
-  auto factor = fc_constraint->createL2Factor(1.0);
+  auto factor = fc_constraint->penaltyFactorEquality(1.0);
   EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values1, 1e-7, 1e-5);
   EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values2, 1e-7, 1e-5);
   EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values3, 1e-7, 1e-5);
@@ -109,9 +109,9 @@ TEST(groundCollisionFreeConstraint, feasible) {
   Values values3;
   values3.insert(PoseKey(link_id, k),
                  Pose3(Rot3::Ry(M_PI_2), Point3(0, 0, 0.1)));
-  EXPECT(assert_equal(0.2, (*constraint)(values1)));
-  EXPECT(assert_equal(0.0, (*constraint)(values2)));
-  EXPECT(assert_equal(-0.1, (*constraint)(values3)));
+  EXPECT(assert_equal(-0.2, constraint->unwhitenedExpr(values1)(0)));
+  EXPECT(assert_equal(0.0, constraint->unwhitenedExpr(values2)(0)));
+  EXPECT(assert_equal(0.1, constraint->unwhitenedExpr(values3)(0)));
 }
 
 TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
@@ -123,7 +123,7 @@ TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
       IEVision60Robot::sinHurdleTerrainFunc(1.0, 1.0, 0.3);
   Point3 p_l(0.2, 0, 0);
   auto constraint = robot.groundCollisionFreeConstraint(link_name, k, p_l);
-  auto factor = constraint->createL2Factor(1.0);
+  auto factor = constraint->penaltyFactorEquality(1.0);
 
   // check hurdle height
   {
@@ -139,10 +139,10 @@ TEST(groundCollisionFreeConstraint, obstacles_on_ground) {
     Values values4;
     values4.insert(PoseKey(link_id, k),
                    Pose3(Rot3::Ry(M_PI_2), Point3(0.2, 0.2, 0.5)));
-    EXPECT(assert_equal(0.0, (*constraint)(values1)));
-    EXPECT(assert_equal(0.3, (*constraint)(values2)));
-    EXPECT(assert_equal(0.075, (*constraint)(values3)));
-    EXPECT(assert_equal(0.3, (*constraint)(values4)));
+    EXPECT(assert_equal(0.0, constraint->unwhitenedExpr(values1)(0)));
+    EXPECT(assert_equal(-0.3, constraint->unwhitenedExpr(values2)(0)));
+    EXPECT(assert_equal(-0.075, constraint->unwhitenedExpr(values3)(0)));
+    EXPECT(assert_equal(-0.3, constraint->unwhitenedExpr(values4)(0)));
 
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values1, 1e-7, 1e-5);
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values2, 1e-7, 1e-5);
@@ -162,7 +162,7 @@ TEST(groundCollisionFreeInterStepConstraint, obstacles_on_ground) {
   double ratio = 0.5;
   auto constraint =
       robot.groundCollisionFreeInterStepConstraint(link_name, k, ratio, p_l);
-  auto factor = constraint->createL2Factor(1.0);
+  auto factor = constraint->penaltyFactorEquality(1.0);
 
   // check hurdle height
   {
@@ -186,10 +186,10 @@ TEST(groundCollisionFreeInterStepConstraint, obstacles_on_ground) {
                    Pose3(Rot3::Ry(M_PI_2), Point3(-0.2, 0.2, 0.5)));
     values4.insert(PoseKey(link_id, k + 1),
                    Pose3(Rot3::Ry(M_PI_2), Point3(0.6, 0.2, 0.5)));
-    EXPECT(assert_equal(0.0, (*constraint)(values1)));
-    EXPECT(assert_equal(0.3, (*constraint)(values2)));
-    EXPECT(assert_equal(0.075, (*constraint)(values3)));
-    EXPECT(assert_equal(0.3, (*constraint)(values4)));
+    EXPECT(assert_equal(0.0, constraint->unwhitenedExpr(values1)(0)));
+    EXPECT(assert_equal(-0.3, constraint->unwhitenedExpr(values2)(0)));
+    EXPECT(assert_equal(-0.075, constraint->unwhitenedExpr(values3)(0)));
+    EXPECT(assert_equal(-0.3, constraint->unwhitenedExpr(values4)(0)));
 
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values1, 1e-7, 1e-5);
     EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values2, 1e-7, 1e-5);
@@ -217,9 +217,9 @@ TEST(obstacleCollisionFreeConstraint, feasible) {
   Values values3;
   values3.insert(PoseKey(link_id, k),
                  Pose3(Rot3::Ry(M_PI_2), Point3(0.5, 0.0, 0.2)));
-  EXPECT(assert_equal(0.3, (*constraint)(values1)));
-  EXPECT(assert_equal(0.0, (*constraint)(values2)));
-  EXPECT(assert_equal(-0.2, (*constraint)(values3)));
+  EXPECT(assert_equal(-0.3, constraint->unwhitenedExpr(values1)(0)));
+  EXPECT(assert_equal(0.0, constraint->unwhitenedExpr(values2)(0)));
+  EXPECT(assert_equal(0.2, constraint->unwhitenedExpr(values3)(0)));
 }
 
 TEST(statePointCostFactor, error_and_jacobian) {

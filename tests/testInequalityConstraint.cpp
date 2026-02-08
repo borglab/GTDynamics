@@ -12,17 +12,18 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/constraints/LinearInequalityConstraint.h>
 #include <gtdynamics/factors/PoseFactor.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
 #include "constrainedExample.h"
-#include "gtdynamics/constraints/EqualityConstraint.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -37,7 +38,7 @@ TEST(InequalityConstraint, DoubleExpressionInequality) {
   // g(x1, x2) = x1 + x1^3 + x2 + x2^2, from Vanderbergh slides
   double tolerance = 0.1;
   auto g = x1 + pow(x1, 3) + x2 + pow(x2, 2);
-  auto constraint = DoubleExpressionInequality(g, tolerance);
+  auto constraint = ScalarExpressionInequalityConstraint::GeqZero(g, tolerance);
 
   // Create 2 sets of values for testing.
   Values values1, values2, values3;
@@ -49,32 +50,31 @@ TEST(InequalityConstraint, DoubleExpressionInequality) {
   values3.insert(x2_key, 1.0);
 
   // Check that values1 are feasible.
-  EXPECT(constraint.feasible(values1));
-  EXPECT(constraint.feasible(values2));
-  EXPECT(!constraint.feasible(values3));
+  EXPECT(constraint->feasible(values1));
+  EXPECT(constraint->feasible(values2));
+  EXPECT(!constraint->feasible(values3));
 
-  // Check that violation evaluates as 0 at values1.
-  EXPECT(assert_equal(0.0, constraint(values1)));
-  EXPECT(assert_equal(4.0, constraint(values2)));
-  EXPECT(assert_equal(-8.0, constraint(values3)));
+  // Check that expression evaluates correctly.
+  EXPECT(assert_equal(Vector1(0.0), constraint->unwhitenedExpr(values1)));
+  EXPECT(assert_equal(Vector1(-4.0), constraint->unwhitenedExpr(values2)));
+  EXPECT(assert_equal(Vector1(8.0), constraint->unwhitenedExpr(values3)));
 
-  EXPECT(assert_equal(0.0, constraint.toleranceScaledViolation(values1)));
-  EXPECT(assert_equal(0.0, constraint.toleranceScaledViolation(values2)));
-  EXPECT(assert_equal(80.0, constraint.toleranceScaledViolation(values3)));
+  EXPECT(assert_equal(0.0, constraint->violation(values1)));
+  EXPECT(assert_equal(0.0, constraint->violation(values2)));
+  EXPECT(assert_equal(80.0, constraint->violation(values3)));
 
   // Check dimension is 1 for scalar g.
-  EXPECT(constraint.dim() == 1);
-  EXPECT(assert_equal(Vector1(tolerance), constraint.tolerance()));
+  EXPECT(constraint->dim() == 1);
+  EXPECT(assert_equal(Vector1(tolerance), constraint->sigmas()));
 
   // Check keys include x1, x2.
-  EXPECT(constraint.keys().size() == 2);
-  EXPECT(x1_key == *constraint.keys().begin());
-  EXPECT(x2_key == *constraint.keys().rbegin());
+  EXPECT(constraint->keys().size() == 2);
+  EXPECT(x1_key == *constraint->keys().begin());
+  EXPECT(x2_key == *constraint->keys().rbegin());
 
   // Check create equality constraint
-  auto equality_constraint = constraint.createEqualityConstraint();
-  EXPECT(assert_equal(Vector::Constant(1, 40.0),
-                      equality_constraint->toleranceScaledViolation(values2)));
+  auto equality_constraint = constraint->createEqualityConstraint();
+  EXPECT(assert_equal(40.0, equality_constraint->violation(values2)));
 }
 
 TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
@@ -83,14 +83,14 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
   double tolerance = 0.1;
 
   auto constraint1 =
-      std::make_shared<DoubleExpressionInequality>(x1_expr, tolerance);
+      ScalarExpressionInequalityConstraint::GeqZero(x1_expr, tolerance);
   auto constraint2 =
-      std::make_shared<DoubleExpressionInequality>(x2_expr, tolerance);
+      ScalarExpressionInequalityConstraint::GeqZero(x2_expr, tolerance);
 
-  // Test constructor
-  TwinDoubleExpressionInequality constraint(constraint1, constraint2);
-  EXPECT_LONGS_EQUAL(2, constraint.dim());
-  EXPECT(assert_equal(Vector2(tolerance, tolerance), constraint.tolerance()));
+  NonlinearInequalityConstraints constraints;
+  constraints.push_back(constraint1);
+  constraints.push_back(constraint2);
+  EXPECT_LONGS_EQUAL(2, constraints.dim());
 
   Values values1, values2, values3;
   values1.insert(x1_key, 2.0);
@@ -100,21 +100,23 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
   values3.insert(x1_key, 0.0);
   values3.insert(x2_key, 0.0);
 
-  EXPECT(constraint.feasible(values1));
-  EXPECT(!constraint.feasible(values2));
+  EXPECT(constraint1->feasible(values1));
+  EXPECT(constraint2->feasible(values1));
+  EXPECT(!constraint1->feasible(values2));
+  EXPECT(!constraint2->feasible(values2));
 
-  EXPECT(!constraint.isActive(values1));
-  EXPECT(!constraint.isActive(values2));
-  EXPECT(constraint.isActive(values3));
+  EXPECT(assert_equal(Vector2(0, 0), constraints.violationVector(values1)));
+  EXPECT(constraints.violationVector(values2).norm() > 0);
+  EXPECT(assert_equal(Vector2(0, 0), constraints.violationVector(values3)));
 
-  EXPECT(constraint.keys().size() == 2);
+  EXPECT(constraints.keys().size() == 2);
 
-  auto penalty_factor = constraint.createPenaltyFactor(1.0);
-  EXPECT(assert_equal(Vector2(0, 0), penalty_factor->unwhitenedError(values1)));
-  EXPECT(assert_equal(Vector2(2, 1), penalty_factor->unwhitenedError(values2)));
-  EXPECT(assert_equal(Vector2(0, 0), penalty_factor->unwhitenedError(values3)));
+  auto penalty_graph = constraints.penaltyGraph(1.0);
+  EXPECT(assert_equal(0.0, penalty_graph.error(values1)));
+  EXPECT(assert_equal(250.0, penalty_graph.error(values2)));
+  EXPECT(assert_equal(0.0, penalty_graph.error(values3)));
 
-  auto l2_factor = constraint.createL2Factor(1.0);
+  auto l2_factor = constraint1->penaltyFactorEquality(1.0);
   EXPECT_CORRECT_FACTOR_JACOBIANS(*l2_factor, values1, 1e-7, 1e-5);
 }
 

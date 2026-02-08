@@ -1,7 +1,8 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/PoseFactor.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -19,8 +20,8 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   IECartPoleWithFriction cp;
   int k = 0;
 
-  auto e_constraints = std::make_shared<EqualityConstraints>();
-  auto i_constraints = std::make_shared<InequalityConstraints>();
+  auto e_constraints = std::make_shared<NonlinearEqualityConstraints>();
+  auto i_constraints = std::make_shared<NonlinearInequalityConstraints>();
   i_constraints->add(cp.iConstraints(k));
   e_constraints->add(cp.eConstraints(k));
 

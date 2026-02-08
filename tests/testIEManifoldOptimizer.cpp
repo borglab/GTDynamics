@@ -3,7 +3,8 @@
 #include "gtdynamics/cmopt/TspaceBasis.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -26,8 +27,8 @@ TEST(IdentifyManifolds, HalfSphere) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
-  EqualityConstraints e_constraints;
-  InequalityConstraints i_constraints;
+  NonlinearEqualityConstraints e_constraints;
+  NonlinearInequalityConstraints i_constraints;
   for (size_t k = 0; k <= num_steps; k++) {
     e_constraints.add(half_sphere.eConstraints(k));
     i_constraints.add(half_sphere.iConstraints(k));
@@ -59,8 +60,8 @@ TEST(IdentifyManifolds, CartPoleWithFriction) {
   IECartPoleWithFriction cp;
   size_t num_steps = 2;
 
-  EqualityConstraints e_constraints;
-  InequalityConstraints i_constraints;
+  NonlinearEqualityConstraints e_constraints;
+  NonlinearInequalityConstraints i_constraints;
   for (size_t k = 0; k <= num_steps; k++) {
     e_constraints.add(cp.eConstraints(k));
     i_constraints.add(cp.iConstraints(k));
@@ -92,8 +93,8 @@ TEST(IdentifyManifolds, Dome) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
-  EqualityConstraints e_constraints;
-  InequalityConstraints i_constraints;
+  NonlinearEqualityConstraints e_constraints;
+  NonlinearInequalityConstraints i_constraints;
   for (size_t k = 0; k <= num_steps; k++) {
     i_constraints.add(half_sphere.iDomeConstraints(k));
   }

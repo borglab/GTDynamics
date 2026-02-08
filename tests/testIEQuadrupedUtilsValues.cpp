@@ -41,9 +41,9 @@ TEST(trajectoryValuesNominal, constraints) {
   auto e_constraints = vision60_multi_phase->eConstraints();
   auto i_constraints = vision60_multi_phase->iConstraints();
   EXPECT(
-      assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
+      assert_equal(0.0, e_constraints.violationNorm(values), 1e-6));
   EXPECT(
-      assert_equal(0.0, i_constraints.evaluateViolationL2Norm(values), 1e-6));
+      assert_equal(0.0, i_constraints.violationNorm(values), 1e-6));
 }
 
 TEST(trajectoryValuesByInterpolation, constraints) {
@@ -79,9 +79,9 @@ TEST(trajectoryValuesByInterpolation, constraints) {
   auto e_constraints = vision60_multi_phase->eConstraints();
   auto i_constraints = vision60_multi_phase->iConstraints();
   EXPECT(
-      assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
+      assert_equal(0.0, e_constraints.violationNorm(values), 1e-6));
   EXPECT(
-      assert_equal(0.0, i_constraints.evaluateViolationL2Norm(values), 1e-6));
+      assert_equal(0.0, i_constraints.violationNorm(values), 1e-6));
 }
 
 TEST(TrajectoryValuesVerticalJump, constraints) {
@@ -98,12 +98,12 @@ TEST(TrajectoryValuesVerticalJump, constraints) {
   Values values = InitValuesTrajectory(*vision60_multi_phase, phases_dt);
   auto e_constraints = vision60_multi_phase->eConstraints();
   EXPECT(
-      assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
+      assert_equal(0.0, e_constraints.violationNorm(values), 1e-6));
 
   Values values1 =
       InitValuesTrajectoryInfeasible(*vision60_multi_phase, phases_dt);
   EXPECT(
-      assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values1), 1e-6));
+      assert_equal(0.0, e_constraints.violationNorm(values1), 1e-6));
 }
 
 TEST(TrajectoryValuesForwardJump, constraints) {
@@ -121,7 +121,7 @@ TEST(TrajectoryValuesForwardJump, constraints) {
       InitValuesTrajectory(*vision60_multi_phase, phases_dt, false, false);
   auto e_constraints = vision60_multi_phase->eConstraints();
   EXPECT(
-      assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
+      assert_equal(0.0, e_constraints.violationNorm(values), 1e-6));
 }
 
 TEST(TrajectoryValuesForwardJumpLand, constraints) {
@@ -140,7 +140,7 @@ TEST(TrajectoryValuesForwardJumpLand, constraints) {
       InitValuesTrajectory(*vision60_multi_phase, phases_dt, false, false);
   auto e_constraints = vision60_multi_phase->eConstraints();
   EXPECT(
-      assert_equal(0.0, e_constraints.evaluateViolationL2Norm(values), 1e-6));
+      assert_equal(0.0, e_constraints.violationNorm(values), 1e-6));
 }
 
 int main() {

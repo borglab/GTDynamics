@@ -1,16 +1,15 @@
 
 
+#include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/cmopt/TspaceBasis.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
-#include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-
-#include <gtdynamics/scenarios/IEHalfSphere.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -50,9 +49,9 @@ TEST(HalfSphereRetractor, retract) {
 
   // Create manifold.
   auto e_constraints =
-      std::make_shared<EqualityConstraints>(half_sphere.eConstraints(0));
+      std::make_shared<NonlinearEqualityConstraints>(half_sphere.eConstraints(0));
   auto i_constraints =
-      std::make_shared<InequalityConstraints>(half_sphere.iConstraints(0));
+      std::make_shared<NonlinearInequalityConstraints>(half_sphere.iConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
@@ -86,9 +85,9 @@ TEST(HalfSphere, Dome) {
   Values values;
   values.insert(point_key, Point3(1, 0, 0));
 
-  auto e_constraints = std::make_shared<EqualityConstraints>();
+  auto e_constraints = std::make_shared<NonlinearEqualityConstraints>();
   auto i_constraints =
-      std::make_shared<InequalityConstraints>(half_sphere.iDomeConstraints(0));
+      std::make_shared<NonlinearInequalityConstraints>(half_sphere.iDomeConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
@@ -122,15 +121,14 @@ TEST(HalfSphere, Dome) {
     IndexSet tight_indices;
     VectorValues proj_delta;
     std::tie(tight_indices, proj_delta) = manifold.projectTangentCone(delta);
-    EXPECT(tight_indices.size() == 1);
-    EXPECT(tight_indices.find(0) != tight_indices.end());
+    EXPECT(tight_indices.size() == 0);
     VectorValues expected_proj_delta;
-    expected_proj_delta.insert(point_key, Vector3(0, 1, 0));
+    expected_proj_delta.insert(point_key, Vector3(1, 1, 0));
     EXPECT(assert_equal(expected_proj_delta, proj_delta));
 
     // check retraction
     Values expected_values;
-    expected_values.insert(point_key, Point3(1 / sqrt(2), 1 / sqrt(2), 0));
+    expected_values.insert(point_key, Point3(2 / sqrt(5), 1 / sqrt(5), 0));
     auto new_manifold = manifold.retract(proj_delta, tight_indices);
     EXPECT(assert_equal(expected_values, new_manifold.values()));
   }

@@ -109,26 +109,26 @@ gtsam::NonlinearEqualityConstraints constraints = GetConstraints();
  * f(x) = 0.5 * ||x1-1||^2 + 0.5 * ||x2-1||^2
  * g(x) = 1 - x1^2 - x2^2
  */
-// NOTE(Frank): Commented out until CMCOPt is implemented.
-// namespace i_constrained_example {
-// using namespace constrained_example;
-// NonlinearFactorGraph GetCost() {
-//   NonlinearFactorGraph graph;
-//   auto cost_noise = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
-//   graph.addPrior(x1_key, 1.0, cost_noise);
-//   graph.addPrior(x2_key, 1.0, cost_noise);
-//   return graph;
-// }
+namespace i_constrained_example {
+using namespace constrained_example;
+NonlinearFactorGraph GetCost() {
+  NonlinearFactorGraph graph;
+  auto cost_noise = gtsam::noiseModel::Isotropic::Sigma(1, 1.0);
+  graph.addPrior(x1_key, 1.0, cost_noise);
+  graph.addPrior(x2_key, 1.0, cost_noise);
+  return graph;
+}
 
-// gtsam::NonlinearInequalityConstraints GetIConstraints() {
-//   gtsam::NonlinearInequalityConstraints i_constraints;
-//   Double_ g1 = Double_(1.0) - x1 * x1 - x2 * x2;
-//   double tolerance = 0.2;
-//   i_constraints.emplace_shared<DoubleExpressionInequality>(g1, tolerance);
-//   return i_constraints;
-// }
+gtsam::NonlinearInequalityConstraints GetIConstraints() {
+  gtsam::NonlinearInequalityConstraints i_constraints;
+  Double_ g1 = Double_(1.0) - x1 * x1 - x2 * x2;
+  double tolerance = 0.2;
+  i_constraints.push_back(
+      gtsam::ScalarExpressionInequalityConstraint::GeqZero(g1, tolerance));
+  return i_constraints;
+}
 
-// NonlinearFactorGraph cost = GetCost();
-// gtsam::NonlinearEqualityConstraints e_constraints;
-// gtsam::NonlinearInequalityConstraints i_constraints = GetIConstraints();
-// }  // namespace i_constrained_example
+NonlinearFactorGraph cost = GetCost();
+gtsam::NonlinearEqualityConstraints e_constraints;
+gtsam::NonlinearInequalityConstraints i_constraints = GetIConstraints();
+}  // namespace i_constrained_example

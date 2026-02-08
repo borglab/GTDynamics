@@ -2,8 +2,9 @@
 
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -32,10 +33,12 @@ TEST(IEConstraintManifold, HalfSphere) {
   Expression<double> sphere_expr(&norm3, point_expr);
   Expression<double> z_expr(&point3_z, point_expr);
 
-  auto e_constraints = std::make_shared<EqualityConstraints>();
-  auto i_constraints = std::make_shared<InequalityConstraints>();
-  e_constraints->emplace_shared<DoubleExpressionEquality>(sphere_expr, 1.0);
-  i_constraints->emplace_shared<DoubleExpressionInequality>(z_expr, 1.0);
+  auto e_constraints = std::make_shared<NonlinearEqualityConstraints>();
+  auto i_constraints = std::make_shared<NonlinearInequalityConstraints>();
+  e_constraints->emplace_shared<ExpressionEqualityConstraint<double>>(
+      sphere_expr, 1.0, Vector1(1.0));
+  i_constraints->push_back(
+      ScalarExpressionInequalityConstraint::LeqZero(z_expr, 1.0));
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
