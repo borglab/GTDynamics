@@ -61,7 +61,7 @@ struct ArmBenchmarkArgs {
 
 void PrintUsage(const char* program_name) {
   BenchmarkCliDefaults defaults;
-  defaults.benchmark_id = "arm";
+  defaults.id = "arm";
   PrintBenchmarkUsage(std::cout, program_name, defaults);
   std::cout
       << "Legacy compatibility options:\n"
@@ -72,11 +72,11 @@ void PrintUsage(const char* program_name) {
 
 ArmBenchmarkArgs ParseArgs(int argc, char** argv) {
   BenchmarkCliDefaults defaults;
-  defaults.benchmark_id = "arm";
+  defaults.id = "arm";
   ArmBenchmarkArgs args{ParseBenchmarkCli(argc, argv, defaults)};
 
   std::vector<std::string> remaining;
-  for (const auto& arg : args.benchmark_cli.unknown_args) {
+  for (const auto& arg : args.benchmark_cli.unknownArgs) {
     if (arg == "--cm-i-only") {
       args.cm_i_only = true;
     } else if (arg == "--cm-f-only") {
@@ -87,7 +87,7 @@ ArmBenchmarkArgs ParseArgs(int argc, char** argv) {
       remaining.push_back(arg);
     }
   }
-  args.benchmark_cli.unknown_args = remaining;
+  args.benchmark_cli.unknownArgs = remaining;
 
   if (args.cm_i_only && args.cm_f_only) {
     throw std::invalid_argument(
@@ -95,12 +95,12 @@ ArmBenchmarkArgs ParseArgs(int argc, char** argv) {
   }
 
   if (args.cm_i_only) {
-    args.benchmark_cli.run_options.methods = {BenchmarkMethod::CM_I};
+    args.benchmark_cli.runOptions.methods = {BenchmarkMethod::CM_I};
   } else if (args.cm_f_only) {
-    args.benchmark_cli.run_options.methods = {BenchmarkMethod::CM_F};
+    args.benchmark_cli.runOptions.methods = {BenchmarkMethod::CM_F};
   } else if (args.skip_cm_f) {
-    args.benchmark_cli.run_options.methods.erase(BenchmarkMethod::CM_F);
-    args.benchmark_cli.run_options.methods.insert(BenchmarkMethod::CM_I);
+    args.benchmark_cli.runOptions.methods.erase(BenchmarkMethod::CM_F);
+    args.benchmark_cli.runOptions.methods.insert(BenchmarkMethod::CM_I);
   }
 
   return args;
@@ -371,11 +371,11 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
   auto constraints =
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
 
-  auto run_options = args.benchmark_cli.run_options;
-  run_options.constraint_unit_scale = 1.0;
-  run_options.soft_mu = 1.0;
-  run_options.cm_f_retractor_max_iterations = 10;
-  run_options.cm_i_retractor_max_iterations = 1;
+  auto runOptions = args.benchmark_cli.runOptions;
+  runOptions.constraintUnitScale = 1.0;
+  runOptions.softMu = 1.0;
+  runOptions.cmFRetractorMaxIterations = 10;
+  runOptions.cmIRetractorMaxIterations = 1;
 
   if (args.cm_i_only) {
     std::cout << "[BENCH] I-only mode enabled.\n";
@@ -385,11 +385,11 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
     std::cout << "[BENCH] Skipping CM(F); running CM(I) with other methods.\n";
   }
 
-  LevenbergMarquardtParams base_lm_params;
-  ConstrainedOptBenchmarkRunner runner(run_options);
+  LevenbergMarquardtParams baseLmParams;
+  ConstrainedOptBenchmark runner(runOptions);
   runner.setProblemFactory(
       [=]() { return EConsOptProblem(costs, constraints, init_values); });
-  runner.setOuterLmBaseParams(base_lm_params);
+  runner.setOuterLmBaseParams(baseLmParams);
   runner.setOuterLmConfig(
       [&](BenchmarkMethod method, LevenbergMarquardtParams* params) {
         if (args.cm_i_only ||
@@ -409,33 +409,33 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
         }
       });
   runner.setMoptFactory([](BenchmarkMethod) {
-    auto mopt_params = DefaultMoptParamsSV(&FindBasisKeys);
-    auto* retract_lm =
-        &mopt_params.cc_params->retractor_creator->params()->lm_params;
-    retract_lm->linearSolverType =
+    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(&FindBasisKeys);
+    auto* retractLm =
+        &moptParams.cc_params->retractor_creator->params()->lm_params;
+    retractLm->linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-    retract_lm->setlambdaUpperBound(1e2);
-    return mopt_params;
+    retractLm->setlambdaUpperBound(1e2);
+    return moptParams;
   });
   runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
     ExportJointAnglesCsv(result,
-                         BenchmarkMethodDataPath(run_options, method, "_traj.csv"));
+                         BenchmarkMethodDataPath(runOptions, method, "_traj.csv"));
   });
 
   ExportJointAnglesCsv(
-      init_values, std::string(kDataPath) + run_options.benchmark_id + "_init_traj.csv");
+      init_values, std::string(kDataPath) + runOptions.id + "_init_traj.csv");
 
-  std::ostringstream latex_os;
-  runner.run(latex_os);
-  std::cout << latex_os.str();
+  std::ostringstream latexOs;
+  runner.run(latexOs);
+  std::cout << latexOs.str();
 }
 
 int main(int argc, char** argv) {
   try {
     const ArmBenchmarkArgs args = ParseArgs(argc, argv);
-    if (!args.benchmark_cli.unknown_args.empty()) {
+    if (!args.benchmark_cli.unknownArgs.empty()) {
       throw std::invalid_argument("Unknown option: " +
-                                  args.benchmark_cli.unknown_args.front());
+                                  args.benchmark_cli.unknownArgs.front());
     }
     kinematic_planning(args);
     return 0;

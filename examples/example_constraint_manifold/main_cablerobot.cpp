@@ -109,14 +109,14 @@ NonlinearFactorGraph get_costs() {
 
 /** Build an initial guess for cable lengths and end-effector pose. */
 Values get_init_values() {
-  Values init_values;
+  Values initValues;
   for (size_t k = 0; k <= kNumSteps; k++) {
     for (size_t ci = 0; ci < 4; ++ci) {
-      InsertJointAngle(&init_values, ci, k, 1.8);
+      InsertJointAngle(&initValues, ci, k, 1.8);
     }
-    InsertPose(&init_values, kEeId, k, Pose3(Rot3(), Point3(1.5, 1.0, 0)));
+    InsertPose(&initValues, kEeId, k, Pose3(Rot3(), Point3(1.5, 1.0, 0)));
   }
-  return init_values;
+  return initValues;
 }
 
 /** Print joint angles for all steps. */
@@ -133,48 +133,48 @@ void print_joint_angles(const Values& values) {
 
 /** Compare simple kinematic planning tasks of a cable robot using (1) dynamics
  * factor graph (2) constraint manifold  */
-void kinematic_planning(const BenchmarkRunOptions& run_options) {
+void kinematic_planning(const ConstrainedOptBenchmark::Options& runOptions) {
   // Create constrained optimization problem.
-  auto constraints_graph = get_constraints_graph();
+  auto constraintsGraph = get_constraints_graph();
   auto costs = get_costs();
-  auto init_values = get_init_values();
+  auto initValues = get_init_values();
   auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  auto problem = EConsOptProblem(costs, constraints, init_values);
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraintsGraph);
+  auto problem = EConsOptProblem(costs, constraints, initValues);
 
-  LevenbergMarquardtParams lm_params;
-  lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-  ConstrainedOptBenchmarkRunner runner(run_options);
-  runner.setProblemFactory([=]() { return EConsOptProblem(costs, constraints, init_values); });
-  runner.setOuterLmBaseParams(lm_params);
+  LevenbergMarquardtParams lmParams;
+  lmParams.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+  ConstrainedOptBenchmark runner(runOptions);
+  runner.setProblemFactory([=]() { return EConsOptProblem(costs, constraints, initValues); });
+  runner.setOuterLmBaseParams(lmParams);
   runner.setMoptFactory([](BenchmarkMethod) {
-    auto mopt_params = DefaultMoptParams();
-    mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType =
+    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
+    moptParams.cc_params->retractor_creator->params()->lm_params.linearSolverType =
         gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-    mopt_params.cc_params->retractor_creator->params()->lm_params.setlambdaUpperBound(
+    moptParams.cc_params->retractor_creator->params()->lm_params.setlambdaUpperBound(
         1e2);
-    return mopt_params;
+    return moptParams;
   });
 
-  std::ostringstream latex_os;
-  runner.run(latex_os);
-  std::cout << latex_os.str();
+  std::ostringstream latexOs;
+  runner.run(latexOs);
+  std::cout << latexOs.str();
 }
 
 int main(int argc, char** argv) {
   try {
     BenchmarkCliDefaults defaults;
-    defaults.benchmark_id = "cable_robot";
+    defaults.id = "cable_robot";
     auto parsed = ParseBenchmarkCli(argc, argv, defaults);
-    if (!parsed.unknown_args.empty()) {
-      throw std::invalid_argument("Unknown option: " + parsed.unknown_args.front());
+    if (!parsed.unknownArgs.empty()) {
+      throw std::invalid_argument("Unknown option: " + parsed.unknownArgs.front());
     }
-    kinematic_planning(parsed.run_options);
+    kinematic_planning(parsed.runOptions);
     return 0;
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
     BenchmarkCliDefaults defaults;
-    defaults.benchmark_id = "cable_robot";
+    defaults.id = "cable_robot";
     PrintBenchmarkUsage(std::cerr, argv[0], defaults);
     return 1;
   }

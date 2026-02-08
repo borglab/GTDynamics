@@ -56,13 +56,13 @@ struct RangeConstraintArgs {
 
 void PrintUsage(const char* program_name) {
   BenchmarkCliDefaults defaults;
-  defaults.benchmark_id = "range_constraint";
+  defaults.id = "range_constraint";
   PrintBenchmarkUsage(std::cout, program_name, defaults);
 }
 
 RangeConstraintArgs ParseArgs(int argc, char** argv) {
   BenchmarkCliDefaults defaults;
-  defaults.benchmark_id = "range_constraint";
+  defaults.id = "range_constraint";
   return RangeConstraintArgs{ParseBenchmarkCli(argc, argv, defaults)};
 }
 }  // namespace
@@ -194,50 +194,50 @@ void ExportTrajectoryCsv(const Values& values, const std::string& file_path) {
 void kinematic_planning(const RangeConstraintArgs& args) {
   // problem
   auto gt = get_gt_values();
-  auto constraints_graph = get_constraints_graph(gt);
+  auto constraintsGraph = get_constraints_graph(gt);
   auto costs = get_costs(gt);
-  auto init_values = get_init_values(gt);
+  auto initValues = get_init_values(gt);
   auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  auto run_options = args.benchmark_cli.run_options;
-  run_options.constraint_unit_scale = kConstraintUnitScale;
-  run_options.soft_mu = 1e4;
-  run_options.cm_f_retractor_max_iterations = 10;
-  run_options.cm_i_retractor_max_iterations = 1;
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraintsGraph);
+  auto runOptions = args.benchmark_cli.runOptions;
+  runOptions.constraintUnitScale = kConstraintUnitScale;
+  runOptions.softMu = 1e4;
+  runOptions.cmFRetractorMaxIterations = 10;
+  runOptions.cmIRetractorMaxIterations = 1;
 
-  std::cout << "pose error: " << EvaluatePoseError(gt, init_values) << "\n";
+  std::cout << "pose error: " << EvaluatePoseError(gt, initValues) << "\n";
 
-  ConstrainedOptBenchmarkRunner runner(run_options);
+  ConstrainedOptBenchmark runner(runOptions);
   runner.setProblemFactory(
-      [=]() { return EConsOptProblem(costs, constraints, init_values); });
+      [=]() { return EConsOptProblem(costs, constraints, initValues); });
   runner.setOuterLmBaseParams(LevenbergMarquardtParams());
   runner.setMoptFactory([](BenchmarkMethod) {
-    auto mopt_params = DefaultMoptParams();
-    mopt_params.cc_params->retractor_creator->params()
+    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
+    moptParams.cc_params->retractor_creator->params()
         ->lm_params.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-    return mopt_params;
+    return moptParams;
   });
   runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
     std::cout << "pose error: " << EvaluatePoseError(gt, result) << "\n";
     ExportTrajectoryCsv(result,
-                        BenchmarkMethodDataPath(run_options, method, "_traj.csv"));
+                        BenchmarkMethodDataPath(runOptions, method, "_traj.csv"));
   });
 
   ExportTrajectoryCsv(
-      init_values, std::string(kDataPath) + run_options.benchmark_id + "_init_traj.csv");
+      initValues, std::string(kDataPath) + runOptions.id + "_init_traj.csv");
 
-  std::ostringstream latex_os;
-  runner.run(latex_os);
-  std::cout << latex_os.str();
+  std::ostringstream latexOs;
+  runner.run(latexOs);
+  std::cout << latexOs.str();
 }
 
 int main(int argc, char **argv) {
   try {
     const RangeConstraintArgs args = ParseArgs(argc, argv);
-    if (!args.benchmark_cli.unknown_args.empty()) {
+    if (!args.benchmark_cli.unknownArgs.empty()) {
       throw std::invalid_argument("Unknown option: " +
-                                  args.benchmark_cli.unknown_args.front());
+                                  args.benchmark_cli.unknownArgs.front());
     }
     kinematic_planning(args);
     return 0;

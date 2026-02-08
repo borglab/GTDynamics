@@ -5,11 +5,7 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
-/**
- * @file  ConstrainedOptBenchmark.cpp
- * @brief Constrained optimization benchmark implementations.
- * @author Yetong Zhang
- */
+/* Constrained optimization benchmark implementations. */
 
 #include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/cmopt/TspaceBasis.h>
@@ -49,8 +45,9 @@ std::string CsvEscape(const std::string& value) {
 }
 
 std::string ToLower(std::string text) {
-  std::transform(text.begin(), text.end(), text.begin(),
-                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
+    return static_cast<char>(std::tolower(c));
+  });
   return text;
 }
 
@@ -90,10 +87,10 @@ std::string MethodsListString(const std::set<BenchmarkMethod>& methods) {
   return oss.str();
 }
 
-std::set<BenchmarkMethod> ParseMethods(const std::string& methods_text) {
+std::set<BenchmarkMethod> ParseMethods(const std::string& methodsText) {
   std::set<BenchmarkMethod> methods;
-  for (const auto& token_raw : Split(methods_text, ',')) {
-    const std::string token = ToLower(Trim(token_raw));
+  for (const auto& tokenRaw : Split(methodsText, ',')) {
+    const std::string token = ToLower(Trim(tokenRaw));
     if (token.empty()) continue;
     if (token == "all") {
       const auto methods = OrderedMethods();
@@ -119,7 +116,7 @@ std::set<BenchmarkMethod> ParseMethods(const std::string& methods_text) {
       methods.insert(BenchmarkMethod::CM_I);
       continue;
     }
-    throw std::invalid_argument("Unknown method token: " + token_raw);
+    throw std::invalid_argument("Unknown method token: " + tokenRaw);
   }
 
   if (methods.empty()) {
@@ -135,9 +132,10 @@ std::filesystem::path EnsureDataPath() {
   return path;
 }
 
-std::string DefaultBenchmarkCsvPath(const BenchmarkRunOptions& options) {
+std::string DefaultBenchmarkCsvPath(
+    const ConstrainedOptBenchmark::Options& options) {
   const std::filesystem::path path =
-      EnsureDataPath() / (options.benchmark_id + "_benchmark.csv");
+      EnsureDataPath() / (options.id + "_benchmark.csv");
   return path.string();
 }
 
@@ -146,15 +144,15 @@ class ScopedEnvVar {
   ScopedEnvVar(const char* key, std::string value) : key_(key) {
     const char* existing = std::getenv(key_);
     if (existing) {
-      had_old_value_ = true;
-      old_value_ = existing;
+      hadOldValue_ = true;
+      oldValue_ = existing;
     }
     setenv(key_, value.c_str(), 1);
   }
 
   ~ScopedEnvVar() {
-    if (had_old_value_) {
-      setenv(key_, old_value_.c_str(), 1);
+    if (hadOldValue_) {
+      setenv(key_, oldValue_.c_str(), 1);
     } else {
       unsetenv(key_);
     }
@@ -162,83 +160,82 @@ class ScopedEnvVar {
 
  private:
   const char* key_;
-  bool had_old_value_ = false;
-  std::string old_value_;
+  bool hadOldValue_ = false;
+  std::string oldValue_;
 };
 
-void AppendBenchmarkCsv(const std::string& method, size_t f_dim, size_t v_dim,
-                        double time_s, size_t num_iters, double constraint_l2,
+void AppendBenchmarkCsv(const std::string& method, size_t fDim, size_t vDim,
+                        double timeS, size_t numIters, double constraintL2,
                         double cost) {
-  const char* csv_path = std::getenv(kBenchmarkCsvEnv);
-  if (!csv_path || std::string(csv_path).empty()) return;
+  const char* csvPath = std::getenv(kBenchmarkCsvEnv);
+  if (!csvPath || std::string(csvPath).empty()) return;
 
-  const char* bench_name_env = std::getenv(kBenchmarkIdEnv);
-  std::string bench_name = bench_name_env ? bench_name_env : "";
+  const char* benchNameEnv = std::getenv(kBenchmarkIdEnv);
+  std::string benchName = benchNameEnv ? benchNameEnv : "";
 
-  bool write_header = true;
+  bool writeHeader = true;
   {
-    std::ifstream in(csv_path);
-    write_header =
-        !in.good() || in.peek() == std::ifstream::traits_type::eof();
+    std::ifstream in(csvPath);
+    writeHeader = !in.good() || in.peek() == std::ifstream::traits_type::eof();
   }
 
-  std::ofstream out(csv_path, std::ios::app);
+  std::ofstream out(csvPath, std::ios::app);
   if (!out) return;
 
-  if (write_header) {
+  if (writeHeader) {
     out << "benchmark,method,f_dim,v_dim,time_s,iters,constraint_l2,cost\n";
   }
-  out << CsvEscape(bench_name) << "," << CsvEscape(method) << "," << f_dim
-      << "," << v_dim << "," << std::setprecision(12) << time_s << ","
-      << num_iters << "," << std::scientific << std::setprecision(12)
-      << constraint_l2 << "," << std::defaultfloat << std::setprecision(12)
-      << cost << "\n";
+  out << CsvEscape(benchName) << "," << CsvEscape(method) << "," << fDim << ","
+      << vDim << "," << std::setprecision(12) << timeS << "," << numIters << ","
+      << std::scientific << std::setprecision(12) << constraintL2 << ","
+      << std::defaultfloat << std::setprecision(12) << cost << "\n";
 }
 
-void PrintLatex(std::ostream& latex_os, const std::string& exp_name, size_t f_dim,
-                size_t v_dim, double time, size_t num_iters,
-                double constraint_vio, double cost) {
-  std::cout << "[BENCH] " << exp_name << ": f_dim=" << f_dim
-            << ", v_dim=" << v_dim << ", time_s=" << std::setprecision(6)
-            << std::defaultfloat << time << ", iters=" << num_iters
-            << ", constraint_l2=" << std::scientific << std::setprecision(3)
-            << constraint_vio << ", cost=" << std::defaultfloat
-            << std::setprecision(6) << cost << "\n";
-  latex_os << "& " + exp_name + " & $" << f_dim << " \\times " << v_dim
-           << "$ & " << std::setprecision(4) << time << std::defaultfloat
-           << " & " << num_iters << " & " << std::scientific
-           << std::setprecision(2) << constraint_vio << std::defaultfloat
-           << " & " << std::fixed << std::setprecision(2) << cost
-           << std::defaultfloat << "\\\\\n";
-  AppendBenchmarkCsv(exp_name, f_dim, v_dim, time, num_iters, constraint_vio,
-                     cost);
+void PrintLatex(std::ostream& latexOs, const std::string& expName, size_t fDim,
+                size_t vDim, double time, size_t numIters, double constraintVio,
+                double cost) {
+  std::cout << "[BENCH] " << expName << ": f_dim=" << fDim << ", v_dim=" << vDim
+            << ", time_s=" << std::setprecision(6) << std::defaultfloat << time
+            << ", iters=" << numIters << ", constraint_l2=" << std::scientific
+            << std::setprecision(3) << constraintVio
+            << ", cost=" << std::defaultfloat << std::setprecision(6) << cost
+            << "\n";
+  latexOs << "& " + expName + " & $" << fDim << " \\times " << vDim << "$ & "
+          << std::setprecision(4) << time << std::defaultfloat << " & "
+          << numIters << " & " << std::scientific << std::setprecision(2)
+          << constraintVio << std::defaultfloat << " & " << std::fixed
+          << std::setprecision(2) << cost << std::defaultfloat << "\\\\\n";
+  AppendBenchmarkCsv(expName, fDim, vDim, time, numIters, constraintVio, cost);
 }
 
 }  // namespace
 
-void PrintBenchmarkUsage(std::ostream& os, const char* program_name,
+void PrintBenchmarkUsage(std::ostream& os, const char* programName,
                          const BenchmarkCliDefaults& defaults) {
-  os << "Usage: " << program_name << " [benchmark options] [example options]\n"
+  os << "Usage: " << programName << " [benchmark options] [example options]\n"
      << "Benchmark options:\n"
-     << "  --methods LIST            Comma list from {soft,penalty,alm,f,i,all}.\n"
-     << "  --benchmark-id NAME       Prefix for generated benchmark artifacts.\n"
-     << "  --benchmark-csv PATH      CSV path for benchmark rows (default: kDataPath/NAME_benchmark.csv).\n"
+     << "  --methods LIST            Comma list from "
+        "{soft,penalty,alm,f,i,all}.\n"
+     << "  --benchmark-id NAME       Prefix for generated benchmark "
+        "artifacts.\n"
+     << "  --benchmark-csv PATH      CSV path for benchmark rows (default: "
+        "kDataPath/NAME_benchmark.csv).\n"
      << "  --verbose-benchmark       Enable outer LM summary output.\n"
      << "  --verbose-retractor       Enable retraction LM summary output.\n";
-  if (defaults.enable_num_steps) {
+  if (defaults.enableNumSteps) {
     os << "  --num-steps N             Number of trajectory steps (default: "
-       << defaults.default_num_steps << ").\n";
+       << defaults.defaultNumSteps << ").\n";
   }
-  os << "Defaults: benchmark-id=" << defaults.benchmark_id
-     << ", methods=" << MethodsListString(defaults.default_methods) << "\n";
+  os << "Defaults: benchmark-id=" << defaults.id
+     << ", methods=" << MethodsListString(defaults.defaultMethods) << "\n";
 }
 
 ParsedBenchmarkCli ParseBenchmarkCli(int argc, char** argv,
                                      const BenchmarkCliDefaults& defaults) {
   ParsedBenchmarkCli parsed;
-  parsed.run_options.benchmark_id = defaults.benchmark_id;
-  parsed.run_options.methods = defaults.default_methods;
-  parsed.num_steps = defaults.default_num_steps;
+  parsed.runOptions.id = defaults.id;
+  parsed.runOptions.methods = defaults.defaultMethods;
+  parsed.numSteps = defaults.defaultNumSteps;
 
   for (int i = 1; i < argc; ++i) {
     const std::string arg(argv[i]);
@@ -246,43 +243,47 @@ ParsedBenchmarkCli ParseBenchmarkCli(int argc, char** argv,
       PrintBenchmarkUsage(std::cout, argv[0], defaults);
       std::exit(0);
     } else if (arg == "--verbose-benchmark") {
-      parsed.run_options.verbose_benchmark = true;
+      parsed.runOptions.verbose = true;
     } else if (arg == "--verbose-retractor") {
-      parsed.run_options.verbose_retractor = true;
+      parsed.runOptions.verboseRetractor = true;
     } else if (arg == "--methods") {
-      if (i + 1 >= argc) throw std::invalid_argument("Missing value for --methods");
-      parsed.run_options.methods = ParseMethods(argv[++i]);
+      if (i + 1 >= argc)
+        throw std::invalid_argument("Missing value for --methods");
+      parsed.runOptions.methods = ParseMethods(argv[++i]);
     } else if (arg.rfind("--methods=", 0) == 0) {
-      parsed.run_options.methods =
+      parsed.runOptions.methods =
           ParseMethods(arg.substr(std::string("--methods=").size()));
     } else if (arg == "--benchmark-id") {
-      if (i + 1 >= argc) throw std::invalid_argument("Missing value for --benchmark-id");
-      parsed.run_options.benchmark_id = argv[++i];
+      if (i + 1 >= argc)
+        throw std::invalid_argument("Missing value for --benchmark-id");
+      parsed.runOptions.id = argv[++i];
     } else if (arg.rfind("--benchmark-id=", 0) == 0) {
-      parsed.run_options.benchmark_id =
-          arg.substr(std::string("--benchmark-id=").size());
+      parsed.runOptions.id = arg.substr(std::string("--benchmark-id=").size());
     } else if (arg == "--benchmark-csv") {
-      if (i + 1 >= argc) throw std::invalid_argument("Missing value for --benchmark-csv");
-      parsed.run_options.benchmark_csv_path = argv[++i];
+      if (i + 1 >= argc)
+        throw std::invalid_argument("Missing value for --benchmark-csv");
+      parsed.runOptions.csvPath = argv[++i];
     } else if (arg.rfind("--benchmark-csv=", 0) == 0) {
-      parsed.run_options.benchmark_csv_path =
+      parsed.runOptions.csvPath =
           arg.substr(std::string("--benchmark-csv=").size());
-    } else if (defaults.enable_num_steps &&
+    } else if (defaults.enableNumSteps &&
                (arg == "--num-steps" || arg == "-n")) {
-      if (i + 1 >= argc) throw std::invalid_argument("Missing value for --num-steps");
-      parsed.num_steps = std::stoul(argv[++i]);
-    } else if (defaults.enable_num_steps && arg.rfind("--num-steps=", 0) == 0) {
-      parsed.num_steps = std::stoul(arg.substr(std::string("--num-steps=").size()));
-    } else if (defaults.enable_num_steps &&
+      if (i + 1 >= argc)
+        throw std::invalid_argument("Missing value for --num-steps");
+      parsed.numSteps = std::stoul(argv[++i]);
+    } else if (defaults.enableNumSteps && arg.rfind("--num-steps=", 0) == 0) {
+      parsed.numSteps =
+          std::stoul(arg.substr(std::string("--num-steps=").size()));
+    } else if (defaults.enableNumSteps &&
                std::all_of(arg.begin(), arg.end(),
                            [](unsigned char c) { return std::isdigit(c); })) {
-      parsed.num_steps = std::stoul(arg);
+      parsed.numSteps = std::stoul(arg);
     } else {
-      parsed.unknown_args.push_back(arg);
+      parsed.unknownArgs.push_back(arg);
     }
   }
 
-  if (defaults.enable_num_steps && parsed.num_steps == 0) {
+  if (defaults.enableNumSteps && parsed.numSteps == 0) {
     throw std::invalid_argument("--num-steps must be greater than 0");
   }
 
@@ -321,96 +322,97 @@ std::string BenchmarkMethodLabel(BenchmarkMethod method) {
   return "Unknown";
 }
 
-std::string BenchmarkMethodDataPath(const BenchmarkRunOptions& options,
-                                    BenchmarkMethod method,
-                                    const std::string& suffix) {
+std::string BenchmarkMethodDataPath(
+    const ConstrainedOptBenchmark::Options& options, BenchmarkMethod method,
+    const std::string& suffix) {
   const std::filesystem::path path =
-      EnsureDataPath() / (options.benchmark_id + "_" +
-                          BenchmarkMethodToken(method) + suffix);
+      EnsureDataPath() /
+      (options.id + "_" + BenchmarkMethodToken(method) + suffix);
   return path.string();
 }
 
-ConstrainedOptBenchmarkRunner::ConstrainedOptBenchmarkRunner(
-    BenchmarkRunOptions options)
+ConstrainedOptBenchmark::ConstrainedOptBenchmark(
+    ConstrainedOptBenchmark::Options options)
     : options_(std::move(options)) {
-  mopt_factory_ =
-      [](BenchmarkMethod) { return DefaultMoptParams(); };
+  moptFactory_ = [](BenchmarkMethod) {
+    return ConstrainedOptBenchmark::DefaultMoptParams();
+  };
 }
 
-void ConstrainedOptBenchmarkRunner::setProblemFactory(ProblemFactory factory) {
-  problem_factory_ = std::move(factory);
+void ConstrainedOptBenchmark::setProblemFactory(ProblemFactory factory) {
+  problemFactory_ = std::move(factory);
 }
 
-void ConstrainedOptBenchmarkRunner::setOuterLmBaseParams(
+void ConstrainedOptBenchmark::setOuterLmBaseParams(
     LevenbergMarquardtParams params) {
-  outer_lm_params_ = std::move(params);
+  outerLmParams_ = std::move(params);
 }
 
-void ConstrainedOptBenchmarkRunner::setOuterLmConfig(LmConfig callback) {
-  outer_lm_config_ = std::move(callback);
+void ConstrainedOptBenchmark::setOuterLmConfig(LmConfig callback) {
+  outerLmConfig_ = std::move(callback);
 }
 
-void ConstrainedOptBenchmarkRunner::setMoptFactory(MoptFactory factory) {
-  mopt_factory_ = std::move(factory);
+void ConstrainedOptBenchmark::setMoptFactory(MoptFactory factory) {
+  moptFactory_ = std::move(factory);
 }
 
-void ConstrainedOptBenchmarkRunner::setResultCallback(ResultCallback callback) {
-  result_callback_ = std::move(callback);
+void ConstrainedOptBenchmark::setResultCallback(ResultCallback callback) {
+  resultCallback_ = std::move(callback);
 }
 
-void ConstrainedOptBenchmarkRunner::run(std::ostream& latex_os) {
-  if (!problem_factory_) {
-    throw std::runtime_error("ConstrainedOptBenchmarkRunner requires a problem factory.");
+void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
+  if (!problemFactory_) {
+    throw std::runtime_error(
+        "ConstrainedOptBenchmark requires a problem factory.");
   }
 
   if (options_.methods.empty()) {
-    throw std::runtime_error("ConstrainedOptBenchmarkRunner methods set is empty.");
+    throw std::runtime_error("ConstrainedOptBenchmark methods set is empty.");
   }
 
-  const std::string csv_path = options_.benchmark_csv_path.empty()
-                                   ? DefaultBenchmarkCsvPath(options_)
-                                   : options_.benchmark_csv_path;
+  const std::string csvPath = options_.csvPath.empty()
+                                  ? DefaultBenchmarkCsvPath(options_)
+                                  : options_.csvPath;
 
-  ScopedEnvVar bench_csv_env(kBenchmarkCsvEnv, csv_path);
-  ScopedEnvVar bench_id_env(kBenchmarkIdEnv, options_.benchmark_id);
+  ScopedEnvVar benchCsvEnv(kBenchmarkCsvEnv, csvPath);
+  ScopedEnvVar benchIdEnv(kBenchmarkIdEnv, options_.id);
 
   for (BenchmarkMethod method : OrderedMethods()) {
     if (options_.methods.count(method) == 0) continue;
 
-    LevenbergMarquardtParams lm_params = outer_lm_params_;
-    if (options_.verbose_benchmark) {
-      lm_params.setVerbosityLM("SUMMARY");
+    LevenbergMarquardtParams lmParams = outerLmParams_;
+    if (options_.verbose) {
+      lmParams.setVerbosityLM("SUMMARY");
     }
-    if (outer_lm_config_) {
-      outer_lm_config_(method, &lm_params);
+    if (outerLmConfig_) {
+      outerLmConfig_(method, &lmParams);
     }
 
-    auto problem = problem_factory_();
+    auto problem = problemFactory_();
 
     Values result;
     switch (method) {
       case BenchmarkMethod::SOFT: {
         std::cout << "soft constraints:\n";
-        result = OptimizeE_SoftConstraints(problem, latex_os, lm_params,
-                                           options_.soft_mu,
-                                           options_.constraint_unit_scale);
+        result =
+            OptimizeSoftConstraints(problem, latexOs, lmParams, options_.softMu,
+                                    options_.constraintUnitScale);
         break;
       }
       case BenchmarkMethod::PENALTY: {
         std::cout << "penalty method:\n";
-        auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
-        penalty_params->lmParams = lm_params;
-        result = OptimizeE_Penalty(problem, latex_os, penalty_params,
-                                   options_.constraint_unit_scale);
+        auto penaltyParams = std::make_shared<gtsam::PenaltyOptimizerParams>();
+        penaltyParams->lmParams = lmParams;
+        result = OptimizePenalty(problem, latexOs, penaltyParams,
+                                 options_.constraintUnitScale);
         break;
       }
       case BenchmarkMethod::AUGMENTED_LAGRANGIAN: {
         std::cout << "augmented lagrangian:\n";
-        auto alm_params =
-            std::make_shared<gtsam::AugmentedLagrangianParams>();
-        alm_params->lmParams = lm_params;
-        result = OptimizeE_AugmentedLagrangian(problem, latex_os, alm_params,
-                                               options_.constraint_unit_scale);
+        auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
+        almParams->lmParams = lmParams;
+        result = OptimizeAugmentedLagrangian(problem, latexOs, almParams,
+                                             options_.constraintUnitScale);
         break;
       }
       case BenchmarkMethod::CM_F:
@@ -419,177 +421,161 @@ void ConstrainedOptBenchmarkRunner::run(std::ostream& latex_os) {
         std::cout << "constraint manifold basis variables ("
                   << (feasible ? "feasible" : "infeasible") << "):\n";
 
-        auto mopt_params = mopt_factory_(method);
-        auto* retract_lm =
-            &mopt_params.cc_params->retractor_creator->params()->lm_params;
-        if (options_.verbose_retractor) {
-          retract_lm->setVerbosityLM("SUMMARY");
+        auto moptParams = moptFactory_(method);
+        auto* retractLm =
+            &moptParams.cc_params->retractor_creator->params()->lm_params;
+        if (options_.verboseRetractor) {
+          retractLm->setVerbosityLM("SUMMARY");
         }
 
-        retract_lm->setMaxIterations(
-            feasible ? options_.cm_f_retractor_max_iterations
-                     : options_.cm_i_retractor_max_iterations);
+        retractLm->setMaxIterations(feasible
+                                        ? options_.cmFRetractorMaxIterations
+                                        : options_.cmIRetractorMaxIterations);
 
-        if (!feasible && options_.cm_i_retract_final) {
-          mopt_params.retract_final = true;
+        if (!feasible && options_.cmIRetractFinal) {
+          moptParams.retract_final = true;
         }
 
-        result = OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params,
-                                 BenchmarkMethodLabel(method),
-                                 options_.constraint_unit_scale);
+        result = OptimizeCmOpt(problem, latexOs, moptParams, lmParams,
+                               BenchmarkMethodLabel(method),
+                               options_.constraintUnitScale);
         break;
       }
     }
 
-    if (result_callback_) {
-      result_callback_(method, result);
+    if (resultCallback_) {
+      resultCallback_(method, result);
     }
   }
 }
 
-/* ************************************************************************* */
-Values OptimizeE_SoftConstraints(const EConsOptProblem &problem,
-                                 std::ostream &latex_os,
-                                 LevenbergMarquardtParams lm_params, double mu,
-                                 double constraint_unit_scale) {
+Values ConstrainedOptBenchmark::OptimizeSoftConstraints(
+    const EConsOptProblem& problem, std::ostream& latexOs,
+    LevenbergMarquardtParams lmParams, double mu, double constraintUnitScale) {
   NonlinearFactorGraph graph = problem.costs_;
   graph.add(problem.constraints().penaltyGraph(mu));
 
-  LevenbergMarquardtOptimizer optimizer(graph, problem.initValues(), lm_params);
-  auto optimization_start = std::chrono::system_clock::now();
+  LevenbergMarquardtOptimizer optimizer(graph, problem.initValues(), lmParams);
+  auto optimizationStart = std::chrono::system_clock::now();
   auto result = optimizer.optimize();
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
-                                                            optimization_start);
-  double optimization_time = optimization_time_ms.count() * 1e-3;
+  auto optimizationEnd = std::chrono::system_clock::now();
+  const auto optimizationTimeMs =
+      std::chrono::duration_cast<std::chrono::milliseconds>(optimizationEnd -
+                                                            optimizationStart);
+  const double optimizationTime = optimizationTimeMs.count() * 1e-3;
 
-  PrintLatex(latex_os, "Soft Constraint",
-             problem.costsDimension() + problem.constraintsDimension(),
-             problem.valuesDimension(), optimization_time,
-             optimizer.getInnerIterations(),
-             problem.evaluateEConstraintViolationL2Norm(result) *
-                 constraint_unit_scale,
-             problem.evaluateCost(result));
+  PrintLatex(
+      latexOs, "Soft Constraint",
+      problem.costsDimension() + problem.constraintsDimension(),
+      problem.valuesDimension(), optimizationTime,
+      optimizer.getInnerIterations(),
+      problem.evaluateEConstraintViolationL2Norm(result) * constraintUnitScale,
+      problem.evaluateCost(result));
   return result;
 }
 
-/* ************************************************************************* */
-ManifoldOptimizerParameters DefaultMoptParams() {
-  ManifoldOptimizerParameters mopt_params;
-  auto retractor_params = std::make_shared<RetractParams>();
-  mopt_params.cc_params->retractor_creator =
-      std::make_shared<UoptRetractorCreator>(retractor_params);
-  auto basis_params = std::make_shared<TspaceBasisParams>();
-  basis_params->always_construct_basis = false;
-  mopt_params.cc_params->basis_creator =
-      std::make_shared<OrthonormalBasisCreator>(basis_params);
-  return mopt_params;
+ManifoldOptimizerParameters ConstrainedOptBenchmark::DefaultMoptParams() {
+  ManifoldOptimizerParameters moptParams;
+  auto retractorParams = std::make_shared<RetractParams>();
+  moptParams.cc_params->retractor_creator =
+      std::make_shared<UoptRetractorCreator>(retractorParams);
+  auto basisParams = std::make_shared<TspaceBasisParams>();
+  basisParams->always_construct_basis = false;
+  moptParams.cc_params->basis_creator =
+      std::make_shared<OrthonormalBasisCreator>(basisParams);
+  return moptParams;
 }
 
-/* ************************************************************************* */
-ManifoldOptimizerParameters
-DefaultMoptParamsSV(const BasisKeyFunc &basis_key_func) {
-  ManifoldOptimizerParameters mopt_params;
-  auto retractor_params = std::make_shared<RetractParams>();
-  retractor_params->use_basis_keys = true;
-  mopt_params.cc_params->retractor_creator =
-      std::make_shared<BasisRetractorCreator>(basis_key_func, retractor_params);
-  auto basis_params = std::make_shared<TspaceBasisParams>();
-  basis_params->use_basis_keys = true;
-  basis_params->always_construct_basis = false;
-  mopt_params.cc_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(basis_key_func, basis_params);
-  return mopt_params;
+ManifoldOptimizerParameters ConstrainedOptBenchmark::DefaultMoptParamsSV(
+    const BasisKeyFunc& basisKeyFunc) {
+  ManifoldOptimizerParameters moptParams;
+  auto retractorParams = std::make_shared<RetractParams>();
+  retractorParams->use_basis_keys = true;
+  moptParams.cc_params->retractor_creator =
+      std::make_shared<BasisRetractorCreator>(basisKeyFunc, retractorParams);
+  auto basisParams = std::make_shared<TspaceBasisParams>();
+  basisParams->use_basis_keys = true;
+  basisParams->always_construct_basis = false;
+  moptParams.cc_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(basisKeyFunc, basisParams);
+  return moptParams;
 }
 
-/* ************************************************************************* */
-Values OptimizeE_CMOpt(const EConsOptProblem &problem, std::ostream &latex_os,
-                       ManifoldOptimizerParameters mopt_params,
-                       LevenbergMarquardtParams lm_params, std::string exp_name,
-                       double constraint_unit_scale) {
-  NonlinearMOptimizer optimizer(mopt_params, lm_params);
-  auto mopt_problem = optimizer.initializeMoptProblem(
+Values ConstrainedOptBenchmark::OptimizeCmOpt(
+    const EConsOptProblem& problem, std::ostream& latexOs,
+    ManifoldOptimizerParameters moptParams, LevenbergMarquardtParams lmParams,
+    const std::string& expName, double constraintUnitScale) {
+  NonlinearMOptimizer optimizer(moptParams, lmParams);
+  auto moptProblem = optimizer.initializeMoptProblem(
       problem.costs(), problem.constraints(), problem.initValues());
 
-  auto optimization_start = std::chrono::system_clock::now();
-  auto result = optimizer.optimizeMOpt(mopt_problem);
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
-                                                            optimization_start);
-  double optimization_time = optimization_time_ms.count() * 1e-3;
+  auto optimizationStart = std::chrono::system_clock::now();
+  auto result = optimizer.optimizeMOpt(moptProblem);
+  auto optimizationEnd = std::chrono::system_clock::now();
+  const auto optimizationTimeMs =
+      std::chrono::duration_cast<std::chrono::milliseconds>(optimizationEnd -
+                                                            optimizationStart);
+  const double optimizationTime = optimizationTimeMs.count() * 1e-3;
 
-  auto problem_dim = mopt_problem.problemDimension();
-  PrintLatex(latex_os, "\\textbf{" + exp_name + "}", problem_dim.first,
-             problem_dim.second, optimization_time,
-             //   intermediate_result.num_iters.at(0), TODO
-             0,
-             problem.evaluateEConstraintViolationL2Norm(result) *
-                 constraint_unit_scale,
-             problem.evaluateCost(result));
+  const auto problemDim = moptProblem.problemDimension();
+  PrintLatex(
+      latexOs, "\\textbf{" + expName + "}", problemDim.first, problemDim.second,
+      optimizationTime, 0,
+      problem.evaluateEConstraintViolationL2Norm(result) * constraintUnitScale,
+      problem.evaluateCost(result));
 
   return result;
 }
 
-/* ************************************************************************* */
-Values OptimizeE_Penalty(const EConsOptProblem &problem, std::ostream &latex_os,
-                         gtsam::PenaltyOptimizerParams::shared_ptr params,
-                         double constraint_unit_scale) {
-  // params->store_iter_details = true; // Not yet in gtsam, TODO
+Values ConstrainedOptBenchmark::OptimizePenalty(
+    const EConsOptProblem& problem, std::ostream& latexOs,
+    gtsam::PenaltyOptimizerParams::shared_ptr params,
+    double constraintUnitScale) {
   gtsam::NonlinearFactorGraph graph = problem.costs();
   graph.add(problem.constraints());
   gtsam::PenaltyOptimizer optimizer(graph, problem.initValues(), params);
 
-  auto optimization_start = std::chrono::system_clock::now();
+  auto optimizationStart = std::chrono::system_clock::now();
   auto result = optimizer.optimize();
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(optimization_end -
-                                                            optimization_start);
-  double optimization_time = optimization_time_ms.count() * 1e-6;
+  auto optimizationEnd = std::chrono::system_clock::now();
+  const auto optimizationTimeUs =
+      std::chrono::duration_cast<std::chrono::microseconds>(optimizationEnd -
+                                                            optimizationStart);
+  const double optimizationTime = optimizationTimeUs.count() * 1e-6;
 
-  PrintLatex(latex_os, "Penalty Method",
-             problem.costsDimension() + problem.constraintsDimension(),
-             problem.valuesDimension(), optimization_time,
-             //   std::accumulate(intermediate_result.num_iters.begin(),
-             //                   intermediate_result.num_iters.end(), 0), TODO
-             0,
-             problem.evaluateEConstraintViolationL2Norm(result) *
-                 constraint_unit_scale,
-             problem.evaluateCost(result));
+  PrintLatex(
+      latexOs, "Penalty Method",
+      problem.costsDimension() + problem.constraintsDimension(),
+      problem.valuesDimension(), optimizationTime, 0,
+      problem.evaluateEConstraintViolationL2Norm(result) * constraintUnitScale,
+      problem.evaluateCost(result));
 
   return result;
 }
 
-/* ************************************************************************* */
-Values
-OptimizeE_AugmentedLagrangian(const EConsOptProblem &problem,
-                              std::ostream &latex_os,
-                              gtsam::AugmentedLagrangianParams::shared_ptr params,
-                              double constraint_unit_scale) {
+Values ConstrainedOptBenchmark::OptimizeAugmentedLagrangian(
+    const EConsOptProblem& problem, std::ostream& latexOs,
+    gtsam::AugmentedLagrangianParams::shared_ptr params,
+    double constraintUnitScale) {
   gtsam::NonlinearFactorGraph graph = problem.costs();
   graph.add(problem.constraints());
   gtsam::AugmentedLagrangianOptimizer optimizer(graph, problem.initValues(),
                                                 params);
 
-  auto optimization_start = std::chrono::system_clock::now();
+  auto optimizationStart = std::chrono::system_clock::now();
   auto result = optimizer.optimize();
-  auto optimization_end = std::chrono::system_clock::now();
-  auto optimization_time_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(optimization_end -
-                                                            optimization_start);
-  double optimization_time = optimization_time_ms.count() * 1e-3;
+  auto optimizationEnd = std::chrono::system_clock::now();
+  const auto optimizationTimeMs =
+      std::chrono::duration_cast<std::chrono::milliseconds>(optimizationEnd -
+                                                            optimizationStart);
+  const double optimizationTime = optimizationTimeMs.count() * 1e-3;
 
-  PrintLatex(latex_os, "Augmented Lagrangian",
-             problem.costsDimension() + problem.constraintsDimension(),
-             problem.valuesDimension(), optimization_time,
-             //   std::accumulate(intermediate_result.num_iters.begin(),
-             //                   intermediate_result.num_iters.end(), 0), TODO
-             0,
-             problem.evaluateEConstraintViolationL2Norm(result) *
-                 constraint_unit_scale,
-             problem.evaluateCost(result));
+  PrintLatex(
+      latexOs, "Augmented Lagrangian",
+      problem.costsDimension() + problem.constraintsDimension(),
+      problem.valuesDimension(), optimizationTime, 0,
+      problem.evaluateEConstraintViolationL2Norm(result) * constraintUnitScale,
+      problem.evaluateCost(result));
 
   return result;
 }

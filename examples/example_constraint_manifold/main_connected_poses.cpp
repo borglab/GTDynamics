@@ -53,7 +53,7 @@ struct ConnectedPosesArgs {
 
 void PrintUsage(const char* program_name) {
   BenchmarkCliDefaults defaults;
-  defaults.benchmark_id = "connected_poses";
+  defaults.id = "connected_poses";
   PrintBenchmarkUsage(std::cout, program_name, defaults);
   std::cout << "Example-specific options:\n"
             << "  --debug-cm-components Print CM component/manifold diagnostics.\n";
@@ -61,18 +61,18 @@ void PrintUsage(const char* program_name) {
 
 ConnectedPosesArgs ParseArgs(int argc, char** argv) {
   BenchmarkCliDefaults defaults;
-  defaults.benchmark_id = "connected_poses";
+  defaults.id = "connected_poses";
 
   ConnectedPosesArgs args{ParseBenchmarkCli(argc, argv, defaults)};
   std::vector<std::string> remaining;
-  for (const auto& arg : args.benchmark_cli.unknown_args) {
+  for (const auto& arg : args.benchmark_cli.unknownArgs) {
     if (arg == "--debug-cm-components") {
       args.debug_cm_components = true;
     } else {
       remaining.push_back(arg);
     }
   }
-  args.benchmark_cli.unknown_args = remaining;
+  args.benchmark_cli.unknownArgs = remaining;
   return args;
 }
 }  // namespace
@@ -244,60 +244,60 @@ void PrintCMComponentDebug(const EConsOptProblem& problem,
 void kinematic_planning(const ConnectedPosesArgs& args) {
   // Create constrained optimization problem.
   auto gt = get_gt_values();
-  auto constraints_graph = get_constraints_graph(gt);
-  std::vector<std::vector<Pose2>> odo_measurements = GetOdoMeasurements(gt);
-  auto costs = get_costs(gt, odo_measurements);
-  auto init_values = get_init_values(gt, odo_measurements);
+  auto constraintsGraph = get_constraints_graph(gt);
+  std::vector<std::vector<Pose2>> odoMeasurements = GetOdoMeasurements(gt);
+  auto costs = get_costs(gt, odoMeasurements);
+  auto initValues = get_init_values(gt, odoMeasurements);
   auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  auto problem = EConsOptProblem(costs, constraints, init_values);
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraintsGraph);
+  auto problem = EConsOptProblem(costs, constraints, initValues);
 
-  LevenbergMarquardtParams lm_params;
-  lm_params.setlambdaUpperBound(1e10);
+  LevenbergMarquardtParams lmParams;
+  lmParams.setlambdaUpperBound(1e10);
 
-  std::cout << "pose error: " << EvaluatePoseError(gt, init_values) << "\n";
+  std::cout << "pose error: " << EvaluatePoseError(gt, initValues) << "\n";
 
-  auto run_options = args.benchmark_cli.run_options;
-  run_options.constraint_unit_scale = kConstraintUnitScale;
-  run_options.soft_mu = 1e4;
+  auto runOptions = args.benchmark_cli.runOptions;
+  runOptions.constraintUnitScale = kConstraintUnitScale;
+  runOptions.softMu = 1e4;
 
-  auto mopt_factory = [](BenchmarkMethod) {
-    auto mopt_params = DefaultMoptParams();
-    mopt_params.cc_params->retractor_creator->params()
+  auto moptFactory = [](BenchmarkMethod) {
+    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
+    moptParams.cc_params->retractor_creator->params()
         ->lm_params.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-    return mopt_params;
+    return moptParams;
   };
 
   if (args.debug_cm_components &&
-      (run_options.methods.count(BenchmarkMethod::CM_F) > 0 ||
-       run_options.methods.count(BenchmarkMethod::CM_I) > 0)) {
-    auto debug_mopt = mopt_factory(BenchmarkMethod::CM_F);
-    PrintCMComponentDebug(problem, debug_mopt, lm_params, true);
+      (runOptions.methods.count(BenchmarkMethod::CM_F) > 0 ||
+       runOptions.methods.count(BenchmarkMethod::CM_I) > 0)) {
+    auto debugMopt = moptFactory(BenchmarkMethod::CM_F);
+    PrintCMComponentDebug(problem, debugMopt, lmParams, true);
   }
 
-  ConstrainedOptBenchmarkRunner runner(run_options);
+  ConstrainedOptBenchmark runner(runOptions);
   runner.setProblemFactory(
-      [=]() { return EConsOptProblem(costs, constraints, init_values); });
-  runner.setOuterLmBaseParams(lm_params);
-  runner.setMoptFactory(mopt_factory);
+      [=]() { return EConsOptProblem(costs, constraints, initValues); });
+  runner.setOuterLmBaseParams(lmParams);
+  runner.setMoptFactory(moptFactory);
   runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
     std::cout << "pose error: " << EvaluatePoseError(gt, result) << "\n";
     ExportTrajectoryCsv(result,
-                        BenchmarkMethodDataPath(run_options, method, "_traj.csv"));
+                        BenchmarkMethodDataPath(runOptions, method, "_traj.csv"));
   });
 
-  std::ostringstream latex_os;
-  runner.run(latex_os);
-  std::cout << latex_os.str();
+  std::ostringstream latexOs;
+  runner.run(latexOs);
+  std::cout << latexOs.str();
 }
 
 int main(int argc, char** argv) {
   try {
     const ConnectedPosesArgs args = ParseArgs(argc, argv);
-    if (!args.benchmark_cli.unknown_args.empty()) {
+    if (!args.benchmark_cli.unknownArgs.empty()) {
       throw std::invalid_argument("Unknown option: " +
-                                  args.benchmark_cli.unknown_args.front());
+                                  args.benchmark_cli.unknownArgs.front());
     }
     kinematic_planning(args);
     return 0;
