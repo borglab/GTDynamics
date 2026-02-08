@@ -15,8 +15,8 @@
 #pragma once
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/nonlinear/expressions.h>
 
 namespace gtdynamics {
@@ -76,8 +76,8 @@ public:
   Double_ frictionConeExpr2(const Double_ &fx_expr,
                             const Double_ &fy_expr) const;
 
-  EqualityConstraints eConstraints(const int k) const;
-  InequalityConstraints iConstraints(const int k) const;
+  NonlinearEqualityConstraints eConstraints(const int k) const;
+  NonlinearInequalityConstraints iConstraints(const int k) const;
 
   Values computeValues(const size_t &k, const double &q, const double &v,
                        const double &a) const;

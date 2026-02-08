@@ -6,15 +6,15 @@ using namespace gtsam;
 void EvaluateAndExportIELMResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::pair<IEResultSummary, IELMItersDetails> &ielm_result,
+    const IELMItersDetails &ielm_iters,
     const std::string &scenario_folder, bool print_values,
     bool print_iter_details) {
   size_t num_steps = vision60_multi_phase.numSteps();
 
   //// Visualize optimization progress
-  Values result_values = ielm_result.second.back().state.baseValues();
+  Values result_values = ielm_iters.back().state.baseValues();
   if (print_iter_details) {
-    for (const auto &iter_details : ielm_result.second) {
+    for (const auto &iter_details : ielm_iters) {
       IEOptimizer::PrintIterDetails(
           iter_details, num_steps, false, IEVision60Robot::PrintValues,
           IEVision60Robot::PrintDelta, GTDKeyFormatter);
@@ -28,8 +28,7 @@ void EvaluateAndExportIELMResult(
 
   /// Show active constraints
   std::cout << "active constriants:\n";
-  for (const auto &[key, manifold] :
-       ielm_result.second.back().state.manifolds) {
+  for (const auto &[key, manifold] : ielm_iters.back().state.manifolds) {
     for (const auto &i_idx : manifold.activeIndices()) {
       auto constraint = manifold.iConstraints()->at(i_idx);
       constraint->print();
@@ -39,7 +38,7 @@ void EvaluateAndExportIELMResult(
   //// Evaluate
   problem.eval_func(result_values);
   vision60_multi_phase.evaluateCollocation(result_values);
-  for (const auto &iter_details : ielm_result.second) {
+  for (const auto &iter_details : ielm_iters) {
     Values values = iter_details.state.baseValues();
     std::cout << iter_details.state.iterations << "\t";
     for (size_t phase_idx = 0;
@@ -62,10 +61,9 @@ void EvaluateAndExportIELMResult(
 void EvaluateAndExportBarrierResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::pair<IEResultSummary, PenaltyItersDetails> &penalty_result,
+    const Values &penalty_result_values,
     const std::string &scenario_folder, bool print_values) {
   size_t num_steps = vision60_multi_phase.numSteps();
-  const Values &penalty_result_values = penalty_result.second.rbegin()->values;
   problem.eval_func(penalty_result_values);
   if (print_values) {
     IEVision60Robot::PrintValues(penalty_result_values, num_steps);
@@ -73,7 +71,6 @@ void EvaluateAndExportBarrierResult(
   IEVision60Robot::ExportValuesMultiPhase(penalty_result_values,
                                           vision60_multi_phase.phase_num_steps_,
                                           scenario_folder + "barrier_traj.csv");
-  penalty_result.first.exportFile(scenario_folder + "barrier_summary.csv");
 }
 
 /* ************************************************************************* */
@@ -138,8 +135,7 @@ std::vector<std::string> ActiveNames(const IEManifoldValues &manifolds) {
   std::vector<std::string> active_names;
   for (const auto &[key, manifold] : manifolds) {
     for (const auto &constraint_idx : manifold.activeIndices()) {
-      const auto &constraint = manifold.iConstraints()->at(constraint_idx);
-      active_names.push_back(constraint->name_tmp());
+      active_names.push_back(std::to_string(constraint_idx));
     }
   }
   return active_names;

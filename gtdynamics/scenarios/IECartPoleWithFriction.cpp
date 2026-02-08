@@ -106,42 +106,42 @@ IECartPoleWithFriction::frictionConeExpr2(const Double_ &fx_expr,
 }
 
 /* ************************************************************************* */
-EqualityConstraints
+NonlinearEqualityConstraints
 IECartPoleWithFriction::eConstraints(const int k) const {
-  EqualityConstraints constraints;
+  NonlinearEqualityConstraints constraints;
   Double_ q_expr(QKey(k));
   Double_ v_expr(VKey(k));
   Double_ a_expr(AKey(k));
   Double_ tau_expr(TauKey(k));
   Double_ fx_expr(FxKey(k));
   Double_ fy_expr(FyKey(k));
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      balanceFxExpr(q_expr, v_expr, a_expr, fx_expr), 1.0);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      balanceFyExpr(q_expr, v_expr, a_expr, fy_expr), 1.0);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      balanceRotExpr(q_expr, a_expr, tau_expr), 1.0);
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      balanceFxExpr(q_expr, v_expr, a_expr, fx_expr), 0.0, Vector1(1.0));
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      balanceFyExpr(q_expr, v_expr, a_expr, fy_expr), 0.0, Vector1(1.0));
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      balanceRotExpr(q_expr, a_expr, tau_expr), 0.0, Vector1(1.0));
   return constraints;
 }
 
 /* ************************************************************************* */
-InequalityConstraints
+NonlinearInequalityConstraints
 IECartPoleWithFriction::iConstraints(const int k) const {
-  InequalityConstraints constraints;
+  NonlinearInequalityConstraints constraints;
   Double_ fx_expr(FxKey(k));
   Double_ fy_expr(FyKey(k));
-  constraints.emplace_shared<DoubleExpressionInequality>(
-      frictionConeExpr1(fx_expr, fy_expr), 1.0);
-  constraints.emplace_shared<DoubleExpressionInequality>(
-      frictionConeExpr2(fx_expr, fy_expr), 1.0);
+  constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
+      frictionConeExpr1(fx_expr, fy_expr), 1.0));
+  constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
+      frictionConeExpr2(fx_expr, fy_expr), 1.0));
   if (include_torque_limits) {
     Double_ torque_expr(TauKey(k));
     Double_ lower_limit_expr = torque_expr - Double_(tau_min);
     Double_ upper_limit_expr = Double_(tau_max) - torque_expr;
-    constraints.emplace_shared<DoubleExpressionInequality>(
-        lower_limit_expr, 1.0);
-    constraints.emplace_shared<DoubleExpressionInequality>(
-        upper_limit_expr, 1.0);
+    constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
+        lower_limit_expr, 1.0));
+    constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
+        upper_limit_expr, 1.0));
   }
   return constraints;
 }
@@ -337,9 +337,9 @@ IEConstraintManifold
 CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
                                         const VectorValues &delta) const {
 
-  const InequalityConstraints &i_constraints =
+  const NonlinearInequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const EqualityConstraints &e_constraints =
+  const NonlinearEqualityConstraints &e_constraints =
       *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
@@ -362,10 +362,10 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
     graph.addPrior<double>(key, new_values.atDouble(key), prior_noise);
   }
   for (const auto &constraint : e_constraints) {
-    graph.add(constraint->createFactor(10.0));
+    graph.add(constraint->penaltyFactor(10.0));
   }
   for (const auto &constraint : i_constraints) {
-    graph.add(constraint->createPenaltyFactor(10.0));
+    graph.add(constraint->penaltyFactor(10.0));
   }
 
   LevenbergMarquardtParams params;
@@ -396,12 +396,12 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
   // final optimization to make strictly feasible solution
   NonlinearFactorGraph graph1;
   for (const auto &constraint : e_constraints) {
-    graph1.add(constraint->createFactor(1.0));
+    graph1.add(constraint->penaltyFactor(1.0));
   }
   for (const auto &constraint_idx : active_indices) {
     graph1.add(i_constraints.at(constraint_idx)
                    ->createEqualityConstraint()
-                   ->createFactor(1.0));
+                   ->penaltyFactor(1.0));
   }
   for (const Key &key : new_values.keys()) {
     SharedNoiseModel prior_noise;
@@ -432,9 +432,9 @@ IEConstraintManifold CPBarrierRetractor::retract(
     const std::optional<IndexSet> &blocking_indices,
     IERetractInfo* retract_info) const {
 
-  const InequalityConstraints &i_constraints =
+  const NonlinearInequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const EqualityConstraints &e_constraints =
+  const NonlinearEqualityConstraints &e_constraints =
       *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
@@ -450,14 +450,14 @@ IEConstraintManifold CPBarrierRetractor::retract(
     }
   }
   for (const auto &constraint : e_constraints) {
-    graph.add(constraint->createFactor(mu));
+    graph.add(constraint->penaltyFactor(mu));
   }
   for (size_t idx = 0; idx < i_constraints.size(); idx++) {
     const auto &constraint = i_constraints.at(idx);
     if (blocking_indices && blocking_indices->exists(idx)) {
-      graph.add(constraint->createL2Factor(mu));
+      graph.add(constraint->penaltyFactorEquality(mu));
     } else {
-      graph.add(constraint->createPenaltyFactor(mu));
+      graph.add(constraint->penaltyFactor(mu));
     }
   }
 
@@ -481,10 +481,10 @@ IEConstraintManifold CPBarrierRetractor::retract(
   // final optimization to make strictly feasible solution
   NonlinearFactorGraph graph1;
   for (const auto &constraint : e_constraints) {
-    graph1.add(constraint->createFactor(1.0));
+    graph1.add(constraint->penaltyFactor(1.0));
   }
   for (const auto &constraint_idx : active_indices) {
-    graph1.add(i_constraints.at(constraint_idx)->createL2Factor(1.0));
+    graph1.add(i_constraints.at(constraint_idx)->penaltyFactorEquality(1.0));
   }
   // std::cout << "optimize for feasibility\n";
   // active_indices.print("active indices\n");

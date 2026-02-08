@@ -45,7 +45,7 @@ Values IEVision60Robot::stepValuesQ(const size_t k, const Values &init_values,
 
   NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(k);
   if (satisfy_i_constriants) {
-    graph_q.add(stepIConstraintsQ(k).meritGraph());
+    graph_q.add(stepIConstraintsQ(k).penaltyGraph());
   }
   return OptimizeWithConstraints(graph_q, init_values, known_q_keys,
                                  params->tol_q, ensure_feasible, "q-level");
@@ -60,7 +60,7 @@ Values IEVision60Robot::stepValuesV(const size_t k, const Values &init_values,
 
   NonlinearFactorGraph graph_v = getConstraintsGraphStepV(k);
   if (satisfy_i_constriants) {
-    graph_v.add(stepIConstraintsV(k).meritGraph());
+    graph_v.add(stepIConstraintsV(k).penaltyGraph());
   }
   graph_v = ConstVarGraph(graph_v, known_q_values);
   return OptimizeWithConstraints(graph_v, init_values, known_v_keys,
@@ -76,7 +76,7 @@ Values IEVision60Robot::stepValuesAD(const size_t k, const Values &init_values,
 
   NonlinearFactorGraph graph_ad = getConstraintsGraphStepAD(k);
   if (satisfy_i_constriants) {
-    graph_ad.add(stepIConstraintsAD(k).meritGraph());
+    graph_ad.add(stepIConstraintsAD(k).penaltyGraph());
   }
   graph_ad = ConstVarGraph(graph_ad, known_qv_values);
   return OptimizeWithConstraints(graph_ad, init_values, known_ad_keys,
@@ -374,13 +374,13 @@ TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
   ;
 
   // Create graph with e-constraints and collocation constraints
-  EqualityConstraints e_constraints;
+  NonlinearEqualityConstraints e_constraints;
   for (size_t k = 0; k <= num_steps; k++) {
     const IEVision60Robot &vision60 = vision60_multi_phase.robotAtStep(k);
     e_constraints.add(vision60.eConstraints(k));
   }
 
-  NonlinearFactorGraph graph = e_constraints.meritGraph();
+  NonlinearFactorGraph graph = e_constraints.penaltyGraph();
   graph.addPrior(PoseKey(IEVision60Robot::base_id, 0), base_pose_init,
                  noiseModel::Isotropic::Sigma(
                      6, vision60_multi_phase.params()->tol_prior_q));

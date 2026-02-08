@@ -76,17 +76,17 @@ public:
 
   // Equality constriants include all dynamic constraints, and 0 torque
   // constraints.
-  EqualityConstraints eConstraints(const int k) const;
+  NonlinearEqualityConstraints eConstraints(const int k) const;
 
   // Inequality constraints include position limits and force limits
   // constraints.
-  InequalityConstraints iConstraints(const int k) const;
+  NonlinearInequalityConstraints iConstraints(const int k) const;
 
   // Equality constraints that specify q,v of initial state.
-  EqualityConstraints initStateConstraints() const;
+  NonlinearEqualityConstraints initStateConstraints() const;
 
   // Equality constriants that specify q,v of final state.
-  EqualityConstraints finalStateConstraints(size_t num_steps) const;
+  NonlinearEqualityConstraints finalStateConstraints(size_t num_steps) const;
 
   // Cost for achieving q,v in final state.
   NonlinearFactorGraph finalStateCosts(size_t num_steps) const ;

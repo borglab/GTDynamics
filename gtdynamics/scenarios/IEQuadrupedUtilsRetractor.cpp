@@ -72,7 +72,7 @@ IERetractor::shared_ptr Vision60MultiPhaseBarrierRetractorCreator::create(
 
 /* ************************************************************************* */
 TspaceBasis::shared_ptr Vision60MultiPhaseTspaceBasisCreator::create(
-    const EqualityConstraints::shared_ptr constraints, const Values &values) const {
+    const NonlinearEqualityConstraints::shared_ptr constraints, const Values &values) const {
   if (values.size() == 1) {
     return std::make_shared<OrthonormalBasis>(constraints, values, params_);
   }

@@ -14,8 +14,8 @@
 #pragma once
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/constraints/EqualityConstraint.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/expressions.h>
@@ -39,37 +39,37 @@ public:
   IEHalfSphere(const double _r = 1.0) : r(_r) {}
 
   /// Equality constraints defining the manifold.
-  EqualityConstraints eConstraints(const int k) const {
-    EqualityConstraints constraints;
+  NonlinearEqualityConstraints eConstraints(const int k) const {
+    NonlinearEqualityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(&norm3, point_expr);
     Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.emplace_shared<DoubleExpressionEquality>(
-        sphere_expr, sphere_tol);
+    constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+        sphere_expr, 0.0, Vector1(sphere_tol));
     return constraints;
   }
 
   /// Inequality constraints defining the manifold.
-  InequalityConstraints iConstraints(const int k) const {
-    InequalityConstraints constraints;
+  NonlinearInequalityConstraints iConstraints(const int k) const {
+    NonlinearInequalityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Expression<double> z_expr(&point3_z, point_expr);
-    constraints.emplace_shared<DoubleExpressionInequality>(z_expr,
-                                                                       z_tol);
+    constraints.push_back(
+        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol));
     return constraints;
   }
 
   /// Inequality constraints defining the dome manifold.
-  InequalityConstraints iDomeConstraints(const int k) const {
-    InequalityConstraints constraints;
+  NonlinearInequalityConstraints iDomeConstraints(const int k) const {
+    NonlinearInequalityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(norm3, point_expr);
     Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.emplace_shared<DoubleExpressionInequality>(
-        sphere_expr, sphere_tol, "sphere");
+    constraints.push_back(
+        ScalarExpressionInequalityConstraint::GeqZero(sphere_expr, sphere_tol));
     Double_ z_expr(&point3_z, point_expr);
-    constraints.emplace_shared<DoubleExpressionInequality>(
-        z_expr, z_tol, "positive_z");
+    constraints.push_back(
+        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol));
     return constraints;
   }
 
@@ -87,7 +87,7 @@ public:
                            const std::string &file_path) {
     std::ofstream file;
     file.open(file_path);
-    for (int k = 0; k <= num_steps; k++) {
+    for (size_t k = 0; k <= num_steps; k++) {
       Key point_key = Symbol('p', k);
       Point3 point = values.at<Point3>(point_key);
       file << point.x() << " " << point.y() << " " << point.z() << "\n";
@@ -99,7 +99,7 @@ public:
                            const std::string &file_path) {
     std::ofstream file;
     file.open(file_path);
-    for (int k = 0; k <= num_steps; k++) {
+    for (size_t k = 0; k <= num_steps; k++) {
       Key point_key = Symbol('p', k);
       Vector tv = values.at(point_key);
       file << tv(0) << " " << tv(1) << " " << tv(2) << "\n";
@@ -230,11 +230,10 @@ public:
     }
 
     for (const auto &constraint_idx : active_indices) {
-      const auto &constraint = manifold->iConstraints()->at(constraint_idx);
-      if (constraint->name() == "sphere") {
+      if (constraint_idx == 0) {
         is_sphere = true;
       }
-      if (constraint->name() == "positive_z") {
+      if (constraint_idx == 1) {
         is_positive_z = true;
       }
     }

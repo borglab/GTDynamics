@@ -77,31 +77,35 @@ void IECartPoleWithLimits::ExportValues(const Values &values, size_t num_steps,
 }
 
 /* ************************************************************************* */
-EqualityConstraints
+NonlinearEqualityConstraints
 IECartPoleWithLimits::eConstraints(const int k) const {
   auto graph = graph_builder.dynamicsFactorGraph(robot, k);
   graph.addPrior(TorqueKey(r_joint_id, k), 0.0,
                  graph_builder.opt().prior_t_cost_model);
-  auto e_constraints = ConstraintsFromGraph(graph);
+  auto e_constraints = NonlinearEqualityConstraints::FromCostGraph(graph);
   return e_constraints;
 }
 
 /* ************************************************************************* */
-InequalityConstraints
+NonlinearInequalityConstraints
 IECartPoleWithLimits::iConstraints(const int k) const {
   Key p_joint_key = JointAngleKey(p_joint_id, k);
   Key force_key = TorqueKey(p_joint_id, k);
-  InequalityConstraints i_constraints;
+  NonlinearInequalityConstraints i_constraints;
   Double_ x_expr(p_joint_key);
   Double_ f_expr(force_key);
   Double_ x_min_expr = x_expr - Double_(x_min);
   Double_ x_max_expr = Double_(x_max) - x_expr;
   Double_ f_min_expr = f_expr - Double_(f_min);
   Double_ f_max_expr = Double_(f_max) - f_expr;
-  i_constraints.emplace_shared<DoubleExpressionInequality>(x_min_expr, tol);
-  i_constraints.emplace_shared<DoubleExpressionInequality>(x_max_expr, tol);
-  i_constraints.emplace_shared<DoubleExpressionInequality>(f_min_expr, tol);
-  i_constraints.emplace_shared<DoubleExpressionInequality>(f_max_expr, tol);
+  i_constraints.push_back(
+      ScalarExpressionInequalityConstraint::GeqZero(x_min_expr, tol));
+  i_constraints.push_back(
+      ScalarExpressionInequalityConstraint::GeqZero(x_max_expr, tol));
+  i_constraints.push_back(
+      ScalarExpressionInequalityConstraint::GeqZero(f_min_expr, tol));
+  i_constraints.push_back(
+      ScalarExpressionInequalityConstraint::GeqZero(f_max_expr, tol));
   return i_constraints;
 }
 
@@ -121,9 +125,9 @@ IECartPoleWithLimits::finalStateCosts(size_t num_steps) const {
 }
 
 /* ************************************************************************* */
-EqualityConstraints
+NonlinearEqualityConstraints
 IECartPoleWithLimits::initStateConstraints() const {
-  EqualityConstraints constraints;
+  NonlinearEqualityConstraints constraints;
   Key r_joint_key = JointAngleKey(r_joint_id, 0);
   Key p_joint_key = JointAngleKey(p_joint_id, 0);
   Key r_vel_key = JointVelKey(r_joint_id, 0);
@@ -132,21 +136,21 @@ IECartPoleWithLimits::initStateConstraints() const {
   Double_ p_joint_expr(p_joint_key);
   Double_ r_vel_expr(r_vel_key);
   Double_ p_vel_expr(p_vel_key);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      r_joint_expr - Double_(X_i(3)), tol);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      p_joint_expr - Double_(X_i(0)), tol);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      r_vel_expr - Double_(X_i(4)), tol);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      p_vel_expr - Double_(X_i(1)), tol);
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      r_joint_expr - Double_(X_i(3)), 0.0, Vector1(tol));
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      p_joint_expr - Double_(X_i(0)), 0.0, Vector1(tol));
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      r_vel_expr - Double_(X_i(4)), 0.0, Vector1(tol));
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      p_vel_expr - Double_(X_i(1)), 0.0, Vector1(tol));
   return constraints;
 }
 
 /* ************************************************************************* */
-EqualityConstraints
+NonlinearEqualityConstraints
 IECartPoleWithLimits::finalStateConstraints(size_t num_steps) const {
-  EqualityConstraints constraints;
+  NonlinearEqualityConstraints constraints;
   Key r_joint_key = JointAngleKey(r_joint_id, num_steps);
   Key p_joint_key = JointAngleKey(p_joint_id, num_steps);
   Key r_vel_key = JointVelKey(r_joint_id, num_steps);
@@ -155,16 +159,16 @@ IECartPoleWithLimits::finalStateConstraints(size_t num_steps) const {
   Double_ p_joint_expr(p_joint_key);
   Double_ r_vel_expr(r_vel_key);
   Double_ p_vel_expr(p_vel_key);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      r_joint_expr - Double_(X_T(3)), tol);
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      r_joint_expr - Double_(X_T(3)), 0.0, Vector1(tol));
   if (constrain_final_x) {
-    constraints.emplace_shared<DoubleExpressionEquality>(
-        p_joint_expr - Double_(X_T(0)), tol);
+    constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+        p_joint_expr - Double_(X_T(0)), 0.0, Vector1(tol));
   }
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      r_vel_expr - Double_(X_T(4)), tol);
-  constraints.emplace_shared<DoubleExpressionEquality>(
-      p_vel_expr - Double_(X_T(1)), tol);
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      r_vel_expr - Double_(X_T(4)), 0.0, Vector1(tol));
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      p_vel_expr - Double_(X_T(1)), 0.0, Vector1(tol));
   return constraints;
 }
 

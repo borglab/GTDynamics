@@ -15,7 +15,8 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
-#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptProblem.h>
+#include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
@@ -315,45 +316,45 @@ public:
   /** <================= Single Inequality Constraint  ===================> **/
 
   /// Collision free with a spherical object.
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   obstacleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                   const Point3 &p_l, const Point3 &center,
                                   const double radius) const;
 
   /// Collision free with a spherical object.
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   hurdleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                 const Point3 &p_l, const Point2 &center,
                                 const double radius) const;
 
   /// Collision free with ground.
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   groundCollisionFreeConstraint(const std::string &link_name, const size_t k,
                                 const Point3 &p_l) const;
 
   /// Collision free with ground.
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   groundCollisionFreeInterStepConstraint(const std::string &link_name,
                                          const size_t k, const double ratio,
                                          const Point3 &p_l) const;
 
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   jointUpperLimitConstraint(const std::string &j_name, const size_t k,
                             const double upper_limit) const;
 
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   jointLowerLimitConstraint(const std::string &j_name, const size_t k,
                             const double lower_limit) const;
 
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   torqueUpperLimitConstraint(const std::string &j_name, const size_t k,
                              const double upper_limit) const;
 
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   torqueLowerLimitConstraint(const std::string &j_name, const size_t k,
                              const double lower_limit) const;
 
-  DoubleExpressionInequality::shared_ptr
+  ScalarExpressionInequalityConstraint::shared_ptr
   frictionConeConstraint(const std::string &link_name, const size_t k) const;
 
   /** <======================= Single Cost Factor ========================> **/
@@ -407,31 +408,31 @@ public:
   NonlinearFactorGraph DynamicsFactors(const size_t k) const;
 
   /** <=================== Step Inequality Constraint  ===================> **/
-  InequalityConstraints stepFrictionConeConstraints(const size_t k) const;
+  NonlinearInequalityConstraints stepFrictionConeConstraints(const size_t k) const;
 
-  InequalityConstraints stepJointLimitConstraints(const size_t k) const;
+  NonlinearInequalityConstraints stepJointLimitConstraints(const size_t k) const;
 
-  InequalityConstraints stepTorqueLimitConstraints(const size_t k) const;
+  NonlinearInequalityConstraints stepTorqueLimitConstraints(const size_t k) const;
 
   /// Collision free with obstacles.
-  InequalityConstraints
+  NonlinearInequalityConstraints
   stepObstacleCollisionFreeConstraints(const size_t k) const;
 
-  InequalityConstraints
+  NonlinearInequalityConstraints
   stepHurdleCollisionFreeConstraints(const size_t k) const;
 
   /// Collision free with ground.
-  InequalityConstraints
+  NonlinearInequalityConstraints
   stepGroundCollisionFreeConstraints(const size_t k) const;
 
-  InequalityConstraints
+  NonlinearInequalityConstraints
   interStepGroundCollisionFreeConstraints(const size_t k) const;
 
-  InequalityConstraints stepIConstraintsQ(const size_t k) const;
+  NonlinearInequalityConstraints stepIConstraintsQ(const size_t k) const;
 
-  InequalityConstraints stepIConstraintsV(const size_t k) const;
+  NonlinearInequalityConstraints stepIConstraintsV(const size_t k) const;
 
-  InequalityConstraints stepIConstraintsAD(const size_t k) const;
+  NonlinearInequalityConstraints stepIConstraintsAD(const size_t k) const;
 
   /** <=========================== Step Cost  ============================> **/
   NonlinearFactorGraph stepCollocationCosts(const size_t k,
@@ -463,11 +464,11 @@ public:
 public:
   /** <================= Constraints and Costs =================> **/
   /// Kinodynamic constraints at the specified time step.
-  EqualityConstraints eConstraints(const size_t k) const;
+  NonlinearEqualityConstraints eConstraints(const size_t k) const;
 
-  InequalityConstraints iConstraints(const size_t k) const;
+  NonlinearInequalityConstraints iConstraints(const size_t k) const;
 
-  EqualityConstraints stateConstraints() const;
+  NonlinearEqualityConstraints stateConstraints() const;
 
   /// Costs for collocation across steps.
   NonlinearFactorGraph collocationCosts(const size_t num_steps,
@@ -656,33 +657,33 @@ public:
   NonlinearFactorGraph costs() const;
 
   /** <================= inequality constraints =================> **/
-  InequalityConstraints groundCollisionFreeConstraints() const;
+  NonlinearInequalityConstraints groundCollisionFreeConstraints() const;
 
-  InequalityConstraints groundCollisionFreeInterStepConstraints() const;
+  NonlinearInequalityConstraints groundCollisionFreeInterStepConstraints() const;
 
-  InequalityConstraints obstacleCollisionFreeConstraints() const;
+  NonlinearInequalityConstraints obstacleCollisionFreeConstraints() const;
 
-  InequalityConstraints hurdleCollisionFreeConstraints() const;
+  NonlinearInequalityConstraints hurdleCollisionFreeConstraints() const;
 
-  InequalityConstraints jointLimitConstraints() const;
+  NonlinearInequalityConstraints jointLimitConstraints() const;
 
-  InequalityConstraints torqueLimitConstraints() const;
+  NonlinearInequalityConstraints torqueLimitConstraints() const;
 
-  InequalityConstraints frictionConeConstraints() const;
+  NonlinearInequalityConstraints frictionConeConstraints() const;
 
   /** Inequality constraints that limit the min phase durations. */
-  InequalityConstraints phaseMinDurationConstraints() const;
+  NonlinearInequalityConstraints phaseMinDurationConstraints() const;
 
   /// Pair of inequality constriants with associated type.
-  std::vector<std::pair<std::string, InequalityConstraints>>
+  std::vector<std::pair<std::string, NonlinearInequalityConstraints>>
   classifiedIConstraints() const;
 
   /// Inequality constraints of all types of all time steps.
-  InequalityConstraints iConstraints() const;
+  NonlinearInequalityConstraints iConstraints() const;
 
   /** <======================= equality constraints ======================> **/
   /// Equality constraints of all types of all time steps.
-  EqualityConstraints eConstraints() const;
+  NonlinearEqualityConstraints eConstraints() const;
 
   /** <======================= evaluation functions ======================> **/
   EConsOptProblem::EvalFunc costsEvalFunc() const;
@@ -799,7 +800,7 @@ public:
         vision60_multi_phase_(vision60_multi_phase) {}
 
   TspaceBasis::shared_ptr
-  create(const EqualityConstraints::shared_ptr constraints,
+  create(const NonlinearEqualityConstraints::shared_ptr constraints,
          const Values &values) const override;
 };
 
@@ -824,14 +825,14 @@ struct JumpParams {
 void EvaluateAndExportIELMResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::pair<IEResultSummary, IELMItersDetails> &ielm_result,
+    const IELMItersDetails &ielm_iters,
     const std::string &scenario_folder, bool print_values = false,
     bool print_iter_details = false);
 
 void EvaluateAndExportBarrierResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::pair<IEResultSummary, PenaltyItersDetails> &penalty_result,
+    const Values &penalty_result_values,
     const std::string &scenario_folder, bool print_values = false);
 
 void EvaluateAndExportInitValues(
