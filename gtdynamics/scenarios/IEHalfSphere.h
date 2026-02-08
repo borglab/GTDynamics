@@ -20,7 +20,8 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/expressions.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 inline Key PointKey(const int k) { return Symbol('p', k); }
 
@@ -38,36 +39,36 @@ public:
   IEHalfSphere(const double _r = 1.0) : r(_r) {}
 
   /// Equality constraints defining the manifold.
-  gtsam::EqualityConstraints eConstraints(const int k) const {
-    gtsam::EqualityConstraints constraints;
-    gtsam::Expression<Point3> point_expr(PointKey(k));
+  EqualityConstraints eConstraints(const int k) const {
+    EqualityConstraints constraints;
+    Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(&norm3, point_expr);
     Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
+    constraints.emplace_shared<DoubleExpressionEquality>(
         sphere_expr, sphere_tol);
     return constraints;
   }
 
   /// Inequality constraints defining the manifold.
-  gtsam::InequalityConstraints iConstraints(const int k) const {
-    gtsam::InequalityConstraints constraints;
-    gtsam::Expression<Point3> point_expr(PointKey(k));
-    gtsam::Expression<double> z_expr(&point3_z, point_expr);
-    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(z_expr,
+  InequalityConstraints iConstraints(const int k) const {
+    InequalityConstraints constraints;
+    Expression<Point3> point_expr(PointKey(k));
+    Expression<double> z_expr(&point3_z, point_expr);
+    constraints.emplace_shared<DoubleExpressionInequality>(z_expr,
                                                                        z_tol);
     return constraints;
   }
 
   /// Inequality constraints defining the dome manifold.
-  gtsam::InequalityConstraints iDomeConstraints(const int k) const {
-    gtsam::InequalityConstraints constraints;
-    gtsam::Expression<Point3> point_expr(PointKey(k));
+  InequalityConstraints iDomeConstraints(const int k) const {
+    InequalityConstraints constraints;
+    Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(norm3, point_expr);
     Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
+    constraints.emplace_shared<DoubleExpressionInequality>(
         sphere_expr, sphere_tol, "sphere");
     Double_ z_expr(&point3_z, point_expr);
-    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
+    constraints.emplace_shared<DoubleExpressionInequality>(
         z_expr, z_tol, "positive_z");
     return constraints;
   }
@@ -87,7 +88,7 @@ public:
     std::ofstream file;
     file.open(file_path);
     for (int k = 0; k <= num_steps; k++) {
-      Key point_key = gtsam::Symbol('p', k);
+      Key point_key = Symbol('p', k);
       Point3 point = values.at<Point3>(point_key);
       file << point.x() << " " << point.y() << " " << point.z() << "\n";
     }
@@ -99,7 +100,7 @@ public:
     std::ofstream file;
     file.open(file_path);
     for (int k = 0; k <= num_steps; k++) {
-      Key point_key = gtsam::Symbol('p', k);
+      Key point_key = Symbol('p', k);
       Vector tv = values.at(point_key);
       file << tv(0) << " " << tv(1) << " " << tv(2) << "\n";
     }
@@ -254,4 +255,4 @@ public:
   }
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -1,6 +1,7 @@
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 /* ************************************************************************* */
 void EvaluateAndExportIELMResult(
     const IEConsOptProblem &problem,
@@ -16,7 +17,7 @@ void EvaluateAndExportIELMResult(
     for (const auto &iter_details : ielm_result.second) {
       IEOptimizer::PrintIterDetails(
           iter_details, num_steps, false, IEVision60Robot::PrintValues,
-          IEVision60Robot::PrintDelta, gtdynamics::GTDKeyFormatter);
+          IEVision60Robot::PrintDelta, GTDKeyFormatter);
     }
   }
 
@@ -44,7 +45,7 @@ void EvaluateAndExportIELMResult(
     for (size_t phase_idx = 0;
          phase_idx < vision60_multi_phase.phase_num_steps_.size();
          phase_idx++) {
-      double dt = values.atDouble(gtdynamics::PhaseKey(phase_idx));
+      double dt = values.atDouble(PhaseKey(phase_idx));
       std::cout << "\t" << dt;
     }
     std::cout << "\n";
@@ -238,4 +239,4 @@ void ExportOptimizationProgress(
                           progress_folder + "trials_active_constraints.csv");
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

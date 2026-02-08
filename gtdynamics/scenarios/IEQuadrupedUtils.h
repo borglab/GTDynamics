@@ -31,13 +31,13 @@
 #define JERK_AS_DIFF 0
 #define JERK_DIV_DT 1
 
-using gtsam::InequalityConstraints;
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 /// Key to represent contact redundancy.
-inline gtdynamics::DynamicsSymbol ContactRedundancyKey(int t = 0) {
-  return gtdynamics::DynamicsSymbol::SimpleSymbol("CR", t);
+inline DynamicsSymbol ContactRedundancyKey(int t = 0) {
+  return DynamicsSymbol::SimpleSymbol("CR", t);
 }
 
 /* ************************************************************************* */
@@ -46,14 +46,14 @@ inline gtdynamics::DynamicsSymbol ContactRedundancyKey(int t = 0) {
 class IEVision60Robot {
 public:
   struct Leg {
-    gtdynamics::JointSharedPtr hip_joint, upper_joint, lower_joint;
-    gtdynamics::LinkSharedPtr hip_link, upper_link, lower_link;
+    JointSharedPtr hip_joint, upper_joint, lower_joint;
+    LinkSharedPtr hip_link, upper_link, lower_link;
     size_t hip_joint_id, upper_joint_id, lower_joint_id;
     size_t hip_link_id, upper_link_id, lower_link_id;
-    std::vector<gtdynamics::JointSharedPtr> joints;
-    std::vector<gtdynamics::LinkSharedPtr> links;
+    std::vector<JointSharedPtr> joints;
+    std::vector<LinkSharedPtr> links;
 
-    Leg(const gtdynamics::Robot &robot, const std::string &hip_joint_name,
+    Leg(const Robot &robot, const std::string &hip_joint_name,
         const std::string &upper_joint_name,
         const std::string &lower_joint_name, const std::string &hip_link_name,
         const std::string &upper_link_name, const std::string &lower_link_name);
@@ -72,10 +72,10 @@ public:
 
   struct Params {
     // environment
-    gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
+    Vector3 gravity = (Vector(3) << 0, 0, -9.8).finished();
     double mu = 2.0;
-    gtdynamics::CollocationScheme collocation =
-        gtdynamics::CollocationScheme::Trapezoidal;
+    CollocationScheme collocation =
+        CollocationScheme::Trapezoidal;
 
     /// Noise sigma for costs
     double sigma_q_col = 1e-2;
@@ -229,18 +229,18 @@ public:
   friend class IEVision60RobotMultiPhase;
 
   /// Robot
-  static gtdynamics::Robot getVision60Robot();
-  static std::vector<Leg> getLegs(const gtdynamics::Robot &robot);
-  static std::map<std::string, gtsam::Point3> getTorsoCorners();
+  static Robot getVision60Robot();
+  static std::vector<Leg> getLegs(const Robot &robot);
+  static std::map<std::string, Point3> getTorsoCorners();
 
-  inline static gtdynamics::Robot robot = getVision60Robot();
+  inline static Robot robot = getVision60Robot();
   inline static std::vector<Leg> legs = getLegs(robot);
-  inline static gtsam::Point3 contact_in_com = Point3(0.14, 0, 0);
-  inline static std::map<std::string, gtsam::Point3> torso_corners_in_com =
+  inline static Point3 contact_in_com = Point3(0.14, 0, 0);
+  inline static std::map<std::string, Point3> torso_corners_in_com =
       getTorsoCorners();
 
   /// Link ids
-  inline static gtdynamics::LinkSharedPtr base_link = robot.link("body");
+  inline static LinkSharedPtr base_link = robot.link("body");
   inline static int base_id = base_link->id();
 
   static bool isLeft(const std::string &str);
@@ -252,7 +252,7 @@ public:
   std::vector<Point3> contact_in_world;
 
   /// Contact point info
-  gtdynamics::PointOnLinks contact_points;
+  PointOnLinks contact_points;
   std::vector<int> contact_link_ids;
   IndexSet leaving_link_indices;
   IndexSet landing_link_indices;
@@ -266,7 +266,7 @@ public:
 
   Params::shared_ptr params;
   PhaseInfo::shared_ptr phase_info;
-  gtdynamics::DynamicsGraph graph_builder;
+  DynamicsGraph graph_builder;
   SharedNoiseModel des_pose_nm;
   SharedNoiseModel des_twist_nm;
   SharedNoiseModel des_point_nm;
@@ -281,7 +281,7 @@ public:
   SharedNoiseModel redundancy_model;
   SharedNoiseModel symmetry_nm;
 
-  static gtdynamics::OptimizerSetting getOptSetting(const Params &_params);
+  static OptimizerSetting getOptSetting(const Params &_params);
 
   Values getNominalConfiguration(const double height = 0) const;
 
@@ -315,45 +315,45 @@ public:
   /** <================= Single Inequality Constraint  ===================> **/
 
   /// Collision free with a spherical object.
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   obstacleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                   const Point3 &p_l, const Point3 &center,
                                   const double radius) const;
 
   /// Collision free with a spherical object.
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   hurdleCollisionFreeConstraint(const size_t link_idx, const size_t k,
                                 const Point3 &p_l, const Point2 &center,
                                 const double radius) const;
 
   /// Collision free with ground.
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   groundCollisionFreeConstraint(const std::string &link_name, const size_t k,
                                 const Point3 &p_l) const;
 
   /// Collision free with ground.
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   groundCollisionFreeInterStepConstraint(const std::string &link_name,
                                          const size_t k, const double ratio,
                                          const Point3 &p_l) const;
 
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   jointUpperLimitConstraint(const std::string &j_name, const size_t k,
                             const double upper_limit) const;
 
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   jointLowerLimitConstraint(const std::string &j_name, const size_t k,
                             const double lower_limit) const;
 
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   torqueUpperLimitConstraint(const std::string &j_name, const size_t k,
                              const double upper_limit) const;
 
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   torqueLowerLimitConstraint(const std::string &j_name, const size_t k,
                              const double lower_limit) const;
 
-  gtsam::DoubleExpressionInequality::shared_ptr
+  DoubleExpressionInequality::shared_ptr
   frictionConeConstraint(const std::string &link_name, const size_t k) const;
 
   /** <======================= Single Cost Factor ========================> **/
@@ -463,11 +463,11 @@ public:
 public:
   /** <================= Constraints and Costs =================> **/
   /// Kinodynamic constraints at the specified time step.
-  gtsam::EqualityConstraints eConstraints(const size_t k) const;
+  EqualityConstraints eConstraints(const size_t k) const;
 
   InequalityConstraints iConstraints(const size_t k) const;
 
-  gtsam::EqualityConstraints stateConstraints() const;
+  EqualityConstraints stateConstraints() const;
 
   /// Costs for collocation across steps.
   NonlinearFactorGraph collocationCosts(const size_t num_steps,
@@ -555,7 +555,7 @@ public:
   /// Return values of trajectory satisfying kinodynamic constraints.
   Values getInitValuesTrajectory(
       const size_t num_steps, double dt, const Pose3 &base_pose_init,
-      const std::vector<gtsam::Pose3> &des_poses,
+      const std::vector<Pose3> &des_poses,
       std::vector<double> &des_poses_t,
       const std::string initialization_technique = "interp") const;
 
@@ -589,7 +589,7 @@ public:
 public:
   /** <===================== Utility Functions =====================> **/
   /// Return optimizer setting.
-  const gtdynamics::OptimizerSetting &opt() const {
+  const OptimizerSetting &opt() const {
     return graph_builder.opt();
   }
 
@@ -685,7 +685,7 @@ public:
   EqualityConstraints eConstraints() const;
 
   /** <======================= evaluation functions ======================> **/
-  gtsam::EConsOptProblem::EvalFunc costsEvalFunc() const;
+  EConsOptProblem::EvalFunc costsEvalFunc() const;
 
   /// evaluate the error of collocation of each time step, and accumulative
   /// error over the trajectory.
@@ -843,18 +843,21 @@ void ExportOptimizationProgress(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::string &scenario_folder, const IELMItersDetails &iters_details);
 
-} // namespace gtsam
+} // namespace gtdynamics
 
 /* ************************************************************************* */
 /* <========================= Example Scenarios ===========================> */
 /* ************************************************************************* */
 
-namespace quadruped_vertical_jump {
-gtsam::Values DesValues(const std::vector<size_t> &phase_num_steps,
-                 const gtsam::Pose3 &des_pose);
+namespace gtdynamics {
+using namespace gtsam;
 
-gtsam::IEVision60RobotMultiPhase::shared_ptr
-GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+namespace quadruped_vertical_jump {
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const Pose3 &des_pose);
+
+IEVision60RobotMultiPhase::shared_ptr
+GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps);
 
 /// Construct values of a vertical jumping trajectory. We pre-specified that all
@@ -863,36 +866,36 @@ GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
 /// first accelerate its torso with constant acceleration, then reduce the
 /// contact force uniformly to 0. In the in-air phase, the torques at all joints
 /// are reduced uniformly to 0.
-gtsam::Values InitValuesTrajectory(
-    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+Values InitValuesTrajectory(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, const double torso_accel_z = 15,
     const size_t ground_switch_k = 5, bool use_trapezoidal = false);
 
 /// Create an initial trajectory that is not dynamically feasible.
-gtsam::Values InitValuesTrajectoryInfeasible(
-    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+Values InitValuesTrajectoryInfeasible(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt);
 
 } // namespace quadruped_vertical_jump
 
 namespace quadruped_forward_jump {
-gtsam::Values DesValues(const std::vector<size_t> &phase_num_steps,
-                 const gtsam::Point3 &displacement);
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const Point3 &displacement);
 
 std::pair<
-    std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Point3, size_t>>,
-    std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Vector3, size_t>>>
+    std::vector<std::tuple<size_t, Point3, Point3, size_t>>,
+    std::vector<std::tuple<size_t, Point3, Vector3, size_t>>>
 DesPoints(const std::vector<size_t> &phase_num_steps,
-          const gtsam::Point3 &displacement);
+          const Point3 &displacement);
 
-gtsam::IEVision60RobotMultiPhase::shared_ptr
-GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+IEVision60RobotMultiPhase::shared_ptr
+GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps);
 
 /// Construct values of a robot forward jump trajectory. Consisting of 3 phases:
 /// on-ground -> back-contact -> in-air.
-gtsam::Values InitValuesTrajectory(
-    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+Values InitValuesTrajectory(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,
     bool ensure_feasible, bool ignore_last_step = false);
 } // namespace quadruped_forward_jump
@@ -902,21 +905,23 @@ namespace quadruped_forward_jump_land {
  * @param phase_num_steps number of steps for each phase.
  * @param displacement final state torso displacement w.r.t. nominal pose.
  */
-gtsam::Values DesValues(const std::vector<size_t> &phase_num_steps,
-                 const gtsam::Point3 &displacement);
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const Point3 &displacement);
 
 /** Multi-phase consisting of 4 phases:
  * on-ground -> back-contact -> in-air -> on-ground(forward).
  */
-gtsam::IEVision60RobotMultiPhase::shared_ptr
-GetVision60MultiPhase(const gtsam::IEVision60Robot::Params::shared_ptr &params,
+IEVision60RobotMultiPhase::shared_ptr
+GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
                       const std::vector<size_t> &phase_num_steps,
                       const double jump_distance);
 
 /// Construct values of a robot forward jump trajectory. Consisting of 4 phases:
 /// on-ground -> back-contact -> in-air -> on-gorund.
-gtsam::Values InitValuesTrajectory(
-    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+Values InitValuesTrajectory(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,
     bool ensure_feasible);
 } // namespace quadruped_forward_jump_land
+
+} // namespace gtdynamics

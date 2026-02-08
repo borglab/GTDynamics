@@ -19,9 +19,8 @@
 
 #include <regex>
 
-using namespace gtdynamics;
-
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 /* ************************************************************************* */
 std::pair<std::map<std::string, double>, std::map<std::string, double>>
@@ -145,7 +144,7 @@ IEVision60Robot::Params::shared_ptr IEVision60Robot::Params::NominalParams() {
 IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
                                  const PhaseInfo::shared_ptr &_phase_info)
     : params(_params), phase_info(_phase_info),
-      graph_builder(gtdynamics::DynamicsGraph(getOptSetting(*_params),
+      graph_builder(DynamicsGraph(getOptSetting(*_params),
                                               _params->gravity)) {
   des_pose_nm = noiseModel::Isotropic::Sigma(6, params->sigma_des_pose);
   des_twist_nm = noiseModel::Isotropic::Sigma(6, params->sigma_des_twist);
@@ -157,10 +156,10 @@ IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
   jerk_nm = noiseModel::Isotropic::Sigma(1, params->sigma_jerk);
   cf_jerk_nm = noiseModel::Isotropic::Sigma(1, params->sigma_cf_jerk);
   symmetry_nm = noiseModel::Isotropic::Sigma(1, params->sigma_symmetry);
-  cpoint_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, params->tol_q);
-  c_force_model = gtsam::noiseModel::Isotropic::Sigma(3, params->tol_dynamics);
+  cpoint_cost_model = noiseModel::Isotropic::Sigma(3, params->tol_q);
+  c_force_model = noiseModel::Isotropic::Sigma(3, params->tol_dynamics);
   redundancy_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, params->tol_dynamics);
+      noiseModel::Isotropic::Sigma(6, params->tol_dynamics);
 
   // Phase configuration
   for (const auto &idx : phase_info->leaving_indices) {
@@ -171,7 +170,7 @@ IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
   }
   for (const auto &idx : phase_info->contact_indices) {
     contact_points.emplace_back(
-        gtdynamics::PointOnLink(legs.at(idx).lower_link, contact_in_com));
+        PointOnLink(legs.at(idx).lower_link, contact_in_com));
     contact_link_ids.emplace_back(legs.at(idx).lower_link_id);
   }
 
@@ -180,19 +179,19 @@ IEVision60Robot::IEVision60Robot(const Params::shared_ptr &_params,
   int lower1_id = legs[1].lower_link_id;
   int lower2_id = legs[2].lower_link_id;
   int lower3_id = legs[3].lower_link_id;
-  nominal_height = gtdynamics::Pose(getNominalConfiguration(), lower0_id, 0)
+  nominal_height = Pose(getNominalConfiguration(), lower0_id, 0)
                        .transformFrom(contact_in_com)
                        .z() *
                    -1;
   nominal_values = getNominalConfiguration(nominal_height);
   nominal_contact_in_world =
-      std::vector<Point3>{gtdynamics::Pose(nominal_values, lower0_id, 0)
+      std::vector<Point3>{Pose(nominal_values, lower0_id, 0)
                               .transformFrom(contact_in_com),
-                          gtdynamics::Pose(nominal_values, lower1_id, 0)
+                          Pose(nominal_values, lower1_id, 0)
                               .transformFrom(contact_in_com),
-                          gtdynamics::Pose(nominal_values, lower2_id, 0)
+                          Pose(nominal_values, lower2_id, 0)
                               .transformFrom(contact_in_com),
-                          gtdynamics::Pose(nominal_values, lower3_id, 0)
+                          Pose(nominal_values, lower3_id, 0)
                               .transformFrom(contact_in_com)};
   nominal_a = 0.5 * (nominal_contact_in_world.at(0).x() -
                      nominal_contact_in_world.at(2).x());
@@ -225,9 +224,9 @@ void IEVision60Robot::moveContactPoints(const double forward_distance) {
 }
 
 /* ************************************************************************* */
-gtdynamics::Robot IEVision60Robot::getVision60Robot() {
-  auto vision60_robot = gtdynamics::CreateRobotFromFile(
-      gtdynamics::kUrdfPath + std::string("vision60.urdf"));
+Robot IEVision60Robot::getVision60Robot() {
+  auto vision60_robot = CreateRobotFromFile(
+      kUrdfPath + std::string("vision60.urdf"));
   std::vector<std::pair<std::string, std::string>> ordered_link_name_pair{
       {"body", "body"},       {"hip0", "fl_hip"},     {"hip2", "fr_hip"},
       {"hip1", "rl_hip"},     {"hip3", "rr_hip"},     {"upper0", "fl_upper"},
@@ -317,7 +316,7 @@ std::string IEVision60Robot::counterpart(const std::string &str) {
 
 /* ************************************************************************* */
 std::vector<IEVision60Robot::Leg>
-IEVision60Robot::getLegs(const gtdynamics::Robot &robot) {
+IEVision60Robot::getLegs(const Robot &robot) {
   std::vector<Leg> legs_;
   std::vector<std::string> leg_names{"fl", "fr", "rl", "rr"};
   for (const auto &leg_name : leg_names) {
@@ -329,14 +328,14 @@ IEVision60Robot::getLegs(const gtdynamics::Robot &robot) {
 }
 
 /* ************************************************************************* */
-std::map<std::string, gtsam::Point3> IEVision60Robot::getTorsoCorners() {
+std::map<std::string, Point3> IEVision60Robot::getTorsoCorners() {
   double length = 0.88;
   double width = 0.25;
   double height = 0.19;
   double l = length / 2;
   double w = width / 2;
   double h = height / 2;
-  return std::map<std::string, gtsam::Point3>{
+  return std::map<std::string, Point3>{
       {"fl_top", Point3(l, w, h)},   {"fr_top", Point3(l, -w, h)},
       {"rl_top", Point3(-l, w, h)},  {"rr_top", Point3(-l, -w, h)},
       {"fl_bot", Point3(l, w, -h)},  {"fr_bot", Point3(l, -w, -h)},
@@ -344,43 +343,43 @@ std::map<std::string, gtsam::Point3> IEVision60Robot::getTorsoCorners() {
 }
 
 /* ************************************************************************* */
-gtdynamics::OptimizerSetting
+OptimizerSetting
 IEVision60Robot::getOptSetting(const Params &params) {
-  auto opt = gtdynamics::OptimizerSetting();
+  auto opt = OptimizerSetting();
   double sigma_dynamics = params.tol_dynamics;
-  opt.bp_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.bv_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.ba_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.p_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.v_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.a_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.f_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.fa_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics);
-  opt.t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.cp_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.bp_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.bv_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.ba_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.p_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.v_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.a_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.f_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.fa_cost_model = noiseModel::Isotropic::Sigma(6, sigma_dynamics);
+  opt.t_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.cp_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.cfriction_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
-  opt.cv_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
-  opt.ca_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+  opt.cv_cost_model = noiseModel::Isotropic::Sigma(3, sigma_dynamics);
+  opt.ca_cost_model = noiseModel::Isotropic::Sigma(3, sigma_dynamics);
   opt.planar_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(3, sigma_dynamics);
   opt.prior_q_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.prior_qv_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.prior_qa_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.prior_t_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.q_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, params.sigma_q_col);
+      noiseModel::Isotropic::Sigma(1, params.sigma_q_col);
   opt.v_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(1, params.sigma_v_col);
-  opt.time_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics);
+      noiseModel::Isotropic::Sigma(1, params.sigma_v_col);
+  opt.time_cost_model = noiseModel::Isotropic::Sigma(1, sigma_dynamics);
   opt.pose_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, params.sigma_pose_col);
+      noiseModel::Isotropic::Sigma(6, params.sigma_pose_col);
   opt.twist_col_cost_model =
-      gtsam::noiseModel::Isotropic::Sigma(6, params.sigma_twist_col);
+      noiseModel::Isotropic::Sigma(6, params.sigma_twist_col);
   return opt;
 }
 
@@ -447,7 +446,7 @@ BasisKeyFunc IEVision60Robot::getBasisKeyFunc() const {
     if (keys.size() == 1) {
       return keys;
     }
-    size_t k = gtdynamics::DynamicsSymbol(*keys.begin()).time();
+    size_t k = DynamicsSymbol(*keys.begin()).time();
     KeyVector basis_keys;
     if (k > 0) {
       basis_keys.emplace_back(PoseKey(base_id, k));
@@ -621,7 +620,7 @@ void IEVision60Robot::PrintContactForces(const Values &values,
     std::cout << k << "\t";
     for (const auto &leg : legs) {
       uint8_t link_id = leg.lower_link->id();
-      Key contact_wrench_key = gtdynamics::ContactWrenchKey(link_id, 0, k);
+      Key contact_wrench_key = ContactWrenchKey(link_id, 0, k);
       if (values.exists(contact_wrench_key)) {
         Vector6 wrench_b = values.at<Vector6>(contact_wrench_key);
         Pose3 pose = Pose(values, link_id, k);
@@ -832,4 +831,4 @@ void IEVision60Robot::ExportVector(const VectorValues &values,
                                    const size_t num_steps,
                                    const std::string &file_path) {}
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -4,13 +4,14 @@
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 class IECartPoleWithLimits {
 public:
   // robot and environmental settings
-  gtdynamics::Robot robot =
-      gtdynamics::CreateRobotFromFile(gtdynamics::kUrdfPath +
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath +
                                       std::string("cart_pole.urdf"))
           .fixLink("l0");
   size_t p_joint_id = robot.joint("j0")->id();
@@ -19,7 +20,7 @@ public:
   Vector6 X_T = (Vector(6) << 0, 0, 0, M_PI, 0, 0).finished();
   Vector3 gravity = Vector3(0, 0, -9.8);
   bool constrain_final_x = false;
-  gtdynamics::CollocationScheme collocation_scheme = gtdynamics::CollocationScheme::Trapezoidal;
+  CollocationScheme collocation_scheme = CollocationScheme::Trapezoidal;
 
   // limits on x-range and force
   double x_min = -.2;
@@ -29,9 +30,9 @@ public:
 
   // noise/tolerance settings for costs and constraints
   double tol = 1.0;
-  gtdynamics::OptimizerSetting opt = getOptSetting();
-  gtdynamics::DynamicsGraph graph_builder =
-      gtdynamics::DynamicsGraph(opt, gravity);
+  OptimizerSetting opt = getOptSetting();
+  DynamicsGraph graph_builder =
+      DynamicsGraph(opt, gravity);
   double sigma_pos_objective = 1e-5;
   double sigma_objectives = 5e-3;
   double sigma_min_torque = 2e1;
@@ -41,31 +42,31 @@ public:
   
 
 
-  static gtdynamics::OptimizerSetting getOptSetting() {
-    auto opt = gtdynamics::OptimizerSetting();
+  static OptimizerSetting getOptSetting() {
+    auto opt = OptimizerSetting();
     double tol = 1.0;
     double sigma_collo = 1e-3;
-    opt.bp_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.bv_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.ba_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.p_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.v_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.a_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.f_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.fa_cost_model = gtsam::noiseModel::Isotropic::Sigma(6, tol);
-    opt.t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, tol);
-    opt.cp_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, tol);
-    opt.cfriction_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, tol);
-    opt.cv_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, tol);
-    opt.ca_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, tol);
-    opt.planar_cost_model = gtsam::noiseModel::Isotropic::Sigma(3, tol);
-    opt.prior_q_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, tol);
-    opt.prior_qv_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, tol);
-    opt.prior_qa_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, tol);
-    opt.prior_t_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, tol);
+    opt.bp_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.bv_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.ba_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.p_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.v_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.a_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.f_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.fa_cost_model = noiseModel::Isotropic::Sigma(6, tol);
+    opt.t_cost_model = noiseModel::Isotropic::Sigma(1, tol);
+    opt.cp_cost_model = noiseModel::Isotropic::Sigma(1, tol);
+    opt.cfriction_cost_model = noiseModel::Isotropic::Sigma(1, tol);
+    opt.cv_cost_model = noiseModel::Isotropic::Sigma(3, tol);
+    opt.ca_cost_model = noiseModel::Isotropic::Sigma(3, tol);
+    opt.planar_cost_model = noiseModel::Isotropic::Sigma(3, tol);
+    opt.prior_q_cost_model = noiseModel::Isotropic::Sigma(1, tol);
+    opt.prior_qv_cost_model = noiseModel::Isotropic::Sigma(1, tol);
+    opt.prior_qa_cost_model = noiseModel::Isotropic::Sigma(1, tol);
+    opt.prior_t_cost_model = noiseModel::Isotropic::Sigma(1, tol);
 
-    opt.q_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_collo);
-    opt.v_col_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_collo);
+    opt.q_col_cost_model = noiseModel::Isotropic::Sigma(1, sigma_collo);
+    opt.v_col_cost_model = noiseModel::Isotropic::Sigma(1, sigma_collo);
     return opt;
   }
 
@@ -75,17 +76,17 @@ public:
 
   // Equality constriants include all dynamic constraints, and 0 torque
   // constraints.
-  gtsam::EqualityConstraints eConstraints(const int k) const;
+  EqualityConstraints eConstraints(const int k) const;
 
   // Inequality constraints include position limits and force limits
   // constraints.
-  gtsam::InequalityConstraints iConstraints(const int k) const;
+  InequalityConstraints iConstraints(const int k) const;
 
   // Equality constraints that specify q,v of initial state.
-  gtsam::EqualityConstraints initStateConstraints() const;
+  EqualityConstraints initStateConstraints() const;
 
   // Equality constriants that specify q,v of final state.
-  gtsam::EqualityConstraints finalStateConstraints(size_t num_steps) const;
+  EqualityConstraints finalStateConstraints(size_t num_steps) const;
 
   // Cost for achieving q,v in final state.
   NonlinearFactorGraph finalStateCosts(size_t num_steps) const ;
@@ -136,4 +137,4 @@ public:
           IERetractInfo* retract_info = nullptr) const override;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

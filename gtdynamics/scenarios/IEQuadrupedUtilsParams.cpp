@@ -13,11 +13,10 @@
 
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
-using namespace gtdynamics;
-
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 /* ************************************************************************* */
-IEVision60Robot::Leg::Leg(const gtdynamics::Robot &robot,
+IEVision60Robot::Leg::Leg(const Robot &robot,
                           const std::string &hip_joint_name,
                           const std::string &upper_joint_name,
                           const std::string &lower_joint_name,
@@ -109,4 +108,4 @@ IEVision60Robot::PhaseInfo::BoundaryLand(const PhaseInfo &phase0_params,
                                      _landing_indices);
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

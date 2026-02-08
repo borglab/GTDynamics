@@ -19,7 +19,8 @@
 #include <gtdynamics/constraints/InequalityConstraint.h>
 #include <gtsam/nonlinear/expressions.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 inline Key QKey(const int k) { return Symbol('q', k); }
 
@@ -75,8 +76,8 @@ public:
   Double_ frictionConeExpr2(const Double_ &fx_expr,
                             const Double_ &fy_expr) const;
 
-  gtsam::EqualityConstraints eConstraints(const int k) const;
-  gtsam::InequalityConstraints iConstraints(const int k) const;
+  EqualityConstraints eConstraints(const int k) const;
+  InequalityConstraints iConstraints(const int k) const;
 
   Values computeValues(const size_t &k, const double &q, const double &v,
                        const double &a) const;
@@ -127,4 +128,4 @@ public:
           IERetractInfo* retract_info = nullptr) const override;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

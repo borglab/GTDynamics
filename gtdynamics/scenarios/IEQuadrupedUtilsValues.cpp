@@ -6,9 +6,8 @@
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/Initializer.h>
 
-using namespace gtdynamics;
-
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 /* <=======================================================================> */
 /* <============================= step values =============================> */
@@ -287,11 +286,11 @@ Values IEVision60Robot::getInitValuesStep(const size_t k,
 /* ************************************************************************* */
 Values IEVision60Robot::getInitValuesTrajectory(
     const size_t num_steps, double dt, const Pose3 &base_pose_init,
-    const std::vector<gtsam::Pose3> &des_poses,
+    const std::vector<Pose3> &des_poses,
     std::vector<double> &des_poses_t,
     const std::string initialization_technique) const {
   // Initialize solution.
-  gtsam::Values init_vals;
+  Values init_vals;
   Initializer initializer;
 
   // solve 1 step value
@@ -448,7 +447,7 @@ Values IEVision60RobotMultiPhase::trajectoryValuesByInterpolation(
     for (size_t k = prev_prior_k; k < next_prior_k; k++) {
       double rate = double(k - prev_prior_k) / (next_prior_k - prev_prior_k);
       torso_poses.at(k) =
-          gtsam::interpolate<Pose3>(prev_prior_pose, next_prior_pose, rate);
+          interpolate<Pose3>(prev_prior_pose, next_prior_pose, rate);
     }
   }
   torso_poses.at(num_steps) = prior_poses.back().second;
@@ -492,12 +491,13 @@ Values IEVision60RobotMultiPhase::trajectoryValuesByInterpolation(
   return values;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics
 
 /* <=======================================================================> */
 /* <====================== vertical jump trajectory =======================> */
 /* <=======================================================================> */
 
+namespace gtdynamics {
 using namespace gtsam;
 namespace quadruped_vertical_jump {
 /* ************************************************************************* */
@@ -760,7 +760,7 @@ Values InitValuesTrajectoryInfeasible(
 
 /* ************************************************************************* */
 Values DesValues(const std::vector<size_t> &phase_num_steps,
-                 const gtsam::Pose3 &des_pose) {
+                 const Pose3 &des_pose) {
   size_t num_steps =
       std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
   Values des_values;
@@ -1028,7 +1028,7 @@ InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
 
 /* ************************************************************************* */
 Values DesValues(const std::vector<size_t> &phase_num_steps,
-                 const gtsam::Point3 &displacement) {
+                 const Point3 &displacement) {
   size_t num_steps =
       std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
   auto vision60_params = std::make_shared<IEVision60Robot::Params>();
@@ -1048,19 +1048,19 @@ Values DesValues(const std::vector<size_t> &phase_num_steps,
 
 /* ************************************************************************* */
 std::pair<
-    std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Point3, size_t>>,
-    std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Vector3, size_t>>>
+    std::vector<std::tuple<size_t, Point3, Point3, size_t>>,
+    std::vector<std::tuple<size_t, Point3, Vector3, size_t>>>
 DesPoints(const std::vector<size_t> &phase_num_steps,
-          const gtsam::Point3 &displacement) {
+          const Point3 &displacement) {
   size_t num_steps =
       std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
   auto vision60_params = std::make_shared<IEVision60Robot::Params>();
   IEVision60Robot vision60_tmp(vision60_params,
                                IEVision60Robot::PhaseInfo::Ground());
 
-  std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Point3, size_t>>
+  std::vector<std::tuple<size_t, Point3, Point3, size_t>>
       des_points;
-  std::vector<std::tuple<size_t, gtsam::Point3, gtsam::Vector3, size_t>>
+  std::vector<std::tuple<size_t, Point3, Vector3, size_t>>
       des_point_vels;
   for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
     const auto &leg = IEVision60Robot::legs.at(leg_idx);
@@ -1082,8 +1082,8 @@ DesPoints(const std::vector<size_t> &phase_num_steps,
 /* <=======================================================================> */
 
 namespace quadruped_forward_jump_land {
-gtsam::Values InitValuesTrajectory(
-    const gtsam::IEVision60RobotMultiPhase &vision60_multi_phase,
+Values InitValuesTrajectory(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,
     bool ensure_feasible) {
 
@@ -1108,7 +1108,7 @@ gtsam::Values InitValuesTrajectory(
   }
   IEVision60RobotMultiPhase vision60_multi_phase_jump(
       phase_robots, boundary_robots, phase_num_steps);
-  gtsam::Values values = quadruped_forward_jump::InitValuesTrajectory(
+  Values values = quadruped_forward_jump::InitValuesTrajectory(
       vision60_multi_phase_jump, phases_dt_jump, include_i_constriants,
       ensure_feasible, true);
 
@@ -1147,7 +1147,7 @@ gtsam::Values InitValuesTrajectory(
 
 /* ************************************************************************* */
 Values DesValues(const std::vector<size_t> &phase_num_steps,
-                 const gtsam::Point3 &displacement) {
+                 const Point3 &displacement) {
   size_t num_steps =
       std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
 
@@ -1172,3 +1172,5 @@ Values DesValues(const std::vector<size_t> &phase_num_steps,
 }
 
 } // namespace quadruped_forward_jump_land
+
+} // namespace gtdynamics

@@ -2,7 +2,8 @@
 
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 /* ************************************************************************* */
 double IECartPoleWithFriction::computeFx(const double q, const double v,
@@ -105,41 +106,41 @@ IECartPoleWithFriction::frictionConeExpr2(const Double_ &fx_expr,
 }
 
 /* ************************************************************************* */
-gtsam::EqualityConstraints
+EqualityConstraints
 IECartPoleWithFriction::eConstraints(const int k) const {
-  gtsam::EqualityConstraints constraints;
+  EqualityConstraints constraints;
   Double_ q_expr(QKey(k));
   Double_ v_expr(VKey(k));
   Double_ a_expr(AKey(k));
   Double_ tau_expr(TauKey(k));
   Double_ fx_expr(FxKey(k));
   Double_ fy_expr(FyKey(k));
-  constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
+  constraints.emplace_shared<DoubleExpressionEquality>(
       balanceFxExpr(q_expr, v_expr, a_expr, fx_expr), 1.0);
-  constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
+  constraints.emplace_shared<DoubleExpressionEquality>(
       balanceFyExpr(q_expr, v_expr, a_expr, fy_expr), 1.0);
-  constraints.emplace_shared<gtsam::DoubleExpressionEquality>(
+  constraints.emplace_shared<DoubleExpressionEquality>(
       balanceRotExpr(q_expr, a_expr, tau_expr), 1.0);
   return constraints;
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IECartPoleWithFriction::iConstraints(const int k) const {
-  gtsam::InequalityConstraints constraints;
+  InequalityConstraints constraints;
   Double_ fx_expr(FxKey(k));
   Double_ fy_expr(FyKey(k));
-  constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
+  constraints.emplace_shared<DoubleExpressionInequality>(
       frictionConeExpr1(fx_expr, fy_expr), 1.0);
-  constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
+  constraints.emplace_shared<DoubleExpressionInequality>(
       frictionConeExpr2(fx_expr, fy_expr), 1.0);
   if (include_torque_limits) {
     Double_ torque_expr(TauKey(k));
     Double_ lower_limit_expr = torque_expr - Double_(tau_min);
     Double_ upper_limit_expr = Double_(tau_max) - torque_expr;
-    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
+    constraints.emplace_shared<DoubleExpressionInequality>(
         lower_limit_expr, 1.0);
-    constraints.emplace_shared<gtsam::DoubleExpressionInequality>(
+    constraints.emplace_shared<DoubleExpressionInequality>(
         upper_limit_expr, 1.0);
   }
   return constraints;
@@ -336,9 +337,9 @@ IEConstraintManifold
 CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
                                         const VectorValues &delta) const {
 
-  const gtsam::InequalityConstraints &i_constraints =
+  const InequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const gtsam::EqualityConstraints &e_constraints =
+  const EqualityConstraints &e_constraints =
       *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
@@ -431,9 +432,9 @@ IEConstraintManifold CPBarrierRetractor::retract(
     const std::optional<IndexSet> &blocking_indices,
     IERetractInfo* retract_info) const {
 
-  const gtsam::InequalityConstraints &i_constraints =
+  const InequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const gtsam::EqualityConstraints &e_constraints =
+  const EqualityConstraints &e_constraints =
       *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
@@ -493,4 +494,4 @@ IEConstraintManifold CPBarrierRetractor::retract(
   return manifold->createWithNewValues(result, active_indices);
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

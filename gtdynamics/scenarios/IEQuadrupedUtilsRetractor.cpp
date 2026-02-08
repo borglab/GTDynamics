@@ -16,9 +16,8 @@
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
-using namespace gtdynamics;
-
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 /* ************************************************************************* */
 IERetractor::shared_ptr Vision60HierarchicalRetractorCreator::create(
@@ -49,7 +48,7 @@ IERetractor::shared_ptr Vision60MultiPhaseHierarchicalRetractorCreator::create(
   }
   if (use_basis_keys_) {
     size_t k =
-        gtdynamics::DynamicsSymbol(*manifold.values().keys().begin()).time();
+        DynamicsSymbol(*manifold.values().keys().begin()).time();
     KeyVector basis_keys =
         vision60_multi_phase_->robotAtStep(k).getBasisKeyFunc()(manifold.values().keys());
     return std::make_shared<KinodynamicHierarchicalRetractor>(manifold, params_,
@@ -63,7 +62,7 @@ IERetractor::shared_ptr Vision60MultiPhaseBarrierRetractorCreator::create(
     const IEConstraintManifold &manifold) const {
   if (use_basis_keys_) {
     size_t k =
-        gtdynamics::DynamicsSymbol(*manifold.values().keys().begin()).time();
+        DynamicsSymbol(*manifold.values().keys().begin()).time();
     KeyVector basis_keys =
         vision60_multi_phase_->robotAtStep(k).getBasisKeyFunc()(manifold.values().keys());
     return std::make_shared<BarrierRetractor>(params_, basis_keys);
@@ -77,10 +76,10 @@ TspaceBasis::shared_ptr Vision60MultiPhaseTspaceBasisCreator::create(
   if (values.size() == 1) {
     return std::make_shared<OrthonormalBasis>(constraints, values, params_);
   }
-  size_t k = gtdynamics::DynamicsSymbol(*values.keys().begin()).time();
+  size_t k = DynamicsSymbol(*values.keys().begin()).time();
   KeyVector basis_keys =
       vision60_multi_phase_->robotAtStep(k).getBasisKeyFunc()(values.keys());
   return std::make_shared<EliminationBasis>(constraints, values, params_, basis_keys);
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

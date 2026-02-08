@@ -17,9 +17,8 @@
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-using namespace gtdynamics;
-
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 /* ************************************************************************* */
 IEVision60RobotMultiPhase::IEVision60RobotMultiPhase(
@@ -570,12 +569,13 @@ void IEVision60RobotMultiPhase::evaluateCollocation(
 
 // }
 
-} // namespace gtsam
+} // namespace gtdynamics
 
 /* <=======================================================================> */
 /* <============================== scenarios ==============================> */
 /* <=======================================================================> */
 
+namespace gtdynamics {
 using namespace gtsam;
 namespace quadruped_vertical_jump {
 IEVision60RobotMultiPhase::shared_ptr
@@ -656,3 +656,5 @@ GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
       phase_robots, boundary_robots, phase_num_steps);
 }
 } // namespace quadruped_forward_jump_land
+
+} // namespace gtdynamics

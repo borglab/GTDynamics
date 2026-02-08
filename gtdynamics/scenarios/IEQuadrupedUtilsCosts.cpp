@@ -24,9 +24,8 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/expressions.h>
 
-using namespace gtdynamics;
-
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 /* ************************************************************************* */
 Vector3 IEVision60Robot::GetContactForce(const Pose3 &pose,
                                          const Vector6 wrench,
@@ -34,7 +33,7 @@ Vector3 IEVision60Robot::GetContactForce(const Pose3 &pose,
                                          OptionalJacobian<3, 6> H_wrench) {
   Vector3 force_l(wrench(3), wrench(4), wrench(5));
   if (H_pose || H_wrench) {
-    gtsam::Matrix36 J_fl_wrench;
+    Matrix36 J_fl_wrench;
     J_fl_wrench << Z_3x3, I_3x3;
 
     Matrix36 J_rot_pose;
@@ -60,8 +59,8 @@ Vector3 IEVision60Robot::GetContactForce(const Pose3 &pose,
 NoiseModelFactor::shared_ptr
 IEVision60Robot::contactForceFactor(const uint8_t link_id,
                                     const size_t k) const {
-  Vector6_ c_wrench(gtdynamics::ContactWrenchKey(link_id, 0, k));
-  Pose3_ pose(gtdynamics::PoseKey(link_id, k));
+  Vector6_ c_wrench(ContactWrenchKey(link_id, 0, k));
+  Pose3_ pose(PoseKey(link_id, k));
   Vector3_ expected_contact_force_expr(IEVision60Robot::GetContactForce, pose,
                                        c_wrench);
   Vector3_ contact_force_expr(ContactForceKey(link_id, 0, k));
@@ -75,9 +74,9 @@ NoiseModelFactor::shared_ptr
 IEVision60Robot::contactRedundancyFactor(const size_t k) const {
   const double &a = nominal_a;
   const double &b = nominal_b;
-  std::vector<gtsam::Vector6_> error;
+  std::vector<Vector6_> error;
   for (size_t i = 0; i < 4; i++) {
-    gtsam::Matrix63 H;
+    Matrix63 H;
     if (i == 0) {
       H << 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, a, b, 0;
     } else if (i == 1) {
@@ -87,18 +86,18 @@ IEVision60Robot::contactRedundancyFactor(const size_t k) const {
     } else if (i == 3) {
       H << 0, 0, 1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, -1, 0, -a, -b, 0;
     }
-    const std::function<gtsam::Vector6(Vector3)> f = [H](const Vector3 &F) {
+    const std::function<Vector6(Vector3)> f = [H](const Vector3 &F) {
       return H * F;
     };
     auto link_id = contact_link_ids.at(i);
     if (params->express_contact_force) {
       Vector3_ c_force(ContactForceKey(link_id, 0, k));
-      error.emplace_back(gtsam::linearExpression(f, c_force, H));
+      error.emplace_back(linearExpression(f, c_force, H));
     } else {
-      Vector6_ c_wrench(gtdynamics::ContactWrenchKey(link_id, 0, k));
-      Pose3_ pose(gtdynamics::PoseKey(link_id, k));
+      Vector6_ c_wrench(ContactWrenchKey(link_id, 0, k));
+      Pose3_ pose(PoseKey(link_id, k));
       Vector3_ c_force(IEVision60Robot::GetContactForce, pose, c_wrench);
-      error.emplace_back(gtsam::linearExpression(f, c_force, H));
+      error.emplace_back(linearExpression(f, c_force, H));
     }
   }
   Vector6_ redundancy_expr = error[0] + error[1] + error[2] + error[3];
@@ -121,8 +120,8 @@ IEVision60Robot::qPointContactFactors(const size_t k) const {
   for (size_t contact_idx = 0; contact_idx < contact_points.size();
        contact_idx++) {
     const auto &cp = contact_points.at(contact_idx);
-    gtdynamics::FixedContactPointFactor contact_pose_factor(
-        gtdynamics::PoseKey(cp.link->id(), k), cpoint_cost_model,
+    FixedContactPointFactor contact_pose_factor(
+        PoseKey(cp.link->id(), k), cpoint_cost_model,
         contact_in_world.at(contact_idx), cp.point);
     graph.add(contact_pose_factor);
   }
@@ -137,7 +136,7 @@ NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
     int i = link->id();
     if (!link->isFixed()) {
       const auto &connected_joints = link->joints();
-      std::vector<gtsam::Key> wrench_keys;
+      std::vector<Key> wrench_keys;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
@@ -160,7 +159,7 @@ NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
         } else {
           graph.emplace_shared<ContactDynamicsMomentFactor>(
               wrench_key, opt().cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -cp.point));
+              Pose3(Rot3(), -cp.point));
         }
       }
 
@@ -218,14 +217,14 @@ IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
 }
 
 /* ************************************************************************* */
-gtsam::DoubleExpressionInequality::shared_ptr
+DoubleExpressionInequality::shared_ptr
 IEVision60Robot::frictionConeConstraint(const std::string &link_name,
                                         const size_t k) const {
   auto link_id = robot.link(link_name)->id();
   double mu = params->mu;
   double mu_prime = mu * mu;
   auto friction_cone_function =
-      [mu_prime](const Vector3 &f, gtsam::OptionalJacobian<1, 3> H = {}) {
+      [mu_prime](const Vector3 &f, OptionalJacobian<1, 3> H = {}) {
         const double &fx = f(0), fy = f(1), fz = f(2);
         int sign_fz = (fz > 0) - (fz < 0);
         double result = sign_fz * mu_prime * fz * fz - fx * fx - fy * fy;
@@ -243,7 +242,7 @@ IEVision60Robot::frictionConeConstraint(const std::string &link_name,
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IEVision60Robot::stepFrictionConeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
@@ -275,7 +274,7 @@ IEVision60Robot::stepFrictionConeConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtsam::DoubleExpressionInequality::shared_ptr
+DoubleExpressionInequality::shared_ptr
 IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
                                                  const size_t k,
                                                  const Point3 &p_l,
@@ -292,7 +291,7 @@ IEVision60Robot::obstacleCollisionFreeConstraint(const size_t link_idx,
 }
 
 /* ************************************************************************* */
-gtsam::DoubleExpressionInequality::shared_ptr
+DoubleExpressionInequality::shared_ptr
 IEVision60Robot::hurdleCollisionFreeConstraint(const size_t link_idx,
                                                const size_t k,
                                                const Point3 &p_l,
@@ -303,9 +302,9 @@ IEVision60Robot::hurdleCollisionFreeConstraint(const size_t link_idx,
   Point3_ p_w(wTl, &Pose3::transformFrom, p_l_const);
   Matrix23 H_xz;
   H_xz << 1, 0, 0, 0, 0, 1;
-  const std::function<gtsam::Vector2(gtsam::Point3)> f =
-      [H_xz](const gtsam::Point3 &A) { return H_xz * A; };
-  Point2_ p2_w = gtsam::linearExpression(f, p_w, H_xz);
+  const std::function<Vector2(Point3)> f =
+      [H_xz](const Point3 &A) { return H_xz * A; };
+  Point2_ p2_w = linearExpression(f, p_w, H_xz);
   Point2_ center_const(center);
   Double_ dist(distance2, p2_w, center_const);
   Double_ collsion_free_expr = dist - Double_(radius);
@@ -354,7 +353,7 @@ IEVision60Robot::sinHurdleTerrainFunc(const double center_x, const double width,
 }
 
 /* ************************************************************************* */
-gtsam::DoubleExpressionInequality::shared_ptr
+DoubleExpressionInequality::shared_ptr
 IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
                                                const size_t k,
                                                const Point3 &p_l) const {
@@ -365,9 +364,9 @@ IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
   Double_ z(&point3_z, p_w);
   Matrix23 H_xy;
   H_xy << 1, 0, 0, 0, 1, 0;
-  const std::function<gtsam::Vector2(gtsam::Point3)> f =
-      [H_xy](const gtsam::Point3 &A) { return H_xy * A; };
-  Vector2_ point_on_ground = gtsam::linearExpression(f, p_w, H_xy);
+  const std::function<Vector2(Point3)> f =
+      [H_xy](const Point3 &A) { return H_xy * A; };
+  Vector2_ point_on_ground = linearExpression(f, p_w, H_xy);
 
   Double_ ground_height(params->terrain_height_function, point_on_ground);
   std::string name;
@@ -385,7 +384,7 @@ IEVision60Robot::groundCollisionFreeConstraint(const std::string &link_name,
 }
 
 /* ************************************************************************* */
-gtsam::DoubleExpressionInequality::shared_ptr
+DoubleExpressionInequality::shared_ptr
 IEVision60Robot::groundCollisionFreeInterStepConstraint(
     const std::string &link_name, const size_t k, const double ratio,
     const Point3 &p_l) const {
@@ -401,9 +400,9 @@ IEVision60Robot::groundCollisionFreeInterStepConstraint(
   Double_ z(&point3_z, p_w);
   Matrix23 H_xy;
   H_xy << 1, 0, 0, 0, 1, 0;
-  const std::function<gtsam::Vector2(gtsam::Point3)> f =
-      [H_xy](const gtsam::Point3 &A) { return H_xy * A; };
-  Vector2_ point_on_ground = gtsam::linearExpression(f, p_w, H_xy);
+  const std::function<Vector2(Point3)> f =
+      [H_xy](const Point3 &A) { return H_xy * A; };
+  Vector2_ point_on_ground = linearExpression(f, p_w, H_xy);
 
   Double_ ground_height(params->terrain_height_function, point_on_ground);
   std::string name = "cz[" + link_name + "]" + std::to_string(k + ratio);
@@ -468,7 +467,7 @@ IEVision60Robot::torqueLowerLimitConstraint(const std::string &j_name,
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IEVision60Robot::stepJointLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
@@ -523,7 +522,7 @@ IEVision60Robot::stepJointLimitConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IEVision60Robot::stepTorqueLimitConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
@@ -576,7 +575,7 @@ IEVision60Robot::stepTorqueLimitConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IEVision60Robot::stepObstacleCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
 
@@ -591,7 +590,7 @@ IEVision60Robot::stepObstacleCollisionFreeConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IEVision60Robot::stepHurdleCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
@@ -632,7 +631,7 @@ IEVision60Robot::stepHurdleCollisionFreeConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IEVision60Robot::stepGroundCollisionFreeConstraints(const size_t k) const {
   InequalityConstraints constraints;
   if (params->i_constraints_symmetry) {
@@ -772,9 +771,9 @@ NoiseModelFactor::shared_ptr IEVision60Robot::statePointVelCostFactor(
   Matrix36 H_vel_c;
   H_vel_c << Z_3x3, I_3x3;
   H_vel_c = H_vel_c * cTl.AdjointMap();
-  const std::function<gtsam::Vector3(gtsam::Vector6)> f =
-      [H_vel_c](const gtsam::Vector6 &A) { return H_vel_c * A; };
-  Vector3_ vel_l_expr = gtsam::linearExpression(f, twist_expr, H_vel_c);
+  const std::function<Vector3(Vector6)> f =
+      [H_vel_c](const Vector6 &A) { return H_vel_c * A; };
+  Vector3_ vel_l_expr = linearExpression(f, twist_expr, H_vel_c);
   Rot3_ rot_expr(&Pose3::rotation, pose_expr);
   Vector3_ vel_w_expr(rot_expr, &Rot3::rotate, vel_l_expr);
   return std::make_shared<ExpressionFactor<Vector3>>(des_point_v_nm, vel_w,
@@ -851,7 +850,7 @@ EqualityConstraints IEVision60Robot::eConstraints(const size_t k) const {
 }
 
 /* ************************************************************************* */
-gtsam::EqualityConstraints IEVision60Robot::stateConstraints() const {
+EqualityConstraints IEVision60Robot::stateConstraints() const {
   NonlinearFactorGraph graph;
   const auto &values = params->state_constrianed_values;
   for (const auto &key : values.keys()) {
@@ -904,18 +903,18 @@ IEVision60Robot::linkCollocationFactors(const uint8_t link_id, const size_t &k,
                                         const double &dt) const {
   NonlinearFactorGraph graph;
   if (params->collocation == CollocationScheme::Trapezoidal) {
-    graph.emplace_shared<gtdynamics::FixTimeTrapezoidalPoseCollocationFactor>(
+    graph.emplace_shared<FixTimeTrapezoidalPoseCollocationFactor>(
         PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
         TwistKey(link_id, k + 1), dt, graph_builder.opt().pose_col_cost_model);
-    graph.emplace_shared<gtdynamics::FixTimeTrapezoidalTwistCollocationFactor>(
+    graph.emplace_shared<FixTimeTrapezoidalTwistCollocationFactor>(
         TwistKey(link_id, k), TwistKey(link_id, k + 1),
         TwistAccelKey(link_id, k), TwistAccelKey(link_id, k + 1), dt,
         graph_builder.opt().twist_col_cost_model);
   } else {
-    graph.emplace_shared<gtdynamics::FixTimeEulerPoseCollocationFactor>(
+    graph.emplace_shared<FixTimeEulerPoseCollocationFactor>(
         PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k), dt,
         graph_builder.opt().pose_col_cost_model);
-    graph.emplace_shared<gtdynamics::FixTimeEulerTwistCollocationFactor>(
+    graph.emplace_shared<FixTimeEulerTwistCollocationFactor>(
         TwistKey(link_id, k), TwistKey(link_id, k + 1),
         TwistAccelKey(link_id, k), dt,
         graph_builder.opt().twist_col_cost_model);
@@ -928,12 +927,12 @@ NoiseModelFactor::shared_ptr
 IEVision60Robot::multiPhaseLinkPoseCollocationFactor(
     const uint8_t link_id, const size_t &k, const Key &phase_key) const {
   if (params->collocation == CollocationScheme::Trapezoidal) {
-    return std::make_shared<gtdynamics::TrapezoidalPoseCollocationFactor>(
+    return std::make_shared<TrapezoidalPoseCollocationFactor>(
         PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
         TwistKey(link_id, k + 1), phase_key,
         graph_builder.opt().pose_col_cost_model);
   } else {
-    return std::make_shared<gtdynamics::EulerPoseCollocationFactor>(
+    return std::make_shared<EulerPoseCollocationFactor>(
         PoseKey(link_id, k), PoseKey(link_id, k + 1), TwistKey(link_id, k),
         phase_key, graph_builder.opt().pose_col_cost_model);
   }
@@ -944,12 +943,12 @@ NoiseModelFactor::shared_ptr
 IEVision60Robot::multiPhaseLinkTwistCollocationFactor(
     const uint8_t link_id, const size_t &k, const Key &phase_key) const {
   if (params->collocation == CollocationScheme::Trapezoidal) {
-    return std::make_shared<gtdynamics::TrapezoidalTwistCollocationFactor>(
+    return std::make_shared<TrapezoidalTwistCollocationFactor>(
         TwistKey(link_id, k), TwistKey(link_id, k + 1),
         TwistAccelKey(link_id, k), TwistAccelKey(link_id, k + 1), phase_key,
         graph_builder.opt().twist_col_cost_model);
   } else {
-    return std::make_shared<gtdynamics::EulerTwistCollocationFactor>(
+    return std::make_shared<EulerTwistCollocationFactor>(
         TwistKey(link_id, k), TwistKey(link_id, k + 1),
         TwistAccelKey(link_id, k), phase_key,
         graph_builder.opt().twist_col_cost_model);
@@ -1038,7 +1037,7 @@ IEVision60Robot::stepActuationRmseTorqueCosts(const size_t k) const {
   NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints()) {
     graph.add(
-        gtdynamics::MinTorqueFactor(TorqueKey(joint->id(), k), actuation_nm));
+        MinTorqueFactor(TorqueKey(joint->id(), k), actuation_nm));
   }
   return graph;
 }
@@ -1104,7 +1103,7 @@ IEVision60Robot::accelPenaltyCosts(const size_t num_steps) const {
   double accel_penalty_threshold = params->accel_panalty_threshold;
   auto penalty_func =
       [accel_penalty_threshold](const double &a,
-                                gtsam::OptionalJacobian<1, 1> H = {}) {
+                                OptionalJacobian<1, 1> H = {}) {
         int sign_a = (a > 0) - (a < 0);
         double result = abs(a) - accel_penalty_threshold;
         if (result < 0) {
@@ -1180,4 +1179,4 @@ NonlinearFactorGraph IEVision60Robot::stepSymmetryCosts(const size_t k) const {
   return graph;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

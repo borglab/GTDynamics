@@ -4,14 +4,9 @@
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/utils/Initializer.h>
 
-using gtsam::DoubleExpressionEquality, gtsam::EqualityConstraints;
-using gtsam::DoubleExpressionInequality, gtsam::InequalityConstraints;
-using gtdynamics::InsertTorque, gtdynamics::InsertJointAngle,
-    gtdynamics::InsertJointVel;
-using gtdynamics::JointAngleKey, gtdynamics::JointVelKey,
-    gtdynamics::JointAccelKey, gtdynamics::TorqueKey;
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
 
 /* ************************************************************************* */
 void IECartPoleWithLimits::PrintValues(const Values &values,
@@ -64,7 +59,7 @@ void IECartPoleWithLimits::ExportValues(const Values &values, size_t num_steps,
   traj_file << "t,x,xdot,xddot,xtau,theta,thetadot,thetaddot,thetatau\n";
   double t_elapsed = 0;
   for (int t = 0; t <= num_steps; t++, t_elapsed += dt) {
-    std::vector<gtsam::Key> keys = {JointAngleKey(0, t), JointVelKey(0, t),
+    std::vector<Key> keys = {JointAngleKey(0, t), JointVelKey(0, t),
                                     JointAccelKey(0, t), TorqueKey(0, t),
                                     JointAngleKey(1, t), JointVelKey(1, t),
                                     JointAccelKey(1, t), TorqueKey(1, t)};
@@ -82,17 +77,17 @@ void IECartPoleWithLimits::ExportValues(const Values &values, size_t num_steps,
 }
 
 /* ************************************************************************* */
-gtsam::EqualityConstraints
+EqualityConstraints
 IECartPoleWithLimits::eConstraints(const int k) const {
   auto graph = graph_builder.dynamicsFactorGraph(robot, k);
   graph.addPrior(TorqueKey(r_joint_id, k), 0.0,
                  graph_builder.opt().prior_t_cost_model);
-  auto e_constraints = gtsam::ConstraintsFromGraph(graph);
+  auto e_constraints = ConstraintsFromGraph(graph);
   return e_constraints;
 }
 
 /* ************************************************************************* */
-gtsam::InequalityConstraints
+InequalityConstraints
 IECartPoleWithLimits::iConstraints(const int k) const {
   Key p_joint_key = JointAngleKey(p_joint_id, k);
   Key force_key = TorqueKey(p_joint_id, k);
@@ -126,7 +121,7 @@ IECartPoleWithLimits::finalStateCosts(size_t num_steps) const {
 }
 
 /* ************************************************************************* */
-gtsam::EqualityConstraints
+EqualityConstraints
 IECartPoleWithLimits::initStateConstraints() const {
   EqualityConstraints constraints;
   Key r_joint_key = JointAngleKey(r_joint_id, 0);
@@ -149,13 +144,13 @@ IECartPoleWithLimits::initStateConstraints() const {
 }
 
 /* ************************************************************************* */
-gtsam::EqualityConstraints
+EqualityConstraints
 IECartPoleWithLimits::finalStateConstraints(size_t num_steps) const {
   EqualityConstraints constraints;
-  Key r_joint_key = gtdynamics::JointAngleKey(r_joint_id, num_steps);
-  Key p_joint_key = gtdynamics::JointAngleKey(p_joint_id, num_steps);
-  Key r_vel_key = gtdynamics::JointVelKey(r_joint_id, num_steps);
-  Key p_vel_key = gtdynamics::JointVelKey(p_joint_id, num_steps);
+  Key r_joint_key = JointAngleKey(r_joint_id, num_steps);
+  Key p_joint_key = JointAngleKey(p_joint_id, num_steps);
+  Key r_vel_key = JointVelKey(r_joint_id, num_steps);
+  Key p_vel_key = JointVelKey(p_joint_id, num_steps);
   Double_ r_joint_expr(r_joint_key);
   Double_ p_joint_expr(p_joint_key);
   Double_ r_vel_expr(r_vel_key);
@@ -178,8 +173,8 @@ NonlinearFactorGraph
 IECartPoleWithLimits::minTorqueCosts(size_t num_steps) const {
   NonlinearFactorGraph graph;
   for (int k = 0; k <= num_steps; k++)
-    graph.emplace_shared<gtdynamics::MinTorqueFactor>(
-        gtdynamics::TorqueKey(p_joint_id, k), control_model);
+    graph.emplace_shared<MinTorqueFactor>(
+        TorqueKey(p_joint_id, k), control_model);
   return graph;
 }
 
@@ -226,7 +221,7 @@ Values IECartPoleWithLimits::getInitValuesZero(size_t num_steps) const {
 
 /* ************************************************************************* */
 Values IECartPoleWithLimits::getInitValuesInterp(size_t num_steps) const {
-  gtdynamics::Initializer initializer;
+  Initializer initializer;
 
   double init_q0 = X_i(0);
   double terminal_q0 = X_T(0);
@@ -247,20 +242,20 @@ Values IECartPoleWithLimits::getInitValuesInterp(size_t num_steps) const {
 BasisKeyFunc IECartPoleWithLimits::getBasisKeyFunc() const {
   BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
     KeyVector basis_keys;
-    size_t k = gtdynamics::DynamicsSymbol(*keys.begin()).time();
+    size_t k = DynamicsSymbol(*keys.begin()).time();
     if (k == 0) {
-      basis_keys.push_back(gtdynamics::TorqueKey(p_joint_id, k));
+      basis_keys.push_back(TorqueKey(p_joint_id, k));
       return basis_keys;
     }
     // if (k == num_steps) {
-    //   basis_keys.push_back(gtdynamics::TorqueKey(cp.p_joint_id, k));
+    //   basis_keys.push_back(TorqueKey(cp.p_joint_id, k));
     //   if (!cp.constrain_final_x) {
-    //     basis_keys.push_back(gtdynamics::JointAngleKey(cp.p_joint_id, k));
+    //     basis_keys.push_back(JointAngleKey(cp.p_joint_id, k));
     //   }
     //   return basis_keys;
     // }
     for (const Key &key : keys) {
-      auto symb = gtdynamics::DynamicsSymbol(key);
+      auto symb = DynamicsSymbol(key);
       if (symb.label() == "q") {
         basis_keys.push_back(key);
       }
@@ -286,9 +281,9 @@ IEConstraintManifold CartPoleWithLimitsRetractor::retract(
   Values new_values = manifold->values().retract(delta);
 
   // delta.print("==============================delta============================\n",
-  // gtdynamics::GTDKeyFormatter);
+  // GTDKeyFormatter);
 
-  size_t k = gtdynamics::DynamicsSymbol(new_values.keys().front()).time();
+  size_t k = DynamicsSymbol(new_values.keys().front()).time();
   IndexSet active_indices;
 
   // limit x to bounded values
@@ -328,9 +323,9 @@ IEConstraintManifold CartPoleWithLimitsRetractor::retract(
   Values result = cp_.graph_builder.linearSolveFD(cp_.robot, k, known_values);
 
   // result.print("==============================result============================\n",
-  // gtdynamics::GTDKeyFormatter);
+  // GTDKeyFormatter);
 
   return manifold->createWithNewValues(result, active_indices);
 }
 
-} // namespace gtsam
+} // namespace gtdynamics
