@@ -16,17 +16,19 @@
 
 #include <Eigen/Sparse>
 #if defined(GTDYNAMICS_WITH_SUITESPARSE)
-#include <SuiteSparseQR.hpp>
 #include <cholmod.h>
+
+#include <SuiteSparseQR.hpp>
 #endif
 #include <gtdynamics/cmopt/MultiJacobian.h>
-#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/base/Matrix.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/inference/Ordering.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+
 #include <functional>
 #include <memory>
 #include <optional>
@@ -49,9 +51,16 @@ using gtsam::VectorValues;
 
 typedef std::function<KeyVector(const KeyVector &keys)> BasisKeyFunc;
 
-/// Manifold-specific parameters for tangent space basis.
+/**
+ * Parameters for tangent-space basis construction.
+ *
+ * These options select basis style (orthonormal vs. basis-key driven),
+ * construction timing, and sparse/dense backend preferences.
+ *
+ * @see README.md#tangent-basis
+ */
 struct TspaceBasisParams {
-public:
+ public:
   using shared_ptr = std::shared_ptr<TspaceBasisParams>;
 
   /// Member variables.
@@ -59,20 +68,31 @@ public:
   bool use_basis_keys = false;
   bool use_sparse = false;
 
-  /// Constructors.
+  /**
+   * Constructor.
+   * @param _use_basis_keys If true, basis keys are explicitly selected.
+   * @param _always_construct_basis If true, build basis immediately.
+   */
   TspaceBasisParams(bool _use_basis_keys = false,
                     bool _always_construct_basis = true)
       : always_construct_basis(_always_construct_basis),
         use_basis_keys(_use_basis_keys) {}
 };
 
-/// Base class for tangent space basis of constraint manifold.
+/**
+ * Abstract interface for constraint-manifold tangent-space bases.
+ *
+ * Implementations map reduced coordinates to ambient tangent vectors, recover
+ * Jacobians for substituted factors, and compute local coordinates.
+ *
+ * @see README.md#tangent-basis
+ */
 class TspaceBasis {
-protected:
+ protected:
   TspaceBasisParams::shared_ptr params_;
   bool is_constructed_;
 
-public:
+ public:
   using shared_ptr = std::shared_ptr<TspaceBasis>;
 
   /// Default constructor.
@@ -86,11 +106,16 @@ public:
   /// Construct new basis by using new values
   virtual shared_ptr createWithNewValues(const Values &values) const = 0;
 
-  /// Construct new basis by incorporating new constraints
-  virtual shared_ptr
-  createWithAdditionalConstraints(const EqualityConstraints &constraints,
-                                  const Values &values,
-                                  bool create_from_scratch = false) const = 0;
+  /**
+   * Construct a basis by incorporating additional constraints.
+   * @param constraints Additional equality constraints.
+   * @param values Current variable values.
+   * @param create_from_scratch If true, rebuild basis from scratch.
+   * @return New basis object.
+   */
+  virtual shared_ptr createWithAdditionalConstraints(
+      const EqualityConstraints &constraints, const Values &values,
+      bool create_from_scratch = false) const = 0;
 
   /** Compute the tangent vector in the ambient space, given a vector xi
    * representing the magnitude of each basis component. */
@@ -104,7 +129,12 @@ public:
    * original variable from the constraint manifold. */
   virtual Matrix recoverJacobian(const Key &key) const = 0;
 
-  /// Implementation of localCoordinate function for the constraint manifold.
+  /**
+   * Compute local coordinates between two value assignments.
+   * @param values Source values.
+   * @param values_other Target values.
+   * @return Local coordinates in basis parameterization.
+   */
   virtual Vector localCoordinates(const Values &values,
                                   const Values &values_other) const = 0;
 
@@ -117,47 +147,72 @@ public:
   /// Return if the basis is already constructed.
   bool isConstructed() const { return is_constructed_; }
 
-  virtual void
-  print(const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) = 0;
+  virtual void print(
+      const gtsam::KeyFormatter &keyFormatter = DefaultKeyFormatter) = 0;
 
   virtual std::vector<VectorValues> basisVectors() const;
 };
 
-/** Orthonormal space basis computed as the kernel of the constraint jacobian
- * matrix, e.g., the kernel of Dh(X), where h(X)=0 represents all the
- * constraints. Two options are provided as either using dense matrix or sparse
- * matrix for computing the kernel space. */
+/**
+ * Orthonormal null-space basis of the constraint Jacobian.
+ *
+ * This basis computes `ker(J_H)` either with dense or sparse routines and
+ * provides reduced-coordinate parameterization for manifold updates.
+ *
+ * @see README.md#tangent-basis
+ */
 class OrthonormalBasis : public TspaceBasis {
-protected:
+ protected:
   // Structural properties that do not change with values.
   struct Attributes {
     NonlinearFactorGraph merit_graph;
-    std::map<Key, size_t> var_location; // location of variables in Jacobian
-    std::map<Key, size_t> var_dim;      // dimension of variables
+    std::map<Key, size_t> var_location;  // location of variables in Jacobian
+    std::map<Key, size_t> var_dim;       // dimension of variables
     size_t total_var_dim;
     size_t total_constraint_dim;
     size_t total_basis_dim;
     using shared_ptr = std::shared_ptr<Attributes>;
   };
   Attributes::shared_ptr attributes_;
-  gtsam::Matrix basis_; // basis matrix for the tangent space
+  gtsam::Matrix basis_;  // basis matrix for the tangent space
 
   typedef Eigen::SparseMatrix<double> SpMatrix;
 
-public:
+ public:
+  /**
+   * Constructor.
+   * @param constraints Equality constraints for the component.
+   * @param values Current values for variables in the component.
+   * @param params Basis construction parameters.
+   */
   OrthonormalBasis(const EqualityConstraints::shared_ptr &constraints,
                    const Values &values,
                    const TspaceBasisParams::shared_ptr &params);
 
+  /**
+   * Constructor from precomputed attributes.
+   * @param params Basis construction parameters.
+   * @param attributes Precomputed structural attributes.
+   */
   OrthonormalBasis(const TspaceBasisParams::shared_ptr &params,
                    const Attributes::shared_ptr &attributes)
       : TspaceBasis(params), attributes_(attributes) {}
 
+  /**
+   * Constructor from precomputed attributes and matrix.
+   * @param params Basis construction parameters.
+   * @param attributes Precomputed structural attributes.
+   * @param mat Basis matrix.
+   */
   OrthonormalBasis(const TspaceBasisParams::shared_ptr &params,
                    const Attributes::shared_ptr &attributes, const Matrix &mat)
       : TspaceBasis(params), attributes_(attributes), basis_(mat) {}
 
-  /// Constructor from other, avoids recomputation.
+  /**
+   * Constructor from another basis, reusing structural attributes.
+   * @param values Current values.
+   * @param other Source basis.
+   */
   OrthonormalBasis(const Values &values, const OrthonormalBasis &other)
       : TspaceBasis(other.params_), attributes_(other.attributes_) {
     if (params_->always_construct_basis) {
@@ -166,12 +221,18 @@ public:
   }
 
   /// Create basis with new values.
-  TspaceBasis::shared_ptr
-  createWithNewValues(const Values &values) const override {
+  TspaceBasis::shared_ptr createWithNewValues(
+      const Values &values) const override {
     return std::make_shared<OrthonormalBasis>(values, *this);
   }
 
-  /// Construct new basis by incorporating new constraints
+  /**
+   * Construct a basis by incorporating additional constraints.
+   * @param constraints Additional equality constraints.
+   * @param values Current variable values.
+   * @param create_from_scratch If true, rebuild basis from scratch.
+   * @return New basis object.
+   */
   TspaceBasis::shared_ptr createWithAdditionalConstraints(
       const EqualityConstraints &constraints, const Values &values,
       bool create_from_scratch = false) const override;
@@ -188,7 +249,12 @@ public:
   /// Jacobian of recover function.
   Matrix recoverJacobian(const Key &key) const override;
 
-  /// Implementation of localCoordinate for the constraint manifold.
+  /**
+   * Compute local coordinates between two value assignments.
+   * @param values Source values.
+   * @param values_other Target values.
+   * @return Local coordinates in basis parameterization.
+   */
   Vector localCoordinates(const Values &values,
                           const Values &values_other) const override;
 
@@ -203,40 +269,91 @@ public:
     std::cout << "Orthonormal basis\n" << matrix() << "\n";
   }
 
-protected:
+ protected:
   void constructDense(const Values &values);
 
   void constructSparse(const Values &values);
 
+  /**
+   * Update basis with additional constraints in dense mode.
+   * @param graph Linearized graph of added constraints.
+   * @param new_attributes Updated structural attributes.
+   * @return New orthonormal basis.
+   */
   TspaceBasis::shared_ptr createWithAdditionalConstraintsDense(
       const GaussianFactorGraph &graph,
       const Attributes::shared_ptr &new_attributes) const;
 
+  /**
+   * Update basis with additional constraints in sparse mode.
+   * @param graph Linearized graph of added constraints.
+   * @param new_attributes Updated structural attributes.
+   * @return New orthonormal basis.
+   */
   TspaceBasis::shared_ptr createWithAdditionalConstraintsSparse(
       const GaussianFactorGraph &graph,
       const Attributes::shared_ptr &new_attributes) const;
 
+  /**
+   * Rearrange Jacobian columns to match internal variable ordering.
+   * @param A Input Jacobian matrix.
+   * @param A_keys Keys corresponding to blocks in `A`.
+   * @return Rearranged Jacobian matrix.
+   */
   Matrix rearrangeMatrix(const Matrix &A, const KeyVector &A_keys) const;
 
   Matrix computeConstraintJacobian(const Values &values) const;
 
-  /** Construct the transposed jacobian from sparse jacobian triplets. */
+  /**
+   * Construct transposed sparse Jacobian from sparse triplets.
+   * @param nrows Number of rows in original Jacobian.
+   * @param ncols Number of cols in original Jacobian (including RHS column).
+   * @param triplets Sparse Jacobian triplets.
+   * @param cc CHOLMOD context.
+   * @return Transposed sparse Jacobian matrix.
+   */
 #if defined(GTDYNAMICS_WITH_SUITESPARSE)
   static cholmod_sparse *SparseJacobianTranspose(
       const size_t nrows, const size_t ncols,
       const std::vector<std::tuple<int, int, double>> &triplets,
       cholmod_common *cc);
 
+  /**
+   * Create sparse selector matrix that picks the last columns.
+   * @param nrows Number of rows.
+   * @param ncols Number of selected columns.
+   * @param cc CHOLMOD context.
+   * @return Sparse selector matrix.
+   */
   static cholmod_sparse *LastColsSelectionMat(const size_t nrows,
                                               const size_t ncols,
                                               cholmod_common *cc);
 
+  /**
+   * Convert CHOLMOD sparse matrix to Eigen sparse matrix.
+   * @param A CHOLMOD sparse matrix.
+   * @param cc CHOLMOD context.
+   * @return Eigen sparse matrix.
+   */
   static SpMatrix CholmodToEigen(cholmod_sparse *A, cholmod_common *cc);
 #else
+  /**
+   * Construct transposed sparse Jacobian from sparse triplets.
+   * @param nrows Number of rows in original Jacobian.
+   * @param ncols Number of cols in original Jacobian (including RHS column).
+   * @param triplets Sparse Jacobian triplets.
+   * @return Transposed sparse Jacobian matrix.
+   */
   static SpMatrix SparseJacobianTranspose(
       const size_t nrows, const size_t ncols,
       const std::vector<std::tuple<int, int, double>> &triplets);
 
+  /**
+   * Create sparse selector matrix that picks the last columns.
+   * @param nrows Number of rows.
+   * @param ncols Number of selected columns.
+   * @return Sparse selector matrix.
+   */
   static SpMatrix LastColsSelectionMat(const size_t nrows, const size_t ncols);
 #endif
 
@@ -249,18 +366,23 @@ protected:
   static SpMatrix EigenSparseJacobian(const GaussianFactorGraph &graph);
 };
 
-/** Tangent space basis as the specified variables, the update on
- * the rest of the variables will be computed through variable elimination.
- * The basis matrix will be in the form of [B;I], which means the
- * corresponding rows to the basis variables form the identity matrix. */
+/**
+ * Tangent basis parameterized by selected basis variables.
+ *
+ * Non-basis variable updates are computed by elimination/Jacobian propagation,
+ * yielding an implicit `[B; I]`-style basis structure.
+ *
+ * @see README.md#tangent-basis
+ * @see README.md#retraction
+ */
 class EliminationBasis : public TspaceBasis {
-protected:
+ protected:
   struct Attributes {
     NonlinearFactorGraph merit_graph;
     KeyVector basis_keys;
     Ordering ordering;
     size_t total_basis_dim;
-    std::map<Key, size_t> basis_location; // location of basis var in xi
+    std::map<Key, size_t> basis_location;  // location of basis var in xi
     std::map<Key, size_t> var_dim;
 
     using shared_ptr = std::shared_ptr<Attributes>;
@@ -268,18 +390,24 @@ protected:
   Attributes::shared_ptr attributes_;
   MultiJacobians jacobians_;
 
-public:
-  /** Constructor
-   * @param constraints constraints for the constraint manifold
-   * @param values values of the variables in the connected component
-   * @param basis_keys variables selected as basis variables
+ public:
+  /**
+   * Constructor.
+   * @param constraints Equality constraints for the component.
+   * @param values Values of variables in the connected component.
+   * @param params Basis construction parameters.
+   * @param basis_keys Optional variables selected as basis variables.
    */
   EliminationBasis(const EqualityConstraints::shared_ptr &constraints,
                    const Values &values,
                    const TspaceBasisParams::shared_ptr &params,
                    std::optional<const KeyVector> basis_keys = {});
 
-  /// Constructor from other, avoids recomputation.
+  /**
+   * Constructor from another basis, reusing structural attributes.
+   * @param values Current values.
+   * @param other Source basis.
+   */
   EliminationBasis(const Values &values, const EliminationBasis &other);
 
   EliminationBasis(const TspaceBasisParams::shared_ptr &params,
@@ -287,12 +415,18 @@ public:
       : TspaceBasis(params), attributes_(attributes) {}
 
   /// Create basis with new values.
-  TspaceBasis::shared_ptr
-  createWithNewValues(const Values &values) const override {
+  TspaceBasis::shared_ptr createWithNewValues(
+      const Values &values) const override {
     return std::make_shared<EliminationBasis>(values, *this);
   }
 
-  /// Construct new basis by incorporating new constraints
+  /**
+   * Construct a basis by incorporating additional constraints.
+   * @param constraints Additional equality constraints.
+   * @param values Current variable values.
+   * @param create_from_scratch If true, rebuild basis from scratch.
+   * @return New basis object.
+   */
   TspaceBasis::shared_ptr createWithAdditionalConstraints(
       const EqualityConstraints &constraints, const Values &values,
       bool create_from_scratch = false) const override;
@@ -306,7 +440,12 @@ public:
   /// Jacobian of recover function.
   Matrix recoverJacobian(const Key &key) const override;
 
-  /// Implementation of localCoordinate for the constraint manifold.
+  /**
+   * Compute local coordinates between two value assignments.
+   * @param values Source values.
+   * @param values_other Target values.
+   * @return Local coordinates in basis parameterization.
+   */
   Vector localCoordinates(const Values &values,
                           const Values &values_other) const override;
 
@@ -331,24 +470,39 @@ public:
   const MultiJacobians &jacobians() const { return jacobians_; }
 };
 
-/** Factory class used to create Tspace basis. */
+/**
+ * Factory interface for creating tangent-space basis instances.
+ *
+ * @see README.md#tangent-basis
+ */
 class TspaceBasisCreator {
-protected:
+ protected:
   TspaceBasisParams::shared_ptr params_;
 
-public:
+ public:
   using shared_ptr = std::shared_ptr<TspaceBasisCreator>;
   TspaceBasisCreator(TspaceBasisParams::shared_ptr params) : params_(params) {}
 
   virtual ~TspaceBasisCreator() {}
 
-  virtual TspaceBasis::shared_ptr
-  create(const EqualityConstraints::shared_ptr constraints,
-         const Values &values) const = 0;
+  /**
+   * Create a basis object for a component.
+   * @param constraints Equality constraints for the component.
+   * @param values Current values for variables in the component.
+   * @return Created basis object.
+   */
+  virtual TspaceBasis::shared_ptr create(
+      const EqualityConstraints::shared_ptr constraints,
+      const Values &values) const = 0;
 };
 
+/**
+ * Factory for `OrthonormalBasis`.
+ *
+ * @see README.md#tangent-basis
+ */
 class OrthonormalBasisCreator : public TspaceBasisCreator {
-public:
+ public:
   OrthonormalBasisCreator(TspaceBasisParams::shared_ptr params =
                               std::make_shared<TspaceBasisParams>())
       : TspaceBasisCreator(params) {}
@@ -361,22 +515,32 @@ public:
 
   virtual ~OrthonormalBasisCreator() {}
 
-  TspaceBasis::shared_ptr
-  create(const EqualityConstraints::shared_ptr constraints,
-         const Values &values) const override {
+  TspaceBasis::shared_ptr create(
+      const EqualityConstraints::shared_ptr constraints,
+      const Values &values) const override {
     return std::make_shared<OrthonormalBasis>(constraints, values, params_);
   }
 };
 
+/**
+ * Factory for `EliminationBasis`.
+ *
+ * @see README.md#tangent-basis
+ */
 class EliminationBasisCreator : public TspaceBasisCreator {
-protected:
+ protected:
   BasisKeyFunc basis_key_func_;
 
-public:
+ public:
   EliminationBasisCreator(TspaceBasisParams::shared_ptr params =
                               std::make_shared<TspaceBasisParams>(true))
       : TspaceBasisCreator(params) {}
 
+  /**
+   * Create an elimination-basis factory with custom key selector.
+   * @param basis_key_func Callback selecting basis keys.
+   * @param params Basis construction parameters.
+   */
   EliminationBasisCreator(BasisKeyFunc basis_key_func,
                           TspaceBasisParams::shared_ptr params =
                               std::make_shared<TspaceBasisParams>(true))
@@ -384,9 +548,15 @@ public:
 
   virtual ~EliminationBasisCreator() {}
 
-  TspaceBasis::shared_ptr
-  create(const EqualityConstraints::shared_ptr constraints,
-         const Values &values) const override {
+  /**
+   * Create basis for one constraint-connected component.
+   * @param constraints Equality constraints for the component.
+   * @param values Current values for variables in the component.
+   * @return Created elimination basis.
+   */
+  TspaceBasis::shared_ptr create(
+      const EqualityConstraints::shared_ptr constraints,
+      const Values &values) const override {
     if (params_->use_basis_keys) {
       KeyVector basis_keys = basis_key_func_(values.keys());
       return std::make_shared<EliminationBasis>(constraints, values, params_,
@@ -396,4 +566,4 @@ public:
   }
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

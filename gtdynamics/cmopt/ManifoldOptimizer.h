@@ -34,7 +34,15 @@ using gtsam::VectorValues;
 
 using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
 
-/// Manifold optimization problem.
+/**
+ * Transformed manifold optimization problem data.
+ *
+ * This holds the transformed factor graph, manifold/unconstrained values, and
+ * bookkeeping sets needed to move between transformed and base variable spaces.
+ *
+ * @see README.md#ccc-transformation
+ * @see README.md#equivalent-factors
+ */
 struct ManifoldOptProblem {
   NonlinearFactorGraph graph_;  // cost function on constraint manifolds
   std::vector<EqualityConstraints::shared_ptr>
@@ -46,21 +54,35 @@ struct ManifoldOptProblem {
   KeySet manifold_keys_;       // keys for constraint manifold variables
 
   /** Dimension of the manifold optimization problem, as factor dimension x
-   * variable dimension. */
+   * variable dimension.
+   * @return Pair of `(total_factor_dimension, total_variable_dimension)`.
+   */
   std::pair<size_t, size_t> problemDimension() const;
 
+  /// Return values of unconstrained variables only.
   Values unconstrainedValues() const;
 
+  /// Return free (non-fixed) constraint manifold values.
   EManifoldValues manifolds() const;
 
+  /// Return fixed (zero-dimensional) manifold values.
   EManifoldValues constManifolds() const;
 
-  /// Customizable print function.
+  /**
+   * Print a summary of manifold optimization problem contents.
+   * @param s Prefix string.
+   * @param keyFormatter Key formatter.
+   */
   void print(const std::string &s = "",
              const KeyFormatter &keyFormatter = DefaultKeyFormatter) const;
 };
 
-/// Parameters for manifold optimizer.
+/**
+ * Parameters controlling manifold problem construction and post-processing.
+ *
+ * @see README.md#ccc-transformation
+ * @see README.md#retraction
+ */
 struct ManifoldOptimizerParameters : public ConstrainedOptimizationParameters {
   using Base = ConstrainedOptimizationParameters;
   ConstraintManifold::Params::shared_ptr
@@ -73,7 +95,16 @@ struct ManifoldOptimizerParameters : public ConstrainedOptimizationParameters {
   ManifoldOptimizerParameters();
 };
 
-/// Base class for manifold optimizer.
+/**
+ * Base class that transforms equality-constrained problems into manifold form.
+ *
+ * This class identifies constraint-connected components, builds
+ * `ConstraintManifold` values, and replaces base factors with equivalent
+ * factors over manifold variables.
+ *
+ * @see README.md#ccc-transformation
+ * @see README.md#equivalent-factors
+ */
 class ManifoldOptimizer : public ConstrainedOptimizer {
  public:
   using shared_ptr = std::shared_ptr<const ManifoldOptimizer>;
@@ -90,8 +121,14 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
       : p_(parameters) {}
 
  public:
-  /** Perform dfs to find the connected component that contains start_key. Will
-   * also erase all the keys in the connected component from keys.
+  /**
+   * Find a connected component containing `start_key` using DFS.
+   * @param constraints Equality constraints.
+   * @param start_key Starting key for DFS.
+   * @param keys In/out set of unexplored keys; keys in the found component are
+   * removed.
+   * @param var_index Variable index over constraints.
+   * @return Constraint subset corresponding to the connected component.
    */
   static EqualityConstraints::shared_ptr IdentifyConnectedComponent(
       const EqualityConstraints &constraints, const Key start_key, KeySet &keys,
@@ -101,7 +138,13 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
   static std::vector<EqualityConstraints::shared_ptr>
   IdentifyConnectedComponents(const EqualityConstraints &constraints);
 
-  /// Create equivalent factor graph on manifold variables.
+  /**
+   * Create equivalent cost graph on manifold variables.
+   * @param graph Original factor graph.
+   * @param var2man_keymap Mapping from base variable key to manifold key.
+   * @param fc_manifolds Values of fully constrained manifolds.
+   * @return Transformed manifold graph.
+   */
   static NonlinearFactorGraph ManifoldGraph(
       const NonlinearFactorGraph &graph,
       const std::map<Key, Key> &var2man_keymap,
@@ -111,40 +154,74 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * constraint manifolds for constraint-connected components; (2) identify if
    * the constraint manifold is fully constrained; (3) collect unconstrained
    * variables.
+   * @param equalityConstrainedProblem Input constrained problem.
+   * @param mopt_problem Output manifold optimization problem.
    */
   void constructMoptValues(const EConsOptProblem &equalityConstrainedProblem,
                            ManifoldOptProblem &mopt_problem) const;
 
-  /// Create initial values for the constraint manifold variables.
+  /**
+   * Create initial values for constraint manifold variables.
+   * @param equalityConstrainedProblem Input constrained problem.
+   * @param mopt_problem Output manifold optimization problem.
+   */
   void constructManifoldValues(
       const EConsOptProblem &equalityConstrainedProblem,
       ManifoldOptProblem &mopt_problem) const;
 
-  /// Collect values for unconstrained variables.
+  /**
+   * Collect initial values for unconstrained variables.
+   * @param equalityConstrainedProblem Input constrained problem.
+   * @param mopt_problem Output manifold optimization problem.
+   */
   static void constructUnconstrainedValues(
       const EConsOptProblem &equalityConstrainedProblem,
       ManifoldOptProblem &mopt_problem);
 
   /** Create a factor graph of cost function with the constraint manifold
-   * variables. */
+   * variables.
+   * @param equalityConstrainedProblem Input constrained problem.
+   * @param mopt_problem Output manifold optimization problem.
+   */
   static void constructMoptGraph(
       const EConsOptProblem &equalityConstrainedProblem,
       ManifoldOptProblem &mopt_problem);
 
   /** Transform an equality-constrained optimization problem into a manifold
-   * optimization problem by creating constraint manifolds. */
+   * optimization problem by creating constraint manifolds.
+   * @param equalityConstrainedProblem Input constrained problem.
+   * @return Transformed manifold optimization problem.
+   */
   ManifoldOptProblem problemTransform(
       const EConsOptProblem &equalityConstrainedProblem) const;
 
-  /// Initialize the manifold optimization problem.
+  /**
+   * Initialize and transform an equality-constrained problem.
+   * @param costs Cost factor graph.
+   * @param constraints Equality constraints.
+   * @param init_values Initial values.
+   * @return Initialized manifold optimization problem.
+   */
   ManifoldOptProblem initializeMoptProblem(
       const NonlinearFactorGraph &costs, const EqualityConstraints &constraints,
       const Values &init_values) const;
 
-  /// Construct values of original variables.
+  /**
+   * Reconstruct base variable values from optimized manifold values.
+   * @param mopt_problem Transformed manifold optimization problem.
+   * @param nopt_values Optimized values in transformed variable space.
+   * @return Values in original base variable space.
+   */
   Values baseValues(const ManifoldOptProblem &mopt_problem,
                     const Values &nopt_values) const;
 
+  /**
+   * Lift transformed-space delta to base-space tangent vectors.
+   * @param mopt_problem Transformed manifold optimization problem.
+   * @param values Current transformed-space values.
+   * @param delta Delta in transformed variable space.
+   * @return Tangent vectors in base variable space.
+   */
   VectorValues baseTangentVector(const ManifoldOptProblem &mopt_problem,
                                  const Values &values,
                                  const VectorValues &delta) const;

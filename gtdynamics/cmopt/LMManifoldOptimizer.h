@@ -35,24 +35,40 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Values;
 
 /**
- * This class performs Levenberg-Marquardt nonlinear optimization
+ * Levenberg-Marquardt optimizer over transformed manifold variables.
+ *
+ * This optimizer runs LM on the manifold optimization problem produced by
+ * `ManifoldOptimizer` and keeps detailed trial/state bookkeeping in
+ * `LMManifoldOptimizerState`.
+ *
+ * It is the explicit LM implementation path in `cmopt`, complementary to the
+ * generic `NonlinearMOptimizer` wrapper around standard GTSAM optimizers.
+ *
+ * @see README.md#solvers
+ * @see ManifoldOptimizer
+ * @see LMState
+ * @see LMTrial
  */
 class LMManifoldOptimizer : public ManifoldOptimizer {
-
-protected:
-  const LevenbergMarquardtParams params_; ///< LM parameters
+ protected:
+  const LevenbergMarquardtParams params_;  ///< LM parameters
   std::shared_ptr<LMItersDetails> details_;
 
-public:
+ public:
   typedef std::shared_ptr<LMManifoldOptimizer> shared_ptr;
 
   const LMItersDetails &details() const { return *details_; }
 
-  /** Constructor */
+  /**
+   * Constructor.
+   * @param mopt_params Parameters for manifold construction/transformation.
+   * @param params Levenberg-Marquardt parameters for manifold optimization.
+   */
   LMManifoldOptimizer(
       const ManifoldOptimizerParameters &mopt_params,
       const LevenbergMarquardtParams &params = LevenbergMarquardtParams())
-      : ManifoldOptimizer(mopt_params), params_(params),
+      : ManifoldOptimizer(mopt_params),
+        params_(params),
         details_(std::make_shared<LMItersDetails>()) {}
 
   /** Virtual destructor */
@@ -61,32 +77,48 @@ public:
   /** Read-only access the parameters */
   const LevenbergMarquardtParams &params() const { return params_; }
 
-  /** Run manifold optimization by substituting the constrained variables with
-   * the constraint manifold variables. */
-  virtual gtsam::Values
-  optimize(const gtsam::NonlinearFactorGraph &graph,
-           const EqualityConstraints &constraints,
-           const gtsam::Values &initial_values) const override;
+  /**
+   * Run manifold optimization from a constrained problem definition.
+   * @param graph Cost factor graph.
+   * @param constraints Equality constraints.
+   * @param initial_values Initial values for all variables.
+   * @return Optimized base-variable values.
+   */
+  virtual gtsam::Values optimize(
+      const gtsam::NonlinearFactorGraph &graph,
+      const EqualityConstraints &constraints,
+      const gtsam::Values &initial_values) const override;
 
-  /// Optimization given manifold optimization problem.
+  /**
+   * Optimize an already transformed manifold optimization problem.
+   * @param graph Original base cost graph, used for error evaluation.
+   * @param mopt_problem Transformed manifold optimization problem.
+   * @return Optimized base-variable values.
+   */
   gtsam::Values optimize(const NonlinearFactorGraph &graph,
                          const ManifoldOptProblem &mopt_problem) const;
 
-  /** Perform one iterate, may need to make several trials. */
+  /**
+   * Perform one outer LM iteration, potentially with multiple lambda trials.
+   * @param graph Original base cost graph.
+   * @param manifold_graph Transformed manifold graph.
+   * @param state Current optimizer state.
+   * @return Iteration details including all trials.
+   */
   LMIterDetails iterate(const NonlinearFactorGraph &graph,
                         const NonlinearFactorGraph &manifold_graph,
                         const LMState &state) const;
 
-  /** Convergence check including
-   * 1) mode change
-   * 2) error tol
-   * 3) absolute error tol
-   * 4) relative error tol
+  /**
+   * Check convergence between two consecutive states.
+   * @param prev_state Previous state.
+   * @param state Current state.
+   * @return True if convergence criteria are met.
    */
   bool checkConvergence(const LMState &prev_state, const LMState &state) const;
 
-  /** Check if lambda is within limits. */
+  /// Check whether lambda is within configured bounds.
   bool checkLambdaWithinLimits(const double &lambda) const;
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

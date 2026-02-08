@@ -13,14 +13,14 @@
 
 #pragma once
 
+#include <gtdynamics/cmopt/Retractor.h>
+#include <gtdynamics/cmopt/TspaceBasis.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtdynamics/cmopt/Retractor.h>
-#include <gtdynamics/cmopt/TspaceBasis.h>
 
 #include <cstddef>
 #include <map>
@@ -40,12 +40,33 @@ using gtsam::VectorValues;
 
 using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
 
-/** Manifold representing constraint-connected component. Any element on the
- * manifold is the values of variables in CCC satisfying the constraints, e.g.,
- * {X : h(X)=0}. */
+/**
+ * Manifold for one constraint-connected component (CCC).
+ *
+ * This type stores the original variables that belong to one CCC and exposes
+ * manifold operations (`retract`, `localCoordinates`, and `recover`) so the
+ * CCC can be optimized as a single manifold-valued variable in transformed
+ * optimization problems.
+ *
+ * The manifold dimension is `embedding_dim - constraint_dim`, and tangent
+ * space mapping is delegated to `TspaceBasis` while feasibility projection is
+ * delegated to `Retractor`.
+ *
+ * @see README.md#constraint-manifold
+ * @see README.md#tangent-basis
+ * @see README.md#retraction
+ */
 class ConstraintManifold {
  public:
-  /** Parameters for constraint manifold. */
+  /**
+   * Parameters that define basis construction and retraction behavior.
+   *
+   * `basis_creator` controls tangent-space parameterization and
+   * `retractor_creator` controls how feasibility is enforced after updates.
+   *
+   * @see README.md#tangent-basis
+   * @see README.md#retraction
+   */
   struct Params {
     using shared_ptr = std::shared_ptr<Params>;
     TspaceBasisCreator::shared_ptr basis_creator;
@@ -72,14 +93,18 @@ class ConstraintManifold {
 
   typedef OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> ChartJacobian;
 
-  /** Constructor from Connected Component.
-   * @param cc      constraint-connected component
-   * @param values  values of variable in the connected component
-   * @param params  parameters for constraint manifold
-   * @param retract_init  whether to perform retract in initialization
+  /**
+   * Constructor from a constraint-connected component.
+   * @param constraints Equality constraints defining the component.
+   * @param values Initial values of variables in the connected component.
+   * @param params Parameters controlling basis and retraction behavior.
+   * @param retract_init If true, retract values to satisfy constraints at
+   * construction.
+   * @param basis Optional pre-built tangent basis.
    */
   ConstraintManifold(
-      const EqualityConstraints::shared_ptr constraints, const gtsam::Values &values,
+      const EqualityConstraints::shared_ptr constraints,
+      const gtsam::Values &values,
       const Params::shared_ptr &params = std::make_shared<Params>(),
       bool retract_init = true,
       std::optional<TspaceBasis::shared_ptr> basis = {})
@@ -92,11 +117,15 @@ class ConstraintManifold {
         dim_(embedding_dim_ > constraint_dim_ ? embedding_dim_ - constraint_dim_
                                               : 0),
         basis_(basis ? *basis
-                     : (dim_ == 0
-                            ? createFixedBasis(constraints_, values_)
-                            : params->basis_creator->create(constraints_, values_))) {}
+                     : (dim_ == 0 ? createFixedBasis(constraints_, values_)
+                                  : params->basis_creator->create(constraints_,
+                                                                  values_))) {}
 
-  /** constructor from other manifold but update the values. */
+  /**
+   * Construct from another manifold instance with updated values.
+   * @param other Source manifold providing structural data.
+   * @param values New values for variables in the component.
+   */
   ConstraintManifold(const ConstraintManifold &other, const Values &values)
       : params_(other.params_),
         constraints_(other.constraints_),
@@ -107,8 +136,12 @@ class ConstraintManifold {
         dim_(other.dim_),
         basis_(other.basis_->createWithNewValues(values_)) {}
 
-  /** Construct new ConstraintManifold with new values. Note: this function
-   * indirectly calls retractConstraints. */
+  /**
+   * Construct a new manifold with updated values.
+   * @param values New values for variables in the component.
+   * @return A new manifold instance with updated basis/retraction state.
+   * @note This indirectly calls `retractConstraints`.
+   */
   ConstraintManifold createWithNewValues(const gtsam::Values &values) const {
     return ConstraintManifold(*this, values);
   }
@@ -119,25 +152,49 @@ class ConstraintManifold {
   /// Base values of the CCC.
   inline const Values &values() const { return values_; }
 
-  /// Get base value with optional Jacobian.
+  /**
+   * Recover the value of a base variable.
+   * @param key Variable key in the connected component.
+   * @param H1 Optional Jacobian of recover operation w.r.t. manifold
+   * coordinates.
+   * @return Reference to the recovered base value.
+   */
   const gtsam::Value &recover(const gtsam::Key key,
                               ChartJacobian H1 = {}) const;
 
-  /// Get base value by type with optional Jacobian.
+  /**
+   * Recover the typed value of a base variable.
+   * @tparam ValueType Value type to cast to.
+   * @param key Variable key in the connected component.
+   * @param H1 Optional Jacobian of recover operation w.r.t. manifold
+   * coordinates.
+   * @return Reference to the recovered typed value.
+   */
   template <typename ValueType>
   inline const ValueType &recover(const gtsam::Key key,
                                   ChartJacobian H1 = {}) const {
     return recover(key, H1).cast<ValueType>();
   }
 
-  /** Retraction of the constraint manifold, e.g., retraction required for gtsam
-   * manifold type. Note: Jacobians are set as zero since they are not required
-   * for optimization. */
+  /**
+   * Retract this manifold element with a tangent update.
+   * @param xi Tangent-space coordinates.
+   * @param H1 Optional Jacobian w.r.t. current state (not implemented).
+   * @param H2 Optional Jacobian w.r.t. tangent update (not implemented).
+   * @return Retracted manifold element.
+   * @note Jacobians are not implemented and throw if requested.
+   */
   ConstraintManifold retract(const gtsam::Vector &xi, ChartJacobian H1 = {},
                              ChartJacobian H2 = {}) const;
 
-  /** LocalCoordinates of the constraint manifold, e.g., localCoordinates
-   * required for gtsam manifold type. */
+  /**
+   * Compute local coordinates from this manifold element to another.
+   * @param g Target manifold element.
+   * @param H1 Optional Jacobian w.r.t. this manifold element (not implemented).
+   * @param H2 Optional Jacobian w.r.t. target manifold element
+   * (not implemented).
+   * @return Tangent-space coordinates from `*this` to `g`.
+   */
   gtsam::Vector localCoordinates(const ConstraintManifold &g,
                                  ChartJacobian H1 = {},
                                  ChartJacobian H2 = {}) const;
@@ -145,7 +202,12 @@ class ConstraintManifold {
   /// print
   void print(const std::string &s = "") const;
 
-  /// equals
+  /**
+   * Check manifold equality by comparing base values.
+   * @param other Manifold to compare with.
+   * @param tol Absolute comparison tolerance.
+   * @return True if values are equal within tolerance.
+   */
   bool equals(const ConstraintManifold &other, double tol = 1e-8) const;
 
   /// Return the basis of the tangent space.
@@ -154,22 +216,27 @@ class ConstraintManifold {
   /// Return the retractor.
   const Retractor::shared_ptr &retractor() const { return retractor_; }
 
+  /// Return values projected onto the feasible set by LM on penalty graph.
   const Values feasibleValues() const;
 
  protected:
   static TspaceBasis::shared_ptr createFixedBasis(
-      const EqualityConstraints::shared_ptr& constraints,
-      const gtsam::Values& values) {
+      const EqualityConstraints::shared_ptr &constraints,
+      const gtsam::Values &values) {
     auto basis_params = std::make_shared<TspaceBasisParams>();
     basis_params->always_construct_basis = false;
-    return std::make_shared<OrthonormalBasis>(constraints, values, basis_params);
+    return std::make_shared<OrthonormalBasis>(constraints, values,
+                                              basis_params);
   }
 
-  /** Initialize the values_ of variables in CCC and compute dimension of the
-   * constraint manifold and compute the dimension of the constraint manifold.
+  /**
+   * Initialize values for the manifold state.
+   * @param values Candidate values of variables in the connected component.
+   * @param retractor Retraction object used for feasibility projection.
+   * @param retract_init If true, perform constraint retraction.
+   * @return Initialized values, optionally retracted to feasibility.
    */
-  static Values constructValues(
-                                const gtsam::Values &values,
+  static Values constructValues(const gtsam::Values &values,
                                 const Retractor::shared_ptr &retractor,
                                 bool retract_init);
 
@@ -189,21 +256,35 @@ class ConstraintManifold {
   }
 };
 
-// Specialize ConstraintManifold traits to use a Retract/Local
+/**
+ * Container of manifold values keyed by manifold variable keys.
+ *
+ * This utility wraps a map of `ConstraintManifold` objects and provides helper
+ * operations used during optimization, including flattening to base values and
+ * lifting deltas to base tangent vectors.
+ *
+ * @see README.md#constraint-manifold
+ * @see README.md#retraction
+ */
 class EManifoldValues : public std::map<Key, ConstraintManifold> {
-public:
- using base = std::map<Key, ConstraintManifold>;
- using base::base;
+ public:
+  using base = std::map<Key, ConstraintManifold>;
+  using base::base;
 
- Values baseValues() const;
+  /// Collect all base variables from manifold values.
+  Values baseValues() const;
 
- KeyVector keys() const;
+  /// Return keys of manifold variables.
+  KeyVector keys() const;
 
- VectorValues computeTangentVector(const VectorValues& delta) const;
+  /// Lift per-manifold delta vectors to base tangent vectors.
+  VectorValues computeTangentVector(const VectorValues &delta) const;
 
- EManifoldValues retract(const VectorValues& delta) const;
+  /// Retract each manifold value by the corresponding update in `delta`.
+  EManifoldValues retract(const VectorValues &delta) const;
 
- std::map<Key, size_t> dims() const;
+  /// Return manifold dimensions keyed by manifold variable.
+  std::map<Key, size_t> dims() const;
 };
 
 }  // namespace gtdynamics
