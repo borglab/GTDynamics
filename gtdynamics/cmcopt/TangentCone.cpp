@@ -14,9 +14,10 @@
 #include <gtdynamics/cmcopt/TangentCone.h>
 #include <gtdynamics/optimizer/ConvexIQPSolver.h>
 
-using namespace gtdynamics;
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /* ************************************************************************* */
 std::pair<IndexSet, Vector> TangentCone::project(const Vector &xi) const {
@@ -44,4 +45,4 @@ std::pair<IndexSet, Vector> TangentCone::project(const Vector &xi) const {
   return {active_indices, values.at(x_key)};
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

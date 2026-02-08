@@ -1,6 +1,8 @@
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 /* ************************************************************************* */
 Values IEManifoldValues::baseValues() const {
   Values values;
@@ -34,4 +36,4 @@ IEManifoldValues IEManifoldValues::moveToBoundaries(
   return new_manifolds;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

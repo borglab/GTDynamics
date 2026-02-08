@@ -6,7 +6,9 @@
 
 using std::cout, std::setw, std::setprecision, std::endl;
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /* ************************************************************************* */
 /* <============================ IELMState ================================> */
@@ -145,7 +147,7 @@ IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
   Values base_values = baseValues();
   auto linear_graph = graph.linearize(base_values);
   auto hessian_diag = linear_graph->hessianDiagonal();
-  // hessian_diag.print("hessian diag:", gtdynamics::GTDKeyFormatter);
+  // hessian_diag.print("hessian diag:", GTDKeyFormatter);
   VectorValues metric_sigmas;
   for (auto &[key, value] : hessian_diag) {
     Vector sigmas_sqr_inv = hessian_diag.at(key);
@@ -163,7 +165,7 @@ IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
     metric_sigmas.insert(key, sigmas);
   }
   metric_sigmas = 10 * metric_sigmas;
-  // metric_sigmas.print("metric sigmas:", gtdynamics::GTDKeyFormatter);
+  // metric_sigmas.print("metric sigmas:", GTDKeyFormatter);
 
   return metric_sigmas;
 }
@@ -460,7 +462,7 @@ void PrintIELMTrial(const IELMState &state, const IELMTrial &trial,
     if (params.show_active_constraints) {
       cout << ConstraintInfoStr(
           state.manifolds, linear_update.blocking_indices_map,
-          nonlinear_update.new_manifolds, gtdynamics::GTDKeyFormatter,
+          nonlinear_update.new_manifolds, GTDKeyFormatter,
           trial.step_is_successful,
           params.active_constraints_group_as_categories);
     }
@@ -736,9 +738,9 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
   // for (const auto &[key, v] : zero_vec) {
   //   zero_vec_kv.push_back(key);
   // }
-  // PrintKeyVector(zero_vec_kv, "zero_vec", gtdynamics::GTDKeyFormatter);
+  // PrintKeyVector(zero_vec_kv, "zero_vec", GTDKeyFormatter);
   // PrintKeySet(state.base_linear->keys(), "graph",
-  // gtdynamics::GTDKeyFormatter);
+  // GTDKeyFormatter);
   double base_linear_error = state.base_linear->error(zero_vec);
   double base_linear_error_retract = state.base_linear->error(retract_delta);
   linear_cost_change_with_retract_delta =
@@ -836,4 +838,4 @@ void IELMItersDetails::exportFile(const std::string &state_file_path,
   trial_file.close();
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

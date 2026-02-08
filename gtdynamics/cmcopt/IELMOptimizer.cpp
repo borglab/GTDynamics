@@ -23,7 +23,9 @@
 
 using namespace std;
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /* ************************************************************************* */
 Values IELMOptimizer::optimizeManifolds(
@@ -234,4 +236,4 @@ bool IELMOptimizer::checkConvergence(const IELMState &prev_state,
   return converged;
 }
 
-} /* namespace gtsam */
+} /* namespace gtdynamics */

@@ -19,9 +19,11 @@
 #pragma once
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
-#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtsam/constrained/ConstrainedOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 struct IELMParams {
   IELMParams() {}
@@ -91,4 +93,4 @@ public:
                        IELMIterDetails &current_iter_details) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

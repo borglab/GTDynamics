@@ -13,10 +13,12 @@
 
 #pragma once
 
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtdynamics/constraints/LinearInequalityConstraint.h>
 #include <gtdynamics/optimizer/QPSolver.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /** A hyper cone that represents the space defined by A*x >= 0. */
 class TangentCone {
@@ -24,10 +26,10 @@ public:
   typedef std::shared_ptr<TangentCone> shared_ptr;
 
 protected:
-  gtsam::LinearInequalityConstraints constraints_;
+  LinearInequalityConstraints constraints_;
 
 public:
-  TangentCone(gtsam::LinearInequalityConstraints& constraints)
+  TangentCone(LinearInequalityConstraints& constraints)
       :constraints_(constraints) {}
 
   /** Project the vector xi into cone, by solving the convex IQP problem:
@@ -38,4 +40,4 @@ public:
   std::pair<IndexSet, Vector> project(const Vector &xi) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

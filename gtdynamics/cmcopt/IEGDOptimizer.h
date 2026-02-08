@@ -16,13 +16,15 @@
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
-#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtsam/constrained/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 struct IEGDState;
 struct IEGDTrial;
@@ -137,9 +139,9 @@ public:
 
   // IEManifoldValues lineSearch(const NonlinearFactorGraph &graph,
   //                             const IEManifoldValues &manifolds,
-  //                             const gtsam::VectorValues &proj_dir,
-  //                             const gtsam::VectorValues &descent_dir,
-  //                             gtsam::VectorValues &delta) const;
+  //                             const VectorValues &proj_dir,
+  //                             const VectorValues &descent_dir,
+  //                             VectorValues &delta) const;
 
   virtual Values
   optimizeManifolds(const NonlinearFactorGraph &graph,
@@ -178,4 +180,4 @@ public:
                         const IEGDState &state) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -16,13 +16,15 @@
 
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
-#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtsam/constrained/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 class IEOptimizer {
 protected:
@@ -36,9 +38,9 @@ public:
 
   virtual Values optimize(
       const NonlinearFactorGraph &graph,
-      const gtsam::EqualityConstraints &e_constraints,
-      const gtsam::InequalityConstraints &i_constraints,
-      const gtsam::Values &initial_values) const {
+      const EqualityConstraints &e_constraints,
+      const InequalityConstraints &i_constraints,
+      const Values &initial_values) const {
     auto manifolds = IdentifyManifolds(e_constraints, i_constraints,
                                        initial_values, iecm_params_);
     Values unconstrained_values = IdentifyUnconstrainedValues(
@@ -55,15 +57,15 @@ public:
   Var2ManifoldKeyMap(const IEManifoldValues &manifolds);
 
   static IEManifoldValues IdentifyManifolds(
-      const gtsam::EqualityConstraints &e_constraints,
-      const gtsam::InequalityConstraints &i_constraints,
-      const gtsam::Values &values,
+      const EqualityConstraints &e_constraints,
+      const InequalityConstraints &i_constraints,
+      const Values &values,
       const IEConstraintManifold::Params::shared_ptr &iecm_params);
 
   static Values IdentifyUnconstrainedValues(
-      const gtsam::EqualityConstraints &e_constraints,
-      const gtsam::InequalityConstraints &i_constraints,
-      const gtsam::Values &values);
+      const EqualityConstraints &e_constraints,
+      const InequalityConstraints &i_constraints,
+      const Values &values);
 
   static VectorValues ComputeTangentVector(const IEManifoldValues &manifolds,
                                            const VectorValues &delta);
@@ -207,4 +209,4 @@ public:
   }
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

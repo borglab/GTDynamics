@@ -18,9 +18,10 @@
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-using namespace gtdynamics;
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /* ************************************************************************* */
 IEConstraintManifold
@@ -81,8 +82,8 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   params_->addPriors(new_values, prior_keys, prior_graph);
 
   // i and e constraints
-  gtsam::InequalityConstraints i_constraints = *manifold->iConstraints();
-  gtsam::EqualityConstraints e_constraints = *manifold->eConstraints();
+  InequalityConstraints i_constraints = *manifold->iConstraints();
+  EqualityConstraints e_constraints = *manifold->eConstraints();
   if (blocking_indices) {
     for (const auto &idx : *blocking_indices) {
       const auto &constraint = i_constraints.at(idx);
@@ -109,7 +110,7 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   }
 
   // final optimization without priors to make strictly feasible solution
-  gtsam::EqualityConstraints active_constraints =
+  EqualityConstraints active_constraints =
       *manifold->eConstraints();
   for (const auto &constraint_idx : active_indices) {
     active_constraints.push_back(
@@ -339,4 +340,4 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   return manifold->createWithNewValues(known_values, active_indices);
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

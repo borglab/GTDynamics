@@ -15,14 +15,15 @@
 
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/cmopt/MultiJacobian.h>
-#include <gtdynamics/constrained_optimizer/PenaltyOptimizer.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtsam/constrained/PenaltyOptimizer.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 class IEConstraintManifold;
 
@@ -37,8 +38,8 @@ struct IERetractorParams {
   bool check_feasible = true;
   double feasible_threshold = 1e-3;
   bool ensure_feasible = false;
-  gtsam::PenaltyParameters::shared_ptr penalty_params =
-      std::make_shared<gtsam::PenaltyParameters>();
+  PenaltyParameters::shared_ptr penalty_params =
+      std::make_shared<PenaltyParameters>();
 
   IERetractorParams() = default;
 
@@ -85,7 +86,7 @@ class IERetractor {
 
 protected:
   IERetractorParams::shared_ptr params_;
-  gtsam::PenaltyOptimizer penalty_optimizer_;
+  PenaltyOptimizer penalty_optimizer_;
 
 public:
   using shared_ptr = std::shared_ptr<IERetractor>;
@@ -224,4 +225,4 @@ public:
   virtual ~BarrierRetractorCreator() {}
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

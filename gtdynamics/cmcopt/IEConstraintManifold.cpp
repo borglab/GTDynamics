@@ -1,6 +1,8 @@
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /* ************************************************************************* */
 std::pair<IndexSet, Vector>
@@ -84,7 +86,7 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
   }
 
   // TODO: construct e-basis using createWithAdditionalConstraints
-  gtsam::EqualityConstraints new_active_constraints;
+  EqualityConstraints new_active_constraints;
   for (const auto &idx : active_indices) {
     new_active_constraints.emplace_back(
         i_constraints_->at(idx)->createEqualityConstraint());
@@ -101,7 +103,7 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
 
 /* ************************************************************************* */
 IndexSet IEConstraintManifold::IdentifyActiveConstraints(
-    const gtsam::InequalityConstraints &i_constraints,
+    const InequalityConstraints &i_constraints,
     const Values &values, const std::optional<IndexSet> &active_indices) {
   if (active_indices) {
     for (const auto &i : *active_indices) {
@@ -124,11 +126,11 @@ IndexSet IEConstraintManifold::IdentifyActiveConstraints(
 
 /* ************************************************************************* */
 TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
-    const gtsam::InequalityConstraints &i_constraints,
+    const InequalityConstraints &i_constraints,
     const Values &values, const IndexSet &active_indices,
     const TspaceBasis::shared_ptr &t_basis) {
 
-  gtsam::LinearInequalityConstraints constraints;
+  LinearInequalityConstraints constraints;
   for (const auto &constraint_idx : active_indices) {
     auto i_constraint = i_constraints.at(constraint_idx);
     auto jacobians = i_constraint->jacobians(values);
@@ -140,7 +142,7 @@ TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
     auto jacobian_factor = std::make_shared<JacobianFactor>(
         1, man_jacobian, Vector::Zero(i_constraint->dim()),
         noise_model);
-    constraints.emplace_shared<gtsam::JacobianLinearInequalityConstraint>(
+    constraints.emplace_shared<JacobianLinearInequalityConstraint>(
             jacobian_factor);
   }
 
@@ -149,11 +151,11 @@ TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
 }
 
 /* ************************************************************************* */
-gtsam::LinearIConstraintMap
+LinearIConstraintMap
 IEConstraintManifold::linearActiveManIConstraints(
     const Key manifold_key) const {
 
-  gtsam::LinearIConstraintMap active_constraints;
+  LinearIConstraintMap active_constraints;
 
   for (const auto &constraint_idx : active_indices_) {
     auto i_constraint = i_constraints_->at(constraint_idx);
@@ -167,7 +169,7 @@ IEConstraintManifold::linearActiveManIConstraints(
         manifold_key, man_jacobian, Vector::Zero(i_constraint->dim()),
         noise_model);
     auto linear_constraint =
-        std::make_shared<gtsam::JacobianLinearInequalityConstraint>(
+        std::make_shared<JacobianLinearInequalityConstraint>(
             jacobian_factor);
     active_constraints.insert({constraint_idx, linear_constraint});
   }
@@ -176,9 +178,9 @@ IEConstraintManifold::linearActiveManIConstraints(
 }
 
 /* ************************************************************************* */
-gtsam::LinearIConstraintMap
+LinearIConstraintMap
 IEConstraintManifold::linearActiveBaseIConstraints() const {
-  gtsam::LinearIConstraintMap active_constraints;
+  LinearIConstraintMap active_constraints;
 
   for (const auto &constraint_idx : active_indices_) {
     auto i_constraint = i_constraints_->at(constraint_idx);
@@ -187,7 +189,7 @@ IEConstraintManifold::linearActiveBaseIConstraints() const {
     auto jacobian_factor = std::make_shared<JacobianFactor>(
         jacobians, Vector::Zero(i_constraint->dim()), noise_model);
     auto linear_constraint =
-        std::make_shared<gtsam::JacobianLinearInequalityConstraint>(
+        std::make_shared<JacobianLinearInequalityConstraint>(
             jacobian_factor);
     active_constraints.insert({constraint_idx, linear_constraint});
   }
@@ -195,4 +197,4 @@ IEConstraintManifold::linearActiveBaseIConstraints() const {
   return active_constraints;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

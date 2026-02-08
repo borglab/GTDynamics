@@ -19,10 +19,12 @@
 
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
-#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
+#include <gtsam/constrained/ConstrainedOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 struct IELMState;
 struct IELMTrial;
@@ -44,9 +46,9 @@ public:
   IndexSetMap grad_blocking_indices_map; // blocking indices map by neg grad
   GaussianFactorGraph::shared_ptr base_linear;
   GaussianFactorGraph::shared_ptr linear_manifold_graph;
-  gtsam::LinearInequalityConstraints linear_base_i_constraints;
-  gtsam::LinearInequalityConstraints linear_manifold_i_constraints;
-  gtsam::IndexSetMapTranslator lic_index_translator;
+  LinearInequalityConstraints linear_base_i_constraints;
+  LinearInequalityConstraints linear_manifold_i_constraints;
+  IndexSetMapTranslator lic_index_translator;
 
   /// Default constructor.
   IELMState() {}
@@ -243,7 +245,7 @@ void PrintIELMTrialTitle();
 void PrintIELMTrial(
     const IELMState &state, const IELMTrial &trial, const IELMParams &params,
     bool forced = false,
-    const KeyFormatter &key_formatter = gtdynamics::GTDKeyFormatter);
+    const KeyFormatter &key_formatter = GTDKeyFormatter);
 
 struct IELMIterDetails {
   IELMState state;
@@ -261,4 +263,4 @@ public:
                   const std::string &trial_file_path) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

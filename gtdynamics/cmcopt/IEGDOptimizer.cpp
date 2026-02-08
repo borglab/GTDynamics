@@ -14,7 +14,9 @@
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 
 using std::cout, std::setw, std::setprecision, std::endl;
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /* ************************************************************************* */
 IEGDState IEGDState::FromLastIteration(const IEGDIterDetails &iter_details,
@@ -131,8 +133,8 @@ void IEGDTrial::print(const IEGDState &state) const {
 // /* *************************************************************************
 // */ IEManifoldValues IEGDOptimizer::lineSearch(
 //     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
-//     const gtsam::VectorValues &proj_dir, const gtsam::VectorValues
-//     &descent_dir, gtsam::VectorValues &delta) const {
+//     const VectorValues &proj_dir, const VectorValues
+//     &descent_dir, VectorValues &delta) const {
 //   double alpha = 0.2;
 //   double beta = 0.5;
 //   double t = 1;
@@ -381,4 +383,4 @@ bool IEGDOptimizer::checkConvergence(const IEGDState &prev_state,
   return converged;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -15,7 +15,9 @@
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <stack>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 /* ************************************************************************* */
 std::map<Key, Key>
@@ -37,16 +39,16 @@ struct ComponentInfo {
 
 /* ************************************************************************* */
 ComponentInfo IdentifyConnectedComponent(
-    const gtsam::EqualityConstraints &e_constraints,
-    const gtsam::InequalityConstraints &i_constraints,
-    const gtsam::VariableIndex &e_var_index,
-    const gtsam::VariableIndex &i_var_index, const gtsam::Key start_key) {
+    const EqualityConstraints &e_constraints,
+    const InequalityConstraints &i_constraints,
+    const VariableIndex &e_var_index,
+    const VariableIndex &i_var_index, const Key start_key) {
   ComponentInfo component_info;
 
-  std::stack<gtsam::Key> key_stack;
+  std::stack<Key> key_stack;
   key_stack.push(start_key);
   while (!key_stack.empty()) {
-    gtsam::Key key = key_stack.top();
+    Key key = key_stack.top();
     key_stack.pop();
     // find all constraints connected to key
     if (e_var_index.find(key) != e_var_index.end()) {
@@ -78,21 +80,21 @@ ComponentInfo IdentifyConnectedComponent(
 }
 
 /* ************************************************************************* */
-std::vector<std::pair<gtsam::EqualityConstraints::shared_ptr,
-                      gtsam::InequalityConstraints::shared_ptr>>
+std::vector<std::pair<EqualityConstraints::shared_ptr,
+                      InequalityConstraints::shared_ptr>>
 IdentifyConnectedComponents(
-    const gtsam::EqualityConstraints &e_constraints,
-    const gtsam::InequalityConstraints &i_constraints) {
+    const EqualityConstraints &e_constraints,
+    const InequalityConstraints &i_constraints) {
 
-  gtsam::VariableIndex e_var_index = e_constraints.varIndex();
-  gtsam::VariableIndex i_var_index = i_constraints.varIndex();
+  VariableIndex e_var_index = e_constraints.varIndex();
+  VariableIndex i_var_index = i_constraints.varIndex();
 
   // Get all the keys in constraints.
   KeySet keys = e_constraints.keys();
   keys.merge(i_constraints.keys());
 
-  std::vector<std::pair<gtsam::EqualityConstraints::shared_ptr,
-                        gtsam::InequalityConstraints::shared_ptr>>
+  std::vector<std::pair<EqualityConstraints::shared_ptr,
+                        InequalityConstraints::shared_ptr>>
       components;
   while (!keys.empty()) {
     auto component_info = IdentifyConnectedComponent(
@@ -103,13 +105,13 @@ IdentifyConnectedComponents(
 
     // e_constraints
     auto component_e_constraints =
-        std::make_shared<gtsam::EqualityConstraints>();
+        std::make_shared<EqualityConstraints>();
     for (const auto &idx : component_info.e_indices) {
       component_e_constraints->emplace_back(e_constraints.at(idx));
     }
     // i_constraints
     auto component_i_constraints =
-        std::make_shared<gtsam::InequalityConstraints>();
+        std::make_shared<InequalityConstraints>();
     for (const auto &idx : component_info.i_indices) {
       component_i_constraints->emplace_back(i_constraints.at(idx));
     }
@@ -121,9 +123,9 @@ IdentifyConnectedComponents(
 
 /* ************************************************************************* */
 IEManifoldValues IEOptimizer::IdentifyManifolds(
-    const gtsam::EqualityConstraints &e_constraints,
-    const gtsam::InequalityConstraints &i_constraints,
-    const gtsam::Values &values,
+    const EqualityConstraints &e_constraints,
+    const InequalityConstraints &i_constraints,
+    const Values &values,
     const IEConstraintManifold::Params::shared_ptr &iecm_params) {
   // find connected components by equality constraints
   auto components = IdentifyConnectedComponents(e_constraints, i_constraints);
@@ -147,9 +149,9 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
 
 /* ************************************************************************* */
 Values IEOptimizer::IdentifyUnconstrainedValues(
-      const gtsam::EqualityConstraints &e_constraints,
-      const gtsam::InequalityConstraints &i_constraints,
-      const gtsam::Values &values) {
+      const EqualityConstraints &e_constraints,
+      const InequalityConstraints &i_constraints,
+      const Values &values) {
   Values unconstrained_values;
   KeySet constrained_keys = e_constraints.keys();
   constrained_keys.merge(i_constraints.keys());
@@ -343,4 +345,4 @@ std::string IEOptimizer::IndicesStr(const IEManifoldValues &manifolds,
   return str;
 }
 
-} // namespace gtsam
+} // namespace gtdynamics

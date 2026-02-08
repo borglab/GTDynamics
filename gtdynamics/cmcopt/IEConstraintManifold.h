@@ -18,7 +18,9 @@
 #include <gtdynamics/cmcopt/TangentCone.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 
-namespace gtsam {
+namespace gtdynamics {
+using namespace gtsam;
+
 
 class IEConstraintManifold {
 public:
@@ -38,9 +40,9 @@ public:
 
 protected:
   Params::shared_ptr params_;
-  gtsam::EqualityConstraints::shared_ptr e_constraints_;
-  gtsam::InequalityConstraints::shared_ptr i_constraints_;
-  gtsam::Values values_;    // values of variables in CCC
+  EqualityConstraints::shared_ptr e_constraints_;
+  InequalityConstraints::shared_ptr i_constraints_;
+  Values values_;    // values of variables in CCC
   IndexSet active_indices_; // indices of active i_constraints
   size_t embedding_dim_;
   size_t e_constraints_dim_;
@@ -52,8 +54,8 @@ protected:
 public:
   IEConstraintManifold(
       const Params::shared_ptr &params,
-      const gtsam::EqualityConstraints::shared_ptr &e_constraints,
-      const gtsam::InequalityConstraints::shared_ptr &i_constraints,
+      const EqualityConstraints::shared_ptr &e_constraints,
+      const InequalityConstraints::shared_ptr &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {})
       : params_(params), e_constraints_(e_constraints),
         i_constraints_(i_constraints), values_(values),
@@ -99,7 +101,7 @@ public:
 
   const IERetractor::shared_ptr &retractor() const { return retractor_; }
 
-  const gtsam::InequalityConstraints::shared_ptr &iConstraints() const {
+  const InequalityConstraints::shared_ptr &iConstraints() const {
     return i_constraints_;
   }
 
@@ -152,16 +154,16 @@ public:
   }
 
   /// Linearized active i-constraints w.r.t. the manifold variable.
-  gtsam::LinearIConstraintMap
+  LinearIConstraintMap
   linearActiveManIConstraints(const Key manifold_key) const;
 
   /// Linearized active i-constraints w.r.t. base variables.
-  gtsam::LinearIConstraintMap linearActiveBaseIConstraints() const;
+  LinearIConstraintMap linearActiveBaseIConstraints() const;
 
 protected:
   /// Identify the current active inequality constraints.
   static IndexSet IdentifyActiveConstraints(
-      const gtsam::InequalityConstraints &i_constraints,
+      const InequalityConstraints &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {});
 
   /** Construct the tangent cone with the following steps:
@@ -170,7 +172,7 @@ protected:
    * 3) use jacobian matrix to construct tangent cone
    */
   static TangentCone::shared_ptr
-  ConstructTangentCone(const gtsam::InequalityConstraints &i_constraints,
+  ConstructTangentCone(const InequalityConstraints &i_constraints,
                        const Values &values, const IndexSet &active_indices,
                        const TspaceBasis::shared_ptr &t_basis);
 };
@@ -192,4 +194,4 @@ public:
   // EManifoldValues retract(const VectorValues &delta) const;
 };
 
-} // namespace gtsam
+} // namespace gtdynamics
