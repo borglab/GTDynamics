@@ -40,8 +40,8 @@ public:
 
 protected:
   Params::shared_ptr params_;
-  EqualityConstraints::shared_ptr e_constraints_;
-  InequalityConstraints::shared_ptr i_constraints_;
+  NonlinearEqualityConstraints::shared_ptr e_constraints_;
+  NonlinearInequalityConstraints::shared_ptr i_constraints_;
   Values values_;    // values of variables in CCC
   IndexSet active_indices_; // indices of active i_constraints
   size_t embedding_dim_;
@@ -54,8 +54,8 @@ protected:
 public:
   IEConstraintManifold(
       const Params::shared_ptr &params,
-      const EqualityConstraints::shared_ptr &e_constraints,
-      const InequalityConstraints::shared_ptr &i_constraints,
+      const NonlinearEqualityConstraints::shared_ptr &e_constraints,
+      const NonlinearInequalityConstraints::shared_ptr &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {})
       : params_(params), e_constraints_(e_constraints),
         i_constraints_(i_constraints), values_(values),
@@ -101,11 +101,11 @@ public:
 
   const IERetractor::shared_ptr &retractor() const { return retractor_; }
 
-  const InequalityConstraints::shared_ptr &iConstraints() const {
+  const NonlinearInequalityConstraints::shared_ptr &iConstraints() const {
     return i_constraints_;
   }
 
-  const EqualityConstraints::shared_ptr &eConstraints() const {
+  const NonlinearEqualityConstraints::shared_ptr &eConstraints() const {
     return e_constraints_;
   }
 
@@ -163,7 +163,7 @@ public:
 protected:
   /// Identify the current active inequality constraints.
   static IndexSet IdentifyActiveConstraints(
-      const InequalityConstraints &i_constraints,
+      const NonlinearInequalityConstraints &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {});
 
   /** Construct the tangent cone with the following steps:
@@ -172,7 +172,7 @@ protected:
    * 3) use jacobian matrix to construct tangent cone
    */
   static TangentCone::shared_ptr
-  ConstructTangentCone(const InequalityConstraints &i_constraints,
+  ConstructTangentCone(const NonlinearInequalityConstraints &i_constraints,
                        const Values &values, const IndexSet &active_indices,
                        const TspaceBasis::shared_ptr &t_basis);
 };

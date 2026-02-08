@@ -38,7 +38,7 @@ BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
                                  const IndexSet &blocking_indices,
                                  IERetractInfo *retract_info) const {
 
-  EqualityConstraints blocking_constraints;
+  NonlinearEqualityConstraints blocking_constraints;
   for (const auto &blocking_idx : blocking_indices) {
     blocking_constraints.push_back(
         manifold->iConstraints()->at(blocking_idx)->createEqualityConstraint());
@@ -82,8 +82,8 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   params_->addPriors(new_values, prior_keys, prior_graph);
 
   // i and e constraints
-  InequalityConstraints i_constraints = *manifold->iConstraints();
-  EqualityConstraints e_constraints = *manifold->eConstraints();
+  NonlinearInequalityConstraints i_constraints = *manifold->iConstraints();
+  NonlinearEqualityConstraints e_constraints = *manifold->eConstraints();
   if (blocking_indices) {
     for (const auto &idx : *blocking_indices) {
       const auto &constraint = i_constraints.at(idx);
@@ -110,7 +110,7 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   }
 
   // final optimization without priors to make strictly feasible solution
-  EqualityConstraints active_constraints =
+  NonlinearEqualityConstraints active_constraints =
       *manifold->eConstraints();
   for (const auto &constraint_idx : active_indices) {
     active_constraints.push_back(
@@ -217,7 +217,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   IndexSet active_indices;
   const Values &values = manifold->values();
   Values new_values = values.retract(delta);
-  const InequalityConstraints &i_constraints = *manifold->iConstraints();
+  const NonlinearInequalityConstraints &i_constraints = *manifold->iConstraints();
   bool failed = false;
 
   // solve q level with priors

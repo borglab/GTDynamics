@@ -39,8 +39,8 @@ struct ComponentInfo {
 
 /* ************************************************************************* */
 ComponentInfo IdentifyConnectedComponent(
-    const EqualityConstraints &e_constraints,
-    const InequalityConstraints &i_constraints,
+    const NonlinearEqualityConstraints &e_constraints,
+    const NonlinearInequalityConstraints &i_constraints,
     const VariableIndex &e_var_index,
     const VariableIndex &i_var_index, const Key start_key) {
   ComponentInfo component_info;
@@ -80,11 +80,11 @@ ComponentInfo IdentifyConnectedComponent(
 }
 
 /* ************************************************************************* */
-std::vector<std::pair<EqualityConstraints::shared_ptr,
-                      InequalityConstraints::shared_ptr>>
+std::vector<std::pair<NonlinearEqualityConstraints::shared_ptr,
+                      NonlinearInequalityConstraints::shared_ptr>>
 IdentifyConnectedComponents(
-    const EqualityConstraints &e_constraints,
-    const InequalityConstraints &i_constraints) {
+    const NonlinearEqualityConstraints &e_constraints,
+    const NonlinearInequalityConstraints &i_constraints) {
 
   VariableIndex e_var_index = e_constraints.varIndex();
   VariableIndex i_var_index = i_constraints.varIndex();
@@ -93,8 +93,8 @@ IdentifyConnectedComponents(
   KeySet keys = e_constraints.keys();
   keys.merge(i_constraints.keys());
 
-  std::vector<std::pair<EqualityConstraints::shared_ptr,
-                        InequalityConstraints::shared_ptr>>
+  std::vector<std::pair<NonlinearEqualityConstraints::shared_ptr,
+                        NonlinearInequalityConstraints::shared_ptr>>
       components;
   while (!keys.empty()) {
     auto component_info = IdentifyConnectedComponent(
@@ -105,13 +105,13 @@ IdentifyConnectedComponents(
 
     // e_constraints
     auto component_e_constraints =
-        std::make_shared<EqualityConstraints>();
+        std::make_shared<NonlinearEqualityConstraints>();
     for (const auto &idx : component_info.e_indices) {
       component_e_constraints->emplace_back(e_constraints.at(idx));
     }
     // i_constraints
     auto component_i_constraints =
-        std::make_shared<InequalityConstraints>();
+        std::make_shared<NonlinearInequalityConstraints>();
     for (const auto &idx : component_info.i_indices) {
       component_i_constraints->emplace_back(i_constraints.at(idx));
     }
@@ -123,8 +123,8 @@ IdentifyConnectedComponents(
 
 /* ************************************************************************* */
 IEManifoldValues IEOptimizer::IdentifyManifolds(
-    const EqualityConstraints &e_constraints,
-    const InequalityConstraints &i_constraints,
+    const NonlinearEqualityConstraints &e_constraints,
+    const NonlinearInequalityConstraints &i_constraints,
     const Values &values,
     const IEConstraintManifold::Params::shared_ptr &iecm_params) {
   // find connected components by equality constraints
@@ -149,8 +149,8 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
 
 /* ************************************************************************* */
 Values IEOptimizer::IdentifyUnconstrainedValues(
-      const EqualityConstraints &e_constraints,
-      const InequalityConstraints &i_constraints,
+      const NonlinearEqualityConstraints &e_constraints,
+      const NonlinearInequalityConstraints &i_constraints,
       const Values &values) {
   Values unconstrained_values;
   KeySet constrained_keys = e_constraints.keys();

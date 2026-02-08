@@ -38,8 +38,8 @@ public:
 
   virtual Values optimize(
       const NonlinearFactorGraph &graph,
-      const EqualityConstraints &e_constraints,
-      const InequalityConstraints &i_constraints,
+      const NonlinearEqualityConstraints &e_constraints,
+      const NonlinearInequalityConstraints &i_constraints,
       const Values &initial_values) const {
     auto manifolds = IdentifyManifolds(e_constraints, i_constraints,
                                        initial_values, iecm_params_);
@@ -57,14 +57,14 @@ public:
   Var2ManifoldKeyMap(const IEManifoldValues &manifolds);
 
   static IEManifoldValues IdentifyManifolds(
-      const EqualityConstraints &e_constraints,
-      const InequalityConstraints &i_constraints,
+      const NonlinearEqualityConstraints &e_constraints,
+      const NonlinearInequalityConstraints &i_constraints,
       const Values &values,
       const IEConstraintManifold::Params::shared_ptr &iecm_params);
 
   static Values IdentifyUnconstrainedValues(
-      const EqualityConstraints &e_constraints,
-      const InequalityConstraints &i_constraints,
+      const NonlinearEqualityConstraints &e_constraints,
+      const NonlinearInequalityConstraints &i_constraints,
       const Values &values);
 
   static VectorValues ComputeTangentVector(const IEManifoldValues &manifolds,

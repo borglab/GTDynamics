@@ -86,13 +86,13 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
   }
 
   // TODO: construct e-basis using createWithAdditionalConstraints
-  EqualityConstraints new_active_constraints;
+  NonlinearEqualityConstraints new_active_constraints;
   for (const auto &idx : active_indices) {
     new_active_constraints.emplace_back(
         i_constraints_->at(idx)->createEqualityConstraint());
   }
   auto active_constraints =
-      std::make_shared<EqualityConstraints>(*e_constraints_);
+      std::make_shared<NonlinearEqualityConstraints>(*e_constraints_);
   active_constraints->add(new_active_constraints);
 
   auto new_basis = e_basis_->createWithAdditionalConstraints(
@@ -103,7 +103,7 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
 
 /* ************************************************************************* */
 IndexSet IEConstraintManifold::IdentifyActiveConstraints(
-    const InequalityConstraints &i_constraints,
+    const NonlinearInequalityConstraints &i_constraints,
     const Values &values, const std::optional<IndexSet> &active_indices) {
   if (active_indices) {
     for (const auto &i : *active_indices) {
@@ -126,7 +126,7 @@ IndexSet IEConstraintManifold::IdentifyActiveConstraints(
 
 /* ************************************************************************* */
 TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
-    const InequalityConstraints &i_constraints,
+    const NonlinearInequalityConstraints &i_constraints,
     const Values &values, const IndexSet &active_indices,
     const TspaceBasis::shared_ptr &t_basis) {
 

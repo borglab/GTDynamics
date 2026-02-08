@@ -32,7 +32,7 @@ using gtsam::Values;
 using gtsam::VariableIndex;
 using gtsam::VectorValues;
 
-using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
+using gtsam::NonlinearEqualityConstraints;
 
 /**
  * Transformed manifold optimization problem data.
@@ -45,7 +45,7 @@ using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
  */
 struct ManifoldOptProblem {
   NonlinearFactorGraph graph_;  // cost function on constraint manifolds
-  std::vector<EqualityConstraints::shared_ptr>
+  std::vector<NonlinearEqualityConstraints::shared_ptr>
       components_;  // All the constraint-connected components
   Values
       values_;  // values for constraint manifolds and unconstrained variables
@@ -130,13 +130,13 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @param var_index Variable index over constraints.
    * @return Constraint subset corresponding to the connected component.
    */
-  static EqualityConstraints::shared_ptr IdentifyConnectedComponent(
-      const EqualityConstraints &constraints, const Key start_key, KeySet &keys,
+  static NonlinearEqualityConstraints::shared_ptr IdentifyConnectedComponent(
+      const NonlinearEqualityConstraints &constraints, const Key start_key, KeySet &keys,
       const VariableIndex &var_index);
 
   /// Identify the connected components by constraints.
-  static std::vector<EqualityConstraints::shared_ptr>
-  IdentifyConnectedComponents(const EqualityConstraints &constraints);
+  static std::vector<NonlinearEqualityConstraints::shared_ptr>
+  IdentifyConnectedComponents(const NonlinearEqualityConstraints &constraints);
 
   /**
    * Create equivalent cost graph on manifold variables.
@@ -203,7 +203,7 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @return Initialized manifold optimization problem.
    */
   ManifoldOptProblem initializeMoptProblem(
-      const NonlinearFactorGraph &costs, const EqualityConstraints &constraints,
+      const NonlinearFactorGraph &costs, const NonlinearEqualityConstraints &constraints,
       const Values &init_values) const;
 
   /**

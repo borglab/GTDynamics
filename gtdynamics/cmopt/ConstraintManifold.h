@@ -38,7 +38,7 @@ using gtsam::Values;
 using gtsam::Vector;
 using gtsam::VectorValues;
 
-using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
+using gtsam::NonlinearEqualityConstraints;
 
 /**
  * Manifold for one constraint-connected component (CCC).
@@ -80,7 +80,7 @@ class ConstraintManifold {
 
  protected:
   Params::shared_ptr params_;
-  EqualityConstraints::shared_ptr constraints_;
+  NonlinearEqualityConstraints::shared_ptr constraints_;
   Retractor::shared_ptr retractor_;  // retraction operation
   gtsam::Values values_;             // values of variables in CCC
   size_t embedding_dim_;             // dimension of embedding space
@@ -103,7 +103,7 @@ class ConstraintManifold {
    * @param basis Optional pre-built tangent basis.
    */
   ConstraintManifold(
-      const EqualityConstraints::shared_ptr constraints,
+      const NonlinearEqualityConstraints::shared_ptr constraints,
       const gtsam::Values &values,
       const Params::shared_ptr &params = std::make_shared<Params>(),
       bool retract_init = true,
@@ -221,7 +221,7 @@ class ConstraintManifold {
 
  protected:
   static TspaceBasis::shared_ptr createFixedBasis(
-      const EqualityConstraints::shared_ptr &constraints,
+      const NonlinearEqualityConstraints::shared_ptr &constraints,
       const gtsam::Values &values) {
     auto basis_params = std::make_shared<TspaceBasisParams>();
     basis_params->always_construct_basis = false;

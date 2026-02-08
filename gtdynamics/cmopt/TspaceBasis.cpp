@@ -68,7 +68,7 @@ Matrix OrthonormalBasis::computeConstraintJacobian(const Values &values) const {
 
 /* ************************************************************************* */
 OrthonormalBasis::OrthonormalBasis(
-    const EqualityConstraints::shared_ptr &constraints, const Values &values,
+    const NonlinearEqualityConstraints::shared_ptr &constraints, const Values &values,
     const TspaceBasisParams::shared_ptr &params)
     : TspaceBasis(params), attributes_(std::make_shared<Attributes>()) {
   // set attributes
@@ -157,7 +157,7 @@ void OrthonormalBasis::constructSparse(const Values &values) {
 
 /* ************************************************************************* */
 TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
-    const EqualityConstraints &constraints, const Values &values,
+    const NonlinearEqualityConstraints &constraints, const Values &values,
     bool create_from_scratch) const {
   // attributes
   auto new_merit_graph = constraints.penaltyGraph();
@@ -435,7 +435,7 @@ OrthonormalBasis::eigenSparseJacobian(const GaussianFactorGraph &graph) const {
 
 /* ************************************************************************* */
 EliminationBasis::EliminationBasis(
-    const EqualityConstraints::shared_ptr &constraints, const Values &values,
+    const NonlinearEqualityConstraints::shared_ptr &constraints, const Values &values,
     const TspaceBasisParams::shared_ptr &params,
     std::optional<const KeyVector> basis_keys)
     : TspaceBasis(params), attributes_(std::make_shared<Attributes>()) {
@@ -502,7 +502,7 @@ void EliminationBasis::construct(const Values &values) {
 
 /* ************************************************************************* */
 TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
-    const EqualityConstraints &constraints, const Values &values,
+    const NonlinearEqualityConstraints &constraints, const Values &values,
     bool create_from_scratch) const {
 
   // Identify the keys to eliminate

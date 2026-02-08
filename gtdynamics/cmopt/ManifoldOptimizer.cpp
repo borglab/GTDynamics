@@ -85,8 +85,8 @@ ManifoldOptimizerParameters::ManifoldOptimizerParameters()
       retract_init(true) {}
 
 /* ************************************************************************* */
-EqualityConstraints::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
-    const EqualityConstraints& constraints, const gtsam::Key start_key,
+NonlinearEqualityConstraints::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
+    const NonlinearEqualityConstraints& constraints, const gtsam::Key start_key,
     gtsam::KeySet& keys, const gtsam::VariableIndex& var_index) {
   std::set<size_t> constraint_indices;
 
@@ -108,7 +108,7 @@ EqualityConstraints::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
     }
   }
 
-  auto cc_constraints = std::make_shared<EqualityConstraints>();
+  auto cc_constraints = std::make_shared<NonlinearEqualityConstraints>();
   for (const auto& constraint_index : constraint_indices) {
     cc_constraints->push_back(constraints.at(constraint_index));
   }
@@ -116,15 +116,15 @@ EqualityConstraints::shared_ptr ManifoldOptimizer::IdentifyConnectedComponent(
 }
 
 /* ************************************************************************* */
-std::vector<EqualityConstraints::shared_ptr>
+std::vector<NonlinearEqualityConstraints::shared_ptr>
 ManifoldOptimizer::IdentifyConnectedComponents(
-    const EqualityConstraints& constraints) {
+    const NonlinearEqualityConstraints& constraints) {
   // Get all the keys in constraints.
   gtsam::VariableIndex constraint_var_index(constraints);
   gtsam::KeySet constraint_keys = constraints.keys();
 
   // Find connected component using DFS algorithm.
-  std::vector<EqualityConstraints::shared_ptr> components;
+  std::vector<NonlinearEqualityConstraints::shared_ptr> components;
   while (!constraint_keys.empty()) {
     Key key = *constraint_keys.begin();
     constraint_keys.erase(key);
@@ -313,7 +313,7 @@ VectorValues ManifoldOptimizer::baseTangentVector(
 /* ************************************************************************* */
 ManifoldOptProblem ManifoldOptimizer::initializeMoptProblem(
     const gtsam::NonlinearFactorGraph& costs,
-    const EqualityConstraints& constraints,
+    const NonlinearEqualityConstraints& constraints,
     const gtsam::Values& init_values) const {
   EConsOptProblem equalityConstrainedProblem(costs, constraints, init_values);
   return problemTransform(equalityConstrainedProblem);
