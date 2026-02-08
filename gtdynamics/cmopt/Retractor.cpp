@@ -25,7 +25,10 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
 #include <stdexcept>
+#include <string>
 
 #include "factors/ConstVarFactor.h"
 #include "utils/DynamicsSymbol.h"
@@ -149,6 +152,17 @@ BasisRetractor::BasisRetractor(
 
 /* ************************************************************************* */
 Values BasisRetractor::retractConstraints(const Values &values) {
+  static const bool debug_retractor_stats = []() {
+    const char* env = std::getenv("GTDYN_DEBUG_RETRACTOR_STATS");
+    return env && std::string(env) != "0";
+  }();
+  static size_t total_calls = 0;
+  static size_t fast_path_calls = 0;
+  static double total_ms = 0.0;
+
+  const auto start = std::chrono::steady_clock::now();
+  ++total_calls;
+
   // set fixed values for the const variable factors
   for (auto &factor : factors_with_fixed_vars_) {
     factor->setFixedValues(values);
@@ -158,6 +172,30 @@ Values BasisRetractor::retractConstraints(const Values &values) {
   for (const Key &key : optimizer_.graph().keys()) {
     opt_values.insert(key, values.at(key));
   }
+
+  // Fast path: if constraints are already satisfied to threshold, avoid
+  // repeatedly running tiny LM solves.
+  const double initial_error = optimizer_.graph().error(opt_values);
+  if (initial_error <= params_->feasible_threshold) {
+    ++fast_path_calls;
+    Values result = opt_values;
+    for (const Key &key : basis_keys_) {
+      result.insert(key, values.at(key));
+    }
+    const auto end = std::chrono::steady_clock::now();
+    total_ms +=
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count() *
+        1e-3;
+    if (debug_retractor_stats && total_calls % 200 == 0) {
+      std::cout << "[RETRACTOR] calls=" << total_calls
+                << ", fast_path=" << fast_path_calls
+                << ", avg_ms=" << (total_ms / static_cast<double>(total_calls))
+                << ", last_initial_error=" << initial_error << "\n";
+    }
+    return result;
+  }
+
   optimizer_.setValues(std::move(opt_values));
   // optimize
   Values result = optimizer_.optimize();
@@ -178,6 +216,17 @@ Values BasisRetractor::retractConstraints(const Values &values) {
   // add fixed varaibles to the result
   for (const Key &key : basis_keys_) {
     result.insert(key, values.at(key));
+  }
+  const auto end = std::chrono::steady_clock::now();
+  total_ms +=
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count() *
+      1e-3;
+  if (debug_retractor_stats && total_calls % 200 == 0) {
+    std::cout << "[RETRACTOR] calls=" << total_calls
+              << ", fast_path=" << fast_path_calls
+              << ", avg_ms=" << (total_ms / static_cast<double>(total_calls))
+              << ", last_initial_error=" << initial_error << "\n";
   }
   return result;
 }

@@ -15,19 +15,72 @@
 #include <gtdynamics/cmopt/TspaceBasis.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 
+#include <cstdlib>
+#include <fstream>
 #include <iomanip>
+#include <iostream>
+#include <string>
 
 namespace gtdynamics {
+namespace {
+
+std::string CsvEscape(const std::string &value) {
+  std::string escaped = "\"";
+  for (char ch : value) {
+    if (ch == '"') escaped += "\"\"";
+    else escaped += ch;
+  }
+  escaped += "\"";
+  return escaped;
+}
+
+void AppendBenchmarkCsv(const std::string &method, size_t f_dim, size_t v_dim,
+                        double time_s, size_t num_iters, double constraint_l2,
+                        double cost) {
+  const char *csv_path = std::getenv("GTDYN_BENCHMARK_CSV");
+  if (!csv_path || std::string(csv_path).empty()) return;
+
+  const char *bench_name_env = std::getenv("GTDYN_BENCHMARK_ID");
+  std::string bench_name = bench_name_env ? bench_name_env : "";
+
+  bool write_header = true;
+  {
+    std::ifstream in(csv_path);
+    write_header = !in.good() || in.peek() == std::ifstream::traits_type::eof();
+  }
+
+  std::ofstream out(csv_path, std::ios::app);
+  if (!out) return;
+
+  if (write_header) {
+    out << "benchmark,method,f_dim,v_dim,time_s,iters,constraint_l2,cost\n";
+  }
+  out << CsvEscape(bench_name) << "," << CsvEscape(method) << "," << f_dim
+      << "," << v_dim << "," << std::setprecision(12) << time_s << ","
+      << num_iters << "," << std::scientific << std::setprecision(12)
+      << constraint_l2 << "," << std::defaultfloat << std::setprecision(12)
+      << cost << "\n";
+}
+
+}  // namespace
 
 void PrintLatex(std::ostream &latex_os, std::string exp_name, size_t f_dim,
                 size_t v_dim, double time, size_t num_iters,
                 double constraint_vio, double cost) {
+  std::cout << "[BENCH] " << exp_name << ": f_dim=" << f_dim
+            << ", v_dim=" << v_dim << ", time_s=" << std::setprecision(6)
+            << std::defaultfloat << time << ", iters=" << num_iters
+            << ", constraint_l2=" << std::scientific << std::setprecision(3)
+            << constraint_vio << ", cost=" << std::defaultfloat
+            << std::setprecision(6) << cost << "\n";
   latex_os << "& " + exp_name + " & $" << f_dim << " \\times " << v_dim
            << "$ & " << std::setprecision(4) << time << std::defaultfloat
            << " & " << num_iters << " & " << std::scientific
            << std::setprecision(2) << constraint_vio << std::defaultfloat
            << " & " << std::fixed << std::setprecision(2) << cost
            << std::defaultfloat << "\\\\\n";
+  AppendBenchmarkCsv(exp_name, f_dim, v_dim, time, num_iters, constraint_vio,
+                     cost);
 }
 
 /* ************************************************************************* */
@@ -82,7 +135,7 @@ DefaultMoptParamsSV(const BasisKeyFunc &basis_key_func) {
   basis_params->use_basis_keys = true;
   basis_params->always_construct_basis = false;
   mopt_params.cc_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(basis_params);
+      std::make_shared<EliminationBasisCreator>(basis_key_func, basis_params);
   return mopt_params;
 }
 

@@ -313,6 +313,59 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
   }
 }
 
+/** Regression for SV CM mode: fully constrained components should not fail
+ * basis-key initialization.
+ */
+TEST(ConstraintManifold, sv_mode_fully_constrained_component_no_throw) {
+  const Key x1_key = 1;
+  const Key x2_key = 2;
+  const auto noise = noiseModel::Unit::Create(6);
+
+  NonlinearFactorGraph constraints_graph;
+  constraints_graph.emplace_shared<BetweenFactor<Pose3>>(
+      x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
+  constraints_graph.addPrior<Pose3>(x1_key, Pose3(Rot3(), Point3(0, 0, 0)),
+                                    noise);
+  constraints_graph.addPrior<Pose3>(x2_key, Pose3(Rot3(), Point3(0, 0, 1)),
+                                    noise);
+  auto constraints =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
+
+  NonlinearFactorGraph costs;
+  Values init_values;
+  init_values.insert(x1_key, Pose3(Rot3(), Point3(0.1, 0.0, 0.0)));
+  init_values.insert(x2_key, Pose3(Rot3(), Point3(0.0, 0.2, 0.8)));
+  EConsOptProblem problem(costs, constraints, init_values);
+
+  BasisKeyFunc basis_key_func = [](const KeyVector& keys) { return keys; };
+  auto mopt_params = DefaultMoptParamsSV(basis_key_func);
+  LevenbergMarquardtParams lm_params;
+  NonlinearMOptimizer optimizer(mopt_params, lm_params);
+
+  bool success = true;
+  std::string error_msg;
+  ManifoldOptProblem mopt_problem;
+  try {
+    mopt_problem = optimizer.initializeMoptProblem(problem.costs(),
+                                                   problem.constraints(),
+                                                   problem.initValues());
+  } catch (const std::exception& e) {
+    success = false;
+    error_msg = e.what();
+  }
+
+  if (!success) {
+    std::cout << "SV fully-constrained regression failure: " << error_msg
+              << std::endl;
+  }
+  EXPECT(success);
+  if (success) {
+    EXPECT(mopt_problem.components_.size() == 1);
+    EXPECT(mopt_problem.manifold_keys_.size() == 0);
+    EXPECT(mopt_problem.fixed_manifolds_.size() == 1);
+  }
+}
+
 /** Dynamics manifold for cart-pole robot. */
 TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   // cart-pole robot setting

@@ -91,7 +91,10 @@ class ConstraintManifold {
         constraint_dim_(constraints_->dim()),
         dim_(embedding_dim_ > constraint_dim_ ? embedding_dim_ - constraint_dim_
                                               : 0),
-        basis_(basis ? *basis : params->basis_creator->create(constraints_, values_)) {}
+        basis_(basis ? *basis
+                     : (dim_ == 0
+                            ? createFixedBasis(constraints_, values_)
+                            : params->basis_creator->create(constraints_, values_))) {}
 
   /** constructor from other manifold but update the values. */
   ConstraintManifold(const ConstraintManifold &other, const Values &values)
@@ -154,6 +157,14 @@ class ConstraintManifold {
   const Values feasibleValues() const;
 
  protected:
+  static TspaceBasis::shared_ptr createFixedBasis(
+      const EqualityConstraints::shared_ptr& constraints,
+      const gtsam::Values& values) {
+    auto basis_params = std::make_shared<TspaceBasisParams>();
+    basis_params->always_construct_basis = false;
+    return std::make_shared<OrthonormalBasis>(constraints, values, basis_params);
+  }
+
   /** Initialize the values_ of variables in CCC and compute dimension of the
    * constraint manifold and compute the dimension of the constraint manifold.
    */

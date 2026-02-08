@@ -25,9 +25,48 @@
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <cstdlib>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
 using namespace gtsam;
 using namespace gtdynamics;
+
+namespace {
+
+struct CableRobotArgs {
+  bool verbose_benchmark = false;
+  bool verbose_retractor = false;
+};
+
+void PrintUsage(const char* program_name) {
+  std::cout
+      << "Usage: " << program_name << " [args]\n"
+      << "Options:\n"
+      << "  --verbose-benchmark   Enable outer LM summary output.\n"
+      << "  --verbose-retractor   Enable retraction LM summary output.\n"
+      << "  --help                Show this message.\n";
+}
+
+CableRobotArgs ParseArgs(int argc, char** argv) {
+  CableRobotArgs args;
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg(argv[i]);
+    if (arg == "--verbose-benchmark") {
+      args.verbose_benchmark = true;
+    } else if (arg == "--verbose-retractor") {
+      args.verbose_retractor = true;
+    } else if (arg == "--help") {
+      PrintUsage(argv[0]);
+      std::exit(0);
+    } else {
+      throw std::invalid_argument("Unknown option: " + arg);
+    }
+  }
+  return args;
+}
+}  // namespace
 
 const size_t num_steps = 10;
 auto joint_noise = noiseModel::Isotropic::Sigma(1, 1.0);
@@ -126,7 +165,7 @@ void print_joint_angles(const Values& values) {
 
 /** Compare simple kinematic planning tasks of a cable robot using (1) dynamics
  * factor graph (2) constraint manifold  */
-void kinematic_planning() {
+void kinematic_planning(const CableRobotArgs& args) {
   // Create constrained optimization problem.
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
@@ -137,6 +176,11 @@ void kinematic_planning() {
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
+  lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+  if (args.verbose_benchmark) {
+    lm_params.setVerbosityLM("SUMMARY");
+    std::cout << "[BENCH] Verbose mode enabled for cable_robot benchmark.\n";
+  }
 
   // optimize soft constraints
   std::cout << "soft constraints:\n";
@@ -157,13 +201,24 @@ void kinematic_planning() {
   auto almResult =
       OptimizeE_AugmentedLagrangian(problem, latex_os, almParams);
 
-  // optimize constraint manifold specify variables (feasbile)
+  // optimize constraint manifold specify variables (feasible)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParams();
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType =
+      gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setlambdaUpperBound(
+      1e2);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(
+      10);
+  if (args.verbose_retractor) {
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setVerbosityLM(
+        "SUMMARY");
+    std::cout << "[BENCH] Retraction LM verbosity enabled.\n";
+  }
   auto cm_basis_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
 
-  // optimize constraint manifold specify variables (infeasbile)
+  // optimize constraint manifold specify variables (infeasible)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result = OptimizeE_CMOpt(
@@ -173,6 +228,13 @@ void kinematic_planning() {
 }
 
 int main(int argc, char** argv) {
-  kinematic_planning();
-  return 0;
+  try {
+    const CableRobotArgs args = ParseArgs(argc, argv);
+    kinematic_planning(args);
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    PrintUsage(argv[0]);
+    return 1;
+  }
 }

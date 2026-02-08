@@ -95,7 +95,7 @@ void dynamic_planning() {
   // auto almResult =
   //     OptimizeE_AugmentedLagrangian(problem, latex_os, al_params, constraint_unit_scale);
 
-  // optimize constraint manifold specify variables (feasbile)
+  // optimize constraint manifold specify variables (feasible)
   // std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParamsSV(cartpole.getBasisKeyFunc(true));
   mopt_params.cc_params->retractor_creator->params()->check_feasible=true;
@@ -105,7 +105,7 @@ void dynamic_planning() {
   // EvaluateCosts(cm_basis_result);
   // cartpole.exprotTrajectory(cm_basis_result, num_steps, dt, "/Users/yetongzhang/packages/GTDynamics/data/cartpole_traj.csv");
 
-  // // optimize constraint manifold specify variables (infeasbile)
+  // // optimize constraint manifold specify variables (infeasible)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result =

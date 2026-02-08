@@ -14,16 +14,60 @@
  */
 
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
+#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <cstdlib>
+#include <map>
+#include <iostream>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 
 using namespace gtsam;
 using namespace gtdynamics;
 using gtsam::symbol_shorthand::A, gtsam::symbol_shorthand::B;
+
+namespace {
+struct ConnectedPosesArgs {
+  bool verbose_benchmark = false;
+  bool verbose_retractor = false;
+  bool debug_cm_components = false;
+};
+
+void PrintUsage(const char* program_name) {
+  std::cout
+      << "Usage: " << program_name << " [args]\n"
+      << "Options:\n"
+      << "  --verbose-benchmark   Enable outer LM summary output.\n"
+      << "  --verbose-retractor   Enable retraction LM summary output.\n"
+      << "  --debug-cm-components Print CM component/manifold diagnostics.\n"
+      << "  --help                Show this message.\n";
+}
+
+ConnectedPosesArgs ParseArgs(int argc, char** argv) {
+  ConnectedPosesArgs args;
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg(argv[i]);
+    if (arg == "--verbose-benchmark") {
+      args.verbose_benchmark = true;
+    } else if (arg == "--verbose-retractor") {
+      args.verbose_retractor = true;
+    } else if (arg == "--debug-cm-components") {
+      args.debug_cm_components = true;
+    } else if (arg == "--help") {
+      PrintUsage(argv[0]);
+      std::exit(0);
+    } else {
+      throw std::invalid_argument("Unknown option: " + arg);
+    }
+  }
+  return args;
+}
+}  // namespace
 
 // Kuka arm planning scenario setting.
 const size_t num_steps = 100;
@@ -171,11 +215,51 @@ KeyVector FindBasisKeys(const KeyVector& keys) {
   return basis_keys;
 }
 
+void PrintCMComponentDebug(const EConsOptProblem& problem,
+                           const ManifoldOptimizerParameters& mopt_params,
+                           const LevenbergMarquardtParams& lm_params,
+                           bool debug_enabled) {
+  if (!debug_enabled) return;
+
+  std::cout << "[CM DEBUG] ===== start component/manifold dump =====\n";
+  std::cout << "[CM DEBUG] constraints dim: " << problem.constraintsDimension()
+            << ", costs dim: " << problem.costsDimension()
+            << ", values dim: " << problem.valuesDimension() << "\n";
+
+  NonlinearMOptimizer debug_optimizer(mopt_params, lm_params);
+  auto mopt_problem = debug_optimizer.initializeMoptProblem(
+      problem.costs(), problem.constraints(), problem.initValues());
+
+  mopt_problem.print("[CM DEBUG] ");
+
+  std::map<Key, Key> key_component_map;
+  for (const Key& cm_key : mopt_problem.manifold_keys_) {
+    const auto& cm = mopt_problem.values_.at(cm_key).cast<ConstraintManifold>();
+    for (const Key& base_key : cm.values().keys()) {
+      key_component_map[base_key] = cm_key;
+    }
+  }
+  for (const Key& cm_key : mopt_problem.fixed_manifolds_.keys()) {
+    const auto& cm =
+        mopt_problem.fixed_manifolds_.at(cm_key).cast<ConstraintManifold>();
+    for (const Key& base_key : cm.values().keys()) {
+      key_component_map[base_key] = cm_key;
+    }
+  }
+
+  std::cout << "[CM DEBUG] base_key -> manifold_key mapping:\n";
+  for (const auto& it : key_component_map) {
+    std::cout << "[CM DEBUG]   " << DefaultKeyFormatter(it.first) << " -> "
+              << DefaultKeyFormatter(it.second) << "\n";
+  }
+  std::cout << "[CM DEBUG] ===== end component/manifold dump =====\n";
+}
+
 /** Compare simple kinematic planning tasks of a robot arm using (1) dynamics
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
-void kinematic_planning() {
-  // Create constraiend optimization problem.
+void kinematic_planning(const ConnectedPosesArgs& args) {
+  // Create constrained optimization problem.
   auto gt = get_gt_values();
   auto constraints_graph = get_constraints_graph(gt);
   std::vector<std::vector<Pose2>> odo_measurements = GetOdoMeasurements(gt);
@@ -187,6 +271,10 @@ void kinematic_planning() {
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
+  if (args.verbose_benchmark) {
+    lm_params.setVerbosityLM("SUMMARY");
+    std::cout << "[BENCH] Verbose mode enabled for connected_poses benchmark.\n";
+  }
   // lm_params.setVerbosityLM("SUMMARY");
   lm_params.setlambdaUpperBound(1e10);
 
@@ -214,16 +302,23 @@ void kinematic_planning() {
       OptimizeE_AugmentedLagrangian(problem, latex_os, almParams, constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, almResult) << "\n";
 
-  // optimize constraint manifold specify variables (feasbile)
+  // optimize constraint manifold specify variables (feasible)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParams();
+  if (args.verbose_retractor) {
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setVerbosityLM(
+        "SUMMARY");
+    std::cout << "[BENCH] Retraction LM verbosity enabled.\n";
+  }
+  PrintCMComponentDebug(problem, mopt_params, lm_params,
+                        args.debug_cm_components);
   // mopt_params.cc_params->basis_key_func = &FindBasisKeys;
   mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
   auto cm_basis_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", constraint_unit_scale);
   std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_result) << "\n";
 
-  // optimize constraint manifold specify variables (infeasbile)
+  // optimize constraint manifold specify variables (infeasible)
   std::cout << "constraint manifold basis variables (infeasible):\n";
   mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
   auto cm_basis_infeasible_result = OptimizeE_CMOpt(
@@ -233,7 +328,14 @@ void kinematic_planning() {
   std::cout << latex_os.str();
 }
 
-int main(int argc, char **argv) {
-  kinematic_planning();
-  return 0;
+int main(int argc, char** argv) {
+  try {
+    const ConnectedPosesArgs args = ParseArgs(argc, argv);
+    kinematic_planning(args);
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    PrintUsage(argv[0]);
+    return 1;
+  }
 }

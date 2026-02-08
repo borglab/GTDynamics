@@ -344,9 +344,10 @@ void MutableLMOptimizer::setValues(const Values& values) {
 
 /* ************************************************************************* */
 void MutableLMOptimizer::setValues(Values&& values) {
-  state_ = std::unique_ptr<State>(
-      new State(std::move(values), graph_.error(values), params_.lambdaInitial,
-                params_.lambdaFactor));
+  // Evaluate error before moving values into State to avoid use-after-move UB.
+  const double error = graph_.error(values);
+  state_ = std::unique_ptr<State>(new State(
+      std::move(values), error, params_.lambdaInitial, params_.lambdaFactor));
 }
 
 } /* namespace gtdynamics */

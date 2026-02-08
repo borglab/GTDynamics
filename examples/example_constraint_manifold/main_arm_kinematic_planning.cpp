@@ -22,9 +22,66 @@
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <cstdlib>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace gtsam;
 using namespace gtdynamics;
+
+namespace {
+
+struct ArmBenchmarkArgs {
+  bool verbose_benchmark = false;
+  bool verbose_retractor = false;
+  bool cm_i_only = false;
+  bool cm_f_only = false;
+  bool skip_cm_f = false;
+};
+
+void PrintUsage(const char* program_name) {
+  std::cout
+      << "Usage: " << program_name << " [args]\n"
+      << "Options:\n"
+      << "  --verbose-benchmark     Enable outer LM summary output.\n"
+      << "  --verbose-retractor     Enable retraction LM summary output.\n"
+      << "  --cm-i-only             Run only CM(I) benchmark variant.\n"
+      << "  --cm-f-only             Run only CM(F) benchmark variant.\n"
+      << "  --skip-cm-f             Skip CM(F) in mixed run.\n"
+      << "  --help                  Show this message.\n";
+}
+
+ArmBenchmarkArgs ParseArgs(int argc, char** argv) {
+  ArmBenchmarkArgs args;
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg(argv[i]);
+    if (arg == "--verbose-benchmark") {
+      args.verbose_benchmark = true;
+    } else if (arg == "--verbose-retractor") {
+      args.verbose_retractor = true;
+    } else if (arg == "--cm-i-only") {
+      args.cm_i_only = true;
+    } else if (arg == "--cm-f-only") {
+      args.cm_f_only = true;
+    } else if (arg == "--skip-cm-f") {
+      args.skip_cm_f = true;
+    } else if (arg == "--help") {
+      PrintUsage(argv[0]);
+      std::exit(0);
+    } else {
+      throw std::invalid_argument("Unknown option: " + arg);
+    }
+  }
+
+  if (args.cm_i_only && args.cm_f_only) {
+    throw std::invalid_argument(
+        "Cannot combine --cm-i-only and --cm-f-only.");
+  }
+  return args;
+}
+}  // namespace
 
 /** Functor version of JointLimitFactor, for creating expressions. Compute error
  * for joint limit error, to reproduce joint limit factor in expressions. */
@@ -271,50 +328,132 @@ void print_joint_angles_sc(const Values& values) {
 /** Compare simple kinematic planning tasks of a robot arm using (1) dynamics
  * factor graph (2) constraint manifold (3) manually specifed serial chain
  * manifold. */
-void kinematic_planning() {
-  // Create constraiend optimization problem.
+void kinematic_planning(const ArmBenchmarkArgs& args) {
+  // Create constrained optimization problem.
   robot.fixLink(base_name);
-  auto constraints_graph = get_constraints_graph();
-  auto costs = get_costs();
-  auto init_values = get_init_values();
-  auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  auto problem = EConsOptProblem(costs, constraints, init_values);
+  const auto createProblem = []() {
+    auto constraints_graph = get_constraints_graph();
+    auto costs = get_costs();
+    auto init_values = get_init_values();
+    auto constraints =
+        gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
+    return EConsOptProblem(costs, constraints, init_values);
+  };
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
+  if (args.cm_f_only) {
+    std::cout << "[BENCH] CM(F)-only mode enabled.\n";
+  }
+  if (args.verbose_benchmark) {
+    lm_params.setVerbosityLM("SUMMARY");
+    std::cout << "[BENCH] Verbose mode enabled for ARM benchmark.\n";
+  }
+  if (args.cm_i_only) {
+    lm_params.linearSolverType =
+        gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+    lm_params.setMaxIterations(20);
+    lm_params.relativeErrorTol = 1e-3;
+    std::cout << "[BENCH] I-only mode: using fast outer-LM settings "
+                 "(SEQUENTIAL_CHOLESKY, maxIterations=20, relativeErrorTol=1e-3).\n";
+  }
+  if (args.cm_f_only) {
+    lm_params.linearSolverType =
+        gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+    lm_params.setMaxIterations(30);
+    lm_params.relativeErrorTol = 1e-3;
+    lm_params.setlambdaUpperBound(1e2);
+    std::cout << "[BENCH] F-only mode: using bounded outer-LM settings "
+                 "(SEQUENTIAL_CHOLESKY, maxIterations=30, relativeErrorTol=1e-3, "
+                 "lambdaUpperBound=1e2).\n";
+  }
 
-  // optimize soft constraints
-  std::cout << "soft constraints:\n";
-  auto soft_result =
-      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
+  if (!args.cm_i_only && !args.cm_f_only) {
+    // optimize soft constraints
+    std::cout << "soft constraints:\n";
+    auto soft_problem = createProblem();
+    auto soft_result =
+        OptimizeE_SoftConstraints(soft_problem, latex_os, lm_params, 1.0);
 
-  // optimize penalty method
-  std::cout << "penalty method:\n";
-  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
-  penalty_params->lmParams = lm_params;
-  auto penalty_result =
-      OptimizeE_Penalty(problem, latex_os, penalty_params);
+    // optimize penalty method
+    std::cout << "penalty method:\n";
+    auto penalty_problem = createProblem();
+    auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
+    penalty_params->lmParams = lm_params;
+    auto penalty_result =
+        OptimizeE_Penalty(penalty_problem, latex_os, penalty_params);
 
-  // optimize augmented lagrangian
-  std::cout << "augmented lagrangian:\n";
-  auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  almParams->lmParams = lm_params;
-  auto almResult =
-      OptimizeE_AugmentedLagrangian(problem, latex_os, almParams);
+    // optimize augmented lagrangian
+    std::cout << "augmented lagrangian:\n";
+    auto alm_problem = createProblem();
+    auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
+    almParams->lmParams = lm_params;
+    auto almResult =
+        OptimizeE_AugmentedLagrangian(alm_problem, latex_os, almParams);
+  } else if (args.cm_i_only) {
+    std::cout << "[BENCH] I-only mode: skipping soft, penalty, augmented "
+                 "lagrangian, and CM(F).\n";
+  } else {
+    std::cout << "[BENCH] F-only mode: skipping soft, penalty, augmented "
+                 "lagrangian, and CM(I).\n";
+  }
 
-  // optimize constraint manifold specify variables (feasbile)
-  std::cout << "constraint manifold basis variables (feasible):\n";
+  // optimize constraint manifold specify variables (feasible)
   auto mopt_params = DefaultMoptParamsSV(&FindBasisKeys);
-  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  auto cm_basis_result = OptimizeE_CMOpt(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType =
+      gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setlambdaUpperBound(
+      1e2);
+  if (args.cm_f_only || (!args.cm_i_only && !args.skip_cm_f)) {
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(
+        10);
+  }
+  if (args.cm_i_only || args.skip_cm_f) {
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(
+        10);
+  }
+  if (args.verbose_retractor) {
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setVerbosityLM(
+        "SUMMARY");
+    std::cout << "[BENCH] Retraction LM verbosity enabled.\n";
+  }
+  if (args.cm_f_only || (!args.cm_i_only && !args.skip_cm_f)) {
+    std::cout << "constraint manifold basis variables (feasible):\n";
+    auto cm_f_problem = createProblem();
+    auto cm_basis_result = OptimizeE_CMOpt(
+        cm_f_problem, latex_os, mopt_params, lm_params,
+        "Constraint Manifold (F)");
+  } else if (args.skip_cm_f && !args.cm_i_only) {
+    std::cout << "constraint manifold basis variables (feasible): skipped "
+                 "(--skip-cm-f)\n";
+  } else {
+    std::cout
+        << "constraint manifold basis variables (feasible): skipped (I-only mode)\n";
+  }
 
-  // // optimize constraint manifold specify variables (infeasbile)
-  std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeE_CMOpt(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
+  // // optimize constraint manifold specify variables (infeasible)
+  if (!args.cm_f_only) {
+    std::cout << "constraint manifold basis variables (infeasible):\n";
+    auto cm_i_problem = createProblem();
+    LevenbergMarquardtParams cm_i_lm_params = lm_params;
+    if (args.skip_cm_f && !args.cm_i_only) {
+      cm_i_lm_params.linearSolverType =
+          gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+      cm_i_lm_params.setMaxIterations(20);
+      cm_i_lm_params.relativeErrorTol = 1e-3;
+      cm_i_lm_params.setlambdaUpperBound(1e2);
+      std::cout << "[BENCH] CM(I) mode: using fast outer-LM settings "
+                   "(SEQUENTIAL_CHOLESKY, maxIterations=20, relativeErrorTol=1e-3, "
+                   "lambdaUpperBound=1e2).\n";
+    }
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
+    auto cm_basis_infeasible_result = OptimizeE_CMOpt(
+        cm_i_problem, latex_os, mopt_params, cm_i_lm_params,
+        "Constraint Manifold (I)");
+  } else {
+    std::cout
+        << "constraint manifold basis variables (infeasible): skipped (F-only mode)\n";
+  }
 
   // // optimize serial chain manifold
   // std::cout << "serial chain manifold\n";
@@ -328,6 +467,13 @@ void kinematic_planning() {
 }
 
 int main(int argc, char** argv) {
-  kinematic_planning();
-  return 0;
+  try {
+    const ArmBenchmarkArgs args = ParseArgs(argc, argv);
+    kinematic_planning(args);
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    PrintUsage(argv[0]);
+    return 1;
+  }
 }
