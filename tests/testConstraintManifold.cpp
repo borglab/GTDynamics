@@ -41,7 +41,7 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  auto constraints = std::make_shared<EqualityConstraints>();
+  auto constraints = std::make_shared<NonlinearEqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
@@ -454,7 +454,7 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   };
 
   // constraint manifold
-  auto constraints = std::make_shared<EqualityConstraints>(
+  auto constraints = std::make_shared<NonlinearEqualityConstraints>(
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph));
   auto cc_params = std::make_shared<ConstraintManifold::Params>();
   cc_params->retractor_creator =

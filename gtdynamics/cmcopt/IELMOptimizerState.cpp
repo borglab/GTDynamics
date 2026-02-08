@@ -346,9 +346,10 @@ std::string ConstraintInfoStr(const IEManifoldValues &state_manifolds,
     std::string str = "";
     for (const auto &[key, manifold] : new_manifolds) {
       for (const auto &constraint_idx : manifold.activeIndices()) {
-        const auto &constraint = manifold.iConstraints()->at(constraint_idx);
         auto constraint_type = constraint_type_map.at({key, constraint_idx});
-        str += ColoredStr(" " + constraint->name_tmp(), constraint_type,
+        str += ColoredStr(
+            " " + key_formatter(key) + ":" + std::to_string(constraint_idx),
+            constraint_type,
                           default_color_str);
       }
     }
@@ -360,8 +361,8 @@ std::string ConstraintInfoStr(const IEManifoldValues &state_manifolds,
 
   for (const auto &[key, manifold] : new_manifolds) {
     for (const auto &constraint_idx : manifold.activeIndices()) {
-      const auto &constraint = manifold.iConstraints()->at(constraint_idx);
-      auto [category, k] = SplitStr(constraint->name_tmp());
+      auto category = key_formatter(key);
+      size_t k = constraint_idx;
       size_t constraint_type = constraint_type_map.at({key, constraint_idx});
       if (category_constraints.find(category) == category_constraints.end()) {
         category_constraints.insert(
@@ -421,10 +422,8 @@ std::string ConstraintInfoStr(const IEManifoldValues &manifolds,
                               const KeyFormatter &key_formatter) {
   std::string str = "";
   for (const auto &[key, index_set] : indices_map) {
-    const auto &manifold = manifolds.at(key);
     for (const auto &i_idx : index_set) {
-      const auto &constraint = manifold.iConstraints()->at(i_idx);
-      str += " " + constraint->name_tmp();
+      str += " " + key_formatter(key) + ":" + std::to_string(i_idx);
     }
   }
   return str;
@@ -669,7 +668,7 @@ GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
     const GaussianFactorGraph &linear, const VectorValues &sqrtHessianDiagonal,
     const IELMState &state, const LevenbergMarquardtParams &params) const {
 
-  if (params.diagonalDamping)
+  if (params.getDiagonalDamping())
     return buildDampedSystem(linear, sqrtHessianDiagonal);
   else
     return buildDampedSystem(linear, state);

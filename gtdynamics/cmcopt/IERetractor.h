@@ -15,6 +15,7 @@
 
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/PenaltyOptimizer.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/linear/VectorValues.h>
@@ -38,8 +39,8 @@ struct IERetractorParams {
   bool check_feasible = true;
   double feasible_threshold = 1e-3;
   bool ensure_feasible = false;
-  PenaltyParameters::shared_ptr penalty_params =
-      std::make_shared<PenaltyParameters>();
+  PenaltyOptimizerParams::shared_ptr penalty_params =
+      std::make_shared<PenaltyOptimizerParams>();
 
   IERetractorParams() = default;
 
@@ -47,13 +48,17 @@ struct IERetractorParams {
   IERetractorParams(const LevenbergMarquardtParams &_lm_params,
                     const double &_prior_sigma)
       : lm_params(_lm_params), prior_sigma(_prior_sigma),
-        use_varying_sigma(false), metric_sigmas(NULL) {}
+        use_varying_sigma(false), metric_sigmas(NULL) {
+    penalty_params->lmParams = lm_params;
+  }
 
   /** Constructor using varying sigmas. */
   IERetractorParams(const LevenbergMarquardtParams &_lm_params,
                     const std::shared_ptr<VectorValues> &_metric_sigmas)
       : lm_params(_lm_params), prior_sigma(0.0), use_varying_sigma(true),
-        metric_sigmas(_metric_sigmas) {}
+        metric_sigmas(_metric_sigmas) {
+    penalty_params->lmParams = lm_params;
+  }
 
   static IERetractorParams::shared_ptr VarySigmas(
       const LevenbergMarquardtParams &_lm_param = LevenbergMarquardtParams()) {
@@ -86,7 +91,6 @@ class IERetractor {
 
 protected:
   IERetractorParams::shared_ptr params_;
-  PenaltyOptimizer penalty_optimizer_;
 
 public:
   using shared_ptr = std::shared_ptr<IERetractor>;
@@ -94,7 +98,7 @@ public:
   /// Default constructor.
   IERetractor(const IERetractorParams::shared_ptr &params =
                   std::make_shared<IERetractorParams>())
-      : params_(params), penalty_optimizer_(params_->penalty_params) {}
+      : params_(params) {}
 
   virtual ~IERetractor() {}
 

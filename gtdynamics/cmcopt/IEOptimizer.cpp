@@ -80,14 +80,14 @@ ComponentInfo IdentifyConnectedComponent(
 }
 
 /* ************************************************************************* */
-std::vector<std::pair<NonlinearEqualityConstraints::shared_ptr,
+  std::vector<std::pair<NonlinearEqualityConstraints::shared_ptr,
                       NonlinearInequalityConstraints::shared_ptr>>
 IdentifyConnectedComponents(
     const NonlinearEqualityConstraints &e_constraints,
     const NonlinearInequalityConstraints &i_constraints) {
 
-  VariableIndex e_var_index = e_constraints.varIndex();
-  VariableIndex i_var_index = i_constraints.varIndex();
+  VariableIndex e_var_index(e_constraints);
+  VariableIndex i_var_index(i_constraints);
 
   // Get all the keys in constraints.
   KeySet keys = e_constraints.keys();
@@ -107,13 +107,13 @@ IdentifyConnectedComponents(
     auto component_e_constraints =
         std::make_shared<NonlinearEqualityConstraints>();
     for (const auto &idx : component_info.e_indices) {
-      component_e_constraints->emplace_back(e_constraints.at(idx));
+      component_e_constraints->push_back(e_constraints.at(idx));
     }
     // i_constraints
     auto component_i_constraints =
         std::make_shared<NonlinearInequalityConstraints>();
     for (const auto &idx : component_info.i_indices) {
-      component_i_constraints->emplace_back(i_constraints.at(idx));
+      component_i_constraints->push_back(i_constraints.at(idx));
     }
 
     components.emplace_back(component_e_constraints, component_i_constraints);
@@ -292,8 +292,8 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
     size_t max_approach_idx;
     for (const auto &idx : change_indices) {
       const auto &constraint = i_constraints->at(idx);
-      double eval = (*constraint)(manifold.values());
-      double new_eval = (*constraint)(new_manifold.values());
+      double eval = constraint->unwhitenedExpr(manifold.values())(0);
+      double new_eval = constraint->unwhitenedExpr(new_manifold.values())(0);
       double approach_rate = eval / new_eval;
       // std::cout << "eval: " << eval << "\n";
       // std::cout << "new_eval: " << new_eval << "\n";

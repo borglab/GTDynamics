@@ -22,6 +22,47 @@
 namespace gtdynamics {
 using namespace gtsam;
 
+namespace {
+
+/**
+ * Run constrained penalty optimization for one IE retraction subproblem.
+ *
+ * Why this helper exists:
+ * 1) Old CMCOpt code used a long-lived custom penalty optimizer interface that
+ *    accepted `(cost, e_constraints, i_constraints, initial_values)` directly.
+ * 2) New constrained GTSAM expects constructing a `ConstrainedOptProblem` and
+ *    then running `PenaltyOptimizer(problem, initialValues, params).optimize()`.
+ * 3) Several retractor paths (boundary move, standard retract) need the same
+ *    "assemble + solve" sequence, and keeping it centralized avoids subtle
+ *    divergence in LM/penalty parameter wiring.
+ *
+ * Behavioral intent (compatibility):
+ * - Preserve previous flow: solve a penalty-form constrained problem using the
+ *   provided cost graph and current equality/inequality constraints.
+ * - Keep LM settings controlled by `IERetractorParams::lm_params` by copying
+ *   them into `PenaltyOptimizerParams::lmParams` right before solve.
+ *
+ * Notes for review:
+ * - This helper mutates `params->penalty_params->lmParams` intentionally so the
+ *   retractor-level LM tuning remains the single source of truth.
+ * - It is `namespace {}` local on purpose: this is a file-scoped adapter layer,
+ *   not reusable public API.
+ */
+Values RunPenaltyOptimization(
+    const NonlinearFactorGraph &cost,
+    const NonlinearEqualityConstraints &e_constraints,
+    const NonlinearInequalityConstraints &i_constraints,
+    const Values &initial_values,
+    const IERetractorParams::shared_ptr &params) {
+  auto penalty_params = params->penalty_params;
+  penalty_params->lmParams = params->lm_params;
+  ConstrainedOptProblem problem(cost, e_constraints, i_constraints);
+  PenaltyOptimizer optimizer(problem, initial_values, penalty_params);
+  return optimizer.optimize();
+}
+
+}  // namespace
+
 
 /* ************************************************************************* */
 IEConstraintManifold
@@ -43,15 +84,15 @@ BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
     blocking_constraints.push_back(
         manifold->iConstraints()->at(blocking_idx)->createEqualityConstraint());
   }
-  NonlinearFactorGraph cost = blocking_constraints.meritGraph();
+  NonlinearFactorGraph cost = blocking_constraints.penaltyGraph(1.0);
 
-  Values opt_values = penalty_optimizer_.optimize(
+  Values opt_values = RunPenaltyOptimization(
       cost, *manifold->eConstraints(), *manifold->iConstraints(),
-      manifold->values());
+      manifold->values(), params_);
 
   NonlinearFactorGraph merit_graph = cost;
-  merit_graph.add(manifold->eConstraints()->meritGraph());
-  merit_graph.add(manifold->iConstraints()->meritGraph());
+  merit_graph.add(manifold->eConstraints()->penaltyGraph(1.0));
+  merit_graph.add(manifold->iConstraints()->penaltyGraph(1.0));
   LevenbergMarquardtOptimizer optimizer_np(merit_graph, opt_values,
                                            params_->lm_params);
   Values result = optimizer_np.optimize();
@@ -94,8 +135,8 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   // run penalty optimization
   const Values &init_values =
       params_->init_values_as_x ? manifold->values() : new_values;
-  Values opt_values = penalty_optimizer_.optimize(
-      prior_graph, e_constraints, i_constraints, init_values);
+  Values opt_values = RunPenaltyOptimization(
+      prior_graph, e_constraints, i_constraints, init_values, params_);
 
   // collect active indices
   IndexSet active_indices;
@@ -116,8 +157,8 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
     active_constraints.push_back(
         i_constraints.at(constraint_idx)->createEqualityConstraint());
   }
-  NonlinearFactorGraph graph_np = active_constraints.meritGraph();
-  graph_np.add(i_constraints.meritGraph());
+  NonlinearFactorGraph graph_np = active_constraints.penaltyGraph(1.0);
+  graph_np.add(i_constraints.penaltyGraph(1.0));
   LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values,
                                            params_->lm_params);
   Values result = optimizer_np.optimize();
@@ -151,10 +192,10 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
     : IERetractor(params), graph_q_(), graph_v_(), graph_ad_() {
 
   /// Create merit graph for e-constriants and i-constraints
-  merit_graph_ = manifold.eConstraints()->meritGraph();
+  merit_graph_ = manifold.eConstraints()->penaltyGraph(1.0);
   const auto &i_constraints = *manifold.iConstraints();
   for (const auto &i_constraint : i_constraints) {
-    merit_graph_.add(i_constraint->createPenaltyFactor(1.0));
+    merit_graph_.add(i_constraint->penaltyFactor(1.0));
   }
 
   /// Split keys into 3 levels
@@ -234,7 +275,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     if (blocking_indices && blocking_indices->exists(i) ||
         !i_constraints.at(i)->feasible(results_q)) {
       active_indices.insert(i);
-      graph_np_q.add(i_constraints.at(i)->createL2Factor(1.0));
+      graph_np_q.add(i_constraints.at(i)->penaltyFactorEquality(1.0));
     }
   }
   LevenbergMarquardtOptimizer optimizer_np_q(graph_np_q, results_q,
@@ -266,7 +307,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
         !i_constraints.at(i)->feasible(results_v)) {
       active_indices.insert(i);
       // TODO: turn into const v graph
-      graph_np_v.add(i_constraints.at(i)->createL2Factor(1.0));
+      graph_np_v.add(i_constraints.at(i)->penaltyFactorEquality(1.0));
     }
   }
   LevenbergMarquardtOptimizer optimizer_np_v(graph_np_v, results_v,
@@ -297,7 +338,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     if (blocking_indices && blocking_indices->exists(i) ||
         !i_constraints.at(i)->feasible(results_ad)) {
       active_indices.insert(i);
-      graph_np_ad.add(i_constraints.at(i)->createL2Factor(1.0));
+      graph_np_ad.add(i_constraints.at(i)->penaltyFactorEquality(1.0));
     }
   }
 

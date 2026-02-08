@@ -146,11 +146,11 @@ public:
   ConstraintManifold eConstraintManifold(const IndexSet &active_indices) const;
 
   double evalIViolation() const {
-    return i_constraints_->evaluateViolationL2Norm(values_);
+    return i_constraints_->violationNorm(values_);
   }
 
   double evalEViolation() const {
-    return e_constraints_->evaluateViolationL2Norm(values_);
+    return e_constraints_->violationNorm(values_);
   }
 
   /// Linearized active i-constraints w.r.t. the manifold variable.
