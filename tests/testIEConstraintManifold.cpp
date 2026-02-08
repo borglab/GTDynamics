@@ -26,11 +26,11 @@ bool container_equal(const Container &c1, const Container &c2) {
 }
 
 TEST(IEConstraintManifold, HalfSphere) {
-  Key point_key = gtsam::Symbol('p', 0);
+  Key point_key = Symbol('p', 0);
 
-  gtsam::Expression<Point3> point_expr(point_key);
-  gtsam::Expression<double> sphere_expr(&norm3, point_expr);
-  gtsam::Expression<double> z_expr(&point3_z, point_expr);
+  Expression<Point3> point_expr(point_key);
+  Expression<double> sphere_expr(&norm3, point_expr);
+  Expression<double> z_expr(&point3_z, point_expr);
 
   auto e_constraints = std::make_shared<EqualityConstraints>();
   auto i_constraints = std::make_shared<InequalityConstraints>();

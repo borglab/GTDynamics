@@ -8,9 +8,11 @@
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
+using namespace gtsam;
+using namespace gtdynamics;
+
 // #include <gtdynamics/cmopt/CartPoleWithFriction.h>
 
-using namespace gtsam;
 
 // TEST(CartPoleWithFrictionCone, jacobian) {
 //   CartPoleWithFriction cp;

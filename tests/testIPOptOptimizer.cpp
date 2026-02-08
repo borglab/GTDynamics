@@ -18,6 +18,8 @@
 #include <gtsam/base/numericalDerivative.h>
 
 using namespace gtsam;
+using namespace gtdynamics;
+
 using std::placeholders::_1;
 
 TEST(IFOptTranslator, VecToPose) {
@@ -30,15 +32,15 @@ TEST(IFOptTranslator, VecToPose) {
   Matrix66 H;
   IFOptTranslator::VecToPose(vec, H);
   auto f = std::bind(IFOptTranslator::VecToPose, _1, nullptr);
-  auto numericalH0 = gtsam::numericalDerivative11<Pose3, Vector6>(f, vec);
+  auto numericalH0 = numericalDerivative11<Pose3, Vector6>(f, vec);
   EXPECT(assert_equal(numericalH0, H));
 }
 
 /* ************************************************************************* */
 // An optimiztion with Pose3 variables.
 TEST(IPOptimizer, Pose3) {
-  Key pose1_key = gtdynamics::PoseKey(1, 0);
-  Key pose2_key = gtdynamics::PoseKey(2, 0);
+  Key pose1_key = PoseKey(1, 0);
+  Key pose2_key = PoseKey(2, 0);
 
   Pose3 init_pose1(Rot3::RzRyRx(Vector3(0.4, 1.2, -0.7)), Vector3(-1, 4, 2));
   Pose3 init_pose2(Rot3::RzRyRx(Vector3(3.4, -2.2, 1.1)), Vector3(4, -2, 8));
@@ -64,7 +66,7 @@ TEST(IPOptimizer, Pose3) {
   cost.addPrior(pose1_key, gt_pose1, noiseModel::Isotropic::Sigma(6, 1.0));
 
   /// Solve the constraint problem with IPOPT.
-  gtsam::IPOptimizer optimizer;
+  IPOptimizer optimizer;
   Values results =
       optimizer.optimize(cost, e_constraints, i_constraints, init_values);
 
@@ -82,7 +84,7 @@ TEST(IPOptimizer, EConstrainedExample) {
   init_values.insert(x2_key, -0.2);
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
-  gtsam::IPOptimizer optimizer;
+  IPOptimizer optimizer;
   Values results = optimizer.optimize(cost, constraints, init_values);
 
   /// Check the result is correct within tolerance.
@@ -103,7 +105,7 @@ TEST(PenaltyOptimizer, IEConstrainedExample) {
   init_values.insert(x2_key, 0.0);
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
-  gtsam::IPOptimizer optimizer;
+  IPOptimizer optimizer;
   Values results =
       optimizer.optimize(cost, e_constraints, i_constraints, init_values);
 

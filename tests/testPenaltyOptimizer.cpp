@@ -18,6 +18,8 @@
 #include "constrainedExample.h"
 
 using namespace gtsam;
+using namespace gtdynamics;
+
 
 /* ************************************************************************* */
 TEST(PenaltyOptimizer, EConstrainedExample) {
@@ -29,7 +31,7 @@ TEST(PenaltyOptimizer, EConstrainedExample) {
   init_values.insert(x2_key, -0.2);
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
-  gtsam::PenaltyOptimizer optimizer;
+  PenaltyOptimizer optimizer;
   Values results = optimizer.optimize(cost, constraints, init_values);
 
   /// Check the result is correct within tolerance.
@@ -56,7 +58,7 @@ TEST(PenaltyOptimizer, IEConstrainedExample) {
   init_values.insert(x2_key, 0.0);
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
-  gtsam::PenaltyOptimizer optimizer;
+  PenaltyOptimizer optimizer;
   Values results =
       optimizer.optimize(cost, e_constraints, i_constraints, init_values);
 

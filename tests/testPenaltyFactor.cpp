@@ -21,6 +21,8 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 using namespace gtsam;
+using namespace gtdynamics;
+
 
 TEST(PenaltyFactor, negative) {
   // Keys.

@@ -18,6 +18,8 @@
 #include <gtsam/base/TestableAssertions.h>
 
 using namespace gtsam;
+using namespace gtdynamics;
+
 
 /** Test solving 
   * argmin ||X-[1;1]||^2 

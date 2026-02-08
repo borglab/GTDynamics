@@ -11,6 +11,8 @@
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 
 using namespace gtsam;
+using namespace gtdynamics;
+
 
 TEST(IECartPoleWithFrictionCone, jacobian) {
   IECartPoleWithFriction cp;
