@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
+#include <gtdynamics/config.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Symbol.h>
@@ -19,8 +20,16 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/sam/RangeFactor.h>
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 using namespace gtsam;
 using gtsam::symbol_shorthand::A, gtsam::symbol_shorthand::B;
+using namespace gtdynamics;
 
 namespace {
 constexpr size_t kNumSteps = 100;
@@ -39,6 +48,22 @@ Sampler& OdoSampler() {
 Sampler& InitValueSampler() {
   static Sampler sampler(noiseModel::Diagonal::Sigmas(kInitValueSigma));
   return sampler;
+}
+
+struct RangeConstraintArgs {
+  ParsedBenchmarkCli benchmark_cli;
+};
+
+void PrintUsage(const char* program_name) {
+  BenchmarkCliDefaults defaults;
+  defaults.benchmark_id = "range_constraint";
+  PrintBenchmarkUsage(std::cout, program_name, defaults);
+}
+
+RangeConstraintArgs ParseArgs(int argc, char** argv) {
+  BenchmarkCliDefaults defaults;
+  defaults.benchmark_id = "range_constraint";
+  return RangeConstraintArgs{ParseBenchmarkCli(argc, argv, defaults)};
 }
 }  // namespace
 
@@ -151,8 +176,22 @@ double EvaluatePoseError(const Values &gt, const Values &result) {
   return sqrt(error1 / kNumSteps) + sqrt(error2 / kNumSteps);
 }
 
+void ExportTrajectoryCsv(const Values& values, const std::string& file_path) {
+  std::ofstream out(file_path);
+  if (!out.is_open()) {
+    throw std::runtime_error("Failed to open trajectory file: " + file_path);
+  }
+  out << "t,ax,ay,ath,bx,by,bth\n";
+  for (size_t k = 0; k <= kNumSteps; ++k) {
+    const Pose2 a = values.at<Pose2>(A(k));
+    const Pose2 b = values.at<Pose2>(B(k));
+    out << k << "," << a.x() << "," << a.y() << "," << a.theta() << ","
+        << b.x() << "," << b.y() << "," << b.theta() << "\n";
+  }
+}
+
 /** Benchmark constrained optimizers on range-constrained trajectory estimation. */
-void kinematic_planning() {
+void kinematic_planning(const RangeConstraintArgs& args) {
   // problem
   auto gt = get_gt_values();
   auto constraints_graph = get_constraints_graph(gt);
@@ -160,66 +199,51 @@ void kinematic_planning() {
   auto init_values = get_init_values(gt);
   auto constraints =
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  auto problem = gtdynamics::EConsOptProblem(costs, constraints, init_values);
-
-  std::ostringstream latex_os;
-  LevenbergMarquardtParams lm_params;
-
+  auto run_options = args.benchmark_cli.run_options;
+  run_options.constraint_unit_scale = kConstraintUnitScale;
+  run_options.soft_mu = 1e4;
+  run_options.cm_f_retractor_max_iterations = 10;
+  run_options.cm_i_retractor_max_iterations = 1;
 
   std::cout << "pose error: " << EvaluatePoseError(gt, init_values) << "\n";
 
-  // for (size_t i=0; i<10; i++) {
-    // optimize soft constraints
-    std::cout << "soft constraints:\n";
-    auto soft_result =
-        OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1e4, kConstraintUnitScale);
-    std::cout << "pose error: " << EvaluatePoseError(gt, soft_result) << "\n";
-  // }
-  
+  ConstrainedOptBenchmarkRunner runner(run_options);
+  runner.setProblemFactory(
+      [=]() { return EConsOptProblem(costs, constraints, init_values); });
+  runner.setOuterLmBaseParams(LevenbergMarquardtParams());
+  runner.setMoptFactory([](BenchmarkMethod) {
+    auto mopt_params = DefaultMoptParams();
+    mopt_params.cc_params->retractor_creator->params()
+        ->lm_params.linearSolverType =
+        gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+    return mopt_params;
+  });
+  runner.setResultCallback([&](BenchmarkMethod method, const Values& result) {
+    std::cout << "pose error: " << EvaluatePoseError(gt, result) << "\n";
+    ExportTrajectoryCsv(result,
+                        BenchmarkMethodDataPath(run_options, method, "_traj.csv"));
+  });
 
+  ExportTrajectoryCsv(
+      init_values, std::string(kDataPath) + run_options.benchmark_id + "_init_traj.csv");
 
-  // optimize penalty method
-  std::cout << "penalty method:\n";
-  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
-  penalty_params->lmParams = lm_params;
-  // penalty_params.num_iterations=4;
-  penalty_params->initialMuEq = 10000;
-  auto penalty_result =
-      OptimizeE_Penalty(problem, latex_os, penalty_params, kConstraintUnitScale);
-  std::cout << "pose error: " << EvaluatePoseError(gt, penalty_result) << "\n";
-
-  // optimize augmented lagrangian
-  std::cout << "augmented lagrangian:\n";
-  auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  almParams->lmParams = lm_params;
-  auto almResult =
-      OptimizeE_AugmentedLagrangian(problem, latex_os, almParams, kConstraintUnitScale);
-  std::cout << "pose error: " << EvaluatePoseError(gt, almResult) << "\n";
-
-  // for (size_t i=0; i<10; i++) {
-    // optimize constraint manifold specify variables (feasible)
-    std::cout << "constraint manifold basis variables (feasible):\n";
-    auto mopt_params = gtdynamics::DefaultMoptParams();
-    mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-    auto cm_basis_result = OptimizeE_CMOpt(
-        problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", kConstraintUnitScale);
-    std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_result) << "\n";
-  // }
-
-  // for (size_t i=0; i<10; i++) {
-    // optimize constraint manifold specify variables (infeasible)
-    std::cout << "constraint manifold basis variables (infeasible):\n";
-    // auto mopt_params = DefaultMoptParams();
-    mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
-    auto cm_basis_infeasible_result = OptimizeE_CMOpt(
-        problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", kConstraintUnitScale);
-    std::cout << "pose error: " << EvaluatePoseError(gt, cm_basis_infeasible_result) << "\n";
-  // }
-
+  std::ostringstream latex_os;
+  runner.run(latex_os);
   std::cout << latex_os.str();
 }
 
 int main(int argc, char **argv) {
-  kinematic_planning();
-  return 0;
+  try {
+    const RangeConstraintArgs args = ParseArgs(argc, argv);
+    if (!args.benchmark_cli.unknown_args.empty()) {
+      throw std::invalid_argument("Unknown option: " +
+                                  args.benchmark_cli.unknown_args.front());
+    }
+    kinematic_planning(args);
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    PrintUsage(argv[0]);
+    return 1;
+  }
 }
