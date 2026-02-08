@@ -1,11 +1,9 @@
 
 
-#include <gtdynamics/imanifold/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
-#include <gtdynamics/imanifold/IELMOptimizer.h>
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/optimizer/BarrierOptimizer.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -35,9 +33,9 @@ public:
   }
 
   /** Generate a random vector with mean=0 and std=sigmas. */
-  gtsam::Vector rand_vec(const gtsam::Vector &sigmas) {
-    gtsam::Vector vec = gtsam::Vector::Zero(sigmas.size());
-    for (size_t i = 0; i < sigmas.size(); i++) {
+  Vector rand_vec(const Vector &sigmas) {
+    Vector vec = Vector::Zero(sigmas.size());
+    for (size_t i = 0; i < static_cast<size_t>(sigmas.size()); i++) {
       vec(i) = randn(sigmas(i));
     }
     return vec;
@@ -88,8 +86,7 @@ Values SimpleTrajectory(const IEHalfSphere &half_sphere) {
 /// Generate noisy measurements by injecting noise into the ground-truth
 /// measurements
 std::vector<Vector3>
-GenerateMeasurements(const Values &values,
-                     const gtsam::Vector &odometry_sigmas) {
+GenerateMeasurements(const Values &values, const Vector &odometry_sigmas) {
 
   size_t num_steps = values.size() - 1;
   size_t random_seed = 100;
@@ -99,21 +96,21 @@ GenerateMeasurements(const Values &values,
   for (size_t k = 0; k < num_steps; k++) {
     Point3 p1 = values.at<Point3>(PointKey(k));
     Point3 p2 = values.at<Point3>(PointKey(k + 1));
-    Point3 odometry = gtsam::traits<Point3>::Between(p1, p2);
+    Point3 odometry = traits<Point3>::Between(p1, p2);
     auto perturb_vec = rand_engine.rand_vec(odometry_sigmas);
-    measurements[k] = gtsam::traits<Point3>::Retract(odometry, perturb_vec);
+    measurements[k] = traits<Point3>::Retract(odometry, perturb_vec);
   }
 
   return measurements;
 }
 
 NonlinearFactorGraph GetCosts(const std::vector<Vector3> &measurements,
-                              const gtsam::Point3 &init_point,
-                              gtsam::SharedNoiseModel prior_noise,
-                              gtsam::SharedNoiseModel between_noise) {
+                              const Point3 &init_point,
+                              SharedNoiseModel prior_noise,
+                              SharedNoiseModel between_noise) {
   NonlinearFactorGraph graph;
   graph.addPrior<Point3>(PointKey(0), init_point, prior_noise);
-  for (int k = 0; k < measurements.size(); k++) {
+  for (size_t k = 0; k < measurements.size(); k++) {
     graph.emplace_shared<BetweenFactor<Point3>>(
         PointKey(k), PointKey(k + 1), measurements.at(k), between_noise);
   }
@@ -238,22 +235,22 @@ int main(int argc, char **argv) {
 
   LevenbergMarquardtParams lm_params;
   std::cout << "run soft...\n";
-  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 100);
+  auto soft_result = OptimizeIE_Soft(problem, lm_params, 100);
 
-  auto barrier_params = std::make_shared<BarrierParameters>();
+  auto barrier_params = std::make_shared<PenaltyParameters>();
   barrier_params->num_iterations = 15;
   std::cout << "run barrier...\n";
-  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
 
   GDParams gd_params;
   std::cout << "run gd...\n";
-  auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
+  auto gd_result = OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
   std::cout << "run lm...\n";
   ie_params.lm_params.setVerbosityLM("SUMMARY");
   ie_params.show_active_constraints = true;
-  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
+  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);
   barrier_result.first.printLatex(std::cout);

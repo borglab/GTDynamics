@@ -11,10 +11,11 @@
  * @author Yetong Zhang
  */
 
-#include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include "gtdynamics/optimizer/InequalityConstraint.h"
-#include <gtdynamics/imanifold/IELMOptimizer.h>
+#include "gtdynamics/cmcopt/IERetractor.h"
+#include "gtdynamics/cmopt/TspaceBasis.h"
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/geometry/Rot2.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -29,8 +30,8 @@ Key x1_key = 1;
 Key x2_key = 2;
 
 double dist_square_func(const double &x1, const double &x2,
-                        gtsam::OptionalJacobian<1, 1> H1 = nullptr,
-                        gtsam::OptionalJacobian<1, 1> H2 = nullptr) {
+                        OptionalJacobian<1, 1> H1 = nullptr,
+                        OptionalJacobian<1, 1> H2 = nullptr) {
   if (H1)
     *H1 << 2 * x1;
   if (H2)
@@ -95,14 +96,17 @@ void SaveDetails(const IELMItersDetails &iters_details,
                  const std::string &folder_path) {
   std::filesystem::create_directory(folder_path);
   // int total_trials = 0;
-  for (int iter_id = 0; iter_id < iters_details.size(); iter_id++) {
+  for (size_t iter_id = 0; iter_id < iters_details.size(); iter_id++) {
     const auto &iter_detail = iters_details.at(iter_id);
     const auto &state = iter_detail.state;
-    SaveState(state, iter_id, folder_path, iter_detail.trials.size());
+    SaveState(state, static_cast<int>(iter_id), folder_path,
+              static_cast<int>(iter_detail.trials.size()));
     // total_trials += iter_detail.trials.size();
-    for (int trial_id = 0; trial_id < iter_detail.trials.size(); trial_id++) {
+    for (size_t trial_id = 0; trial_id < iter_detail.trials.size();
+         trial_id++) {
       const auto &trial = iter_detail.trials.at(trial_id);
-      SaveTrial(trial, iter_id, trial_id, folder_path);
+      SaveTrial(trial, static_cast<int>(iter_id), static_cast<int>(trial_id),
+                folder_path);
     }
   }
 }
@@ -120,16 +124,16 @@ void OptimizeSO2() {
   graph.addPrior(x2_key, goal_point.y(),
                  noiseModel::Isotropic::Sigma(1, cost_sigmas(1)));
 
-  EqualityConstraints constraints;
+  NonlinearEqualityConstraints constraints;
   Double_ x1(x1_key);
   Double_ x2(x2_key);
   Double_ dist_square(dist_square_func, x1, x2);
   Double_ dist_error = dist_square - Double_(1.0);
   double tolerance = 1e-3;
-  constraints.emplace_shared<gtdynamics::DoubleExpressionEquality>(dist_error,
-                                                                   tolerance);
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      dist_error, 0.0, Vector1(tolerance));
 
-  InequalityConstraints i_constraints;
+  NonlinearInequalityConstraints i_constraints;
 
   Values init_values;
   init_values.insert(x1_key, init_point.x());

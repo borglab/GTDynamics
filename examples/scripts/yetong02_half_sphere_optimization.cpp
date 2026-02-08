@@ -1,5 +1,4 @@
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -11,10 +10,9 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/imanifold/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
-#include <gtdynamics/imanifold/IELMOptimizer.h>
-#include <gtdynamics/optimizer/SQPOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -49,26 +47,26 @@ int main(int argc, char **argv) {
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 
   LevenbergMarquardtParams lm_params;
-  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 100);
+  auto soft_result = OptimizeIE_Soft(problem, lm_params, 100);
 
-  auto barrier_params = std::make_shared<BarrierParameters>();
+  auto barrier_params = std::make_shared<PenaltyParameters>();
   barrier_params->num_iterations = 15;
-  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
 
   auto sqp_params = std::make_shared<SQPParams>();
   // sqp_params.merit_e_l2_mu = 1e-2;
   // sqp_params.merit_i_l2_mu = 1e-2;
   // sqp_params->lm_params.setVerbosityLM("SUMMARY");
   sqp_params->lm_params.setlambdaUpperBound(1e10);
-  auto sqp_result = OptimizeSQP(problem, sqp_params);
+  auto sqp_result = OptimizeIE_SQP(problem, sqp_params);
 
   GDParams gd_params;
-  auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
+  auto gd_result = OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
   ie_params.lm_params.minModelFidelity = 0.5;
   // lm_params.setVerbosityLM("SUMMARY");
-  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
+  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);
   barrier_result.first.printLatex(std::cout);

@@ -11,7 +11,7 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 using namespace gtdynamics;
@@ -138,7 +138,7 @@ void TrajectoryOptimization() {
   // retractor_params->scale_varying_sigma = true;
   retractor_params->metric_sigmas = std::make_shared<VectorValues>();
 
-  auto barrier_params = std::make_shared<BarrierParameters>();
+  auto barrier_params = std::make_shared<PenaltyParameters>();
   // barrier_params->lm_params = params_->lm_params;
   barrier_params->initial_mu = 10.0;
   barrier_params->mu_increase_rate = 10.0;
@@ -152,7 +152,7 @@ void TrajectoryOptimization() {
     barrier_params->iters_lm_params.push_back(lm_params1);
   }
   barrier_params->iters_lm_params.push_back(lm_params2);
-  retractor_params->barrier_params = barrier_params;
+  retractor_params->penalty_params = barrier_params;
 
   // iecm_params->retractor_creator =
   //     std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
@@ -175,8 +175,8 @@ void TrajectoryOptimization() {
   ie_params.active_constraints_group_as_categories = true;
 
   /* <=========== optimize ===========> */
-  auto ielm_result = OptimizeIELM(problem, ie_params, iecm_params);
-  EvaluateAndExportIELMResult(problem, *vision60_multi_phase, ielm_result,
+  auto ielm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+  EvaluateAndExportIELMResult(problem, *vision60_multi_phase, ielm_result.second,
                               scenario_folder, false);
   ExportOptimizationProgress(*vision60_multi_phase, scenario_folder,
                              ielm_result.second);

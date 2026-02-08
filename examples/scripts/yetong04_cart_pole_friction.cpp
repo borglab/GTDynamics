@@ -1,5 +1,4 @@
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -12,9 +11,8 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
-#include <gtdynamics/imanifold/IEGDOptimizer.h>
-#include <gtdynamics/imanifold/IELMOptimizer.h>
-#include <gtdynamics/optimizer/BarrierOptimizer.h>
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
 
 #include <iomanip>
 #include <string>
@@ -57,13 +55,14 @@ int main(int argc, char **argv) {
     e_constraints.add(e_constraints_k);
     i_constraints.add(i_constraints_k);
   }
-  e_constraints.emplace_shared<DoubleExpressionEquality>(
-      Double_(QKey(0)) - Double_(M_PI_2), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(Double_(VKey(0)), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(
-      Double_(QKey(num_steps)), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(
-      Double_(VKey(num_steps)), 1.0);
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(QKey(0)) - Double_(M_PI_2), 0.0, Vector1(1.0));
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(VKey(0)), 0.0, Vector1(1.0));
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(QKey(num_steps)), 0.0, Vector1(1.0));
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(VKey(num_steps)), 0.0, Vector1(1.0));
   NonlinearFactorGraph graph;
   auto collo_model = noiseModel::Isotropic::Sigma(1, 1e-1);
   auto prior_model = noiseModel::Isotropic::Sigma(1, 1e-2);
@@ -141,18 +140,18 @@ int main(int argc, char **argv) {
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 
   LevenbergMarquardtParams lm_params;
-  auto soft_result = OptimizeSoftConstraints(problem, lm_params, 100);
+  auto soft_result = OptimizeIE_Soft(problem, lm_params, 100);
 
-  auto barrier_params = std::make_shared<BarrierParameters>();
+  auto barrier_params = std::make_shared<PenaltyParameters>();
   barrier_params->num_iterations = 15;
-  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
 
   GDParams gd_params;
-  auto gd_result = OptimizeIEGD(problem, gd_params, iecm_params);
+  auto gd_result = OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
   ie_params.lm_params = lm_params;
-  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
+  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);
   barrier_result.first.printLatex(std::cout);
@@ -220,7 +219,7 @@ int main(int argc, char **argv) {
 
   // // Run Barrier optimization
   // {
-  //   BarrierParameters barrier_params;
+  //   PenaltyParameters barrier_params;
   //   barrier_params.initial_mu = 1e1;
   //   barrier_params.num_iterations = 15;
   //   // barrier_params.mu_increase_rate = 2.0;

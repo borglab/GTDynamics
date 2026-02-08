@@ -38,8 +38,8 @@ void IEItersSummary::addAccumulative(const IEConsOptProblem &problem,
 /* ************************************************************************* */
 Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
                      double sigma) {
-  NonlinearFactorGraph graph = problem.eConstraints().meritGraph();
-  graph.add(problem.iConstraints().meritGraph());
+  NonlinearFactorGraph graph = problem.eConstraints().penaltyGraph();
+  graph.add(problem.iConstraints().penaltyGraph());
 
   LevenbergMarquardtParams lm_params;
   lm_params.setlambdaUpperBound(1e10);
@@ -175,8 +175,8 @@ std::pair<IEResultSummary, LMItersDetail> OptimizeIE_Soft(
     double mu, bool eval_projected_cost) {
   /// Run optimization.
   NonlinearFactorGraph graph = problem.costs_;
-  graph.add(problem.constraints().meritGraph(mu));
-  graph.add(problem.iConstraints().meritGraph(mu));
+  graph.add(problem.constraints().penaltyGraph(mu));
+  graph.add(problem.iConstraints().penaltyGraph(mu));
   HistoryLMOptimizer optimizer(graph, problem.initValues(), lm_params);
 
   Timer timer;
@@ -214,15 +214,17 @@ std::pair<IEResultSummary, PenaltyItersDetails> OptimizeIE_Penalty(
     const IEConsOptProblem &problem,
     const gtsam::PenaltyOptimizerParams::shared_ptr &params,
     bool eval_projected_cost) {
-  /// Run optimization.
-  params->store_iter_details = true;
-  gtsam::PenaltyOptimizer optimizer(params);
+  params->storeOptProgress = true;
+  params->initialMuIneq = params->initialMuEq;
+  params->muIneqIncreaseRate = params->muEqIncreaseRate;
+  gtsam::ConstrainedOptProblem constrained_problem(
+      problem.costs(), problem.eConstraints(), problem.iConstraints());
+  gtsam::PenaltyOptimizer optimizer(constrained_problem, problem.initValues(),
+                                    params);
 
   Timer timer;
   timer.start();
-  Values result =
-      optimizer.optimize(problem.costs(), problem.eConstraints(),
-                         problem.iConstraints(), problem.initValues());
+  Values result = optimizer.optimize();
   timer.stop();
   std::cout << "optimize finished\n";
 
@@ -236,24 +238,18 @@ std::pair<IEResultSummary, PenaltyItersDetails> OptimizeIE_Penalty(
   summary.values = result;
   summary.evaluate(problem);
 
-  /// Summary of each iteration.
-  const auto &iters_details = optimizer.details();
+  const auto &iters_details = optimizer.progress();
   for (const auto &iter_detail : iters_details) {
-    if (params->store_lm_details) {
-      for (int i = 0; i < iter_detail.lm_iters_values.size(); i++) {
-        const auto &iter_values = iter_detail.lm_iters_values.at(i);
-        size_t inner_lm_iters = iter_detail.lm_inner_iters.at(i);
-        summary.iters_summary.addAccumulative(
-            problem, iter_values, 1, inner_lm_iters, eval_projected_cost);
-      }
-    } else {
-      summary.iters_summary.addAccumulative(
-          problem, iter_detail.values, iter_detail.num_lm_iters,
-          iter_detail.num_lm_inner_iters, eval_projected_cost);
-    }
+    IEIterSummary iter_summary;
+    iter_summary.accum_iters = iter_detail.iteration;
+    iter_summary.accum_inner_iters = iter_detail.unconstrainedIterations;
+    iter_summary.evaluate(problem, iter_detail.values, eval_projected_cost);
+    summary.iters_summary.emplace_back(iter_summary);
   }
-  summary.total_iters = summary.iters_summary.back().accum_iters;
-  summary.total_inner_iters = summary.iters_summary.back().accum_inner_iters;
+  if (!summary.iters_summary.empty()) {
+    summary.total_iters = summary.iters_summary.back().accum_iters;
+    summary.total_inner_iters = summary.iters_summary.back().accum_inner_iters;
+  }
   return std::make_pair(summary, iters_details);
 }
 
@@ -263,14 +259,16 @@ OptimizeIE_AugmentedLagrangian(
     const IEConsOptProblem &problem,
     const gtsam::AugmentedLagrangianParams::shared_ptr &params,
     bool eval_projected_cost) {
-  /// Run optimization.
-  params->store_iter_details = true;
-  gtsam::AugmentedLagrangianOptimizer optimizer(params);
+  params->storeOptProgress = true;
+  params->initialMuIneq = params->initialMuEq;
+  params->muIneqIncreaseRate = params->muEqIncreaseRate;
+  gtsam::ConstrainedOptProblem constrained_problem(
+      problem.costs(), problem.eConstraints(), problem.iConstraints());
+  gtsam::AugmentedLagrangianOptimizer optimizer(constrained_problem,
+                                                problem.initValues(), params);
   Timer timer;
   timer.start();
-  Values result =
-      optimizer.optimize(problem.costs(), problem.eConstraints(),
-                         problem.iConstraints(), problem.initValues());
+  Values result = optimizer.optimize();
   timer.stop();
   std::cout << "optimize finished\n";
 
@@ -284,24 +282,18 @@ OptimizeIE_AugmentedLagrangian(
   summary.values = result;
   summary.evaluate(problem);
 
-  /// Summary of each iteration.
-  const auto &iters_details = optimizer.details();
+  const auto &iters_details = optimizer.progress();
   for (const auto &iter_detail : iters_details) {
-    if (params->store_lm_details) {
-      for (int i = 0; i < iter_detail.lm_iters_values.size(); i++) {
-        const auto &iter_values = iter_detail.lm_iters_values.at(i);
-        size_t inner_lm_iters = iter_detail.lm_inner_iters.at(i);
-        summary.iters_summary.addAccumulative(
-            problem, iter_values, 1, inner_lm_iters, eval_projected_cost);
-      }
-    } else {
-      summary.iters_summary.addAccumulative(
-          problem, iter_detail.values, iter_detail.num_lm_iters,
-          iter_detail.num_lm_inner_iters, eval_projected_cost);
-    }
+    IEIterSummary iter_summary;
+    iter_summary.accum_iters = iter_detail.iteration;
+    iter_summary.accum_inner_iters = iter_detail.unconstrainedIterations;
+    iter_summary.evaluate(problem, iter_detail.values, eval_projected_cost);
+    summary.iters_summary.emplace_back(iter_summary);
   }
-  summary.total_iters = summary.iters_summary.back().accum_iters;
-  summary.total_inner_iters = summary.iters_summary.back().accum_inner_iters;
+  if (!summary.iters_summary.empty()) {
+    summary.total_iters = summary.iters_summary.back().accum_iters;
+    summary.total_inner_iters = summary.iters_summary.back().accum_inner_iters;
+  }
   return {summary, iters_details};
 }
 
@@ -343,9 +335,9 @@ std::pair<IEResultSummary, SQPItersDetails> OptimizeIE_SQP(
 }
 
 /* ************************************************************************* */
-#if defined(GTDYNAMICS_WITH_IFOPT)
 std::pair<IEResultSummary, IPItersDetails> OptimizeIE_IPOPT(
     const IEConsOptProblem &problem, bool eval_projected_cost) {
+#if defined(GTDYNAMICS_WITH_IFOPT)
   /// Run optimization.
   IPOptimizer optimizer;
   Timer timer;
@@ -371,12 +363,18 @@ std::pair<IEResultSummary, IPItersDetails> OptimizeIE_IPOPT(
 
   IPItersDetails iters_details;
   return {summary, iters_details};
-}
 #endif
+  IEResultSummary summary;
+  summary.exp_name = "IPOPT(unavailable)";
+  summary.values = problem.initValues();
+  summary.evaluate(problem);
+  IPItersDetails iters_details;
+  return {summary, iters_details};
+}
 
 /* ************************************************************************* */
 std::pair<IEResultSummary, IEGDItersDetails> OptimizeIE_CMCOptGD(
-    const IEConsOptProblem &problem, const gtsam::GDParams &params,
+    const IEConsOptProblem &problem, const GDParams &params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     bool eval_projected_cost) {
   /// Run optimization.
@@ -417,14 +415,14 @@ std::pair<IEResultSummary, IEGDItersDetails> OptimizeIE_CMCOptGD(
 
 /* ************************************************************************* */
 std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
-    const IEConsOptProblem &problem, const gtsam::IELMParams &ielm_params,
+    const IEConsOptProblem &problem, const IELMParams &ielm_params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params, double mu,
     bool eval_projected_cost) {
   /// Run optimization.
   IELMOptimizer optimizer(ielm_params, iecm_params);
   NonlinearFactorGraph merit_graph = problem.costs();
-  merit_graph.add(problem.iConstraints().meritGraph(mu));
-  gtsam::InequalityConstraints i_constraints;
+  merit_graph.add(problem.iConstraints().penaltyGraph(mu));
+  gtsam::NonlinearInequalityConstraints i_constraints;
   Timer timer;
   timer.start();
   Values result = optimizer.optimize(merit_graph, problem.eConstraints(),
@@ -458,7 +456,7 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
 
 /* ************************************************************************* */
 std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMCOptLM(
-    const IEConsOptProblem &problem, const gtsam::IELMParams &ielm_params,
+    const IEConsOptProblem &problem, const IELMParams &ielm_params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     std::string exp_name, bool eval_projected_cost) {
   /// Run optimization.

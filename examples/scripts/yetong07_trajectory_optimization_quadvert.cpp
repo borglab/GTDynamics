@@ -11,7 +11,7 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 using namespace gtdynamics;
@@ -146,8 +146,8 @@ void TrajectoryOptimization() {
   ie_params.active_constraints_group_as_categories = true;
 
   /* <=========== optimize ===========> */
-  auto ielm_result = OptimizeIELM(problem, ie_params, iecm_params);
-  EvaluateAndExportIELMResult(problem, *vision60_multi_phase, ielm_result,
+  auto ielm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+  EvaluateAndExportIELMResult(problem, *vision60_multi_phase, ielm_result.second,
                               scenario_folder, false);
 
   /* <=========== 2nd stage optimization ===========> */
@@ -168,7 +168,7 @@ void TrajectoryOptimization() {
   //   new_problem.values_ = ielm_result.second.back().state.baseValues();
   //   EvaluateAndExportInitValues(new_problem, *vision60_multi_phase,
   //                               scenario_folder);
-  //   auto new_ielm_result = OptimizeIELM(new_problem, ie_params, iecm_params);
+  //   auto new_ielm_result = OptimizeIE_CMCOptLM(new_problem, ie_params, iecm_params);
   //   EvaluateAndExportIELMResult(problem, *vision60_multi_phase,
   //   new_ielm_result,
   //                               scenario_folder, false);
@@ -177,11 +177,11 @@ void TrajectoryOptimization() {
   /* <=====================================================================> */
   /* <======================== Optimize Barrier ===========================> */
   /* <=====================================================================> */
-  // auto barrier_params = std::make_shared<BarrierParameters>();
+  // auto barrier_params = std::make_shared<PenaltyParameters>();
   // barrier_params->verbose = true;
   // barrier_params->initial_mu = 1e0;
   // barrier_params->num_iterations = 10;
-  // auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  // auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
   // EvaluateAndExportBarrierResult(problem, vision60_multi_phase,
   // barrier_result,
   //                                scenario_folder);

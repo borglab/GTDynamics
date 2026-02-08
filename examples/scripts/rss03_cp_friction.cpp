@@ -100,13 +100,14 @@ IEConsOptProblem CreateProblem() {
     e_constraints.add(e_constraints_k);
     i_constraints.add(i_constraints_k);
   }
-  e_constraints.emplace_shared<DoubleExpressionEquality>(
-      Double_(QKey(0)) - Double_(0.0), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(Double_(VKey(0)), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(
-      Double_(QKey(num_steps)) - Double_(M_PI), 1.0);
-  e_constraints.emplace_shared<DoubleExpressionEquality>(
-      Double_(VKey(num_steps)), 1.0);
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(QKey(0)) - Double_(0.0), 0.0, Vector1(1.0));
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(VKey(0)), 0.0, Vector1(1.0));
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(QKey(num_steps)) - Double_(M_PI), 0.0, Vector1(1.0));
+  e_constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(VKey(num_steps)), 0.0, Vector1(1.0));
   NonlinearFactorGraph graph;
   auto collo_model = noiseModel::Isotropic::Sigma(1, 1e-1);
   auto prior_model = noiseModel::Isotropic::Sigma(1, 1e-2);

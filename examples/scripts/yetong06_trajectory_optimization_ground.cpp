@@ -11,10 +11,9 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IEGDOptimizer.h>
-#include <gtdynamics/imanifold/IELMOptimizer.h>
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/optimizer/BarrierOptimizer.h>
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -42,13 +41,9 @@
 #include <gtdynamics/factors/WrenchFactor.h>
 
 #include "gtdynamics/factors/ContactPointFactor.h"
-#include "gtdynamics/imanifold/IERetractor.h"
-#include "gtdynamics/manifold/ConstraintManifold.h"
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include "gtdynamics/optimizer/ConstrainedOptimizer.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
-#include "gtdynamics/optimizer/InequalityConstraint.h"
-#include "gtdynamics/optimizer/OptimizationBenchmark.h"
+#include "gtdynamics/cmcopt/IERetractor.h"
+#include "gtdynamics/cmopt/ConstraintManifold.h"
+#include "gtdynamics/cmopt/TspaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/GraphUtils.h"
 #include "gtdynamics/utils/values.h"
@@ -114,9 +109,9 @@ void TrajectoryOptimization() {
   e_constraints.add(vision60.stateConstraints());
   auto EvaluateConstraints = [=](const Values &values) {
     std::cout << "e constraints violation:\t"
-              << e_constraints.evaluateViolationL2Norm(values) << "\n";
+              << e_constraints.violationNorm(values) << "\n";
     std::cout << "i constraints violation:\t"
-              << i_constraints.evaluateViolationL2Norm(values) << "\n";
+              << i_constraints.violationNorm(values) << "\n";
   };
 
   /// Costs
@@ -168,12 +163,12 @@ void TrajectoryOptimization() {
   ie_params.lm_params.setMaxIterations(10);
 
   // optimize IELM
-  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
+  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
   Values result_values = lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
     IEOptimizer::PrintIterDetails(
         iter_details, num_steps, false, IEVision60Robot::PrintValues,
-        IEVision60Robot::PrintDelta, gtdynamics::GTDKeyFormatter);
+        IEVision60Robot::PrintDelta, GTDKeyFormatter);
   }
   IEVision60Robot::PrintValues(result_values, num_steps);
   EvaluateCosts(result_values);
@@ -182,14 +177,14 @@ void TrajectoryOptimization() {
                                 "GTDynamics/data/ineq_quadruped_traj.csv");
 
   // Optimize Barrier
-  auto barrier_params = std::make_shared<BarrierParameters>();
+  auto barrier_params = std::make_shared<PenaltyParameters>();
   barrier_params->initial_mu = 1e0;
   barrier_params->num_iterations = 5;
-  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
   EvaluateCosts(barrier_result.second.rbegin()->values);
   IEVision60Robot::PrintValues(barrier_result.second.rbegin()->values,
                                num_steps);
-  barrier_result.first.exportFileWithMu(
+  barrier_result.first.exportFile(
       "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/"
       "ineq_quadruped_barrier.txt");
 

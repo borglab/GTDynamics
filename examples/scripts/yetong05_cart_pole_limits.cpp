@@ -1,9 +1,7 @@
-#include "gtdynamics/manifold/TspaceBasis.h"
-#include "gtdynamics/optimizer/EqualityConstraint.h"
+#include "gtdynamics/cmopt/TspaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include <cmath>
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
-#include <gtdynamics/optimizer/InequalityConstraint.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -17,9 +15,8 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>
-#include <gtdynamics/imanifold/IEGDOptimizer.h>
-#include <gtdynamics/imanifold/IELMOptimizer.h>
-#include <gtdynamics/optimizer/BarrierOptimizer.h>
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
 
 #include <iomanip>
 #include <string>
@@ -80,25 +77,25 @@ int main(int argc, char **argv) {
 
   // optimize IELM
   IELMParams ie_params;
-  auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
+  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
   Values result_values = 
       lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
     IEOptimizer::PrintIterDetails(
         iter_details, num_steps, false, IECartPoleWithLimits::PrintValues,
-        IECartPoleWithLimits::PrintDelta, gtdynamics::GTDKeyFormatter);
+        IECartPoleWithLimits::PrintDelta, GTDKeyFormatter);
   }
   IECartPoleWithLimits::PrintValues(result_values, num_steps);
   EvaluateCosts(result_values);
   IECartPoleWithLimits::ExportValues(result_values, num_steps, "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_cartpole_traj.csv");
   
   // Optimize Barrier
-  auto barrier_params = std::make_shared<BarrierParameters>();
+  auto barrier_params = std::make_shared<PenaltyParameters>();
   barrier_params->initial_mu = 1e0;
   barrier_params->num_iterations = 20;
-  auto barrier_result = OptimizeBarrierMethod(problem, barrier_params);
+  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
   EvaluateCosts(barrier_result.second.rbegin()->values);
-  barrier_result.first.exportFileWithMu("/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_cartpole_barrier.txt");
+  barrier_result.first.exportFile("/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_cartpole_barrier.txt");
   barrier_result.first.printLatex(std::cout);
   lm_result.first.printLatex(std::cout);
   

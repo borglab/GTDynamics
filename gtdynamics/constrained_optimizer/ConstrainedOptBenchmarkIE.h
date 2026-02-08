@@ -17,7 +17,7 @@
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/constrained_optimizer/SQPOptimizer.h>
-#include <gtdynamics/constraints/InequalityConstraint.h>
+#include <gtsam/constrained/ConstrainedOptProblem.h>
 #include <gtsam/base/timing.h>
 #include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
 #include <gtsam/constrained/PenaltyOptimizer.h>
@@ -32,6 +32,10 @@
 
 #if defined(GTDYNAMICS_WITH_IFOPT)
 #include <gtdynamics/constrained_optimizer/IPOptOptimizer.h>
+#else
+namespace gtdynamics {
+using IPItersDetails = std::vector<size_t>;
+}
 #endif
 
 namespace gtdynamics {
@@ -39,6 +43,53 @@ namespace gtdynamics {
 using gtsam::LevenbergMarquardtParams;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Values;
+using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
+using InequalityConstraints = gtsam::NonlinearInequalityConstraints;
+
+struct PenaltyParameters : public gtsam::PenaltyOptimizerParams {
+  double &initial_mu;
+  double &mu_increase_rate;
+  size_t &num_iterations;
+  LevenbergMarquardtParams &lm_params;
+  std::vector<LevenbergMarquardtParams> iters_lm_params;
+  bool store_iter_details = false;
+  bool store_lm_details = false;
+
+  PenaltyParameters()
+      : gtsam::PenaltyOptimizerParams(), initial_mu(initialMuEq),
+        mu_increase_rate(muEqIncreaseRate), num_iterations(maxIterations),
+        lm_params(lmParams) {}
+};
+
+struct AugmentedLagrangianParameters : public gtsam::AugmentedLagrangianParams {
+  double &initial_mu_e;
+  double &initial_mu_i;
+  double &mu_increase_rate;
+  double &mu_increase_threshold;
+  size_t &num_iterations;
+  double &dual_step_size_factor_e;
+  double &dual_step_size_factor_i;
+  double &max_dual_step_size_e;
+  double &max_dual_step_size_i;
+  LevenbergMarquardtParams &lm_params;
+  bool store_iter_details = false;
+  bool store_lm_details = false;
+
+  AugmentedLagrangianParameters()
+      : gtsam::AugmentedLagrangianParams(), initial_mu_e(initialMuEq),
+        initial_mu_i(initialMuIneq),
+        mu_increase_rate(muEqIncreaseRate),
+        mu_increase_threshold(muIncreaseThreshold),
+        num_iterations(maxIterations),
+        dual_step_size_factor_e(dualStepSizeFactorEq),
+        dual_step_size_factor_i(dualStepSizeFactorIneq),
+        max_dual_step_size_e(maxDualStepSizeEq),
+        max_dual_step_size_i(maxDualStepSizeIneq), lm_params(lmParams) {}
+};
+
+using PenaltyItersDetails = gtsam::PenaltyOptimizer::Progress;
+using AugmentedLagrangianItersDetails =
+    gtsam::AugmentedLagrangianOptimizer::Progress;
 
 Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
                      double sigma = 1e3);
@@ -138,10 +189,8 @@ std::pair<IEResultSummary, SQPItersDetails> OptimizeIE_SQP(
     const IEConsOptProblem &problem, const SQPParams::shared_ptr &params,
     bool eval_projected_cost = true);
 
-#if defined(GTDYNAMICS_WITH_IFOPT)
 std::pair<IEResultSummary, IPItersDetails> OptimizeIE_IPOPT(
     const IEConsOptProblem &problem, bool eval_projected_cost = true);
-#endif
 
 /** Run e-manifold optimization, with added penalty for i-constraints. */
 std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
@@ -151,7 +200,7 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
 std::pair<IEResultSummary, IEGDItersDetails> OptimizeIE_CMCOptGD(
-    const IEConsOptProblem &problem, const GDParams &iegd_params,
+    const IEConsOptProblem &problem, const GDParams &params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     bool eval_projected_cost = true);
 

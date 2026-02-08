@@ -25,8 +25,8 @@ void SaveValues(const std::string file_name, const Values &values) {
     std::ofstream file;
     file.open(scenario_folder + file_name);
     file << "step,x,y,z\n";
-    for (int k = 0; k < num_steps; k++) {
-      Key point_key = gtsam::Symbol('p', k);
+    for (size_t k = 0; k < num_steps; k++) {
+      Key point_key = Symbol('p', k);
       Point3 point = values.at<Point3>(point_key);
       file << k << "," << point.x() << "," << point.y() << "," << point.z()
            << "\n";

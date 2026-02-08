@@ -12,8 +12,9 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/imanifold/IEOptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+#include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
@@ -44,7 +45,7 @@ void RunRetractorBenchMark(
     std::cout << exp_name << ":\n";
 
     // run experiment
-    auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
+    auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
 
     // print result and evaluation
     Values result_values = lm_result.second.back().state.baseValues();
@@ -73,7 +74,7 @@ void RunRetractorBenchMark(
 }
 
 bool FileExists(const std::string &file_path) {
-  return access(file_path.c_str(), F_OK) != -1;
+  return std::filesystem::exists(file_path);
 }
 
 /* <=====================================================================> */
@@ -96,12 +97,14 @@ void RunMultiStageOptimization(
 
     std::string values_file_path = scenario_folder + exp_name + "_values.dat";
     if (FileExists(values_file_path)) {
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
       problem.values_ = LoadValuesFromFile(values_file_path);
       continue;
+#endif
     }
 
     // run experiment
-    auto lm_result = OptimizeIELM(problem, ie_params, iecm_params);
+    auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
 
     // print result and evaluation
     Values result_values = lm_result.second.back().state.baseValues();
