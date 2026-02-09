@@ -52,19 +52,15 @@ jobs:
           brew tap osrf/simulation
           # Refresh formula metadata on GitHub runners to avoid stale bottle mixes.
           brew update
-          # Keep Homebrew runtime deps in sync: sdformat15 links against urdfdom.
-          brew install urdfdom urdfdom_headers sdformat15
-          brew list --versions urdfdom urdfdom_headers sdformat15
-          SDF_LIB="$(find "$(brew --prefix sdformat15)/lib" -maxdepth 1 -name 'libsdformat15*.dylib' | head -n1)"
-          if [ -n "${SDF_LIB}" ]; then
-            otool -L "${SDF_LIB}" | grep urdfdom || true
-            REQUIRED_URDFDOM_SENSOR="$(otool -L "${SDF_LIB}" | sed -nE 's@.*(/liburdfdom_sensor\.[0-9]+\.[0-9]+\.dylib).*@\1@p' | head -n1)"
-            if [ -n "${REQUIRED_URDFDOM_SENSOR}" ] && [ ! -f "/opt/homebrew/opt/urdfdom${REQUIRED_URDFDOM_SENSOR}" ]; then
-              echo "sdformat15 expects missing urdfdom dylib: /opt/homebrew/opt/urdfdom${REQUIRED_URDFDOM_SENSOR}"
-              ls -la /opt/homebrew/opt/urdfdom/lib/liburdfdom_sensor*.dylib || true
-              exit 1
-            fi
+          # Install sdformat and ensure its declared dependency closure is current.
+          brew install sdformat15
+          SDF_DEPS="$(brew deps --formula --1 sdformat15)"
+          OUTDATED_DEPS="$(brew outdated --formula ${SDF_DEPS} sdformat15 || true)"
+          if [ -n "${OUTDATED_DEPS}" ]; then
+            brew upgrade ${OUTDATED_DEPS}
           fi
+          brew list --versions sdformat15 ${SDF_DEPS}
+          brew linkage --test sdformat15
 
           # GTDynamics C++ tests use CppUnitLite (install it once per job).
           git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
