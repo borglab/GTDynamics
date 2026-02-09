@@ -76,24 +76,24 @@ manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64"
 manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
 before-all = "bash {project}/.github/scripts/cibw_before_all_linux.sh"
 before-build = "bash {project}/.github/scripts/cibw_before_build_linux.sh {project}"
-repair-wheel-command = "LD_LIBRARY_PATH=/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib:$LD_LIBRARY_PATH auditwheel repair -w {dest_dir} {wheel}"
+repair-wheel-command = "LD_LIBRARY_PATH=/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/boost/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib:$LD_LIBRARY_PATH auditwheel repair -w {dest_dir} {wheel} --exclude 'libgtsam*' --exclude 'libmetis-gtsam*' --exclude 'libcephes-gtsam*' --exclude 'libboost_*'"
 
 [tool.cibuildwheel.linux.environment]
 INSTALL_PREFIX = "/opt/gtdynamics-deps"
 GTSAM_DIR = "/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 CMAKE_PREFIX_PATH = "/opt/gtdynamics-deps/gtsam_current:/opt/gtdynamics-deps/gz-cmake4:/opt/gtdynamics-deps/gz-utils:/opt/gtdynamics-deps/gz-math:/opt/gtdynamics-deps/sdformat"
-LD_LIBRARY_PATH = "/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib"
+LD_LIBRARY_PATH = "/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/boost/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib"
 Python_EXECUTABLE = "$(which python)"
 PYTHON_EXECUTABLE = "$(which python)"
 
 [tool.cibuildwheel.macos]
 before-all = "bash {project}/.github/scripts/cibw_before_all_macos.sh"
 before-build = "bash {project}/.github/scripts/cibw_before_build_macos.sh {project}"
-repair-wheel-command = "DYLD_LIBRARY_PATH=$HOME/opt/gtdynamics-deps/gtd_current/lib:$HOME/opt/gtdynamics-deps/gtsam_current/lib:$DYLD_LIBRARY_PATH delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+repair-wheel-command = "DYLD_LIBRARY_PATH=$HOME/opt/gtdynamics-deps/gtd_current/lib:$HOME/opt/gtdynamics-deps/gtsam_current/lib:$HOME/opt/gtdynamics-deps/boost/lib:$DYLD_LIBRARY_PATH delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} --exclude libgtsam --exclude libmetis-gtsam --exclude libcephes-gtsam --exclude libboost_serialization --exclude libboost_filesystem --exclude libboost_thread --exclude libboost_atomic --exclude libboost_chrono --exclude libboost_date_time --exclude libboost_regex --exclude libboost_timer --exclude libboost_system --exclude libboost_container"
 
 [tool.cibuildwheel.macos.environment]
 MACOSX_DEPLOYMENT_TARGET = "$MACOSX_DEPLOYMENT_TARGET"
 INSTALL_PREFIX = "$HOME/opt/gtdynamics-deps"
 GTSAM_DIR = "$HOME/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 CMAKE_PREFIX_PATH = "$HOME/opt/gtdynamics-deps/gtsam_current"
-DYLD_LIBRARY_PATH = "$HOME/opt/gtdynamics-deps/gtd_current/lib:$HOME/opt/gtdynamics-deps/gtsam_current/lib"
+DYLD_LIBRARY_PATH = "$HOME/opt/gtdynamics-deps/gtd_current/lib:$HOME/opt/gtdynamics-deps/gtsam_current/lib:$HOME/opt/gtdynamics-deps/boost/lib"

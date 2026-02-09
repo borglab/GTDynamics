@@ -53,6 +53,7 @@ cmake ${GTSAM_SOURCE} \
     -DGTSAM_PYTHON_VERSION=${PYTHON_VERSION} \
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
     -DGTSAM_ALLOW_DEPRECATED_SINCE_V43=OFF \
+    -DBOOST_ROOT=${BOOST_ROOT} \
     -DCMAKE_CXX_FLAGS="-faligned-new -Wno-error=free-nonheap-object"
 
 cmake --build . --config Release -j${NUM_CORES}

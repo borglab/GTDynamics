@@ -19,7 +19,21 @@ fi
 
 # Install Base System Dependencies via Homebrew
 echo "Installing base system dependencies..."
-brew install boost cmake wget git
+brew install cmake wget git
+
+# Build Boost 1.87.0 from source (must match the version used by gtsam-develop on PyPI)
+echo "Building Boost 1.87.0 from source..."
+cd /tmp
+wget https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz --quiet
+tar -xzf boost_1_87_0.tar.gz
+cd boost_1_87_0
+
+BOOST_PREFIX="${INSTALL_PREFIX}/boost"
+./bootstrap.sh --prefix=${BOOST_PREFIX}
+./b2 install --prefix=${BOOST_PREFIX} --with=all -d0 \
+    cxxflags="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}" \
+    linkflags="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+cd /tmp && rm -rf boost_1_87_0*
 
 # Install SDFormat via Homebrew
 brew tap osrf/simulation
@@ -31,8 +45,6 @@ echo "Cloning GTSAM source (develop branch)..."
 git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
 # Write environment file for before-build scripts
-BOOST_PREFIX=$(brew --prefix boost)
-
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"
 export BOOST_ROOT="${BOOST_PREFIX}"
