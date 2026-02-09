@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import gtdynamics as gtd
 
 # load date
 def load_data(file_path):
@@ -41,13 +42,13 @@ def make_plot(axs, jangles_array, jvels_array, jaccels_array, jtorques_array, id
 
 fig, axs = plt.subplots(2, 2)
 idx = 0
-file_path = '/Users/yetongzhang/packages/GTDynamics/data/init_traj.csv'
+file_path = gtd.DATA_PATH + 'init_traj.csv'
 jangles_array, jvels_array, jaccels_array, jtorques_array = load_data(file_path)
 make_plot(axs, jangles_array, jvels_array, jaccels_array, jtorques_array, idx, "init")
-file_path = '/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv'
+file_path = gtd.DATA_PATH + 'cm_traj.csv'
 jangles_array, jvels_array, jaccels_array, jtorques_array = load_data(file_path)
 make_plot(axs, jangles_array, jvels_array, jaccels_array, jtorques_array, idx, "manifold")
-file_path = '/Users/yetongzhang/packages/GTDynamics/data/soft_traj.csv'
+file_path = gtd.DATA_PATH + 'soft_traj.csv'
 jangles_array, jvels_array, jaccels_array, jtorques_array = load_data(file_path)
 make_plot(axs, jangles_array, jvels_array, jaccels_array, jtorques_array, idx, "soft")
 axs[0, 1].legend()
@@ -56,17 +57,16 @@ fig.suptitle("hip joint")
 
 fig, axs = plt.subplots(2, 2)
 idx = 1
-file_path = '/Users/yetongzhang/packages/GTDynamics/data/init_traj.csv'
+file_path = gtd.DATA_PATH + 'init_traj.csv'
 jangles_array, jvels_array, jaccels_array, jtorques_array = load_data(file_path)
 make_plot(axs, jangles_array, jvels_array, jaccels_array, jtorques_array, idx, "init")
-file_path = '/Users/yetongzhang/packages/GTDynamics/data/cm_traj.csv'
+file_path = gtd.DATA_PATH + 'cm_traj.csv'
 jangles_array, jvels_array, jaccels_array, jtorques_array = load_data(file_path)
 make_plot(axs, jangles_array, jvels_array, jaccels_array, jtorques_array, idx, "manifold")
-file_path = '/Users/yetongzhang/packages/GTDynamics/data/soft_traj.csv'
+file_path = gtd.DATA_PATH + 'soft_traj.csv'
 jangles_array, jvels_array, jaccels_array, jtorques_array = load_data(file_path)
 make_plot(axs, jangles_array, jvels_array, jaccels_array, jtorques_array, idx, "soft")
 axs[0, 1].legend()
 fig.suptitle("knee joint")
 
 plt.show()
-

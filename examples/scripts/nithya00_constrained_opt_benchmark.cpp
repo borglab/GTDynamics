@@ -101,9 +101,9 @@ int main(int argc, char** argv) {
   Values penalty_results = penalty_optimizer.optimize();
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
-  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
   gtsam::AugmentedLagrangianOptimizer augl_optimizer(problem, init_values,
-                                                     augl_params);
+                                                     almParams);
   Values augl_results = augl_optimizer.optimize();
 
   /// Function to evaluate constraint violation.

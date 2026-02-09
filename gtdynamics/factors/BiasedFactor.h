@@ -1,13 +1,20 @@
 #pragma once
 
+#include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/Values.h>
 
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/nvp.hpp>
 #endif
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::NoiseModelFactor;
+using gtsam::SharedNoiseModel;
+using gtsam::Values;
+using gtsam::Vector;
 
 /** A factor that adds a constant bias term to the original factor.
  * This factor is used in augmented Lagrangian optimizer to create biased cost
@@ -82,4 +89,4 @@ class BiasedFactor : public NoiseModelFactor {
 
 };  // \class BiasedFactor
 
-}  // namespace gtsam
+}  // namespace gtdynamics

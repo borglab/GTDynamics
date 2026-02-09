@@ -38,9 +38,9 @@
 
 using namespace std;
 
-namespace gtsam {
+namespace gtdynamics {
 
-typedef internal::LevenbergMarquardtState State;
+typedef gtsam::internal::LevenbergMarquardtState State;
 
 /* ************************************************************************* */
 MutableLMOptimizer::MutableLMOptimizer(const NonlinearFactorGraph& graph,
@@ -147,7 +147,7 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
     // ============ Solve is where most computation happens !! =================
     delta = solve(dampedSystem, params_);
     systemSolvedSuccessfully = true;
-  } catch (const IndeterminantLinearSystemException&) {
+  } catch (const gtsam::IndeterminantLinearSystemException&) {
     systemSolvedSuccessfully = false;
   }
 
@@ -290,7 +290,7 @@ GaussianFactorGraph::shared_ptr MutableLMOptimizer::iterate() {
   if (params_.getDiagonalDamping()) {
     sqrtHessianDiagonal = linear->hessianDiagonal();
     for (auto& kvp : sqrtHessianDiagonal) {
-      Vector& v = kvp.second;
+      gtsam::Vector& v = kvp.second;
       v = v.cwiseMax(params_.dampingParams.minDiagonal)
               .cwiseMin(params_.dampingParams.maxDiagonal)
               .cwiseSqrt();
@@ -344,9 +344,10 @@ void MutableLMOptimizer::setValues(const Values& values) {
 
 /* ************************************************************************* */
 void MutableLMOptimizer::setValues(Values&& values) {
-  state_ = std::unique_ptr<State>(
-      new State(std::move(values), graph_.error(values), params_.lambdaInitial,
-                params_.lambdaFactor));
+  // Evaluate error before moving values into State to avoid use-after-move UB.
+  const double error = graph_.error(values);
+  state_ = std::unique_ptr<State>(new State(
+      std::move(values), error, params_.lambdaInitial, params_.lambdaFactor));
 }
 
-} /* namespace gtsam */
+} /* namespace gtdynamics */

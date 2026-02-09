@@ -41,7 +41,7 @@ TEST(BiasedFactor, pose) {
   Vector bias = (Vector(3) << 1, 1, 0.1).finished();
 
   // Test constructor.
-  BiasedFactor const_bias_factor(base_factor, bias);
+  gtdynamics::BiasedFactor const_bias_factor(base_factor, bias);
 
   // Check error.
   Vector expected_error1 = (Vector(3) << 2, 1, 0.1).finished();

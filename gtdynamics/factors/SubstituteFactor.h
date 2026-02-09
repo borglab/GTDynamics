@@ -17,12 +17,16 @@
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/nvp.hpp>
-#endif
+#include <map>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Key;
+using gtsam::KeySet;
+using gtsam::KeyVector;
+using gtsam::NoiseModelFactor;
+using gtsam::Values;
+using gtsam::Vector;
 
 /** A factor that substitute certain variables of a base factor with constraint
  * manifold variables.
@@ -136,4 +140,4 @@ class SubstituteFactor : public NoiseModelFactor {
 
 };  // \class SubstituteFactor
 
-}  // namespace gtsam
+}  // namespace gtdynamics

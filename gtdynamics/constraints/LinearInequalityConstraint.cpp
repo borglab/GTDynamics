@@ -50,8 +50,8 @@ JacobianLinearInequalityConstraint::createConstrainedFactor() const {
 }
 
 /* ************************************************************************* */
-gtsam::MultiJacobian JacobianLinearInequalityConstraint::jacobian() const {
-  gtsam::MultiJacobian jac;
+MultiJacobian JacobianLinearInequalityConstraint::jacobian() const {
+  MultiJacobian jac;
   size_t start_col = 0;
   gtsam::Matrix jac_mat = factor_->jacobian().first;
   for (auto it = factor_->begin(); it != factor_->end(); it++) {
@@ -68,7 +68,7 @@ gtsam::MultiJacobian JacobianLinearInequalityConstraint::jacobian() const {
 
 /* ************************************************************************* */
 gtsam::GaussianFactorGraph LinearInequalityConstraints::constraintGraph(
-    const gtsam::IndexSet &active_indices) const {
+    const IndexSet &active_indices) const {
   gtsam::GaussianFactorGraph graph;
   for (const auto &index : active_indices) {
     graph.push_back(at(index)->createConstrainedFactor());

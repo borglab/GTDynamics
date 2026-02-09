@@ -16,7 +16,7 @@
 
 #pragma once
 
-namespace gtsam {
+namespace gtdynamics {
 
 /**
  * @class Timer
@@ -59,4 +59,4 @@ public:
   }
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

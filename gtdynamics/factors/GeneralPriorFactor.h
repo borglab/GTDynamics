@@ -27,7 +27,21 @@
 #include <boost/serialization/nvp.hpp>
 #endif
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::DefaultKeyFormatter;
+using gtsam::Key;
+using gtsam::KeyFormatter;
+using gtsam::KeyVector;
+using gtsam::Matrix;
+using gtsam::NoiseModelFactor;
+using gtsam::NonlinearFactor;
+using gtsam::NonlinearFactorGraph;
+using gtsam::SharedNoiseModel;
+using gtsam::Value;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::VectorValues;
 
 /**
  * A class for a soft prior on any Value type
@@ -115,7 +129,7 @@ inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
   for (const Key &key : keys) {
     const Value &value = values.at(key);
     graph.emplace_shared<GeneralPriorFactor>(
-        key, value, noiseModel::Isotropic::Sigma(value.dim(), sigma));
+        key, value, gtsam::noiseModel::Isotropic::Sigma(value.dim(), sigma));
   }
 }
 
@@ -131,7 +145,7 @@ inline void AddGeneralPriors(const Values &values,
     const Key &key = it.first;
     const Vector &sigmas = it.second;
     graph.emplace_shared<GeneralPriorFactor>(
-        key, values.at(key), noiseModel::Diagonal::Sigmas(sigmas));
+        key, values.at(key), gtsam::noiseModel::Diagonal::Sigmas(sigmas));
   }
 }
 
@@ -142,7 +156,8 @@ inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
   for (const Key &key : keys) {
     if (all_sigmas.exists(key)) {
       graph.emplace_shared<GeneralPriorFactor>(
-          key, values.at(key), noiseModel::Diagonal::Sigmas(all_sigmas.at(key)));
+          key, values.at(key),
+          gtsam::noiseModel::Diagonal::Sigmas(all_sigmas.at(key)));
     }
   }
 }
@@ -165,10 +180,11 @@ inline void AddGeneralPriors(const Values &values, const CONTAINER &keys,
   for (const Key &key : keys) {
     if (all_sigmas.exists(key)) {
       graph.emplace_shared<GeneralPriorFactor>(
-          key, values.at(key), noiseModel::Diagonal::Sigmas(scale * all_sigmas.at(key)));
+          key, values.at(key),
+          gtsam::noiseModel::Diagonal::Sigmas(scale * all_sigmas.at(key)));
     }
   }
 }
 
 
-}  // namespace gtsam
+}  // namespace gtdynamics

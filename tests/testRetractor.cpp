@@ -13,8 +13,8 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/manifold/ConstraintManifold.h>
-#include <gtdynamics/manifold/Retractor.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
@@ -25,7 +25,7 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include "gtdynamics/manifold/TspaceBasis.h"
+#include "gtdynamics/cmopt/TspaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -37,14 +37,14 @@ TEST(TspaceBasis, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  gtsam::NonlinearEqualityConstraints constraints;
+  auto constraints = std::make_shared<gtsam::NonlinearEqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
       x2_key, x3_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor12);
-  constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor23);
+  constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor12);
+  constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
   // Create manifold values for testing.
   Values base_values;
@@ -52,20 +52,16 @@ TEST(TspaceBasis, connected_poses) {
   base_values.insert(x2_key, Pose3(Rot3(), Point3(0, 0, 1)));
   base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 0, 3)));
 
-  // Connected component.
-  auto component = std::make_shared<ConnectedComponent>(constraints);
 
   // Construct retractor.
   auto params_uopt = std::make_shared<RetractParams>();
-  params_uopt->setUopt();
   auto params_proj = std::make_shared<RetractParams>();
-  params_proj->setProjection();
   auto params_fix_vars = std::make_shared<RetractParams>();
-  params_fix_vars->setFixVars();
+  params_fix_vars->use_basis_keys = true;
   KeyVector basis_keys{x3_key};
-  UoptRetractor retractor_uopt(component, params_uopt);
-  ProjRetractor retractor_proj(component, params_proj);
-  BasisRetractor retractor_basis(component, params_fix_vars, basis_keys);
+  UoptRetractor retractor_uopt(constraints, params_uopt);
+  ProjRetractor retractor_proj(constraints, params_proj);
+  BasisRetractor retractor_basis(constraints, params_fix_vars, basis_keys);
 
   Values values_uopt = retractor_uopt.retractConstraints(base_values);
   Values expected_uopt;

@@ -10,6 +10,7 @@ namespace gtdynamics {
 #include <gtdynamics/config.h>
 const string URDF_PATH = kUrdfPath;
 const string SDF_PATH = kSdfPath;
+const string DATA_PATH = kDataPath;
 
 // Global variable for key formatting
 const gtsam::KeyFormatter GTDKeyFormatter;

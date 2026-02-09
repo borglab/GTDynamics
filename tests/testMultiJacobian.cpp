@@ -13,7 +13,7 @@
 
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/manifold/MultiJacobian.h>
+#include <gtdynamics/cmopt/MultiJacobian.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -23,6 +23,7 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 
 using namespace gtsam;
+using namespace gtdynamics;
 
 // Test add and mult operators for MultiJacobian
 TEST(MultiJacobian, Add_Mult) {

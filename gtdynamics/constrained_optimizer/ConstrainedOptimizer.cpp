@@ -18,7 +18,6 @@ namespace gtdynamics {
 
 using gtsam::LevenbergMarquardtOptimizer;
 using gtsam::LevenbergMarquardtParams;
-using gtsam::HistoryLMOptimizer;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Values;
 

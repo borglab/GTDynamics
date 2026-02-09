@@ -13,11 +13,16 @@
 
 #pragma once
 
+#include <gtsam/base/Matrix.h>
+#include <gtsam/base/Vector.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/JacobianFactor.h>
 #include <gtsam/linear/NoiseModel.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Matrix;
+using gtsam::Vector;
 
 /** Solve an equality constrained QP problem defined by
  * Nocedal 16.39.
@@ -26,4 +31,4 @@ std::pair<Vector, Vector> SolveEQP(const Matrix &A_cost, const Vector &b_cost,
                                    const Matrix &A_constraint,
                                    const Vector &b_constraint);
 
-} // namespace gtsam
+} // namespace gtdynamics

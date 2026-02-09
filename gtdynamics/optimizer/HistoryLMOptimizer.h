@@ -13,18 +13,27 @@
 
 #pragma once
 
+#include <gtsam/base/timing.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearOptimizer.h>
 #include <gtsam/nonlinear/internal/LevenbergMarquardtState.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::GaussianFactorGraph;
+using gtsam::LevenbergMarquardtOptimizer;
+using gtsam::LevenbergMarquardtParams;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Ordering;
+using gtsam::Values;
+using gtsam::VectorValues;
 
 /** LM optimizer that stores history states. */
 class HistoryLMOptimizer : public LevenbergMarquardtOptimizer {
 public:
-  typedef internal::LevenbergMarquardtState State;
+  typedef gtsam::internal::LevenbergMarquardtState State;
   typedef std::vector<State> LMStates;
 
 protected:
@@ -80,4 +89,4 @@ public:
   }
 };
 
-} // namespace gtsam
+} // namespace gtdynamics

@@ -26,17 +26,33 @@
 
 #include <cmath>
 #include <fstream>
+#include <map>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::GaussianFactorGraph;
+using gtsam::JacobianFactor;
+using gtsam::Key;
+using gtsam::KeyFormatter;
+using gtsam::LevenbergMarquardtParams;
+using gtsam::Matrix;
+using gtsam::NonlinearFactorGraph;
+using gtsam::NonlinearOptimizerParams;
+using gtsam::SharedDiagonal;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::VectorValues;
 
 /** Print the factors in the graph that has error larger than the specified
  * threshold. */
 void PrintGraphWithError(
     const NonlinearFactorGraph &graph, const Values &values,
     double error_threshold = 1e-3,
-    const KeyFormatter &key_formatter = gtdynamics::GTDKeyFormatter);
+    const KeyFormatter &key_formatter = GTDKeyFormatter);
 
 /** Check if the values is feasible to the constraints corresponding to the
  * factor graph. */
@@ -44,7 +60,7 @@ bool CheckFeasible(
     const NonlinearFactorGraph &graph, const Values &values,
     const std::string s = "", const double feasible_threshold = 1e-3,
     bool print_details = false,
-    const KeyFormatter &key_formatter = gtdynamics::GTDKeyFormatter);
+    const KeyFormatter &key_formatter = GTDKeyFormatter);
 
 /// Solve gaussian factor graph using specified parameters.
 VectorValues SolveLinear(const GaussianFactorGraph &gfg,
@@ -83,7 +99,7 @@ inline Values PickValues(const CONTAINER &keys, const Values &priority_values,
     } else if (supplementary_values.exists(key)) {
       values.insert(key, supplementary_values.at(key));
     } else {
-      throw std::runtime_error("key " + gtdynamics::GTDKeyFormatter(key) +
+      throw std::runtime_error("key " + GTDKeyFormatter(key) +
                                " does not exist in both values.");
     }
   }
@@ -98,10 +114,11 @@ struct LMCachedModel {
   LMCachedModel() {} // default int makes zero-size matrices
   LMCachedModel(int dim, double sigma)
       : A(Matrix::Identity(dim, dim)), b(Vector::Zero(dim)),
-        model(noiseModel::Isotropic::Sigma(dim, sigma)) {}
+        model(gtsam::noiseModel::Isotropic::Sigma(dim, sigma)) {}
   LMCachedModel(int dim, double sigma, const Vector &diagonal)
       : A(Eigen::DiagonalMatrix<double, Eigen::Dynamic>(diagonal)),
-        b(Vector::Zero(dim)), model(noiseModel::Isotropic::Sigma(dim, sigma)) {}
+        b(Vector::Zero(dim)),
+        model(gtsam::noiseModel::Isotropic::Sigma(dim, sigma)) {}
   Matrix A;
   Vector b;
   SharedDiagonal model;
@@ -218,4 +235,4 @@ GaussianFactorGraph ScaledBiasedFactors(const GaussianFactorGraph &graph,
 /// Return factor by setting b to zero.
 JacobianFactor::shared_ptr ZerobFactor(const JacobianFactor::shared_ptr factor);
 
-} // namespace gtsam
+} // namespace gtdynamics

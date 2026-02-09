@@ -18,6 +18,7 @@
 #include <thread>
 
 using namespace gtsam;
+using namespace gtdynamics;
 
 TEST(Timer, Timer) {
   Timer timer;

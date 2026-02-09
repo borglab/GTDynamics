@@ -11,25 +11,22 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/manifold/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtsam/base/types.h>
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-namespace gtsam {
+namespace gtdynamics {
 
 /* ************************************************************************* */
 Values ConstraintManifold::constructValues(
-    const ConnectedComponent::shared_ptr cc, const gtsam::Values &values,
+    const gtsam::Values &values,
     const Retractor::shared_ptr &retractor, bool retract_init) {
-  Values cm_values;
-  for (const gtsam::Key &key : cc->keys_) {
-    cm_values.insert(key, values.at(key));
-  }
   if (retract_init) {
-    return retractor->retractConstraints(std::move(cm_values));
+    return retractor->retractConstraints(std::move(values));
   } else {
-    return cm_values;
+    return values;
   }
 }
 
@@ -97,40 +94,56 @@ bool ConstraintManifold::equals(const ConstraintManifold &other,
 }
 
 /* ************************************************************************* */
-Retractor::shared_ptr ConstraintManifold::constructRetractor(
-    const Params::shared_ptr &params,
-    const ConnectedComponent::shared_ptr &cc) {
-  if (params->retract_params->use_basis_keys) {
-    if (params->basis_key_func == NULL) {
-      throw std::runtime_error("Basis Key Function not provided for retractor");
-    }
-    KeyVector basis_keys = params->basis_key_func(cc);
-    return Retractor::create(params->retract_params, cc, basis_keys);
-  }
-  return Retractor::create(params->retract_params, cc);
-}
-
-/* ************************************************************************* */
-TspaceBasis::shared_ptr ConstraintManifold::constructTspaceBasis(
-    const Params::shared_ptr &params, const ConnectedComponent::shared_ptr &cc,
-    const Values &values, size_t manifold_dim) {
-  if (params->basis_params->use_basis_keys) {
-    if (params->basis_key_func == NULL) {
-      throw std::runtime_error(
-          "Basis Key Function not provided for tspace basis");
-    }
-    KeyVector basis_keys = params->basis_key_func(cc);
-    return TspaceBasis::create(params->basis_params, cc, values, basis_keys,
-                               manifold_dim);
-  }
-  return TspaceBasis::create(params->basis_params, cc, values, {},
-                             manifold_dim);
-}
-
-/* ************************************************************************* */
 const Values ConstraintManifold::feasibleValues() const {
-  LevenbergMarquardtOptimizer optimizer(cc_->merit_graph_, values_);
+  gtsam::LevenbergMarquardtOptimizer optimizer(constraints_->penaltyGraph(), values_);
   return optimizer.optimize();
 }
 
-}  // namespace gtsam
+/* ************************************************************************* */
+Values EManifoldValues::baseValues() const {
+  Values base_values;
+  for (const auto &it : *this) {
+    base_values.insert(it.second.values());
+  }
+  return base_values;
+}
+
+/* ************************************************************************* */
+KeyVector EManifoldValues::keys() const {
+  KeyVector key_vector;
+  for (const auto &it : *this) {
+    key_vector.push_back(it.first);
+  }
+  return key_vector;
+}
+
+/* ************************************************************************* */
+VectorValues
+EManifoldValues::computeTangentVector(const VectorValues &delta) const {
+  VectorValues tangent_vector;
+  for (const auto &it : *this) {
+    tangent_vector.insert(
+        it.second.basis()->computeTangentVector(delta.at(it.first)));
+  }
+  return tangent_vector;
+}
+
+/* ************************************************************************* */
+EManifoldValues EManifoldValues::retract(const VectorValues &delta) const {
+  EManifoldValues new_values;
+  for (const auto &it : *this) {
+    new_values.insert({it.first, it.second.retract(delta.at(it.first))});
+  }
+  return new_values;
+}
+
+/* ************************************************************************* */
+std::map<Key, size_t> EManifoldValues::dims() const {
+  std::map<Key, size_t> dims_map;
+  for (const auto &it : *this) {
+    dims_map.insert({it.first, it.second.dim()});
+  }
+  return dims_map;
+}
+
+} // namespace gtdynamics

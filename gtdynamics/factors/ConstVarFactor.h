@@ -3,7 +3,15 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Key;
+using gtsam::KeySet;
+using gtsam::KeyVector;
+using gtsam::NoiseModelFactor;
+using gtsam::NonlinearFactorGraph;
+using gtsam::Values;
+using gtsam::Vector;
 
 /** A factor that substitute certain variables of a base factor with constraint
  * manifold variables.
@@ -96,4 +104,4 @@ std::pair<NonlinearFactorGraph, ConstVarFactors> ConstVarGraph(
 NonlinearFactorGraph ConstVarGraph(const NonlinearFactorGraph& graph,
                                    const Values& fixed_values);
 
-}  // namespace gtsam
+}  // namespace gtdynamics

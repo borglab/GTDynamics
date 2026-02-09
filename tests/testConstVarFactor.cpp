@@ -41,7 +41,7 @@ TEST(ConstVarFactor, errorAndJacobian) {
   fixed_values.insert(x1_key, Pose3(Rot3(), Point3(0, 0, 0)));
 
   // Test constructor.
-  ConstVarFactor const_var_factor(base_factor, fixed_keys);
+  gtdynamics::ConstVarFactor const_var_factor(base_factor, fixed_keys);
   const_var_factor.setFixedValues(fixed_values);
   EXPECT(const_var_factor.checkActive());
 
@@ -59,7 +59,7 @@ TEST(ConstVarFactor, errorAndJacobian) {
 
   // A factor with all variables fixed should not be active.
   fixed_keys.insert(x2_key);
-  ConstVarFactor const_var_factor_all_fixed(base_factor, fixed_keys);
+  gtdynamics::ConstVarFactor const_var_factor_all_fixed(base_factor, fixed_keys);
   EXPECT(!const_var_factor_all_fixed.checkActive());
 }
 
@@ -83,13 +83,13 @@ TEST(ConstVarGraph, error) {
 
   // Construct const var graph with fixed keys.
   NonlinearFactorGraph new_graph;
-  ConstVarFactors const_var_factors;
-  std::tie(new_graph, const_var_factors) = ConstVarGraph(graph, fixed_keys);
+  gtdynamics::ConstVarFactors const_var_factors;
+  std::tie(new_graph, const_var_factors) = gtdynamics::ConstVarGraph(graph, fixed_keys);
   EXPECT_LONGS_EQUAL(2, new_graph.size());
   EXPECT_LONGS_EQUAL(1, const_var_factors.size());
 
   // Construct const var graph with fixed values.
-  new_graph = ConstVarGraph(graph, fixed_values);
+  new_graph = gtdynamics::ConstVarGraph(graph, fixed_values);
   EXPECT_LONGS_EQUAL(2, new_graph.size());
   Values values;
   values.insert(x2_key, Pose3(Rot3(), Point3(0.5, 0, 0)));

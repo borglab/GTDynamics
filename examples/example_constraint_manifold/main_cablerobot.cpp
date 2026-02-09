@@ -6,15 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  cablerobot_manifold.cpp
- * @brief Kinematic trajectory planning problem of reaching a target pose with a
- * cable robot. Benchmarking dynamic factor graph, constraint manifold, manually
- * specified manifold.
+ * @file  main_cablerobot.cpp
+ * @brief Cable robot kinematic trajectory benchmark using constrained
+ * optimization methods.
  * @author Yetong Zhang
  * @author Gerry Chen
  */
 
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
 #include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
 #include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
@@ -25,15 +24,60 @@
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <cstdlib>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
 using namespace gtsam;
 using namespace gtdynamics;
 
-const size_t num_steps = 10;
-auto joint_noise = noiseModel::Isotropic::Sigma(1, 1.0);
-auto joint_limit_noise = noiseModel::Isotropic::Sigma(1, 1e-2);
-auto target_noise = noiseModel::Isotropic::Sigma(6, 1e-2);
+namespace {
+constexpr size_t kNumSteps = 10;
+const auto kJointNoise = noiseModel::Isotropic::Sigma(1, 1.0);
+const auto kJointLimitNoise = noiseModel::Isotropic::Sigma(1, 1e-2);
+const auto kTargetNoise = noiseModel::Isotropic::Sigma(6, 1e-2);
 
+constexpr double kJointLimitLow = 0.0;
+constexpr double kJointLimitHigh = 3.6;
+
+const Key kEeId = 1;
+const Pose3 kTargetPose = Pose3(Rot3(), Point3(0.2, 0.5, 0.0));
+
+struct CableRobotArgs {
+  bool verbose_benchmark = false;
+  bool verbose_retractor = false;
+};
+
+void PrintUsage(const char* program_name) {
+  std::cout
+      << "Usage: " << program_name << " [args]\n"
+      << "Options:\n"
+      << "  --verbose-benchmark   Enable outer LM summary output.\n"
+      << "  --verbose-retractor   Enable retraction LM summary output.\n"
+      << "  --help                Show this message.\n";
+}
+
+CableRobotArgs ParseArgs(int argc, char** argv) {
+  CableRobotArgs args;
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg(argv[i]);
+    if (arg == "--verbose-benchmark") {
+      args.verbose_benchmark = true;
+    } else if (arg == "--verbose-retractor") {
+      args.verbose_retractor = true;
+    } else if (arg == "--help") {
+      PrintUsage(argv[0]);
+      std::exit(0);
+    } else {
+      throw std::invalid_argument("Unknown option: " + arg);
+    }
+  }
+  return args;
+}
+}  // namespace
+
+namespace {
 const double kCdprWidth = 3, kCdprHeight = 2;
 const std::array<Point3, 4> kCdprFrameMountPoints = {
     Point3{kCdprWidth, 0, 0},  //
@@ -43,18 +87,14 @@ const double kCdprEeWidth = 0.1, kCdprEeHeight = 0.1;
 const std::array<Point3, 4> kCdprEeMountPoints = {
     Point3{kCdprEeWidth, 0, 0}, Point3{kCdprEeWidth, kCdprEeHeight, 0},
     Point3{0, kCdprEeHeight, 0}, Point3{0, 0, 0}};
-
-const Key kEeId = 1;
-const Pose3 target_pose = Pose3(Rot3(), Point3(0.2, 0.5, 0.0));
-double joint_limit_low = 0;
-double joint_limit_high = 3.6;
+}  // namespace
 
 /** Factor graph of all kinematic constraints. */
 NonlinearFactorGraph get_constraints_graph() {
   NonlinearFactorGraph constraints_graph;
   auto graph_builder = DynamicsGraph();  //
   // kinematics constraints at each step
-  for (size_t k = 0; k <= num_steps; ++k) {
+  for (size_t k = 0; k <= kNumSteps; ++k) {
     for (size_t ci = 0; ci < 4; ++ci) {
       constraints_graph.emplace_shared<CableLengthFactor>(
           JointAngleKey(ci, k), PoseKey(kEeId, k),
@@ -70,40 +110,39 @@ NonlinearFactorGraph get_constraints_graph() {
   return constraints_graph;
 }
 
-/** Cost for planning, includes joint rotation costs, joint limit costs, cost
- * for reaching target pose. */
+/** Build joint rotation, limit, and terminal pose costs. */
 NonlinearFactorGraph get_costs() {
   NonlinearFactorGraph costs;
   // rotation costs
   NonlinearFactorGraph rotation_costs;
-  for (size_t k = 0; k < num_steps; k++) {
+  for (size_t k = 0; k < kNumSteps; k++) {
     for (size_t ci = 0; ci < 4; ++ci) {
       rotation_costs.emplace_shared<BetweenFactor<double>>(
-          JointAngleKey(ci, k), JointAngleKey(ci, k + 1), 0.0, joint_noise);
+          JointAngleKey(ci, k), JointAngleKey(ci, k + 1), 0.0, kJointNoise);
     }
   }
   // joint limit costs;
   NonlinearFactorGraph joint_limit_costs;
-  for (size_t k = 0; k <= num_steps; k++) {
+  for (size_t k = 0; k <= kNumSteps; k++) {
     for (size_t ci = 0; ci < 4; ++ci) {
       joint_limit_costs.emplace_shared<JointLimitFactor>(
-          JointAngleKey(ci, k), joint_limit_noise, joint_limit_low,
-          joint_limit_high, 0.0);
+          JointAngleKey(ci, k), kJointLimitNoise, kJointLimitLow,
+          kJointLimitHigh, 0.0);
     }
   }
   // target cost
   NonlinearFactorGraph target_costs;
-  costs.addPrior(PoseKey(kEeId, num_steps), target_pose, target_noise);
+  costs.addPrior(PoseKey(kEeId, kNumSteps), kTargetPose, kTargetNoise);
   costs.add(rotation_costs);
   costs.add(target_costs);
   costs.add(joint_limit_costs);
   return costs;
 }
 
-/** Initial values specifed by 0 for all joint angles. */
+/** Build an initial guess for cable lengths and end-effector pose. */
 Values get_init_values() {
   Values init_values;
-  for (size_t k = 0; k <= num_steps; k++) {
+  for (size_t k = 0; k <= kNumSteps; k++) {
     for (size_t ci = 0; ci < 4; ++ci) {
       InsertJointAngle(&init_values, ci, k, 1.8);
     }
@@ -114,7 +153,7 @@ Values get_init_values() {
 
 /** Print joint angles for all steps. */
 void print_joint_angles(const Values& values) {
-  for (size_t k = 0; k <= num_steps; k++) {
+  for (size_t k = 0; k <= kNumSteps; k++) {
     std::cout << "step " << k << ": ";
     for (size_t ci = 0; ci < 4; ++ci) {
       double angle = JointAngle(values, ci, k);
@@ -126,7 +165,7 @@ void print_joint_angles(const Values& values) {
 
 /** Compare simple kinematic planning tasks of a cable robot using (1) dynamics
  * factor graph (2) constraint manifold  */
-void kinematic_planning() {
+void kinematic_planning(const CableRobotArgs& args) {
   // Create constrained optimization problem.
   auto constraints_graph = get_constraints_graph();
   auto costs = get_costs();
@@ -137,42 +176,65 @@ void kinematic_planning() {
 
   std::ostringstream latex_os;
   LevenbergMarquardtParams lm_params;
+  lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+  if (args.verbose_benchmark) {
+    lm_params.setVerbosityLM("SUMMARY");
+    std::cout << "[BENCH] Verbose mode enabled for cable_robot benchmark.\n";
+  }
 
   // optimize soft constraints
   std::cout << "soft constraints:\n";
   auto soft_result =
-      OptimizeSoftConstraints(problem, latex_os, lm_params, 1.0);
+      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
 
   // optimize penalty method
   std::cout << "penalty method:\n";
   auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
   penalty_params->lmParams = lm_params;
   auto penalty_result =
-      OptimizePenaltyMethod(problem, latex_os, penalty_params);
+      OptimizeE_Penalty(problem, latex_os, penalty_params);
 
   // optimize augmented lagrangian
   std::cout << "augmented lagrangian:\n";
-  auto augl_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  augl_params->lmParams = lm_params;
-  auto augl_result =
-      OptimizeAugmentedLagrangian(problem, latex_os, augl_params);
+  auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
+  almParams->lmParams = lm_params;
+  auto almResult =
+      OptimizeE_AugmentedLagrangian(problem, latex_os, almParams);
 
-  // optimize constraint manifold specify variables (feasbile)
+  // optimize constraint manifold specify variables (feasible)
   std::cout << "constraint manifold basis variables (feasible):\n";
   auto mopt_params = DefaultMoptParams();
-  auto cm_basis_result = OptimizeConstraintManifold(
+  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType =
+      gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setlambdaUpperBound(
+      1e2);
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(
+      10);
+  if (args.verbose_retractor) {
+    mopt_params.cc_params->retractor_creator->params()->lm_params.setVerbosityLM(
+        "SUMMARY");
+    std::cout << "[BENCH] Retraction LM verbosity enabled.\n";
+  }
+  auto cm_basis_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
 
-  // optimize constraint manifold specify variables (infeasbile)
+  // optimize constraint manifold specify variables (infeasible)
   std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retract_params->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeConstraintManifold(
+  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
+  auto cm_basis_infeasible_result = OptimizeE_CMOpt(
       problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
 
   std::cout << latex_os.str();
 }
 
 int main(int argc, char** argv) {
-  kinematic_planning();
-  return 0;
+  try {
+    const CableRobotArgs args = ParseArgs(argc, argv);
+    kinematic_planning(args);
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    PrintUsage(argv[0]);
+    return 1;
+  }
 }

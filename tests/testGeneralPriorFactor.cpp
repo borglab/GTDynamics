@@ -1,5 +1,5 @@
 /**
- * @file   testPriorFactor.cpp
+ * @file   testGeneralPriorFactor.cpp
  * @brief  Test GeneralPriorFactor
  * @author Frank Dellaert
  * @date   Nov 4, 2014
@@ -8,11 +8,12 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtdynamics/manifold/GeneralPriorFactor.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
 
 using namespace std;
 using namespace std::placeholders;
 using namespace gtsam;
+using namespace gtdynamics;
 
 
 // /* ************************************************************************* */

@@ -132,12 +132,12 @@ std::string _GTDKeyFormatter(Key key) {
 }
 
 bool IsQLevel(const gtsam::Key &key) {
-  gtdynamics::DynamicsSymbol symb(key);
+  DynamicsSymbol symb(key);
   return symb.label() == "p" || symb.label() == "q";
 }
 
 bool IsVLevel(const gtsam::Key &key) {
-  gtdynamics::DynamicsSymbol symb(key);
+  DynamicsSymbol symb(key);
   return symb.label() == "V" || symb.label() == "v";
 }
 

@@ -15,7 +15,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
-#include <gtdynamics/manifold/ManifoldOptimizerType1.h>
+#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
@@ -25,9 +25,16 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
-#include <gtdynamics/optimizer/OptimizationBenchmark.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 
-namespace gtsam{
+namespace gtdynamics {
+
+using gtsam::NonlinearFactorGraph;
+using gtsam::SharedNoiseModel;
+using gtsam::Values;
+using gtsam::Vector;
+using gtsam::Vector3;
+using gtsam::Vector6;
 
 class CartPole {
 public:
@@ -48,10 +55,13 @@ public:
   double sigma_pos_objective = 1e-5;
   double sigma_objectives = 5e-3;
   double sigma_min_torque = 2e1;
-  SharedNoiseModel prior_model = noiseModel::Isotropic::Sigma(1, sigma_prior);           // prior constraints.
-  SharedNoiseModel pos_objectives_model = noiseModel::Isotropic::Sigma(1, sigma_pos_objective);  // Pos objectives.
-  SharedNoiseModel objectives_model = noiseModel::Isotropic::Sigma(1, sigma_objectives);  // Additional objectives.
-  SharedNoiseModel control_model = noiseModel::Isotropic::Sigma(1, sigma_min_torque);       // Controls.
+  SharedNoiseModel prior_model = gtsam::noiseModel::Isotropic::Sigma(1, sigma_prior);  // prior constraints.
+  SharedNoiseModel pos_objectives_model =
+      gtsam::noiseModel::Isotropic::Sigma(1, sigma_pos_objective);  // Pos objectives.
+  SharedNoiseModel objectives_model =
+      gtsam::noiseModel::Isotropic::Sigma(1, sigma_objectives);  // Additional objectives.
+  SharedNoiseModel control_model =
+      gtsam::noiseModel::Isotropic::Sigma(1, sigma_min_torque);  // Controls.
 
   gtdynamics::OptimizerSetting opt = getOptSetting();
   gtdynamics::DynamicsGraph graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
@@ -80,7 +90,7 @@ public:
   Values getInitValues(size_t num_steps, std::string option = "zero");
 
   /// Export trajectory to external file.
-  void exprotTrajectory(const Values& results, size_t num_steps, double dt, std::string file_name = "traj.csv") const;
+  void exportTrajectory(const Values& results, size_t num_steps, double dt, std::string file_name = "traj.csv") const;
 
   /// Print joint angles for all steps.
   void printJointAngles(const Values& values, size_t num_steps) const;
@@ -103,4 +113,4 @@ protected:
 
 };
 
-}
+}  // namespace gtdynamics

@@ -1,6 +1,8 @@
 #include <gtdynamics/factors/SmoothPenaltyFactor.h>
 
-namespace gtsam {
+namespace gtdynamics {
+
+using gtsam::Double_;
 
 /* ************************************************************************* */
 DoublePenaltyFunc SmoothBarrierFunction(const double &min_val,
@@ -68,20 +70,19 @@ DoublePenaltyFunc SmoothBarrierFunction(const double &min_val,
 // }
 
 /* ************************************************************************* */
-NoiseModelFactor::shared_ptr
-SmoothPenaltyFactor(const Key &key, const double &min_val, const double &b,
-                    const SharedNoiseModel &model) {
+NoiseModelFactor::shared_ptr SmoothPenaltyFactor(
+    const Key &key, const double &min_val, const double &b,
+    const SharedNoiseModel &model) {
   Double_ x_expr(key);
   auto penalty_function = SmoothBarrierFunction(min_val, b);
   Double_ error_expr(penalty_function, x_expr);
-  return std::make_shared<ExpressionFactor<double>>(model, 0.0, error_expr);
+  return std::make_shared<gtsam::ExpressionFactor<double>>(model, 0.0, error_expr);
 }
 
 /* ************************************************************************* */
-NoiseModelFactor::shared_ptr
-SmoothPenaltyFactor(const Key &key, const double &min_val,
-                    const double &max_val, const double &b,
-                    const SharedNoiseModel &model) {
+NoiseModelFactor::shared_ptr SmoothPenaltyFactor(
+    const Key &key, const double &min_val, const double &max_val,
+    const double &b, const SharedNoiseModel &model) {
   Double_ x_expr(key);
   auto penalty_function_min = SmoothBarrierFunction(min_val, b);
   auto penalty_function_negmax = SmoothBarrierFunction(-max_val, b);
@@ -89,7 +90,7 @@ SmoothPenaltyFactor(const Key &key, const double &min_val,
   Double_ error_min_expr(penalty_function_min, x_expr);
   Double_ error_max_expr(penalty_function_negmax, -1 * x_expr);
   Double_ error_expr = error_min_expr + error_max_expr;
-  return std::make_shared<ExpressionFactor<double>>(model, 0.0, error_expr);
+  return std::make_shared<gtsam::ExpressionFactor<double>>(model, 0.0, error_expr);
 }
 
-} // namespace gtsam
+}  // namespace gtdynamics

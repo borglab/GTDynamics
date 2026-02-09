@@ -10,7 +10,7 @@ add_compile_options(-faligned-new)
 # Configuration options should appear even if dependency checks fail.
 option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
 option(GTDYNAMICS_WITH_TBB "Use Intel Threaded Building Blocks (TBB) if available" OFF)
-option(GTDYNAMICS_WITH_IFOPT "Build IFOPT/IPOpt optimizer (requires ifopt)" OFF)
+option(GTDYNAMICS_WITH_SUITESPARSE "Enable SuiteSparse-based routines and IFOPT/IPOpt optimizer" OFF)
 option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
 option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
 option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
@@ -24,7 +24,7 @@ mark_as_advanced(CLEAR
   GTDYNAMICS_BUILD_EXAMPLES
 )
 mark_as_advanced(
-  GTDYNAMICS_WITH_IFOPT
+  GTDYNAMICS_WITH_SUITESPARSE
   GTDYNAMICS_BUILD_CABLE_ROBOT
   GTDYNAMICS_BUILD_JUMPING_ROBOT
 )
@@ -143,7 +143,7 @@ if(TBB_FOUND)
 else()
 message(STATUS "Use Intel TBB                               : NO")
 endif(TBB_FOUND)
-message(STATUS "Build IFOPT/IPOpt                           : ${GTDYNAMICS_WITH_IFOPT}")
+message(STATUS "Enable SuiteSparse                          : ${GTDYNAMICS_WITH_SUITESPARSE}")
 
 message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD_PYTHON}")
 if(GTDYNAMICS_BUILD_PYTHON)
