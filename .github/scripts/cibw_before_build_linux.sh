@@ -9,6 +9,11 @@ PROJECT_DIR="$1"
 INSTALL_PREFIX="/opt/gtdynamics-deps"
 NUM_CORES=$(nproc)
 
+# GTSAM's pybind11 wrapper files (nonlinear.cpp, etc.) are extremely memory-hungry.
+# Compiling them in parallel with -j$(nproc) will OOM-kill the process.
+# Cap GTSAM build parallelism at 2 (matching linux-ci.yml).
+GTSAM_BUILD_JOBS=2
+
 # Source environment from before-all
 source ${INSTALL_PREFIX}/env.sh
 
@@ -55,7 +60,7 @@ cmake ${GTSAM_SOURCE} \
     -DGTSAM_ALLOW_DEPRECATED_SINCE_V43=OFF \
     -DCMAKE_CXX_FLAGS="-faligned-new -Wno-error=free-nonheap-object"
 
-cmake --build . --config Release -j${NUM_CORES}
+cmake --build . --config Release -j${GTSAM_BUILD_JOBS}
 cmake --install .
 
 # Install GTSAM Python package

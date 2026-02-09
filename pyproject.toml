@@ -57,6 +57,9 @@ artifacts = [
     "python/gtdynamics/*.pyd",
 ]
 
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["python/gtdynamics"]
 
@@ -66,10 +69,11 @@ module-name = "gtdynamics"
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux_* *-win32 pp*"
+build-frontend = "pip; args: --no-build-isolation"
 
 [tool.cibuildwheel.linux]
-manylinux-x86_64-image = "manylinux_2_34"
-manylinux-aarch64-image = "manylinux_2_34"
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
 before-all = "bash {project}/.github/scripts/cibw_before_all_linux.sh"
 before-build = "bash {project}/.github/scripts/cibw_before_build_linux.sh {project}"
 repair-wheel-command = "LD_LIBRARY_PATH=/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib:$LD_LIBRARY_PATH auditwheel repair -w {dest_dir} {wheel}"
