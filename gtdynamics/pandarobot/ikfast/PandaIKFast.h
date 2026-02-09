@@ -44,7 +44,7 @@ class PandaIKFast {
    * @return std::vector<gtsam::Vector7> -- std vector containing the different
    * solutions for joint angles' values
    */
-  static std::vector<gtsam::Vector7> inverse(const gtsam::Pose3& bRe,
+  static std::vector<gtsam::Vector7> inverse(const gtsam::Pose3& bTe,
                                              double theta7);
 };
 

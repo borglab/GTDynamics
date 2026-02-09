@@ -110,7 +110,7 @@ class Statics : public Kinematics {
                                     const Robot& robot) const;
 
   /**
-   * Create keys for unkowns and initial values.
+   * Create keys for unknowns and initial values.
    * TODO(frank): if we inherit, should we have *everything below us?
    * @param slice Slice instance.
    * @param robot Robot specification from URDF/SDF.

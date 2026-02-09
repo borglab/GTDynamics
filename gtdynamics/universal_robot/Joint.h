@@ -7,7 +7,7 @@
 
 /**
  * @file  Joint.h
- * @brief Absract representation of a robot joint.
+ * @brief Abstract representation of a robot joint.
  * @author: Frank Dellaert
  * @author: Mandy Xie
  * @author: Alejandro Escontrela
@@ -156,7 +156,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
   Pose3 jMc_;
 
   // NOTE: We use a weak_ptr here since Link has shared_ptrs
-  // to joints, and this way we can avoid reference cyles.
+  // to joints, and this way we can avoid reference cycles.
   // https://en.cppreference.com/w/cpp/memory/weak_ptr
   using LinkWeakPtr = std::weak_ptr<Link>;
   LinkWeakPtr parent_link_;

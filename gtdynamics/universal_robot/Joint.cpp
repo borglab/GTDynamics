@@ -11,7 +11,7 @@
 
 /**
  * @file  Joint.cpp
- * @brief Absract representation of a robot joint.
+ * @brief Abstract representation of a robot joint.
  */
 
 #include <gtdynamics/factors/JointLimitFactor.h>
@@ -27,6 +27,32 @@ using gtsam::Vector6;
 namespace gtdynamics {
 
 /* ************************************************************************* */
+/*
+ * This constructor initializes the joint with its unique ID, name, pose, parent
+ * and child links, screw axis, and joint parameters. It computes several
+ * important quantities for kinematic and dynamic analysis:
+ *
+ * - `jMp_`: The pose of the parent link's COM expressed in the joint frame.
+ * - `jMc_`: The pose of the child link's COM expressed in the joint frame.
+ * - `pScrewAxis_`: The screw axis of the joint expressed in parent COM frame.
+ * - `cScrewAxis_`: The screw axis expressed in child link COM frame.
+ *
+ * The computation involves transforming the provided screw axis from the joint
+ * frame to the respective COM frames using the adjoint map of the
+ * transformation matrices.
+ *
+ * ASCII Illustration:
+ *
+ *        Parent Link (COM)         Joint Frame         Child Link (COM)
+ *              o----------------------X---------------------o
+ *             bMcom()           bTj (joint pose)        bMcom()
+ *                |                 |                       |
+ *                |<--- jMp_ ------>|<------ jMc_ --------->|
+ *
+ * The screw axis is transformed from the joint frame to each COM frame:
+ *   - pScrewAxis_: joint screw axis in parent COM frame
+ *   - cScrewAxis_: joint screw axis in child COM frame
+ */
 Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
              const LinkWeakPtr &parent_link, const LinkWeakPtr &child_link,
              const Vector6 &jScrewAxis, const JointParams &parameters)
@@ -37,7 +63,7 @@ Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
       jMp_(bTj.inverse() * parent_link.lock()->bMcom()),
       jMc_(bTj.inverse() * child_link.lock()->bMcom()),
       pScrewAxis_(-jMp_.inverse().AdjointMap() * jScrewAxis),
-      cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis),
+      cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis),  
       parameters_(parameters) {}
 
 /* ************************************************************************* */
@@ -321,7 +347,7 @@ gtsam::Vector6_ Joint::twistAccelConstraint(uint64_t t) const {
   /// The following 2 lambda functions computes the expected twist acceleration
   /// of the child link.
   /// (Note: we split it this into 2 functions because the
-  /// expression constructor currently only supports atmost tenary expressions.)
+  /// expression constructor currently only supports at most ternary expressions.)
   auto transformTwistAccelTo1 =
       [this](double q, const Vector6 &other_twist_accel,
              gtsam::OptionalJacobian<6, 1> H_q,

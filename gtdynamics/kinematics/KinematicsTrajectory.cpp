@@ -73,21 +73,23 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Trajectory>
 
 template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Trajectory>(
-    const Trajectory& trajectory, const Robot& robot) const {
+    const Trajectory& trajectory, const Robot& robot,
+    const Values& mean) const {
   NonlinearFactorGraph graph;
   for (auto&& phase : trajectory.phases()) {
-    graph.add(jointAngleObjectives<Interval>(phase, robot));
+    graph.add(jointAngleObjectives<Interval>(phase, robot, mean));
   }
   return graph;
 }
 
 template <>
-Values Kinematics::initialValues<Trajectory>(const Trajectory& trajectory,
-                                             const Robot& robot,
-                                             double gaussian_noise) const {
+Values Kinematics::initialValues<Trajectory>(
+    const Trajectory& trajectory, const Robot& robot, double gaussian_noise,
+    const gtsam::Values& initial_joints, bool use_fk) const {
   Values values;
   for (auto&& phase : trajectory.phases()) {
-    values.insert(initialValues<Interval>(phase, robot, gaussian_noise));
+    values.insert(
+        initialValues<Interval>(phase, robot, gaussian_noise, initial_joints, use_fk));
   }
   return values;
 }
