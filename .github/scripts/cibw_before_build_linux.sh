@@ -42,7 +42,7 @@ cmake ${GTSAM_SOURCE} \
     -DGTSAM_BUILD_TESTS=OFF \
     -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
     -DGTSAM_INSTALL_EXAMPLES=OFF \
-    -DGTSAM_BUILD_UNSTABLE=ON
+    -DGTSAM_BUILD_UNSTABLE=OFF
 
 cmake --build . --config Release -j${NUM_CORES}
 cmake --install .
