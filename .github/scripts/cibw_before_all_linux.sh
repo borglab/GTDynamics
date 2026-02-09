@@ -101,15 +101,12 @@ mkdir -p ${INSTALL_PREFIX}/boost/lib
 # -d preserves symlinks so that libboost_serialization.so -> libboost_serialization.so.1.75.0
 cp -d /usr/lib64/libboost_*.so* ${INSTALL_PREFIX}/boost/lib/
 
-# Also update the env.sh so the path is available to the repair command later
-echo "export LD_LIBRARY_PATH=\"\${INSTALL_PREFIX}/boost/lib:\${LD_LIBRARY_PATH}\"" >> ${INSTALL_PREFIX}/env.sh
-
 # Write environment file for before-build scripts
 # gtsam_current symlink will be created by before-build after GTSAM is built
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"
+# Integrated the boost path here
 export CMAKE_PREFIX_PATH="${INSTALL_PREFIX}/gtsam_current:${INSTALL_PREFIX}/gz-cmake4:${INSTALL_PREFIX}/gz-utils:${INSTALL_PREFIX}/gz-math:${INSTALL_PREFIX}/sdformat:\${CMAKE_PREFIX_PATH}"
-export LD_LIBRARY_PATH="${INSTALL_PREFIX}/gtsam_current/lib:${INSTALL_PREFIX}/sdformat/lib:${INSTALL_PREFIX}/gz-utils/lib:${INSTALL_PREFIX}/gz-math/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${INSTALL_PREFIX}/boost/lib:${INSTALL_PREFIX}/gtsam_current/lib:${INSTALL_PREFIX}/sdformat/lib:${INSTALL_PREFIX}/gz-utils/lib:${INSTALL_PREFIX}/gz-math/lib:\${LD_LIBRARY_PATH}"
 EOF
-
 echo "before-all completed successfully!"
