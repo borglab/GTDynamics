@@ -152,6 +152,9 @@ find ${GTD_BUILD} -maxdepth 2 -name "libgtdynamics*.dylib" \
 rm -f ${INSTALL_PREFIX}/gtd_current
 ln -sf ${GTD_PREFIX} ${INSTALL_PREFIX}/gtd_current
 
+# Remove any accidental duplicate gtsam dylibs from GTDynamics lib directory
+find ${GTD_PREFIX}/lib -name "libgtsam*.dylib" -delete
+
 export DYLD_LIBRARY_PATH="${GTD_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
 
 echo "============================================"

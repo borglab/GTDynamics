@@ -94,6 +94,16 @@ cd /tmp && rm -rf sdformat*
 echo "Cloning GTSAM source (develop branch)..."
 git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
+
+# Copy boost .so files so auditwheel can find them.
+echo "Creating a vendor-ready copy of Boost for auditwheel..."
+mkdir -p ${INSTALL_PREFIX}/boost/lib
+# -d preserves symlinks so that libboost_serialization.so -> libboost_serialization.so.1.75.0
+cp -d /usr/lib64/libboost_*.so* ${INSTALL_PREFIX}/boost/lib/
+
+# Also update the env.sh so the path is available to the repair command later
+echo "export LD_LIBRARY_PATH=\"\${INSTALL_PREFIX}/boost/lib:\${LD_LIBRARY_PATH}\"" >> ${INSTALL_PREFIX}/env.sh
+
 # Write environment file for before-build scripts
 # gtsam_current symlink will be created by before-build after GTSAM is built
 cat > ${INSTALL_PREFIX}/env.sh << EOF
