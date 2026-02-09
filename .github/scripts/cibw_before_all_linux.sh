@@ -18,11 +18,27 @@ echo "Installing base system dependencies..."
 dnf install -y \
     wget curl git \
     tinyxml2-devel \
-    ruby \
-    boost-devel
+    ruby
 
 echo "CMake version:"
 cmake --version
+
+
+# Build Boost 1.87.0 from source (must match the version used by gtsam-develop on PyPI)
+echo "Building Boost 1.87.0 from source..."
+cd /tmp
+wget https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz --quiet
+tar -xzf boost_1_87_0.tar.gz
+cd boost_1_87_0
+
+BOOST_PREFIX="${INSTALL_PREFIX}/boost"
+./bootstrap.sh --prefix=${BOOST_PREFIX}
+./b2 install --prefix=${BOOST_PREFIX} --with=all -d0
+cd /tmp && rm -rf boost_1_87_0*
+
+export BOOST_ROOT="${BOOST_PREFIX}"
+export BOOST_INCLUDEDIR="${BOOST_PREFIX}/include"
+export BOOST_LIBRARYDIR="${BOOST_PREFIX}/lib"
 
 
 # Install Gazebo dependencies for SDFormat
@@ -94,19 +110,15 @@ cd /tmp && rm -rf sdformat*
 echo "Cloning GTSAM source (develop branch)..."
 git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
-
-# Copy boost .so files so auditwheel can find them.
-echo "Creating a vendor-ready copy of Boost for auditwheel..."
-mkdir -p ${INSTALL_PREFIX}/boost/lib
-# -d preserves symlinks so that libboost_serialization.so -> libboost_serialization.so.1.75.0
-cp -d /usr/lib64/libboost_*.so* ${INSTALL_PREFIX}/boost/lib/
-
 # Write environment file for before-build scripts
 # gtsam_current symlink will be created by before-build after GTSAM is built
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"
-# Integrated the boost path here
+export BOOST_ROOT="${BOOST_PREFIX}"
+export BOOST_INCLUDEDIR="${BOOST_PREFIX}/include"
+export BOOST_LIBRARYDIR="${BOOST_PREFIX}/lib"
 export CMAKE_PREFIX_PATH="${INSTALL_PREFIX}/gtsam_current:${INSTALL_PREFIX}/gz-cmake4:${INSTALL_PREFIX}/gz-utils:${INSTALL_PREFIX}/gz-math:${INSTALL_PREFIX}/sdformat:\${CMAKE_PREFIX_PATH}"
-export LD_LIBRARY_PATH="${INSTALL_PREFIX}/boost/lib:${INSTALL_PREFIX}/gtsam_current/lib:${INSTALL_PREFIX}/sdformat/lib:${INSTALL_PREFIX}/gz-utils/lib:${INSTALL_PREFIX}/gz-math/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${BOOST_PREFIX}/lib:${INSTALL_PREFIX}/gtsam_current/lib:${INSTALL_PREFIX}/sdformat/lib:${INSTALL_PREFIX}/gz-utils/lib:${INSTALL_PREFIX}/gz-math/lib:\${LD_LIBRARY_PATH}"
 EOF
+
 echo "before-all completed successfully!"

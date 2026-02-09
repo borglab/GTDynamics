@@ -73,20 +73,17 @@ skip = "*-musllinux_* *-win32 pp*"
 build-frontend = "pip; args: --no-build-isolation"
 
 [tool.cibuildwheel.linux]
-manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64"
-manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64"
 before-all = "bash {project}/.github/scripts/cibw_before_all_linux.sh"
 before-build = "bash {project}/.github/scripts/cibw_before_build_linux.sh {project}"
-repair-wheel-command = """
-LD_LIBRARY_PATH=/opt/gtdynamics-deps/boost/lib:/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib:$LD_LIBRARY_PATH \
-auditwheel repair -w {dest_dir} {wheel}
-"""
+repair-wheel-command = "LD_LIBRARY_PATH=/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/boost/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib:$LD_LIBRARY_PATH auditwheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.linux.environment]
 INSTALL_PREFIX = "/opt/gtdynamics-deps"
 GTSAM_DIR = "/opt/gtdynamics-deps/gtsam_current/lib/cmake/GTSAM"
 CMAKE_PREFIX_PATH = "/opt/gtdynamics-deps/gtsam_current:/opt/gtdynamics-deps/gz-cmake4:/opt/gtdynamics-deps/gz-utils:/opt/gtdynamics-deps/gz-math:/opt/gtdynamics-deps/sdformat"
-LD_LIBRARY_PATH = "/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib"
+LD_LIBRARY_PATH = "/opt/gtdynamics-deps/gtd_current/lib:/opt/gtdynamics-deps/gtsam_current/lib:/opt/gtdynamics-deps/boost/lib:/opt/gtdynamics-deps/sdformat/lib:/opt/gtdynamics-deps/gz-utils/lib:/opt/gtdynamics-deps/gz-math/lib"
 Python_EXECUTABLE = "$(which python)"
 PYTHON_EXECUTABLE = "$(which python)"
 
