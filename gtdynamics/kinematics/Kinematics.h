@@ -109,7 +109,7 @@ struct PoseGoal {
                  double tol = 1e-9) const;
 };
 
-///< Map of time to PoseGoal
+///< Map of time step k to PoseGoal for that time step
 using PoseGoals = std::map<size_t, PoseGoal>;
 
 /// Noise models etc specific to Kinematics class
@@ -183,8 +183,8 @@ class Kinematics : public Optimizer {
   /**
    * @fn Create a pose prior for a given link for each given pose.
    * @param context Slice or Interval instance.
-   * @param pose_goals an object of PoseGoals: map of time k to desired pose at
-   * that time, which will be used as mean of the prior
+   * @param pose_goals an object of PoseGoals: map of time step k to desired pose
+   * at that time step, which will be used as mean of the prior
    * @returns graph with pose goal factors.
    */
   template <class CONTEXT>
@@ -195,8 +195,10 @@ class Kinematics : public Optimizer {
    * @fn Factors that minimize joint angles.
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
-   * @param joint_priors Values where the mean of the priors is specified. The
-   * default is an empty Values, meaning that the means will default to 0.
+   * @param joint_priors Values where the mean of the priors is specified. Uses
+   * gtsam::Values to support different prior means for different time steps in
+   * intervals/trajectories. The default is an empty Values, meaning that the
+   * means will default to 0.
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
@@ -226,8 +228,12 @@ class Kinematics : public Optimizer {
    *
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
-   * @param gaussian_noise time step to check (default 0.1).
-   * @param initial_joints initial values for joints
+   * @param gaussian_noise Gaussian noise standard deviation for initialization
+   * (default 0.0).
+   * @param initial_joints Initial values for joints.
+   * @param use_fk If true, use forward kinematics to initialize poses based on
+   * joint angles. If false, initialize poses near rest configuration with
+   * Gaussian noise (default false).
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
@@ -256,8 +262,9 @@ class Kinematics : public Optimizer {
    * @param context Slice or Interval instance
    * @param robot Robot specification from URDF/SDF
    * @param pose_goals goals for EE poses
-   * @param joint_priors optional argument to put priors centered on given
-   * values. If empty, the priors will be centered on the origin
+   * @param joint_priors Optional argument to put priors centered on given
+   * values. Uses gtsam::Values to support different prior means for different
+   * time steps. If empty, the priors will be centered on the origin.
    * @return values with poses and joint angles
    */
   template <class CONTEXT>
