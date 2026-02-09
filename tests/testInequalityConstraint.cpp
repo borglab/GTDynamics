@@ -105,9 +105,15 @@ TEST(InequalityConstraint, TwinDoubleExpressionInequality) {
   EXPECT(!constraint1->feasible(values2));
   EXPECT(!constraint2->feasible(values2));
 
-  EXPECT(assert_equal(Vector2(0, 0), constraints.violationVector(values1)));
-  EXPECT(constraints.violationVector(values2).norm() > 0);
-  EXPECT(assert_equal(Vector2(0, 0), constraints.violationVector(values3)));
+  // NOTE: Avoid NonlinearInequalityConstraints::violationVector here.
+  // In debug builds of the currently pinned GTSAM, it can trigger an Eigen
+  // block resize assertion for 1D constraints.
+  EXPECT(assert_equal(0.0, constraint1->violation(values1)));
+  EXPECT(assert_equal(0.0, constraint2->violation(values1)));
+  EXPECT(constraint1->violation(values2) > 0);
+  EXPECT(constraint2->violation(values2) > 0);
+  EXPECT(assert_equal(0.0, constraint1->violation(values3)));
+  EXPECT(assert_equal(0.0, constraint2->violation(values3)));
 
   EXPECT(constraints.keys().size() == 2);
 
