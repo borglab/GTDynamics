@@ -5,7 +5,7 @@
 set -e
 set -x
 
-PROJECT_DIR="$1"
+PROJECT_DIR="$(cd "$1" && pwd)"
 INSTALL_PREFIX="$HOME/opt/gtdynamics-deps"
 NUM_CORES=$(sysctl -n hw.logicalcpu)
 
