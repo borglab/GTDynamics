@@ -50,7 +50,16 @@ jobs:
           fi
           brew install boost
           brew tap osrf/simulation
-          brew install sdformat15
+          # Keep Homebrew runtime deps in sync: sdformat15 links against urdfdom.
+          # On GitHub macOS runners, stale preinstalled urdfdom can cause dyld
+          # failures (e.g. liburdfdom_sensor.5.1.dylib not found).
+          brew upgrade urdfdom urdfdom_headers || brew install urdfdom urdfdom_headers
+          brew upgrade sdformat15 || brew install sdformat15
+          brew list --versions urdfdom urdfdom_headers sdformat15
+          SDF_LIB="$(find "$(brew --prefix sdformat15)/lib" -maxdepth 1 -name 'libsdformat15*.dylib' | head -n1)"
+          if [ -n "${SDF_LIB}" ]; then
+            otool -L "${SDF_LIB}" | grep urdfdom || true
+          fi
 
           # GTDynamics C++ tests use CppUnitLite (install it once per job).
           git clone https://github.com/borglab/CppUnitLite.git /tmp/CppUnitLite
