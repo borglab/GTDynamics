@@ -1,0 +1,49 @@
+[project]
+name = "${PROJECT_NAME}"
+version = "${PROJECT_VERSION}"
+description = "${PROJECT_DESCRIPTION}"
+authors = [
+    { name = "Varun Agrawal", email = "varunagrawal@gatech.edu" },
+    { name="Frank Dellaert", email="dellaert@gatech.edu" }
+]
+readme = "${PROJECT_SOURCE_DIR}/README.md"
+license = "BSD-3-Clause"
+keywords=["robotics", "kinematics", "dynamics", "factor graphs"]
+
+classifiers = [
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+]
+
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.0.0",
+    "gtsam>=4.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/borglab/GTDynamics"
+Documentation = "https://github.com/borglab/GTDynamics"
+Repository = "https://github.com/borglab/GTDynamics"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "--cov=gtdynamics --cov-report html --cov-report term"
+norecursedirs = []
+
+[tool.uv.build-backend]
+module-name = "gtdynamics"

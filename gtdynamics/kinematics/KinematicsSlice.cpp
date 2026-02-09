@@ -42,13 +42,29 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
   // Constrain kinematics at joints.
   for (auto&& joint : robot.joints()) {
     const auto j = joint->id();
-    graph.add(PoseFactor(
-        internal::PoseKey(joint->parent()->id(), slice.k),
-        internal::PoseKey(joint->child()->id(), slice.k),
-        internal::JointAngleKey(j, slice.k), p_->p_cost_model, joint));
+    graph.add(PoseFactor(PoseKey(joint->parent()->id(), slice.k),
+                         PoseKey(joint->child()->id(), slice.k),
+                         JointAngleKey(j, slice.k), p_.p_cost_model, joint));
   }
 
   return graph;
+}
+
+template <>
+gtsam::NonlinearEqualityConstraints Kinematics::constraints<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+
+  // Constrain kinematics at joints.
+  gtsam::Vector6 tolerance = p_.p_cost_model->sigmas();
+  for (auto&& joint : robot.joints()) {
+    auto constraint_expr = joint->poseConstraint(slice.k);
+    constraints.emplace_shared<
+        gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
+        constraint_expr, gtsam::Vector6::Zero(), tolerance);
+  }
+
+  return constraints;
 }
 
 template <>
@@ -58,12 +74,30 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
 
   // Add objectives.
   for (const ContactGoal& goal : contact_goals) {
-    const gtsam::Key pose_key = internal::PoseKey(goal.link()->id(), slice.k);
-    graph.emplace_shared<PointGoalFactor>(pose_key, p_->g_cost_model,
+    const gtsam::Key pose_key = PoseKey(goal.link()->id(), slice.k);
+    graph.emplace_shared<PointGoalFactor>(pose_key, p_.g_cost_model,
                                           goal.contactInCoM(), goal.goal_point);
   }
 
   return graph;
+}
+
+template <>
+gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
+    const Slice& slice, const ContactGoals& contact_goals) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+
+  // Add objectives.
+  gtsam::Vector3 tolerance = p_.g_cost_model->sigmas();
+  for (const ContactGoal& goal : contact_goals) {
+    const gtsam::Key pose_key = PoseKey(goal.link()->id(), slice.k);
+    auto constraint_expr =
+        PointGoalConstraint(pose_key, goal.contactInCoM(), goal.goal_point);
+    constraints.emplace_shared<
+        gtsam::ExpressionEqualityConstraint<gtsam::Vector3>>(
+        constraint_expr, gtsam::Vector3::Zero(), tolerance);
+  }
+  return constraints;
 }
 
 template <>
@@ -73,8 +107,8 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
 
   // Minimize the joint angles.
   for (auto&& joint : robot.joints()) {
-    const gtsam::Key key = internal::JointAngleKey(joint->id(), slice.k);
-    graph.addPrior<double>(key, 0.0, p_->prior_q_cost_model);
+    const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
+    graph.addPrior<double>(key, 0.0, p_.prior_q_cost_model);
   }
 
   return graph;
@@ -105,19 +139,31 @@ Values Kinematics::initialValues<Slice>(const Slice& slice, const Robot& robot,
 
 template <>
 Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
-                                  const ContactGoals& contact_goals) const {
-  auto graph = this->graph(slice, robot);
+                                  const ContactGoals& contact_goals,
+                                  bool contact_goals_as_constraints) const {
+  // Robot kinematics constraints
+  auto constraints = this->constraints(slice, robot);
+  NonlinearFactorGraph graph;
 
-  // Add objectives.
-  graph.add(pointGoalObjectives(slice, contact_goals));
+  // Contact goals
+  if (contact_goals_as_constraints) {
+    auto goal_constraints = this->pointGoalConstraints(slice, contact_goals);
+    for (const auto& constraint : goal_constraints) {
+      constraints.push_back(constraint);
+    }
+  } else {
+    graph.add(pointGoalObjectives(slice, contact_goals));
+  }
+
+  // Traget joint angles.
   graph.add(jointAngleObjectives(slice, robot));
 
   // TODO(frank): allo pose prior as well.
-  // graph.addPrior<gtsam::Pose3>(internal::PoseKey(0, slice.k),
+  // graph.addPrior<gtsam::Pose3>(PoseKey(0, slice.k),
   // gtsam::Pose3(), nullptr);
 
   auto initial_values = initialValues(slice, robot);
 
-  return optimize(graph, initial_values);
+  return optimize(graph, constraints, initial_values);
 }
 }  // namespace gtdynamics

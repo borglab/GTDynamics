@@ -13,7 +13,7 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 
 * [GTSAM4](https://github.com/borglab/gtsam)
 * [gtwrap](https://github.com/borglab/wrap)
-* [sdformat10](https://github.com/osrf/sdformat)
+* [sdformat15](https://github.com/osrf/sdformat)
 
 ## Installing SDFormat
 
@@ -26,9 +26,9 @@ Using Homebrew is the easiest way to get SDFormat installed and it also makes sw
 ```sh
 $ # Install homebrew.
 $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-$ # Set up the tap ind install sdformat10
+$ # Set up the tap and install sdformat15
 $ brew tap osrf/simulation
-$ brew install sdformat10
+$ brew install sdformat15
 ```
 
 ### Source
@@ -48,10 +48,10 @@ wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
 sudo apt-get update
 
 # Install SDFormat dependencies
-sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libignition-cmake2-dev libignition-tools-dev libignition-math6-dev
+sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libgz-cmake2-dev libgz-tools-dev libgz-math6-dev
 
 # Set the version to install
-export GTD_SDFormat_VERSION="10.5.0"
+export GTD_SDFormat_VERSION="15.0.0"
 
 # Download specific version of SDFormat
 wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
@@ -72,9 +72,15 @@ $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
 $ mkdir build; cd build
 # We can specify the install path with -DCMAKE_INSTALL_PREFIX
+# To compile with Python wrapper support, ensure that GTSAM was built with Python
+#   and use -DGTDYNAMICS_BUILD_PYTHON=ON
+$ # If GTSAM is installed to a non-system prefix, point CMake to it, e.g.:
+$ #   -DGTSAM_DIR=/path/to/gtsam_install/lib/cmake/GTSAM
+$ #   -DCMAKE_PREFIX_PATH=/path/to/gtsam_install
 $ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 $ make
 $ sudo make install
+# Run make python-install for installation with Python
 ```
 
 ## Running Tests
@@ -85,27 +91,90 @@ $ make check
 
 ## Running Examples
 
-The `/examples` directory contains example projects that demonstrate how to include GTDynamics in your application. To run an example, ensure that the `CMAKE_PREFIX_PATH` is set to the GTDynamics install directory.
+The `examples` directory contains various full example projects demonstrating the use of GTDynamics for various robotic applications.
+
+We recommend going through the examples to get a better understanding of how to use GTDynamics for your own use cases.
+
+*NOTE* The examples are made to run within the GTDynamics source folder and are not standalone projects.
+
+1. Build GTDynamics and navigate to the `build` folder:
+    ```sh
+    $ cd build
+    ```
+
+2. Run the example using:
+    ```sh
+    $ make example_XXX.run
+    ```
+    where `XXX` corresponds to the example name. Example names align with folder names in `examples`, but some of them have added suffixes.  For example, `make example_forward_dynamics.run` or `make example_spider_walking_forward`.
+
+3. Run the simulation using:
+    ```sh
+    $ make example_XXX.sim
+    ```
+    where `XXX` corresponds to the folder name in `examples`. For example, `make example_quadruped_mp.sim` or `make example_spider_walking.sim`. Make sure you have `pybullet` and `matplotlib` installed in your Python environment. 
+
+## Constrained Optimization (GTSAM-backed)
+
+GTDynamics now routes some constrained optimization methods through GTSAM's constrained optimizers.
+
+Typical entry points:
+
+- **Optimizer API:** set `OptimizationParameters::Method` to `PENALTY` or `AUGMENTED_LAGRANGIAN` and call `Optimizer::optimize(...)`.
+- **Benchmark helpers:** use `OptimizePenaltyMethod(...)` / `OptimizeAugmentedLagrangian(...)` in `gtdynamics/optimizer/OptimizationBenchmark.h`.
+
+### Benchmark: Kuka Arm (Trajectory Optimization)
+
+We ran the Kuka arm example to compare **Soft Constraints** vs **Penalty** vs **Augmented Lagrangian**.
+
+Run it from the build directory:
+
+```sh
+$ make example_constraint_manifold_arm.run
+```
+
+Example output (times in seconds; your machine will differ):
+
+```
+Soft Constraint           0.334 s
+Penalty Method            2.045 s
+Augmented Lagrangian      1.663 s
+Constraint Manifold (F)   0.107 s
+Constraint Manifold (I)   0.061 s
+```
+
+**Change note (Feb 1, 2026):** GTDynamics now uses GTSAM's nonlinear inequality constraints
+(`gtsam::NonlinearInequalityConstraint` / `NonlinearInequalityConstraints`) with the convention
+**g(x) <= 0**. The legacy GTDynamics nonlinear inequality classes were removed; linear inequality
+support remains in `gtdynamics/constraints/LinearInequalityConstraint.{h,cpp}`.
+
+## Including GTDynamics With CMake
+
+The `examples/cmake_project_example` directory contains an example CMake-based project that demonstrates how to include GTDynamics in your application.
+
+Use this as a template when you want to set up your own project that uses GTDynamics (e.g. separate git repo, ROS, personal libraries, etc).
+
+To build the project:
 
 1. Navigate to the example's subdirectory and create a build directory. e.g.
-```sh
-cd GTDynamics/examples/example_forward_dynamics
-mkdir build; cd build
-```
+    ```sh
+    cd GTDynamics/examples/cmake_project_example
+    mkdir build; cd build
+    ```
 
 2. Make the example.
 
-If GTDynamics was installed to `~/JohnDoe/gtdynamics_install`, then run the cmake command with:
+    If GTDynamics was installed to `~/JohnDoe/GTDynamics/install`, then run the cmake command with:
 
-```sh
-cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/gtdynamics_install ..
-make
-```
+    ```sh
+    cmake -DCMAKE_PREFIX_PATH=~/JohnDoe/GTDynamics/install ..
+    make
+    ```
 
 3. Run the example!
-```sh
-./exec
-```
+    ```sh
+    ./example
+    ```
 
 ## Python Wrapper (Recommended use case)
 
@@ -127,6 +196,9 @@ To compile and install the GTDynamics python library:
 2. In the GTDynamics build directory, run `cmake` with the flag `GTDYNAMICS_BUILD_PYTHON=ON`. It is highly advised for the GTDynamics CMake prefix to match the CMake prefix used for GTSAM. Again, use the `CMAKE_INSTALL_PREFIX=/path/to/install/dir` flag to specify the updated prefix.
 
     ```sh
+    # If GTSAM was installed to a non-system prefix, also provide:
+    #   -DGTSAM_DIR=/path/to/install/dir/lib/cmake/GTSAM
+    #   -DCMAKE_PREFIX_PATH=/path/to/install/dir
     cmake -DGTDYNAMICS_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/path/to/install/dir ..
     ```
 
@@ -165,4 +237,3 @@ Please cite the following paper if you use this code as part of any published re
     Eprint = {arXiv:2011.06194},
 }
 ```
-

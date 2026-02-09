@@ -131,14 +131,13 @@ Pose3 compute_hermite_pose(const CoeffMatrix &coeffs, const Vector3 &x_0_p,
 }
 
 /** Compute the target footholds for each support phase. */
-TargetFootholds
-compute_target_footholds(const CoeffMatrix &coeffs, const Vector3 &x_0_p,
-                         const Pose3 &wTb_i, const double horizon,
-                         const double t_support,
-                         const std::map<std::string, Pose3> &bTfs) {
+TargetFootholds compute_target_footholds(
+    const CoeffMatrix &coeffs, const Vector3 &x_0_p, const Pose3 &wTb_i,
+    const double horizon, const double t_support,
+    const std::map<std::string, Pose3> &bTfs) {
   TargetFootholds target_footholds;
 
-  double t_swing = t_support / 4.0; // Time for each swing foot trajectory.
+  double t_swing = t_support / 4.0;  // Time for each swing foot trajectory.
   int n_support_phases = horizon / t_support;
 
   for (int i = 0; i <= n_support_phases; i++) {
@@ -176,7 +175,7 @@ TargetPoses compute_target_poses(const TargetFootholds &targ_footholds,
 
   // Time spent in current support phase.
   double t_in_support = std::fmod(t, t_support);
-  double t_swing = t_support / 4.0; // Duration of swing phase.
+  double t_swing = t_support / 4.0;  // Duration of swing phase.
 
   int swing_leg_idx;
   if (t_in_support <= t_swing)
@@ -235,8 +234,7 @@ struct CsvWriter {
       pose_file << "," << leg << "x"
                 << "," << leg << "y"
                 << "," << leg << "z";
-    for (auto &&joint : robot.joints())
-      pose_file << "," << joint->name();
+    for (auto &&joint : robot.joints()) pose_file << "," << joint->name();
     pose_file << "\n";
   }
 
@@ -296,16 +294,16 @@ int main(int argc, char **argv) {
   //             t = 0   normalized time (t)  t = 1
   std::vector<std::string> swing_sequence{"lower0", "lower1", "lower2",
                                           "lower3"};
-  double t_support = 8; // Duration of a support phase.
+  double t_support = 8;  // Duration of a support phase.
 
   // Offsets from base to foot.
   std::map<std::string, Pose3> bTfs;
   Pose3 comTfoot =
-      Pose3(Rot3(), Point3(0.14, 0, 0)); // Foot is 14cm along X in COM
+      Pose3(Rot3(), Point3(0.14, 0, 0));  // Foot is 14cm along X in COM
   for (auto &&leg : swing_sequence) {
     const Pose3 bTfoot = robot.link(leg)->bMcom() * comTfoot;
     bTfs.emplace(leg, bTfoot);
-  } 
+  }
 
   // Calculate foothold at the end of each support phase.
   TargetFootholds targ_footholds =
@@ -313,7 +311,7 @@ int main(int argc, char **argv) {
 
   // Iteratively solve the inverse kinematics problem to obtain joint angles.
   double dt = 1. / 240., curr_t = 0.0;
-  int k = 0; // The time index.
+  int k = 0;  // The time index.
   auto dgb = DynamicsGraph();
 
   // Initialize values.
@@ -343,14 +341,14 @@ int main(int argc, char **argv) {
     gtsam::NonlinearFactorGraph kfg = dgb.qFactors(robot, k);
 
     // Constrain the base pose using trajectory value.
-    kfg.addPrior(internal::PoseKey(robot.link("body")->id(), k),
-                 tposes.at("body"), gtsam::noiseModel::Constrained::All(6));
+    kfg.addPrior(PoseKey(robot.link("body")->id(), k), tposes.at("body"),
+                 gtsam::noiseModel::Constrained::All(6));
 
     // Constrain the footholds.
     auto model3 = gtsam::noiseModel::Constrained::All(3);
     for (auto &&leg : swing_sequence) {
-      kfg.add(PointGoalFactor(internal::PoseKey(robot.link(leg)->id(), k),
-                              model3, comTfoot.translation(),
+      kfg.add(PointGoalFactor(PoseKey(robot.link(leg)->id(), k), model3,
+                              comTfoot.translation(),
                               tposes.at(leg).translation()));
     }
 

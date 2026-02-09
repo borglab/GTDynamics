@@ -33,29 +33,29 @@ struct PointOnLink {
   gtsam::Point3 point;
 
   PointOnLink() {}
-  PointOnLink(const LinkSharedPtr &link, const gtsam::Point3 &point)
+  PointOnLink(const LinkSharedPtr& link, const gtsam::Point3& point)
       : link(link), point(point) {}
 
-  bool operator==(const PointOnLink &other) const {
+  bool operator==(const PointOnLink& other) const {
     return (point == other.point && link == other.link);
   }
-  bool operator!=(const PointOnLink &other) const { return !(*this == other); }
+  bool operator!=(const PointOnLink& other) const { return !(*this == other); }
 
   /**
    * @fn For given values, predict where point on link is in world frame.
    * @param values a GTSAM Values instance that should contain link pose.
    * @param k time step to check (default 0).
    */
-  gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
+  gtsam::Point3 predict(const gtsam::Values& values, size_t k = 0) const;
 
   /// Print to stream.
-  friend std::ostream &operator<<(std::ostream &os, const PointOnLink &cp);
+  friend std::ostream& operator<<(std::ostream& os, const PointOnLink& cp);
 
   /// GTSAM-style print, works with wrapper.
-  void print(const std::string &s) const;
+  void print(const std::string& s = "") const;
 
   /// GTSAM-style equal, allows for using assert_equal.
-  bool equals(const PointOnLink &other, double tol = 1e-9) const;
+  bool equals(const PointOnLink& other, double tol = 1e-9) const;
 };
 
 ///< Vector of `PointOnLink`s

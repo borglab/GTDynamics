@@ -35,6 +35,19 @@ NonlinearFactorGraph Kinematics::graph<Interval>(const Interval& interval,
 }
 
 template <>
+gtsam::NonlinearEqualityConstraints Kinematics::constraints<Interval>(
+    const Interval& interval, const Robot& robot) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
+    auto slice_constraints = this->constraints(Slice(k), robot);
+    for (const auto& constraint : slice_constraints) {
+      constraints.push_back(constraint);
+    }
+  }
+  return constraints;
+}
+
+template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
     const Interval& interval, const ContactGoals& contact_goals) const {
   NonlinearFactorGraph graph;
@@ -42,6 +55,19 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
     graph.add(pointGoalObjectives(Slice(k), contact_goals));
   }
   return graph;
+}
+
+template <>
+gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Interval>(
+    const Interval& interval, const ContactGoals& contact_goals) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
+    auto slice_constraints = pointGoalConstraints(Slice(k), contact_goals);
+    for (const auto& constraint : slice_constraints) {
+      constraints.push_back(constraint);
+    }
+  }
+  return constraints;
 }
 
 template <>
@@ -68,10 +94,12 @@ Values Kinematics::initialValues<Interval>(const Interval& interval,
 template <>
 Values Kinematics::inverse<Interval>(const Interval& interval,
                                      const Robot& robot,
-                                     const ContactGoals& contact_goals) const {
+                                     const ContactGoals& contact_goals,
+                                     bool contact_goals_as_constraints) const {
   Values results;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    results.insert(inverse(Slice(k), robot, contact_goals));
+    results.insert(
+        inverse(Slice(k), robot, contact_goals, contact_goals_as_constraints));
   }
   return results;
 }

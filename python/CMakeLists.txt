@@ -13,10 +13,8 @@ set(GTDYNAMICS_PYTHON_PATH ${PROJECT_SOURCE_DIR}/python/)
 
 file(TO_NATIVE_PATH "${PROJECT_BINARY_DIR}/python" GTD_PYTHON_BINARY_DIR)
 
-configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/setup.py.in
-               ${GTD_PYTHON_BINARY_DIR}/setup.py)
-configure_file(${GTDYNAMICS_PYTHON_PATH}/requirements.txt
-               ${GTD_PYTHON_BINARY_DIR}/requirements.txt COPYONLY)
+configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/pyproject.toml.in
+               ${GTD_PYTHON_BINARY_DIR}/pyproject.toml)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 file(COPY ${GTDYNAMICS_PYTHON_PATH}/${PROJECT_NAME}
@@ -37,7 +35,7 @@ pybind_wrap(
   ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl
   ${PROJECT_NAME} # libs
   "${PROJECT_NAME}" # dependencies
-  ON # use boost
+  ${GTDYNAMICS_ENABLE_BOOST_SERIALIZATION} # use_boost_serialization
 )
 
 set_target_properties(
@@ -50,7 +48,7 @@ set_target_properties(
 
 add_custom_target(
   python-install
-  COMMAND ${PYTHON_EXECUTABLE} ${GTD_PYTHON_BINARY_DIR}/setup.py install
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install .
   DEPENDS ${PROJECT_NAME}_py
   WORKING_DIRECTORY ${GTD_PYTHON_BINARY_DIR})
 
@@ -68,7 +66,7 @@ macro(PYTHON_UNIT_TEST_SUITE suiteName directory)
     COMMAND
       ${CMAKE_COMMAND} -E env # add package to python path so no need to install
       "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
-      ${PYTHON_EXECUTABLE} -m unittest discover
+      ${PYTHON_EXECUTABLE} -m unittest discover -v -s .
     DEPENDS ${PROJECT_NAME}_py
     WORKING_DIRECTORY ${directory})
   list(APPEND python_unit_test_suites python-test.${suiteName})
@@ -78,6 +76,9 @@ PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
 
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
   PYTHON_UNIT_TEST_SUITE(cablerobot ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
+endif()
+if(GTDYNAMICS_BUILD_JUMPING_ROBOT)
+  PYTHON_UNIT_TEST_SUITE(jumpingrobot ${PROJECT_SOURCE_DIR}/gtdynamics/jumpingrobot/src)
 endif()
 
 # Custom make command to run all Python tests

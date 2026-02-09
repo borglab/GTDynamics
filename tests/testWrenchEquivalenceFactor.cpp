@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,8 +26,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -37,9 +37,9 @@ namespace example {
 // Noise model.
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-const DynamicsSymbol wrench_j_key = internal::WrenchKey(1, 1, 777),
-                     wrench_k_key = internal::WrenchKey(2, 1, 777),
-                     qKey = internal::JointAngleKey(1, 777);
+const DynamicsSymbol wrench_j_key = WrenchKey(1, 1, 777),
+                     wrench_k_key = WrenchKey(2, 1, 777),
+                     qKey = JointAngleKey(1, 777);
 
 gtsam::Key twist_key = gtsam::Symbol('V', 1),
            twist_accel_key = gtsam::Symbol('T', 1),
@@ -52,7 +52,7 @@ TEST(WrenchEquivalenceFactor, error_1) {
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
   auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
@@ -64,14 +64,13 @@ TEST(WrenchEquivalenceFactor, error_1) {
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
-  Vector6 expected_errors,
-      actual_errors = factor.unwhitenedError(values);
+  Vector6 expected_errors, actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test wrench equivalence factor
@@ -80,7 +79,7 @@ TEST(WrenchEquivalenceFactor, error_2) {
   Pose3 kMj = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
   auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
@@ -92,15 +91,14 @@ TEST(WrenchEquivalenceFactor, error_2) {
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
-  Vector6 expected_errors,
-      actual_errors = factor.unwhitenedError(values);
+  Vector6 expected_errors, actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
-  
+
   // Make sure linearization is correct.
 
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 // Test wrench equivalence factor
@@ -109,7 +107,7 @@ TEST(WrenchEquivalenceFactor, error_3) {
   Pose3 kMj = Pose3(Rot3(), Point3(0, 0, -2));
   Vector6 screw_axis;
   screw_axis << 1, 0, 0, 0, -1, 0;
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
   auto factor = WrenchEquivalenceFactor(example::cost_model, joint, 777);
 
   // Check evaluateError.
@@ -121,14 +119,13 @@ TEST(WrenchEquivalenceFactor, error_3) {
   values.insert(example::wrench_j_key, wrench_j);
   values.insert(example::wrench_k_key, wrench_k);
   values.insert(example::qKey, q);
-  Vector6 expected_errors,
-      actual_errors = factor.unwhitenedError(values);
+  Vector6 expected_errors, actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {

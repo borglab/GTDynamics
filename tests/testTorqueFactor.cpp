@@ -12,6 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/TorqueFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,9 +26,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/values.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -38,17 +38,17 @@ TEST(TorqueFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
 
   // Create factor.
   auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
   auto factor = TorqueFactor(cost_model, joint, 777);
 
   // Check keys.
-  const DynamicsSymbol wrench_key = internal::WrenchKey(2, 1, 777),
-                       torque_key = internal::TorqueKey(1, 777);
-  EXPECT(assert_equal(wrench_key, factor.keys()[0]));
-  EXPECT(assert_equal(torque_key, factor.keys()[1]));
+  const DynamicsSymbol wrench_key = WrenchKey(2, 1, 777),
+                       torque_key = TorqueKey(1, 777);
+  EXPECT(assert_equal(wrench_key, factor->keys()[0]));
+  EXPECT(assert_equal(torque_key, factor->keys()[1]));
 
   // Check evaluateError.
   double torque = 20;
@@ -56,13 +56,13 @@ TEST(TorqueFactor, error) {
   gtsam::Values values;
   values.insert(wrench_key, wrench);
   values.insert(torque_key, torque);
-  gtsam::Vector1 actual_errors = factor.unwhitenedError(values);
+  gtsam::Vector1 actual_errors = factor->unwhitenedError(values);
   gtsam::Vector1 expected_errors(0);
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
 
   // Make sure linearization is correct.
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-7);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-7);
 }
 
 int main() {

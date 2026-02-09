@@ -29,5 +29,6 @@ namespace gtdynamics {
 // Paths to SDF & URDF files.
 constexpr const char* kSdfPath = "@PROJECT_SOURCE_DIR@/models/sdfs/";
 constexpr const char* kUrdfPath = "@PROJECT_SOURCE_DIR@/models/urdfs/";
+constexpr const char* kDataPath = "@PROJECT_SOURCE_DIR@/data/";
 constexpr const char* kTestPath = "@PROJECT_SOURCE_DIR@/tests/";
 }  // namespace gtdynamics

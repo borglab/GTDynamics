@@ -1,7 +1,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
   kdfg.add(fd_priors);
 
   // Initialize solution.
-  auto init_values = ZeroValues(simple_rr, 0);
+  Initializer initializer;
+  auto init_values = initializer.ZeroValues(simple_rr, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);

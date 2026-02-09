@@ -11,9 +11,9 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
-#include "make_joint.h"
-
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/TwistFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -25,8 +25,7 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/TwistFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
+#include "make_joint.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -34,9 +33,8 @@ using gtsam::assert_equal;
 namespace example {
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
     gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key twist_p_key = internal::TwistKey(1),
-           twist_c_key = internal::TwistKey(2), qKey = internal::JointAngleKey(1),
-           qVelKey = internal::JointVelKey(1);
+gtsam::Key twist_p_key = TwistKey(1), twist_c_key = TwistKey(2),
+           qKey = JointAngleKey(1), qVelKey = JointVelKey(1);
 }  // namespace example
 
 // Test twist factor for stationary case
@@ -46,7 +44,7 @@ TEST(TwistFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  auto joint = make_joint(cMp, screw_axis);
+  auto [joint, links] = make_joint(cMp, screw_axis);
 
   auto factor = TwistFactor(example::cost_model, joint, 0);
   double q = M_PI / 4, qVel = 10;
@@ -61,13 +59,13 @@ TEST(TwistFactor, error) {
   values.insert(example::twist_c_key, twist_c);
 
   gtsam::Vector6 actual_errors, expected_errors;
-  actual_errors = factor.unwhitenedError(values);
+  actual_errors = factor->unwhitenedError(values);
   expected_errors << 0, 0, 0, 0, 0, 0;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
 
   double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(*factor, values, diffDelta, 1e-3);
 }
 
 int main() {

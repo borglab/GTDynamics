@@ -13,18 +13,17 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <boost/optional.hpp>
 #include <memory>
+#include <optional>
 #include <string>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/utils/values.h"
 
 namespace gtdynamics {
 
@@ -42,11 +41,11 @@ namespace gtdynamics {
  *
  * @param joint JointConstSharedPtr to the joint
  */
-inline gtsam::ExpressionFactor<double> TorqueFactor(
+inline gtsam::NoiseModelFactor::shared_ptr TorqueFactor(
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const JointConstSharedPtr &joint, size_t k = 0) {
-  return gtsam::ExpressionFactor<double>(cost_model, 0.0,
-                                         joint->torqueConstraint(k));
+  return std::make_shared<gtsam::ExpressionFactor<double>>(
+      cost_model, 0.0, joint->torqueConstraint(k));
 }
 
 }  // namespace gtdynamics

@@ -13,19 +13,18 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/navigation/ImuFactor.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <memory>
 #include <string>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
 
 namespace gtdynamics {
 
@@ -89,11 +88,11 @@ class PreintegratedPointContactMeasurements {
  * Hartley18icra.
  */
 class PreintegratedPointContactFactor
-    : public gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3, gtsam::Pose3,
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3, gtsam::Pose3,
                                       gtsam::Pose3> {
  private:
   using This = PreintegratedPointContactFactor;
-  using Base = gtsam::NoiseModelFactor4<gtsam::Pose3, gtsam::Pose3,
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3,
                                         gtsam::Pose3, gtsam::Pose3>;
 
  public:
@@ -131,10 +130,10 @@ class PreintegratedPointContactFactor
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &wTb_i, const gtsam::Pose3 &wTc_i,
       const gtsam::Pose3 &wTb_j, const gtsam::Pose3 &wTc_j,
-      boost::optional<gtsam::Matrix &> H_wTb_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTc_i = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTb_j = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTc_j = boost::none) const override {
+      gtsam::OptionalMatrixType H_wTb_i = nullptr,
+      gtsam::OptionalMatrixType H_wTc_i = nullptr,
+      gtsam::OptionalMatrixType H_wTb_j = nullptr,
+      gtsam::OptionalMatrixType H_wTc_j = nullptr) const override {
     // Compute the error.
     gtsam::Vector3 error = wTb_i.rotation().transpose() *
                            (wTc_j.translation() - wTc_i.translation());
@@ -171,29 +170,31 @@ class PreintegratedPointContactFactor
     return error;
   }
 
-  //// @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
   /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtdynamics::GTDKeyFormatter) const override {
+                 GTDKeyFormatter) const override {
     std::cout << (s.empty() ? s : s + " ")
               << "Preintegrated Point Contact Factor" << std::endl;
     Base::print("", keyFormatter);
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /**
@@ -287,22 +288,23 @@ class PreintegratedRigidContactFactor
 
   virtual ~PreintegratedRigidContactFactor() {}
 
-  //// @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
   /// print contents
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
-                 gtdynamics::GTDKeyFormatter) const override {
+                 GTDKeyFormatter) const override {
     std::cout << (s.empty() ? s : s + " ")
               << "Preintegrated Rigid Contact Factor" << std::endl;
     Base::print("", keyFormatter);
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -310,6 +312,7 @@ class PreintegratedRigidContactFactor
     ar &boost::serialization::make_nvp(
         "BetweenFactor", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics
