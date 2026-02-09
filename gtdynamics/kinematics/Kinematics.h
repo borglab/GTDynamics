@@ -157,8 +157,8 @@ class Kinematics : public Optimizer {
    * @returns Equality constraints.
    */
   template <class CONTEXT>
-  gtsam::NonlinearEqualityConstraints constraints(const CONTEXT& context,
-                                                  const Robot& robot) const;
+  gtsam::NonlinearEqualityConstraints constraints(
+      const CONTEXT& context, const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
