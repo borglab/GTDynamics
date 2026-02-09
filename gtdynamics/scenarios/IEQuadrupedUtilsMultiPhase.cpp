@@ -11,11 +11,12 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
-
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+
+#include <iomanip>
 
 namespace gtdynamics {
 using namespace gtsam;

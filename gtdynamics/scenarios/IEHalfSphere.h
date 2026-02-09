@@ -12,13 +12,16 @@
  */
 
 #pragma once
+
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
-#include <gtdynamics/utils/utils.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/expressions.h>
+
+#include <iomanip>
 
 namespace gtdynamics {
 using namespace gtsam;

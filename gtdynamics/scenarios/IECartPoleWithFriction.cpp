@@ -1,6 +1,7 @@
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
-
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
+#include <iomanip>
 
 namespace gtdynamics {
 using namespace gtsam;

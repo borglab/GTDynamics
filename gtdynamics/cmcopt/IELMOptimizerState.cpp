@@ -4,6 +4,8 @@
 #include <gtdynamics/optimizer/ConvexIQPSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
+#include <iomanip>
+
 using std::cout, std::setw, std::setprecision, std::endl;
 
 namespace gtdynamics {

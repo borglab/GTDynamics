@@ -12,11 +12,11 @@
  */
 
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
-
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtdynamics/utils/values.h>
 
+#include <iomanip>
 #include <regex>
 
 namespace gtdynamics {

@@ -13,6 +13,8 @@
 
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 
+#include <iomanip>
+
 using std::cout, std::setw, std::setprecision, std::endl;
 namespace gtdynamics {
 using namespace gtsam;

@@ -1,9 +1,9 @@
-#include <gtdynamics/scenarios/IECartPoleWithLimits.h>
-
-#include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/scenarios/IECartPoleWithLimits.h>
 #include <gtdynamics/utils/Initializer.h>
 
+#include <iomanip>
 
 namespace gtdynamics {
 using namespace gtsam;
