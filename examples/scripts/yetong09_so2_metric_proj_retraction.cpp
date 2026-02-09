@@ -11,8 +11,6 @@
  * @author Yetong Zhang
  */
 
-#include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/TspaceBasis.h"
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
@@ -20,8 +18,13 @@
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/expressions.h>
+
+#include <filesystem>
 #include <memory>
 #include <string>
+
+#include "gtdynamics/cmcopt/IERetractor.h"
+#include "gtdynamics/cmopt/TspaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;

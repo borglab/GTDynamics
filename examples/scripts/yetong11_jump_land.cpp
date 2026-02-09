@@ -14,6 +14,8 @@
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
+#include <filesystem>
+
 using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_forward_jump_land;

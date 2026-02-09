@@ -1,4 +1,9 @@
-
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
 
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
@@ -8,6 +13,8 @@
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/BetweenFactor.h>
+
+#include <filesystem>
 
 using namespace gtsam;
 using namespace gtdynamics;

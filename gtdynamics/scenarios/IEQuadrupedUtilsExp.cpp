@@ -1,4 +1,13 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+
+#include <filesystem>
 
 namespace gtdynamics {
 using namespace gtsam;

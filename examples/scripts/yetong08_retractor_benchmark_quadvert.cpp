@@ -18,6 +18,8 @@
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
+#include <filesystem>
+
 using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_vertical_jump;
