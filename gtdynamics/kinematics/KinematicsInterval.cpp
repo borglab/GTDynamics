@@ -35,19 +35,21 @@ NonlinearFactorGraph Kinematics::graph<Interval>(const Interval& interval,
 }
 
 template <>
-EqualityConstraints Kinematics::constraints<Interval>(
+gtsam::NonlinearEqualityConstraints Kinematics::constraints<Interval>(
     const Interval& interval, const Robot& robot) const {
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    constraints.add(this->constraints(Slice(k), robot));
+    auto slice_constraints = this->constraints(Slice(k), robot);
+    for (const auto& constraint : slice_constraints) {
+      constraints.push_back(constraint);
+    }
   }
   return constraints;
 }
 
 template <>
 NonlinearFactorGraph Kinematics::poseGoalObjectives<Interval>(
-    const Interval& interval, 
-    const PoseGoals& pose_goals) const {
+    const Interval& interval, const PoseGoals& pose_goals) const {
   NonlinearFactorGraph graph;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
     graph.add(poseGoalObjectives(Slice(k), pose_goals));
@@ -66,11 +68,14 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
 }
 
 template <>
-EqualityConstraints Kinematics::pointGoalConstraints<Interval>(
+gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Interval>(
     const Interval& interval, const ContactGoals& contact_goals) const {
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    constraints.add(pointGoalConstraints(Slice(k), contact_goals));
+    auto slice_constraints = pointGoalConstraints(Slice(k), contact_goals);
+    for (const auto& constraint : slice_constraints) {
+      constraints.push_back(constraint);
+    }
   }
   return constraints;
 }
@@ -96,12 +101,15 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Interval>(
 }
 
 template <>
-Values Kinematics::initialValues<Interval>(
-    const Interval& interval, const Robot& robot, double gaussian_noise,
-    const gtsam::Values& joint_priors, bool use_fk) const {
+Values Kinematics::initialValues<Interval>(const Interval& interval,
+                                           const Robot& robot,
+                                           double gaussian_noise,
+                                           const gtsam::Values& joint_priors,
+                                           bool use_fk) const {
   Values values;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    values.insert(initialValues(Slice(k), robot, gaussian_noise, joint_priors, use_fk));
+    values.insert(
+        initialValues(Slice(k), robot, gaussian_noise, joint_priors, use_fk));
   }
   return values;
 }

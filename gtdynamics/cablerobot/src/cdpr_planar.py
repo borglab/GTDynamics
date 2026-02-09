@@ -110,16 +110,16 @@ class Cdpr:
             for ji in range(4):
                 kfg.push_back(
                     gtd.CableLengthFactor(
-                        gtd.JointAngleKey(ji, k).key(),
-                        gtd.PoseKey(self.ee_id(), k).key(),  #
+                        gtd.JointAngleKey(ji, k),
+                        gtd.PoseKey(self.ee_id(), k),  #
                         self.costmodel_l,
                         self.params.a_locs[ji],
                         self.params.b_locs[ji]))
                 kfg.push_back(
                     gtd.CableVelocityFactor(
-                        gtd.JointVelKey(ji, k).key(),
-                        gtd.PoseKey(self.ee_id(), k).key(),
-                        gtd.TwistKey(self.ee_id(), k).key(),  #
+                        gtd.JointVelKey(ji, k),
+                        gtd.PoseKey(self.ee_id(), k),
+                        gtd.TwistKey(self.ee_id(), k),  #
                         self.costmodel_ldot,
                         self.params.a_locs[ji],
                         self.params.b_locs[ji]))
@@ -129,7 +129,7 @@ class Cdpr:
             kfg.push_back(
                 gtsam.LinearContainerFactor(
                     gtsam.JacobianFactor(
-                        gtd.PoseKey(self.ee_id(), k).key(),
+                        gtd.PoseKey(self.ee_id(), k),
                         np.array([[1, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
                                   [0, 0, 0, 0, 1, 0.]]), np.zeros(3),
                         self.costmodel_planar_pose), zeroT))
@@ -138,7 +138,7 @@ class Cdpr:
             kfg.push_back(
                 gtsam.LinearContainerFactor(
                     gtsam.JacobianFactor(
-                        gtd.TwistKey(self.ee_id(), k).key(),
+                        gtd.TwistKey(self.ee_id(), k),
                         np.array([[1, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
                                   [0, 0, 0, 0, 1, 0.]]), np.zeros(3),
                         self.costmodel_planar_twist), zeroV))
@@ -160,7 +160,7 @@ class Cdpr:
         """
         dfg = gtsam.NonlinearFactorGraph()
         for k in ks:
-            # TODO(yetong): Use EqualityConstraint.createFactor when wrapped.
+            # TODO(yetong): Use gtsam equality constraints when wrapped.
             dfg.add(
                 gtd.WrenchFactor(self.costmodel_wrench, self.eelink(), [
                     gtd.WrenchKey(self.ee_id(), 0, k),
@@ -170,12 +170,12 @@ class Cdpr:
                 ], k, self.params.gravity))
             for ji in range(4):
                 dfg.push_back(
-                    gtd.CableTensionFactor(
-                        gtd.TorqueKey(ji, k).key(),
-                        gtd.PoseKey(self.ee_id(), k).key(),
-                        gtd.WrenchKey(self.ee_id(), ji,
-                                      k).key(), self.costmodel_torque,
-                        self.params.a_locs[ji], self.params.b_locs[ji]))
+                    gtd.CableTensionFactor(gtd.TorqueKey(ji, k),
+                                           gtd.PoseKey(self.ee_id(), k),
+                                           gtd.WrenchKey(self.ee_id(), ji, k),
+                                           self.costmodel_torque,
+                                           self.params.a_locs[ji],
+                                           self.params.b_locs[ji]))
         return dfg
 
     def collocation_factors(self, ks=[], dt=0.01):
@@ -195,15 +195,15 @@ class Cdpr:
         for k in ks:
             dfg.push_back(
                 gtd.EulerPoseCollocationFactor(
-                    gtd.PoseKey(self.ee_id(), k).key(),
-                    gtd.PoseKey(self.ee_id(), k + 1).key(),
-                    gtd.TwistKey(self.ee_id(), k).key(), 0,
+                    gtd.PoseKey(self.ee_id(), k),
+                    gtd.PoseKey(self.ee_id(), k + 1),
+                    gtd.TwistKey(self.ee_id(), k), 0,
                     self.costmodel_posecollo))
             dfg.push_back(
                 gtd.EulerTwistCollocationFactor(
-                    gtd.TwistKey(self.ee_id(), k).key(),
-                    gtd.TwistKey(self.ee_id(), k + 1).key(),
-                    gtd.TwistAccelKey(self.ee_id(), k).key(), 0,
+                    gtd.TwistKey(self.ee_id(), k),
+                    gtd.TwistKey(self.ee_id(), k + 1),
+                    gtd.TwistAccelKey(self.ee_id(), k), 0,
                     self.costmodel_twistcollo))
         dfg.push_back(gtd.PriorFactorDouble(0, dt, self.costmodel_dt))
         return dfg
@@ -226,13 +226,11 @@ class Cdpr:
         for k, l, ldot in zip(ks, ls, ldots):
             for ji, (lval, ldotval) in enumerate(zip(l, ldot)):
                 graph.push_back(
-                    gtd.PriorFactorDouble(
-                        gtd.JointAngleKey(ji, k).key(), lval,
-                        self.costmodel_prior_l))
+                    gtd.PriorFactorDouble(gtd.JointAngleKey(ji, k), lval,
+                                          self.costmodel_prior_l))
                 graph.push_back(
-                    gtd.PriorFactorDouble(
-                        gtd.JointVelKey(ji, k).key(), ldotval,
-                        self.costmodel_prior_ldot))
+                    gtd.PriorFactorDouble(gtd.JointVelKey(ji, k), ldotval,
+                                          self.costmodel_prior_ldot))
         return graph
 
     def priors_ik(self, ks=[], Ts=[], Vs=[]):
@@ -251,13 +249,11 @@ class Cdpr:
         graph = gtsam.NonlinearFactorGraph()
         for k, T, V in zip(ks, Ts, Vs):
             graph.push_back(
-                gtsam.PriorFactorPose3(
-                    gtd.PoseKey(self.ee_id(), k).key(), T,
-                    self.costmodel_prior_pose))
+                gtsam.PriorFactorPose3(gtd.PoseKey(self.ee_id(), k), T,
+                                       self.costmodel_prior_pose))
             graph.push_back(
-                gtd.PriorFactorVector6(
-                    gtd.TwistKey(self.ee_id(), k).key(), V,
-                    self.costmodel_prior_twist))
+                gtd.PriorFactorVector6(gtd.TwistKey(self.ee_id(), k), V,
+                                       self.costmodel_prior_twist))
         return graph
 
     # note: I am not using the strict definitions for forward/inverse dynamics.
@@ -281,9 +277,8 @@ class Cdpr:
         for k, torques in zip(ks, torquess):
             for ji, torque in enumerate(torques):
                 graph.push_back(
-                    gtd.PriorFactorDouble(
-                        gtd.TorqueKey(ji, k).key(), torque,
-                        self.costmodel_prior_tau))
+                    gtd.PriorFactorDouble(gtd.TorqueKey(ji, k), torque,
+                                          self.costmodel_prior_tau))
         return graph
 
     def priors_fd(self, ks=[], VAs=[]):
@@ -302,7 +297,6 @@ class Cdpr:
         graph = gtsam.NonlinearFactorGraph()
         for k, VA in zip(ks, VAs):
             graph.push_back(
-                gtd.PriorFactorVector6(
-                    gtd.TwistAccelKey(self.ee_id(), k).key(), VA,
-                    self.costmodel_prior_twistaccel))
+                gtd.PriorFactorVector6(gtd.TwistAccelKey(self.ee_id(), k), VA,
+                                       self.costmodel_prior_twistaccel))
         return graph

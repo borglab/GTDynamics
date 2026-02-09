@@ -12,6 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/TorqueFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,9 +26,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/TorqueFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/values.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -38,7 +38,7 @@ TEST(TorqueFactor, error) {
   gtsam::Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
 
-  auto joint = make_joint(kMj, screw_axis);
+  auto [joint, links] = make_joint(kMj, screw_axis);
 
   // Create factor.
   auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);

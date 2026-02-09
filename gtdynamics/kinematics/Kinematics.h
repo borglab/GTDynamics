@@ -120,7 +120,9 @@ struct KinematicsParameters : public OptimizationParameters {
       prior_q_cost_model;                      // joint angle prior factor
 
   // TODO(yetong): replace noise model with tolerance.
-  KinematicsParameters(double p_cost_model_sigma = 1e-4, double g_cost_model_sigma = 1e-2, double prior_q_cost_model_sigma = 0.5)
+  KinematicsParameters(double p_cost_model_sigma = 1e-4,
+                       double g_cost_model_sigma = 1e-2,
+                       double prior_q_cost_model_sigma = 0.5)
       : p_cost_model(Isotropic::Sigma(6, p_cost_model_sigma)),
         g_cost_model(Isotropic::Sigma(3, g_cost_model_sigma)),
         prior_q_cost_model(Isotropic::Sigma(1, prior_q_cost_model_sigma)) {}
@@ -155,8 +157,8 @@ class Kinematics : public Optimizer {
    * @returns Equality constraints.
    */
   template <class CONTEXT>
-  EqualityConstraints constraints(const CONTEXT& context,
-                                  const Robot& robot) const;
+  gtsam::NonlinearEqualityConstraints constraints(const CONTEXT& context,
+                                                  const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
@@ -175,7 +177,7 @@ class Kinematics : public Optimizer {
    * @returns Equality constraints with point goal constraints.
    */
   template <class CONTEXT>
-  EqualityConstraints pointGoalConstraints(
+  gtsam::NonlinearEqualityConstraints pointGoalConstraints(
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
@@ -230,7 +232,7 @@ class Kinematics : public Optimizer {
    */
   template <class CONTEXT>
   gtsam::Values initialValues(
-      const CONTEXT& context, const Robot& robot, double gaussian_noise = 0.1,
+      const CONTEXT& context, const Robot& robot, double gaussian_noise = 0.0,
       const gtsam::Values& initial_joints = gtsam::Values(),
       bool use_fk = false) const;
 

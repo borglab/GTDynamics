@@ -9,13 +9,15 @@
  * @author Frank Dellaert
 """
 
+# pylint: disable=no-name-in-module, import-error, no-member
+
 import unittest
 from pathlib import Path
 
-# pylint: disable=no-name-in-module, import-error, no-member
-import gtdynamics as gtd
 from gtsam import Point3, Pose3, Rot3, Values
 from gtsam.utils.test_case import GtsamTestCase
+
+import gtdynamics as gtd
 
 
 class TestSerial(GtsamTestCase):
@@ -41,10 +43,11 @@ class TestSerial(GtsamTestCase):
         fk = self.robot.forwardKinematics(joint_angles, 0, self.base_name)
         # Use this to print: fk.print("fk", gtd.GTDKeyFormatter)
         sR7 = Rot3([
-            [1, 0, 0],
+            [1, 0, 0],  #
             [0, -1, 0],
             [0, 0, -1]
         ])
+        # regression
         expected_sT7 = Pose3(sR7, Point3(0.129315, 0.00227401, 0.88387))
         actual_sT7 = gtd.Pose(fk, 7)
         self.gtsamAssertEquals(actual_sT7, expected_sT7, tol=1e-3)

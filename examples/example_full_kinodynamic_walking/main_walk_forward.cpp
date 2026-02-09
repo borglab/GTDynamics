@@ -17,15 +17,13 @@
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <algorithm>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <utility>
@@ -144,6 +142,9 @@ int main(int argc, char** argv) {
   // Collocation scheme.
   auto collocation = CollocationScheme::Euler;
 
+  // Set initializer.
+  gtdynamics::Initializer initializer;
+
   // Graphs for transition between phases + their initial values.
   vector<gtsam::NonlinearFactorGraph> transition_graphs;
   vector<Values> transition_graph_init;
@@ -151,7 +152,7 @@ int main(int argc, char** argv) {
   for (int p = 1; p < phase_cps.size(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
         robot, cum_phase_steps[p - 1], trans_cps[p - 1], mu));
-    transition_graph_init.push_back(ZeroValues(
+    transition_graph_init.push_back(initializer.ZeroValues(
         robot, cum_phase_steps[p - 1], gaussian_noise, trans_cps[p - 1]));
   }
 
@@ -278,7 +279,7 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   gtsam::Values init_vals;
-  init_vals = gtdynamics::MultiPhaseZeroValuesTrajectory(
+  init_vals = initializer.MultiPhaseZeroValuesTrajectory(
       robot, phase_steps, transition_graph_init, dt_des, gaussian_noise,
       phase_cps);
 
@@ -296,7 +297,10 @@ int main(int argc, char** argv) {
   for (auto&& joint : robot.joints()) {
     joint_names.push_back(joint->name());
   }
-  string joint_names_str = boost::algorithm::join(joint_names, ",");
+  std::string joint_names_str = "";
+  for (size_t j = 0; j < joint_names.size(); j++) {
+    joint_names_str += joint_names[j] + (j != joint_names.size() - 1 ? "," : "");
+  }
   std::ofstream traj_file;
   traj_file.open("traj.csv");
   // angles, vels, accels, torques, time.
@@ -323,7 +327,10 @@ int main(int argc, char** argv) {
       vals.push_back(std::to_string(results.atDouble(PhaseKey(phase))));
 
       t++;
-      string vals_str = boost::algorithm::join(vals, ",");
+      std::string vals_str = "";
+      for (size_t j = 0; j < vals.size(); j++) {
+        vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+      }
       traj_file << vals_str << "\n";
     }
   }

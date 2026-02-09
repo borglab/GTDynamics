@@ -11,8 +11,16 @@
  * @author Yetong Zhang, Alejandro Escontrela
  */
 
-#include "gtdynamics/dynamics/DynamicsGraph.h"
-
+#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/factors/ContactHeightFactor.h>
+#include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
+#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/utils/JsonSaver.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
@@ -24,16 +32,6 @@
 #include <set>
 #include <utility>
 #include <vector>
-
-#include "gtdynamics/factors/ContactDynamicsFrictionConeFactor.h"
-#include "gtdynamics/factors/ContactDynamicsMomentFactor.h"
-#include "gtdynamics/factors/ContactHeightFactor.h"
-#include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
-#include "gtdynamics/factors/ContactKinematicsTwistFactor.h"
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/utils/JsonSaver.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using gtsam::Double_;
 using gtsam::ExpressionFactor;
@@ -52,7 +50,7 @@ using gtsam::Z_6x1;
 namespace gtdynamics {
 
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
-    const Robot &robot, const int t, const gtsam::Values &known_values) {
+    const Robot &robot, const int t, const gtsam::Values &known_values) const {
   GaussianFactorGraph graph;
   auto all_constrained = gtsam::noiseModel::Constrained::All(6);
   for (auto &&link : robot.links()) {
@@ -71,13 +69,13 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
       const Pose3 T_wi = Pose(known_values, i, t);
       const Vector6 V_i = Twist(known_values, i, t);
       Vector6 rhs = Pose3::adjointMap(V_i).transpose() * G_i * V_i;
-      if (gravity_) {
-        Vector gravitational_force =
-            T_wi.rotation().transpose() * (*gravity_) * m_i;
-        for (int i = 3; i < 6; ++i) {
-          rhs[i] += gravitational_force[i - 3];
-        }
+
+      // Compute gravitational forces. If gravity=(0, 0, 0), this will be zeros.
+      Vector gravitational_force = T_wi.rotation().transpose() * gravity_ * m_i;
+      for (int i = 3; i < 6; ++i) {
+        rhs[i] += gravitational_force[i - 3];
       }
+
       auto accel_key = TwistAccelKey(i, t);
       if (connected_joints.size() == 0) {
         graph.add(accel_key, G_i, rhs, all_constrained);
@@ -94,8 +92,9 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
 
   OptimizerSetting opt_;
   for (auto &&joint : robot.joints()) {
-    graph += joint->linearAFactors(t, known_values, opt_, planar_axis_);
-    graph += joint->linearDynamicsFactors(t, known_values, opt_, planar_axis_);
+    graph.push_back(joint->linearAFactors(t, known_values, opt_, planar_axis_));
+    graph.push_back(
+        joint->linearDynamicsFactors(t, known_values, opt_, planar_axis_));
   }
 
   return graph;
@@ -106,7 +105,7 @@ GaussianFactorGraph DynamicsGraph::linearFDPriors(
   OptimizerSetting opt_ = OptimizerSetting();
   GaussianFactorGraph graph;
   for (auto &&joint : robot.joints())
-    graph += joint->linearFDPriors(t, torques, opt_);
+    graph.push_back(joint->linearFDPriors(t, torques, opt_));
   return graph;
 }
 
@@ -124,11 +123,11 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
 }
 
 Values DynamicsGraph::linearSolveFD(const Robot &robot, const int t,
-                                    const gtsam::Values &known_values) {
+                                    const gtsam::Values &known_values) const {
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearFDPriors(robot, t, known_values);
-  graph += priors;
+  graph.push_back(priors);
   gtsam::VectorValues results = graph.optimize();
 
   // arrange values
@@ -161,7 +160,7 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
   // construct and solve linear graph
   GaussianFactorGraph graph = linearDynamicsGraph(robot, t, known_values);
   GaussianFactorGraph priors = linearIDPriors(robot, t, known_values);
-  graph += priors;
+  graph.push_back(priors);
 
   gtsam::VectorValues results = graph.optimize();
 
@@ -194,7 +193,7 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int t,
 
 gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int k,
-    const boost::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
@@ -208,18 +207,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
         JointAngleKey(joint->id(), k), opt_.p_cost_model, joint));
   }
 
-  // TODO(frank): whoever write this should clean up this mess.
-  gtsam::Vector3 gravity;
-  if (gravity_)
-    gravity = *gravity_;
-  else
-    gravity = gtsam::Vector3(0, 0, -9.8);
-
   // Add contact factors.
   if (contact_points) {
     for (auto &&cp : *contact_points) {
       ContactHeightFactor contact_pose_factor(
-          PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point, gravity);
+          PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point, gravity_);
       graph.add(contact_pose_factor);
     }
   }
@@ -229,7 +221,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
 
 gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
@@ -254,7 +246,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
 
 gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
   for (auto &&link : robot.links())
     if (link->isFixed())
@@ -279,16 +271,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
 // TODO(frank): migrate to Dynamics::graph<Slice>
 gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const Robot &robot, const int k,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
-
-  // TODO(frank): whoever write this should clean up this mess.
-  gtsam::Vector3 gravity;
-  if (gravity_)
-    gravity = *gravity_;
-  else
-    gravity = gtsam::Vector3(0, 0, -9.8);
 
   double mu_;  // Static friction coefficient.
   if (mu)
@@ -300,7 +285,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     int i = link->id();
     if (!link->isFixed()) {
       const auto &connected_joints = link->joints();
-      std::vector<DynamicsSymbol> wrench_keys;
+      std::vector<gtsam::Key> wrench_keys;
 
       // Add wrench keys for joints.
       for (auto &&joint : connected_joints)
@@ -317,7 +302,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
           // Add contact dynamics constraints.
           graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
               PoseKey(i, k), wrench_key, opt_.cfriction_cost_model, mu_,
-              gravity);
+              gravity_);
 
           graph.emplace_shared<ContactDynamicsMomentFactor>(
               wrench_key, opt_.cm_cost_model,
@@ -327,7 +312,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 
       // add wrench factor for link
       graph.add(
-          WrenchFactor(opt_.fa_cost_model, link, wrench_keys, k, gravity));
+          WrenchFactor(opt_.fa_cost_model, link, wrench_keys, k, gravity_));
     }
   }
 
@@ -338,17 +323,18 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     auto const_joint = joint;
     graph.add(WrenchEquivalenceFactor(opt_.f_cost_model, const_joint, k));
     graph.add(TorqueFactor(opt_.t_cost_model, const_joint, k));
-    if (planar_axis_)
+    if (planar_axis_) {
       graph.add(WrenchPlanarFactor(opt_.planar_cost_model, *planar_axis_,
                                    const_joint, k));
+    }
   }
   return graph;
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactorGraph(
     const Robot &robot, const int t,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   graph.add(qFactors(robot, t, contact_points));
   graph.add(vFactors(robot, t, contact_points));
@@ -360,8 +346,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactorGraph(
 gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFG(
     const Robot &robot, const int num_steps, const double dt,
     const CollocationScheme collocation,
-    const boost::optional<PointOnLinks> &contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<PointOnLinks> &contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   for (int t = 0; t < num_steps + 1; t++) {
     graph.add(dynamicsFactorGraph(robot, t, contact_points, mu));
@@ -376,16 +362,16 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
     const Robot &robot, const std::vector<int> &phase_steps,
     const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
     const CollocationScheme collocation,
-    const boost::optional<std::vector<PointOnLinks>> &phase_contact_points,
-    const boost::optional<double> &mu) const {
+    const std::optional<std::vector<PointOnLinks>> &phase_contact_points,
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
   int num_phases = phase_steps.size();
 
   // Return either PointOnLinks or None if none specified for phase p
   auto contact_points =
-      [&phase_contact_points](int p) -> boost::optional<PointOnLinks> {
+      [&phase_contact_points](int p) -> std::optional<PointOnLinks> {
     if (phase_contact_points) return (*phase_contact_points)[p];
-    return boost::none;
+    return {};
   };
 
   // First slice, k==0
@@ -449,9 +435,10 @@ double multDouble(const double &d1, const double &d2,
   return d1 * d2;
 }
 
-void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
-    NonlinearFactorGraph *graph, const Key x0_key, const Key x1_key,
-    const Key v0_key, const Key v1_key, const Key phase_key,
+std::shared_ptr<gtsam::ExpressionFactor<double>>
+DynamicsGraph::collocationFactorDouble(
+    const gtsam::Key x0_key, const gtsam::Key x1_key, const gtsam::Key v0_key,
+    const gtsam::Key v1_key, const gtsam::Key phase_key,
     const gtsam::noiseModel::Base::shared_ptr &cost_model,
     const CollocationScheme collocation) {
   Double_ phase_expr(phase_key);
@@ -462,15 +449,45 @@ void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
   Double_ v0dt(multDouble, phase_expr, v0_expr);
 
   if (collocation == CollocationScheme::Euler) {
-    graph->add(ExpressionFactor(cost_model, 0.0, x0_expr + v0dt - x1_expr));
+    return std::make_shared<ExpressionFactor<double>>(cost_model, 0.0,
+                                                      x0_expr + v0dt - x1_expr);
   } else if (collocation == CollocationScheme::Trapezoidal) {
     Double_ v1dt(multDouble, phase_expr, v1_expr);
-    graph->add(ExpressionFactor(cost_model, 0.0,
-                                x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr));
+    return std::make_shared<ExpressionFactor<double>>(
+        cost_model, 0.0, x0_expr + 0.5 * v0dt + 0.5 * v1dt - x1_expr);
   } else {
     throw std::runtime_error(
         "runge-kutta and hermite-simpson not implemented yet");
   }
+}
+
+std::shared_ptr<gtsam::ExpressionFactor<double>>
+DynamicsGraph::multiPhaseJointCollocationQFactor(const size_t j, const size_t k,
+                        const gtsam::Key phase_key,
+                        const gtsam::noiseModel::Base::shared_ptr &cost_model,
+                        const CollocationScheme collocation) {
+  return collocationFactorDouble(JointAngleKey(j, k), JointAngleKey(j, k + 1),
+                                 JointVelKey(j, k), JointVelKey(j, k + 1),
+                                 phase_key, cost_model, collocation);
+}
+
+std::shared_ptr<gtsam::ExpressionFactor<double>>
+DynamicsGraph::multiPhaseJointCollocationVFactor(
+    const size_t j, const size_t k, const gtsam::Key phase_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const CollocationScheme collocation) {
+  return collocationFactorDouble(JointVelKey(j, k), JointVelKey(j, k + 1),
+                                 JointAccelKey(j, k), JointAccelKey(j, k + 1),
+                                 phase_key, cost_model, collocation);
+}
+
+void DynamicsGraph::addMultiPhaseCollocationFactorDouble(
+    NonlinearFactorGraph *graph, const Key x0_key, const Key x1_key,
+    const Key v0_key, const Key v1_key, const Key phase_key,
+    const gtsam::noiseModel::Base::shared_ptr &cost_model,
+    const CollocationScheme collocation) {
+  graph->add(collocationFactorDouble(x0_key, x1_key, v0_key, v1_key, phase_key,
+                                     cost_model, collocation));
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::jointCollocationFactors(

@@ -12,6 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/PreintegratedContactFactors.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/LabeledSymbol.h>
@@ -23,8 +24,6 @@
 #include <math.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/PreintegratedContactFactors.h"
 
 using namespace gtdynamics;
 using namespace gtsam;

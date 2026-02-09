@@ -23,6 +23,4 @@ using gtsam::Values;
 using std::string;
 using std::vector;
 
-
-
 }  // namespace gtdynamics

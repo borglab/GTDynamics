@@ -69,16 +69,17 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
 }
 
 template <>
-EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
-                                                   const Robot& robot) const {
-  EqualityConstraints constraints;
+gtsam::NonlinearEqualityConstraints Kinematics::constraints<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  gtsam::NonlinearEqualityConstraints constraints;
 
   // Constrain kinematics at joints.
   gtsam::Vector6 tolerance = p_.p_cost_model->sigmas();
   for (auto&& joint : robot.joints()) {
     auto constraint_expr = joint->poseConstraint(slice.k);
-    constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
-                                                            tolerance);
+    constraints
+        .emplace_shared<gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
+            constraint_expr, gtsam::Vector6::Zero(), tolerance);
   }
 
   // Constrain fixed links
@@ -96,8 +97,9 @@ EqualityConstraints Kinematics::constraints<Slice>(const Slice& slice,
       auto constraint_expr = gtsam::logmap(bTcom, bMcom);
 
       // Add constraint
-      constraints.emplace_shared<VectorExpressionEquality<6>>(constraint_expr,
-                                                              tolerance);
+      constraints
+          .emplace_shared<gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
+              constraint_expr, gtsam::Vector6::Zero(), tolerance);
     }
   }
 
@@ -120,9 +122,9 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
 }
 
 template <>
-EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
+gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
     const Slice& slice, const ContactGoals& contact_goals) const {
-  EqualityConstraints constraints;
+  gtsam::NonlinearEqualityConstraints constraints;
 
   // Add objectives.
   gtsam::Vector3 tolerance = p_.g_cost_model->sigmas();
@@ -130,8 +132,9 @@ EqualityConstraints Kinematics::pointGoalConstraints<Slice>(
     const gtsam::Key pose_key = PoseKey(goal.link()->id(), slice.k);
     auto constraint_expr =
         PointGoalConstraint(pose_key, goal.contactInCoM(), goal.goal_point);
-    constraints.emplace_shared<VectorExpressionEquality<3>>(constraint_expr,
-                                                            tolerance);
+    constraints
+        .emplace_shared<gtsam::ExpressionEqualityConstraint<gtsam::Vector3>>(
+            constraint_expr, gtsam::Vector3::Zero(), tolerance);
   }
   return constraints;
 }
@@ -146,7 +149,7 @@ NonlinearFactorGraph Kinematics::poseGoalObjectives<Slice>(
     const auto& pose_goal = it->second;
     auto pose_key = PoseKey(pose_goal.link()->id(), slice.k);
     const gtsam::Pose3& desired_pose = pose_goal.wTcom();
-    // TODO(toni): use poseprior from unstable gtsam slam or create new
+    // TODO(toni): use pose prior from unstable gtsam slam or create new
     // factors, to add pose from link7
     graph.addPrior<gtsam::Pose3>(pose_key, desired_pose, p_.p_cost_model);
   }
@@ -175,10 +178,11 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
   NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
     graph.add(JointLimitFactor(
-        JointAngleKey(joint->id(), slice.k), gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
+        JointAngleKey(joint->id(), slice.k),
+        gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
         joint->parameters().scalar_limits.value_lower_limit,
         joint->parameters().scalar_limits.value_upper_limit,
-        0.04));//joint->parameters().scalar_limits.value_limit_threshold));
+        0.04));  // joint->parameters().scalar_limits.value_limit_threshold));
   }
   return graph;
 }
@@ -232,7 +236,10 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
 
   // Contact goals
   if (contact_goals_as_constraints) {
-    constraints.add(this->pointGoalConstraints(slice, contact_goals));
+    auto goal_constraints = this->pointGoalConstraints(slice, contact_goals);
+    for (const auto& constraint : goal_constraints) {
+      constraints.push_back(constraint);
+    }
   } else {
     graph.add(pointGoalObjectives(slice, contact_goals));
   }
@@ -240,7 +247,7 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
   // Target joint angles.
   graph.add(jointAngleObjectives(slice, robot));
 
-  // TODO(frank): allo pose prior as well.
+  // TODO(frank): allow pose prior as well.
   // graph.addPrior<gtsam::Pose3>(PoseKey(0, slice.k),
   // gtsam::Pose3(), nullptr);
 

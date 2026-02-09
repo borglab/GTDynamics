@@ -5,6 +5,13 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <boost/lexical_cast.hpp>
+
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/nvp.hpp>
+#endif
+
 namespace gtdynamics {
 class GaussianProcessPrior
     : public gtsam::NoiseModelFactor4<double, double, double, double> {
@@ -31,18 +38,17 @@ class GaussianProcessPrior
 
   /// @return a deep copy of this factor
   virtual gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
   /// factor error function
   gtsam::Vector evaluateError(
       const double& theta1, const double& thetad1, const double& theta2,
-      const double& thetad2, boost::optional<gtsam::Matrix&> H1 = boost::none,
-      boost::optional<gtsam::Matrix&> H2 = boost::none,
-      boost::optional<gtsam::Matrix&> H3 = boost::none,
-      boost::optional<gtsam::Matrix&> H4 = boost::none) const override {
-    // using namespace gtsam;
+      const double& thetad2, gtsam::OptionalMatrixType H1 = nullptr,
+      gtsam::OptionalMatrixType H2 = nullptr,
+      gtsam::OptionalMatrixType H3 = nullptr,
+      gtsam::OptionalMatrixType H4 = nullptr) const override {
 
     // state vector
     gtsam::Vector2 error;
@@ -101,13 +107,16 @@ class GaussianProcessPrior
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE& ar, const unsigned int version) {
-    ar& BOOST_SERIALIZATION_BASE_OBJECT_NVP(Base);
-    ar& BOOST_SERIALIZATION_NVP(delta_t_);
+  void serialize(ARCHIVE& ar, const unsigned int /*version*/) {
+    ar & boost::serialization::make_nvp(
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
+    ar & BOOST_SERIALIZATION_NVP(delta_t_);
   }
+#endif
 
 };  // GaussianProcessPrior
 

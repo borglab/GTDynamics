@@ -44,7 +44,7 @@ class TestDynamicsGraph(unittest.TestCase):
         noise6 = gtsam.noiseModel.Unit.Create(6)
         graph = gtsam.NonlinearFactorGraph()
         graph.push_back(gtd.LinkObjectives(1, k=777)\
-            .pose(gtsam.Pose3(), noise1)\
+            .pose(gtsam.Pose3(), noise6)\
             .twistAccel(np.zeros(6), noise6))
         self.assertEqual(graph.size(), 2)
         graph.push_back(gtd.JointObjectives(2, 777)\

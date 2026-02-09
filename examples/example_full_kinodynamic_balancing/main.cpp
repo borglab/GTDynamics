@@ -16,7 +16,7 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/initialize_solution_utils.h>
+#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -24,8 +24,6 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/algorithm/string/join.hpp>
-#include <boost/optional.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -186,6 +184,7 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   gtsam::Values init_vals;
+  Initializer initializer;
   std::string initialization_technique = "inverse_kinematics";
   if (initialization_technique == "interp")
     // TODO(aescontrela): Figure out why the linearly interpolated initial
@@ -193,13 +192,14 @@ int main(int argc, char** argv) {
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals = InitializeSolutionInterpolationMultiPhase(
+    init_vals = initializer.InitializeSolutionInterpolationMultiPhase(
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = ZeroValuesTrajectory(vision60, t_steps, 0, 0.0, contact_points);
+    init_vals = initializer.ZeroValuesTrajectory(vision60, t_steps, 0, 0.0,
+                                                 contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = InitializeSolutionInverseKinematics(
+    init_vals = initializer.InitializeSolutionInverseKinematics(
         vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
         contact_points);
 
@@ -235,7 +235,10 @@ int main(int argc, char** argv) {
   // Log the joint angles, velocities, accels, torques, and current goal pose.
   std::vector<std::string> jnames;
   for (auto&& joint : vision60.joints()) jnames.push_back(joint->name());
-  std::string jnames_str = boost::algorithm::join(jnames, ",");
+  std::string jnames_str = "";
+  for (size_t j = 0; j < jnames.size(); j++) {
+    jnames_str += jnames[j] + (j != jnames.size() - 1 ? "," : "");
+  }
   std::ofstream traj_file;
   traj_file.open("traj.csv");
   // angles, vels, accels, torques.
@@ -273,7 +276,10 @@ int main(int argc, char** argv) {
       }
     }
 
-    std::string vals_str = boost::algorithm::join(vals, ",");
+    std::string vals_str = "";
+    for (size_t j = 0; j < vals.size(); j++) {
+      vals_str += vals[j] + (j != vals.size() - 1 ? "," : "");
+    }
     traj_file << vals_str << "\n";
   }
   traj_file.close();

@@ -22,7 +22,7 @@ namespace gtdynamics {
 /// calculate Coriolis term and jacobian w.r.t. joint coordinate twist
 gtsam::Vector6 Coriolis(const gtsam::Matrix6 &inertia,
                         const gtsam::Vector6 &twist,
-                        gtsam::OptionalJacobian<6, 6> H_twist = boost::none);
+                        gtsam::OptionalJacobian<6, 6> H_twist = {});
 
 /// Matrix vector multiplication.
 template <int M, int N>

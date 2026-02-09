@@ -13,10 +13,9 @@
  */
 
 #pragma once
-#include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/Link.h"
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 
 namespace gtdynamics {
 
@@ -25,15 +24,18 @@ namespace gtdynamics {
  * the joint coordinate as a measurement.
  */
 class JointMeasurementFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3> {
  private:
   using This = JointMeasurementFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Pose3>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Pose3>;
 
   JointConstSharedPtr joint_;
   double measured_joint_coordinate_;
 
  public:
+  // shorthand for a smart pointer to a factor
+  using shared_ptr = std::shared_ptr<JointMeasurementFactor>;
+
   /**
    * @brief Construct a new Link Pose Factor object
    *
@@ -70,8 +72,8 @@ class JointMeasurementFactor
 
   gtsam::Vector evaluateError(
       const gtsam::Pose3& wTp, const gtsam::Pose3& wTc,
-      boost::optional<gtsam::Matrix&> H_wTp = boost::none,
-      boost::optional<gtsam::Matrix&> H_wTc = boost::none) const override {
+      gtsam::OptionalMatrixType H_wTp = nullptr,
+      gtsam::OptionalMatrixType H_wTc = nullptr) const override {
     gtsam::Matrix6 H;
     gtsam::Pose3 wTc_hat =
         joint_->poseOf(joint_->child(), wTp, measured_joint_coordinate_, H_wTp);
@@ -83,6 +85,9 @@ class JointMeasurementFactor
     return error;
   }
 
+  /// Return measurement
+  double measured() { return measured_joint_coordinate_; }
+
   /// print contents
   void print(const std::string& s = "",
              const gtsam::KeyFormatter& keyFormatter =
@@ -92,5 +97,21 @@ class JointMeasurementFactor
     gtsam::traits<double>::Print(measured_joint_coordinate_, "  measured: ");
     this->noiseModel_->print("  noise model: ");
   }
+
+  bool equals(const gtsam::NonlinearFactor& other,
+              double tol = 1e-9) const override {
+    const This* e = dynamic_cast<const This*>(&other);
+    return e != nullptr && Base::equals(*e, tol) &&
+           joint_->equals(*e->joint_) &&
+           measured_joint_coordinate_ == e->measured_joint_coordinate_;
+  }
 };
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+template <>
+struct traits<gtdynamics::JointMeasurementFactor>
+    : public Testable<gtdynamics::JointMeasurementFactor> {};
+
+}  // namespace gtsam

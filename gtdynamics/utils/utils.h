@@ -20,7 +20,6 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/NoiseModel.h>
 
-#include <boost/optional.hpp>
 #include <cmath>
 #include <fstream>
 #include <string>
@@ -42,15 +41,6 @@ double radians(double degree);
 
 /// Convert a vector of angles to radians
 gtsam::Vector radians(const gtsam::Vector &degree);
-
-/**
- * Calculate AdjointMap jacobian w.r.t. joint coordinate q
- * @param q joint angle
- * @param jMi this COM frame, expressed in next link's COM frame at rest
- * @param screw_axis screw axis expressed in kth link's COM frame
- */
-gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
-                                   const gtsam::Vector6 &screw_axis);
 
 /**
  * Calculate Gaussian Process system transition matrix
@@ -138,3 +128,59 @@ std::vector<gtsam::Matrix> readFromTxt(std::string mat_dir,
 gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis);
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+
+/**
+ * @brief Get z coordinate of a Point3.
+ *
+ * @param p The Point3 object.
+ * @param H Optional Jacobian.
+ * @return double The z coordinate.
+ */
+double point3_z(const gtsam::Point3 &p, gtsam::OptionalJacobian<1, 3> H = {});
+
+/**
+ * @brief Division of two doubles, with derivatives.
+ *
+ * @param x1 Numerator.
+ * @param x2 Denominator.
+ * @param H_1 Optional Jacobian w.r.t x1.
+ * @param H_2 Optional Jacobian w.r.t x2.
+ * @return double x1 / x2.
+ */
+double double_division(const double &x1, const double &x2,
+                       gtsam::OptionalJacobian<1, 1> H_1 = {},
+                       gtsam::OptionalJacobian<1, 1> H_2 = {});
+
+/**
+ * @brief Reciprocal of a double, with derivatives.
+ *
+ * @param x The input value.
+ * @param H Optional Jacobian.
+ * @return double 1 / x.
+ */
+double reciprocal(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
+
+/**
+ * @brief Clip the value to be at least 1, with derivatives.
+ *
+ * @param x The input value.
+ * @param H Optional Jacobian.
+ * @return double max(x, 1.0).
+ */
+double clip_by_one(const double& x, gtsam::OptionalJacobian<1, 1> H = {});
+
+/**
+ * @brief Stack two doubles into a Vector2.
+ *
+ * @param x1 First value.
+ * @param x2 Second value.
+ * @param H_1 Optional Jacobian w.r.t x1.
+ * @param H_2 Optional Jacobian w.r.t x2.
+ * @return Vector2 [x1, x2].
+ */
+Vector2 double_stack(const double &x1, const double &x2,
+                     gtsam::OptionalJacobian<2, 1> H_1 = {},
+                     gtsam::OptionalJacobian<2, 1> H_2 = {});
+} // namespace gtsam

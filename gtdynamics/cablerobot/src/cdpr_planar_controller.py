@@ -104,13 +104,13 @@ class CdprController(CdprControllerBase):
             for ji in range(4):
                 fg.push_back(
                     gtd.PriorFactorDouble(
-                        gtd.TorqueKey(ji, k).key(), 0.0,
+                        gtd.TorqueKey(ji, k), 0.0,
                         gtsam.noiseModel.Diagonal.Precisions(R)))
         # state objective costs
         cost_x = gtsam.noiseModel.Isotropic.Sigma(6, 0.001) if Q is None else \
             gtsam.noiseModel.Diagonal.Precisions(Q)
         for k in range(N):
             fg.push_back(
-                gtsam.PriorFactorPose3(
-                    gtd.PoseKey(cdpr.ee_id(), k).key(), pdes[k], cost_x))
+                gtsam.PriorFactorPose3(gtd.PoseKey(cdpr.ee_id(), k), pdes[k],
+                                       cost_x))
         return fg

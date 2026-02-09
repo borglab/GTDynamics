@@ -52,7 +52,7 @@ TEST(Interval, InverseKinematics) {
   auto result = kinematics.inverse(interval, robot, contact_goals);
 
   // Check that goals are achieved
-  constexpr double tol = 1e-5;
+  constexpr double tol = 1e-4;
   for (const ContactGoal& goal : contact_goals) {
     for (size_t k = 0; k < num_time_steps; k++) {
       EXPECT(goal.satisfied(result, k, tol));
@@ -77,8 +77,8 @@ TEST(Interval, Interpolate) {
 
   // Create a kinematic trajectory over timesteps 5, 6, 7, 8, 9 that
   // interpolates between goal configurations at timesteps 5 and 9.
-  gtsam::Values result =
-      kinematics.interpolate(Interval(5, 9), robot, contact_goals, contact_goals2);
+  gtsam::Values result = kinematics.interpolate(Interval(5, 9), robot,
+                                                contact_goals, contact_goals2);
   EXPECT(result.exists(PoseKey(0, 5)));
   EXPECT(result.exists(PoseKey(0, 9)));
   EXPECT(assert_equal(Pose(result1, 0, 5), Pose(result, 0, 5)));

@@ -10,7 +10,6 @@
 """
 
 import argparse
-import math
 import os.path as osp
 
 import gtdynamics as gtd
@@ -19,27 +18,6 @@ import numpy as np
 import pandas as pd
 
 Isotropic = gtsam.noiseModel.Isotropic
-
-
-def jointAngleKey(id_, t=0):
-    """Get joint angle key."""
-    return gtd.JointAngleKey(id_, t).key()
-
-
-def jointVelKey(id_, t=0):
-    """Get joint velocity key."""
-    return gtd.JointVelKey(id_, t).key()
-
-
-def jointAccelKey(id_, t=0):
-    """Get joint acceleration key."""
-    return gtd.JointAccelKey(id_, t).key()
-
-
-def torqueKey(id_, t=0):
-    """Get torque key."""
-    return gtd.TorqueKey(id_, t).key()
-
 
 URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..", "models",
                      "urdfs")
@@ -55,7 +33,7 @@ def run(args):
 
     T = 3.0  # seconds
     dt = 1. / 100  # Time horizon (s) and timestep duration (s).
-    t_steps = math.ceil(T / dt)  # Timesteps.
+    t_steps = np.ceil(T / dt)  # Timesteps.
 
     # Noise models:
     dynamics_model = Isotropic.Sigma(1, 1e-5)  # Dynamics constraints.
@@ -71,29 +49,29 @@ def run(args):
     # Add initial conditions to trajectory factor graph.
     theta_i = 0
     dtheta_i = 0
-    graph.addPriorDouble(jointAngleKey(j1_id, 0), theta_i, dynamics_model)
-    graph.addPriorDouble(jointVelKey(j1_id, 0), dtheta_i, dynamics_model)
+    graph.addPriorDouble(gtd.JointAngleKey(j1_id, 0), theta_i, dynamics_model)
+    graph.addPriorDouble(gtd.JointVelKey(j1_id, 0), dtheta_i, dynamics_model)
 
     # Add state and min torque objectives to trajectory factor graph.
-    theta_T = math.pi
+    theta_T = np.pi
     dtheta_T = 0
     ddtheta_T = 0
-    graph.addPriorDouble(jointAngleKey(j1_id, t_steps), theta_T,
+    graph.addPriorDouble(gtd.JointAngleKey(j1_id, t_steps), theta_T,
                          objectives_model)
-    graph.addPriorDouble(jointVelKey(j1_id, t_steps), dtheta_T,
+    graph.addPriorDouble(gtd.JointVelKey(j1_id, t_steps), dtheta_T,
                          objectives_model)
-    graph.addPriorDouble(jointAccelKey(j1_id, t_steps), ddtheta_T,
+    graph.addPriorDouble(gtd.JointAccelKey(j1_id, t_steps), ddtheta_T,
                          objectives_model)
 
     # Apply state costs along the way if asked.
     if args.state_costs:
         for t in range(t_steps + 1):
-            graph.addPriorDouble(jointAngleKey(j1_id, t), theta_T,
+            graph.addPriorDouble(gtd.JointAngleKey(j1_id, t), theta_T,
                                  objectives_model)
 
     # Do apply control costs at all steps.
     for t in range(t_steps + 1):
-        graph.add(gtd.MinTorqueFactor(torqueKey(j1_id, t), control_model))
+        graph.add(gtd.MinTorqueFactor(gtd.TorqueKey(j1_id, t), control_model))
 
     # Initialize solution.
     init_vals = gtd.ZeroValuesTrajectory(ip, t_steps, 0, 0.0, None)

@@ -12,6 +12,7 @@
  **/
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/jumpingrobot/factors/PneumaticActuatorFactors.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -24,8 +25,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/jumpingrobot/factors/PneumaticActuatorFactors.h"
-
 using gtdynamics::ForceBalanceFactor, gtdynamics::JointTorqueFactor,
     gtdynamics::ActuatorVolumeFactor, gtdynamics::SmoothActuatorFactor,
     gtdynamics::ClippingActuatorFactor;
@@ -33,8 +32,8 @@ using gtsam::Symbol, gtsam::Vector1, gtsam::Values, gtsam::Key,
     gtsam::assert_equal, gtsam::noiseModel::Isotropic;
 
 namespace example {
-  auto cost_model = Isotropic::Sigma(1, 0.001);
-  gtsam::Symbol q_key('q', 0), v_key('v', 0), f_key('f', 0), torque_key('T', 0),
+auto cost_model = Isotropic::Sigma(1, 0.001);
+gtsam::Symbol q_key('q', 0), v_key('v', 0), f_key('f', 0), torque_key('T', 0),
     l_key('l', 0), p_key('p', 0), delta_x_key('x', 0);
 }  // namespace example
 
@@ -92,7 +91,7 @@ TEST(ForceBalanceFactor, Expand) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-/** Test the joint torque factor with expand configuration of the actuator, 
+/** Test the joint torque factor with expand configuration of the actuator,
  * and anatagnostic spring inactive. */
 TEST(JointTorqueFactor, ExpandInactive) {
   double q_limit = 0.4;
@@ -265,7 +264,6 @@ TEST(SmoothActuatorFactor, zero_force) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
 }
 
-//// following tests are deprecated
 TEST(ClippingActuatorFactor, Factor) {
   const double delta_x = 1;
   const double p = 120;

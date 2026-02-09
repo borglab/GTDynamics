@@ -10,7 +10,9 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+build*/
+tmp/
+vs_build/
 develop-eggs/
 dist/
 downloads/
@@ -110,9 +112,12 @@ venv.bak/
 
 # test-data
 v-rep/test_data/
-
+data/
+figures/
 visualization/*.json
 
 # gerry00 visualization data
 scripts/gerry00_rpr_viz.gif
 traj.csv
+
+results/

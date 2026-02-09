@@ -29,7 +29,6 @@ from src.jumping_robot import Actuator, JumpingRobot
 
 class TestJRValues(unittest.TestCase):
     """ Tests for jumping robot. """
-
     def setUp(self):
         """ Set up the jumping robot. """
         self.yaml_file_path = osp.join(parentdir, "yaml", "robot_config.yaml")
@@ -46,9 +45,9 @@ class TestJRValues(unittest.TestCase):
         values.insert(Actuator.ValveCloseTimeKey(j), 1)
         P_a_key = Actuator.PressureKey(j, k)
         P_s_key = Actuator.SourcePressureKey(k)
-        t_key = gtd.TimeKey(k).key()
+        t_key = gtd.TimeKey(k)
         values.insert(P_a_key, 101.325)
-        values.insert(P_s_key, 65 * 6894.76/1000)
+        values.insert(P_s_key, 65 * 6894.76 / 1000)
         values.insert(t_key, 0.0001)
 
         mdot, mdot_sigma = JRValues.compute_mass_flow(self.jr, values, j, k)

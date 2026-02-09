@@ -19,7 +19,7 @@
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/Values.h>
 
-#define GTD_PRINT(x) ((x).print(#x, gtdynamics::_GTDKeyFormatter))
+#define GTD_PRINT(x) ((x).print(#x, _GTDKeyFormatter))
 
 namespace gtdynamics {
 
@@ -39,43 +39,70 @@ class KeyDoesNotExist : public gtsam::ValuesKeyDoesNotExist {
   Key definitions.
  ************************************************************************* */
 /// Shorthand for q_j_t, for j-th joint angle at time t.
-inline DynamicsSymbol JointAngleKey(int j, int t = 0) {
+inline gtsam::Key JointAngleKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("q", j, t);
 }
 
 /// Shorthand for v_j_t, for j-th joint velocity at time t.
-inline DynamicsSymbol JointVelKey(int j, int t = 0) {
+inline gtsam::Key JointVelKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("v", j, t);
 }
 
 /// Shorthand for a_j_t, for j-th joint acceleration at time t.
-inline DynamicsSymbol JointAccelKey(int j, int t = 0) {
+inline gtsam::Key JointAccelKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("a", j, t);
 }
 
 /// Shorthand for T_j_t, for torque on the j-th joint at time t.
-inline DynamicsSymbol TorqueKey(int j, int t = 0) {
+inline gtsam::Key TorqueKey(int j, int t = 0) {
   return DynamicsSymbol::JointSymbol("T", j, t);
 }
 
 /// Shorthand for p_i_t, for COM pose on the i-th link at time t.
-inline DynamicsSymbol PoseKey(int i, int t = 0) {
+inline gtsam::Key PoseKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("p", i, t);
 }
 
 /// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
-inline DynamicsSymbol TwistKey(int i, int t = 0) {
+inline gtsam::Key TwistKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("V", i, t);
 }
 
 /// Shorthand for A_i_t, for twist accelerations on the i-th link at time t.
-inline DynamicsSymbol TwistAccelKey(int i, int t = 0) {
+inline gtsam::Key TwistAccelKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("A", i, t);
 }
 
 /// Shorthand for F_i_j_t, wrenches at j-th joint on the i-th link at time t.
-inline DynamicsSymbol WrenchKey(int i, int j, int t = 0) {
+inline gtsam::Key WrenchKey(int i, int j, int t = 0) {
   return DynamicsSymbol::LinkJointSymbol("F", i, j, t);
+}
+
+/// Shorthand for C_i_c_k, for contact wrench c on i-th link at time step k.
+inline gtsam::Key ContactWrenchKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("C", i, c, k);
+}
+
+/**
+ * @brief Shorthand for CF_i_c_k, for contact force c on i-th link at time step k.
+ *
+ * @param i Link ID.
+ * @param c Contact ID.
+ * @param k Time step.
+ * @return gtsam::Key
+ */
+inline gtsam::Key ContactForceKey(int i, int c, int k = 0) {
+  return DynamicsSymbol::LinkJointSymbol("CF", i, c, k);
+}
+
+/* Shorthand for dt_k, for duration for timestep dt_k during phase k. */
+inline gtsam::Key PhaseKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("dt", k);
+}
+
+/* Shorthand for t_k, time at time step k. */
+inline gtsam::Key TimeKey(int k) {
+  return DynamicsSymbol::SimpleSymbol("t", k);
 }
 
 /// Custom retrieval that throws KeyDoesNotExist
@@ -435,5 +462,15 @@ gtsam::Vector Wrench(const gtsam::VectorValues &values, int i, int j,
  * @return gtsam::Vector6
  */
 gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t = 0);
+
+/**
+ * @brief Create values for the next time step by incrementing the time index of keys.
+ *
+ * @param prev_values Values at the previous time step.
+ * @param gap_steps The number of steps to increment.
+ * @return gtsam::Values
+ */
+gtsam::Values DynamicsValuesFromPrev(const gtsam::Values &prev_values,
+                                     const int gap_steps = 1);
 
 }  // namespace gtdynamics

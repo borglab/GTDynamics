@@ -13,14 +13,16 @@
 import os.path as osp
 import unittest
 
-import gtdynamics as gtd
 import numpy as np
 from gtsam import Point3, Pose3, Rot3
 from gtsam.utils.test_case import GtsamTestCase
 
+import gtdynamics as gtd
+
 
 class TestLink(GtsamTestCase):
     """Tests for the Link class."""
+
     def setUp(self):
         """Set up the fixtures."""
         # load example robot

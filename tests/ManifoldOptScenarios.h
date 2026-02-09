@@ -1,0 +1,43 @@
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
+#include <gtsam/nonlinear/expressions.h>
+
+namespace gtsam {
+
+namespace so2_scenario {
+
+double dist_square_func(const double& x1, const double& x2,
+                        gtsam::OptionalJacobian<1, 1> H1 = nullptr,
+                        gtsam::OptionalJacobian<1, 1> H2 = nullptr) {
+  if (H1) *H1 << 2 * x1;
+  if (H2) *H2 << 2 * x2;
+  return x1 * x1 + x2 * x2;
+}
+
+Key x1_key = 1;
+Key x2_key = 2;
+Double_ x1(x1_key);
+Double_ x2(x2_key);
+Double_ dist_square(dist_square_func, x1, x2);
+Double_ dist_error = dist_square - Double_(1.0);
+
+std::shared_ptr<gtsam::NonlinearEqualityConstraints> get_constraints() {
+  auto constraints = std::make_shared<gtsam::NonlinearEqualityConstraints>();
+  double tolerance = 1e-3;
+  constraints->emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(
+      dist_error, 0.0, gtsam::Vector1(tolerance));
+  return constraints;
+}
+
+std::shared_ptr<NonlinearFactorGraph> get_graph(const double& x1_val,
+                                                const double& x2_val) {
+  auto graph = std::make_shared<NonlinearFactorGraph>();
+  auto model = noiseModel::Isotropic::Sigma(1, 1.0);
+  graph->addPrior(x1_key, x1_val, model);
+  graph->addPrior(x2_key, x2_val, model);
+  return graph;
+}
+
+}  // namespace so2_scenario
+
+}  // namespace gtsam
