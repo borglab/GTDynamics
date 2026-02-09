@@ -53,16 +53,42 @@ cmake ${GTSAM_SOURCE} \
     -DGTSAM_PYTHON_VERSION=${PYTHON_VERSION} \
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
     -DGTSAM_ALLOW_DEPRECATED_SINCE_V43=OFF \
-    -DBOOST_ROOT=${BOOST_ROOT} \
     -DCMAKE_CXX_FLAGS="-faligned-new -Wno-error=free-nonheap-object"
 
 cmake --build . --config Release -j${NUM_CORES}
 cmake --install .
 
-# Install GTSAM Python package
+# Install GTSAM Python package into the build environment
+# (needed so that gtwrap/cmake can find it during GTDynamics build)
 echo "Installing GTSAM Python package..."
 cd ${GTSAM_BUILD}/python
 $PYTHON_EXE -m pip install .
+
+# Copy the gtsam Python package into the source tree so hatchling bundles
+# it directly inside the gtdynamics wheel. This eliminates the need for
+# a separate gtsam-develop pip package.
+echo "Copying gtsam Python package into source tree for bundling..."
+GTSAM_PY_SRC="${GTSAM_BUILD}/python/gtsam"
+GTSAM_PY_DST="${PROJECT_DIR}/python/gtsam"
+rm -rf ${GTSAM_PY_DST}
+mkdir -p ${GTSAM_PY_DST}
+
+# Copy core Python files, extension module, and type stubs
+cp ${GTSAM_PY_SRC}/__init__.py ${GTSAM_PY_DST}/
+cp ${GTSAM_PY_SRC}/__init__.pyi ${GTSAM_PY_DST}/ 2>/dev/null || true
+cp ${GTSAM_PY_SRC}/*.py ${GTSAM_PY_DST}/
+find ${GTSAM_PY_SRC} -maxdepth 1 -name "gtsam*.so" -exec cp {} ${GTSAM_PY_DST}/ \;
+
+# Copy sub-packages (utils, preamble, specializations, type stubs, Data)
+for subdir in utils preamble specializations gtsam Data; do
+    if [ -d "${GTSAM_PY_SRC}/${subdir}" ]; then
+        cp -r ${GTSAM_PY_SRC}/${subdir} ${GTSAM_PY_DST}/
+    fi
+done
+
+# Remove tests/examples/notebooks from bundled gtsam (not needed at runtime)
+rm -rf ${GTSAM_PY_DST}/tests ${GTSAM_PY_DST}/examples ${GTSAM_PY_DST}/notebooks
+rm -rf ${GTSAM_PY_DST}/__pycache__
 
 
 # Update environment variables for GTDynamics build

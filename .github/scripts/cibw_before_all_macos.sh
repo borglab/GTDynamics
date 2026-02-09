@@ -19,21 +19,7 @@ fi
 
 # Install Base System Dependencies via Homebrew
 echo "Installing base system dependencies..."
-brew install cmake wget git
-
-# Build Boost 1.87.0 from source (must match the version used by gtsam-develop on PyPI)
-echo "Building Boost 1.87.0 from source..."
-cd /tmp
-wget https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz --quiet
-tar -xzf boost_1_87_0.tar.gz
-cd boost_1_87_0
-
-BOOST_PREFIX="${INSTALL_PREFIX}/boost"
-./bootstrap.sh --prefix=${BOOST_PREFIX}
-./b2 install --prefix=${BOOST_PREFIX} --with=all -d0 \
-    cxxflags="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}" \
-    linkflags="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
-cd /tmp && rm -rf boost_1_87_0*
+brew install cmake wget git boost
 
 # Install SDFormat via Homebrew
 brew tap osrf/simulation
@@ -45,13 +31,15 @@ echo "Cloning GTSAM source (develop branch)..."
 git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
 # Write environment file for before-build scripts
+BOOST_PREFIX="$(brew --prefix boost)"
+
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"
 export BOOST_ROOT="${BOOST_PREFIX}"
 export BOOST_INCLUDEDIR="${BOOST_PREFIX}/include"
 export BOOST_LIBRARYDIR="${BOOST_PREFIX}/lib"
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET}"
-export CMAKE_PREFIX_PATH="\${CMAKE_PREFIX_PATH}"
+export CMAKE_PREFIX_PATH="${BOOST_PREFIX}:\${CMAKE_PREFIX_PATH}"
 export LD_LIBRARY_PATH="${BOOST_PREFIX}/lib:\${LD_LIBRARY_PATH}"
 export DYLD_LIBRARY_PATH="${BOOST_PREFIX}/lib:\${DYLD_LIBRARY_PATH}"
 export REPAIR_LIBRARY_PATH="${BOOST_PREFIX}/lib:\${REPAIR_LIBRARY_PATH}"
