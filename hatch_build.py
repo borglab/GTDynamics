@@ -14,7 +14,7 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 class PlatformWheelHook(BuildHookInterface):
     """Force platform wheel tag when native extensions are present."""
 
-    PLUGIN_NAME = "platform-wheel"
+    PLUGIN_NAME = "custom"
 
     def initialize(self, version, build_data):
         # Check if any native extensions exist in the package
@@ -25,5 +25,4 @@ class PlatformWheelHook(BuildHookInterface):
         if has_so or has_pyd:
             # Mark as non-pure so hatchling generates a platform wheel
             build_data["pure_python"] = False
-            # Let hatchling infer the correct tag from the .so filename
-            # (e.g. gtdynamics.cpython-310-x86_64-linux-gnu.so)
+            build_data["infer_tag"] = True
