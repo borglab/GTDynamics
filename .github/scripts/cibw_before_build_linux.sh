@@ -102,9 +102,24 @@ cmake ${PROJECT_DIR} \
 cmake --build . --config Release --target gtdynamics_py -j${NUM_CORES}
 cmake --install .
 
+
 # 6. Stage GTDynamics extension from Clean Prefix
-echo "Copying built extension to source tree..."
-find "${GTD_PREFIX}" -name "gtdynamics*.so" -exec cp -v {} "${PROJECT_DIR}/python/gtdynamics/" \;
+echo "Staging GTDynamics extension..."
+# Robustly find the extension anywhere in the install prefix
+GTD_SO_PATH=$(find "${GTD_PREFIX}" -path "*/gtdynamics/*.so" -o -name "gtdynamics*.so" -print -quit)
+
+if [ -z "$GTD_SO_PATH" ]; then
+    echo "ERROR: Could not find gtdynamics extension in ${GTD_PREFIX}"
+    # Let's list the prefix so you can see where it went in the logs
+    find "${GTD_PREFIX}" -maxdepth 4
+    exit 1
+fi
+
+# Copy it and force the name to gtdynamics.so to match your __init__.py
+cp -v "$GTD_SO_PATH" "${PROJECT_DIR}/python/gtdynamics/gtdynamics.so"
+
+# DEBUG: List the destination to be 100% sure it's there
+ls -lh "${PROJECT_DIR}/python/gtdynamics/gtdynamics.so"
 
 # Finalize GTDynamics library path
 rm -f ${INSTALL_PREFIX}/gtd_current
