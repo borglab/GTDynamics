@@ -1,7 +1,5 @@
 #!/bin/bash
-# This script builds GTSAM and GTDynamics using a clean prefix-installation strategy.
-# This prevents "Double Linking" of Boost and other dependencies.
-
+# Refined Hybrid Build Script: Proven Copy Logic + Clean Prefix Strategy
 set -e
 set -x
 
@@ -9,16 +7,13 @@ PROJECT_DIR="$(cd "$1" && pwd)"
 INSTALL_PREFIX="/opt/gtdynamics-deps"
 NUM_CORES=$(nproc)
 
-# Source environment from before-all (defines BOOST_ROOT, etc.)
+# 1. Setup Environment
 source ${INSTALL_PREFIX}/env.sh
-
-# Get the Python executable provided by cibuildwheel
 PYTHON_EXE=$(which python)
 PYTHON_VERSION=$($PYTHON_EXE -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 
 echo "Building for Python ${PYTHON_VERSION} at ${PYTHON_EXE}"
 
-# Install Python build-time dependencies
 $PYTHON_EXE -m pip install --upgrade pip
 $PYTHON_EXE -m pip install numpy pyparsing pybind11 hatchling ninja "cmake>=3.26,<4"
 
@@ -27,11 +22,12 @@ GTSAM_SOURCE="${INSTALL_PREFIX}/gtsam_source"
 GTSAM_BUILD="${INSTALL_PREFIX}/gtsam_build_py${PYTHON_VERSION}"
 GTSAM_PREFIX="${INSTALL_PREFIX}/gtsam_py${PYTHON_VERSION}"
 
-# 1. Build and INSTALL GTSAM to a clean prefix
+# 2. Build and INSTALL GTSAM to Clean Prefix
 echo "Building GTSAM..."
 rm -rf ${GTSAM_BUILD} ${GTSAM_PREFIX}
 mkdir -p ${GTSAM_BUILD}
 cd ${GTSAM_BUILD}
+
 cmake ${GTSAM_SOURCE} \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${GTSAM_PREFIX} \
@@ -50,27 +46,45 @@ cmake ${GTSAM_SOURCE} \
 cmake --build . --config Release -j${NUM_CORES}
 cmake --install .
 
-# 2. Stage GTSAM Python package for bundling
-echo "Staging GTSAM for bundling..."
+# 3. Stage GTSAM using your Working Copy Logic
+echo "Staging GTSAM Python package for bundling..."
+GTSAM_PY_SRC="${GTSAM_BUILD}/python/gtsam"
 GTSAM_PY_DST="${PROJECT_DIR}/python/gtsam"
 rm -rf ${GTSAM_PY_DST}
 mkdir -p ${GTSAM_PY_DST}
 
-# Find where CMake installed the gtsam python package
-GTSAM_PKG_SRC=$(find ${GTSAM_PREFIX} -name "gtsam" -type d | grep "site-packages/gtsam" | head -n 1)
-if [ -z "$GTSAM_PKG_SRC" ]; then
-    echo "ERROR: Could not find gtsam package in ${GTSAM_PREFIX}"
-    exit 1
-fi
-cp -r "${GTSAM_PKG_SRC}/." "${GTSAM_PY_DST}/"
+cp ${GTSAM_PY_SRC}/__init__.py ${GTSAM_PY_DST}/
+cp ${GTSAM_PY_SRC}/__init__.pyi ${GTSAM_PY_DST}/ 2>/dev/null || true
+cp ${GTSAM_PY_SRC}/*.py ${GTSAM_PY_DST}/
+find ${GTSAM_PY_SRC} -maxdepth 1 -name "gtsam*.so" -exec cp {} ${GTSAM_PY_DST}/ \;
+
+for subdir in utils preamble specializations gtsam Data; do
+    if [ -d "${GTSAM_PY_SRC}/${subdir}" ]; then
+        cp -r ${GTSAM_PY_SRC}/${subdir} ${GTSAM_PY_DST}/
+    fi
+done
+
 rm -rf ${GTSAM_PY_DST}/tests ${GTSAM_PY_DST}/examples ${GTSAM_PY_DST}/notebooks ${GTSAM_PY_DST}/__pycache__
 
-# 3. Build and INSTALL GTDynamics to its own prefix
-echo "Building GTDynamics..."
+# 4. Finalize Environment for GTDynamics
+export GTSAM_DIR="${GTSAM_PREFIX}/lib/cmake/GTSAM"
+export CMAKE_PREFIX_PATH="${GTSAM_PREFIX}:${CMAKE_PREFIX_PATH}"
+export LD_LIBRARY_PATH="${GTSAM_PREFIX}/lib:${LD_LIBRARY_PATH}"
+
+rm -f ${INSTALL_PREFIX}/gtsam_current
+ln -sf ${GTSAM_PREFIX} ${INSTALL_PREFIX}/gtsam_current
+
+# Patch gtwrap for manylinux compatibility
+sed -i 's/Interpreter Development/Interpreter Development.Module/g' \
+    ${GTSAM_PREFIX}/lib/cmake/gtwrap/GtwrapUtils.cmake
+
+# 5. Build and INSTALL GTDynamics
+echo "Building GTDynamics C++ extension..."
 GTD_BUILD="${INSTALL_PREFIX}/gtd_build_py${PYTHON_VERSION}"
 GTD_PREFIX="${INSTALL_PREFIX}/gtd_py${PYTHON_VERSION}"
 rm -rf ${GTD_BUILD} ${GTD_PREFIX}
 mkdir -p ${GTD_BUILD}
+
 cd ${GTD_BUILD}
 cmake ${PROJECT_DIR} \
     -DCMAKE_BUILD_TYPE=Release \
@@ -88,13 +102,13 @@ cmake ${PROJECT_DIR} \
 cmake --build . --config Release --target gtdynamics_py -j${NUM_CORES}
 cmake --install .
 
-# 4. Stage GTDynamics extension for bundling
-echo "Staging GTDynamics extension..."
+# 6. Stage GTDynamics extension from Clean Prefix
+echo "Copying built extension to source tree..."
 find "${GTD_PREFIX}" -name "gtdynamics*.so" -exec cp -v {} "${PROJECT_DIR}/python/gtdynamics/" \;
 
-# Finalize Environment for Auditwheel
-rm -f ${INSTALL_PREFIX}/gtsam_current ${INSTALL_PREFIX}/gtd_current
-ln -sf ${GTSAM_PREFIX} ${INSTALL_PREFIX}/gtsam_current
+# Finalize GTDynamics library path
+rm -f ${INSTALL_PREFIX}/gtd_current
 ln -sf ${GTD_PREFIX} ${INSTALL_PREFIX}/gtd_current
+export LD_LIBRARY_PATH="${GTD_PREFIX}/lib:${LD_LIBRARY_PATH}"
 
 echo "before-build completed successfully!"
