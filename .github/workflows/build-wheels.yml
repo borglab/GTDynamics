@@ -29,9 +29,11 @@ jobs:
           # macOS arm64 (macOS 14 Sonoma)
           - os: macos-14
             cibw_archs: arm64
+            macos_deployment_target: "14.0"
           # macOS arm64 (macOS 15 Sequoia)
           - os: macos-15
             cibw_archs: arm64
+            macos_deployment_target: "15.0"
 
     steps:
       - name: Checkout repository
@@ -49,6 +51,7 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_ARCHS: ${{ matrix.cibw_archs }}
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_deployment_target }}
 
       - name: List wheels
         run: ls -lah wheelhouse/
