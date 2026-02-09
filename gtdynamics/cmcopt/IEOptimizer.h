@@ -22,6 +22,8 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
+#include <iomanip>
+
 namespace gtdynamics {
 using namespace gtsam;
 

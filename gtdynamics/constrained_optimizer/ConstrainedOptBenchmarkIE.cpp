@@ -17,6 +17,8 @@
 #include <gtdynamics/utils/Timer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
+#include <iomanip>
+
 namespace gtdynamics {
 
 /* ************************************************************************* */
