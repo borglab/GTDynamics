@@ -67,7 +67,7 @@ packages = ["python/gtdynamics"]
 module-name = "gtdynamics"
 
 [tool.cibuildwheel]
-build = "cp310-* cp311-* cp312-* cp313-*"
+build = "cp312-* cp313-*"
 skip = "*-musllinux_* *-win32 pp*"
 build-frontend = "pip; args: --no-build-isolation"
 

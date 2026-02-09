@@ -26,9 +26,6 @@ jobs:
           # Linux aarch64
           - os: ubuntu-24.04-arm
             cibw_archs: aarch64
-          # macOS x86_64
-          - os: macos-13
-            cibw_archs: x86_64
           # macOS arm64
           - os: macos-latest
             cibw_archs: arm64
