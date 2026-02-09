@@ -75,6 +75,7 @@ cmake ${PROJECT_DIR} \
     -DCMAKE_INSTALL_PREFIX=${GTD_PREFIX} \
     -DGTSAM_DIR="${GTSAM_PREFIX}/lib/cmake/GTSAM" \
     -DGTDYNAMICS_BUILD_PYTHON=ON \
+    -DGTDYNAMICS_BUILD_EXAMPLES=OFF \
     -DBUILD_TESTING=OFF \
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
     -DBOOST_ROOT=${BOOST_ROOT} \
@@ -87,7 +88,6 @@ cmake --install .
 
 # 4. Stage GTDynamics extension for bundling
 echo "Staging GTDynamics extension..."
-# Grab ONLY the .so from the clean install prefix
 find "${GTD_PREFIX}" -name "gtdynamics*.so" -exec cp -v {} "${PROJECT_DIR}/python/gtdynamics/" \;
 
 # Finalize Environment for Auditwheel
