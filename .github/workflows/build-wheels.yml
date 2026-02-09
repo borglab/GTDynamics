@@ -26,8 +26,11 @@ jobs:
           # Linux aarch64
           - os: ubuntu-24.04-arm
             cibw_archs: aarch64
-          # macOS arm64
-          - os: macos-latest
+          # macOS arm64 (macOS 14 Sonoma)
+          - os: macos-14
+            cibw_archs: arm64
+          # macOS arm64 (macOS 15 Sequoia)
+          - os: macos-15
             cibw_archs: arm64
 
     steps:

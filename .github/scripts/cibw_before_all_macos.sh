@@ -11,9 +11,10 @@ NUM_CORES=$(sysctl -n hw.logicalcpu)
 export INSTALL_PREFIX="$HOME/opt/gtdynamics-deps"
 mkdir -p ${INSTALL_PREFIX}
 
-# If MACOSX_DEPLOYMENT_TARGET is not explicitly set, default to the version of the host system.
+# If MACOSX_DEPLOYMENT_TARGET is not explicitly set, default to the host OS major version.
+# Homebrew bottles are built against the runner's OS, so the deployment target must match.
 if [[ -z "${MACOSX_DEPLOYMENT_TARGET}" ]]; then
-    export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion | cut -d '.' -f 1-2)"
+    export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion | cut -d. -f1).0"
 fi
 
 # Install Base System Dependencies via Homebrew
