@@ -129,12 +129,15 @@ There are two optimizer paths in code:
 - Generic “reuse GTSAM nonlinear optimizers on manifold-valued variables”: [`NonlinearMOptimizer`](NonlinearMOptimizer.cpp#L22)
 - Custom LM implementation with explicit trial/state bookkeeping: [`LMManifoldOptimizer`](LMManifoldOptimizer.cpp#L43)
 
-In benchmark helpers, `OptimizeE_CMOpt` currently uses `NonlinearMOptimizer`:
-- [`ConstrainedOptBenchmark.cpp#L143`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L143)
+In benchmark helpers, `ConstrainedOptBenchmark::OptimizeCmOpt` uses
+`NonlinearMOptimizer`:
+- [`ConstrainedOptBenchmark.cpp`](../constrained_optimizer/ConstrainedOptBenchmark.cpp)
 
 Default CM parameter builders:
-- Dense/null-space + unconstrained retraction: [`DefaultMoptParams`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L114)
-- Basis-variable elimination + basis retraction: [`DefaultMoptParamsSV`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L127)
+- Dense/null-space + unconstrained retraction:
+  [`ConstrainedOptBenchmark::DefaultMoptParams`](../constrained_optimizer/ConstrainedOptBenchmark.cpp)
+- Basis-variable elimination + basis retraction:
+  [`ConstrainedOptBenchmark::DefaultMoptParamsSV`](../constrained_optimizer/ConstrainedOptBenchmark.cpp)
 - Relevant headers/classes: [`NonlinearMOptimizer`](NonlinearMOptimizer.h), [`LMManifoldOptimizer`](LMManifoldOptimizer.h), [`LMState/LMTrial`](LMManifoldOptimizerState.h), [`ManifoldOptimizerParameters`](ManifoldOptimizer.h)
 
 <a id="walkthrough"></a>

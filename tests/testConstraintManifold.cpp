@@ -13,9 +13,9 @@
 
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
@@ -27,6 +27,8 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
+
+#include <map>
 #include <sstream>
 
 using namespace gtsam;
@@ -55,17 +57,15 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 1, 1)));
 
   // Create constraint manifold with various tspacebasis and retractors
-  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
+  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
     return KeyVector{x3_key};
   };
   std::vector<TspaceBasisCreator::shared_ptr> basis_creators{
-    std::make_shared<OrthonormalBasisCreator>(),
-    std::make_shared<EliminationBasisCreator>(basis_key_func)
-  };
+      std::make_shared<OrthonormalBasisCreator>(),
+      std::make_shared<EliminationBasisCreator>(basis_key_func)};
   std::vector<RetractorCreator::shared_ptr> retractor_creators{
-    std::make_shared<UoptRetractorCreator>(),
-    std::make_shared<BasisRetractorCreator>(basis_key_func)
-  };
+      std::make_shared<UoptRetractorCreator>(),
+      std::make_shared<BasisRetractorCreator>(basis_key_func)};
 
   for (const auto& basis_creator : basis_creators) {
     for (const auto& retractor_creator : retractor_creators) {
@@ -108,60 +108,80 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
  * Runs Soft -> Penalty -> Augmented Lagrangian -> CM on a small problem.
  */
 TEST(ConstraintManifold, benchmark_sequence_connected_poses_minimal) {
-  Key x1_key = 1;
-  Key x2_key = 2;
-  Key x3_key = 3;
+  const Key x1Key = 1;
+  const Key x2Key = 2;
+  const Key x3Key = 3;
 
   auto constraints = gtsam::NonlinearEqualityConstraints();
-  auto equality_noise = noiseModel::Unit::Create(6);
+  const auto equalityNoise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
-      x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), equality_noise);
+      x1Key, x2Key, Pose3(Rot3(), Point3(0, 0, 1)), equalityNoise);
   auto factor23 = std::make_shared<BetweenFactor<Pose3>>(
-      x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), equality_noise);
+      x2Key, x3Key, Pose3(Rot3(), Point3(0, 1, 0)), equalityNoise);
   constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor12);
   constraints.emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
   NonlinearFactorGraph costs;
-  auto prior_noise = noiseModel::Isotropic::Sigma(6, 1.0);
-  costs.addPrior<Pose3>(x1_key, Pose3(Rot3(), Point3(0, 0, 0)), prior_noise);
-  costs.addPrior<Pose3>(x3_key, Pose3(Rot3(), Point3(0, 1, 1)), prior_noise);
+  const auto priorNoise = noiseModel::Isotropic::Sigma(6, 1.0);
+  costs.addPrior<Pose3>(x1Key, Pose3(Rot3(), Point3(0, 0, 0)), priorNoise);
+  costs.addPrior<Pose3>(x3Key, Pose3(Rot3(), Point3(0, 1, 1)), priorNoise);
 
-  Values init_values;
-  init_values.insert(x1_key, Pose3(Rot3(), Point3(0.1, 0.0, 0.0)));
-  init_values.insert(x2_key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
-  init_values.insert(x3_key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
+  Values initValues;
+  initValues.insert(x1Key, Pose3(Rot3(), Point3(0.1, 0.0, 0.0)));
+  initValues.insert(x2Key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
+  initValues.insert(x3Key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
 
-  EConsOptProblem problem(costs, constraints, init_values);
+  const auto createProblem = [=]() {
+    return EConsOptProblem(costs, constraints, initValues);
+  };
 
-  LevenbergMarquardtParams lm_params;
-  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
-  penalty_params->lmParams = lm_params;
-  auto alm_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  alm_params->lmParams = lm_params;
-  auto mopt_params = DefaultMoptParams();
+  ConstrainedOptBenchmark::Options runOptions;
+  runOptions.id = "test_connected_poses_minimal";
+  runOptions.csvPath = "/tmp/test_connected_poses_minimal_benchmark.csv";
+  runOptions.methods = {ConstrainedOptBenchmark::Method::SOFT,
+                        ConstrainedOptBenchmark::Method::PENALTY,
+                        ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN,
+                        ConstrainedOptBenchmark::Method::CM_F,
+                        ConstrainedOptBenchmark::Method::CM_I};
+  runOptions.softMu = 1.0;
+  runOptions.constraintUnitScale = 1.0;
+
+  ConstrainedOptBenchmark runner(runOptions);
+  runner.setProblemFactory(createProblem);
+
+  std::map<ConstrainedOptBenchmark::Method, Values> resultsByMethod;
+  runner.setResultCallback(
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+        resultsByMethod[method] = result;
+      });
 
   bool success = true;
-  std::string error_msg;
-  Values cm_result;
-  std::ostringstream latex_os;
+  std::string errorMessage;
+  std::ostringstream latexOs;
 
   try {
-    OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
-    OptimizeE_Penalty(problem, latex_os, penalty_params);
-    OptimizeE_AugmentedLagrangian(problem, latex_os, alm_params);
-    cm_result =
-        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "CM");
+    runner.run(latexOs);
   } catch (const std::exception& e) {
     success = false;
-    error_msg = e.what();
+    errorMessage = e.what();
   }
 
   if (!success) {
-    std::cout << "benchmark sequence failure: " << error_msg << std::endl;
+    std::cout << "benchmark sequence failure: " << errorMessage << std::endl;
   }
   EXPECT(success);
   if (success) {
-    EXPECT(problem.evaluateEConstraintViolationL2Norm(cm_result) < 1e-3);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::SOFT) == 1);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::PENALTY) ==
+           1);
+    EXPECT(resultsByMethod.count(
+               ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN) == 1);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::CM_F) == 1);
+    EXPECT(resultsByMethod.count(ConstrainedOptBenchmark::Method::CM_I) == 1);
+
+    const auto problem = createProblem();
+    EXPECT(problem.evaluateEConstraintViolationL2Norm(resultsByMethod.at(
+               ConstrainedOptBenchmark::Method::CM_I)) < 1e-3);
   }
 }
 
@@ -170,79 +190,105 @@ TEST(ConstraintManifold, benchmark_sequence_connected_poses_minimal) {
  * and runs CM twice to catch state/key reuse issues.
  */
 TEST(ConstraintManifold, benchmark_sequence_multi_component_no_key_collision) {
-  Key x1_key = 1, x2_key = 2, x3_key = 3;
-  Key y1_key = 4, y2_key = 5, y3_key = 6;
-  Key u_key = 7;  // unconstrained variable
+  const Key x1Key = 1, x2Key = 2, x3Key = 3;
+  const Key y1Key = 4, y2Key = 5, y3Key = 6;
+  const Key uKey = 7;  // unconstrained variable
 
   auto constraints = gtsam::NonlinearEqualityConstraints();
-  auto equality_noise = noiseModel::Unit::Create(6);
+  const auto equalityNoise = noiseModel::Unit::Create(6);
   constraints.emplace_shared<gtsam::ZeroCostConstraint>(
       std::make_shared<BetweenFactor<Pose3>>(
-          x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), equality_noise));
+          x1Key, x2Key, Pose3(Rot3(), Point3(0, 0, 1)), equalityNoise));
   constraints.emplace_shared<gtsam::ZeroCostConstraint>(
       std::make_shared<BetweenFactor<Pose3>>(
-          x2_key, x3_key, Pose3(Rot3(), Point3(0, 1, 0)), equality_noise));
+          x2Key, x3Key, Pose3(Rot3(), Point3(0, 1, 0)), equalityNoise));
   constraints.emplace_shared<gtsam::ZeroCostConstraint>(
       std::make_shared<BetweenFactor<Pose3>>(
-          y1_key, y2_key, Pose3(Rot3(), Point3(1, 0, 0)), equality_noise));
+          y1Key, y2Key, Pose3(Rot3(), Point3(1, 0, 0)), equalityNoise));
   constraints.emplace_shared<gtsam::ZeroCostConstraint>(
       std::make_shared<BetweenFactor<Pose3>>(
-          y2_key, y3_key, Pose3(Rot3(), Point3(0, -1, 0)), equality_noise));
+          y2Key, y3Key, Pose3(Rot3(), Point3(0, -1, 0)), equalityNoise));
 
   NonlinearFactorGraph costs;
-  auto pose_prior_noise = noiseModel::Isotropic::Sigma(6, 1.0);
-  auto scalar_prior_noise = noiseModel::Isotropic::Sigma(1, 1.0);
-  costs.addPrior<Pose3>(x1_key, Pose3(Rot3(), Point3(0, 0, 0)), pose_prior_noise);
-  costs.addPrior<Pose3>(x3_key, Pose3(Rot3(), Point3(0, 1, 1)), pose_prior_noise);
-  costs.addPrior<Pose3>(y1_key, Pose3(Rot3(), Point3(2, 0, 0)), pose_prior_noise);
-  costs.addPrior<Pose3>(y3_key, Pose3(Rot3(), Point3(2, -1, 0)), pose_prior_noise);
-  costs.addPrior<double>(u_key, 0.5, scalar_prior_noise);
+  const auto posePriorNoise = noiseModel::Isotropic::Sigma(6, 1.0);
+  const auto scalarPriorNoise = noiseModel::Isotropic::Sigma(1, 1.0);
+  costs.addPrior<Pose3>(x1Key, Pose3(Rot3(), Point3(0, 0, 0)), posePriorNoise);
+  costs.addPrior<Pose3>(x3Key, Pose3(Rot3(), Point3(0, 1, 1)), posePriorNoise);
+  costs.addPrior<Pose3>(y1Key, Pose3(Rot3(), Point3(2, 0, 0)), posePriorNoise);
+  costs.addPrior<Pose3>(y3Key, Pose3(Rot3(), Point3(2, -1, 0)), posePriorNoise);
+  costs.addPrior<double>(uKey, 0.5, scalarPriorNoise);
 
-  Values init_values;
-  init_values.insert(x1_key, Pose3(Rot3(), Point3(0.3, 0.0, 0.0)));
-  init_values.insert(x2_key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
-  init_values.insert(x3_key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
-  init_values.insert(y1_key, Pose3(Rot3(), Point3(2.2, 0.1, 0.0)));
-  init_values.insert(y2_key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
-  init_values.insert(y3_key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
-  init_values.insert(u_key, -1.0);
+  Values initValues;
+  initValues.insert(x1Key, Pose3(Rot3(), Point3(0.3, 0.0, 0.0)));
+  initValues.insert(x2Key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
+  initValues.insert(x3Key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
+  initValues.insert(y1Key, Pose3(Rot3(), Point3(2.2, 0.1, 0.0)));
+  initValues.insert(y2Key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
+  initValues.insert(y3Key, Pose3(Rot3(), Point3(0.0, 0.0, 0.0)));
+  initValues.insert(uKey, -1.0);
 
-  EConsOptProblem problem(costs, constraints, init_values);
+  const auto createProblem = [=]() {
+    return EConsOptProblem(costs, constraints, initValues);
+  };
 
-  LevenbergMarquardtParams lm_params;
-  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
-  penalty_params->lmParams = lm_params;
-  auto alm_params = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  alm_params->lmParams = lm_params;
-  auto mopt_params = DefaultMoptParams();
+  ConstrainedOptBenchmark::Options runOptions;
+  runOptions.id = "test_multi_component";
+  runOptions.csvPath = "/tmp/test_multi_component_benchmark.csv";
+  runOptions.methods = {ConstrainedOptBenchmark::Method::SOFT,
+                        ConstrainedOptBenchmark::Method::PENALTY,
+                        ConstrainedOptBenchmark::Method::AUGMENTED_LAGRANGIAN,
+                        ConstrainedOptBenchmark::Method::CM_F,
+                        ConstrainedOptBenchmark::Method::CM_I};
+  runOptions.softMu = 1.0;
+  runOptions.constraintUnitScale = 1.0;
 
   bool success = true;
-  std::string error_msg;
-  Values cm_result_1, cm_result_2;
-  std::ostringstream latex_os;
+  std::string errorMessage;
+  std::map<ConstrainedOptBenchmark::Method, Values> firstRunResults;
+  std::map<ConstrainedOptBenchmark::Method, Values> secondRunResults;
+  std::ostringstream latexOs;
 
   try {
-    OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
-    OptimizeE_Penalty(problem, latex_os, penalty_params);
-    OptimizeE_AugmentedLagrangian(problem, latex_os, alm_params);
-    cm_result_1 =
-        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "CM1");
-    cm_result_2 =
-        OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "CM2");
+    ConstrainedOptBenchmark firstRunner(runOptions);
+    firstRunner.setProblemFactory(createProblem);
+    firstRunner.setResultCallback(
+        [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+          firstRunResults[method] = result;
+        });
+    firstRunner.run(latexOs);
+
+    ConstrainedOptBenchmark::Options secondRunOptions = runOptions;
+    secondRunOptions.methods = {ConstrainedOptBenchmark::Method::CM_I};
+    ConstrainedOptBenchmark secondRunner(secondRunOptions);
+    secondRunner.setProblemFactory(createProblem);
+    secondRunner.setResultCallback(
+        [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+          secondRunResults[method] = result;
+        });
+    secondRunner.run(latexOs);
   } catch (const std::exception& e) {
     success = false;
-    error_msg = e.what();
+    errorMessage = e.what();
   }
 
   if (!success) {
-    std::cout << "multi-component benchmark sequence failure: " << error_msg
+    std::cout << "multi-component benchmark sequence failure: " << errorMessage
               << std::endl;
   }
   EXPECT(success);
   if (success) {
-    EXPECT(problem.evaluateEConstraintViolationL2Norm(cm_result_1) < 1e-3);
-    EXPECT(problem.evaluateEConstraintViolationL2Norm(cm_result_2) < 1e-3);
-    EXPECT(assert_equal(0.5, cm_result_2.atDouble(u_key), 1e-3));
+    EXPECT(firstRunResults.count(ConstrainedOptBenchmark::Method::CM_I) == 1);
+    EXPECT(secondRunResults.count(ConstrainedOptBenchmark::Method::CM_I) == 1);
+    const auto problem = createProblem();
+    EXPECT(problem.evaluateEConstraintViolationL2Norm(firstRunResults.at(
+               ConstrainedOptBenchmark::Method::CM_I)) < 1e-3);
+    EXPECT(problem.evaluateEConstraintViolationL2Norm(secondRunResults.at(
+               ConstrainedOptBenchmark::Method::CM_I)) < 1e-3);
+    EXPECT(
+        assert_equal(0.5,
+                     secondRunResults.at(ConstrainedOptBenchmark::Method::CM_I)
+                         .atDouble(uKey),
+                     1e-3));
   }
 }
 
@@ -256,59 +302,58 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
   constexpr size_t kNumSteps = 40;
   auto constraints = gtsam::NonlinearEqualityConstraints();
   auto costs = NonlinearFactorGraph();
-  auto init_values = Values();
+  auto initValues = Values();
 
-  auto equality_noise = noiseModel::Unit::Create(3);
-  auto prior_noise = noiseModel::Isotropic::Sigma(3, 1.0);
-  auto odo_noise = noiseModel::Isotropic::Sigma(3, 1.0);
+  auto equalityNoise = noiseModel::Unit::Create(3);
+  auto priorNoise = noiseModel::Isotropic::Sigma(3, 1.0);
+  auto odoNoise = noiseModel::Isotropic::Sigma(3, 1.0);
 
-  init_values.insert(A(0), Pose2(0.0, 0.0, 0.0));
-  init_values.insert(B(0), Pose2(0.0, 1.0, 0.0));
-  costs.addPrior<Pose2>(A(0), Pose2(0.0, 0.0, 0.0), prior_noise);
-  costs.addPrior<Pose2>(B(0), Pose2(0.0, 1.0, 0.0), prior_noise);
+  initValues.insert(A(0), Pose2(0.0, 0.0, 0.0));
+  initValues.insert(B(0), Pose2(0.0, 1.0, 0.0));
+  costs.addPrior<Pose2>(A(0), Pose2(0.0, 0.0, 0.0), priorNoise);
+  costs.addPrior<Pose2>(B(0), Pose2(0.0, 1.0, 0.0), priorNoise);
 
   for (size_t k = 0; k <= kNumSteps; ++k) {
     constraints.emplace_shared<gtsam::ZeroCostConstraint>(
         std::make_shared<BetweenFactor<Pose2>>(A(k), B(k), Pose2(0.0, 1.0, 0.0),
-                                               equality_noise));
+                                               equalityNoise));
     if (k > 0) {
-      init_values.insert(A(k), Pose2(0.0, 0.0, 0.0));
-      init_values.insert(B(k), Pose2(0.0, 1.0, 0.0));
-      costs.emplace_shared<BetweenFactor<Pose2>>(A(k - 1), A(k),
-                                                 Pose2(0.1, 0.0, 0.0), odo_noise);
-      costs.emplace_shared<BetweenFactor<Pose2>>(B(k - 1), B(k),
-                                                 Pose2(0.1, 0.0, 0.0), odo_noise);
+      initValues.insert(A(k), Pose2(0.0, 0.0, 0.0));
+      initValues.insert(B(k), Pose2(0.0, 1.0, 0.0));
+      costs.emplace_shared<BetweenFactor<Pose2>>(
+          A(k - 1), A(k), Pose2(0.1, 0.0, 0.0), odoNoise);
+      costs.emplace_shared<BetweenFactor<Pose2>>(
+          B(k - 1), B(k), Pose2(0.1, 0.0, 0.0), odoNoise);
     }
   }
 
-  EConsOptProblem problem(costs, constraints, init_values);
-  auto mopt_params = DefaultMoptParams();
-  LevenbergMarquardtParams lm_params;
-  NonlinearMOptimizer optimizer(mopt_params, lm_params);
+  EConsOptProblem problem(costs, constraints, initValues);
+  auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
+  LevenbergMarquardtParams lmParams;
+  NonlinearMOptimizer optimizer(moptParams, lmParams);
 
   bool success = true;
-  std::string error_msg;
-  ManifoldOptProblem mopt_problem;
+  std::string errorMessage;
+  ManifoldOptProblem moptProblem;
   try {
-    mopt_problem = optimizer.initializeMoptProblem(problem.costs(),
-                                                   problem.constraints(),
-                                                   problem.initValues());
+    moptProblem = optimizer.initializeMoptProblem(
+        problem.costs(), problem.constraints(), problem.initValues());
   } catch (const std::exception& e) {
     success = false;
-    error_msg = e.what();
+    errorMessage = e.what();
   }
 
   if (!success) {
-    std::cout << "connected-poses manifold-key regression failure: " << error_msg
-              << std::endl;
+    std::cout << "connected-poses manifold-key regression failure: "
+              << errorMessage << std::endl;
   }
   EXPECT(success);
   if (success) {
-    EXPECT(mopt_problem.components_.size() == (kNumSteps + 1));
-    EXPECT(mopt_problem.manifold_keys_.size() == (kNumSteps + 1));
+    EXPECT(moptProblem.components_.size() == (kNumSteps + 1));
+    EXPECT(moptProblem.manifold_keys_.size() == (kNumSteps + 1));
     for (size_t k = 0; k <= kNumSteps; ++k) {
-      EXPECT(mopt_problem.manifold_keys_.find(A(k)) !=
-             mopt_problem.manifold_keys_.end());
+      EXPECT(moptProblem.manifold_keys_.find(A(k)) !=
+             moptProblem.manifold_keys_.end());
     }
   }
 }
@@ -317,52 +362,51 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
  * basis-key initialization.
  */
 TEST(ConstraintManifold, sv_mode_fully_constrained_component_no_throw) {
-  const Key x1_key = 1;
-  const Key x2_key = 2;
+  const Key x1Key = 1;
+  const Key x2Key = 2;
   const auto noise = noiseModel::Unit::Create(6);
 
-  NonlinearFactorGraph constraints_graph;
-  constraints_graph.emplace_shared<BetweenFactor<Pose3>>(
-      x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
-  constraints_graph.addPrior<Pose3>(x1_key, Pose3(Rot3(), Point3(0, 0, 0)),
-                                    noise);
-  constraints_graph.addPrior<Pose3>(x2_key, Pose3(Rot3(), Point3(0, 0, 1)),
-                                    noise);
+  NonlinearFactorGraph constraintsGraph;
+  constraintsGraph.emplace_shared<BetweenFactor<Pose3>>(
+      x1Key, x2Key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
+  constraintsGraph.addPrior<Pose3>(x1Key, Pose3(Rot3(), Point3(0, 0, 0)),
+                                   noise);
+  constraintsGraph.addPrior<Pose3>(x2Key, Pose3(Rot3(), Point3(0, 0, 1)),
+                                   noise);
   auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraintsGraph);
 
   NonlinearFactorGraph costs;
-  Values init_values;
-  init_values.insert(x1_key, Pose3(Rot3(), Point3(0.1, 0.0, 0.0)));
-  init_values.insert(x2_key, Pose3(Rot3(), Point3(0.0, 0.2, 0.8)));
-  EConsOptProblem problem(costs, constraints, init_values);
+  Values initValues;
+  initValues.insert(x1Key, Pose3(Rot3(), Point3(0.1, 0.0, 0.0)));
+  initValues.insert(x2Key, Pose3(Rot3(), Point3(0.0, 0.2, 0.8)));
+  EConsOptProblem problem(costs, constraints, initValues);
 
-  BasisKeyFunc basis_key_func = [](const KeyVector& keys) { return keys; };
-  auto mopt_params = DefaultMoptParamsSV(basis_key_func);
-  LevenbergMarquardtParams lm_params;
-  NonlinearMOptimizer optimizer(mopt_params, lm_params);
+  BasisKeyFunc basisKeyFunc = [](const KeyVector& keys) { return keys; };
+  auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(basisKeyFunc);
+  LevenbergMarquardtParams lmParams;
+  NonlinearMOptimizer optimizer(moptParams, lmParams);
 
   bool success = true;
-  std::string error_msg;
-  ManifoldOptProblem mopt_problem;
+  std::string errorMessage;
+  ManifoldOptProblem moptProblem;
   try {
-    mopt_problem = optimizer.initializeMoptProblem(problem.costs(),
-                                                   problem.constraints(),
-                                                   problem.initValues());
+    moptProblem = optimizer.initializeMoptProblem(
+        problem.costs(), problem.constraints(), problem.initValues());
   } catch (const std::exception& e) {
     success = false;
-    error_msg = e.what();
+    errorMessage = e.what();
   }
 
   if (!success) {
-    std::cout << "SV fully-constrained regression failure: " << error_msg
+    std::cout << "SV fully-constrained regression failure: " << errorMessage
               << std::endl;
   }
   EXPECT(success);
   if (success) {
-    EXPECT(mopt_problem.components_.size() == 1);
-    EXPECT(mopt_problem.manifold_keys_.size() == 0);
-    EXPECT(mopt_problem.fixed_manifolds_.size() == 1);
+    EXPECT(moptProblem.components_.size() == 1);
+    EXPECT(moptProblem.manifold_keys_.size() == 0);
+    EXPECT(moptProblem.fixed_manifolds_.size() == 1);
   }
 }
 
@@ -405,7 +449,7 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   basis_keys.push_back(JointVelKey(j1_id, 0));
   basis_keys.push_back(JointAccelKey(j0_id, 0));
   basis_keys.push_back(JointAccelKey(j1_id, 0));
-  BasisKeyFunc basis_key_func = [=](const KeyVector &keys) -> KeyVector {
+  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
     return basis_keys;
   };
 
@@ -413,8 +457,10 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   auto constraints = std::make_shared<EqualityConstraints>(
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph));
   auto cc_params = std::make_shared<ConstraintManifold::Params>();
-  cc_params->retractor_creator = std::make_shared<BasisRetractorCreator>(basis_key_func);
-  cc_params->basis_creator = std::make_shared<EliminationBasisCreator>(basis_key_func);
+  cc_params->retractor_creator =
+      std::make_shared<BasisRetractorCreator>(basis_key_func);
+  cc_params->basis_creator =
+      std::make_shared<EliminationBasisCreator>(basis_key_func);
   auto cm = ConstraintManifold(constraints, init_values, cc_params, true);
 
   // retract

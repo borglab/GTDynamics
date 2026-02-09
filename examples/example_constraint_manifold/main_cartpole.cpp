@@ -13,113 +13,137 @@
 
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
-#include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
-#include <gtsam/linear/ConjugateGradientSolver.h>
-#include <gtsam/linear/IterativeSolver.h>
-#include <gtsam/linear/PCGSolver.h>
-#include <gtsam/linear/Preconditioner.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/constrained/NonlinearEqualityConstraint.h>
+
+#include <cmath>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 #include "CartPoleUtils.h"
-#include "gtsam/constrained/AugmentedLagrangianOptimizer.h"
-#include "gtsam/constrained/PenaltyOptimizer.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
-using gtsam::noiseModel::Isotropic;
 
-/** Cart-pole dynamic planning example benchmarking (1) dynamic factor graph (2)
- * constraint manifold. */
-void dynamic_planning() {
-  double T = 2, dt = 1. / 100;  // Time horizon (s) and timestep duration (s).
-  int num_steps = static_cast<int>(std::ceil(T / dt));  // Timesteps.
+namespace {
+constexpr double kConstraintUnitScale = 1e-3;
+constexpr double kHorizonTime = 2.0;
+constexpr double kDt = 1.0 / 100.0;
 
+struct CartPoleArgs {
+  ConstrainedOptBenchmark::ParsedCli benchmark_cli;
+};
+
+void PrintUsage(const char* program_name) {
+  ConstrainedOptBenchmark::CliDefaults defaults;
+  defaults.id = "cartpole";
+  defaults.enableNumSteps = true;
+  defaults.defaultNumSteps = static_cast<size_t>(std::ceil(kHorizonTime / kDt));
+  defaults.defaultMethods = {ConstrainedOptBenchmark::Method::CM_I};
+  ConstrainedOptBenchmark::PrintUsage(std::cout, program_name, defaults);
+}
+
+CartPoleArgs ParseArgs(int argc, char** argv) {
+  ConstrainedOptBenchmark::CliDefaults defaults;
+  defaults.id = "cartpole";
+  defaults.enableNumSteps = true;
+  defaults.defaultNumSteps = static_cast<size_t>(std::ceil(kHorizonTime / kDt));
+  defaults.defaultMethods = {ConstrainedOptBenchmark::Method::CM_I};
+  return CartPoleArgs{ConstrainedOptBenchmark::ParseCli(argc, argv, defaults)};
+}
+}  // namespace
+
+/** Cart-pole dynamic planning benchmark with shared constrained optimizer
+ * runner. */
+void dynamic_planning(size_t numSteps,
+                      const ConstrainedOptBenchmark::Options& runOptions) {
   CartPole cartpole;
 
-  NonlinearFactorGraph dynamic_constraints_graph = cartpole.getDynamicsGraph(num_steps);
-  NonlinearFactorGraph unactuated_graph = cartpole.getUnactuatedGraph(num_steps);
-  NonlinearFactorGraph init_state_graph = cartpole.initStateGraph();
+  NonlinearFactorGraph dynamicConstraintsGraph =
+      cartpole.getDynamicsGraph(numSteps);
+  NonlinearFactorGraph unactuatedGraph = cartpole.getUnactuatedGraph(numSteps);
+  NonlinearFactorGraph initStateGraph = cartpole.initStateGraph();
 
-  NonlinearFactorGraph final_state_graph = cartpole.finalStateGraph(num_steps);
-  NonlinearFactorGraph collocation_costs = cartpole.getCollocation(num_steps, dt);
-  NonlinearFactorGraph min_torque_costs = cartpole.minTorqueCosts(num_steps);
+  NonlinearFactorGraph finalStateGraph = cartpole.finalStateGraph(numSteps);
+  NonlinearFactorGraph collocationCosts =
+      cartpole.getCollocation(numSteps, kDt);
+  NonlinearFactorGraph minTorqueCosts = cartpole.minTorqueCosts(numSteps);
 
-  NonlinearFactorGraph constraints_graph;
-  constraints_graph.add(dynamic_constraints_graph);
-  constraints_graph.add(unactuated_graph);
-  constraints_graph.add(init_state_graph);
+  NonlinearFactorGraph constraintsGraph;
+  constraintsGraph.add(dynamicConstraintsGraph);
+  constraintsGraph.add(unactuatedGraph);
+  constraintsGraph.add(initStateGraph);
 
   NonlinearFactorGraph costs;
-  costs.add(final_state_graph);
-  costs.add(collocation_costs);
-  costs.add(min_torque_costs);
-  auto EvaluateCosts = [=] (const Values& values) {
-    std::cout << "collocation costs:\t" << collocation_costs.error(values) << "\n";
-    std::cout << "final state costs:\t" << final_state_graph.error(values) << "\n";
-    std::cout << "min torque costs:\t" << min_torque_costs.error(values) << "\n";
+  costs.add(finalStateGraph);
+  costs.add(collocationCosts);
+  costs.add(minTorqueCosts);
+
+  auto evaluateCosts = [=](const Values& values) {
+    std::cout << "collocation costs:\t" << collocationCosts.error(values)
+              << "\n";
+    std::cout << "final state costs:\t" << finalStateGraph.error(values)
+              << "\n";
+    std::cout << "min torque costs:\t" << minTorqueCosts.error(values) << "\n";
   };
 
-  auto init_values = cartpole.getInitValues(num_steps, "zero");
-  // cartpole.printJointAngles(init_values, num_steps);
-
-
+  auto initValues = cartpole.getInitValues(numSteps, "zero");
   auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  auto problem = EConsOptProblem(costs, constraints, init_values);
-  std::ostringstream latex_os;
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraintsGraph);
 
-  LevenbergMarquardtParams lm_params;
-  // lm_params.setVerbosityLM("SUMMARY");
-  lm_params.setlambdaUpperBound(1e10);
-  cartpole.exportTrajectory(init_values, num_steps, dt,
-                            std::string(kDataPath) + "cartpole_traj_init.csv");
+  evaluateCosts(initValues);
+  cartpole.exportTrajectory(
+      initValues, numSteps, kDt,
+      std::string(kDataPath) + runOptions.id + "_init_traj.csv");
 
-  const double kConstraintUnitScale = 1e-3;
-  // optimize soft constraints
-  // std::cout << "soft constraints:\n";
-  // auto soft_result =
-  //     OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0, kConstraintUnitScale);
-  // EvaluateCosts(soft_result);
-  // cartpole.exportTrajectory(soft_result, num_steps, dt,
-  //                           std::string(kDataPath) +
-  //                               "cartpole_traj_soft_infeas.csv");
+  LevenbergMarquardtParams lmParams;
+  lmParams.setlambdaUpperBound(1e10);
+  lmParams.setMaxIterations(30);
 
-  // // optimize penalty method
-  lm_params.setMaxIterations(30);
-  // std::cout << "penalty method:\n";
-  // PenaltyOptimizerParams penalty_params;
-  // penalty_params.lm_params = lm_params;
-  // auto penalty_result =
-  //     OptimizeE_Penalty(problem, latex_os, penalty_params, kConstraintUnitScale);
+  ConstrainedOptBenchmark runner(runOptions);
+  runner.setProblemFactory(
+      [=]() { return EConsOptProblem(costs, constraints, initValues); });
+  runner.setOuterLmBaseParams(lmParams);
+  runner.setMoptFactory([&](ConstrainedOptBenchmark::Method) {
+    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(
+        cartpole.getBasisKeyFunc(true));
+    auto retractorParams = moptParams.cc_params->retractor_creator->params();
+    retractorParams->check_feasible = true;
+    retractorParams->lm_params.linearSolverType =
+        gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
+    return moptParams;
+  });
+  runner.setResultCallback(
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+        evaluateCosts(result);
+        cartpole.exportTrajectory(result, numSteps, kDt,
+                                  ConstrainedOptBenchmark::MethodDataPath(
+                                      runOptions, method, "_traj.csv"));
+      });
 
-  // // optimize augmented lagrangian
-  // std::cout << "augmented lagrangian:\n";
-  // AugmentedLagrangianParameters al_params;
-  // al_params.lm_params = lm_params;
-  // auto almResult =
-  //     OptimizeE_AugmentedLagrangian(problem, latex_os, al_params, kConstraintUnitScale);
-
-  // optimize constraint manifold specify variables (feasible)
-  // std::cout << "constraint manifold basis variables (feasible):\n";
-  auto mopt_params = DefaultMoptParamsSV(cartpole.getBasisKeyFunc(true));
-  mopt_params.cc_params->retractor_creator->params()->check_feasible=true;
-  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-  // auto cm_basis_result =
-  //     OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)", kConstraintUnitScale);
-  // EvaluateCosts(cm_basis_result);
-  // cartpole.exportTrajectory(cm_basis_result, num_steps, dt,
-  //                           std::string(kDataPath) + "cartpole_traj.csv");
-
-  // // optimize constraint manifold specify variables (infeasible)
-  std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result =
-      OptimizeE_CMOpt(problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)", kConstraintUnitScale);
-
-  std::cout << latex_os.str();
+  std::ostringstream latexOs;
+  runner.run(latexOs);
+  std::cout << latexOs.str();
 }
 
 int main(int argc, char** argv) {
-  dynamic_planning();
-  return 0;
+  try {
+    const CartPoleArgs args = ParseArgs(argc, argv);
+    if (!args.benchmark_cli.unknownArgs.empty()) {
+      throw std::invalid_argument("Unknown option: " +
+                                  args.benchmark_cli.unknownArgs.front());
+    }
+
+    auto runOptions = args.benchmark_cli.runOptions;
+    runOptions.constraintUnitScale = kConstraintUnitScale;
+
+    std::cout << "Using num_steps=" << args.benchmark_cli.numSteps << "\n";
+    dynamic_planning(args.benchmark_cli.numSteps, runOptions);
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
+    PrintUsage(argv[0]);
+    return 1;
+  }
 }

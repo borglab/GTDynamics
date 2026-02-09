@@ -13,10 +13,10 @@
  * @author Gerry Chen
  */
 
-#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
 #include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
 #include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
+#include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
@@ -24,7 +24,7 @@
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include <cstdlib>
+
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -44,37 +44,6 @@ constexpr double kJointLimitHigh = 3.6;
 const Key kEeId = 1;
 const Pose3 kTargetPose = Pose3(Rot3(), Point3(0.2, 0.5, 0.0));
 
-struct CableRobotArgs {
-  bool verbose_benchmark = false;
-  bool verbose_retractor = false;
-};
-
-void PrintUsage(const char* program_name) {
-  std::cout
-      << "Usage: " << program_name << " [args]\n"
-      << "Options:\n"
-      << "  --verbose-benchmark   Enable outer LM summary output.\n"
-      << "  --verbose-retractor   Enable retraction LM summary output.\n"
-      << "  --help                Show this message.\n";
-}
-
-CableRobotArgs ParseArgs(int argc, char** argv) {
-  CableRobotArgs args;
-  for (int i = 1; i < argc; ++i) {
-    const std::string arg(argv[i]);
-    if (arg == "--verbose-benchmark") {
-      args.verbose_benchmark = true;
-    } else if (arg == "--verbose-retractor") {
-      args.verbose_retractor = true;
-    } else if (arg == "--help") {
-      PrintUsage(argv[0]);
-      std::exit(0);
-    } else {
-      throw std::invalid_argument("Unknown option: " + arg);
-    }
-  }
-  return args;
-}
 }  // namespace
 
 namespace {
@@ -141,14 +110,14 @@ NonlinearFactorGraph get_costs() {
 
 /** Build an initial guess for cable lengths and end-effector pose. */
 Values get_init_values() {
-  Values init_values;
+  Values initValues;
   for (size_t k = 0; k <= kNumSteps; k++) {
     for (size_t ci = 0; ci < 4; ++ci) {
-      InsertJointAngle(&init_values, ci, k, 1.8);
+      InsertJointAngle(&initValues, ci, k, 1.8);
     }
-    InsertPose(&init_values, kEeId, k, Pose3(Rot3(), Point3(1.5, 1.0, 0)));
+    InsertPose(&initValues, kEeId, k, Pose3(Rot3(), Point3(1.5, 1.0, 0)));
   }
-  return init_values;
+  return initValues;
 }
 
 /** Print joint angles for all steps. */
@@ -165,76 +134,52 @@ void print_joint_angles(const Values& values) {
 
 /** Compare simple kinematic planning tasks of a cable robot using (1) dynamics
  * factor graph (2) constraint manifold  */
-void kinematic_planning(const CableRobotArgs& args) {
+void kinematic_planning(const ConstrainedOptBenchmark::Options& runOptions) {
   // Create constrained optimization problem.
-  auto constraints_graph = get_constraints_graph();
+  auto constraintsGraph = get_constraints_graph();
   auto costs = get_costs();
-  auto init_values = get_init_values();
+  auto initValues = get_init_values();
   auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
-  auto problem = EConsOptProblem(costs, constraints, init_values);
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraintsGraph);
+  auto problem = EConsOptProblem(costs, constraints, initValues);
 
-  std::ostringstream latex_os;
-  LevenbergMarquardtParams lm_params;
-  lm_params.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-  if (args.verbose_benchmark) {
-    lm_params.setVerbosityLM("SUMMARY");
-    std::cout << "[BENCH] Verbose mode enabled for cable_robot benchmark.\n";
-  }
+  LevenbergMarquardtParams lmParams;
+  lmParams.linearSolverType = gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+  ConstrainedOptBenchmark runner(runOptions);
+  runner.setProblemFactory(
+      [=]() { return EConsOptProblem(costs, constraints, initValues); });
+  runner.setOuterLmBaseParams(lmParams);
+  runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
+    auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
+    moptParams.cc_params->retractor_creator->params()
+        ->lm_params.linearSolverType =
+        gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
+    moptParams.cc_params->retractor_creator->params()
+        ->lm_params.setlambdaUpperBound(1e2);
+    return moptParams;
+  });
 
-  // optimize soft constraints
-  std::cout << "soft constraints:\n";
-  auto soft_result =
-      OptimizeE_SoftConstraints(problem, latex_os, lm_params, 1.0);
-
-  // optimize penalty method
-  std::cout << "penalty method:\n";
-  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
-  penalty_params->lmParams = lm_params;
-  auto penalty_result =
-      OptimizeE_Penalty(problem, latex_os, penalty_params);
-
-  // optimize augmented lagrangian
-  std::cout << "augmented lagrangian:\n";
-  auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
-  almParams->lmParams = lm_params;
-  auto almResult =
-      OptimizeE_AugmentedLagrangian(problem, latex_os, almParams);
-
-  // optimize constraint manifold specify variables (feasible)
-  std::cout << "constraint manifold basis variables (feasible):\n";
-  auto mopt_params = DefaultMoptParams();
-  mopt_params.cc_params->retractor_creator->params()->lm_params.linearSolverType =
-      gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-  mopt_params.cc_params->retractor_creator->params()->lm_params.setlambdaUpperBound(
-      1e2);
-  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(
-      10);
-  if (args.verbose_retractor) {
-    mopt_params.cc_params->retractor_creator->params()->lm_params.setVerbosityLM(
-        "SUMMARY");
-    std::cout << "[BENCH] Retraction LM verbosity enabled.\n";
-  }
-  auto cm_basis_result = OptimizeE_CMOpt(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (F)");
-
-  // optimize constraint manifold specify variables (infeasible)
-  std::cout << "constraint manifold basis variables (infeasible):\n";
-  mopt_params.cc_params->retractor_creator->params()->lm_params.setMaxIterations(1);
-  auto cm_basis_infeasible_result = OptimizeE_CMOpt(
-      problem, latex_os, mopt_params, lm_params, "Constraint Manifold (I)");
-
-  std::cout << latex_os.str();
+  std::ostringstream latexOs;
+  runner.run(latexOs);
+  std::cout << latexOs.str();
 }
 
 int main(int argc, char** argv) {
   try {
-    const CableRobotArgs args = ParseArgs(argc, argv);
-    kinematic_planning(args);
+    ConstrainedOptBenchmark::CliDefaults defaults;
+    defaults.id = "cable_robot";
+    auto parsed = ConstrainedOptBenchmark::ParseCli(argc, argv, defaults);
+    if (!parsed.unknownArgs.empty()) {
+      throw std::invalid_argument("Unknown option: " +
+                                  parsed.unknownArgs.front());
+    }
+    kinematic_planning(parsed.runOptions);
     return 0;
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
-    PrintUsage(argv[0]);
+    ConstrainedOptBenchmark::CliDefaults defaults;
+    defaults.id = "cable_robot";
+    ConstrainedOptBenchmark::PrintUsage(std::cerr, argv[0], defaults);
     return 1;
   }
 }
