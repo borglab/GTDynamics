@@ -19,12 +19,24 @@ fi
 
 # Install Base System Dependencies via Homebrew
 echo "Installing base system dependencies..."
-brew install cmake wget git boost
+brew install cmake wget git
 
 # Install SDFormat via Homebrew
 brew tap osrf/simulation
+brew install urdfdom  # Install dependency explicitly first
+brew upgrade urdfdom  # Force it to the latest version (5.1+)
 brew install sdformat15
 brew --prefix urdfdom
+
+# Create symlinks for urdfdom 5.1
+URDF_ROOT=$(brew --prefix urdfdom)
+for lib in sensor model world; do
+    if [ ! -f "$URDF_ROOT/lib/liburdfdom_${lib}.5.1.dylib" ]; then
+        echo "Creating safety symlink for liburdfdom_${lib}.5.1.dylib"
+        ln -s "$URDF_ROOT/lib/liburdfdom_${lib}.dylib" "$URDF_ROOT/lib/liburdfdom_${lib}.5.1.dylib" || true
+    fi
+done
+
 
 # Clone GTSAM (don't build yet, depends on Python)
 # GTDynamics requires gtsam-develop (not the 4.2 release tag)
@@ -34,10 +46,6 @@ git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET}"
-export CMAKE_PREFIX_PATH="${BOOST_PREFIX}:\${CMAKE_PREFIX_PATH}"
-export LD_LIBRARY_PATH="${BOOST_PREFIX}/lib:\${LD_LIBRARY_PATH}"
-export DYLD_LIBRARY_PATH="${BOOST_PREFIX}/lib:\${DYLD_LIBRARY_PATH}"
-export REPAIR_LIBRARY_PATH="${BOOST_PREFIX}/lib:\${REPAIR_LIBRARY_PATH}"
 EOF
 
 echo "before-all completed successfully!"
