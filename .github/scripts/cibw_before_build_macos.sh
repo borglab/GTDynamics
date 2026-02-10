@@ -12,8 +12,9 @@ NUM_CORES=$(sysctl -n hw.logicalcpu)
 # Source environment from before-all
 source ${INSTALL_PREFIX}/env.sh
 
-# Get the Python executable provided by cibuildwheel
-PYTHON_EXE=$(which python)
+# Get the Python executable provided by cibuildwheel (full path)
+# Use `python -c` so we get the exact interpreter executable path
+PYTHON_EXE=$(python -c "import sys; print(sys.executable)")
 PYTHON_VERSION=$($PYTHON_EXE -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 
 echo "Building for Python ${PYTHON_VERSION} at ${PYTHON_EXE}"
@@ -106,7 +107,8 @@ sed -i '' 's/Interpreter Development/Interpreter Development.Module/g' \
 # Build GTDynamics C++ extension for this Python version
 echo "Building GTDynamics C++ extension..."
 GTD_BUILD="${INSTALL_PREFIX}/gtd_build_py${PYTHON_VERSION}"
-rm -rf ${GTD_BUILD}
+GTD_PREFIX="${INSTALL_PREFIX}/gtd_py${PYTHON_VERSION}"
+rm -rf ${GTD_BUILD} ${GTD_PREFIX}
 mkdir -p ${GTD_BUILD}
 
 cd ${GTD_BUILD}
@@ -133,14 +135,13 @@ find ${GTD_BUILD}/python/gtdynamics -name "gtdynamics*.so" \
     -exec cp {} ${PROJECT_DIR}/python/gtdynamics/ \;
 
 # Install GTDynamics shared library where delocate-wheel can find it
-GTD_PREFIX="${INSTALL_PREFIX}/gtd_py${PYTHON_VERSION}"
 mkdir -p ${GTD_PREFIX}/lib
 find ${GTD_BUILD} -maxdepth 2 -name "libgtdynamics*.dylib" \
     -exec cp {} ${GTD_PREFIX}/lib/ \;
 rm -f ${INSTALL_PREFIX}/gtd_current
 ln -sf ${GTD_PREFIX} ${INSTALL_PREFIX}/gtd_current
 
-# Remove any accidental duplicate gtsam dylibs from GTDynamics lib directory
+# Remove any duplicate gtsam dylibs from GTDynamics lib directory
 find ${GTD_PREFIX}/lib -name "libgtsam*.dylib" -delete
 
 export DYLD_LIBRARY_PATH="${GTD_PREFIX}/lib:${DYLD_LIBRARY_PATH}"

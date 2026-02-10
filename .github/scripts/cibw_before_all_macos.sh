@@ -30,14 +30,8 @@ brew install sdformat15
 echo "Cloning GTSAM source (develop branch)..."
 git clone --depth 1 https://github.com/borglab/gtsam.git ${INSTALL_PREFIX}/gtsam_source
 
-# Write environment file for before-build scripts
-BOOST_PREFIX="$(brew --prefix boost)"
-
 cat > ${INSTALL_PREFIX}/env.sh << EOF
 export INSTALL_PREFIX="${INSTALL_PREFIX}"
-export BOOST_ROOT="${BOOST_PREFIX}"
-export BOOST_INCLUDEDIR="${BOOST_PREFIX}/include"
-export BOOST_LIBRARYDIR="${BOOST_PREFIX}/lib"
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET}"
 export CMAKE_PREFIX_PATH="${BOOST_PREFIX}:\${CMAKE_PREFIX_PATH}"
 export LD_LIBRARY_PATH="${BOOST_PREFIX}/lib:\${LD_LIBRARY_PATH}"
