@@ -83,13 +83,13 @@ class ContactDynamicsFrictionConeFactor
     gtsam::Vector3 weights = gtsam::Vector3::Ones();
     weights(up_axis_) = -mu_prime_;
     const double resultant = (weights.array() * f_s.array().square()).sum();
-    gtsam::Vector error;
+    gtsam::Vector error(1);
 
     // Ramp function.
     if (resultant > 0)
-      error = (gtsam::Vector(1) << resultant).finished();
+      error(0) = resultant;
     else
-      error = (gtsam::Vector(1) << 0).finished();
+      error(0) = 0.0;
 
     // Compute the gradients based on whether or not the inequality constraint
     // is active.
@@ -109,10 +109,10 @@ class ContactDynamicsFrictionConeFactor
       if (resultant > 0) {  // Active.
         gtsam::Matrix33 H_r = pose.rotation().matrix() *
                               gtsam::skewSymmetric(-f_c(0), -f_c(1), -f_c(2));
-        gtsam::Matrix H_rot = gtsam::Matrix(H_f_s * H_r);
+        const gtsam::Matrix13 H_rot = H_f_s * H_r;
         *H_pose = H_rot * H_p;
       } else {  // Inactive.
-        *H_pose = (gtsam::Matrix(1, 6) << 0, 0, 0, 0, 0, 0).finished();
+        *H_pose = gtsam::Matrix16::Zero();
       }
     }
 
