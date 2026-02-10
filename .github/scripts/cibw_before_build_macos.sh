@@ -150,3 +150,37 @@ find ${GTD_PREFIX}/lib -name "libgtsam*.dylib" -delete
 export DYLD_LIBRARY_PATH="${GTD_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
 
 echo "before-build completed successfully for Python ${PYTHON_VERSION}!"
+
+# --- Inspection: helpful diagnostics to detect delocate basename conflicts ---
+echo "Inspecting dylibs for potential delocate conflicts..."
+echo "Search paths: ${GTSAM_PREFIX}/lib ${GTD_PREFIX}/lib ${PROJECT_DIR}/python/gtsam ${PROJECT_DIR}/python/gtdynamics /opt/homebrew/lib /opt/homebrew/opt/urdfdom/lib"
+
+echo "Listing libgtsam dylibs in candidate locations"
+find "${GTSAM_PREFIX}/lib" -name "libgtsam*.dylib" -ls || true
+find "${GTD_PREFIX}/lib" -name "libgtsam*.dylib" -ls || true
+find "${PROJECT_DIR}/python/gtsam" -maxdepth 1 -type f -name "libgtsam*.dylib" -ls || true
+find "${PROJECT_DIR}/python/gtdynamics" -maxdepth 1 -type f -name "libgtsam*.dylib" -ls || true
+[ -d /opt/homebrew/lib ] && find /opt/homebrew/lib -name "libgtsam*.dylib" -ls || true
+[ -d /opt/homebrew/opt/urdfdom/lib ] && find /opt/homebrew/opt/urdfdom/lib -name "libgtsam*.dylib" -ls || true
+
+echo "Checking for duplicate basenames across candidate locations"
+all_files=$(find "${GTSAM_PREFIX}/lib" "${GTD_PREFIX}/lib" "${PROJECT_DIR}/python/gtsam" "${PROJECT_DIR}/python/gtdynamics" /opt/homebrew/lib /opt/homebrew/opt/urdfdom/lib -maxdepth 1 -type f -name 'libgtsam*.dylib' 2>/dev/null || true)
+if [ -n "$all_files" ]; then
+    echo "$all_files" | sed 's!.*/!!' | sort | uniq -d | while read -r bn; do
+        [ -z "$bn" ] && continue
+        echo "Duplicate basename: $bn"
+        echo "$all_files" | grep "/$bn$" || true
+    done
+else
+    echo "No libgtsam files found in candidate locations."
+fi
+
+echo "Showing linkage of packaged .so files (helps find referenced dylib paths)"
+for so in ${PROJECT_DIR}/python/gtsam/gtsam*.so ${PROJECT_DIR}/python/gtdynamics/gtdynamics*.so; do
+    if [ -f "$so" ]; then
+        echo "=> $so"
+        otool -L "$so" || true
+    fi
+done
+
+echo "Dylib inspection complete. Proceeding with wheel build."
