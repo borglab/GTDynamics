@@ -99,7 +99,6 @@ rm -f ${INSTALL_PREFIX}/gtsam_current
 ln -sf ${GTSAM_PREFIX} ${INSTALL_PREFIX}/gtsam_current
 
 # Patch gtwrap to use Development.Module instead of Development.
-# macOS Python from cibuildwheel may not ship full libpython.
 sed -i '' 's/Interpreter Development/Interpreter Development.Module/g' \
     ${GTSAM_PREFIX}/lib/cmake/gtwrap/GtwrapUtils.cmake
 
@@ -119,6 +118,10 @@ cmake ${PROJECT_DIR} \
     -DGTDYNAMICS_BUILD_PYTHON=ON \
     -DGTDYNAMICS_BUILD_EXAMPLES=OFF \
     -DBUILD_TESTING=OFF \
+    -DPython_ROOT_DIR="$(dirname $(dirname ${PYTHON_EXE}))" \
+    -DPython_EXECUTABLE=${PYTHON_EXE} \
+    -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
+    -DPython_FIND_STRATEGY=LOCATION \
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
     -DGTDYNAMICS_ENABLE_BOOST_SERIALIZATION=OFF \
     -DCMAKE_CXX_FLAGS="-faligned-new" \
