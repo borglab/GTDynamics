@@ -24,6 +24,7 @@ brew install cmake wget git boost
 # Install SDFormat via Homebrew
 brew tap osrf/simulation
 brew install sdformat15
+brew --prefix urdfdom
 
 # Clone GTSAM (don't build yet, depends on Python)
 # GTDynamics requires gtsam-develop (not the 4.2 release tag)
