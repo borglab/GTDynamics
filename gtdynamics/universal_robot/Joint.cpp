@@ -82,12 +82,13 @@ Pose3 Joint::parentTchild(double q,
 
   // Calculate the actual relative pose taking into account the joint angle.
   // TODO(dellaert): use formula `pMj_ * screw_around_Z * jMc_`.
-  gtsam::Matrix6 exp_H_screw;
-  const Pose3 exp = Pose3::Expmap(screw, pTc_H_q ? &exp_H_screw : 0);
+  const Pose3 exp = Pose3::Expmap(screw);
   if (pTc_H_q) {
-    *pTc_H_q = exp_H_screw * cScrewAxis_;
+    // For one-parameter motion Exp(q*s), the directional derivative in q equals
+    // the generator s in Pose3 local coordinates.
+    *pTc_H_q = cScrewAxis_;
   }
-  return pMc() * exp;  // Note: derivative of compose in exp is identity.
+  return pMc_ * exp;  // Note: derivative of compose in exp is identity.
 }
 
 /* ************************************************************************* */
