@@ -501,7 +501,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     ar &BOOST_SERIALIZATION_NVP(cScrewAxis_);
     ar &BOOST_SERIALIZATION_NVP(parameters_);
   }
-  
+
   template <class ARCHIVE>
   void load(ARCHIVE &ar, const unsigned int /*version*/) {
     ar &BOOST_SERIALIZATION_NVP(name_);
@@ -516,7 +516,7 @@ class Joint : public std::enable_shared_from_this<Joint> {
     // Recompute pMc_ to maintain invariant pMc_ = pMj_ * jMc_
     pMc_ = pMj_ * jMc_;
   }
-  
+
   BOOST_SERIALIZATION_SPLIT_MEMBER()
 #endif
 
