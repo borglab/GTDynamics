@@ -7,7 +7,7 @@ PROJECT_DIR="$(cd "$1" && pwd)"
 INSTALL_PREFIX="/opt/gtdynamics-deps"
 NUM_CORES=$(nproc)
 
-# 1. Setup Environment
+# Setup Environment
 source ${INSTALL_PREFIX}/env.sh
 PYTHON_EXE=$(which python)
 PYTHON_VERSION=$($PYTHON_EXE -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
@@ -22,7 +22,7 @@ GTSAM_SOURCE="${INSTALL_PREFIX}/gtsam_source"
 GTSAM_BUILD="${INSTALL_PREFIX}/gtsam_build_py${PYTHON_VERSION}"
 GTSAM_PREFIX="${INSTALL_PREFIX}/gtsam_py${PYTHON_VERSION}"
 
-# 2. Build and INSTALL GTSAM to Clean Prefix
+# Build and INSTALL GTSAM
 echo "Building GTSAM..."
 rm -rf ${GTSAM_BUILD} ${GTSAM_PREFIX}
 mkdir -p ${GTSAM_BUILD}
@@ -42,12 +42,12 @@ cmake ${GTSAM_SOURCE} \
     -DGTSAM_BUILD_TESTS=OFF \
     -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
     -DGTSAM_INSTALL_EXAMPLES=OFF \
-    -DGTSAM_BUILD_UNSTABLE=OFF
+    -DGTSAM_BUILD_UNSTABLE=ON
 
 cmake --build . --config Release -j${NUM_CORES}
-cmake --install .
+cmake --install . 
 
-# 3. Stage GTSAM using your Working Copy Logic
+# Stage GTSAM
 echo "Staging GTSAM Python package for bundling..."
 GTSAM_PY_SRC="${GTSAM_BUILD}/python/gtsam"
 GTSAM_PY_DST="${PROJECT_DIR}/python/gtsam"
@@ -67,7 +67,7 @@ done
 
 rm -rf ${GTSAM_PY_DST}/tests ${GTSAM_PY_DST}/examples ${GTSAM_PY_DST}/notebooks ${GTSAM_PY_DST}/__pycache__
 
-# 4. Finalize Environment for GTDynamics
+# Finalize Environment for GTDynamics
 export GTSAM_DIR="${GTSAM_PREFIX}/lib/cmake/GTSAM"
 export CMAKE_PREFIX_PATH="${GTSAM_PREFIX}:${CMAKE_PREFIX_PATH}"
 export LD_LIBRARY_PATH="${GTSAM_PREFIX}/lib:${LD_LIBRARY_PATH}"
@@ -79,7 +79,7 @@ ln -sf ${GTSAM_PREFIX} ${INSTALL_PREFIX}/gtsam_current
 sed -i 's/Interpreter Development/Interpreter Development.Module/g' \
     ${GTSAM_PREFIX}/lib/cmake/gtwrap/GtwrapUtils.cmake
 
-# 5. Build and INSTALL GTDynamics
+# Build and INSTALL GTDynamics
 echo "Building GTDynamics C++ extension..."
 GTD_BUILD="${INSTALL_PREFIX}/gtd_build_py${PYTHON_VERSION}"
 GTD_PREFIX="${INSTALL_PREFIX}/gtd_py${PYTHON_VERSION}"
@@ -104,7 +104,7 @@ cmake --build . --config Release --target gtdynamics_py -j${NUM_CORES}
 cmake --install .
 
 
-# 6. Stage GTDynamics extension 
+# Stage GTDynamics 
 echo "Staging GTDynamics extension..."
 GTD_PY_STAGING="${GTD_BUILD}/python/gtdynamics"
 

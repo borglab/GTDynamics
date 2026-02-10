@@ -24,16 +24,16 @@ jobs:
           - os: ubuntu-latest
             cibw_archs: x86_64
           # Linux aarch64
-          #- os: ubuntu-24.04-arm
-          #  cibw_archs: aarch64
+          - os: ubuntu-24.04-arm
+            cibw_archs: aarch64
           # macOS arm64 (macOS 14 Sonoma)
-          #- os: macos-14
-          #  cibw_archs: arm64
-          #  macos_deployment_target: "14.0"
+          - os: macos-14
+            cibw_archs: arm64
+            macos_deployment_target: "14.0"
           # macOS arm64 (macOS 15 Sequoia)
-          #- os: macos-15
-          #  cibw_archs: arm64
-          #  macos_deployment_target: "15.0"
+          - os: macos-15
+            cibw_archs: arm64
+            macos_deployment_target: "15.0"
 
     steps:
       - name: Checkout repository

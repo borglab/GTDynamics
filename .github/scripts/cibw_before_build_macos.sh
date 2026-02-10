@@ -42,56 +42,42 @@ cd ${GTSAM_BUILD}
 cmake ${GTSAM_SOURCE} \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${GTSAM_PREFIX} \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-    -DGTSAM_BUILD_TESTS=OFF \
-    -DGTSAM_BUILD_UNSTABLE=ON \
-    -DGTSAM_USE_QUATERNIONS=OFF \
-    -DGTSAM_WITH_TBB=OFF \
-    -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
-    -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF \
     -DGTSAM_BUILD_PYTHON=ON \
-    -DGTSAM_UNSTABLE_BUILD_PYTHON=ON \
     -DGTSAM_PYTHON_VERSION=${PYTHON_VERSION} \
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
-    -DGTSAM_ALLOW_DEPRECATED_SINCE_V43=OFF \
-    -DBOOST_ROOT=${BOOST_ROOT} \
-    -DCMAKE_CXX_FLAGS="-faligned-new"
+    -DGTSAM_ENABLE_BOOST_SERIALIZATION=OFF \
+    -DGTSAM_USE_BOOST_FEATURES=OFF \
+    -DCMAKE_CXX_FLAGS="-faligned-new -Wno-error=free-nonheap-object" \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DGTSAM_BUILD_TESTS=OFF \
+    -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+    -DGTSAM_INSTALL_EXAMPLES=OFF \
+    -DGTSAM_BUILD_UNSTABLE=ON
 
 cmake --build . --config Release -j${NUM_CORES}
 cmake --install .
 
-# Install GTSAM Python package into the build environment
-# (needed so that gtwrap/cmake can find it during GTDynamics build)
-echo "Installing GTSAM Python package..."
-cd ${GTSAM_BUILD}/python
-$PYTHON_EXE -m pip install .
 
-# Copy the gtsam Python package into the source tree so hatchling bundles
-# it directly inside the gtdynamics wheel. This eliminates the need for
-# a separate gtsam-develop pip package.
-echo "Copying gtsam Python package into source tree for bundling..."
+# Stage GTSAM
+echo "Staging GTSAM Python package for bundling..."
 GTSAM_PY_SRC="${GTSAM_BUILD}/python/gtsam"
 GTSAM_PY_DST="${PROJECT_DIR}/python/gtsam"
 rm -rf ${GTSAM_PY_DST}
 mkdir -p ${GTSAM_PY_DST}
 
-# Copy core Python files, extension module, and type stubs
 cp ${GTSAM_PY_SRC}/__init__.py ${GTSAM_PY_DST}/
 cp ${GTSAM_PY_SRC}/__init__.pyi ${GTSAM_PY_DST}/ 2>/dev/null || true
 cp ${GTSAM_PY_SRC}/*.py ${GTSAM_PY_DST}/
 find ${GTSAM_PY_SRC} -maxdepth 1 -name "gtsam*.so" -exec cp {} ${GTSAM_PY_DST}/ \;
 
-# Copy sub-packages (utils, preamble, specializations, type stubs, Data)
 for subdir in utils preamble specializations gtsam Data; do
     if [ -d "${GTSAM_PY_SRC}/${subdir}" ]; then
         cp -r ${GTSAM_PY_SRC}/${subdir} ${GTSAM_PY_DST}/
     fi
 done
 
-# Remove tests/examples/notebooks from bundled gtsam (not needed at runtime)
-rm -rf ${GTSAM_PY_DST}/tests ${GTSAM_PY_DST}/examples ${GTSAM_PY_DST}/notebooks
-rm -rf ${GTSAM_PY_DST}/__pycache__
-
+rm -rf ${GTSAM_PY_DST}/tests ${GTSAM_PY_DST}/examples ${GTSAM_PY_DST}/notebooks ${GTSAM_PY_DST}/__pycache__
 
 # Add rpath to GTSAM libraries for macOS
 for dylib in ${GTSAM_PREFIX}/lib/*.dylib; do
@@ -126,17 +112,19 @@ mkdir -p ${GTD_BUILD}
 cd ${GTD_BUILD}
 cmake ${PROJECT_DIR} \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
+    -DCMAKE_INSTALL_PREFIX=${GTD_PREFIX} \
     -DGTSAM_DIR="${GTSAM_PREFIX}/lib/cmake/GTSAM" \
     -DGTDYNAMICS_BUILD_PYTHON=ON \
     -DGTDYNAMICS_BUILD_EXAMPLES=OFF \
     -DBUILD_TESTING=OFF \
-    -DPython_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXE} \
-    -DBOOST_ROOT=${BOOST_ROOT} \
-    -DCMAKE_CXX_FLAGS="-faligned-new"
+    -DGTDYNAMICS_ENABLE_BOOST_SERIALIZATION=OFF \
+    -DCMAKE_CXX_FLAGS="-faligned-new" \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DCMAKE_INSTALL_LIBDIR=lib
 
 cmake --build . --config Release --target gtdynamics_py -j${NUM_CORES}
+cmake --install .
 
 # Copy the built Python extension (.so) into the source tree so that
 # hatchling (a pure-Python build backend) can package it into the wheel.
@@ -156,13 +144,5 @@ ln -sf ${GTD_PREFIX} ${INSTALL_PREFIX}/gtd_current
 find ${GTD_PREFIX}/lib -name "libgtsam*.dylib" -delete
 
 export DYLD_LIBRARY_PATH="${GTD_PREFIX}/lib:${DYLD_LIBRARY_PATH}"
-
-echo "============================================"
-echo "GTSAM installed to: ${GTSAM_PREFIX}"
-echo "GTDynamics built at: ${GTD_BUILD}"
-echo "GTSAM_DIR=${GTSAM_DIR}"
-echo "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}"
-echo "DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}"
-echo "============================================"
 
 echo "before-build completed successfully for Python ${PYTHON_VERSION}!"
