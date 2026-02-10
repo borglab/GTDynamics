@@ -32,7 +32,7 @@ namespace gtdynamics {
  * and child links, screw axis, and joint parameters. It computes several
  * important quantities for kinematic and dynamic analysis:
  *
- * - `jMp_`: The pose of the parent link's COM expressed in the joint frame.
+ * - `pMj_`: The pose of the joint frame expressed in parent link's COM frame.
  * - `jMc_`: The pose of the child link's COM expressed in the joint frame.
  * - `pScrewAxis_`: The screw axis of the joint expressed in parent COM frame.
  * - `cScrewAxis_`: The screw axis expressed in child link COM frame.
@@ -47,7 +47,7 @@ namespace gtdynamics {
  *              o----------------------X---------------------o
  *             bMcom()           bTj (joint pose)        bMcom()
  *                |                 |                       |
- *                |<--- jMp_ ------>|<------ jMc_ --------->|
+ *                |<--- pMj_ ------>|<------ jMc_ --------->|
  *
  * The screw axis is transformed from the joint frame to each COM frame:
  *   - pScrewAxis_: joint screw axis in parent COM frame
@@ -60,10 +60,11 @@ Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
       name_(name),
       parent_link_(parent_link),
       child_link_(child_link),
-      jMp_(bTj.inverse() * parent_link.lock()->bMcom()),
-      jMc_(bTj.inverse() * child_link.lock()->bMcom()),
-      pScrewAxis_(-jMp_.inverse().AdjointMap() * jScrewAxis),
-      cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis),  
+      pMj_(parent_link.lock()->bMcom().between(bTj)),
+      jMc_(bTj.between(child_link.lock()->bMcom())),
+      pMc_(pMj_ * jMc_),
+      pScrewAxis_(-pMj_.AdjointMap() * jScrewAxis),  // Negative sign ???
+      cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis),
       parameters_(parameters) {}
 
 /* ************************************************************************* */
@@ -348,7 +349,8 @@ gtsam::Vector6_ Joint::twistAccelConstraint(uint64_t t) const {
   /// The following 2 lambda functions computes the expected twist acceleration
   /// of the child link.
   /// (Note: we split it this into 2 functions because the
-  /// expression constructor currently only supports at most ternary expressions.)
+  /// expression constructor currently only supports at most ternary
+  /// expressions.)
   auto transformTwistAccelTo1 =
       [this](double q, const Vector6 &other_twist_accel,
              gtsam::OptionalJacobian<6, 1> H_q,

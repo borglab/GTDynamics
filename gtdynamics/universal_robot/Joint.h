@@ -150,10 +150,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// ID reference to DynamicsSymbol.
   uint8_t id_;
 
-  /// Rest transform to parent link CoM frame from joint frame.
-  Pose3 jMp_;
-  /// Rest transform to child link CoM frame from joint frame.
-  Pose3 jMc_;
+  Pose3 pMj_;  ///< Joint frame in parent link CoM frame at rest.
+  Pose3 jMc_;  ///< Child CoM frame in joint  frame at rest.
+  Pose3 pMc_;  ///< Child CoM frame in parent link CoM frame at rest.
 
   // NOTE: We use a weak_ptr here since Link has shared_ptrs
   // to joints, and this way we can avoid reference cycles.
@@ -208,14 +207,14 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /// Get the joint's ID.
   uint8_t id() const { return id_; }
 
-  /// Return (unchanging) pose of the parent link's COM in the joint frame.
-  const Pose3 &jMp() const { return jMp_; }
+  /// Return (unchanging) pose of the joint frame in parent link CoM frame.
+  const Pose3 &pMj() const { return pMj_; }
 
   /// Return (unchanging) pose of the child link's COM in the joint frame.
   const Pose3 &jMc() const { return jMc_; }
 
-  /// Return pose of child in parent link, at rest.
-  Pose3 pMc() const { return jMp_.between(jMc_); }
+  /// Return pose of child CoM frame in parent link CoM frame, at rest.
+  const Pose3 &pMc() const { return pMc_; }
 
   /// Return screw axis in parent link frame.
   const Vector6 &pScrewAxis() const { return pScrewAxis_; }
@@ -239,14 +238,14 @@ class Joint : public std::enable_shared_from_this<Joint> {
    *
    * @param new_name The new name of the joint.
    */
-  void rename(const std::string& new_name) {name_ = new_name; }
+  void rename(const std::string &new_name) { name_ = new_name; }
 
   /**
    * @brief Reassign the joint ID.
    *
    * @param new_id The new ID of the joint.
    */
-  void reassign(const uint8_t new_id) {id_ = new_id; }
+  void reassign(const uint8_t new_id) { id_ = new_id; }
 
   /// Return the connected link other than the one provided.
   LinkSharedPtr otherLink(const LinkSharedPtr &link) const {
@@ -269,7 +268,8 @@ class Joint : public std::enable_shared_from_this<Joint> {
 
   bool operator==(const Joint &other) const {
     return (this->name_ == other.name_ && this->id_ == other.id_ &&
-            this->jMp_.equals(other.jMp_) && this->jMc_.equals(other.jMc_));
+            this->pMj_.equals(other.pMj_) && this->jMc_.equals(other.jMc_) &&
+            this->pMc_.equals(other.pMc_));
   }
 
   bool operator!=(const Joint &other) const { return !(*this == other); }
@@ -491,8 +491,9 @@ class Joint : public std::enable_shared_from_this<Joint> {
   void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
     ar &BOOST_SERIALIZATION_NVP(name_);
     ar &BOOST_SERIALIZATION_NVP(id_);
-    ar &BOOST_SERIALIZATION_NVP(jMp_);
+    ar &BOOST_SERIALIZATION_NVP(pMj_);
     ar &BOOST_SERIALIZATION_NVP(jMc_);
+    ar &BOOST_SERIALIZATION_NVP(pMc_);
     ar &BOOST_SERIALIZATION_NVP(parent_link_);
     ar &BOOST_SERIALIZATION_NVP(child_link_);
     ar &BOOST_SERIALIZATION_NVP(pScrewAxis_);
