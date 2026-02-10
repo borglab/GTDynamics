@@ -63,7 +63,10 @@ Joint::Joint(uint8_t id, const std::string &name, const Pose3 &bTj,
       pMj_(parent_link.lock()->bMcom().between(bTj)),
       jMc_(bTj.between(child_link.lock()->bMcom())),
       pMc_(pMj_ * jMc_),
-      pScrewAxis_(-pMj_.AdjointMap() * jScrewAxis),  // Negative sign ???
+      // The negative sign reflects that the parent's motion relative to the
+      // child is opposite in direction to the child's motion relative to the
+      // parent, as defined by the joint screw axis convention.
+      pScrewAxis_(-pMj_.AdjointMap() * jScrewAxis),
       cScrewAxis_(jMc_.inverse().AdjointMap() * jScrewAxis),
       parameters_(parameters) {}
 

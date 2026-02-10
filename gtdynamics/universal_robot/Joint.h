@@ -35,6 +35,7 @@
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/nvp.hpp>
+#include <boost/serialization/split_member.hpp>
 #endif
 
 namespace gtdynamics {
@@ -488,18 +489,35 @@ class Joint : public std::enable_shared_from_this<Joint> {
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
-  void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
+  void save(ARCHIVE &ar, const unsigned int /*version*/) const {
     ar &BOOST_SERIALIZATION_NVP(name_);
     ar &BOOST_SERIALIZATION_NVP(id_);
     ar &BOOST_SERIALIZATION_NVP(pMj_);
     ar &BOOST_SERIALIZATION_NVP(jMc_);
-    ar &BOOST_SERIALIZATION_NVP(pMc_);
+    // pMc_ is not serialized as it can be recomputed from pMj_ and jMc_
     ar &BOOST_SERIALIZATION_NVP(parent_link_);
     ar &BOOST_SERIALIZATION_NVP(child_link_);
     ar &BOOST_SERIALIZATION_NVP(pScrewAxis_);
     ar &BOOST_SERIALIZATION_NVP(cScrewAxis_);
     ar &BOOST_SERIALIZATION_NVP(parameters_);
   }
+
+  template <class ARCHIVE>
+  void load(ARCHIVE &ar, const unsigned int /*version*/) {
+    ar &BOOST_SERIALIZATION_NVP(name_);
+    ar &BOOST_SERIALIZATION_NVP(id_);
+    ar &BOOST_SERIALIZATION_NVP(pMj_);
+    ar &BOOST_SERIALIZATION_NVP(jMc_);
+    ar &BOOST_SERIALIZATION_NVP(parent_link_);
+    ar &BOOST_SERIALIZATION_NVP(child_link_);
+    ar &BOOST_SERIALIZATION_NVP(pScrewAxis_);
+    ar &BOOST_SERIALIZATION_NVP(cScrewAxis_);
+    ar &BOOST_SERIALIZATION_NVP(parameters_);
+    // Recompute pMc_ to maintain invariant pMc_ = pMj_ * jMc_
+    pMc_ = pMj_ * jMc_;
+  }
+
+  BOOST_SERIALIZATION_SPLIT_MEMBER()
 #endif
 
   /// @}
