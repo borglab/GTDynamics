@@ -28,6 +28,7 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
+#include <cmath>
 #include <map>
 #include <sstream>
 
@@ -476,6 +477,112 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
 
   // Check that all constraints shall be satisfied after retraction.
   EXPECT(assert_equal(0., constraints->violationNorm(new_cm.values())));
+}
+
+namespace {
+
+double Cos(const double& theta, gtsam::OptionalJacobian<1, 1> H_theta = {}) {
+  if (H_theta) *H_theta << -std::sin(theta);
+  return std::cos(theta);
+}
+
+double Sin(const double& theta, gtsam::OptionalJacobian<1, 1> H_theta = {}) {
+  if (H_theta) *H_theta << std::cos(theta);
+  return std::sin(theta);
+}
+
+double MinusTwoPi(const double& theta_sum,
+                  gtsam::OptionalJacobian<1, 1> H_theta_sum = {}) {
+  if (H_theta_sum) *H_theta_sum << 1.0;
+  return theta_sum - 2.0 * M_PI;
+}
+
+}  // namespace
+
+/** Lynch and Park (p.29) four-bar loop-closure equations in CM-Opt form.
+ * Constraints:
+ * 1) L1 cos(theta1) + L2 cos(theta1+theta2) + L3 cos(theta1+theta2+theta3) +
+ *    L4 cos(theta1+theta2+theta3+theta4) = 0
+ * 2) L1 sin(theta1) + L2 sin(theta1+theta2) + L3 sin(theta1+theta2+theta3) +
+ *    L4 sin(theta1+theta2+theta3+theta4) = 0
+ * 3) theta1 + theta2 + theta3 + theta4 - 2*pi = 0
+ *
+ * We use L1=L2=L3=L4=1.0. The feasible set is one-dimensional in R^4.
+ */
+TEST(ConstraintManifold, lynch_park_four_bar_loop_closure_cmopt) {
+  using gtsam::symbol_shorthand::T;
+
+  Double_ theta1(T(1)), theta2(T(2)), theta3(T(3)), theta4(T(4));
+
+  Double_ theta12 = theta1 + theta2;
+  Double_ theta123 = theta12 + theta3;
+  Double_ theta1234 = theta123 + theta4;
+
+  Double_ c1(Cos, theta1);
+  Double_ c12(Cos, theta12);
+  Double_ c123(Cos, theta123);
+  Double_ c1234(Cos, theta1234);
+
+  Double_ s1(Sin, theta1);
+  Double_ s12(Sin, theta12);
+  Double_ s123(Sin, theta123);
+  Double_ s1234(Sin, theta1234);
+
+  Double_ loop_x = c1 + c12 + c123 + c1234;
+  Double_ loop_y = s1 + s12 + s123 + s1234;
+  Double_ loop_angle(MinusTwoPi, theta1234);
+
+  NonlinearEqualityConstraints constraints;
+  const Vector1 tolerance = (Vector1() << 1e-9).finished();
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(loop_x, 0.0,
+                                                                   tolerance);
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(loop_y, 0.0,
+                                                                   tolerance);
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      loop_angle, 0.0, tolerance);
+
+  NonlinearFactorGraph costs;
+  const auto prior_noise = noiseModel::Isotropic::Sigma(1, 1e-1);
+  costs.addPrior<double>(T(1), M_PI_2, prior_noise);
+  costs.addPrior<double>(T(2), M_PI_2, prior_noise);
+  costs.addPrior<double>(T(3), M_PI_2, prior_noise);
+  costs.addPrior<double>(T(4), M_PI_2, prior_noise);
+
+  Values init_values;
+  init_values.insert(T(1), 1.2);
+  init_values.insert(T(2), 1.8);
+  init_values.insert(T(3), 1.1);
+  init_values.insert(T(4), 2.0);
+
+  EConsOptProblem problem(costs, constraints, init_values);
+  auto mopt_params = ConstrainedOptBenchmark::DefaultMoptParams();
+  LevenbergMarquardtParams lm_params;
+  NonlinearMOptimizer optimizer(mopt_params, lm_params);
+
+  const auto mopt_problem = optimizer.initializeMoptProblem(
+      problem.costs(), problem.constraints(), problem.initValues());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.components_.size());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.manifold_keys_.size());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.manifolds().begin()->second.dim());
+
+  const Values result =
+      optimizer.optimize(problem.costs(), problem.constraints(), init_values);
+
+  const double t1 = result.atDouble(T(1));
+  const double t2 = result.atDouble(T(2));
+  const double t3 = result.atDouble(T(3));
+  const double t4 = result.atDouble(T(4));
+
+  const double closure_x = std::cos(t1) + std::cos(t1 + t2) +
+                           std::cos(t1 + t2 + t3) + std::cos(t1 + t2 + t3 + t4);
+  const double closure_y = std::sin(t1) + std::sin(t1 + t2) +
+                           std::sin(t1 + t2 + t3) + std::sin(t1 + t2 + t3 + t4);
+  const double closure_angle = t1 + t2 + t3 + t4 - 2.0 * M_PI;
+
+  EXPECT(problem.evaluateEConstraintViolationL2Norm(result) < 1e-6);
+  EXPECT_DOUBLES_EQUAL(0.0, closure_x, 1e-6);
+  EXPECT_DOUBLES_EQUAL(0.0, closure_y, 1e-6);
+  EXPECT_DOUBLES_EQUAL(0.0, closure_angle, 1e-6);
 }
 
 int main() {
