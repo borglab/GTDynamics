@@ -83,7 +83,7 @@ class EulerPoseCollocationFactor
     gtsam::Vector6 twistdt = twist * dt;
     gtsam::Matrix6 H_twistdt;
     auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
-    gtsam::Vector6 error = pose_t1.logmap(pose_t1_hat);
+    gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
     if (H_pose_t1) {
       *H_pose_t1 = -gtsam::I_6x6;
     }
@@ -164,7 +164,7 @@ class TrapezoidalPoseCollocationFactor
     gtsam::Vector6 twistdt = 0.5 * dt * (twist_t0 + twist_t1);
     gtsam::Matrix6 H_twistdt;
     auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
-    gtsam::Vector6 error = pose_t1.logmap(pose_t1_hat);
+    gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
     if (H_pose_t1) {
       *H_pose_t1 = -gtsam::I_6x6;
     }
@@ -246,7 +246,7 @@ class FixTimeEulerPoseCollocationFactor
      gtsam::Vector6 twistdt = dt_ * twist_t0;
      gtsam::Matrix6 H_twistdt;
      auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
-     gtsam::Vector6 error = pose_t1.logmap(pose_t1_hat);
+     gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
      if (H_pose_t1) {
        *H_pose_t1 = -gtsam::I_6x6;
      }
@@ -325,7 +325,7 @@ class FixTimeTrapezoidalPoseCollocationFactor
     gtsam::Vector6 twistdt = 0.5 * dt_ * (twist_t0 + twist_t1);
     gtsam::Matrix6 H_twistdt;
     auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
-    gtsam::Vector6 error = pose_t1.logmap(pose_t1_hat);
+    gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
     if (H_pose_t1) {
       *H_pose_t1 = -gtsam::I_6x6;
     }
@@ -399,7 +399,7 @@ class EulerTwistCollocationFactor
       gtsam::OptionalMatrixType H_twist_t1 = nullptr,
       gtsam::OptionalMatrixType H_accel = nullptr,
       gtsam::OptionalMatrixType H_dt = nullptr) const override {
-    gtsam::Vector6 error = twist_t0 + dt * accel - twist_t1;
+    gtsam::Vector error = twist_t0 + dt * accel - twist_t1;
     if (H_twist_t1) {
       *H_twist_t1 = -gtsam::I_6x6;
     }
@@ -480,7 +480,7 @@ class TrapezoidalTwistCollocationFactor
       gtsam::OptionalMatrixType H_accel_t0 = nullptr,
       gtsam::OptionalMatrixType H_accel_t1 = nullptr,
       gtsam::OptionalMatrixType H_dt = nullptr) const override {
-    gtsam::Vector6 error =
+    gtsam::Vector error =
         twist_t0 + 0.5 * dt * (accel_t0 + accel_t1) - twist_t1;
     if (H_twist_t1) {
       *H_twist_t1 = -gtsam::I_6x6;
@@ -562,7 +562,7 @@ class FixTimeEulerTwistCollocationFactor
        gtsam::OptionalMatrixType H_twist_t0 = nullptr,
        gtsam::OptionalMatrixType H_twist_t1 = nullptr,
        gtsam::OptionalMatrixType H_accel_t0 = nullptr) const override {
-     gtsam::Vector6 error = twist_t0 + dt_ * accel_t0 - twist_t1;
+     gtsam::Vector error = twist_t0 + dt_ * accel_t0 - twist_t1;
      if (H_twist_t1) {
        *H_twist_t1 = -gtsam::I_6x6;
      }
@@ -641,7 +641,7 @@ class FixTimeTrapezoidalTwistCollocationFactor
       gtsam::OptionalMatrixType H_twist_t1 = nullptr,
       gtsam::OptionalMatrixType H_accel_t0 = nullptr,
       gtsam::OptionalMatrixType H_accel_t1 = nullptr) const override {
-    gtsam::Vector6 error =
+    gtsam::Vector error =
         twist_t0 + 0.5 * dt_ * (accel_t0 + accel_t1) - twist_t1;
     if (H_twist_t1) {
       *H_twist_t1 = -gtsam::I_6x6;

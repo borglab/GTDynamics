@@ -67,16 +67,18 @@ class JointLimitFactor : public gtsam::NoiseModelFactorN<double> {
    */
   gtsam::Vector evaluateError(const double &q,
                               gtsam::OptionalMatrixType H_q) const override {
+    gtsam::Vector error(1);
     if (q < low_) {
       if (H_q) *H_q = -gtsam::I_1x1;
-      return gtsam::Vector1(low_ - q);
+      error(0) = low_ - q;
     } else if (q <= high_) {
       if (H_q) *H_q = gtsam::Z_1x1;
-      return gtsam::Vector1(0.0);
+      error(0) = 0.0;
     } else {
       if (H_q) *H_q = gtsam::I_1x1;
-      return gtsam::Vector1(q - high_);
+      error(0) = q - high_;
     }
+    return error;
   }
 
   /// @return a deep copy of this factor

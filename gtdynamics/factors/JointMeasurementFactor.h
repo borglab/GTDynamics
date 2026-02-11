@@ -78,7 +78,7 @@ class JointMeasurementFactor
     gtsam::Pose3 wTc_hat =
         joint_->poseOf(joint_->child(), wTp, measured_joint_coordinate_, H_wTp);
 
-    gtsam::Vector6 error = wTc.logmap(wTc_hat, H_wTc, H_wTp ? &H : 0);
+    gtsam::Vector error = wTc.logmap(wTc_hat, H_wTc, H_wTp ? &H : 0);
     if (H_wTp) {
       *H_wTp = H * (*H_wTp);
     }
