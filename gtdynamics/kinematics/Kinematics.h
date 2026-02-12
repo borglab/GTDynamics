@@ -180,6 +180,20 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
+   * @fn Create contact-height objectives.
+   * @param context Slice or Interval instance.
+   * @param contact_points contact points on links.
+   * @param gravity gravity vector used to define up direction.
+   * @param cost_model noise model for each contact-height factor.
+   * @returns graph with contact-height factors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const CONTEXT& context, const PointOnLinks& contact_points,
+      const gtsam::Vector3& gravity,
+      const gtsam::SharedNoiseModel& cost_model) const;
+
+  /**
    * @fn Create point goal constraints.
    * @param context Slice or Interval instance.
    * @param contact_goals goals for contact points

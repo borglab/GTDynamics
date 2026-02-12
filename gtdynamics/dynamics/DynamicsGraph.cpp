@@ -203,15 +203,13 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
                      opt_.bp_cost_model);
 
   const Kinematics kinematics(KinematicsParameters(opt_.p_cost_model));
-  graph.add(kinematics.graph<Slice>(Slice(k), robot));
+  const Slice slice(k);
+  graph.add(kinematics.graph<Slice>(slice, robot));
 
   // Add contact factors.
   if (contact_points) {
-    for (auto &&cp : *contact_points) {
-      ContactHeightFactor contact_pose_factor(
-          PoseKey(cp.link->id(), k), opt_.cp_cost_model, cp.point, gravity_);
-      graph.add(contact_pose_factor);
-    }
+    graph.add(kinematics.contactHeightObjectives<Slice>(
+        slice, *contact_points, gravity_, opt_.cp_cost_model));
   }
 
   return graph;

@@ -11,6 +11,7 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/factors/PoseFactor.h>
@@ -116,6 +117,21 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
     const gtsam::Key pose_key = PoseKey(goal.link()->id(), slice.k);
     graph.emplace_shared<PointGoalFactor>(pose_key, p_.g_cost_model,
                                           goal.contactInCoM(), goal.goal_point);
+  }
+
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
+    const Slice& slice, const PointOnLinks& contact_points,
+    const gtsam::Vector3& gravity,
+    const gtsam::SharedNoiseModel& cost_model) const {
+  NonlinearFactorGraph graph;
+
+  for (const PointOnLink& cp : contact_points) {
+    graph.emplace_shared<ContactHeightFactor>(
+        PoseKey(cp.link->id(), slice.k), cost_model, cp.point, gravity);
   }
 
   return graph;
