@@ -17,10 +17,12 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -150,7 +152,7 @@ KeyVector FindBasisKeys(const KeyVector& keys) {
 
 /** Factor graph of all kinematic constraints. Include kinematic constraints at
  * each time step, and the priors for the first step. */
-NonlinearFactorGraph get_constraints_graph() {
+NonlinearFactorGraph get_constraints_graph_legacy() {
   auto& robot = KukaRobot();
   NonlinearFactorGraph constraints_graph;
   // kinematics constraints at each step
@@ -166,6 +168,39 @@ NonlinearFactorGraph get_constraints_graph() {
                                graph_builder.opt().prior_q_cost_model);
   }
   return constraints_graph;
+}
+
+gtsam::NonlinearEqualityConstraints get_constraints_modern() {
+  auto& robot = KukaRobot();
+  Kinematics kinematics;
+  Interval interval(0, kNumSteps);
+  auto constraints = kinematics.constraints(interval, robot);
+
+  // Preserve the explicit initial joint-angle constraints from legacy setup.
+  auto graph_builder = DynamicsGraph();
+  NonlinearFactorGraph initial_joint_constraints;
+  const size_t k0 = 0;
+  for (const auto& joint : robot.joints()) {
+    initial_joint_constraints.addPrior(JointAngleKey(joint->id(), k0), 0.0,
+                                       graph_builder.opt().prior_q_cost_model);
+  }
+  auto initial_joint_equalities =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(
+          initial_joint_constraints);
+  for (const auto& constraint : initial_joint_equalities) {
+    constraints.push_back(constraint);
+  }
+
+  return constraints;
+}
+
+size_t total_constraint_dim(
+    const gtsam::NonlinearEqualityConstraints& constraints) {
+  size_t total_dim = 0;
+  for (const auto& constraint : constraints) {
+    total_dim += constraint->dim();
+  }
+  return total_dim;
 }
 
 /** Cost function for planning, includes cost of rotation joints, joint limit
@@ -367,11 +402,34 @@ void ExportJointAnglesCsv(const Values& values, const std::string& file_path) {
 void kinematic_planning(const ArmBenchmarkArgs& args) {
   auto& robot = KukaRobot();
   robot.fixLink(kBaseName);
-  auto constraints_graph = get_constraints_graph();
+
+  auto legacy_constraints_graph = get_constraints_graph_legacy();
+  auto legacy_constraints =
+      gtsam::NonlinearEqualityConstraints::FromCostGraph(
+          legacy_constraints_graph);
+  auto modern_constraints = get_constraints_modern();
+
   auto costs = get_costs();
   auto init_values = get_init_values();
-  auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
+  const double legacy_init_violation =
+      legacy_constraints.violationNorm(init_values);
+  const double modern_init_violation =
+      modern_constraints.violationNorm(init_values);
+
+  std::cout << "[CHECK] Legacy constraints graph: factors="
+            << legacy_constraints_graph.size()
+            << ", keys=" << legacy_constraints_graph.keys().size() << "\n";
+  std::cout << "[CHECK] Legacy constraints: count=" << legacy_constraints.size()
+            << ", dim=" << total_constraint_dim(legacy_constraints) << "\n";
+  std::cout << "[CHECK] Modern constraints: count=" << modern_constraints.size()
+            << ", dim=" << total_constraint_dim(modern_constraints) << "\n";
+  std::cout << "[CHECK] Init violation legacy=" << legacy_init_violation
+            << ", modern=" << modern_init_violation
+            << ", abs_diff="
+            << std::abs(legacy_init_violation - modern_init_violation) << "\n";
+  std::cout << "[CHECK] Benchmark optimization uses MODERN constraints.\n";
+
+  const auto constraints = modern_constraints;
 
   auto runOptions = args.benchmark_cli.runOptions;
   runOptions.constraintUnitScale = 1.0;
@@ -421,7 +479,17 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
     return moptParams;
   });
   runner.setResultCallback(
-      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
+      [&, legacy_constraints,
+       modern_constraints](ConstrainedOptBenchmark::Method method,
+                           const Values& result) {
+        const double legacy_violation = legacy_constraints.violationNorm(result);
+        const double modern_violation = modern_constraints.violationNorm(result);
+        std::cout << "[CHECK] " << ConstrainedOptBenchmark::MethodLabel(method)
+                  << " violation legacy=" << legacy_violation
+                  << ", modern=" << modern_violation
+                  << ", abs_diff="
+                  << std::abs(legacy_violation - modern_violation) << "\n";
+
         ExportJointAnglesCsv(result, ConstrainedOptBenchmark::MethodDataPath(
                                          runOptions, method, "_traj.csv"));
       });
