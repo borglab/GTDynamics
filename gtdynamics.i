@@ -398,54 +398,54 @@ class DynamicsGraph {
                 const std::optional<gtsam::Vector3> &planar_axis);
 
   gtsam::GaussianFactorGraph linearDynamicsGraph(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const gtsam::Values &known_values);
 
   gtsam::GaussianFactorGraph linearFDPriors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const gtsam::Values &known_values);
 
   gtsam::GaussianFactorGraph linearIDPriors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const gtsam::Values &known_values);
 
-  gtsam::Values linearSolveFD(const gtdynamics::Robot &robot, const int t,
+  gtsam::Values linearSolveFD(const gtdynamics::Robot &robot, const int k,
                               const gtsam::Values &known_values);
 
-  gtsam::Values linearSolveID(const gtdynamics::Robot &robot, const int t,
+  gtsam::Values linearSolveID(const gtdynamics::Robot &robot, const int k,
                               const gtsam::Values &known_values);
 
   gtsam::NonlinearFactorGraph qFactors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
   gtsam::NonlinearFactorGraph vFactors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
 
   /* return a-level nonlinear factor graph (acceleration related factors) */
   gtsam::NonlinearFactorGraph aFactors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
 
   /* return dynamics-level nonlinear factor graph (wrench related factors) */
   gtsam::NonlinearFactorGraph dynamicsFactors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const std::optional<gtdynamics::PointOnLinks> &contact_points,
       const std::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const std::optional<gtdynamics::PointOnLinks> &contact_points,
       const std::optional<double> &mu) const;
 
   gtsam::NonlinearFactorGraph inverseDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph forwardDynamicsPriors(
-      const gtdynamics::Robot &robot, const int t,
+      const gtdynamics::Robot &robot, const int k,
       const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFDPriors(
@@ -486,65 +486,65 @@ class DynamicsGraph {
       const gtdynamics::CollocationScheme collocation);
 
   gtsam::NonlinearFactorGraph jointCollocationFactors(
-      const int j, const int t, const double dt,
+      const int j, const int k, const double dt,
       const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph jointMultiPhaseCollocationFactors(
-      const int j, const int t, const int phase,
+      const int j, const int k, const int phase,
       const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph collocationFactors(
-      const gtdynamics::Robot &robot, const int t, const double dt,
+      const gtdynamics::Robot &robot, const int k, const double dt,
       const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph multiPhaseCollocationFactors(
-      const gtdynamics::Robot &robot, const int t, const int phase,
+      const gtdynamics::Robot &robot, const int k, const int phase,
       const gtdynamics::CollocationScheme collocation) const;
 
   gtsam::NonlinearFactorGraph jointLimitFactors(const gtdynamics::Robot &robot,
-                                                const int t) const;
+                                                const int k) const;
 
   gtsam::NonlinearFactorGraph targetAngleFactors(
-      const gtdynamics::Robot &robot, const int t, const string &joint_name,
+      const gtdynamics::Robot &robot, const int k, const string &joint_name,
       const double target_angle) const;
 
   gtsam::NonlinearFactorGraph targetPoseFactors(
-      const gtdynamics::Robot &robot, const int t, const string &link_name,
+      const gtdynamics::Robot &robot, const int k, const string &link_name,
       const gtsam::Pose3 &target_pose) const;
 
   static gtsam::Vector jointAccels(const gtdynamics::Robot &robot,
-                                   const gtsam::Values &result, const int t);
+                                   const gtsam::Values &result, const int k);
 
   /* return joint velocities. */
   static gtsam::Vector jointVels(const gtdynamics::Robot &robot,
-                                 const gtsam::Values &result, const int t);
+                                 const gtsam::Values &result, const int k);
 
   /* return joint angles. */
   static gtsam::Vector jointAngles(const gtdynamics::Robot &robot,
-                                   const gtsam::Values &result, const int t);
+                                   const gtsam::Values &result, const int k);
 
   /* return joint torques. */
   static gtsam::Vector jointTorques(const gtdynamics::Robot &robot,
-                                    const gtsam::Values &result, const int t);
+                                    const gtsam::Values &result, const int k);
 
   static gtdynamics::JointValueMap jointAccelsMap(const gtdynamics::Robot &robot,
                                            const gtsam::Values &result,
-                                           const int t);
+                                           const int k);
 
   /* return joint velocities as std::map<name, velocity>. */
   static gtdynamics::JointValueMap jointVelsMap(const gtdynamics::Robot &robot,
                                          const gtsam::Values &result,
-                                         const int t);
+                                         const int k);
 
   /* return joint angles as std::map<name, angle>. */
   static gtdynamics::JointValueMap jointAnglesMap(const gtdynamics::Robot &robot,
                                            const gtsam::Values &result,
-                                           const int t);
+                                           const int k);
 
   /* return joint torques as std::map<name, torque>. */
   static gtdynamics::JointValueMap jointTorquesMap(const gtdynamics::Robot &robot,
                                             const gtsam::Values &result,
-                                            const int t);
+                                            const int k);
 
   /* print the factors of the factor graph */
   static void printGraph(const gtsam::NonlinearFactorGraph &graph);
@@ -555,7 +555,7 @@ class DynamicsGraph {
   static void saveGraph(const string &file_path,
                         const gtsam::NonlinearFactorGraph &graph,
                         const gtsam::Values &values, const gtdynamics::Robot &robot,
-                        const int t, bool radial);
+                        const int k, bool radial);
 
   static void saveGraphMultiSteps(const string &file_path,
                                   const gtsam::NonlinearFactorGraph &graph,
