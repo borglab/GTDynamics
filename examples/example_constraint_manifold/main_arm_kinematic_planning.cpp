@@ -22,7 +22,6 @@
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -150,33 +149,13 @@ KeyVector FindBasisKeys(const KeyVector& keys) {
   return basis_keys;
 }
 
-/** Factor graph of all kinematic constraints. Include kinematic constraints at
- * each time step, and the priors for the first step. */
-NonlinearFactorGraph get_constraints_graph_legacy() {
-  auto& robot = KukaRobot();
-  NonlinearFactorGraph constraints_graph;
-  // kinematics constraints at each step
-  auto graph_builder = DynamicsGraph();
-  for (size_t k = 0; k <= kNumSteps; k++) {
-    constraints_graph.add(graph_builder.qFactors(robot, k));
-  }
-
-  // // prior constraints at first step
-  size_t k0 = 0;
-  for (const auto& joint : robot.joints()) {
-    constraints_graph.addPrior(JointAngleKey(joint->id(), k0), 0.0,
-                               graph_builder.opt().prior_q_cost_model);
-  }
-  return constraints_graph;
-}
-
-gtsam::NonlinearEqualityConstraints get_constraints_modern() {
+gtsam::NonlinearEqualityConstraints get_constraints() {
   auto& robot = KukaRobot();
   Kinematics kinematics;
   Interval interval(0, kNumSteps);
   auto constraints = kinematics.constraints(interval, robot);
 
-  // Preserve the explicit initial joint-angle constraints from legacy setup.
+  // Preserve legacy behavior: initial joint priors are converted to equalities.
   auto graph_builder = DynamicsGraph();
   NonlinearFactorGraph initial_joint_constraints;
   const size_t k0 = 0;
@@ -194,20 +173,12 @@ gtsam::NonlinearEqualityConstraints get_constraints_modern() {
   return constraints;
 }
 
-size_t total_constraint_dim(
-    const gtsam::NonlinearEqualityConstraints& constraints) {
-  size_t total_dim = 0;
-  for (const auto& constraint : constraints) {
-    total_dim += constraint->dim();
-  }
-  return total_dim;
-}
-
 /** Cost function for planning, includes cost of rotation joints, joint limit
  * costs, and cost for reaching target pose at end-effector. */
 NonlinearFactorGraph get_costs() {
   auto& robot = KukaRobot();
   NonlinearFactorGraph costs;
+
   // rotation costs
   NonlinearFactorGraph rotation_costs;
   for (size_t k = 0; k < kNumSteps; k++) {
@@ -402,34 +373,9 @@ void ExportJointAnglesCsv(const Values& values, const std::string& file_path) {
 void kinematic_planning(const ArmBenchmarkArgs& args) {
   auto& robot = KukaRobot();
   robot.fixLink(kBaseName);
-
-  auto legacy_constraints_graph = get_constraints_graph_legacy();
-  auto legacy_constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(
-          legacy_constraints_graph);
-  auto modern_constraints = get_constraints_modern();
-
+  const auto constraints = get_constraints();
   auto costs = get_costs();
   auto init_values = get_init_values();
-  const double legacy_init_violation =
-      legacy_constraints.violationNorm(init_values);
-  const double modern_init_violation =
-      modern_constraints.violationNorm(init_values);
-
-  std::cout << "[CHECK] Legacy constraints graph: factors="
-            << legacy_constraints_graph.size()
-            << ", keys=" << legacy_constraints_graph.keys().size() << "\n";
-  std::cout << "[CHECK] Legacy constraints: count=" << legacy_constraints.size()
-            << ", dim=" << total_constraint_dim(legacy_constraints) << "\n";
-  std::cout << "[CHECK] Modern constraints: count=" << modern_constraints.size()
-            << ", dim=" << total_constraint_dim(modern_constraints) << "\n";
-  std::cout << "[CHECK] Init violation legacy=" << legacy_init_violation
-            << ", modern=" << modern_init_violation
-            << ", abs_diff="
-            << std::abs(legacy_init_violation - modern_init_violation) << "\n";
-  std::cout << "[CHECK] Benchmark optimization uses MODERN constraints.\n";
-
-  const auto constraints = modern_constraints;
 
   auto runOptions = args.benchmark_cli.runOptions;
   runOptions.constraintUnitScale = 1.0;
@@ -479,17 +425,7 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
     return moptParams;
   });
   runner.setResultCallback(
-      [&, legacy_constraints,
-       modern_constraints](ConstrainedOptBenchmark::Method method,
-                           const Values& result) {
-        const double legacy_violation = legacy_constraints.violationNorm(result);
-        const double modern_violation = modern_constraints.violationNorm(result);
-        std::cout << "[CHECK] " << ConstrainedOptBenchmark::MethodLabel(method)
-                  << " violation legacy=" << legacy_violation
-                  << ", modern=" << modern_violation
-                  << ", abs_diff="
-                  << std::abs(legacy_violation - modern_violation) << "\n";
-
+      [&](ConstrainedOptBenchmark::Method method, const Values& result) {
         ExportJointAnglesCsv(result, ConstrainedOptBenchmark::MethodDataPath(
                                          runOptions, method, "_traj.csv"));
       });
