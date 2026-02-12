@@ -181,6 +181,19 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
+   * @fn Create hard constraints on joint angles.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @param joint_targets Values containing desired joint angles.
+   * Only keys present in joint_targets are constrained.
+   * @returns Equality constraints on selected joint angles.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearEqualityConstraints jointAngleConstraints(
+      const CONTEXT& context, const Robot& robot,
+      const gtsam::Values& joint_targets) const;
+
+  /**
    * @fn Create a pose prior for a given link for each given pose.
    * @param context Slice or Interval instance.
    * @param pose_goals an object of PoseGoals: map of time step k to desired pose

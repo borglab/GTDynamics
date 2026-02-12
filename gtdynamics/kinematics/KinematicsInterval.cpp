@@ -81,6 +81,20 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Interval>(
 }
 
 template <>
+gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Interval>(
+    const Interval& interval, const Robot& robot,
+    const gtsam::Values& joint_targets) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
+    auto slice_constraints = jointAngleConstraints(Slice(k), robot, joint_targets);
+    for (const auto& constraint : slice_constraints) {
+      constraints.push_back(constraint);
+    }
+  }
+  return constraints;
+}
+
+template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Interval>(
     const Interval& interval, const Robot& robot, const Values& mean) const {
   NonlinearFactorGraph graph;

@@ -140,6 +140,26 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
 }
 
 template <>
+gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Slice>(
+    const Slice& slice, const Robot& robot,
+    const gtsam::Values& joint_targets) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+
+  const gtsam::Vector1 tolerance(p_.prior_q_cost_model->sigmas()(0));
+  for (auto&& joint : robot.joints()) {
+    const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
+    if (!joint_targets.exists(key)) {
+      continue;
+    }
+    const gtsam::Double_ joint_angle_expr(key);
+    constraints.emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(
+        joint_angle_expr, joint_targets.at<double>(key), tolerance);
+  }
+
+  return constraints;
+}
+
+template <>
 NonlinearFactorGraph Kinematics::poseGoalObjectives<Slice>(
     const Slice& slice, const PoseGoals& pose_goals) const {
   gtsam::NonlinearFactorGraph graph;

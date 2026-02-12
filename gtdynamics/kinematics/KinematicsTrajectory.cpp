@@ -72,6 +72,21 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Trajectory>
 }
 
 template <>
+gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Trajectory>(
+    const Trajectory& trajectory, const Robot& robot,
+    const Values& joint_targets) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+  for (auto&& phase : trajectory.phases()) {
+    auto phase_constraints =
+        jointAngleConstraints<Interval>(phase, robot, joint_targets);
+    for (const auto& constraint : phase_constraints) {
+      constraints.push_back(constraint);
+    }
+  }
+  return constraints;
+}
+
+template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Trajectory>(
     const Trajectory& trajectory, const Robot& robot,
     const Values& mean) const {

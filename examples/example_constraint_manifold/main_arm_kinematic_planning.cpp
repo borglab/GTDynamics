@@ -14,11 +14,11 @@
 
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
-#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
 
@@ -155,20 +155,14 @@ gtsam::NonlinearEqualityConstraints get_constraints() {
   Interval interval(0, kNumSteps);
   auto constraints = kinematics.constraints(interval, robot);
 
-  // Preserve legacy behavior: initial joint priors are converted to equalities.
-  auto graph_builder = DynamicsGraph();
-  NonlinearFactorGraph initial_joint_constraints;
+  // Add hard (0.0) constraints on initial joint angles.
+  gtsam::Values initialJointTargets;
   const size_t k0 = 0;
   for (const auto& joint : robot.joints()) {
-    initial_joint_constraints.addPrior(JointAngleKey(joint->id(), k0), 0.0,
-                                       graph_builder.opt().prior_q_cost_model);
+    initialJointTargets.insert(JointAngleKey(joint->id(), k0), 0.0);
   }
-  auto initial_joint_equalities =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(
-          initial_joint_constraints);
-  for (const auto& constraint : initial_joint_equalities) {
-    constraints.push_back(constraint);
-  }
+  constraints.push_back(
+      kinematics.jointAngleConstraints(Slice(k0), robot, initialJointTargets));
 
   return constraints;
 }
