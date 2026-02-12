@@ -23,4 +23,13 @@ using gtsam::Values;
 using std::string;
 using std::vector;
 
+template <>
+NonlinearFactorGraph Kinematics::graph<Phase>(const Phase& phase,
+                                              const Robot& robot) const {
+  // Phase is an Interval with contact semantics, so delegate to the
+  // Interval implementation for the kinematic graph.
+  const Interval& interval = static_cast<const Interval&>(phase);
+  return this->graph<Interval>(interval, robot);
+}
+
 }  // namespace gtdynamics
