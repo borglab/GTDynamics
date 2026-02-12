@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/optimizer/Optimizer.h>
+#include <gtdynamics/kinematics/KinematicsParameters.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/PointOnLink.h>
@@ -112,31 +112,6 @@ struct PoseGoal {
 ///< Map of time step k to PoseGoal for that time step
 using PoseGoals = std::map<size_t, PoseGoal>;
 
-/// Noise models etc specific to Kinematics class
-struct KinematicsParameters : public OptimizationParameters {
-  using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel p_cost_model,  // pose factor
-      g_cost_model,                            // goal point
-      prior_q_cost_model;                      // joint angle prior factor
-
-  KinematicsParameters(
-      const gtsam::SharedNoiseModel& p_cost_model = Isotropic::Sigma(6, 1e-4),
-      const gtsam::SharedNoiseModel& g_cost_model = Isotropic::Sigma(3, 1e-2),
-      const gtsam::SharedNoiseModel& prior_q_cost_model = Isotropic::Sigma(1,
-                                                                           0.5))
-      : p_cost_model(p_cost_model),
-        g_cost_model(g_cost_model),
-        prior_q_cost_model(prior_q_cost_model) {}
-
-  // TODO(yetong): replace noise model with tolerance.
-  KinematicsParameters(double p_cost_model_sigma,
-                       double g_cost_model_sigma = 1e-2,
-                       double prior_q_cost_model_sigma = 0.5)
-      : KinematicsParameters(Isotropic::Sigma(6, p_cost_model_sigma),
-                             Isotropic::Sigma(3, g_cost_model_sigma),
-                             Isotropic::Sigma(1, prior_q_cost_model_sigma)) {}
-};
-
 /// All things kinematics, zero velocities/twists, and no forces.
 class Kinematics : public Optimizer {
  protected:
@@ -184,14 +159,22 @@ class Kinematics : public Optimizer {
    * @param context Slice or Interval instance.
    * @param contact_points contact points on links.
    * @param gravity gravity vector used to define up direction.
-   * @param cost_model noise model for each contact-height factor.
    * @returns graph with contact-height factors.
    */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const CONTEXT& context, const PointOnLinks& contact_points,
-      const gtsam::Vector3& gravity,
-      const gtsam::SharedNoiseModel& cost_model) const;
+      const gtsam::Vector3& gravity) const;
+
+  /**
+   * @fn Create fixed-link pose prior objectives.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns graph with fixed-link pose priors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph fixedLinkObjectives(
+      const CONTEXT& context, const Robot& robot) const;
 
   /**
    * @fn Create point goal constraints.

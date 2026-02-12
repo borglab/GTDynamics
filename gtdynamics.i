@@ -324,11 +324,18 @@ class ContactGoal {
 };
 
 class KinematicsParameters : gtdynamics::OptimizationParameters {
-  const gtsam::SharedNoiseModel p_cost_model; 
-  const gtsam::SharedNoiseModel g_cost_model;
-  const gtsam::SharedNoiseModel prior_q_cost_model;
+  gtsam::SharedNoiseModel p_cost_model;
+  gtsam::SharedNoiseModel g_cost_model;
+  gtsam::SharedNoiseModel prior_q_cost_model;
+  gtsam::SharedNoiseModel bp_cost_model;
+  gtsam::SharedNoiseModel cp_cost_model;
 
   KinematicsParameters();
+  KinematicsParameters(double p_cost_model_sigma,
+                       double g_cost_model_sigma = 1e-2,
+                       double prior_q_cost_model_sigma = 0.5,
+                       double bp_cost_model_sigma = 1e-4,
+                       double cp_cost_model_sigma = 1e-2);
 };
 
 class Kinematics {
@@ -349,14 +356,13 @@ class Kinematics {
 
 /********************** dynamics graph **********************/
 #include <gtdynamics/dynamics/OptimizerSetting.h>
-class OptimizerSetting {
+class OptimizerSetting : gtdynamics::KinematicsParameters {
   OptimizerSetting();
   OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
                    double sigma_contact = 0.001, double sigma_joint = 0.001,
                    double sigma_collocation = 0.001, double sigma_time = 0.001);
   gtsam::noiseModel::SharedNoiseModel bv_cost_model;
   gtsam::noiseModel::SharedNoiseModel ba_cost_model;             // acceleration of fixed link
-  gtsam::noiseModel::SharedNoiseModel p_cost_model;              // pose factor
   gtsam::noiseModel::SharedNoiseModel v_cost_model;              // twist factor
   gtsam::noiseModel::SharedNoiseModel a_cost_model;              // acceleration factor
   gtsam::noiseModel::SharedNoiseModel linear_a_cost_model;       // linear acceleration factor
@@ -365,14 +371,12 @@ class OptimizerSetting {
   gtsam::noiseModel::SharedNoiseModel fa_cost_model;             // wrench factor
   gtsam::noiseModel::SharedNoiseModel t_cost_model;              // torque factor
   gtsam::noiseModel::SharedNoiseModel linear_t_cost_model;       // linear torque factor
-  gtsam::noiseModel::SharedNoiseModel cp_cost_model;             // contact pose
   gtsam::noiseModel::SharedNoiseModel cfriction_cost_model;      // contact friction cone
   gtsam::noiseModel::SharedNoiseModel cv_cost_model;             // contact twist
   gtsam::noiseModel::SharedNoiseModel ca_cost_model;             // contact acceleration
   gtsam::noiseModel::SharedNoiseModel cm_cost_model;             // contact moment
   gtsam::noiseModel::SharedNoiseModel planar_cost_model;         // planar factor
   gtsam::noiseModel::SharedNoiseModel linear_planar_cost_model;  // linear planar factor
-  gtsam::noiseModel::SharedNoiseModel prior_q_cost_model;        // joint angle prior factor
   gtsam::noiseModel::SharedNoiseModel prior_qv_cost_model;       // joint velocity prior factor
   gtsam::noiseModel::SharedNoiseModel prior_qa_cost_model;       // joint acceleration prior factor
   gtsam::noiseModel::SharedNoiseModel prior_t_cost_model;        // joint torque prior factor
