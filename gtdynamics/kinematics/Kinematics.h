@@ -119,13 +119,22 @@ struct KinematicsParameters : public OptimizationParameters {
       g_cost_model,                            // goal point
       prior_q_cost_model;                      // joint angle prior factor
 
+  KinematicsParameters(
+      const gtsam::SharedNoiseModel& p_cost_model = Isotropic::Sigma(6, 1e-4),
+      const gtsam::SharedNoiseModel& g_cost_model = Isotropic::Sigma(3, 1e-2),
+      const gtsam::SharedNoiseModel& prior_q_cost_model = Isotropic::Sigma(1,
+                                                                           0.5))
+      : p_cost_model(p_cost_model),
+        g_cost_model(g_cost_model),
+        prior_q_cost_model(prior_q_cost_model) {}
+
   // TODO(yetong): replace noise model with tolerance.
-  KinematicsParameters(double p_cost_model_sigma = 1e-4,
+  KinematicsParameters(double p_cost_model_sigma,
                        double g_cost_model_sigma = 1e-2,
                        double prior_q_cost_model_sigma = 0.5)
-      : p_cost_model(Isotropic::Sigma(6, p_cost_model_sigma)),
-        g_cost_model(Isotropic::Sigma(3, g_cost_model_sigma)),
-        prior_q_cost_model(Isotropic::Sigma(1, prior_q_cost_model_sigma)) {}
+      : KinematicsParameters(Isotropic::Sigma(6, p_cost_model_sigma),
+                             Isotropic::Sigma(3, g_cost_model_sigma),
+                             Isotropic::Sigma(1, prior_q_cost_model_sigma)) {}
 };
 
 /// All things kinematics, zero velocities/twists, and no forces.
@@ -157,8 +166,8 @@ class Kinematics : public Optimizer {
    * @returns Equality constraints.
    */
   template <class CONTEXT>
-  gtsam::NonlinearEqualityConstraints constraints(
-      const CONTEXT& context, const Robot& robot) const;
+  gtsam::NonlinearEqualityConstraints constraints(const CONTEXT& context,
+                                                  const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
@@ -196,8 +205,8 @@ class Kinematics : public Optimizer {
   /**
    * @fn Create a pose prior for a given link for each given pose.
    * @param context Slice or Interval instance.
-   * @param pose_goals an object of PoseGoals: map of time step k to desired pose
-   * at that time step, which will be used as mean of the prior
+   * @param pose_goals an object of PoseGoals: map of time step k to desired
+   * pose at that time step, which will be used as mean of the prior
    * @returns graph with pose goal factors.
    */
   template <class CONTEXT>

@@ -17,7 +17,9 @@
 #include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
 #include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtdynamics/utils/JsonSaver.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtdynamics/utils/values.h>
@@ -200,12 +202,8 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
       graph.addPrior(PoseKey(link->id(), k), link->getFixedPose(),
                      opt_.bp_cost_model);
 
-  // TODO(frank): call Kinematics::graph<Slice> instead
-  for (auto &&joint : robot.joints()) {
-    graph.add(PoseFactor(
-        PoseKey(joint->parent()->id(), k), PoseKey(joint->child()->id(), k),
-        JointAngleKey(joint->id(), k), opt_.p_cost_model, joint));
-  }
+  const Kinematics kinematics(KinematicsParameters(opt_.p_cost_model));
+  graph.add(kinematics.graph<Slice>(Slice(k), robot));
 
   // Add contact factors.
   if (contact_points) {
