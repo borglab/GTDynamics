@@ -14,7 +14,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
 #include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
@@ -197,21 +196,13 @@ gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links())
-    if (link->isFixed())
-      graph.addPrior(PoseKey(link->id(), k), link->getFixedPose(),
-                     opt_.bp_cost_model);
-
-  const Kinematics kinematics(KinematicsParameters(opt_.p_cost_model));
+  const Kinematics kinematics(opt_);
   const Slice slice(k);
-  graph.add(kinematics.graph<Slice>(slice, robot));
-
-  // Add contact factors.
-  if (contact_points) {
-    graph.add(kinematics.contactHeightObjectives<Slice>(
-        slice, *contact_points, gravity_, opt_.cp_cost_model));
-  }
-
+  graph.add(kinematics.fixedLinkObjectives(slice, robot));
+  graph.add(kinematics.graph(slice, robot));
+  if (contact_points)
+    graph.add(kinematics.contactHeightObjectives(slice, *contact_points,
+                                                 gravity_));
   return graph;
 }
 

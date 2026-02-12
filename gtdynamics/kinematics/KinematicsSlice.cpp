@@ -70,6 +70,21 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
 }
 
 template <>
+NonlinearFactorGraph Kinematics::fixedLinkObjectives<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+
+  for (auto&& link : robot.links()) {
+    if (link->isFixed()) {
+      graph.addPrior(PoseKey(link->id(), slice.k), link->getFixedPose(),
+                     p_.bp_cost_model);
+    }
+  }
+
+  return graph;
+}
+
+template <>
 gtsam::NonlinearEqualityConstraints Kinematics::constraints<Slice>(
     const Slice& slice, const Robot& robot) const {
   gtsam::NonlinearEqualityConstraints constraints;
@@ -125,13 +140,12 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
 template <>
 NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
     const Slice& slice, const PointOnLinks& contact_points,
-    const gtsam::Vector3& gravity,
-    const gtsam::SharedNoiseModel& cost_model) const {
+    const gtsam::Vector3& gravity) const {
   NonlinearFactorGraph graph;
 
   for (const PointOnLink& cp : contact_points) {
     graph.emplace_shared<ContactHeightFactor>(
-        PoseKey(cp.link->id(), slice.k), cost_model, cp.point, gravity);
+        PoseKey(cp.link->id(), slice.k), p_.cp_cost_model, cp.point, gravity);
   }
 
   return graph;
