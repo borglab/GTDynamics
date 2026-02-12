@@ -26,10 +26,9 @@ class OptimizerSetting : public KinematicsParameters {
   enum VerbosityLevel { None, Error };
 
   // factor cost models (bp_cost_model, p_cost_model, prior_q_cost_model,
-  // g_cost_model, and cp_cost_model are inherited from KinematicsParameters)
-  gtsam::noiseModel::Base::shared_ptr bv_cost_model,  // velocity of fixed link
-      ba_cost_model,             // acceleration of fixed link
-      v_cost_model,              // twist factor
+  // g_cost_model, cp_cost_model, bv_cost_model, v_cost_model, and cv_cost_model
+  // are inherited from KinematicsParameters)
+  gtsam::noiseModel::Base::shared_ptr ba_cost_model,  // acceleration of fixed link
       a_cost_model,              // acceleration factor
       linear_a_cost_model,       // linear acceleration factor
       f_cost_model,              // wrench equivalence factor
@@ -38,7 +37,6 @@ class OptimizerSetting : public KinematicsParameters {
       t_cost_model,              // torque factor
       linear_t_cost_model,       // linear torque factor
       cfriction_cost_model,      // contact friction cone
-      cv_cost_model,             // contact twist
       ca_cost_model,             // contact acceleration
       cm_cost_model,             // contact moment
       planar_cost_model,         // planar factor
@@ -82,10 +80,9 @@ class OptimizerSetting : public KinematicsParameters {
                    double sigma_contact = 0.001, double sigma_joint = 0.001,
                    double sigma_collocation = 0.001, double sigma_time = 0.001)
       : KinematicsParameters(sigma_dynamics, sigma_contact, sigma_joint,
+                             sigma_dynamics, sigma_contact, sigma_dynamics,
                              sigma_dynamics, sigma_contact),
-        bv_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
         ba_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        v_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
         a_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
         linear_a_cost_model(
             gtsam::noiseModel::Isotropic::Sigma(6, sigma_linear)),
@@ -98,7 +95,6 @@ class OptimizerSetting : public KinematicsParameters {
             gtsam::noiseModel::Isotropic::Sigma(1, sigma_linear)),
         cfriction_cost_model(
             gtsam::noiseModel::Isotropic::Sigma(1, sigma_contact)),
-        cv_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)),
         ca_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)),
         cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)),
         planar_cost_model(

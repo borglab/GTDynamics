@@ -12,9 +12,11 @@
  */
 
 #include <gtdynamics/factors/ContactHeightFactor.h>
+#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/factors/TwistFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/linear/Sampler.h>
@@ -79,6 +81,47 @@ NonlinearFactorGraph Kinematics::fixedLinkObjectives<Slice>(
       graph.addPrior(PoseKey(link->id(), slice.k), link->getFixedPose(),
                      p_.bp_cost_model);
     }
+  }
+
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::fixedLinkTwistObjectives<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+
+  for (auto&& link : robot.links()) {
+    if (link->isFixed()) {
+      graph.addPrior<gtsam::Vector6>(TwistKey(link->id(), slice.k),
+                                     gtsam::Vector6::Zero(), p_.bv_cost_model);
+    }
+  }
+
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::twistObjectives<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+
+  for (auto&& joint : robot.joints()) {
+    graph.add(TwistFactor(p_.v_cost_model, joint, slice.k));
+  }
+
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::contactTwistObjectives<Slice>(
+    const Slice& slice, const PointOnLinks& contact_points) const {
+  NonlinearFactorGraph graph;
+
+  for (const PointOnLink& cp : contact_points) {
+    graph.emplace_shared<ContactKinematicsTwistFactor>(
+        TwistKey(cp.link->id(), slice.k), p_.cv_cost_model,
+        gtsam::Pose3(gtsam::Rot3(), -cp.point));
   }
 
   return graph;

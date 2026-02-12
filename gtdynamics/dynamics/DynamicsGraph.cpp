@@ -210,23 +210,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
-  for (auto &&link : robot.links())
-    if (link->isFixed())
-      graph.addPrior<gtsam::Vector6>(TwistKey(link->id(), k), gtsam::Z_6x1,
-                                     opt_.bv_cost_model);
-
-  for (auto &&joint : robot.joints())
-    graph.add(TwistFactor(opt_.v_cost_model, joint, k));
-
-  // Add contact factors.
-  if (contact_points) {
-    for (auto &&cp : *contact_points) {
-      ContactKinematicsTwistFactor contact_twist_factor(
-          TwistKey(cp.link->id(), k), opt_.cv_cost_model,
-          gtsam::Pose3(gtsam::Rot3(), -cp.point));
-      graph.add(contact_twist_factor);
-    }
-  }
+  const Kinematics kinematics(opt_);
+  const Slice slice(k);
+  graph.add(kinematics.fixedLinkTwistObjectives(slice, robot));
+  graph.add(kinematics.twistObjectives(slice, robot));
+  if (contact_points)
+    graph.add(kinematics.contactTwistObjectives(slice, *contact_points));
 
   return graph;
 }

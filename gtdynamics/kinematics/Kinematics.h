@@ -177,6 +177,36 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const Robot& robot) const;
 
   /**
+   * @fn Create fixed-link twist prior objectives.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns graph with fixed-link twist priors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph fixedLinkTwistObjectives(
+      const CONTEXT& context, const Robot& robot) const;
+
+  /**
+   * @fn Create twist kinematics objectives.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns graph with twist factors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph twistObjectives(const CONTEXT& context,
+                                              const Robot& robot) const;
+
+  /**
+   * @fn Create contact twist objectives.
+   * @param context Slice or Interval instance.
+   * @param contact_points contact points on links.
+   * @returns graph with contact-twist factors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph contactTwistObjectives(
+      const CONTEXT& context, const PointOnLinks& contact_points) const;
+
+  /**
    * @fn Create point goal constraints.
    * @param context Slice or Interval instance.
    * @param contact_goals goals for contact points
