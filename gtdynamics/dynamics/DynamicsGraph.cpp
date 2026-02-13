@@ -217,7 +217,6 @@ gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
   return dynamics_.aFactors(Slice(k), robot, contact_points);
 }
 
-// TODO(frank): migrate to Dynamics::graph<Slice>
 gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points,
