@@ -194,6 +194,19 @@ NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
   return graph;
 }
 
+NonlinearFactorGraph Kinematics::qFactors(
+    const Slice& slice, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points,
+    const gtsam::Vector3& gravity) const {
+  NonlinearFactorGraph graph;
+  graph.add(fixedLinkObjectives(slice, robot));
+  graph.add(this->graph(slice, robot));
+  if (contact_points) {
+    graph.add(contactHeightObjectives(slice, *contact_points, gravity));
+  }
+  return graph;
+}
+
 template <>
 gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
     const Slice& slice, const ContactGoals& contact_goals) const {

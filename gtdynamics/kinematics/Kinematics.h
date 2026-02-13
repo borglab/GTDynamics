@@ -17,6 +17,7 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -123,6 +124,19 @@ class Kinematics : public Optimizer {
    */
   Kinematics(const KinematicsParameters& parameters = KinematicsParameters())
       : Optimizer(parameters), p_(parameters) {}
+
+  /**
+   * @fn Create q-level kinematics factors.
+   * @param slice Slice instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_points optional contact points on links.
+   * @param gravity gravity vector used to define up direction.
+   * @returns graph with q-level factors.
+   */
+  gtsam::NonlinearFactorGraph qFactors(
+      const Slice& slice, const Robot& robot,
+      const std::optional<PointOnLinks>& contact_points = {},
+      const gtsam::Vector3& gravity = gtsam::Vector3(0, 0, -9.8)) const;
 
   /**
    * @fn Create graph with kinematics cost factors.

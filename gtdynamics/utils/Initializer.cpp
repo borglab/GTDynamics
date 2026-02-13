@@ -11,10 +11,11 @@
  * @authors Alejandro Escontrela, Yetong Zhang, Varun Agrawal
  */
 
-#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Initializer.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -36,6 +37,8 @@ using gtsam::Vector3;
 using gtsam::Vector6;
 
 namespace gtdynamics {
+
+Initializer::Initializer() : kinematics_(OptimizerSetting()) {}
 
 Pose3 Initializer::AddGaussianNoiseToPose(const Pose3& T,
                                           const Sampler& sampler) const {
@@ -202,9 +205,10 @@ Values Initializer::InitializeSolutionInverseKinematics(
       values = InitializePosesAndJoints(robot, wTl_i, wTl_t, link_name, t_i,
                                         timesteps, dt, sampler, &wTl_dt);
 
-  DynamicsGraph dgb(gravity);
   for (int t = 0; t <= std::round(timesteps[timesteps.size() - 1] / dt); t++) {
-    auto kfg = dgb.qFactors(robot, t, contact_points);
+    const Slice slice(t);
+    gtsam::NonlinearFactorGraph kfg =
+        kinematics_.qFactors(slice, robot, contact_points, gravity);
     kfg.addPrior(PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
                  gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
@@ -294,8 +298,6 @@ Values Initializer::MultiPhaseInverseKinematicsTrajectory(
       values = InitializePosesAndJoints(robot, wTl_i, wTl_t, link_name, t_i, ts,
                                         dt, sampler, &wTl_dt);
 
-  DynamicsGraph dgb(gravity);
-
   int t = 0;
   int num_phases = phase_steps.size();
 
@@ -304,7 +306,9 @@ Values Initializer::MultiPhaseInverseKinematicsTrajectory(
     int curr_phase_steps =
         phase == (num_phases - 1) ? phase_steps[phase] + 1 : phase_steps[phase];
     for (int phase_step = 0; phase_step < curr_phase_steps; phase_step++) {
-      auto kfg = dgb.qFactors(robot, t, (*phase_contact_points)[phase]);
+      const Slice slice(t);
+      gtsam::NonlinearFactorGraph kfg = kinematics_.qFactors(
+          slice, robot, (*phase_contact_points)[phase], gravity);
 
       kfg.addPrior(PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
                    gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
