@@ -6,23 +6,20 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  StaticsInterval.cpp
- * @brief Statics factors over interval contexts.
+ * @file  StaticsPhase.cpp
+ * @brief Statics factors over phase contexts.
  */
 
 #include <gtdynamics/statics/Statics.h>
-#include <gtdynamics/utils/Interval.h>
+#include <gtdynamics/utils/Phase.h>
 
 namespace gtdynamics {
 
 template <>
-gtsam::NonlinearFactorGraph Statics::graph<Interval>(
-    const Interval& interval, const Robot& robot) const {
-  gtsam::NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(this->graph(Slice(k), robot));
-  }
-  return graph;
+gtsam::NonlinearFactorGraph Statics::graph<Phase>(const Phase& phase,
+                                                  const Robot& robot) const {
+  const Interval& interval = static_cast<const Interval&>(phase);
+  return graph(interval, robot);
 }
 
 }  // namespace gtdynamics

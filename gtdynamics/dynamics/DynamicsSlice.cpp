@@ -16,14 +16,14 @@
 #include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
 #include <gtdynamics/factors/TwistAccelFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
-#include <gtdynamics/utils/Phase.h>
 #include <gtdynamics/utils/utils.h>
 
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
 
-NonlinearFactorGraph Dynamics::aFactors(
+template <>
+NonlinearFactorGraph Dynamics::aFactors<Slice>(
     const Slice& slice, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points) const {
   NonlinearFactorGraph graph;
@@ -49,17 +49,8 @@ NonlinearFactorGraph Dynamics::aFactors(
   return graph;
 }
 
-NonlinearFactorGraph Dynamics::aFactors(
-    const Interval& interval, const Robot& robot,
-    const std::optional<PointOnLinks>& contact_points) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(aFactors(Slice(k), robot, contact_points));
-  }
-  return graph;
-}
-
-NonlinearFactorGraph Dynamics::graph(
+template <>
+NonlinearFactorGraph Dynamics::graph<Slice>(
     const Slice& slice, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points,
     const std::optional<double>& mu) const {
@@ -107,24 +98,4 @@ NonlinearFactorGraph Dynamics::graph(
 
   return graph;
 }
-
-NonlinearFactorGraph Dynamics::graph(
-    const Interval& interval, const Robot& robot,
-    const std::optional<PointOnLinks>& contact_points,
-    const std::optional<double>& mu) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(this->graph(Slice(k), robot, contact_points, mu));
-  }
-  return graph;
-}
-
-NonlinearFactorGraph Dynamics::graph(
-    const Phase& phase, const Robot& robot,
-    const std::optional<PointOnLinks>& contact_points,
-    const std::optional<double>& mu) const {
-  const Interval& interval = static_cast<const Interval&>(phase);
-  return graph(interval, robot, contact_points, mu);
-}
-
 }  // namespace gtdynamics

@@ -25,8 +25,9 @@ using gtsam::Pose3;
 using std::map;
 using std::string;
 
-gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice,
-                                           const Robot& robot) const {
+template <>
+gtsam::NonlinearFactorGraph Statics::graph<Slice>(
+    const Slice& slice, const Robot& robot) const {
   gtsam::NonlinearFactorGraph graph;
   const auto k = slice.k;
 

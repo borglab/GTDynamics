@@ -25,8 +25,6 @@
 
 namespace gtdynamics {
 
-class Phase;
-
 /// calculate Coriolis term and jacobian w.r.t. joint coordinate twist
 gtsam::Vector6 Coriolis(const gtsam::Matrix6 &inertia,
                         const gtsam::Vector6 &twist,
@@ -55,33 +53,18 @@ class Dynamics {
       : p_(parameters) {}
 
   /// Return a-level nonlinear factor graph (acceleration related factors).
+  template <class CONTEXT>
   gtsam::NonlinearFactorGraph aFactors(
-      const Slice& slice, const Robot& robot,
-      const std::optional<PointOnLinks>& contact_points = {}) const;
-
-  /// Return a-level nonlinear factor graph for an interval.
-  gtsam::NonlinearFactorGraph aFactors(
-      const Interval& interval, const Robot& robot,
+      const CONTEXT& context, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {}) const;
 
   /**
-   * Return dynamic-only factors for a single slice.
+   * Return dynamic-only factors for a context.
    * This excludes factor groups provided via the Statics slice interface.
    */
+  template <class CONTEXT>
   gtsam::NonlinearFactorGraph graph(
-      const Slice& slice, const Robot& robot,
-      const std::optional<PointOnLinks>& contact_points = {},
-      const std::optional<double>& mu = {}) const;
-
-  /// Return dynamic-only factors for an interval.
-  gtsam::NonlinearFactorGraph graph(
-      const Interval& interval, const Robot& robot,
-      const std::optional<PointOnLinks>& contact_points = {},
-      const std::optional<double>& mu = {}) const;
-
-  /// Return dynamic-only factors for a phase.
-  gtsam::NonlinearFactorGraph graph(
-      const Phase& phase, const Robot& robot,
+      const CONTEXT& context, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {},
       const std::optional<double>& mu = {}) const;
 };
