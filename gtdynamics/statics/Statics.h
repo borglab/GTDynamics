@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/MechanicsParameters.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -56,24 +57,22 @@ gtsam::Vector6 ResultantWrench(const std::vector<gtsam::Vector6>& wrenches,
                                gtsam::OptionalMatrixVecType H = nullptr);
 
 /// Noise models etc specific to Statics class
-struct StaticsParameters : public KinematicsParameters {
-  std::optional<gtsam::Vector3> gravity, planar_axis;
-
+struct StaticsParameters : public MechanicsParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel fs_cost_model,  // statics cost model
-      f_cost_model,                             // wrench equivalence factor
-      t_cost_model,                             // torque factor
-      planar_cost_model;                        // planar factor
+  gtsam::SharedNoiseModel fs_cost_model;  // statics cost model
 
   /// Constructor with default arguments
   StaticsParameters(double sigma_dynamics = 1e-5,
                     const std::optional<gtsam::Vector3>& gravity = {},
                     const std::optional<gtsam::Vector3>& planar_axis = {})
-      : gravity(gravity),
-        planar_axis(planar_axis),
-        fs_cost_model(Isotropic::Sigma(6, 1e-4)),
-        f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)) {}
+      : MechanicsParameters(sigma_dynamics, gravity, planar_axis),
+        fs_cost_model(Isotropic::Sigma(6, 1e-4)) {}
+
+  /// Constructor from shared mechanics parameters.
+  explicit StaticsParameters(const MechanicsParameters& mechanics_parameters,
+                             const gtsam::SharedNoiseModel& fs_cost_model =
+                                 Isotropic::Sigma(6, 1e-4))
+      : MechanicsParameters(mechanics_parameters), fs_cost_model(fs_cost_model) {}
 };
 
 /// Algorithms for Statics, i.e. kinematics + wrenches at rest

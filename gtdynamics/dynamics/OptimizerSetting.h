@@ -13,43 +13,16 @@
 
 #pragma once
 
-#include <gtdynamics/kinematics/KinematicsParameters.h>
-#include <gtsam/linear/NoiseModel.h>
+#include <gtdynamics/dynamics/DynamicsParameters.h>
 
 namespace gtdynamics {
 
 /// OptimizerSetting is a class used to set parameters for motion planner
-class OptimizerSetting : public KinematicsParameters {
+class OptimizerSetting : public DynamicsParameters {
  public:
   /// optimization iteration types
   enum IterationType { GaussNewton, LM, Dogleg };
   enum VerbosityLevel { None, Error };
-
-  // factor cost models (bp_cost_model, p_cost_model, prior_q_cost_model,
-  // g_cost_model, cp_cost_model, bv_cost_model, v_cost_model, and cv_cost_model
-  // are inherited from KinematicsParameters)
-  gtsam::noiseModel::Base::shared_ptr ba_cost_model,  // acceleration of fixed link
-      a_cost_model,              // acceleration factor
-      linear_a_cost_model,       // linear acceleration factor
-      f_cost_model,              // wrench equivalence factor
-      linear_f_cost_model,       // linear wrench equivalence factor
-      fa_cost_model,             // wrench factor
-      t_cost_model,              // torque factor
-      linear_t_cost_model,       // linear torque factor
-      cfriction_cost_model,      // contact friction cone
-      ca_cost_model,             // contact acceleration
-      cm_cost_model,             // contact moment
-      planar_cost_model,         // planar factor
-      linear_planar_cost_model,  // linear planar factor
-      prior_qv_cost_model,       // joint velocity prior factor
-      prior_qa_cost_model,       // joint acceleration prior factor
-      prior_t_cost_model,        // joint torque prior factor
-      q_col_cost_model,          // joint collocation factor
-      v_col_cost_model,          // joint vel collocation factor
-      pose_col_cost_model,       // pose collocation factor
-      twist_col_cost_model,      // twist collocation factor
-      time_cost_model,           // time prior
-      jl_cost_model;             // joint limit factor
 
   /// optimization settings
   IterationType opt_type = GaussNewton;  // optimizer type
@@ -79,39 +52,8 @@ class OptimizerSetting : public KinematicsParameters {
   OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
                    double sigma_contact = 0.001, double sigma_joint = 0.001,
                    double sigma_collocation = 0.001, double sigma_time = 0.001)
-      : KinematicsParameters(sigma_dynamics, sigma_contact, sigma_joint,
-                             sigma_dynamics, sigma_contact, sigma_dynamics,
-                             sigma_dynamics, sigma_contact),
-        ba_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        a_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        linear_a_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(6, sigma_linear)),
-        f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        linear_f_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(6, sigma_linear)),
-        fa_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)),
-        linear_t_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_linear)),
-        cfriction_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_contact)),
-        ca_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)),
-        cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)),
-        planar_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics)),
-        linear_planar_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(3, sigma_linear)),
-        prior_qv_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
-        prior_qa_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
-        prior_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
-        q_col_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation)),
-        v_col_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation)),
-        time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_time)),
-        jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
+      : DynamicsParameters(sigma_dynamics, sigma_linear, sigma_contact,
+                           sigma_joint, sigma_collocation, sigma_time),
         rel_thresh(1e-2),
         max_iter(50) {}
 
