@@ -361,8 +361,8 @@ class Kinematics {
 };
 
 /********************** dynamics graph **********************/
-#include <gtdynamics/dynamics/MechanicsParameters.h>
-class MechanicsParameters : gtdynamics::KinematicsParameters {
+#include <gtdynamics/mechanics/MechanicsParameters.h>
+class MechanicsParameters {
   std::optional<gtsam::Vector3> gravity;
   std::optional<gtsam::Vector3> planar_axis;
   gtsam::SharedNoiseModel f_cost_model;
@@ -406,6 +406,15 @@ class DynamicsParameters : gtdynamics::MechanicsParameters {
 
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 class OptimizerSetting : gtdynamics::DynamicsParameters {
+  gtsam::SharedNoiseModel p_cost_model;
+  gtsam::SharedNoiseModel g_cost_model;
+  gtsam::SharedNoiseModel prior_q_cost_model;
+  gtsam::SharedNoiseModel bp_cost_model;
+  gtsam::SharedNoiseModel cp_cost_model;
+  gtsam::SharedNoiseModel bv_cost_model;
+  gtsam::SharedNoiseModel v_cost_model;
+  gtsam::SharedNoiseModel cv_cost_model;
+  gtsam::LevenbergMarquardtParams lm_parameters;
   OptimizerSetting();
   OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
                    double sigma_contact = 0.001, double sigma_joint = 0.001,

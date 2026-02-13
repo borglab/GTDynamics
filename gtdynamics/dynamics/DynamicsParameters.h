@@ -13,6 +13,7 @@
 #pragma once
 
 #include <gtdynamics/mechanics/MechanicsParameters.h>
+#include <gtsam/linear/NoiseModel.h>
 
 namespace gtdynamics {
 
@@ -47,16 +48,7 @@ struct DynamicsParameters : public MechanicsParameters {
    * `OptimizerSetting` behavior.
    */
   DynamicsParameters()
-      : MechanicsParameters(
-            KinematicsParameters(gtsam::noiseModel::Isotropic::Sigma(6, 0.001),
-                                 gtsam::noiseModel::Isotropic::Sigma(3, 0.001),
-                                 gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
-                                 gtsam::noiseModel::Isotropic::Sigma(6, 0.00001),
-                                 gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
-                                 gtsam::noiseModel::Isotropic::Sigma(6, 0.00001),
-                                 gtsam::noiseModel::Isotropic::Sigma(6, 0.001),
-                                 gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
-            gtsam::noiseModel::Isotropic::Sigma(6, 0.001),
+      : MechanicsParameters(gtsam::noiseModel::Isotropic::Sigma(6, 0.001),
             gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
             gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
         ba_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.00001)),
@@ -92,11 +84,7 @@ struct DynamicsParameters : public MechanicsParameters {
                      double sigma_contact = 0.001, double sigma_joint = 0.001,
                      double sigma_collocation = 0.001,
                      double sigma_time = 0.001)
-      : MechanicsParameters(
-            KinematicsParameters(sigma_dynamics, sigma_contact, sigma_joint,
-                                 sigma_dynamics, sigma_contact, sigma_dynamics,
-                                 sigma_dynamics, sigma_contact),
-            gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics),
+      : MechanicsParameters(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics),
             gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics),
             gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics)),
         ba_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),

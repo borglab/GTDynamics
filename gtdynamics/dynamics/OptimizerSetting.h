@@ -14,11 +14,12 @@
 #pragma once
 
 #include <gtdynamics/dynamics/DynamicsParameters.h>
+#include <gtdynamics/kinematics/KinematicsParameters.h>
 
 namespace gtdynamics {
 
 /// OptimizerSetting is a class used to set parameters for motion planner
-class OptimizerSetting : public DynamicsParameters {
+class OptimizerSetting : public KinematicsParameters, public DynamicsParameters {
  public:
   /// optimization iteration types
   enum IterationType { GaussNewton, LM, Dogleg };
@@ -52,7 +53,10 @@ class OptimizerSetting : public DynamicsParameters {
   OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
                    double sigma_contact = 0.001, double sigma_joint = 0.001,
                    double sigma_collocation = 0.001, double sigma_time = 0.001)
-      : DynamicsParameters(sigma_dynamics, sigma_linear, sigma_contact,
+      : KinematicsParameters(sigma_dynamics, sigma_contact, sigma_joint,
+                             sigma_dynamics, sigma_contact, sigma_dynamics,
+                             sigma_dynamics, sigma_contact),
+        DynamicsParameters(sigma_dynamics, sigma_linear, sigma_contact,
                            sigma_joint, sigma_collocation, sigma_time),
         rel_thresh(1e-2),
         max_iter(50) {}

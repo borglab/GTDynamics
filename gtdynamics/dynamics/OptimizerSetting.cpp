@@ -16,7 +16,15 @@
 namespace gtdynamics {
 
 OptimizerSetting::OptimizerSetting()
-    : DynamicsParameters(),
+    : KinematicsParameters(gtsam::noiseModel::Isotropic::Sigma(6, 0.001),
+                           gtsam::noiseModel::Isotropic::Sigma(3, 0.001),
+                           gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
+                           gtsam::noiseModel::Isotropic::Sigma(6, 0.00001),
+                           gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
+                           gtsam::noiseModel::Isotropic::Sigma(6, 0.00001),
+                           gtsam::noiseModel::Isotropic::Sigma(6, 0.001),
+                           gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
+      DynamicsParameters(),
       rel_thresh(1e-2),
       max_iter(50) {}
 

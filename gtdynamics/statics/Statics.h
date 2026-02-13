@@ -57,7 +57,7 @@ gtsam::Vector6 ResultantWrench(const std::vector<gtsam::Vector6>& wrenches,
                                gtsam::OptionalMatrixVecType H = nullptr);
 
 /// Noise models and settings specific to static wrench balancing.
-struct StaticsParameters : public MechanicsParameters {
+struct StaticsParameters : public KinematicsParameters, public MechanicsParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
   gtsam::SharedNoiseModel fs_cost_model;  // statics cost model
 
@@ -70,7 +70,8 @@ struct StaticsParameters : public MechanicsParameters {
   StaticsParameters(double sigma_dynamics = 1e-5,
                     const std::optional<gtsam::Vector3>& gravity = {},
                     const std::optional<gtsam::Vector3>& planar_axis = {})
-      : MechanicsParameters(sigma_dynamics, gravity, planar_axis),
+      : KinematicsParameters(),
+        MechanicsParameters(sigma_dynamics, gravity, planar_axis),
         fs_cost_model(Isotropic::Sigma(6, 1e-4)) {}
 
   /**
@@ -81,7 +82,9 @@ struct StaticsParameters : public MechanicsParameters {
   explicit StaticsParameters(const MechanicsParameters& mechanics_parameters,
                              const gtsam::SharedNoiseModel& fs_cost_model =
                                  Isotropic::Sigma(6, 1e-4))
-      : MechanicsParameters(mechanics_parameters), fs_cost_model(fs_cost_model) {}
+      : KinematicsParameters(),
+        MechanicsParameters(mechanics_parameters),
+        fs_cost_model(fs_cost_model) {}
 };
 
 /// Algorithms for Statics, i.e. kinematics + wrenches at rest
