@@ -25,7 +25,12 @@
 
 namespace gtdynamics {
 
-/// calculate Coriolis term and jacobian w.r.t. joint coordinate twist
+/**
+ * Calculate Coriolis wrench term and Jacobian with respect to twist.
+ * @param inertia Spatial inertia matrix.
+ * @param twist Spatial twist.
+ * @param H_twist Optional Jacobian with respect to twist.
+ */
 gtsam::Vector6 Coriolis(const gtsam::Matrix6 &inertia,
                         const gtsam::Vector6 &twist,
                         gtsam::OptionalJacobian<6, 6> H_twist = {});
@@ -42,25 +47,45 @@ inline Eigen::Matrix<double, M, 1> MatVecMult(
   return constant_matrix * vector;
 }
 
-/// Dynamics factors and solvers for moving configurations.
+/**
+ * Dynamics factor builder for moving configurations.
+ *
+ * For the templated API below, `CONTEXT` is typically `Slice`, `Interval`,
+ * or `Phase`.
+ */
 class Dynamics {
  protected:
   const DynamicsParameters p_;
 
  public:
-  /// Constructor.
+  /**
+   * Constructor.
+   * @param parameters Dynamics parameter bundle with mechanics + dynamic-only
+   * noise models and settings.
+   */
   Dynamics(const DynamicsParameters& parameters = DynamicsParameters())
       : p_(parameters) {}
 
-  /// Return a-level nonlinear factor graph (acceleration related factors).
+  /**
+   * Return acceleration-level factor graph.
+   * @param context Slice/Interval/Phase context.
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_points Optional contact points with zero-acceleration
+   * constraints.
+   */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph aFactors(
       const CONTEXT& context, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {}) const;
 
   /**
-   * Return dynamic-only factors for a context.
+   * Return dynamic-only wrench factors for a context.
    * This excludes factor groups provided via the Statics slice interface.
+   * @param context Slice/Interval/Phase context.
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_points Optional contact points that add friction/moment
+   * factors and contact wrench keys.
+   * @param mu Optional friction coefficient (defaults to 1.0).
    */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph graph(

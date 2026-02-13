@@ -19,25 +19,47 @@
 
 namespace gtdynamics {
 
-/// Common mechanics factors shared between statics and dynamics.
+/**
+ * Mechanics-level factor builder shared by statics and dynamics.
+ *
+ * This class only contains factor groups that are identical in static and
+ * dynamic graph assembly.
+ */
 class Mechanics {
  protected:
   const MechanicsParameters p_;
 
  public:
-  /// Constructor.
+  /**
+   * Constructor.
+   * @param parameters Mechanics parameter bundle with noise models and optional
+   * gravity/planar settings.
+   */
   explicit Mechanics(const MechanicsParameters& parameters = MechanicsParameters())
       : p_(parameters) {}
 
-  /// Graph with a WrenchEquivalenceFactor for each joint.
+  /**
+   * Build wrench-equivalence factors for all joints at one time slice.
+   * @param slice Time slice.
+   * @param robot Robot specification from URDF/SDF.
+   */
   gtsam::NonlinearFactorGraph wrenchEquivalenceFactors(
       const Slice& slice, const Robot& robot) const;
 
-  /// Graph with a TorqueFactor for each joint.
+  /**
+   * Build torque factors for all joints at one time slice.
+   * @param slice Time slice.
+   * @param robot Robot specification from URDF/SDF.
+   */
   gtsam::NonlinearFactorGraph torqueFactors(const Slice& slice,
                                             const Robot& robot) const;
 
-  /// Graph with a WrenchPlanarFactor for each joint.
+  /**
+   * Build planar wrench factors for all joints at one time slice.
+   * No factors are added when no planar axis is configured.
+   * @param slice Time slice.
+   * @param robot Robot specification from URDF/SDF.
+   */
   gtsam::NonlinearFactorGraph wrenchPlanarFactors(const Slice& slice,
                                                   const Robot& robot) const;
 };

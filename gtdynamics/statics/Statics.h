@@ -56,19 +56,28 @@ gtsam::Vector6 ResultantWrench(const std::vector<gtsam::Vector6>& wrenches,
                                std::optional<gtsam::Vector3> gravity,
                                gtsam::OptionalMatrixVecType H = nullptr);
 
-/// Noise models etc specific to Statics class
+/// Noise models and settings specific to static wrench balancing.
 struct StaticsParameters : public MechanicsParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
   gtsam::SharedNoiseModel fs_cost_model;  // statics cost model
 
-  /// Constructor with default arguments
+  /**
+   * Constructor with scalar defaults.
+   * @param sigma_dynamics Shared sigma for mechanics/static factors.
+   * @param gravity Optional gravity vector.
+   * @param planar_axis Optional planar axis for planar robots.
+   */
   StaticsParameters(double sigma_dynamics = 1e-5,
                     const std::optional<gtsam::Vector3>& gravity = {},
                     const std::optional<gtsam::Vector3>& planar_axis = {})
       : MechanicsParameters(sigma_dynamics, gravity, planar_axis),
         fs_cost_model(Isotropic::Sigma(6, 1e-4)) {}
 
-  /// Constructor from shared mechanics parameters.
+  /**
+   * Constructor from shared mechanics parameters.
+   * @param mechanics_parameters Pre-configured mechanics parameters.
+   * @param fs_cost_model Noise model for static wrench balance factors.
+   */
   explicit StaticsParameters(const MechanicsParameters& mechanics_parameters,
                              const gtsam::SharedNoiseModel& fs_cost_model =
                                  Isotropic::Sigma(6, 1e-4))

@@ -113,7 +113,13 @@ struct PoseGoal {
 ///< Map of time step k to PoseGoal for that time step
 using PoseGoals = std::map<size_t, PoseGoal>;
 
-/// All things kinematics, zero velocities/twists, and no forces.
+/**
+ * Kinematic graph builder/solver with zero accelerations and no wrench terms.
+ *
+ * For the templated API below, `CONTEXT` is typically `Slice`, `Interval`,
+ * or `Phase`, and `robot` is always the same URDF/SDF-derived robot model.
+ * Method docs only describe context-specific arguments to avoid repetition.
+ */
 class Kinematics : public Optimizer {
  protected:
   const KinematicsParameters p_;  // overrides Base::p_
@@ -151,8 +157,6 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create graph with kinematics cost factors.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @returns factor graph.
    */
   template <class CONTEXT>
@@ -161,8 +165,6 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create kinematics constraints.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @returns Equality constraints.
    */
   template <class CONTEXT>
@@ -171,8 +173,7 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create point goal objectives.
-   * @param context Slice or Interval instance.
-   * @param contact_goals goals for contact points
+   * @param contact_goals Goals for contact points.
    * @returns graph with point goal factors.
    */
   template <class CONTEXT>
@@ -181,9 +182,8 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create contact-height objectives.
-   * @param context Slice or Interval instance.
-   * @param contact_points contact points on links.
-   * @param gravity gravity vector used to define up direction.
+   * @param contact_points Contact points on links.
+   * @param gravity Gravity vector used to define up direction.
    * @returns graph with contact-height factors.
    */
   template <class CONTEXT>
@@ -193,8 +193,6 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create fixed-link pose prior objectives.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @returns graph with fixed-link pose priors.
    */
   template <class CONTEXT>
@@ -203,8 +201,6 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create fixed-link twist prior objectives.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @returns graph with fixed-link twist priors.
    */
   template <class CONTEXT>
@@ -213,8 +209,6 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create twist kinematics objectives.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @returns graph with twist factors.
    */
   template <class CONTEXT>
@@ -223,8 +217,7 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create contact twist objectives.
-   * @param context Slice or Interval instance.
-   * @param contact_points contact points on links.
+   * @param contact_points Contact points on links.
    * @returns graph with contact-twist factors.
    */
   template <class CONTEXT>
@@ -233,8 +226,7 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create point goal constraints.
-   * @param context Slice or Interval instance.
-   * @param contact_goals goals for contact points
+   * @param contact_goals Goals for contact points.
    * @returns Equality constraints with point goal constraints.
    */
   template <class CONTEXT>
@@ -243,8 +235,6 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create hard constraints on joint angles.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @param joint_targets Values containing desired joint angles.
    * Only keys present in joint_targets are constrained.
    * @returns Equality constraints on selected joint angles.
@@ -256,9 +246,7 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create a pose prior for a given link for each given pose.
-   * @param context Slice or Interval instance.
-   * @param pose_goals an object of PoseGoals: map of time step k to desired
-   * pose at that time step, which will be used as mean of the prior
+   * @param pose_goals Map of time step to desired pose, used as prior mean.
    * @returns graph with pose goal factors.
    */
   template <class CONTEXT>
@@ -267,12 +255,9 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Factors that minimize joint angles.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @param joint_priors Values where the mean of the priors is specified. Uses
-   * gtsam::Values to support different prior means for different time steps in
-   * intervals/trajectories. The default is an empty Values, meaning that the
-   * means will default to 0.
+   * gtsam::Values to support different prior means across time steps. The
+   * default is empty, which makes means default to zero.
    * @returns graph with prior factors on joint angles.
    */
   template <class CONTEXT>
@@ -282,8 +267,6 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Factors that enforce joint angle limits.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
    * @return graph with prior factors on joint angles.
    */
   template <class CONTEXT>
@@ -300,14 +283,11 @@ class Kinematics : public Optimizer {
    * initialized with their fk values.
    *
    *
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
-   * @param gaussian_noise Gaussian noise standard deviation for initialization
-   * (default 0.0).
+   * @param gaussian_noise Gaussian noise standard deviation for initialization.
    * @param initial_joints Initial values for joints.
    * @param use_fk If true, use forward kinematics to initialize poses based on
-   * joint angles. If false, initialize poses near rest configuration with
-   * Gaussian noise (default false).
+   * joint angles. If false, initialize near rest configuration with Gaussian
+   * noise.
    * @returns values with identity poses and zero joint angles.
    */
   template <class CONTEXT>
@@ -318,11 +298,9 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Inverse kinematics given a set of contact goals.
-   * @fn This fuction does inverse kinematics seperately on each slice.
-   * @param context Slice or Interval instance.
-   * @param robot Robot specification from URDF/SDF.
-   * @param contact_goals goals for contact points
-   * @param contact_goals_as_constraints treat contact goal as hard constraints
+   * @fn This function solves each context element independently.
+   * @param contact_goals Goals for contact points.
+   * @param contact_goals_as_constraints Treat contact goals as hard constraints.
    * @returns values with poses and joint angles.
    */
   template <class CONTEXT>
@@ -332,10 +310,8 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Inverse kinematics given a set of desired poses
-   * @fn This function does inverse kinematics separately on each slice
-   * @param context Slice or Interval instance
-   * @param robot Robot specification from URDF/SDF
-   * @param pose_goals goals for EE poses
+   * @fn This function solves each context element independently.
+   * @param pose_goals Goals for end-effector poses.
    * @param joint_priors Optional argument to put priors centered on given
    * values. Uses gtsam::Values to support different prior means for different
    * time steps. If empty, the priors will be centered on the origin.
@@ -348,11 +324,9 @@ class Kinematics : public Optimizer {
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
-   * @param context Interval instance
-   * @param robot Robot specification from URDF/SDF.
-   * @param contact_goals1 goals for contact points for context.k_start
-   * @param contact_goals2 goals for contact points for context.k_end
-   * All results are return in values.
+   * @param contact_goals1 Goals for the first context endpoint.
+   * @param contact_goals2 Goals for the second context endpoint.
+   * All results are returned in values.
    */
   template <class CONTEXT>
   gtsam::Values interpolate(const CONTEXT& context, const Robot& robot,

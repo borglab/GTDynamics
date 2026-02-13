@@ -16,7 +16,11 @@
 
 namespace gtdynamics {
 
-/// Noise models and settings shared by dynamics solvers/builders.
+/**
+ * Noise models and settings used by dynamics solvers/builders.
+ *
+ * Includes mechanics-level parameters plus dynamic-only factor configuration.
+ */
 struct DynamicsParameters : public MechanicsParameters {
   gtsam::noiseModel::Base::shared_ptr ba_cost_model,  // acceleration of fixed link
       a_cost_model,              // acceleration factor
@@ -38,7 +42,10 @@ struct DynamicsParameters : public MechanicsParameters {
       time_cost_model,           // time prior
       jl_cost_model;             // joint limit factor
 
-  /// Constructor with defaults chosen to preserve prior OptimizerSetting behavior.
+  /**
+   * Constructor with defaults chosen to preserve prior
+   * `OptimizerSetting` behavior.
+   */
   DynamicsParameters()
       : MechanicsParameters(
             KinematicsParameters(gtsam::noiseModel::Isotropic::Sigma(6, 0.001),
@@ -73,14 +80,13 @@ struct DynamicsParameters : public MechanicsParameters {
         jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)) {}
 
   /**
-   * Constructor which accepts various noise sigma values.
-   *
-   * @param sigma_dynamics
-   * @param sigma_linear
-   * @param sigma_contact
-   * @param sigma_joint
-   * @param sigma_collocation
-   * @param sigma_time
+   * Constructor from grouped sigma values.
+   * @param sigma_dynamics Sigma for nonlinear dynamics/mechanics factors.
+   * @param sigma_linear Sigma for linearized dynamics factors.
+   * @param sigma_contact Sigma for contact-related factors.
+   * @param sigma_joint Sigma for joint priors/limits.
+   * @param sigma_collocation Sigma for collocation factors.
+   * @param sigma_time Sigma for time-duration priors.
    */
   DynamicsParameters(double sigma_dynamics, double sigma_linear = 0.001,
                      double sigma_contact = 0.001, double sigma_joint = 0.001,

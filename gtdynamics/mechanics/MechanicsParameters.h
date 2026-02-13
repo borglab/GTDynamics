@@ -19,7 +19,12 @@
 
 namespace gtdynamics {
 
-/// Shared parameters for mechanics-level factors common to statics and dynamics.
+/**
+ * Shared parameters for mechanics-level factors common to statics and dynamics.
+ *
+ * These parameters configure only the shared wrench-equivalence, torque, and
+ * planar wrench factor groups.
+ */
 struct MechanicsParameters : public KinematicsParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
 
@@ -28,7 +33,15 @@ struct MechanicsParameters : public KinematicsParameters {
       t_cost_model,                          // torque factor
       planar_cost_model;                     // planar factor
 
-  /// Constructor from explicit noise models.
+  /**
+   * Constructor from explicit noise models.
+   * @param kinematics_parameters Kinematics parameter base.
+   * @param f_cost_model Noise model for wrench-equivalence factors.
+   * @param t_cost_model Noise model for torque factors.
+   * @param planar_cost_model Noise model for planar wrench factors.
+   * @param gravity Optional gravity vector used by mechanics-related factors.
+   * @param planar_axis Optional axis used to enforce planar wrench terms.
+   */
   MechanicsParameters(
       const KinematicsParameters& kinematics_parameters,
       const gtsam::SharedNoiseModel& f_cost_model,
@@ -43,7 +56,12 @@ struct MechanicsParameters : public KinematicsParameters {
         t_cost_model(t_cost_model),
         planar_cost_model(planar_cost_model) {}
 
-  /// Constructor from scalar sigmas.
+  /**
+   * Constructor from scalar sigmas.
+   * @param sigma_dynamics Shared sigma for mechanics factors.
+   * @param gravity Optional gravity vector used by mechanics-related factors.
+   * @param planar_axis Optional axis used to enforce planar wrench terms.
+   */
   MechanicsParameters(double sigma_dynamics = 1e-5,
                       const std::optional<gtsam::Vector3>& gravity = {},
                       const std::optional<gtsam::Vector3>& planar_axis = {})
