@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gtdynamics/universal_robot/Robot.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 

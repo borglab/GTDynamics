@@ -13,8 +13,9 @@
 
 #pragma once
 
-#include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -29,11 +30,12 @@
 namespace gtdynamics {
 
 class Initializer {
+ private:
+  const Kinematics kinematics_;
 
  public:
-    
-    // Default Constructor
-    Initializer() {}
+  // Default Constructor
+  Initializer();
 
     /**
      * Add zero-mean gaussian noise to a Pose3.

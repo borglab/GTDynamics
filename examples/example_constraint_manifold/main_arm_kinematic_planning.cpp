@@ -14,10 +14,11 @@
 
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
-#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
 
@@ -148,24 +149,22 @@ KeyVector FindBasisKeys(const KeyVector& keys) {
   return basis_keys;
 }
 
-/** Factor graph of all kinematic constraints. Include kinematic constraints at
- * each time step, and the priors for the first step. */
-NonlinearFactorGraph get_constraints_graph() {
+gtsam::NonlinearEqualityConstraints get_constraints() {
   auto& robot = KukaRobot();
-  NonlinearFactorGraph constraints_graph;
-  // kinematics constraints at each step
-  auto graph_builder = DynamicsGraph();
-  for (size_t k = 0; k <= kNumSteps; k++) {
-    constraints_graph.add(graph_builder.qFactors(robot, k));
-  }
+  Kinematics kinematics;
+  Interval interval(0, kNumSteps);
+  auto constraints = kinematics.constraints(interval, robot);
 
-  // // prior constraints at first step
-  size_t k0 = 0;
+  // Add hard (0.0) constraints on initial joint angles.
+  gtsam::Values initialJointTargets;
+  const size_t k0 = 0;
   for (const auto& joint : robot.joints()) {
-    constraints_graph.addPrior(JointAngleKey(joint->id(), k0), 0.0,
-                               graph_builder.opt().prior_q_cost_model);
+    initialJointTargets.insert(JointAngleKey(joint->id(), k0), 0.0);
   }
-  return constraints_graph;
+  constraints.push_back(
+      kinematics.jointAngleConstraints(Slice(k0), robot, initialJointTargets));
+
+  return constraints;
 }
 
 /** Cost function for planning, includes cost of rotation joints, joint limit
@@ -173,6 +172,7 @@ NonlinearFactorGraph get_constraints_graph() {
 NonlinearFactorGraph get_costs() {
   auto& robot = KukaRobot();
   NonlinearFactorGraph costs;
+
   // rotation costs
   NonlinearFactorGraph rotation_costs;
   for (size_t k = 0; k < kNumSteps; k++) {
@@ -367,11 +367,9 @@ void ExportJointAnglesCsv(const Values& values, const std::string& file_path) {
 void kinematic_planning(const ArmBenchmarkArgs& args) {
   auto& robot = KukaRobot();
   robot.fixLink(kBaseName);
-  auto constraints_graph = get_constraints_graph();
+  const auto constraints = get_constraints();
   auto costs = get_costs();
   auto init_values = get_init_values();
-  auto constraints =
-      gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph);
 
   auto runOptions = args.benchmark_cli.runOptions;
   runOptions.constraintUnitScale = 1.0;

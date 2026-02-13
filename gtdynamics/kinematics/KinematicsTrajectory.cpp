@@ -29,7 +29,7 @@ NonlinearFactorGraph Kinematics::graph<Trajectory>(const Trajectory& trajectory,
                                                    const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (auto&& phase : trajectory.phases()) {
-    graph.add(this->graph<Interval>(phase, robot));
+    graph.add(this->graph<Phase>(phase, robot));
   }
   return graph;
 }
@@ -64,6 +64,21 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Trajectory>
   for (auto&& phase : trajectory.phases()) {
     auto phase_constraints =
         pointGoalConstraints<Interval>(phase, contact_goals);
+    for (const auto& constraint : phase_constraints) {
+      constraints.push_back(constraint);
+    }
+  }
+  return constraints;
+}
+
+template <>
+gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Trajectory>(
+    const Trajectory& trajectory, const Robot& robot,
+    const Values& joint_targets) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+  for (auto&& phase : trajectory.phases()) {
+    auto phase_constraints =
+        jointAngleConstraints<Interval>(phase, robot, joint_targets);
     for (const auto& constraint : phase_constraints) {
       constraints.push_back(constraint);
     }

@@ -11,9 +11,12 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/ContactHeightFactor.h>
+#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
 #include <gtdynamics/factors/JointLimitFactor.h>
 #include <gtdynamics/factors/PointGoalFactor.h>
 #include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/factors/TwistFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/linear/Sampler.h>
@@ -65,6 +68,74 @@ NonlinearFactorGraph Kinematics::graph<Slice>(const Slice& slice,
                          JointAngleKey(j, slice.k), p_.p_cost_model, joint));
   }
 
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::fixedLinkObjectives<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+
+  for (auto&& link : robot.links()) {
+    if (link->isFixed()) {
+      graph.addPrior(PoseKey(link->id(), slice.k), link->getFixedPose(),
+                     p_.bp_cost_model);
+    }
+  }
+
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::fixedLinkTwistObjectives<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+
+  for (auto&& link : robot.links()) {
+    if (link->isFixed()) {
+      graph.addPrior<gtsam::Vector6>(TwistKey(link->id(), slice.k),
+                                     gtsam::Vector6::Zero(), p_.bv_cost_model);
+    }
+  }
+
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::twistObjectives<Slice>(
+    const Slice& slice, const Robot& robot) const {
+  NonlinearFactorGraph graph;
+
+  for (auto&& joint : robot.joints()) {
+    graph.add(TwistFactor(p_.v_cost_model, joint, slice.k));
+  }
+
+  return graph;
+}
+
+template <>
+NonlinearFactorGraph Kinematics::contactTwistObjectives<Slice>(
+    const Slice& slice, const PointOnLinks& contact_points) const {
+  NonlinearFactorGraph graph;
+
+  for (const PointOnLink& cp : contact_points) {
+    graph.emplace_shared<ContactKinematicsTwistFactor>(
+        TwistKey(cp.link->id(), slice.k), p_.cv_cost_model,
+        gtsam::Pose3(gtsam::Rot3(), -cp.point));
+  }
+
+  return graph;
+}
+
+NonlinearFactorGraph Kinematics::vFactors(
+    const Slice& slice, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points) const {
+  NonlinearFactorGraph graph;
+  graph.add(fixedLinkTwistObjectives(slice, robot));
+  graph.add(twistObjectives(slice, robot));
+  if (contact_points) {
+    graph.add(contactTwistObjectives(slice, *contact_points));
+  }
   return graph;
 }
 
@@ -122,6 +193,33 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
 }
 
 template <>
+NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
+    const Slice& slice, const PointOnLinks& contact_points,
+    const gtsam::Vector3& gravity) const {
+  NonlinearFactorGraph graph;
+
+  for (const PointOnLink& cp : contact_points) {
+    graph.emplace_shared<ContactHeightFactor>(
+        PoseKey(cp.link->id(), slice.k), p_.cp_cost_model, cp.point, gravity);
+  }
+
+  return graph;
+}
+
+NonlinearFactorGraph Kinematics::qFactors(
+    const Slice& slice, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points,
+    const gtsam::Vector3& gravity) const {
+  NonlinearFactorGraph graph;
+  graph.add(fixedLinkObjectives(slice, robot));
+  graph.add(this->graph(slice, robot));
+  if (contact_points) {
+    graph.add(contactHeightObjectives(slice, *contact_points, gravity));
+  }
+  return graph;
+}
+
+template <>
 gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
     const Slice& slice, const ContactGoals& contact_goals) const {
   gtsam::NonlinearEqualityConstraints constraints;
@@ -136,6 +234,26 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
         .emplace_shared<gtsam::ExpressionEqualityConstraint<gtsam::Vector3>>(
             constraint_expr, gtsam::Vector3::Zero(), tolerance);
   }
+  return constraints;
+}
+
+template <>
+gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Slice>(
+    const Slice& slice, const Robot& robot,
+    const gtsam::Values& joint_targets) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+
+  const gtsam::Vector1 tolerance(p_.prior_q_cost_model->sigmas()(0));
+  for (auto&& joint : robot.joints()) {
+    const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
+    if (!joint_targets.exists(key)) {
+      continue;
+    }
+    const gtsam::Double_ joint_angle_expr(key);
+    constraints.emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(
+        joint_angle_expr, joint_targets.at<double>(key), tolerance);
+  }
+
   return constraints;
 }
 

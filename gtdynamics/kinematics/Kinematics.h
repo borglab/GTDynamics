@@ -13,10 +13,11 @@
 
 #pragma once
 
-#include <gtdynamics/optimizer/Optimizer.h>
+#include <gtdynamics/kinematics/KinematicsParameters.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -112,22 +113,6 @@ struct PoseGoal {
 ///< Map of time step k to PoseGoal for that time step
 using PoseGoals = std::map<size_t, PoseGoal>;
 
-/// Noise models etc specific to Kinematics class
-struct KinematicsParameters : public OptimizationParameters {
-  using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel p_cost_model,  // pose factor
-      g_cost_model,                            // goal point
-      prior_q_cost_model;                      // joint angle prior factor
-
-  // TODO(yetong): replace noise model with tolerance.
-  KinematicsParameters(double p_cost_model_sigma = 1e-4,
-                       double g_cost_model_sigma = 1e-2,
-                       double prior_q_cost_model_sigma = 0.5)
-      : p_cost_model(Isotropic::Sigma(6, p_cost_model_sigma)),
-        g_cost_model(Isotropic::Sigma(3, g_cost_model_sigma)),
-        prior_q_cost_model(Isotropic::Sigma(1, prior_q_cost_model_sigma)) {}
-};
-
 /// All things kinematics, zero velocities/twists, and no forces.
 class Kinematics : public Optimizer {
  protected:
@@ -139,6 +124,30 @@ class Kinematics : public Optimizer {
    */
   Kinematics(const KinematicsParameters& parameters = KinematicsParameters())
       : Optimizer(parameters), p_(parameters) {}
+
+  /**
+   * @fn Create q-level kinematics factors.
+   * @param slice Slice instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_points optional contact points on links.
+   * @param gravity gravity vector used to define up direction.
+   * @returns graph with q-level factors.
+   */
+  gtsam::NonlinearFactorGraph qFactors(
+      const Slice& slice, const Robot& robot,
+      const std::optional<PointOnLinks>& contact_points = {},
+      const gtsam::Vector3& gravity = gtsam::Vector3(0, 0, -9.8)) const;
+
+  /**
+   * @fn Create v-level kinematics factors.
+   * @param slice Slice instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_points optional contact points on links.
+   * @returns graph with v-level factors.
+   */
+  gtsam::NonlinearFactorGraph vFactors(
+      const Slice& slice, const Robot& robot,
+      const std::optional<PointOnLinks>& contact_points = {}) const;
 
   /**
    * @fn Create graph with kinematics cost factors.
@@ -157,8 +166,8 @@ class Kinematics : public Optimizer {
    * @returns Equality constraints.
    */
   template <class CONTEXT>
-  gtsam::NonlinearEqualityConstraints constraints(
-      const CONTEXT& context, const Robot& robot) const;
+  gtsam::NonlinearEqualityConstraints constraints(const CONTEXT& context,
+                                                  const Robot& robot) const;
 
   /**
    * @fn Create point goal objectives.
@@ -171,6 +180,58 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
+   * @fn Create contact-height objectives.
+   * @param context Slice or Interval instance.
+   * @param contact_points contact points on links.
+   * @param gravity gravity vector used to define up direction.
+   * @returns graph with contact-height factors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const CONTEXT& context, const PointOnLinks& contact_points,
+      const gtsam::Vector3& gravity) const;
+
+  /**
+   * @fn Create fixed-link pose prior objectives.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns graph with fixed-link pose priors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph fixedLinkObjectives(
+      const CONTEXT& context, const Robot& robot) const;
+
+  /**
+   * @fn Create fixed-link twist prior objectives.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns graph with fixed-link twist priors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph fixedLinkTwistObjectives(
+      const CONTEXT& context, const Robot& robot) const;
+
+  /**
+   * @fn Create twist kinematics objectives.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @returns graph with twist factors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph twistObjectives(const CONTEXT& context,
+                                              const Robot& robot) const;
+
+  /**
+   * @fn Create contact twist objectives.
+   * @param context Slice or Interval instance.
+   * @param contact_points contact points on links.
+   * @returns graph with contact-twist factors.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph contactTwistObjectives(
+      const CONTEXT& context, const PointOnLinks& contact_points) const;
+
+  /**
    * @fn Create point goal constraints.
    * @param context Slice or Interval instance.
    * @param contact_goals goals for contact points
@@ -181,10 +242,23 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
+   * @fn Create hard constraints on joint angles.
+   * @param context Slice or Interval instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @param joint_targets Values containing desired joint angles.
+   * Only keys present in joint_targets are constrained.
+   * @returns Equality constraints on selected joint angles.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearEqualityConstraints jointAngleConstraints(
+      const CONTEXT& context, const Robot& robot,
+      const gtsam::Values& joint_targets) const;
+
+  /**
    * @fn Create a pose prior for a given link for each given pose.
    * @param context Slice or Interval instance.
-   * @param pose_goals an object of PoseGoals: map of time step k to desired pose
-   * at that time step, which will be used as mean of the prior
+   * @param pose_goals an object of PoseGoals: map of time step k to desired
+   * pose at that time step, which will be used as mean of the prior
    * @returns graph with pose goal factors.
    */
   template <class CONTEXT>

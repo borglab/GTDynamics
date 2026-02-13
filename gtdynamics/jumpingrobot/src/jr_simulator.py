@@ -233,7 +233,7 @@ class JRSimulator:
         mergeValues(init_values, results_dynamics, overwrite=True)
         mergeValues(values, init_values, overwrite=True)
 
-    def step_robot_dynamics(self, k, values):
+    def step_robot_dynamics(self, k, values, use_layered_solver=True):
         """ Perform robot dynamics by first performing forward kinematics,
             then solving the dynamics factor graph of the current step.
             Add results to values
@@ -242,11 +242,16 @@ class JRSimulator:
             k (int): current step index
             values (gtsam.Values): values contains q, v, m_a, m_s of
                                    current step and To, Ti, V_s
+            use_layered_solver (bool): use layered solve for improved
+                robustness. Set to False to use the legacy single-graph solve.
 
         Raises:
             Exception: forward kinematics disagreement
             Exception: optimization does not converge
         """
+        if use_layered_solver:
+            self.step_robot_dynamics_by_layer(k, values)
+            return
 
         link_names = [link.name() for link in self.jr.robot.links()]
         joint_names = [joint.name() for joint in self.jr.robot.joints()]

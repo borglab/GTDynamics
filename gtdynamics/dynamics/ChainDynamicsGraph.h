@@ -16,7 +16,6 @@
 #include <gtdynamics/dynamics/Chain.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/ContactHeightFactor.h>
 #include <gtdynamics/factors/WrenchFactor.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 
