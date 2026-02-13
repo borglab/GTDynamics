@@ -195,23 +195,15 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int k,
 gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points) const {
-  const Kinematics kinematics(opt_);
   const Slice slice(k);
-  return kinematics.qFactors(slice, robot, contact_points, gravity_);
+  return kinematics_.qFactors(slice, robot, contact_points, gravity_);
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points) const {
-  NonlinearFactorGraph graph;
-  const Kinematics kinematics(opt_);
   const Slice slice(k);
-  graph.add(kinematics.fixedLinkTwistObjectives(slice, robot));
-  graph.add(kinematics.twistObjectives(slice, robot));
-  if (contact_points)
-    graph.add(kinematics.contactTwistObjectives(slice, *contact_points));
-
-  return graph;
+  return kinematics_.vFactors(slice, robot, contact_points);
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(

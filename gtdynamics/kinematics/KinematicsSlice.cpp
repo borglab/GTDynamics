@@ -127,6 +127,18 @@ NonlinearFactorGraph Kinematics::contactTwistObjectives<Slice>(
   return graph;
 }
 
+NonlinearFactorGraph Kinematics::vFactors(
+    const Slice& slice, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points) const {
+  NonlinearFactorGraph graph;
+  graph.add(fixedLinkTwistObjectives(slice, robot));
+  graph.add(twistObjectives(slice, robot));
+  if (contact_points) {
+    graph.add(contactTwistObjectives(slice, *contact_points));
+  }
+  return graph;
+}
+
 template <>
 gtsam::NonlinearEqualityConstraints Kinematics::constraints<Slice>(
     const Slice& slice, const Robot& robot) const {

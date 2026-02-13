@@ -139,6 +139,17 @@ class Kinematics : public Optimizer {
       const gtsam::Vector3& gravity = gtsam::Vector3(0, 0, -9.8)) const;
 
   /**
+   * @fn Create v-level kinematics factors.
+   * @param slice Slice instance.
+   * @param robot Robot specification from URDF/SDF.
+   * @param contact_points optional contact points on links.
+   * @returns graph with v-level factors.
+   */
+  gtsam::NonlinearFactorGraph vFactors(
+      const Slice& slice, const Robot& robot,
+      const std::optional<PointOnLinks>& contact_points = {}) const;
+
+  /**
    * @fn Create graph with kinematics cost factors.
    * @param context Slice or Interval instance.
    * @param robot Robot specification from URDF/SDF.
