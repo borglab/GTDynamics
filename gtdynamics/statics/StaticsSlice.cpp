@@ -11,9 +11,6 @@
  * @author: Frank Dellaert
  */
 
-#include <gtdynamics/factors/TorqueFactor.h>             // TODO: move
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>  // TODO: move
-#include <gtdynamics/factors/WrenchPlanarFactor.h>       // TODO: move
 #include <gtdynamics/statics/StaticWrenchFactor.h>
 #include <gtdynamics/statics/Statics.h>
 #include <gtsam/linear/Sampler.h>
@@ -27,35 +24,6 @@ using gtsam::Point3;
 using gtsam::Pose3;
 using std::map;
 using std::string;
-
-gtsam::NonlinearFactorGraph Statics::wrenchEquivalenceFactors(
-    const Slice& slice, const Robot& robot) const {
-  gtsam::NonlinearFactorGraph graph;
-  for (auto&& joint : robot.joints()) {
-    graph.add(WrenchEquivalenceFactor(p_.f_cost_model, joint, slice.k));
-  }
-  return graph;
-}
-
-gtsam::NonlinearFactorGraph Statics::torqueFactors(const Slice& slice,
-                                                   const Robot& robot) const {
-  gtsam::NonlinearFactorGraph graph;
-  for (auto&& joint : robot.joints()) {
-    graph.add(TorqueFactor(p_.t_cost_model, joint, slice.k));
-  }
-  return graph;
-}
-
-gtsam::NonlinearFactorGraph Statics::wrenchPlanarFactors(
-    const Slice& slice, const Robot& robot) const {
-  gtsam::NonlinearFactorGraph graph;
-  if (p_.planar_axis)
-    for (auto&& joint : robot.joints()) {
-      graph.add(WrenchPlanarFactor(p_.planar_cost_model, *p_.planar_axis, joint,
-                                   slice.k));
-    }
-  return graph;
-}
 
 gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice,
                                            const Robot& robot) const {

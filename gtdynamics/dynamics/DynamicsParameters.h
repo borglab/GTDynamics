@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <gtdynamics/dynamics/MechanicsParameters.h>
+#include <gtdynamics/mechanics/MechanicsParameters.h>
 
 namespace gtdynamics {
 

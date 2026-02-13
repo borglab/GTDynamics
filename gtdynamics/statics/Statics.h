@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gtdynamics/dynamics/MechanicsParameters.h>
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -79,7 +79,7 @@ struct StaticsParameters : public MechanicsParameters {
 };
 
 /// Algorithms for Statics, i.e. kinematics + wrenches at rest
-class Statics : public Kinematics {
+class Statics : public Kinematics, public Mechanics {
  protected:
   const StaticsParameters p_;  // overrides Base::p_
 
@@ -88,19 +88,11 @@ class Statics : public Kinematics {
    * @fn Constructor.
    */
   Statics(const StaticsParameters& parameters = StaticsParameters())
-      : Kinematics(parameters), p_(parameters) {}
+      : Kinematics(parameters), Mechanics(parameters), p_(parameters) {}
 
-  /// Graph with a WrenchEquivalenceFactor for each joint
-  gtsam::NonlinearFactorGraph wrenchEquivalenceFactors(
-      const Slice& slice, const Robot& robot) const;
-
-  /// Graph with a TorqueFactor for each joint
-  gtsam::NonlinearFactorGraph torqueFactors(const Slice& slice,
-                                            const Robot& robot) const;
-
-  /// Graph with a WrenchPlanarFactor for each joint
-  gtsam::NonlinearFactorGraph wrenchPlanarFactors(const Slice& slice,
-                                                  const Robot& robot) const;
+  using Mechanics::torqueFactors;
+  using Mechanics::wrenchEquivalenceFactors;
+  using Mechanics::wrenchPlanarFactors;
 
   /**
    * Create graph with only static balance factors.
