@@ -17,7 +17,8 @@
 
 namespace gtdynamics {
 
-gtsam::NonlinearFactorGraph Mechanics::wrenchEquivalenceFactors(
+template <>
+gtsam::NonlinearFactorGraph Mechanics::wrenchEquivalenceFactors<Slice>(
     const Slice& slice, const Robot& robot) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
@@ -26,8 +27,9 @@ gtsam::NonlinearFactorGraph Mechanics::wrenchEquivalenceFactors(
   return graph;
 }
 
-gtsam::NonlinearFactorGraph Mechanics::torqueFactors(const Slice& slice,
-                                                     const Robot& robot) const {
+template <>
+gtsam::NonlinearFactorGraph Mechanics::torqueFactors<Slice>(
+    const Slice& slice, const Robot& robot) const {
   gtsam::NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
     graph.add(TorqueFactor(p_.t_cost_model, joint, slice.k));
@@ -35,7 +37,8 @@ gtsam::NonlinearFactorGraph Mechanics::torqueFactors(const Slice& slice,
   return graph;
 }
 
-gtsam::NonlinearFactorGraph Mechanics::wrenchPlanarFactors(
+template <>
+gtsam::NonlinearFactorGraph Mechanics::wrenchPlanarFactors<Slice>(
     const Slice& slice, const Robot& robot) const {
   gtsam::NonlinearFactorGraph graph;
   if (p_.planar_axis) {

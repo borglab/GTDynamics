@@ -87,7 +87,12 @@ struct StaticsParameters : public KinematicsParameters, public MechanicsParamete
         fs_cost_model(fs_cost_model) {}
 };
 
-/// Algorithms for Statics, i.e. kinematics + wrenches at rest
+/**
+ * Algorithms for statics, i.e. kinematics + wrenches at rest.
+ *
+ * For the templated API below, `CONTEXT` is typically `Slice`, `Interval`,
+ * or `Phase`, and `robot` is always the same model.
+ */
 class Statics : public Kinematics, public Mechanics {
  protected:
   const StaticsParameters p_;  // overrides Base::p_
@@ -106,8 +111,6 @@ class Statics : public Kinematics, public Mechanics {
   /**
    * Create graph with only static balance factors.
    * TODO(frank): if we inherit, should we have *everything below us?
-   * @param context Slice, Interval, or Phase context.
-   * @param robot Robot specification from URDF/SDF.
    */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph graph(const CONTEXT& context,
@@ -116,28 +119,27 @@ class Statics : public Kinematics, public Mechanics {
   /**
    * Create keys for unknowns and initial values.
    * TODO(frank): if we inherit, should we have *everything below us?
-   * @param slice Slice instance.
-   * @param robot Robot specification from URDF/SDF.
-   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
+   * @param gaussian_noise Noise (stddev) added to initial values.
    */
-  gtsam::Values initialValues(const Slice& slice, const Robot& robot,
+  template <class CONTEXT>
+  gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
                               double gaussian_noise = 0.0) const;
 
   /**
    * Solve for wrenches given kinematics configuration.
-   * @param slice Slice instance.
-   * @param robot Robot specification from URDF/SDF.
    * @param configuration A known kinematics configuration.
-   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
+   * @param gaussian_noise Noise (stddev) added to initial values.
    */
-  gtsam::Values solve(const Slice& slice, const Robot& robot,
+  template <class CONTEXT>
+  gtsam::Values solve(const CONTEXT& context, const Robot& robot,
                       const gtsam::Values& configuration,
                       double gaussian_noise = 0.0) const;
 
   /**
    * Solve for wrenches and kinematics configuration.
-   * @param slice Slice instance.
    */
-  gtsam::Values minimizeTorques(const Slice& slice, const Robot& robot) const;
+  template <class CONTEXT>
+  gtsam::Values minimizeTorques(const CONTEXT& context,
+                                const Robot& robot) const;
 };
 }  // namespace gtdynamics

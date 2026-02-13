@@ -23,7 +23,8 @@ namespace gtdynamics {
  * Mechanics-level factor builder shared by statics and dynamics.
  *
  * This class only contains factor groups that are identical in static and
- * dynamic graph assembly.
+ * dynamic graph assembly. For the templated API below, `CONTEXT` is typically
+ * `Slice`, `Interval`, or `Phase`, and `robot` is always the same model.
  */
 class Mechanics {
  protected:
@@ -39,28 +40,25 @@ class Mechanics {
       : p_(parameters) {}
 
   /**
-   * Build wrench-equivalence factors for all joints at one time slice.
-   * @param slice Time slice.
-   * @param robot Robot specification from URDF/SDF.
+   * Build wrench-equivalence factors for all joints.
    */
+  template <class CONTEXT>
   gtsam::NonlinearFactorGraph wrenchEquivalenceFactors(
-      const Slice& slice, const Robot& robot) const;
+      const CONTEXT& context, const Robot& robot) const;
 
   /**
-   * Build torque factors for all joints at one time slice.
-   * @param slice Time slice.
-   * @param robot Robot specification from URDF/SDF.
+   * Build torque factors for all joints.
    */
-  gtsam::NonlinearFactorGraph torqueFactors(const Slice& slice,
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph torqueFactors(const CONTEXT& context,
                                             const Robot& robot) const;
 
   /**
-   * Build planar wrench factors for all joints at one time slice.
+   * Build planar wrench factors for all joints.
    * No factors are added when no planar axis is configured.
-   * @param slice Time slice.
-   * @param robot Robot specification from URDF/SDF.
    */
-  gtsam::NonlinearFactorGraph wrenchPlanarFactors(const Slice& slice,
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph wrenchPlanarFactors(const CONTEXT& context,
                                                   const Robot& robot) const;
 };
 

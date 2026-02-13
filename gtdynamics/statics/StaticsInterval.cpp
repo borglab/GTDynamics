@@ -11,6 +11,7 @@
  */
 
 #include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/utils/ContextUtils.h>
 #include <gtdynamics/utils/Interval.h>
 
 namespace gtdynamics {
@@ -18,11 +19,34 @@ namespace gtdynamics {
 template <>
 gtsam::NonlinearFactorGraph Statics::graph<Interval>(
     const Interval& interval, const Robot& robot) const {
-  gtsam::NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(this->graph(Slice(k), robot));
-  }
-  return graph;
+  return collectFactors(
+      interval, [&](const Slice& slice) { return this->graph(slice, robot); });
+}
+
+template <>
+gtsam::Values Statics::initialValues<Interval>(const Interval& interval,
+                                               const Robot& robot,
+                                               double gaussian_noise) const {
+  return collectValues(interval, [&](const Slice& slice) {
+    return initialValues(slice, robot, gaussian_noise);
+  });
+}
+
+template <>
+gtsam::Values Statics::solve<Interval>(const Interval& interval,
+                                       const Robot& robot,
+                                       const gtsam::Values& configuration,
+                                       double gaussian_noise) const {
+  return collectValues(interval, [&](const Slice& slice) {
+    return solve(slice, robot, configuration, gaussian_noise);
+  });
+}
+
+template <>
+gtsam::Values Statics::minimizeTorques<Interval>(const Interval& interval,
+                                                 const Robot& robot) const {
+  return collectValues(
+      interval, [&](const Slice& slice) { return minimizeTorques(slice, robot); });
 }
 
 }  // namespace gtdynamics

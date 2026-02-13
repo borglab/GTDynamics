@@ -68,8 +68,6 @@ class Dynamics {
 
   /**
    * Return acceleration-level factor graph.
-   * @param context Slice/Interval/Phase context.
-   * @param robot Robot specification from URDF/SDF.
    * @param contact_points Optional contact points with zero-acceleration
    * constraints.
    */
@@ -81,8 +79,6 @@ class Dynamics {
   /**
    * Return dynamic-only wrench factors for a context.
    * This excludes factor groups provided via the Statics slice interface.
-   * @param context Slice/Interval/Phase context.
-   * @param robot Robot specification from URDF/SDF.
    * @param contact_points Optional contact points that add friction/moment
    * factors and contact wrench keys.
    * @param mu Optional friction coefficient (defaults to 1.0).

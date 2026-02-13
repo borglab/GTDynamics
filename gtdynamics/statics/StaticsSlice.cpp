@@ -60,8 +60,10 @@ gtsam::NonlinearFactorGraph Statics::graph<Slice>(
   return graph;
 }
 
-gtsam::Values Statics::initialValues(const Slice& slice, const Robot& robot,
-                                     double gaussian_noise) const {
+template <>
+gtsam::Values Statics::initialValues<Slice>(const Slice& slice,
+                                            const Robot& robot,
+                                            double gaussian_noise) const {
   gtsam::Values values;
   const auto k = slice.k;
 
@@ -80,9 +82,10 @@ gtsam::Values Statics::initialValues(const Slice& slice, const Robot& robot,
   return values;
 }
 
-gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
-                             const gtsam::Values& configuration,
-                             double gaussian_noise) const {
+template <>
+gtsam::Values Statics::solve<Slice>(const Slice& slice, const Robot& robot,
+                                    const gtsam::Values& configuration,
+                                    double gaussian_noise) const {
   auto graph = this->graph(slice, robot);
   gtsam::Values initial_values;
   initial_values.insert(initialValues(slice, robot, gaussian_noise));
@@ -109,8 +112,9 @@ gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
   return optimize(graph, initial_values);
 }
 
-gtsam::Values Statics::minimizeTorques(const Slice& slice,
-                                       const Robot& robot) const {
+template <>
+gtsam::Values Statics::minimizeTorques<Slice>(const Slice& slice,
+                                              const Robot& robot) const {
   auto graph = this->graph(slice, robot);
 
   auto values = Kinematics::initialValues(slice, robot);

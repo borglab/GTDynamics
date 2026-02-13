@@ -133,26 +133,24 @@ class Kinematics : public Optimizer {
 
   /**
    * @fn Create q-level kinematics factors.
-   * @param slice Slice instance.
-   * @param robot Robot specification from URDF/SDF.
-   * @param contact_points optional contact points on links.
-   * @param gravity gravity vector used to define up direction.
+   * @param contact_points Optional contact points on links.
+   * @param gravity Gravity vector used to define up direction.
    * @returns graph with q-level factors.
    */
+  template <class CONTEXT>
   gtsam::NonlinearFactorGraph qFactors(
-      const Slice& slice, const Robot& robot,
+      const CONTEXT& context, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {},
       const gtsam::Vector3& gravity = gtsam::Vector3(0, 0, -9.8)) const;
 
   /**
    * @fn Create v-level kinematics factors.
-   * @param slice Slice instance.
-   * @param robot Robot specification from URDF/SDF.
-   * @param contact_points optional contact points on links.
+   * @param contact_points Optional contact points on links.
    * @returns graph with v-level factors.
    */
+  template <class CONTEXT>
   gtsam::NonlinearFactorGraph vFactors(
-      const Slice& slice, const Robot& robot,
+      const CONTEXT& context, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {}) const;
 
   /**

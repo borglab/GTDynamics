@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/ContextUtils.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -27,11 +28,27 @@ using std::vector;
 template <>
 NonlinearFactorGraph Kinematics::graph<Interval>(const Interval& interval,
                                                  const Robot& robot) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(this->graph(Slice(k), robot));
-  }
-  return graph;
+  return collectFactors(
+      interval, [&](const Slice& slice) { return this->graph(slice, robot); });
+}
+
+template <>
+NonlinearFactorGraph Kinematics::qFactors<Interval>(
+    const Interval& interval, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points,
+    const gtsam::Vector3& gravity) const {
+  return collectFactors(interval, [&](const Slice& slice) {
+    return qFactors(slice, robot, contact_points, gravity);
+  });
+}
+
+template <>
+NonlinearFactorGraph Kinematics::vFactors<Interval>(
+    const Interval& interval, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points) const {
+  return collectFactors(interval, [&](const Slice& slice) {
+    return vFactors(slice, robot, contact_points);
+  });
 }
 
 template <>
@@ -50,21 +67,17 @@ gtsam::NonlinearEqualityConstraints Kinematics::constraints<Interval>(
 template <>
 NonlinearFactorGraph Kinematics::poseGoalObjectives<Interval>(
     const Interval& interval, const PoseGoals& pose_goals) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(poseGoalObjectives(Slice(k), pose_goals));
-  }
-  return graph;
+  return collectFactors(interval, [&](const Slice& slice) {
+    return poseGoalObjectives(slice, pose_goals);
+  });
 }
 
 template <>
 NonlinearFactorGraph Kinematics::pointGoalObjectives<Interval>(
     const Interval& interval, const ContactGoals& contact_goals) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(pointGoalObjectives(Slice(k), contact_goals));
-  }
-  return graph;
+  return collectFactors(interval, [&](const Slice& slice) {
+    return pointGoalObjectives(slice, contact_goals);
+  });
 }
 
 template <>
@@ -97,21 +110,16 @@ gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Interval>(
 template <>
 NonlinearFactorGraph Kinematics::jointAngleObjectives<Interval>(
     const Interval& interval, const Robot& robot, const Values& mean) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(jointAngleObjectives(Slice(k), robot, mean));
-  }
-  return graph;
+  return collectFactors(interval, [&](const Slice& slice) {
+    return jointAngleObjectives(slice, robot, mean);
+  });
 }
 
 template <>
 NonlinearFactorGraph Kinematics::jointAngleLimits<Interval>(
     const Interval& interval, const Robot& robot) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(jointAngleLimits(Slice(k), robot));
-  }
-  return graph;
+  return collectFactors(
+      interval, [&](const Slice& slice) { return jointAngleLimits(slice, robot); });
 }
 
 template <>
@@ -120,12 +128,9 @@ Values Kinematics::initialValues<Interval>(const Interval& interval,
                                            double gaussian_noise,
                                            const gtsam::Values& joint_priors,
                                            bool use_fk) const {
-  Values values;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    values.insert(
-        initialValues(Slice(k), robot, gaussian_noise, joint_priors, use_fk));
-  }
-  return values;
+  return collectValues(interval, [&](const Slice& slice) {
+    return initialValues(slice, robot, gaussian_noise, joint_priors, use_fk);
+  });
 }
 
 template <>
@@ -133,12 +138,9 @@ Values Kinematics::inverse<Interval>(const Interval& interval,
                                      const Robot& robot,
                                      const ContactGoals& contact_goals,
                                      bool contact_goals_as_constraints) const {
-  Values results;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    results.insert(
-        inverse(Slice(k), robot, contact_goals, contact_goals_as_constraints));
-  }
-  return results;
+  return collectValues(interval, [&](const Slice& slice) {
+    return inverse(slice, robot, contact_goals, contact_goals_as_constraints);
+  });
 }
 
 template <>

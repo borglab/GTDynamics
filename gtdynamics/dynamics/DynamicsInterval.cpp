@@ -11,6 +11,7 @@
  */
 
 #include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/utils/ContextUtils.h>
 
 namespace gtdynamics {
 
@@ -20,11 +21,9 @@ template <>
 NonlinearFactorGraph Dynamics::aFactors<Interval>(
     const Interval& interval, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(aFactors(Slice(k), robot, contact_points));
-  }
-  return graph;
+  return collectFactors(interval, [&](const Slice& slice) {
+    return aFactors(slice, robot, contact_points);
+  });
 }
 
 template <>
@@ -32,11 +31,9 @@ NonlinearFactorGraph Dynamics::graph<Interval>(
     const Interval& interval, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points,
     const std::optional<double>& mu) const {
-  NonlinearFactorGraph graph;
-  for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    graph.add(this->graph(Slice(k), robot, contact_points, mu));
-  }
-  return graph;
+  return collectFactors(interval, [&](const Slice& slice) {
+    return this->graph(slice, robot, contact_points, mu);
+  });
 }
 
 }  // namespace gtdynamics
