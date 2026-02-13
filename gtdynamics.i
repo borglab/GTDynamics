@@ -361,24 +361,31 @@ class Kinematics {
 };
 
 /********************** dynamics graph **********************/
-#include <gtdynamics/dynamics/OptimizerSetting.h>
-class OptimizerSetting : gtdynamics::KinematicsParameters {
-  OptimizerSetting();
-  OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
-                   double sigma_contact = 0.001, double sigma_joint = 0.001,
-                   double sigma_collocation = 0.001, double sigma_time = 0.001);
+#include <gtdynamics/dynamics/MechanicsParameters.h>
+class MechanicsParameters : gtdynamics::KinematicsParameters {
+  std::optional<gtsam::Vector3> gravity;
+  std::optional<gtsam::Vector3> planar_axis;
+  gtsam::SharedNoiseModel f_cost_model;
+  gtsam::SharedNoiseModel t_cost_model;
+  gtsam::SharedNoiseModel planar_cost_model;
+
+  MechanicsParameters(double sigma_dynamics = 1e-5);
+  MechanicsParameters(double sigma_dynamics,
+                      const std::optional<gtsam::Vector3> &gravity,
+                      const std::optional<gtsam::Vector3> &planar_axis);
+};
+
+#include <gtdynamics/dynamics/DynamicsParameters.h>
+class DynamicsParameters : gtdynamics::MechanicsParameters {
   gtsam::noiseModel::SharedNoiseModel ba_cost_model;             // acceleration of fixed link
   gtsam::noiseModel::SharedNoiseModel a_cost_model;              // acceleration factor
   gtsam::noiseModel::SharedNoiseModel linear_a_cost_model;       // linear acceleration factor
-  gtsam::noiseModel::SharedNoiseModel f_cost_model;              // wrench equivalence factor
   gtsam::noiseModel::SharedNoiseModel linear_f_cost_model;       // linear wrench equivalence factor
   gtsam::noiseModel::SharedNoiseModel fa_cost_model;             // wrench factor
-  gtsam::noiseModel::SharedNoiseModel t_cost_model;              // torque factor
   gtsam::noiseModel::SharedNoiseModel linear_t_cost_model;       // linear torque factor
   gtsam::noiseModel::SharedNoiseModel cfriction_cost_model;      // contact friction cone
   gtsam::noiseModel::SharedNoiseModel ca_cost_model;             // contact acceleration
   gtsam::noiseModel::SharedNoiseModel cm_cost_model;             // contact moment
-  gtsam::noiseModel::SharedNoiseModel planar_cost_model;         // planar factor
   gtsam::noiseModel::SharedNoiseModel linear_planar_cost_model;  // linear planar factor
   gtsam::noiseModel::SharedNoiseModel prior_qv_cost_model;       // joint velocity prior factor
   gtsam::noiseModel::SharedNoiseModel prior_qa_cost_model;       // joint acceleration prior factor
@@ -389,6 +396,33 @@ class OptimizerSetting : gtdynamics::KinematicsParameters {
   gtsam::noiseModel::SharedNoiseModel twist_col_cost_model;      // twist collocation factor
   gtsam::noiseModel::SharedNoiseModel time_cost_model;           // time prior
   gtsam::noiseModel::SharedNoiseModel jl_cost_model;             // joint limit factor
+
+  DynamicsParameters();
+  DynamicsParameters(double sigma_dynamics, double sigma_linear = 0.001,
+                     double sigma_contact = 0.001, double sigma_joint = 0.001,
+                     double sigma_collocation = 0.001,
+                     double sigma_time = 0.001);
+};
+
+#include <gtdynamics/dynamics/OptimizerSetting.h>
+class OptimizerSetting : gtdynamics::DynamicsParameters {
+  OptimizerSetting();
+  OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
+                   double sigma_contact = 0.001, double sigma_joint = 0.001,
+                   double sigma_collocation = 0.001, double sigma_time = 0.001);
+};
+
+#include <gtdynamics/dynamics/Dynamics.h>
+class Dynamics {
+  Dynamics(gtdynamics::DynamicsParameters parameters =
+               gtdynamics::DynamicsParameters());
+  gtsam::NonlinearFactorGraph aFactors(
+      const gtdynamics::Slice &slice, const gtdynamics::Robot &robot,
+      const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
+  gtsam::NonlinearFactorGraph graph(
+      const gtdynamics::Slice &slice, const gtdynamics::Robot &robot,
+      const std::optional<gtdynamics::PointOnLinks> &contact_points,
+      const std::optional<double> &mu) const;
 };
 
 
