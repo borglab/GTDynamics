@@ -55,6 +55,15 @@ class Dynamics {
   gtsam::NonlinearFactorGraph aFactors(
       const Slice& slice, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {}) const;
+
+  /**
+   * Return dynamic-only factors for a single slice.
+   * This excludes factor groups provided via the Statics slice interface.
+   */
+  gtsam::NonlinearFactorGraph graph(
+      const Slice& slice, const Robot& robot,
+      const std::optional<PointOnLinks>& contact_points = {},
+      const std::optional<double>& mu = {}) const;
 };
 
 }  // namespace gtdynamics

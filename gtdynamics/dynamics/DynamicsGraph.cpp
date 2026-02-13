@@ -12,8 +12,6 @@
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/utils/Slice.h>
@@ -47,6 +45,15 @@ using gtsam::Vector6;
 using gtsam::Z_6x1;
 
 namespace gtdynamics {
+
+OptimizerSetting DynamicsGraph::configuredSettings(
+    const OptimizerSetting& opt, const gtsam::Vector3& gravity,
+    const std::optional<gtsam::Vector3>& planar_axis) {
+  OptimizerSetting configured = opt;
+  configured.gravity = gravity;
+  configured.planar_axis = planar_axis;
+  return configured;
+}
 
 GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     const Robot &robot, const int k, const gtsam::Values &known_values) const {
@@ -215,61 +222,12 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points,
     const std::optional<double> &mu) const {
+  const Slice slice(k);
   NonlinearFactorGraph graph;
-
-  double mu_;  // Static friction coefficient.
-  if (mu)
-    mu_ = *mu;
-  else
-    mu_ = 1.0;
-
-  for (auto &&link : robot.links()) {
-    int i = link->id();
-    if (!link->isFixed()) {
-      const auto &connected_joints = link->joints();
-      std::vector<gtsam::Key> wrench_keys;
-
-      // Add wrench keys for joints.
-      for (auto &&joint : connected_joints)
-        wrench_keys.push_back(WrenchKey(i, joint->id(), k));
-
-      // Add wrench keys for contact points.
-      if (contact_points) {
-        for (auto &&cp : *contact_points) {
-          if (cp.link->id() != i) continue;
-          // TODO(frank): allow multiple contact points on one link, id = 0,1,..
-          auto wrench_key = ContactWrenchKey(i, 0, k);
-          wrench_keys.push_back(wrench_key);
-
-          // Add contact dynamics constraints.
-          graph.emplace_shared<ContactDynamicsFrictionConeFactor>(
-              PoseKey(i, k), wrench_key, opt_.cfriction_cost_model, mu_,
-              gravity_);
-
-          graph.emplace_shared<ContactDynamicsMomentFactor>(
-              wrench_key, opt_.cm_cost_model,
-              gtsam::Pose3(gtsam::Rot3(), -cp.point));
-        }
-      }
-
-      // add wrench factor for link
-      graph.add(
-          WrenchFactor(opt_.fa_cost_model, link, wrench_keys, k, gravity_));
-    }
-  }
-
-  // TODO(frank): use Statics<Slice> calls
-  // TODO(frank): sort out const shared ptr mess
-  for (auto &&joint : robot.joints()) {
-    auto j = joint->id(), child_id = joint->child()->id();
-    auto const_joint = joint;
-    graph.add(WrenchEquivalenceFactor(opt_.f_cost_model, const_joint, k));
-    graph.add(TorqueFactor(opt_.t_cost_model, const_joint, k));
-    if (planar_axis_) {
-      graph.add(WrenchPlanarFactor(opt_.planar_cost_model, *planar_axis_,
-                                   const_joint, k));
-    }
-  }
+  graph.add(statics_.wrenchEquivalenceFactors(slice, robot));
+  graph.add(statics_.torqueFactors(slice, robot));
+  graph.add(statics_.wrenchPlanarFactors(slice, robot));
+  graph.add(dynamics_.graph(slice, robot, contact_points, mu));
   return graph;
 }
 
