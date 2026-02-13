@@ -13,9 +13,7 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <boost/optional.hpp>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 
 #include <iostream>
 #include <string>
@@ -69,9 +67,9 @@ class CableAccelerationFactor
    */
   double computeLddot(
       const Pose3 &wTx, const Vector6 &Vx, const Vector6 &VAx,
-      boost::optional<gtsam::Matrix &> H_wTx = boost::none,
-      boost::optional<gtsam::Matrix &> H_Vx = boost::none,
-      boost::optional<gtsam::Matrix &> H_VAx = boost::none) const;
+      gtsam::OptionalMatrixType H_wTx = nullptr,
+      gtsam::OptionalMatrixType H_Vx = nullptr,
+      gtsam::OptionalMatrixType H_VAx = nullptr) const;
 
  public:
   /** Cable acceleration factor
@@ -83,10 +81,10 @@ class CableAccelerationFactor
    */
   gtsam::Vector evaluateError(
       const double &lddot, const Pose3 &wTx, const Vector6 &Vx,
-      const Vector6 &VAx, boost::optional<gtsam::Matrix &> H_lddot = boost::none,
-      boost::optional<gtsam::Matrix &> H_wTx = boost::none,
-      boost::optional<gtsam::Matrix &> H_Vx = boost::none,
-      boost::optional<gtsam::Matrix &> H_VAx = boost::none) const override {
+      const Vector6 &VAx, gtsam::OptionalMatrixType H_lddot = nullptr,
+      gtsam::OptionalMatrixType H_wTx = nullptr,
+      gtsam::OptionalMatrixType H_Vx = nullptr,
+      gtsam::OptionalMatrixType H_VAx = nullptr) const override {
     double expected_lddot = computeLddot(wTx, Vx, VAx, H_wTx, H_Vx, H_VAx);
     if (H_lddot) *H_lddot = gtsam::I_1x1;
     if (H_wTx) *H_wTx = -(*H_wTx);
@@ -97,7 +95,7 @@ class CableAccelerationFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -110,6 +108,7 @@ class CableAccelerationFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -117,6 +116,7 @@ class CableAccelerationFactor
     ar &boost::serialization::make_nvp(
         "NoiseModelFactor4", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

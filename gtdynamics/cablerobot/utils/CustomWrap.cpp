@@ -11,7 +11,7 @@
 #include <gtsam/linear/GaussianConditional.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 
-#include <boost/assign/list_of.hpp>
+#include <memory>
 
 using namespace gtsam;
 
@@ -21,8 +21,10 @@ namespace gtdynamics {
 GaussianBayesNet::shared_ptr EliminateSequential(GaussianFactorGraph graph,
                                                  const Ordering& ordering) {
   BlockOrdering blockOrdering;
-  for (auto k : ordering)
-    blockOrdering.push_back(boost::assign::list_of(k));
+  for (auto k : ordering) {
+    blockOrdering.emplace_back();
+    blockOrdering.back().push_back(k);
+  }
   return BlockEliminateSequential(graph, blockOrdering);
 }
 
@@ -31,7 +33,7 @@ GaussianBayesNet::shared_ptr BlockEliminateSequential(
     GaussianFactorGraph graph, const BlockOrdering &ordering) {
   // setup
   VariableIndex variableIndex(graph);  // maps keys to factor indices
-  auto bn = boost::make_shared<GaussianBayesNet>();
+  auto bn = std::make_shared<GaussianBayesNet>();
 
   // loop
   for (auto keys : ordering) {
