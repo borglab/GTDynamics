@@ -12,6 +12,8 @@
  */
 
 #include "gtdynamics/dynamics/ChainDynamicsGraph.h"
+#include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/Slice.h>
 
 namespace gtdynamics {
 
@@ -195,11 +197,9 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
 
   // Add contact factors.
   if (contact_points) {
-    for (auto &&cp : *contact_points) {
-      ContactHeightFactor contact_pose_factor(
-          PoseKey(cp.link->id(), t), opt().cp_cost_model, cp.point, gravity());
-      graph.add(contact_pose_factor);
-    }
+    const Kinematics kinematics(opt());
+    graph.add(
+        kinematics.contactHeightObjectives(Slice(t), *contact_points, gravity()));
   }
 
   return graph;
