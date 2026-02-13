@@ -223,6 +223,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
     const std::optional<double> &mu) const {
   const Slice slice(k);
   NonlinearFactorGraph graph;
+  // Compose shared statics factors with dynamic-only delta factors.
   graph.add(statics_.wrenchEquivalenceFactors(slice, robot));
   graph.add(statics_.torqueFactors(slice, robot));
   graph.add(statics_.wrenchPlanarFactors(slice, robot));
