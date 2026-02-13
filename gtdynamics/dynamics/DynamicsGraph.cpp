@@ -96,11 +96,10 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     }
   }
 
-  OptimizerSetting opt_;
   for (auto &&joint : robot.joints()) {
-    graph.push_back(joint->linearAFactors(k, known_values, opt_, planar_axis_));
+    graph.push_back(joint->linearAFactors(k, known_values, planar_axis_));
     graph.push_back(
-        joint->linearDynamicsFactors(k, known_values, opt_, planar_axis_));
+        joint->linearDynamicsFactors(k, known_values, planar_axis_));
   }
 
   return graph;
@@ -108,10 +107,9 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
 
 GaussianFactorGraph DynamicsGraph::linearFDPriors(
     const Robot &robot, const int k, const gtsam::Values &torques) {
-  OptimizerSetting opt_ = OptimizerSetting();
   GaussianFactorGraph graph;
   for (auto &&joint : robot.joints())
-    graph.push_back(joint->linearFDPriors(k, torques, opt_));
+    graph.push_back(joint->linearFDPriors(k, torques));
   return graph;
 }
 
@@ -496,7 +494,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::jointLimitFactors(
     const Robot &robot, const int k) const {
   NonlinearFactorGraph graph;
   for (auto &&joint : robot.joints())
-    graph.add(joint->jointLimitFactors(k, opt_));
+    graph.add(joint->jointLimitFactors(k, opt_.jl_cost_model));
   return graph;
 }
 
