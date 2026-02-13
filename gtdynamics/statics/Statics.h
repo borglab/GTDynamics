@@ -15,12 +15,15 @@
 
 #include <gtdynamics/dynamics/MechanicsParameters.h>
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 
 namespace gtdynamics {
+
+class Phase;
 
 /**
  * @fn Calculate gravity wrench
@@ -106,6 +109,14 @@ class Statics : public Kinematics {
    * @param robot Robot specification from URDF/SDF.
    */
   gtsam::NonlinearFactorGraph graph(const Slice& slice,
+                                    const Robot& robot) const;
+
+  /// Create graph with only static balance factors over an interval.
+  gtsam::NonlinearFactorGraph graph(const Interval& interval,
+                                    const Robot& robot) const;
+
+  /// Create graph with only static balance factors over a phase.
+  gtsam::NonlinearFactorGraph graph(const Phase& phase,
                                     const Robot& robot) const;
 
   /**
