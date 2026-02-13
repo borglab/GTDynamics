@@ -25,23 +25,10 @@ namespace gtdynamics {
 struct DynamicsParameters : public MechanicsParameters {
   gtsam::noiseModel::Base::shared_ptr ba_cost_model,  // acceleration of fixed link
       a_cost_model,              // acceleration factor
-      linear_a_cost_model,       // linear acceleration factor
-      linear_f_cost_model,       // linear wrench equivalence factor
       fa_cost_model,             // wrench factor
-      linear_t_cost_model,       // linear torque factor
       cfriction_cost_model,      // contact friction cone
       ca_cost_model,             // contact acceleration
-      cm_cost_model,             // contact moment
-      linear_planar_cost_model,  // linear planar factor
-      prior_qv_cost_model,       // joint velocity prior factor
-      prior_qa_cost_model,       // joint acceleration prior factor
-      prior_t_cost_model,        // joint torque prior factor
-      q_col_cost_model,          // joint collocation factor
-      v_col_cost_model,          // joint vel collocation factor
-      pose_col_cost_model,       // pose collocation factor
-      twist_col_cost_model,      // twist collocation factor
-      time_cost_model,           // time prior
-      jl_cost_model;             // joint limit factor
+      cm_cost_model;             // contact moment
 
   /**
    * Constructor with defaults chosen to preserve prior
@@ -53,66 +40,40 @@ struct DynamicsParameters : public MechanicsParameters {
             gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
         ba_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.00001)),
         a_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
-        linear_a_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
-        linear_f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
         fa_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
-        linear_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
         cfriction_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
         ca_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
-        cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
-        linear_planar_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)),
-        prior_qv_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
-        prior_qa_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
-        prior_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
-        q_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
-        v_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
-        pose_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
-        twist_col_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 0.001)),
-        time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)),
-        jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, 0.001)) {}
+        cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, 0.001)) {}
 
   /**
    * Constructor from grouped sigma values.
+   *
+   * This signature is kept for compatibility with grouped-sigma construction
+   * in `OptimizerSetting`. Only `sigma_dynamics` and `sigma_contact` apply to
+   * `DynamicsParameters`; other groups are configured in `OptimizerSetting`.
+   *
    * @param sigma_dynamics Sigma for nonlinear dynamics/mechanics factors.
-   * @param sigma_linear Sigma for linearized dynamics factors.
+   * @param sigma_linear Unused in this class (handled by OptimizerSetting).
    * @param sigma_contact Sigma for contact-related factors.
-   * @param sigma_joint Sigma for joint priors/limits.
-   * @param sigma_collocation Sigma for collocation factors.
-   * @param sigma_time Sigma for time-duration priors.
+   * @param sigma_joint Unused in this class (handled by OptimizerSetting).
+   * @param sigma_collocation Unused in this class (handled by OptimizerSetting).
+   * @param sigma_time Unused in this class (handled by OptimizerSetting).
    */
-  DynamicsParameters(double sigma_dynamics, double sigma_linear = 0.001,
-                     double sigma_contact = 0.001, double sigma_joint = 0.001,
-                     double sigma_collocation = 0.001,
-                     double sigma_time = 0.001)
+  DynamicsParameters(double sigma_dynamics, double /*sigma_linear*/ = 0.001,
+                     double sigma_contact = 0.001,
+                     double /*sigma_joint*/ = 0.001,
+                     double /*sigma_collocation*/ = 0.001,
+                     double /*sigma_time*/ = 0.001)
       : MechanicsParameters(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics),
             gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics),
             gtsam::noiseModel::Isotropic::Sigma(3, sigma_dynamics)),
         ba_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
         a_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        linear_a_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(6, sigma_linear)),
-        linear_f_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(6, sigma_linear)),
         fa_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        linear_t_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_linear)),
         cfriction_cost_model(
             gtsam::noiseModel::Isotropic::Sigma(1, sigma_contact)),
         ca_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)),
-        cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)),
-        linear_planar_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(3, sigma_linear)),
-        prior_qv_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
-        prior_qa_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
-        prior_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
-        q_col_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation)),
-        v_col_cost_model(
-            gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation)),
-        time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_time)),
-        jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)) {}
+        cm_cost_model(gtsam::noiseModel::Isotropic::Sigma(3, sigma_contact)) {}
 };
 
 }  // namespace gtdynamics

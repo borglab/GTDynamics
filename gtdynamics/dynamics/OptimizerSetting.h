@@ -21,6 +21,21 @@ namespace gtdynamics {
 /// OptimizerSetting is a class used to set parameters for motion planner
 class OptimizerSetting : public KinematicsParameters, public DynamicsParameters {
  public:
+  gtsam::noiseModel::Base::shared_ptr
+      linear_a_cost_model,       // linear acceleration factor
+      linear_f_cost_model,       // linear wrench equivalence factor
+      linear_t_cost_model,       // linear torque factor
+      linear_planar_cost_model,  // linear planar factor
+      prior_qv_cost_model,       // joint velocity prior factor
+      prior_qa_cost_model,       // joint acceleration prior factor
+      prior_t_cost_model,        // joint torque prior factor
+      q_col_cost_model,          // joint collocation factor
+      v_col_cost_model,          // joint vel collocation factor
+      pose_col_cost_model,       // pose collocation factor
+      twist_col_cost_model,      // twist collocation factor
+      time_cost_model,           // time prior
+      jl_cost_model;             // joint limit factor
+
   /// optimization iteration types
   enum IterationType { GaussNewton, LM, Dogleg };
   enum VerbosityLevel { None, Error };
@@ -58,6 +73,29 @@ class OptimizerSetting : public KinematicsParameters, public DynamicsParameters 
                              sigma_dynamics, sigma_contact),
         DynamicsParameters(sigma_dynamics, sigma_linear, sigma_contact,
                            sigma_joint, sigma_collocation, sigma_time),
+        linear_a_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(6, sigma_linear)),
+        linear_f_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(6, sigma_linear)),
+        linear_t_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(1, sigma_linear)),
+        linear_planar_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(3, sigma_linear)),
+        prior_qv_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
+        prior_qa_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
+        prior_t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
+        q_col_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation)),
+        v_col_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(1, sigma_collocation)),
+        pose_col_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(6, sigma_collocation)),
+        twist_col_cost_model(
+            gtsam::noiseModel::Isotropic::Sigma(6, sigma_collocation)),
+        time_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_time)),
+        jl_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_joint)),
         rel_thresh(1e-2),
         max_iter(50) {}
 

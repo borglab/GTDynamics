@@ -379,23 +379,10 @@ class MechanicsParameters {
 class DynamicsParameters : gtdynamics::MechanicsParameters {
   gtsam::noiseModel::SharedNoiseModel ba_cost_model;             // acceleration of fixed link
   gtsam::noiseModel::SharedNoiseModel a_cost_model;              // acceleration factor
-  gtsam::noiseModel::SharedNoiseModel linear_a_cost_model;       // linear acceleration factor
-  gtsam::noiseModel::SharedNoiseModel linear_f_cost_model;       // linear wrench equivalence factor
   gtsam::noiseModel::SharedNoiseModel fa_cost_model;             // wrench factor
-  gtsam::noiseModel::SharedNoiseModel linear_t_cost_model;       // linear torque factor
   gtsam::noiseModel::SharedNoiseModel cfriction_cost_model;      // contact friction cone
   gtsam::noiseModel::SharedNoiseModel ca_cost_model;             // contact acceleration
   gtsam::noiseModel::SharedNoiseModel cm_cost_model;             // contact moment
-  gtsam::noiseModel::SharedNoiseModel linear_planar_cost_model;  // linear planar factor
-  gtsam::noiseModel::SharedNoiseModel prior_qv_cost_model;       // joint velocity prior factor
-  gtsam::noiseModel::SharedNoiseModel prior_qa_cost_model;       // joint acceleration prior factor
-  gtsam::noiseModel::SharedNoiseModel prior_t_cost_model;        // joint torque prior factor
-  gtsam::noiseModel::SharedNoiseModel q_col_cost_model;          // joint collocation factor
-  gtsam::noiseModel::SharedNoiseModel v_col_cost_model;          // joint vel collocation factor
-  gtsam::noiseModel::SharedNoiseModel pose_col_cost_model;       // pose collocation factor
-  gtsam::noiseModel::SharedNoiseModel twist_col_cost_model;      // twist collocation factor
-  gtsam::noiseModel::SharedNoiseModel time_cost_model;           // time prior
-  gtsam::noiseModel::SharedNoiseModel jl_cost_model;             // joint limit factor
 
   DynamicsParameters();
   DynamicsParameters(double sigma_dynamics, double sigma_linear = 0.001,
