@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/universal_robot/Robot.h>
@@ -42,6 +43,7 @@ class DynamicsGraph {
  private:
   OptimizerSetting opt_;
   const Kinematics kinematics_;
+  const Dynamics dynamics_;
   const gtsam::Vector3 gravity_;
   std::optional<gtsam::Vector3> planar_axis_;
 
@@ -55,6 +57,7 @@ class DynamicsGraph {
                 const std::optional<gtsam::Vector3> &planar_axis = {})
       : opt_(OptimizerSetting()),
         kinematics_(opt_),
+        dynamics_(opt_),
         gravity_(gravity),
         planar_axis_(planar_axis) {}
 
@@ -69,6 +72,7 @@ class DynamicsGraph {
                 const std::optional<gtsam::Vector3> &planar_axis = {})
       : opt_(opt),
         kinematics_(opt_),
+        dynamics_(opt_),
         gravity_(gravity),
         planar_axis_(planar_axis) {}
 

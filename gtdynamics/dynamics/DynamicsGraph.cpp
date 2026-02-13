@@ -14,8 +14,6 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
-#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/utils/Slice.h>
@@ -209,25 +207,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
 gtsam::NonlinearFactorGraph DynamicsGraph::aFactors(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points) const {
-  NonlinearFactorGraph graph;
-  for (auto &&link : robot.links())
-    if (link->isFixed())
-      graph.addPrior<gtsam::Vector6>(TwistAccelKey(link->id(), k), gtsam::Z_6x1,
-                                     opt_.ba_cost_model);
-  for (auto &&joint : robot.joints())
-    graph.add(TwistAccelFactor(opt_.a_cost_model, joint, k));
-
-  // Add contact factors.
-  if (contact_points) {
-    for (auto &&cp : *contact_points) {
-      ContactKinematicsAccelFactor contact_accel_factor(
-          TwistAccelKey(cp.link->id(), k), opt_.ca_cost_model,
-          gtsam::Pose3(gtsam::Rot3(), -cp.point));
-      graph.add(contact_accel_factor);
-    }
-  }
-
-  return graph;
+  return dynamics_.aFactors(Slice(k), robot, contact_points);
 }
 
 // TODO(frank): migrate to Dynamics::graph<Slice>

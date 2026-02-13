@@ -13,9 +13,14 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/DynamicsParameters.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 namespace gtdynamics {
 
@@ -35,5 +40,21 @@ inline Eigen::Matrix<double, M, 1> MatVecMult(
   }
   return constant_matrix * vector;
 }
+
+/// Dynamics factors and solvers for moving configurations.
+class Dynamics {
+ protected:
+  const DynamicsParameters p_;
+
+ public:
+  /// Constructor.
+  Dynamics(const DynamicsParameters& parameters = DynamicsParameters())
+      : p_(parameters) {}
+
+  /// Return a-level nonlinear factor graph (acceleration related factors).
+  gtsam::NonlinearFactorGraph aFactors(
+      const Slice& slice, const Robot& robot,
+      const std::optional<PointOnLinks>& contact_points = {}) const;
+};
 
 }  // namespace gtdynamics
