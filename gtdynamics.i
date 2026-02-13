@@ -405,7 +405,31 @@ class DynamicsParameters : gtdynamics::MechanicsParameters {
 };
 
 #include <gtdynamics/dynamics/OptimizerSetting.h>
-class OptimizerSetting : gtdynamics::DynamicsParameters {
+class OptimizerSetting : gtdynamics::KinematicsParameters {
+  std::optional<gtsam::Vector3> gravity;
+  std::optional<gtsam::Vector3> planar_axis;
+  gtsam::SharedNoiseModel f_cost_model;
+  gtsam::SharedNoiseModel t_cost_model;
+  gtsam::SharedNoiseModel planar_cost_model;
+  gtsam::noiseModel::SharedNoiseModel ba_cost_model;
+  gtsam::noiseModel::SharedNoiseModel a_cost_model;
+  gtsam::noiseModel::SharedNoiseModel linear_a_cost_model;
+  gtsam::noiseModel::SharedNoiseModel linear_f_cost_model;
+  gtsam::noiseModel::SharedNoiseModel fa_cost_model;
+  gtsam::noiseModel::SharedNoiseModel linear_t_cost_model;
+  gtsam::noiseModel::SharedNoiseModel cfriction_cost_model;
+  gtsam::noiseModel::SharedNoiseModel ca_cost_model;
+  gtsam::noiseModel::SharedNoiseModel cm_cost_model;
+  gtsam::noiseModel::SharedNoiseModel linear_planar_cost_model;
+  gtsam::noiseModel::SharedNoiseModel prior_qv_cost_model;
+  gtsam::noiseModel::SharedNoiseModel prior_qa_cost_model;
+  gtsam::noiseModel::SharedNoiseModel prior_t_cost_model;
+  gtsam::noiseModel::SharedNoiseModel q_col_cost_model;
+  gtsam::noiseModel::SharedNoiseModel v_col_cost_model;
+  gtsam::noiseModel::SharedNoiseModel pose_col_cost_model;
+  gtsam::noiseModel::SharedNoiseModel twist_col_cost_model;
+  gtsam::noiseModel::SharedNoiseModel time_cost_model;
+  gtsam::noiseModel::SharedNoiseModel jl_cost_model;
   gtsam::SharedNoiseModel p_cost_model;
   gtsam::SharedNoiseModel g_cost_model;
   gtsam::SharedNoiseModel prior_q_cost_model;
@@ -415,6 +439,10 @@ class OptimizerSetting : gtdynamics::DynamicsParameters {
   gtsam::SharedNoiseModel v_cost_model;
   gtsam::SharedNoiseModel cv_cost_model;
   gtsam::LevenbergMarquardtParams lm_parameters;
+  double rel_thresh;
+  int max_iter;
+  double epsilon;
+  double obsSigma;
   OptimizerSetting();
   OptimizerSetting(double sigma_dynamics, double sigma_linear = 0.001,
                    double sigma_contact = 0.001, double sigma_joint = 0.001,
