@@ -89,6 +89,35 @@ $ sudo make install
 $ make check
 ```
 
+Common target patterns (not exhaustive), from the `build` directory:
+
+```sh
+# Discover available targets
+$ make help
+
+# Run all C++ tests or grouped test sets
+$ make check
+$ make check.tests
+$ make check.kinematics
+$ make check.mechanics
+$ make check.statics
+$ make check.dynamics
+
+# Run a single C++ test executable target
+$ make testTwistAccelFactor.run
+$ make testForwardKinematicsFactor.run
+
+# Build/run examples and simulations
+$ make example_forward_dynamics.run
+$ make example_spider_walking.sim
+
+# Python wrapper and Python test targets
+$ make pybind_wrap_gtdynamics
+$ make python-test
+$ make python-test.base
+$ make python-test.cablerobot
+```
+
 ## Running Examples
 
 The `examples` directory contains various full example projects demonstrating the use of GTDynamics for various robotic applications.

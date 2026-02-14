@@ -1,6 +1,6 @@
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>

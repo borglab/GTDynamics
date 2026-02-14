@@ -15,12 +15,11 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/CollocationFactors.h>
-#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/dynamics/WrenchFactor.h>
+#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/values.h>
@@ -162,12 +161,9 @@ NonlinearFactorGraph Vision60Robot::DynamicsFactors(
     }
   }
 
-  for (auto &&joint : robot.joints()) {
-    auto j = joint->id(), child_id = joint->child()->id();
-    auto const_joint = joint;
-    graph.add(WrenchEquivalenceFactor(opt().f_cost_model, const_joint, k));
-    graph.add(TorqueFactor(opt().t_cost_model, const_joint, k));
-  }
+  Mechanics mechanics(opt());
+  graph.add(mechanics.wrenchEquivalenceFactors(Slice(k), robot));
+  graph.add(mechanics.torqueFactors(Slice(k), robot));
   return graph;
 }
 

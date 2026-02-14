@@ -1,6 +1,6 @@
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/base/Matrix.h>

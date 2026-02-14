@@ -31,7 +31,7 @@ class JointMeasurementFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
-#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtdynamics/factors/ForwardKinematicsFactor.h>
 class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
   ForwardKinematicsFactor(gtsam::Key bTl1_key, gtsam::Key bTl2_key,
@@ -88,7 +88,7 @@ class MinTorqueFactor : gtsam::NoiseModelFactor {
 
 /// TODO(yetong): remove the wrapper for WrenchFactor once equality constraints
 /// are wrapped (Issue #319).
-#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/dynamics/WrenchFactor.h>
 gtsam::NoiseModelFactor* WrenchFactor(
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
     const std::vector<gtsam::Key> wrench_keys, int t = 0,
@@ -123,7 +123,7 @@ class TrapezoidalTwistCollocationFactor : gtsam::NoiseModelFactor {
                                     const gtsam::noiseModel::Base *cost_model);
 };
 
-#include <gtdynamics/factors/ContactHeightFactor.h>
+#include <gtdynamics/kinematics/ContactHeightFactor.h>
 class ContactHeightFactor : gtsam::NoiseModelFactor {
   ContactHeightFactor(gtsam::Key pose_key, gtsam::noiseModel::Base *cost_model,
                       const gtsam::Point3 &cTcom, const gtsam::Vector3 &gravity,

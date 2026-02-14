@@ -14,7 +14,7 @@
  * @brief Abstract representation of a robot joint.
  */
 
-#include <gtdynamics/factors/JointLimitFactor.h>
+#include <gtdynamics/kinematics/JointLimitFactor.h>
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/slam/expressions.h>

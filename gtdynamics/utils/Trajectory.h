@@ -15,7 +15,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Phase.h>
 #include <gtdynamics/utils/WalkCycle.h>

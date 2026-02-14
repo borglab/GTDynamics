@@ -34,12 +34,6 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/expressions.h>
 
-#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
-
 #include "gtdynamics/factors/ContactPointFactor.h"
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include "gtdynamics/cmopt/ConstraintManifold.h"

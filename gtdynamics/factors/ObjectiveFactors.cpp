@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/factors/ObjectiveFactors.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>

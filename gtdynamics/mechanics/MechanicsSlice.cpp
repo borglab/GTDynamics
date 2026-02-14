@@ -10,9 +10,9 @@
  * @brief Mechanics factors in a single time slice.
  */
 
-#include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-#include <gtdynamics/factors/WrenchPlanarFactor.h>
+#include <gtdynamics/mechanics/TorqueFactor.h>
+#include <gtdynamics/mechanics/WrenchEquivalenceFactor.h>
+#include <gtdynamics/mechanics/WrenchPlanarFactor.h>
 #include <gtdynamics/mechanics/Mechanics.h>
 
 namespace gtdynamics {
