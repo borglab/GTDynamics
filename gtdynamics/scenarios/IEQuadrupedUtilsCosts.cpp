@@ -18,9 +18,8 @@
 #include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/mechanics/TorqueFactor.h>
-#include <gtdynamics/mechanics/WrenchEquivalenceFactor.h>
 #include <gtdynamics/dynamics/WrenchFactor.h>
+#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/expressions.h>
 
@@ -169,12 +168,9 @@ NonlinearFactorGraph IEVision60Robot::DynamicsFactors(const size_t k) const {
     }
   }
 
-  for (auto &&joint : robot.joints()) {
-    auto j = joint->id(), child_id = joint->child()->id();
-    auto const_joint = joint;
-    graph.add(WrenchEquivalenceFactor(opt().f_cost_model, const_joint, k));
-    graph.add(TorqueFactor(opt().t_cost_model, const_joint, k));
-  }
+  Mechanics mechanics(opt());
+  graph.add(mechanics.wrenchEquivalenceFactors(Slice(k), robot));
+  graph.add(mechanics.torqueFactors(Slice(k), robot));
   return graph;
 }
 
