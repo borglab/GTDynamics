@@ -39,4 +39,44 @@ class PriorFactor : gtsam::NonlinearFactor {
              const gtsam::KeyFormatter &keyFormatter);
 };
 
+#include <gtdynamics/cablerobot/utils/CustomWrap.h>
+gtsam::GaussianBayesNet* EliminateSequential(gtsam::GaussianFactorGraph graph,
+                                             const gtsam::Ordering &ordering);
+gtsam::GaussianBayesNet* BlockEliminateSequential(
+    gtsam::GaussianFactorGraph graph, const gtdynamics::BlockOrdering &ordering);
+
+// Tension Key Stuff
+gtdynamics::DynamicsSymbol TensionKey(int j, int t = 0);
+
+void InsertTension(gtsam::Values @values, int j, int t, double value);
+
+void InsertTension(gtsam::Values @values, int j, double value);
+
+double Tension(const gtsam::Values &values, int j, int t = 0);
+
+#include <gtdynamics/cablerobot/factors/WinchFactor.h>
+class WinchParams {
+  double radius_;
+  double inertia_;
+  double staticFriction_;
+  double viscousFriction_;
+  WinchParams(double radius = 1, double inertia = 0, double staticFriction = 0,
+              double viscousFriction = 0);
+};
+class WinchFactor : gtsam::NonlinearFactor {
+  WinchFactor(gtsam::Key torque, gtsam::Key tension, gtsam::Key cableVelocity,
+              gtsam::Key cableAcceleration,
+              const gtsam::noiseModel::Base *cost_model, gtdynamics::WinchParams params);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
+#include <gtdynamics/cablerobot/factors/CableAccelerationFactor.h>
+class CableAccelerationFactor : gtsam::NonlinearFactor {
+  CableAccelerationFactor(gtsam::Key ldot_key, gtsam::Key wTee_key,
+                          gtsam::Key Vee_key, gtsam::Key VA_key,
+                          const gtsam::noiseModel::Base *cost_model,
+                          const gtsam::Point3 &wPb, const gtsam::Point3 &eePem);
+  void print(const string &s, const gtsam::KeyFormatter &keyFormatter);
+};
+
 }  // namespace gtdynamics

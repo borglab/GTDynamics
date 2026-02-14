@@ -244,7 +244,7 @@ class Cdpr:
             Vs (list, optional): List of Twists for each time step. Defaults to [[]].
 
         Returns:
-            gtsam.NonlinearFactorGraph: The inverve kinematics prior factors
+            gtsam.NonlinearFactorGraph: The inverse kinematics prior factors
         """
         graph = gtsam.NonlinearFactorGraph()
         for k, T, V in zip(ks, Ts, Vs):
@@ -262,7 +262,7 @@ class Cdpr:
     def priors_id(self, ks=[], torquess=[[]]):
         """Creates factors roughly corresponding to the inverse dynamics problem.  While strictly
         inverse dynamics in Lynch & Park refers to the problem of calculating joint accelerations
-        given joint torques, temproarily this function is more convenient which directly relates
+        given joint torques, temporarily this function is more convenient which directly relates
         constrains joint torques (to obtain twist accelerations when used with dynamics_factors).
 
         Args:
