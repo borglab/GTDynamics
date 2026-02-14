@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/cmopt/NonlinearMOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>

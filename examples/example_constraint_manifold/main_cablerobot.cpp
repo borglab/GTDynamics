@@ -18,8 +18,8 @@
 #include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/JointLimitFactor.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/JointLimitFactor.h>
+#include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>

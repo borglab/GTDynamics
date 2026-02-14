@@ -14,7 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
