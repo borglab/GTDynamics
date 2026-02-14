@@ -55,9 +55,9 @@ class JRSimulator:
             JRValues.integrate_mass(self.jr, values, k, dt)
 
         # integrate time
-        t_prev = values.atDouble(gtd.TimeKey(k - 1).key())
+        t_prev = values.atDouble(gtd.TimeKey(k - 1))
         t_curr = t_prev + dt
-        values.insert(gtd.TimeKey(k).key(), t_curr)
+        values.insert(gtd.TimeKey(k), t_curr)
 
     def step_actuation_dynamics(self, k, values):
         """ Perform actuation dynamics by solving the actuation dynamics factor
@@ -86,8 +86,8 @@ class JRSimulator:
             graph = self.jr_graph_builder.actuation_graph_builder.actuator_dynamics_graph(
                 self.jr, actuator, k)
             m_a_key = Actuator.MassKey(j, k)
-            q_key = gtd.JointAngleKey(j, k).key()
-            v_key = gtd.JointVelKey(j, k).key()
+            q_key = gtd.JointAngleKey(j, k)
+            v_key = gtd.JointVelKey(j, k)
             m_a = values.atDouble(m_a_key)
             q = values.atDouble(q_key)
             v = values.atDouble(v_key)
@@ -145,14 +145,14 @@ class JRSimulator:
         # solve q level
         graph_q = robot_graph_builder.graph_builder.qFactors(
             self.jr.robot, k, None)
-        pose_key = gtd.PoseKey(torso_i, k).key()
+        pose_key = gtd.PoseKey(torso_i, k)
         torso_pose = gtd.Pose(values, torso_i, k)
         graph_q.add(
             gtsam.PriorFactorPose3(pose_key, torso_pose, opt.p_cost_model))
         if "ground" not in link_names:
             for joint in self.jr.robot.joints():
                 j = joint.id()
-                q_key = gtd.JointAngleKey(j, k).key()
+                q_key = gtd.JointAngleKey(j, k)
                 graph_q.add(
                     gtd.PriorFactorDouble(q_key, gtd.JointAngle(values, j, k),
                                           opt.prior_q_cost_model))
@@ -164,20 +164,20 @@ class JRSimulator:
         # solve v level
         graph_v = robot_graph_builder.graph_builder.vFactors(
             self.jr.robot, k, None)
-        twist_key = gtd.TwistKey(torso_i, k).key()
+        twist_key = gtd.TwistKey(torso_i, k)
         torso_twist = gtd.Twist(values, torso_i, k)
         graph_v.add(
             gtd.PriorFactorVector6(twist_key, torso_twist, opt.v_cost_model))
         for joint in self.jr.robot.joints():
             j = joint.id()
-            q_key = gtd.JointAngleKey(j, k).key()
+            q_key = gtd.JointAngleKey(j, k)
             graph_v.add(
                 gtd.PriorFactorDouble(q_key, init_values.atDouble(q_key),
                                       opt.prior_q_cost_model))
         if not "ground" in link_names:
             for joint in self.jr.robot.joints():
                 j = joint.id()
-                v_key = gtd.JointVelKey(j, k).key()
+                v_key = gtd.JointVelKey(j, k)
                 graph_v.add(
                     gtd.PriorFactorDouble(v_key, gtd.JointVel(values, j, k),
                                           opt.prior_qv_cost_model))
@@ -196,9 +196,9 @@ class JRSimulator:
 
         for joint in self.jr.robot.joints():
             j = joint.id()
-            q_key = gtd.JointAngleKey(j, k).key()
-            v_key = gtd.JointVelKey(j, k).key()
-            torque_key = gtd.TorqueKey(j, k).key()
+            q_key = gtd.JointAngleKey(j, k)
+            v_key = gtd.JointVelKey(j, k)
+            torque_key = gtd.TorqueKey(j, k)
             graph_dynamics.add(
                 gtd.PriorFactorDouble(q_key, init_values.atDouble(q_key),
                                       opt.prior_q_cost_model))
@@ -211,8 +211,8 @@ class JRSimulator:
                                       opt.prior_t_cost_model))
         for link in self.jr.robot.links():
             i = link.id()
-            pose_key = gtd.PoseKey(i, k).key()
-            twist_key = gtd.TwistKey(i, k).key()
+            pose_key = gtd.PoseKey(i, k)
+            twist_key = gtd.TwistKey(i, k)
             graph_dynamics_keys = [
                 key for key in gtd.KeySetToKeyVector(graph_dynamics.keys())
             ]
@@ -233,7 +233,7 @@ class JRSimulator:
         mergeValues(init_values, results_dynamics, overwrite=True)
         mergeValues(values, init_values, overwrite=True)
 
-    def step_robot_dynamics(self, k, values):
+    def step_robot_dynamics(self, k, values, use_layered_solver=True):
         """ Perform robot dynamics by first performing forward kinematics,
             then solving the dynamics factor graph of the current step.
             Add results to values
@@ -242,11 +242,16 @@ class JRSimulator:
             k (int): current step index
             values (gtsam.Values): values contains q, v, m_a, m_s of
                                    current step and To, Ti, V_s
+            use_layered_solver (bool): use layered solve for improved
+                robustness. Set to False to use the legacy single-graph solve.
 
         Raises:
             Exception: forward kinematics disagreement
             Exception: optimization does not converge
         """
+        if use_layered_solver:
+            self.step_robot_dynamics_by_layer(k, values)
+            return
 
         link_names = [link.name() for link in self.jr.robot.links()]
         joint_names = [joint.name() for joint in self.jr.robot.joints()]
@@ -257,7 +262,7 @@ class JRSimulator:
         graph = robot_graph_builder.dynamics_graph(self.jr, k)
         for acutator in self.jr.actuators:
             j = acutator.j
-            torque_key = gtd.TorqueKey(j, k).key()
+            torque_key = gtd.TorqueKey(j, k)
             torque = values.atDouble(torque_key)
             graph.add(
                 gtd.PriorFactorDouble(torque_key, torque,
@@ -265,11 +270,11 @@ class JRSimulator:
 
         # prior on torso link pose and twist
         i = self.jr.robot.link("torso").id()
-        pose_key = gtd.PoseKey(i, k).key()
+        pose_key = gtd.PoseKey(i, k)
         torso_pose = gtd.Pose(values, i, k)
         graph.add(
             gtsam.PriorFactorPose3(pose_key, torso_pose, opt.p_cost_model))
-        twist_key = gtd.TwistKey(i, k).key()
+        twist_key = gtd.TwistKey(i, k)
         torso_twist = gtd.Twist(values, i, k)
         graph.add(
             gtd.PriorFactorVector6(twist_key, torso_twist, opt.v_cost_model))
@@ -278,11 +283,11 @@ class JRSimulator:
         if "ground" not in link_names:
             for joint in self.jr.robot.joints():
                 j = joint.id()
-                q_key = gtd.JointAngleKey(j, k).key()
+                q_key = gtd.JointAngleKey(j, k)
                 graph.add(
                     gtd.PriorFactorDouble(q_key, gtd.JointAngle(values, j, k),
                                           opt.prior_q_cost_model))
-                v_key = gtd.JointVelKey(j, k).key()
+                v_key = gtd.JointVelKey(j, k)
                 graph.add(
                     gtd.PriorFactorDouble(v_key, gtd.JointVel(values, j, k),
                                           opt.prior_v_cost_model))

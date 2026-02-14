@@ -12,7 +12,6 @@
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 
@@ -24,8 +23,8 @@ namespace gtdynamics {
 // they're relatively insignificant and it's just a pain to deal with them.
 double CableAccelerationFactor::computeLddot(
     const Pose3 &wTx, const Vector6 &Vx, const Vector6 &VAx,
-    boost::optional<Matrix &> H_wTx, boost::optional<Matrix &> H_Vx,
-    boost::optional<Matrix &> H_VAx) const {
+    gtsam::OptionalMatrixType H_wTx, gtsam::OptionalMatrixType H_Vx,
+    gtsam::OptionalMatrixType H_VAx) const {
   Matrix33 wAb_H_wRx;
   Matrix33 wAb_H_xAb;
   Matrix36 wAb_H_wTx;
@@ -37,17 +36,17 @@ double CableAccelerationFactor::computeLddot(
 
   // linear acceleration
   Vector3 xAb = VAx.bottomRows<3>();  // acceleration of point b in x's frame
-  Vector3 wAb = wTx.rotation().rotate(xAb, H_wTx ? &wAb_H_wRx : 0,
-                                      H_VAx ? &wAb_H_xAb : 0);
+  Vector3 wAb = wTx.rotation().rotate(xAb, H_wTx ? &wAb_H_wRx : nullptr,
+                                      H_VAx ? &wAb_H_xAb : nullptr);
   if (H_wTx) wAb_H_wTx << wAb_H_wRx, Z_3x3;
   if (H_VAx) wAb_H_VAx << Z_3x3, wAb_H_xAb;
   // cable direction
-  Point3 wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : 0);
-  Vector3 dir = normalize(wPb - wPa_, H_wTx ? &dir_H_wPb : 0);
+  Point3 wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : nullptr);
+  Vector3 dir = normalize(wPb - wPa_, H_wTx ? &dir_H_wPb : nullptr);
   // lddot
   double lddot = dot(dir, wAb,            //
-                     H_wTx ? &H_dir : 0,  //
-                     (H_wTx || H_VAx) ? &H_wAb : 0);
+                     H_wTx ? &H_dir : nullptr,  //
+                     (H_wTx || H_VAx) ? &H_wAb : nullptr);
   if (H_wTx) *H_wTx = H_dir * dir_H_wPb * wPb_H_wTx + H_wAb * wAb_H_wTx;
   if (H_Vx) *H_Vx = Matrix16::Zero();
   if (H_VAx) *H_VAx = H_wAb * wAb_H_VAx;

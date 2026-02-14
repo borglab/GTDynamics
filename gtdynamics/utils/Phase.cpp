@@ -33,7 +33,7 @@ void Phase::print(const string &s) const {
 }
 
 Matrix Phase::jointMatrix(const Robot &robot, const gtsam::Values &results,
-                          size_t k, boost::optional<double> dt) const {
+                          size_t k, std::optional<double> dt) const {
   const auto &joints = robot.joints();
   const size_t J = joints.size();
   const int m = numTimeSteps();

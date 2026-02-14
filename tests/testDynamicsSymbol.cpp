@@ -84,6 +84,31 @@ TEST(DynamicsSymbol, SimpleSymbol) {
   EXPECT_LONGS_EQUAL((long)key, (long)(Key)DynamicsSymbol(key));
 }
 
+TEST(DynamicsSymbol, Level) {
+  Key q_key = DynamicsSymbol::JointSymbol("q", 0, 0);
+  Key v_key = DynamicsSymbol::JointSymbol("v", 0, 0);
+  Key a_key = DynamicsSymbol::JointSymbol("a", 0, 0);
+
+  EXPECT(IsQLevel(q_key));
+  EXPECT(!IsQLevel(v_key));
+  EXPECT(!IsQLevel(a_key));
+
+  EXPECT(IsVLevel(v_key));
+  EXPECT(!IsVLevel(q_key));
+  EXPECT(!IsVLevel(a_key));
+
+  std::vector<Key> keys = {q_key, v_key, a_key};
+  EXPECT_LONGS_EQUAL(2, IdentifyLevel(keys));
+  EXPECT_LONGS_EQUAL(1, IdentifyLevel(std::vector<Key>{q_key, v_key}));
+  EXPECT_LONGS_EQUAL(0, IdentifyLevel(std::vector<Key>{q_key}));
+
+  KeySet q_keys, v_keys, ad_keys;
+  ClassifyKeysByLevel(keys, q_keys, v_keys, ad_keys);
+  EXPECT(q_keys.exists(q_key));
+  EXPECT(v_keys.exists(v_key));
+  EXPECT(ad_keys.exists(a_key));
+}
+
 /* ************************************************************************* */
 int main() {
   TestResult tr;

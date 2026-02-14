@@ -43,10 +43,10 @@ def update_jr_frame(ax, values, jr, k):
         z = pose.z()
         theta = pose.rotation().roll()
         l = 0.55
-        start_y = y - l/2 * np.cos(theta)
-        start_z = z - l/2 * np.sin(theta)
-        end_y = y + l/2 * np.cos(theta)
-        end_z = z + l/2 * np.sin(theta)
+        start_y = y - l / 2 * np.cos(theta)
+        start_z = z - l / 2 * np.sin(theta)
+        end_y = y + l / 2 * np.cos(theta)
+        end_z = z + l / 2 * np.sin(theta)
 
         ax.plot([start_y, end_y], [start_z, end_z], color=color)
 
@@ -92,6 +92,7 @@ def visualize_jr_trajectory(values, jr, num_steps, step=1):
 
     def animate(i):
         update_jr_frame(ax, values, jr, i)
+
     frames = np.arange(0, num_steps, step)
     FuncAnimation(fig, animate, frames=frames, interval=10)
     plt.show()
@@ -100,11 +101,13 @@ def visualize_jr_trajectory(values, jr, num_steps, step=1):
 def make_plot(values, jr, num_steps):
     """ Draw plots of all quantities with time. """
     joint_names = ["knee_r", "hip_r", "hip_l", "knee_l"]
-    colors = {"knee_r": "red",
-              "hip_r": "orange",
-              "hip_l": "green",
-              "knee_l": "blue",
-              "source": "black"}
+    colors = {
+        "knee_r": "red",
+        "hip_r": "orange",
+        "hip_l": "green",
+        "knee_l": "blue",
+        "source": "black"
+    }
 
     qs_dict = {name: [] for name in joint_names}
     vs_dict = {name: [] for name in joint_names}
@@ -124,39 +127,62 @@ def make_plot(values, jr, num_steps):
             qs_dict[name].append(gtd.JointAngle(values, j, k))
             vs_dict[name].append(gtd.JointVel(values, j, k))
             torques_dict[name].append(gtd.Torque(values, j, k))
-            pressures_dict[name].append(values.atDouble(Actuator.PressureKey(j, k)))
+            pressures_dict[name].append(
+                values.atDouble(Actuator.PressureKey(j, k)))
             masses_dict[name].append(values.atDouble(Actuator.MassKey(j, k)))
-            mdots_dict[name].append(values.atDouble(Actuator.MassRateActualKey(j, k)))
-            contractions_dict[name].append(values.atDouble(Actuator.ContractionKey(j, k)))
+            mdots_dict[name].append(
+                values.atDouble(Actuator.MassRateActualKey(j, k)))
+            contractions_dict[name].append(
+                values.atDouble(Actuator.ContractionKey(j, k)))
             forces_dict[name].append(values.atDouble(Actuator.ForceKey(j, k)))
-        masses_dict["source"].append(values.atDouble(Actuator.SourceMassKey(k)))
-        pressures_dict["source"].append(values.atDouble(Actuator.SourcePressureKey(k)))
-        time_list.append(values.atDouble(gtd.TimeKey(k).key()))
+        masses_dict["source"].append(values.atDouble(
+            Actuator.SourceMassKey(k)))
+        pressures_dict["source"].append(
+            values.atDouble(Actuator.SourcePressureKey(k)))
+        time_list.append(values.atDouble(gtd.TimeKey(k)))
 
     fig, axs = plt.subplots(2, 3, sharex=True, figsize=(10, 6.7), dpi=80)
 
     for name in qs_dict.keys():
-        axs[0, 0].plot(time_list, qs_dict[name], label=name, color=colors[name])
+        axs[0, 0].plot(time_list,
+                       qs_dict[name],
+                       label=name,
+                       color=colors[name])
     axs[0, 0].set_title("joint angle")
 
     for name in torques_dict.keys():
-        axs[0, 1].plot(time_list, torques_dict[name], label=name, color=colors[name])
+        axs[0, 1].plot(time_list,
+                       torques_dict[name],
+                       label=name,
+                       color=colors[name])
     axs[0, 1].set_title("torque")
 
     for name in forces_dict.keys():
-        axs[0, 2].plot(time_list, forces_dict[name], label=name, color=colors[name])
+        axs[0, 2].plot(time_list,
+                       forces_dict[name],
+                       label=name,
+                       color=colors[name])
     axs[0, 2].set_title("force")
 
     for name in pressures_dict.keys():
-        axs[1, 0].plot(time_list, pressures_dict[name], label=name, color=colors[name])
+        axs[1, 0].plot(time_list,
+                       pressures_dict[name],
+                       label=name,
+                       color=colors[name])
     axs[1, 0].set_title("pressure")
 
     for name in masses_dict.keys():
-        axs[1, 1].plot(time_list, masses_dict[name], label=name, color=colors[name])
+        axs[1, 1].plot(time_list,
+                       masses_dict[name],
+                       label=name,
+                       color=colors[name])
     axs[1, 1].set_title("mass")
 
     for name in contractions_dict.keys():
-        axs[1, 2].plot(time_list, contractions_dict[name], label=name, color=colors[name])
+        axs[1, 2].plot(time_list,
+                       contractions_dict[name],
+                       label=name,
+                       color=colors[name])
     axs[1, 2].set_title("contraction")
     plt.show()
 

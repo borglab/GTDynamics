@@ -13,17 +13,16 @@
 
 #pragma once
 
+#include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
-
-#include "gtdynamics/utils/utils.h"
 
 namespace gtdynamics {
 
@@ -32,27 +31,18 @@ namespace gtdynamics {
  * that the linear contact force lies within a friction cone.
  */
 class ContactDynamicsFrictionConeFactor
-    : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Vector6> {
+    : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Vector6> {
  private:
   using This = ContactDynamicsFrictionConeFactor;
-  using Base = gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Vector6>;
+  using Base = gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Vector6>;
 
   int up_axis_;  // Which axis is up (assuming flat ground)? {0: x, 1: y, 2: z}.
   double mu_prime_;  // static friction coefficient squared.
-  const gtsam::Matrix36 H_wrench_ = (gtsam::Matrix(3, 6) << 0, 0, 0, 1, 0, 0, 0,
-                                     0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1)
-                                        .finished();
-  const gtsam::Matrix33 H_x_ =
-      (gtsam::Matrix(3, 3) << 1, 0, 0, 0, 0, 0, 0, 0, 0).finished();
-  const gtsam::Matrix33 H_y_ =
-      (gtsam::Matrix(3, 3) << 0, 0, 0, 0, 1, 0, 0, 0, 0).finished();
-  const gtsam::Matrix33 H_z_ =
-      (gtsam::Matrix(3, 3) << 0, 0, 0, 0, 0, 0, 0, 0, 1).finished();
 
  public:
   /**
    * Contact dynamics factor for zero moment at contact.
-
+   *
    * @param pose_key Key corresponding to the link's CoM pose.
    * @param contact_wrench_key Key corresponding to this link's contact wrench.
    * @param cost_model Noise model for this factor.
@@ -70,81 +60,68 @@ class ContactDynamicsFrictionConeFactor
     else
       up_axis_ = 2;  // z.
   }
+
   virtual ~ContactDynamicsFrictionConeFactor() {}
 
- public:
   /**
    * Evaluate contact point moment errors.
    * @param contact_wrench Contact wrench on this link.
    */
   gtsam::Vector evaluateError(
       const gtsam::Pose3 &pose, const gtsam::Vector6 &contact_wrench,
-      boost::optional<gtsam::Matrix &> H_pose = boost::none,
-      boost::optional<gtsam::Matrix &> H_contact_wrench =
-          boost::none) const override {
-    // Linear component of the contact wrench.
-    gtsam::Vector3 f_c = H_wrench_ * contact_wrench;
+      gtsam::OptionalMatrixType H_pose = nullptr,
+      gtsam::OptionalMatrixType H_contact_wrench = nullptr) const override {
+    // Linear component of the contact wrench (fx, fy, fz).
+    gtsam::Vector3 f_c = contact_wrench.tail<3>();
 
     // Rotate linear contact wrench force into the spatial frame.
     gtsam::Matrix36 H_p;
     gtsam::Vector3 f_s = pose.rotation(H_p) * f_c;
 
-    // Compute the squared force values.
-    gtsam::Matrix A = f_s.transpose() * H_x_;
-    gtsam::Matrix B = f_s.transpose() * H_y_;
-    gtsam::Matrix C = f_s.transpose() * H_z_;
-
-    if (up_axis_ == 0)
-      A *= -mu_prime_;
-    else if (up_axis_ == 1)
-      B *= -mu_prime_;
-    else
-      C *= -mu_prime_;
-
-    // a = f_x^2, b = f_z^2, c = f_z^2.
-    gtsam::Matrix a = A * f_s;
-    gtsam::Matrix b = B * f_s;
-    gtsam::Matrix c = C * f_s;
-
-    gtsam::Matrix resultant = a + b + c;
-    gtsam::Vector error;
+    // Resultant cone inequality value:
+    // fx^2 + fy^2 + fz^2 - (1 + mu^2) * f_up^2 = sum_i(w_i * f_i^2).
+    gtsam::Vector3 weights = gtsam::Vector3::Ones();
+    weights(up_axis_) = -mu_prime_;
+    const double resultant = (weights.array() * f_s.array().square()).sum();
+    gtsam::Vector error(1);
 
     // Ramp function.
-    if (resultant(0, 0) > 0)
-      error = resultant;
+    if (resultant > 0)
+      error(0) = resultant;
     else
-      error = (gtsam::Vector(1) << 0).finished();
+      error(0) = 0.0;
 
     // Compute the gradients based on whether or not the inequality constraint
     // is active.
-    gtsam::Matrix H_f_s = (2 * A + 2 * B + 2 * C);
+    const gtsam::Matrix13 H_f_s =
+        (2.0 * weights.array() * f_s.array()).matrix().transpose();
     if (H_contact_wrench) {
-      if (resultant(0, 0) > 0) {  // Active.
-        gtsam::Matrix H_f_c = H_f_s * pose.rotation().matrix();
-        *H_contact_wrench = H_f_c * H_wrench_;
+      if (resultant > 0) {  // Active.
+        const gtsam::Matrix13 H_f_c = H_f_s * pose.rotation().matrix();
+        *H_contact_wrench = gtsam::Matrix16::Zero();
+        H_contact_wrench->block<1, 3>(0, 3) = H_f_c;
       } else {  // Inactive.
-        *H_contact_wrench =
-            (gtsam::Matrix(1, 6) << 0, 0, 0, 0, 0, 0).finished();
+        *H_contact_wrench = gtsam::Matrix16::Zero();
       }
     }
 
     if (H_pose) {
-      if (resultant(0, 0) > 0) {  // Active.
+      if (resultant > 0) {  // Active.
         gtsam::Matrix33 H_r = pose.rotation().matrix() *
                               gtsam::skewSymmetric(-f_c(0), -f_c(1), -f_c(2));
-        gtsam::Matrix H_rot = gtsam::Matrix(H_f_s * H_r);
+        const gtsam::Matrix13 H_rot = H_f_s * H_r;
         *H_pose = H_rot * H_p;
       } else {  // Inactive.
-        *H_pose = (gtsam::Matrix(1, 6) << 0, 0, 0, 0, 0, 0).finished();
+        *H_pose = gtsam::Matrix16::Zero();
       }
     }
 
     return error;
   }
 
-  //// @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -157,13 +134,15 @@ class ContactDynamicsFrictionConeFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE const &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

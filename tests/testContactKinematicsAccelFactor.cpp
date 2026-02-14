@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,9 +25,6 @@
 #include <math.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/ContactKinematicsAccelFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 
 using namespace gtdynamics;
 using gtsam::assert_equal;

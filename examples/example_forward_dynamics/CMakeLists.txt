@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.9...3.29)
 project(example_forward_dynamics C CXX)
 
 # Build Executable

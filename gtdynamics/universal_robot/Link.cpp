@@ -10,24 +10,23 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  Joint.cpp
- * @brief Absract representation of a robot joint.
+ * @file  Link.cpp
+ * @brief Abstract representation of a robot link.
  */
 
-#include "gtdynamics/universal_robot/Link.h"
-
+#include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/statics/Statics.h>
+#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/slam/expressions.h>
 
 #include <iostream>
 
-#include "gtdynamics/dynamics/Dynamics.h"
-#include "gtdynamics/statics/Statics.h"
-
 namespace gtdynamics {
 
+/* ************************************************************************* */
 gtsam::Vector6_ Link::wrenchConstraint(
-    const std::vector<DynamicsSymbol>& wrench_keys, uint64_t t,
-    const boost::optional<gtsam::Vector3>& gravity) const {
+    const std::vector<gtsam::Key>& wrench_keys, uint64_t t,
+    const std::optional<gtsam::Vector3>& gravity) const {
   // Collect wrenches to implement L&P Equation 8.48 (F = ma)
   std::vector<gtsam::Vector6_> wrenches;
 
@@ -70,6 +69,42 @@ gtsam::Vector6_ Link::wrenchConstraint(
     error += wrench;
   }
   return error;
+}
+
+/* ************************************************************************* */
+gtsam::Matrix6 Link::inertiaMatrix() const {
+  std::vector<gtsam::Matrix> gmm;
+  gmm.push_back(inertia_);
+  gmm.push_back(gtsam::I_3x3 * mass_);
+  return gtsam::diag(gmm);
+}
+
+/* ************************************************************************* */
+bool Link::operator==(const Link& other) const {
+  return (this->name_ == other.name_ && this->id_ == other.id_ &&
+          this->mass_ == other.mass_ &&
+          this->centerOfMass_.equals(other.centerOfMass_) &&
+          this->inertia_ == other.inertia_ &&
+          this->bMcom_.equals(other.bMcom_) &&
+          this->bMlink_.equals(other.bMlink_) &&
+          this->is_fixed_ == other.is_fixed_ &&
+          this->fixed_pose_.equals(other.fixed_pose_));
+}
+
+/* ************************************************************************* */
+std::ostream& operator<<(std::ostream& os, const Link& link) {
+  std::string fixed = link.isFixed() ? " (fixed)" : "";
+  os << link.name() << ", id=" << size_t(link.id()) << fixed << ":\n";
+  os << "\tcom pose:  " << link.bMcom().rotation().rpy().transpose() << ", "
+     << link.bMcom().translation().transpose() << "\n";
+  os << "\tlink pose: " << link.bMlink().rotation().rpy().transpose() << ", "
+     << link.bMlink().translation().transpose() << std::endl;
+  return os;
+}
+
+/* ************************************************************************* */
+void Link::print(const std::string& s) const {
+  std::cout << (s.empty() ? s : s + " ") << *this;
 }
 
 }  // namespace gtdynamics

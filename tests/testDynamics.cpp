@@ -12,13 +12,11 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/numericalDerivative.h>
 
-#include <boost/bind.hpp>
 #include <cmath>
-
-#include "gtdynamics/dynamics/Dynamics.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -39,7 +37,7 @@ TEST(Dynamics, Coriolis) {
       gtsam::Pose3::adjointTranspose(twist, inertia * twist);
   EXPECT(assert_equal(expected, Coriolis(inertia, twist, actualH), 1e-6));
   Matrix6 numericalH = numericalDerivative11<Vector6, Vector6>(
-      boost::bind(&Coriolis, inertia, _1, boost::none), twist);
+      std::bind(&Coriolis, inertia, std::placeholders::_1, nullptr), twist);
   EXPECT(assert_equal(numericalH, actualH, 1e-6));
 }
 

@@ -22,6 +22,7 @@ import gtdynamics as gtd
 
 class TestLink(GtsamTestCase):
     """Tests for the Link class."""
+
     def setUp(self):
         """Set up the fixtures."""
         # load example robot

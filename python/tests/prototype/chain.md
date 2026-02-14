@@ -12,11 +12,11 @@ Below I use tensor notation with superscripts and subscripts, and make sure matr
 ## Kinematics
 
 We know that the forward kinematics of a chain can be given by a **product of exponential maps** or POE, e.g., in the 3DOF case we have
-$$T^b_e(\theta) = M^b_e \exp[A^e_1\theta^1]\exp[A^e_2\theta^2]\exp [A^e_3\theta^3] \doteq M^b_e \exp[A^e_j\theta^j]$$
-where the $6\times3$ matrix $A^e_j$ collects the joint screw axes expressed in the end-effector frame. Note I defined $\exp[A^e_j\theta^j]$ as shorthand for the POE of all axes in the matrix $A^e_j$.
+$$T^b_e(\theta^j) = M^b_e \exp[A^e_1\theta^1]\exp[A^e_2\theta^2]\exp [A^e_3\theta^3] \doteq M^b_e \exp[A^e_j,\theta^j]$$
+where the $6\times3$ matrix $A^e_j$ collects the joint screw axes expressed in the end-effector frame. Note I defined $\exp[A^e_j,\theta^j]$ as shorthand for the POE of all axes in the matrix $A^e_j$.
 
 In fact, $A^e_j$ is just the **manipulator Jacobian** $J^e_j(\theta^j)$ at rest, and more generally we have
-$$T^b_e(\theta^j+\delta \theta^j) = T^b_e(\theta^j) \exp[J^e_j(\theta^j)\delta \theta^j]$$
+$$T^b_e(\theta^j+\delta \theta^j) = T^b_e(\theta^j) \exp[J^e_j(\theta^j),\delta \theta^j]$$
 with $A^e_j=J^e_j(0^j)$.
 
 ## Monoid Math
@@ -49,6 +49,7 @@ Note, above we treat $\tau_j$ and $\mathcal{F_e}$ as *row* vectors, as indicated
 
 Of course, we are typically more interested in applying a wrench $\mathcal{F_b}$ on the body $B$, by delivering torques $\tau_j$ ate the joints, so we need to adjoint from the body:
 $$\tau_j = \mathcal{F_b} Ad^b_e J^e_j(\theta)$$
+$$\tau_j = \mathcal{F_b} (Ad^b_e J^e_j(\theta)) = \mathcal{F_b} J^b_j(\theta)$$
 with
 $$Ad^b_e\doteq Ad_{T^b_e}.$$
 

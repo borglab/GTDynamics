@@ -7,12 +7,18 @@
 
 /**
  * @file  Link.h
- * @brief only link part of a robot, does not include joint part
- * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
+ * @brief Abstract representation of a robot link.
+ * @author: Frank Dellaert, Mandy Xie, Varun Agrawal, and Alejandro Escontrela
  */
 
 #pragma once
 
+#include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/DynamicsSymbol.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -23,31 +29,22 @@
 #include <gtsam/nonlinear/expressions.h>
 #include <gtsam/slam/PriorFactor.h>
 
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/dynamics/OptimizerSetting.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/nvp.hpp>
+#endif
 
 namespace gtdynamics {
 
-class Link;   // forward declaration
-class Joint;  // forward declaration
-
-LINK_TYPEDEF_CLASS_POINTER(Link);
-LINK_TYPEDEF_CLASS_POINTER(Joint);
-
 /**
- * @class Base class for links taking different format of parameters.
+ * @class Abstract base class for robot links.
  */
-class Link : public boost::enable_shared_from_this<Link> {
+class Link : public std::enable_shared_from_this<Link> {
  private:
   uint8_t id_;
   std::string name_;
@@ -74,6 +71,7 @@ class Link : public boost::enable_shared_from_this<Link> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  /// Default constructor
   Link() {}
 
   /**
@@ -101,16 +99,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   /** destructor */
   virtual ~Link() = default;
 
-  bool operator==(const Link &other) const {
-    return (this->name_ == other.name_ && this->id_ == other.id_ &&
-            this->mass_ == other.mass_ &&
-            this->centerOfMass_.equals(other.centerOfMass_) &&
-            this->inertia_ == other.inertia_ &&
-            this->bMcom_.equals(other.bMcom_) &&
-            this->bMlink_.equals(other.bMlink_) &&
-            this->is_fixed_ == other.is_fixed_ &&
-            this->fixed_pose_.equals(other.fixed_pose_));
-  }
+  bool operator==(const Link &other) const;
 
   bool operator!=(const Link &other) const { return !(*this == other); }
 
@@ -135,8 +124,12 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// Relative pose at rest from link’s COM to the base frame.
   inline const gtsam::Pose3 &bMcom() const { return bMcom_; }
 
-  /// Relative pose at rest from link frame to the base frame. mainly for
-  /// interoperability uses
+  /**
+   * @brief Relative pose at rest from link frame to the base frame.
+   * Mainly for interoperability uses.
+   * 
+   * @return const gtsam::Pose3 
+   */
   inline const gtsam::Pose3 bMlink() const { return bMlink_; }
 
   /// the fixed pose of the link
@@ -157,24 +150,24 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// Return link mass.
   double mass() const { return mass_; }
 
+  // Set Mass
+  inline void setMass(const double mass) { mass_ = mass; }
+
   /// Return center of mass (gtsam::Pose3)
   const gtsam::Pose3 &centerOfMass() const { return centerOfMass_; }
 
   /// Return inertia.
   const gtsam::Matrix3 &inertia() const { return inertia_; }
 
+  // Set Inertia
+  inline void setInertia(const gtsam::Matrix3 &inertia) { inertia_ = inertia; }
+
   /// Return general mass gtsam::Matrix
-  gtsam::Matrix6 inertiaMatrix() const {
-    std::vector<gtsam::Matrix> gmm;
-    gmm.push_back(inertia_);
-    gmm.push_back(gtsam::I_3x3 * mass_);
-    return gtsam::diag(gmm);
-  }
+  gtsam::Matrix6 inertiaMatrix() const;
 
   /// Functional way to fix a link
-  static Link fix(
-      const Link &link,
-      const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+  static Link fix(const Link &link,
+                  const std::optional<gtsam::Pose3> fixed_pose = {}) {
     // Copy construct
     Link fixed_link(link);
     // Fix the link
@@ -191,17 +184,25 @@ class Link : public boost::enable_shared_from_this<Link> {
     return unfixed_link;
   }
 
+  /**
+   * @brief Rename the link.
+   *
+   * @param new_name The new name of the link.
+   */
+  void rename(const std::string& new_name) {name_ = new_name; }
+
+  /**
+   * @brief Reassign the link ID.
+   *
+   * @param new_id The new ID of the link.
+   */
+  void reassign(const uint8_t new_id) {id_ = new_id; }
+
   /// Print to ostream
-  friend std::ostream &operator<<(std::ostream &os, const Link &l) {
-    os << l.name();
-    return os;
-  }
+  friend std::ostream &operator<<(std::ostream &os, const Link &link);
 
   /// Helper print function
-  void print(const std::string &s = "") const {
-    std::cout << (s.empty() ? s : s + " ") << *this;
-  }
-
+  void print(const std::string &s = "") const;
 
   /**
    * @brief Create expression that constraint the wrench balance on the link.
@@ -210,12 +211,12 @@ class Link : public boost::enable_shared_from_this<Link> {
    * @param gravity Gravitional constant.
    */
   gtsam::Vector6_ wrenchConstraint(
-      const std::vector<DynamicsSymbol> &wrench_keys, uint64_t t = 0,
-      const boost::optional<gtsam::Vector3> &gravity = boost::none) const;
+      const std::vector<gtsam::Key> &wrench_keys, uint64_t t = 0,
+      const std::optional<gtsam::Vector3> &gravity = {}) const;
 
  private:
   /// fix the link to fixed_pose. If fixed_pose is not specified, use bTcom.
-  void fix(const boost::optional<gtsam::Pose3 &> fixed_pose = boost::none) {
+  void fix(const std::optional<gtsam::Pose3> fixed_pose = {}) {
     is_fixed_ = true;
     fixed_pose_ = fixed_pose ? *fixed_pose : bMcom();
   }
@@ -226,6 +227,7 @@ class Link : public boost::enable_shared_from_this<Link> {
   /// @name Advanced Interface
   /// @{
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -240,6 +242,7 @@ class Link : public boost::enable_shared_from_this<Link> {
     ar &BOOST_SERIALIZATION_NVP(is_fixed_);
     ar &BOOST_SERIALIZATION_NVP(fixed_pose_);
   }
+#endif
 
   /// @}
 };

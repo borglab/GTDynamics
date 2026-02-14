@@ -13,29 +13,27 @@
 
 #pragma once
 
+#include <gtdynamics/universal_robot/Joint.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 
-#include <boost/optional.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
 
-#include "gtdynamics/universal_robot/Joint.h"
-
 namespace gtdynamics {
 
 /**
- * JointLimitFactor is a class which enforces joint angle, velocity,
- * acceleration and torque value to be within limi
+ * JointLimitFactor is a class which enforces joint angle value
+ * to be within specified limits.
  */
-class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
+class JointLimitFactor : public gtsam::NoiseModelFactorN<double> {
  private:
   using This = JointLimitFactor;
-  using Base = gtsam::NoiseModelFactor1<double>;
+  using Base = gtsam::NoiseModelFactorN<double>;
   double low_, high_;
 
  public:
@@ -57,7 +55,6 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
 
   virtual ~JointLimitFactor() {}
 
- public:
   /**
    * Evaluate joint limit errors
    *
@@ -68,24 +65,25 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
    *
    * @param q joint value
    */
-  gtsam::Vector evaluateError(
-      const double &q,
-      boost::optional<gtsam::Matrix &> H_q = boost::none) const override {
+  gtsam::Vector evaluateError(const double &q,
+                              gtsam::OptionalMatrixType H_q) const override {
+    gtsam::Vector error(1);
     if (q < low_) {
       if (H_q) *H_q = -gtsam::I_1x1;
-      return gtsam::Vector1(low_ - q);
+      error(0) = low_ - q;
     } else if (q <= high_) {
       if (H_q) *H_q = gtsam::Z_1x1;
-      return gtsam::Vector1(0.0);
+      error(0) = 0.0;
     } else {
       if (H_q) *H_q = gtsam::I_1x1;
-      return gtsam::Vector1(q - high_);
+      error(0) = q - high_;
     }
+    return error;
   }
 
-  //// @return a deep copy of this factor
+  /// @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -98,15 +96,17 @@ class JointLimitFactor : public gtsam::NoiseModelFactor1<double> {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {  // NOLINT
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor1", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
     ar &low_;
     ar &high_;
   }
+#endif
 };
 
 }  // namespace gtdynamics

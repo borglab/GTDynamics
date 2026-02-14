@@ -11,16 +11,15 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/TorqueFactor.h>             // TODO: move
+#include <gtdynamics/factors/WrenchEquivalenceFactor.h>  // TODO: move
+#include <gtdynamics/factors/WrenchPlanarFactor.h>       // TODO: move
+#include <gtdynamics/statics/StaticWrenchFactor.h>
+#include <gtdynamics/statics/Statics.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearEquality.h>
-
-#include "gtdynamics/factors/TorqueFactor.h"             // TODO: move
-#include "gtdynamics/factors/WrenchEquivalenceFactor.h"  // TODO: move
-#include "gtdynamics/factors/WrenchPlanarFactor.h"       // TODO: move
-#include "gtdynamics/statics/StaticWrenchFactor.h"
-#include "gtdynamics/statics/Statics.h"
 
 namespace gtdynamics {
 using gtsam::assert_equal;
@@ -68,7 +67,7 @@ gtsam::NonlinearFactorGraph Statics::graph(const Slice& slice,
     int i = link->id();
     if (link->isFixed()) continue;
     const auto& connected_joints = link->joints();
-    std::vector<DynamicsSymbol> wrench_keys;
+    std::vector<gtsam::Key> wrench_keys;
 
     // Add wrench keys for joints.
     for (auto&& joint : connected_joints)
@@ -104,8 +103,8 @@ gtsam::Values Statics::initialValues(const Slice& slice, const Robot& robot,
   // Initialize wrenches and torques to 0.
   for (auto&& joint : robot.joints()) {
     int j = joint->id();
-    InsertWrench(&values, joint->parent()->id(), j, k, gtsam::Z_6x1);
-    InsertWrench(&values, joint->child()->id(), j, k, gtsam::Z_6x1);
+    InsertWrench(&values, joint->parent()->id(), j, k, sampler.sample());
+    InsertWrench(&values, joint->child()->id(), j, k, sampler.sample());
     InsertTorque(&values, j, k, 0.0);
   }
 
@@ -113,10 +112,11 @@ gtsam::Values Statics::initialValues(const Slice& slice, const Robot& robot,
 }
 
 gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
-                             const gtsam::Values& configuration) const {
+                             const gtsam::Values& configuration,
+                             double gaussian_noise) const {
   auto graph = this->graph(slice, robot);
   gtsam::Values initial_values;
-  initial_values.insert(initialValues(slice, robot));
+  initial_values.insert(initialValues(slice, robot, gaussian_noise));
 
   // In this function we assume the kinematics is given, and we add priors to
   // the graph to enforce this. Would be much nicer with constant expressions.
@@ -125,7 +125,7 @@ gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
   for (auto&& link : robot.links()) {
     auto key = PoseKey(link->id(), slice.k);
     auto pose = configuration.at<Pose3>(key);
-    graph.emplace_shared<gtsam::NonlinearEquality1<Pose3>>(pose, key);
+    graph.emplace_shared<gtsam::NonlinearEquality<Pose3>>(key, pose);
     initial_values.insert(key, pose);
   }
 
@@ -133,7 +133,7 @@ gtsam::Values Statics::solve(const Slice& slice, const Robot& robot,
   for (auto&& joint : robot.joints()) {
     auto key = JointAngleKey(joint->id(), slice.k);
     auto q = configuration.at<double>(key);
-    graph.emplace_shared<gtsam::NonlinearEquality1<double>>(q, key);
+    graph.emplace_shared<gtsam::NonlinearEquality<double>>(key, q);
     initial_values.insert(key, q);
   }
 

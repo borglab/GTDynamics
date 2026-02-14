@@ -18,19 +18,18 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 
 namespace gtdynamics {
 
 /** GasLawFactor: P*V=Rs*T */
-class GasLawFactor : public gtsam::NoiseModelFactor3<double, double, double> {
+class GasLawFactor : public gtsam::NoiseModelFactorN<double, double, double> {
  private:
   typedef GasLawFactor This;
-  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double> Base;
   double c_;
 
  public:
@@ -44,9 +43,9 @@ class GasLawFactor : public gtsam::NoiseModelFactor3<double, double, double> {
  public:
   gtsam::Vector evaluateError(
       const double &p, const double &v, const double &m,
-      boost::optional<gtsam::Matrix &> H_p = boost::none,
-      boost::optional<gtsam::Matrix &> H_v = boost::none,
-      boost::optional<gtsam::Matrix &> H_m = boost::none) const override {
+      gtsam::OptionalMatrixType H_p = nullptr,
+      gtsam::OptionalMatrixType H_v = nullptr,
+      gtsam::OptionalMatrixType H_m = nullptr) const override {
     if (H_p) {
       H_p->setConstant(1, 1, 1e3 * v);
     }
@@ -61,7 +60,7 @@ class GasLawFactor : public gtsam::NoiseModelFactor3<double, double, double> {
   }
 
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -73,20 +72,22 @@ class GasLawFactor : public gtsam::NoiseModelFactor3<double, double, double> {
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 /** MassFlowRateFactor: compute mdot from pressures*/
 class MassFlowRateFactor
-    : public gtsam::NoiseModelFactor3<double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double> {
  private:
   typedef MassFlowRateFactor This;
-  typedef gtsam::NoiseModelFactor3<double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double> Base;
   double D_, L_, mu_, epsilon_, k_;
   double term1_, term2_, c1_, coeff_;
 
@@ -114,9 +115,9 @@ class MassFlowRateFactor
    */
   double computeExpectedMassFlow(
       const double &pm, const double &ps, const double &mdot,
-      boost::optional<gtsam::Matrix &> H_pm = boost::none,
-      boost::optional<gtsam::Matrix &> H_ps = boost::none,
-      boost::optional<gtsam::Matrix &> H_mdot = boost::none) const {
+      gtsam::OptionalMatrixType H_pm = nullptr,
+      gtsam::OptionalMatrixType H_ps = nullptr,
+      gtsam::OptionalMatrixType H_mdot = nullptr) const {
     double tmp = term1_ / abs(mdot) + term2_;
     double fD = c1_ * pow(log(tmp), -2);
     double p_square_diff = abs(ps * ps - pm * pm);
@@ -142,9 +143,9 @@ class MassFlowRateFactor
 
   gtsam::Vector evaluateError(
       const double &pm, const double &ps, const double &mdot,
-      boost::optional<gtsam::Matrix &> H_pm = boost::none,
-      boost::optional<gtsam::Matrix &> H_ps = boost::none,
-      boost::optional<gtsam::Matrix &> H_mdot = boost::none) const override {
+      gtsam::OptionalMatrixType H_pm = nullptr,
+      gtsam::OptionalMatrixType H_ps = nullptr,
+      gtsam::OptionalMatrixType H_mdot = nullptr) const override {
     double expected_mdot =
         computeExpectedMassFlow(pm, ps, mdot, H_pm, H_ps, H_mdot);
     if (H_mdot) {
@@ -155,7 +156,7 @@ class MassFlowRateFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -168,18 +169,20 @@ class MassFlowRateFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor3", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
-/** Sigmoid function, 1/(1+e^-x), used to model the change of mass flow 
+/** Sigmoid function, 1/(1+e^-x), used to model the change of mass flow
  * rate when valve is open/closed. */
-double sigmoid(double x, boost::optional<gtsam::Matrix &> H_x = boost::none) {
+double sigmoid(double x, gtsam::OptionalMatrixType H_x = nullptr) {
   double neg_exp = exp(-x);
   if (H_x) {
     H_x->setConstant(1, 1, neg_exp / pow(1.0 + neg_exp, 2));
@@ -189,10 +192,10 @@ double sigmoid(double x, boost::optional<gtsam::Matrix &> H_x = boost::none) {
 
 /** ValveControlFactor: compute true mdot based on valve open/close time. */
 class ValveControlFactor
-    : public gtsam::NoiseModelFactor5<double, double, double, double, double> {
+    : public gtsam::NoiseModelFactorN<double, double, double, double, double> {
  private:
   typedef ValveControlFactor This;
-  typedef gtsam::NoiseModelFactor5<double, double, double, double, double> Base;
+  typedef gtsam::NoiseModelFactorN<double, double, double, double, double> Base;
   double ct_inv_;
 
  public:
@@ -211,10 +214,10 @@ class ValveControlFactor
    */
   double computeExpectedTrueMassFlow(
       const double &t, const double &to, const double &tc, const double &mdot,
-      boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_to = boost::none,
-      boost::optional<gtsam::Matrix &> H_tc = boost::none,
-      boost::optional<gtsam::Matrix &> H_mdot = boost::none) const {
+      gtsam::OptionalMatrixType H_t = nullptr,
+      gtsam::OptionalMatrixType H_to = nullptr,
+      gtsam::OptionalMatrixType H_tc = nullptr,
+      gtsam::OptionalMatrixType H_mdot = nullptr) const {
     double dto = (t - to) * ct_inv_;
     double dtc = (t - tc) * ct_inv_;
     double coeff = sigmoid(dto, H_to) - sigmoid(dtc, H_tc);
@@ -236,13 +239,11 @@ class ValveControlFactor
 
   gtsam::Vector evaluateError(
       const double &t, const double &to, const double &tc, const double &mdot,
-      const double &true_mdot,
-      boost::optional<gtsam::Matrix &> H_t = boost::none,
-      boost::optional<gtsam::Matrix &> H_to = boost::none,
-      boost::optional<gtsam::Matrix &> H_tc = boost::none,
-      boost::optional<gtsam::Matrix &> H_mdot = boost::none,
-      boost::optional<gtsam::Matrix &> H_true_mdot =
-          boost::none) const override {
+      const double &true_mdot, gtsam::OptionalMatrixType H_t = nullptr,
+      gtsam::OptionalMatrixType H_to = nullptr,
+      gtsam::OptionalMatrixType H_tc = nullptr,
+      gtsam::OptionalMatrixType H_mdot = nullptr,
+      gtsam::OptionalMatrixType H_true_mdot = nullptr) const override {
     double expected_true_mdot =
         computeExpectedTrueMassFlow(t, to, tc, mdot, H_t, H_to, H_tc, H_mdot);
     if (H_true_mdot) {
@@ -253,7 +254,7 @@ class ValveControlFactor
 
   // @return a deep copy of this factor
   gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
         gtsam::NonlinearFactor::shared_ptr(new This(*this)));
   }
 
@@ -266,13 +267,15 @@ class ValveControlFactor
   }
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>
   void serialize(ARCHIVE &ar, const unsigned int version) {
     ar &boost::serialization::make_nvp(
-        "NoiseModelFactor5", boost::serialization::base_object<Base>(*this));
+        "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
   }
+#endif
 };
 
 }  // namespace gtdynamics

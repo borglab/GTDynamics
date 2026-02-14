@@ -12,6 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/PoseFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,8 +25,6 @@
 
 #include <iostream>
 
-#include "gtdynamics/factors/PoseFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
 #include "make_joint.h"
 
 using namespace gtdynamics;
@@ -40,8 +40,7 @@ using gtsam::noiseModel::Gaussian;
 namespace example {
 // nosie model
 Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::I_6x6);
-gtsam::Key wTp_key = PoseKey(1), wTc_key = PoseKey(2),
-           q_key = JointAngleKey(1);
+gtsam::Key wTp_key = PoseKey(1), wTc_key = PoseKey(2), q_key = JointAngleKey(1);
 }  // namespace example
 
 // Test twist factor for stationary case
@@ -50,7 +49,7 @@ TEST(PoseFactor, error) {
   Pose3 cMp = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint = make_joint(cMp, screw_axis);
+  auto [joint, links] = make_joint(cMp, screw_axis);
 
   // Create factor
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
@@ -78,7 +77,7 @@ TEST(PoseFactor, breaking) {
   Pose3 cMp = Pose3(Rot3(), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint = make_joint(cMp, screw_axis);
+  auto [joint, links] = make_joint(cMp, screw_axis);
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
                            example::cost_model, joint);
 
@@ -112,7 +111,7 @@ TEST(PoseFactor, breaking_rr) {
 
   Vector6 screw_axis = (Vector6() << 1, 0, 0, 0, -1, 0).finished();
   Pose3 cMp = j1->relativePoseOf(l1, 0.0);
-  auto joint = make_joint(cMp, screw_axis);
+  auto [joint, links] = make_joint(cMp, screw_axis);
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
                            example::cost_model, joint);
 
@@ -130,7 +129,7 @@ TEST(PoseFactor, nonzero_rest) {
   Pose3 cMp = Pose3(Rot3::Rx(1), Point3(-2, 0, 0));
   Vector6 screw_axis;
   screw_axis << 0, 0, 1, 0, 1, 0;
-  auto joint = make_joint(cMp, screw_axis);
+  auto [joint, links] = make_joint(cMp, screw_axis);
   auto factor = PoseFactor(example::wTp_key, example::wTc_key, example::q_key,
                            example::cost_model, joint);
 

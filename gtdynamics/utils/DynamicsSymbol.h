@@ -16,6 +16,13 @@
 #include <gtsam/inference/Key.h>
 #include <gtsam/inference/Symbol.h>
 
+#include <limits>
+
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/nvp.hpp>
+#endif
+
 namespace gtdynamics {
 
 class DynamicsSymbol {
@@ -32,8 +39,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  DynamicsSymbol(const std::string& s, uint8_t link_idx,
-                 uint8_t joint_idx, uint64_t t);
+  DynamicsSymbol(const std::string& s, uint8_t link_idx, uint8_t joint_idx,
+                 uint64_t t);
 
  public:
   /** Default constructor */
@@ -46,8 +53,7 @@ class DynamicsSymbol {
    * Constructor for symbol related to both link and joint.
    *  See private constructor
    */
-  static DynamicsSymbol LinkJointSymbol(const std::string& s,
-                                        uint8_t link_idx,
+  static DynamicsSymbol LinkJointSymbol(const std::string& s, uint8_t link_idx,
                                         uint8_t joint_idx, uint64_t t);
 
   /**
@@ -57,8 +63,8 @@ class DynamicsSymbol {
    * @param[in] joint_idx index of the joint
    * @param[in] t         time step
    */
-  static DynamicsSymbol JointSymbol(const std::string& s,
-                                    uint8_t joint_idx, uint64_t t);
+  static DynamicsSymbol JointSymbol(const std::string& s, uint8_t joint_idx,
+                                    uint64_t t);
 
   /**
    * Constructor for symbol related to only link (e.g. link pose).
@@ -113,6 +119,7 @@ class DynamicsSymbol {
   operator std::string() const;
 
  private:
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   /// Serialization function
   friend class boost::serialization::access;
   template <class ARCHIVE>
@@ -123,13 +130,13 @@ class DynamicsSymbol {
     ar& BOOST_SERIALIZATION_NVP(joint_idx_);
     ar& BOOST_SERIALIZATION_NVP(t_);
   }
+#endif
 
   /**
    * \defgroup Bitfield bit field constants
    * @{
    */
-  static constexpr size_t kMax_uchar_ =
-      std::numeric_limits<uint8_t>::max();
+  static constexpr size_t kMax_uchar_ = std::numeric_limits<uint8_t>::max();
   // bit counts
   static constexpr size_t key_bits = sizeof(gtsam::Key) * 8;
   static constexpr size_t ch1_bits = sizeof(uint8_t) * 8;
@@ -155,5 +162,93 @@ class DynamicsSymbol {
 std::string _GTDKeyFormatter(gtsam::Key key);
 
 static const gtsam::KeyFormatter GTDKeyFormatter = &_GTDKeyFormatter;
+
+/**
+ * @brief Check if the key corresponds to a configuration level variable (q, p).
+ *
+ * @param key The key to check.
+ * @return true If the key is a Q level variable.
+ * @return false otherwise.
+ */
+bool IsQLevel(const gtsam::Key &key);
+
+/**
+ * @brief Check if the key corresponds to a velocity level variable (v, V).
+ *
+ * @param key The key to check.
+ * @return true If the key is a V level variable.
+ * @return false otherwise.
+ */
+bool IsVLevel(const gtsam::Key &key);
+
+/**
+ * @brief Identify the highest level of the keys in the container.
+ * 0: configuration level, 1: velocity level, 2: acceleration/dynamics level.
+ *
+ * @tparam CONTAINER Type of the container.
+ * @param keys The container of keys.
+ * @return int The highest level found.
+ */
+template <typename CONTAINER>
+inline int IdentifyLevel(const CONTAINER &keys) {
+  int lvl = 0;
+  for (const auto &key : keys) {
+    if (IsQLevel(key)) {
+      lvl = std::max(lvl, 0);
+    } else if (IsVLevel(key)) {
+      lvl = std::max(lvl, 1);
+    } else {
+      lvl = std::max(lvl, 2);
+    }
+  }
+  return lvl;
+}
+
+/**
+ * @brief Classify keys into three levels: configuration, velocity, and acceleration/dynamics.
+ *
+ * @tparam CONTAINER Type of the container.
+ * @param keys The container of keys.
+ * @param q_keys Output set of configuration level keys.
+ * @param v_keys Output set of velocity level keys.
+ * @param ad_keys Output set of acceleration/dynamics level keys.
+ */
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeySet &q_keys,
+                         gtsam::KeySet &v_keys, gtsam::KeySet &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.insert(key);
+    } else if (IsVLevel(key)) {
+      v_keys.insert(key);
+    } else {
+      ad_keys.insert(key);
+    }
+  }
+}
+
+/**
+ * @brief Classify keys into three levels: configuration, velocity, and acceleration/dynamics.
+ *
+ * @tparam CONTAINER Type of the container.
+ * @param keys The container of keys.
+ * @param q_keys Output vector of configuration level keys.
+ * @param v_keys Output vector of velocity level keys.
+ * @param ad_keys Output vector of acceleration/dynamics level keys.
+ */
+template <typename CONTAINER>
+inline void ClassifyKeysByLevel(const CONTAINER &keys, gtsam::KeyVector &q_keys,
+                         gtsam::KeyVector &v_keys, gtsam::KeyVector &ad_keys) {
+  for (const gtsam::Key &key : keys) {
+    if (IsQLevel(key)) {
+      q_keys.push_back(key);
+    } else if (IsVLevel(key)) {
+      v_keys.push_back(key);
+    } else {
+      ad_keys.push_back(key);
+    }
+  }
+}
+
 
 }  // namespace gtdynamics

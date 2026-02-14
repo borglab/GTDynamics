@@ -12,34 +12,19 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/universal_robot/Link.h>
+#include <gtdynamics/universal_robot/RevoluteJoint.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/universal_robot/sdf.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/base/serializationTestHelpers.h>
 
-#include "gtdynamics/universal_robot/Link.h"
-#include "gtdynamics/universal_robot/RevoluteJoint.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/universal_robot/sdf.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
-
-using gtsam::assert_equal;
-using gtsam::Matrix;
-using gtsam::Matrix61;
-using gtsam::Matrix66;
-using gtsam::numericalDerivative11;
-using gtsam::numericalDerivative21;
-using gtsam::numericalDerivative22;
-using gtsam::Point3;
-using gtsam::Pose3;
-using gtsam::Rot3;
-using gtsam::Values;
-using gtsam::Vector;
-using gtsam::Vector3;
-using gtsam::Vector6;
-
 using namespace gtdynamics;
+using namespace gtsam;
 
 auto robot = simple_urdf::getRobot();
 auto l1 = robot.link("l1");
@@ -212,16 +197,18 @@ TEST(RevoluteJoint, ParentTchild) {
   EXPECT(assert_equal(expected_pTc, pTc, 1e-4));
 }
 
+#ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
 BOOST_CLASS_EXPORT(gtdynamics::RevoluteJoint)
 
 TEST(RevoluteJoint, Serialization) {
   RevoluteJoint j1 = getRevoluteJoint();
 
-  using namespace gtsam::serializationTestHelpers;
+  using namespace serializationTestHelpers;
   EXPECT(equalsObj(j1));
   EXPECT(equalsXML(j1));
   EXPECT(equalsBinary(j1));
 }
+#endif
 
 int main() {
   TestResult tr;

@@ -11,18 +11,17 @@
  * @author: Frank Dellaert, Mandy Xie, and Alejandro Escontrela
  */
 
-#include "gtdynamics/universal_robot/Robot.h"
+#include <gtdynamics/universal_robot/Joint.h>
+#include <gtdynamics/universal_robot/Robot.h>
+#include <gtdynamics/universal_robot/RobotTypes.h>
+#include <gtdynamics/utils/utils.h>
+#include <gtdynamics/utils/values.h>
 
 #include <algorithm>
 #include <memory>
 #include <queue>
 #include <sstream>
 #include <stdexcept>
-
-#include "gtdynamics/universal_robot/Joint.h"
-#include "gtdynamics/universal_robot/RobotTypes.h"
-#include "gtdynamics/utils/utils.h"
-#include "gtdynamics/utils/values.h"
 
 using gtsam::Pose3;
 using gtsam::Vector3;
@@ -77,7 +76,7 @@ LinkSharedPtr Robot::link(const std::string &name) const {
   return name_to_link_.at(name);
 }
 
-Robot Robot::fixLink(const std::string &name) {
+Robot Robot::fixLink(const std::string &name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
@@ -87,7 +86,7 @@ Robot Robot::fixLink(const std::string &name) {
   return fixed_robot;
 }
 
-Robot Robot::unfixLink(const std::string &name) {
+Robot Robot::unfixLink(const std::string &name) const {
   if (name_to_link_.find(name) == name_to_link_.end()) {
     throw std::runtime_error("no link named " + name);
   }
@@ -121,16 +120,13 @@ void Robot::print(const std::string &s) const {
 
   // Print links in sorted id order.
   cout << "LINKS:" << endl;
-  for (const auto &link : sorted_links) {
-    std::string fixed = link->isFixed() ? " (fixed)" : "";
-    cout << link->name() << ", id=" << size_t(link->id()) << fixed << ":\n";
-    cout << "\tcom pose: " << link->bMcom().rotation().rpy().transpose() << ", "
-         << link->bMcom().translation().transpose() << "\n";
+  for (auto &&link : sorted_links) {
+    cout << *link;
     cout << "\tjoints: ";
-    for (const auto &joint : link->joints()) {
+    for (auto &&joint : link->joints()) {
       cout << joint->name() << " ";
     }
-    cout << "\n";
+    cout << std::endl;
   }
 
   // Sort joints by id.
@@ -141,7 +137,7 @@ void Robot::print(const std::string &s) const {
 
   // Print joints in sorted id order.
   cout << "JOINTS:" << endl;
-  for (const auto &joint : sorted_joints) {
+  for (auto &&joint : sorted_joints) {
     cout << joint << endl;
 
     auto pTc = joint->parentTchild(0.0);
@@ -152,7 +148,7 @@ void Robot::print(const std::string &s) const {
 
 LinkSharedPtr Robot::findRootLink(
     const gtsam::Values &values,
-    const boost::optional<std::string> &prior_link_name) const {
+    const std::optional<std::string> &prior_link_name) const {
   LinkSharedPtr root_link;
 
   // Use prior_link if given.
@@ -226,7 +222,7 @@ static bool InsertWithCheck(size_t i, size_t t,
 
 gtsam::Values Robot::forwardKinematics(
     const gtsam::Values &known_values, size_t t,
-    const boost::optional<std::string> &prior_link_name) const {
+    const std::optional<std::string> &prior_link_name) const {
   gtsam::Values values = known_values;
 
   // Set root link.
@@ -267,6 +263,58 @@ gtsam::Values Robot::forwardKinematics(
     }
   }
   return values;
+}
+
+
+void Robot::renameLinks(const std::map<std::string, std::string>& name_map) {
+  LinkMap new_links;
+  for (const auto& it : name_to_link_) {
+    const std::string& old_name = it.first;
+    const std::string& new_name = name_map.at(old_name);
+    it.second->rename(new_name);
+    new_links.insert({new_name, it.second});
+  }
+  name_to_link_ = new_links;
+}
+
+void Robot::renameJoints(const std::map<std::string, std::string>& name_map) {
+  JointMap new_joints;
+  for (const auto& it : name_to_joint_) {
+    const std::string& old_name = it.first;
+    const std::string& new_name = name_map.at(old_name);
+    it.second->rename(new_name);
+    new_joints.insert({new_name, it.second});
+  }
+  name_to_joint_ = new_joints;
+}
+
+void Robot::reassignLinks(const std::vector<std::string> &ordered_link_names) {
+  for (size_t i = 0; i < ordered_link_names.size(); i++) {
+    name_to_link_.at(ordered_link_names[i])->reassign(i);
+  }
+}
+
+void Robot::reassignJoints(
+    const std::vector<std::string> &ordered_joint_names) {
+  for (size_t i = 0; i < ordered_joint_names.size(); i++) {
+    name_to_joint_.at(ordered_joint_names[i])->reassign(i);
+  }
+}
+
+std::vector<LinkSharedPtr> Robot::orderedLinks() const {
+  std::map<uint8_t, LinkSharedPtr> ordered_links;
+  for (const auto& it: name_to_link_) {
+    ordered_links.insert({it.second->id(), it.second});
+  }
+  return getValues<uint8_t, LinkSharedPtr>(ordered_links);
+}
+
+std::vector<JointSharedPtr> Robot::orderedJoints() const {
+  std::map<uint8_t, JointSharedPtr> ordered_joints;
+  for (const auto& it: name_to_joint_) {
+    ordered_joints.insert({it.second->id(), it.second});
+  }
+  return getValues<uint8_t, JointSharedPtr>(ordered_joints);
 }
 
 }  // namespace gtdynamics.

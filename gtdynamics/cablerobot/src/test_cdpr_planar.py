@@ -17,7 +17,6 @@ import gtsam
 import numpy as np
 from gtsam import Pose3, Rot3
 from gtsam.utils.test_case import GtsamTestCase
-from utils import MyLMParams
 
 from cdpr_planar import Cdpr
 
@@ -56,88 +55,76 @@ class TestCdprPlanar(GtsamTestCase):
         self.assertEqual(0.0, kfg.error(values))
         # try optimizing IK
         ikgraph = gtsam.NonlinearFactorGraph(kfg)
-        ik1 = cdpr.priors_ik(ks=[0],
-                             Ts=[gtd.Pose(values, cdpr.ee_id(), 0)],
-                             Vs=[gtd.Twist(values, cdpr.ee_id(), 0)])
-        ik2 = cdpr.priors_ik(ks=[0], values=values)
-        self.gtsamAssertEquals(ik1, ik2)
-        ikgraph.push_back(ik1)
-        ikres = gtsam.LevenbergMarquardtOptimizer(ikgraph, zeroValues(), MyLMParams()).optimize()
+        ikgraph.push_back(
+            cdpr.priors_ik([0], [gtd.Pose(values, cdpr.ee_id(), 0)],
+                           [gtd.Twist(values, cdpr.ee_id(), 0)]))
+        ikres = gtsam.LevenbergMarquardtOptimizer(ikgraph,
+                                                  zeroValues()).optimize()
         self.gtsamAssertEquals(ikres, values)  # should match with full sol
         # try optimizing FK
         fkgraph = gtsam.NonlinearFactorGraph(kfg)
-        fk1 = cdpr.priors_fk(ks=[0],
-                             ls=[[gtd.JointAngle(values, ji, 0) for ji in range(4)]],
-                             ldots=[[gtd.JointVel(values, ji, 0) for ji in range(4)]])
-        fk2 = cdpr.priors_fk(ks=[0], values=values)
-        self.gtsamAssertEquals(fk1, fk2)
-        fkgraph.push_back(fk1)
-        # FK less sensitive so we need to decrease the tolerance to 1e-20
-        fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(), MyLMParams(1e-20)).optimize()
-        self.gtsamAssertEquals(fkres, values, tol=1e-5)  # should match with full sol
+        fkgraph.push_back(
+            cdpr.priors_fk([0],
+                           [[gtd.JointAngle(values, ji, 0)
+                             for ji in range(4)]],
+                           [[gtd.JointVel(values, ji, 0) for ji in range(4)]]))
+        params = gtsam.LevenbergMarquardtParams()
+        params.setAbsoluteErrorTol(
+            1e-20)  # FK less sensitive so we need to decrease the tolerance
+        fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(),
+                                                  params).optimize()
+        self.gtsamAssertEquals(fkres, values,
+                               tol=1e-5)  # should match with full sol
 
     def testDynamicsInstantaneous(self):
         """Test dynamics factors: relates torque to wrench+twistaccel.  Also tests ID solving
         """
         cdpr = Cdpr()
-        cdpr.params.winch_params.inertia_ = 1.23
         dfg = cdpr.dynamics_factors(ks=[0])
         values = gtsam.Values()
-        # things needed to define IK
+        # things needed to define kinematic
         gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
         gtd.InsertTwist(values, cdpr.ee_id(), 0, np.zeros(6))
         # things needed to define ID
-        for j, tau in zip(range(4), [1 + 1.23, 0 - 1.23, 0 - 1.23, 1 + 1.23]):
+        for j, tau in zip(range(4), [1, 0, 0, 1]):
             gtd.InsertTorque(values, j, 0, tau)
         # things needed to define FD
-        for j, lddot in zip(range(4), [-1, 1, 1, -1]):
-            gtd.InsertJointAccel(values, j, 0, lddot)
+        gtd.InsertTwistAccel(values, cdpr.ee_id(), 0,
+                             (0, 0, 0, 0, 0, -np.sqrt(2)))
         # things needed intermediaries
-        gtd.InsertWrench(values, cdpr.ee_id(), 0, [0,0,0,1/np.sqrt(2),0,-1/np.sqrt(2)])
-        gtd.InsertWrench(values, cdpr.ee_id(), 1, [0,0,0,0,0,0])
-        gtd.InsertWrench(values, cdpr.ee_id(), 2, [0,0,0,0,0,0])
-        gtd.InsertWrench(values, cdpr.ee_id(), 3, [0,0,0,-1/np.sqrt(2),0,-1/np.sqrt(2)])
-        gtd.InsertTwistAccel(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
-        for ji, t in enumerate([1, 0, 0, 1]):
-            gtd.InsertTension(values, ji, 0, t)
-        for ji in range(4):
-            gtd.InsertJointVel(values, ji, 0, 0)  # for WinchFactor, ugh
+        gtd.InsertWrench(values, cdpr.ee_id(), 0,
+                         [0, 0, 0, 1 / np.sqrt(2), 0, -1 / np.sqrt(2)])
+        gtd.InsertWrench(values, cdpr.ee_id(), 1, [0, 0, 0, 0, 0, 0])
+        gtd.InsertWrench(values, cdpr.ee_id(), 2, [0, 0, 0, 0, 0, 0])
+        gtd.InsertWrench(values, cdpr.ee_id(), 3,
+                         [0, 0, 0, -1 / np.sqrt(2), 0, -1 / np.sqrt(2)])
         # check FD/ID is valid
         self.assertAlmostEqual(0.0, dfg.error(values), 10)
-        # build ID graph
+        # build FD graph
         dfg.push_back(
-            cdpr.priors_ik([0],
-                           Ts=[gtd.Pose(values, cdpr.ee_id(), 0)],
-                           Vs=[gtd.Twist(values, cdpr.ee_id(), 0)]))
-        id1 = cdpr.priors_id(ks=[0],
-                             lddotss=[[gtd.JointAccel(values, ji, 0) for ji in range(4)]])
-        id2 = cdpr.priors_id(ks=[0], values=values)
-        self.gtsamAssertEquals(id1, id2)
-        dfg.push_back(id1)
+            cdpr.priors_ik([0], [gtd.Pose(values, cdpr.ee_id(), 0)],
+                           [gtd.Twist(values, cdpr.ee_id(), 0)]))
+        dfg.push_back(
+            cdpr.priors_fd([0], [gtd.TwistAccel(values, cdpr.ee_id(), 0)]))
         # redundancy resolution
         dfg.push_back(
-            gtd.PriorFactorDouble(
-                gtd.TorqueKey(1, 0).key(), -1.23, gtsam.noiseModel.Unit.Create(1)))
+            gtd.PriorFactorDouble(gtd.TorqueKey(1, 0), 0.0,
+                                  gtsam.noiseModel.Unit.Create(1)))
         dfg.push_back(
-            gtd.PriorFactorDouble(
-                gtd.TorqueKey(2, 0).key(), -1.23, gtsam.noiseModel.Unit.Create(1)))
+            gtd.PriorFactorDouble(gtd.TorqueKey(2, 0), 0.0,
+                                  gtsam.noiseModel.Unit.Create(1)))
         # initialize and solve
         init = gtsam.Values(values)
         for ji in range(4):
-            init.erase(gtd.TorqueKey(ji, 0).key())
+            init.erase(gtd.TorqueKey(ji, 0))
             gtd.InsertTorque(init, ji, 0, -1)
-        results = gtsam.LevenbergMarquardtOptimizer(dfg, init, MyLMParams(1e-20)).optimize()
-        self.gtsamAssertEquals(values, results)
-        # check FD priors functions
-        fd1 = cdpr.priors_fd(ks=[0], torquess=[[gtd.Torque(results, ji, 0) for ji in range(4)]])
-        fd2 = cdpr.priors_fd(ks=[0], values=results)
-        self.gtsamAssertEquals(fd1, fd2)
+        results = gtsam.LevenbergMarquardtOptimizer(dfg, init).optimize()
+        self.gtsamAssertEquals(results, values)
 
     def testDynamicsCollocation(self):
         """Test dynamics factors across multiple timesteps by using collocation.
         """
         cdpr = Cdpr()
-        cdpr.params.winch_params.inertia_ = 1.23
         # kinematics
         fg = cdpr.kinematics_factors(ks=[0, 1, 2])
         # dynamics
@@ -146,10 +133,14 @@ class TestCdprPlanar(GtsamTestCase):
         fg.push_back(cdpr.collocation_factors(ks=[0, 1], dt=0.01))
         # initial state
         fg.push_back(
-            cdpr.priors_ik(ks=[0], Ts=[Pose3(Rot3(), (1.5, 0, 1.5))], Vs=[np.zeros(6)]))
-        # torque inputs (FD priors)
-        torques = [1 + 1.23, 1 + 1.23, 0 - 1.23, 0 - 1.23]
-        fg.push_back(cdpr.priors_fd(ks=[0, 1, 2], torquess=[torques,]*3))
+            cdpr.priors_ik(ks=[0],
+                           Ts=[Pose3(Rot3(), (1.5, 0, 1.5))],
+                           Vs=[np.zeros(6)]))
+        # torque inputs (ID priors)
+        fg.push_back(
+            cdpr.priors_id(ks=[0, 1, 2], torquess=[
+                [1, 1, 0, 0],
+            ] * 3))
         # construct initial guess
         init = gtsam.Values()
         init.insert(0, 0.01)
@@ -157,15 +148,13 @@ class TestCdprPlanar(GtsamTestCase):
             for j in range(4):
                 gtd.InsertJointAngle(init, j, t, 1)
                 gtd.InsertJointVel(init, j, t, 1)
-                gtd.InsertJointAccel(init, j, t, 1)
                 gtd.InsertTorque(init, j, t, 1)
-                gtd.InsertTension(init, j, t, 1)
                 gtd.InsertWrench(init, cdpr.ee_id(), j, t, np.ones(6))
             gtd.InsertPose(init, cdpr.ee_id(), t, Pose3(Rot3(), (1.5, 1, 1.5)))
             gtd.InsertTwist(init, cdpr.ee_id(), t, np.ones(6))
             gtd.InsertTwistAccel(init, cdpr.ee_id(), t, np.ones(6))
         # optimize
-        optimizer = gtsam.LevenbergMarquardtOptimizer(fg, init, MyLMParams())
+        optimizer = gtsam.LevenbergMarquardtOptimizer(fg, init)
         result = optimizer.optimize()
         # correctness checks:
         # timestep 0

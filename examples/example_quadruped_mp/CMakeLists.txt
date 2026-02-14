@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.9...3.29)
 project(example_quadruped_mp C CXX)
 
 # Build Executable
 add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} PUBLIC gtdynamics)
+target_link_libraries(${PROJECT_NAME} PRIVATE gtdynamics)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_PREFIX_PATH}/include)
 
 add_custom_target(

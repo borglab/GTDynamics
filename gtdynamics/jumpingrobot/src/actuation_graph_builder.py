@@ -74,9 +74,9 @@ class ActuationGraphBuilder:
         V_a_key = Actuator.VolumeKey(j, k)
         delta_x_key = Actuator.ContractionKey(j, k)
         f_a_key = Actuator.ForceKey(j, k)
-        torque_key = gtd.TorqueKey(j, k).key()
-        q_key = gtd.JointAngleKey(j, k).key()
-        v_key = gtd.JointVelKey(j, k).key()
+        torque_key = gtd.TorqueKey(j, k)
+        q_key = gtd.JointAngleKey(j, k)
+        v_key = gtd.JointVelKey(j, k)
 
         graph = NonlinearFactorGraph()
         graph.add(
@@ -116,7 +116,7 @@ class ActuationGraphBuilder:
         mdot_sigma_key = Actuator.MassRateActualKey(j, k)
         To_a_key = Actuator.ValveOpenTimeKey(j)
         Tc_a_key = Actuator.ValveCloseTimeKey(j)
-        t_key = gtd.TimeKey(k).key()
+        t_key = gtd.TimeKey(k)
 
         graph = gtsam.NonlinearFactorGraph()
         graph.add(
@@ -144,7 +144,7 @@ class ActuationGraphBuilder:
             phase = step_phases[time_step]
             k_prev = time_step
             k_curr = time_step + 1
-            dt_key = gtd.PhaseKey(phase).key()
+            dt_key = gtd.PhaseKey(phase)
 
             # collcoation on actuator mass
             mdot_prev_keys = []

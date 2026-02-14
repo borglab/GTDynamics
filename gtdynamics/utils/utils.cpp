@@ -11,7 +11,7 @@
  * @author Frank Dellaert, Mandy Xie, Alejandro Escontrela
  */
 
-#include "gtdynamics/utils/utils.h"
+#include <gtdynamics/utils/utils.h>
 
 #include <stdexcept>
 
@@ -31,27 +31,6 @@ gtsam::Vector radians(const gtsam::Vector &degree) {
     radian(i) = radians(degree(i));
   }
   return radian;
-}
-
-gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
-                                   const gtsam::Vector6 &screw_axis) {
-  // taking opposite value of screw_axis_ is because
-  // jTi = Pose3::Expmap(-screw_axis_ * q) * jMi;
-  gtsam::Vector3 w = -screw_axis.head<3>();
-  gtsam::Vector3 v = -screw_axis.tail<3>();
-  gtsam::Pose3 kTj = gtsam::Pose3::Expmap(-screw_axis * q) * jMi;
-  auto w_skew = gtsam::skewSymmetric(w);
-  gtsam::Matrix3 H_expo = w_skew * cosf(q) + w_skew * w_skew * sinf(q);
-  gtsam::Matrix3 H_R = H_expo * jMi.rotation().matrix();
-  gtsam::Vector3 H_T =
-      H_expo * (jMi.translation() - w_skew * v) + w * w.transpose() * v;
-  gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
-                        gtsam::skewSymmetric(kTj.translation()) * H_R;
-  gtsam::Matrix6 H = gtsam::Z_6x6;
-  gtsam::insertSub(H, H_R, 0, 0);
-  gtsam::insertSub(H, H_TR, 3, 0);
-  gtsam::insertSub(H, H_R, 3, 3);
-  return H;
 }
 
 gtsam::Matrix getQc(const gtsam::SharedNoiseModel Qc_model) {
@@ -179,3 +158,59 @@ gtsam::Matrix36 getPlanarJacobian(const gtsam::Vector3 &planar_axis) {
 }
 
 }  // namespace gtdynamics
+
+namespace gtsam {
+double point3_z(const gtsam::Point3 &p, gtsam::OptionalJacobian<1, 3> H) {
+  if (H) {
+    *H << 0, 0, 1;
+  }
+  return p.z();
+}
+
+double double_division(const double &x1, const double &x2,
+                       gtsam::OptionalJacobian<1, 1> H_1,
+                       gtsam::OptionalJacobian<1, 1> H_2) {
+
+  double result = x1 / x2;
+  if (H_1) {
+    H_1->setConstant(1 / x2);
+  }
+  if (H_2) {
+    H_2->setConstant(-result / x2);
+  }
+  return result;
+}
+
+double reciprocal(const double &x, gtsam::OptionalJacobian<1, 1> H) {
+  if (H) {
+    H->setConstant(-pow(x, -2));
+  }
+  return 1 / x;
+}
+
+double clip_by_one(const double &x, gtsam::OptionalJacobian<1, 1> H) {
+  if (x < 1) {
+    if (H) {
+      H->setZero();
+    }
+    return 1;
+  } else {
+    if (H) {
+      H->setOnes();
+    }
+    return x;
+  }
+}
+
+Vector2 double_stack(const double &x1, const double &x2,
+                     gtsam::OptionalJacobian<2, 1> H_1,
+                     gtsam::OptionalJacobian<2, 1> H_2) {
+  if (H_1) {
+    (*H_1) << 1, 0;
+  }
+  if (H_2) {
+    (*H_2) << 0, 1;
+  }
+  return Vector2(x1, x2);
+}
+}

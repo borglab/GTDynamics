@@ -12,6 +12,7 @@
  **/
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/jumpingrobot/factors/PneumaticFactors.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -23,8 +24,6 @@
 #include <gtsam/slam/PriorFactor.h>
 
 #include <iostream>
-
-#include "gtdynamics/jumpingrobot/factors/PneumaticFactors.h"
 
 using gtdynamics::GasLawFactor, gtdynamics::MassFlowRateFactor,
     gtdynamics::ValveControlFactor;

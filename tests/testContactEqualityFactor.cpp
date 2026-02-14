@@ -12,6 +12,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/factors/ContactEqualityFactor.h>
+#include <gtdynamics/universal_robot/RobotModels.h>
+#include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -22,10 +25,6 @@
 #include <gtsam/nonlinear/factorTesting.h>
 
 #include <iostream>
-
-#include "gtdynamics/factors/ContactEqualityFactor.h"
-#include "gtdynamics/universal_robot/RobotModels.h"
-#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -41,9 +40,9 @@ TEST(ContactEqualityFactor, Constructor) {
 }
 
 TEST(ContactEqualityFactor, Error) {
-  auto end_link = robot.links()[2];
-
+  LinkSharedPtr end_link = robot.links()[0];
   PointOnLink point_on_link{end_link, Point3(0, 0, 1)};
+
   ContactEqualityFactor factor(point_on_link, kModel, 0, 1);
 
   // Hand computed value from SDF file
@@ -59,7 +58,7 @@ TEST(ContactEqualityFactor, Error) {
 }
 
 TEST(ContactEqualityFactor, Jacobians) {
-  auto end_link = robot.links()[2];
+  auto end_link = robot.links()[0];
 
   PointOnLink point_on_link{end_link, Point3(0, 0, 1)};
   ContactEqualityFactor factor(point_on_link, kModel, 0, 1);
@@ -79,7 +78,7 @@ TEST(ContactEqualityFactor, ArbitraryTime) {
       CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
   auto end_link = robot.link("l2");
 
-  size_t k1 = 81, k2 = k1+3;
+  size_t k1 = 81, k2 = k1 + 3;
   PointOnLink point_on_link{end_link, Point3(0, 0, 0.777)};
   ContactEqualityFactor factor(point_on_link, kModel, k1, k2);
 

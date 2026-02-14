@@ -20,7 +20,6 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/expressions.h>
 
-#include <boost/optional.hpp>
 #include <iostream>
 #include <string>
 

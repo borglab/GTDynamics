@@ -1,7 +1,5 @@
 // Minimal template file for wrapping C++ code.
 
-{include_boost}
-
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -10,18 +8,13 @@
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
-#include <boost/optional.hpp>
-
 #include "gtsam/config.h"
 #include "gtsam/base/serialization.h"
 #include "gtsam/base/utilities.h"  // for RedirectCout.
 
 {includes}
-#include <boost/serialization/export.hpp>
 
 {boost_class_export}
-
-{holder_type}
 
 // Preamble for STL classes
 #include "python/gtdynamics/preamble/{module_name}.h"

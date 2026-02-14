@@ -22,7 +22,6 @@
 using namespace std;
 using namespace gtsam;
 using namespace gtdynamics;
-using namespace gtdynamics::internal;
 
 /**
  * Test cable factor
