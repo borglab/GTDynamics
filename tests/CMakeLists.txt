@@ -12,9 +12,3 @@ gtsamAddTestsGlob(
   tests "test*.cpp"
   "${ROOT_TEST_EXCLUDES}"
   "gtdynamics")
-
-gtsamAddTestsGlob(
-  tests
-  "${CMAKE_SOURCE_DIR}/gtdynamics/kinematics/tests/test*.cpp;${CMAKE_SOURCE_DIR}/gtdynamics/mechanics/tests/test*.cpp;${CMAKE_SOURCE_DIR}/gtdynamics/dynamics/tests/test*.cpp;${CMAKE_SOURCE_DIR}/gtdynamics/statics/tests/test*.cpp"
-  ""
-  "gtdynamics")
