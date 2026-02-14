@@ -1,0 +1,1176 @@
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
+
+#include <gtdynamics/factors/CollocationFactors.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/utils/GraphUtils.h>
+#include <gtdynamics/utils/Initializer.h>
+
+namespace gtdynamics {
+using namespace gtsam;
+
+/* <=======================================================================> */
+/* <============================= step values =============================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+Values OptimizeWithConstraints(const NonlinearFactorGraph &merit_graph,
+                               const Values &values,
+                               const KeyVector &known_keys, const double sigma,
+                               bool ensure_feasible,
+                               const std::string &info_str) {
+  NonlinearFactorGraph graph_wp = merit_graph;
+  Values init_values = SubValues(values, merit_graph.keys());
+  AddGeneralPriors(init_values, known_keys, sigma, graph_wp);
+
+  LevenbergMarquardtParams lm_params;
+  LevenbergMarquardtOptimizer optimizer(graph_wp, init_values, lm_params);
+  auto results = optimizer.optimize();
+  if (!CheckFeasible(merit_graph, results, info_str)) {
+    lm_params.absoluteErrorTol = 1e-12;
+    lm_params.errorTol = 1e-12;
+    LevenbergMarquardtOptimizer optimizer_ad_np(merit_graph, results,
+                                                lm_params);
+    results = optimizer_ad_np.optimize();
+    CheckFeasible(merit_graph, results, info_str + "_2nd");
+  };
+  return results;
+}
+
+/* ************************************************************************* */
+Values IEVision60Robot::stepValuesQ(const size_t k, const Values &init_values,
+                                    const KeyVector &known_q_keys,
+                                    bool satisfy_i_constriants,
+                                    bool ensure_feasible) const {
+
+  NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(k);
+  if (satisfy_i_constriants) {
+    graph_q.add(stepIConstraintsQ(k).penaltyGraph());
+  }
+  return OptimizeWithConstraints(graph_q, init_values, known_q_keys,
+                                 params->tol_q, ensure_feasible, "q-level");
+}
+
+/* ************************************************************************* */
+Values IEVision60Robot::stepValuesV(const size_t k, const Values &init_values,
+                                    const Values &known_q_values,
+                                    const KeyVector &known_v_keys,
+                                    bool satisfy_i_constriants,
+                                    bool ensure_feasible) const {
+
+  NonlinearFactorGraph graph_v = getConstraintsGraphStepV(k);
+  if (satisfy_i_constriants) {
+    graph_v.add(stepIConstraintsV(k).penaltyGraph());
+  }
+  graph_v = ConstVarGraph(graph_v, known_q_values);
+  return OptimizeWithConstraints(graph_v, init_values, known_v_keys,
+                                 params->tol_v, ensure_feasible, "v-level");
+}
+
+/* ************************************************************************* */
+Values IEVision60Robot::stepValuesAD(const size_t k, const Values &init_values,
+                                     const Values &known_qv_values,
+                                     const KeyVector &known_ad_keys,
+                                     bool satisfy_i_constriants,
+                                     bool ensure_feasible) const {
+
+  NonlinearFactorGraph graph_ad = getConstraintsGraphStepAD(k);
+  if (satisfy_i_constriants) {
+    graph_ad.add(stepIConstraintsAD(k).penaltyGraph());
+  }
+  graph_ad = ConstVarGraph(graph_ad, known_qv_values);
+  return OptimizeWithConstraints(graph_ad, init_values, known_ad_keys,
+                                 params->tol_dynamics, ensure_feasible,
+                                 "ad-level");
+}
+
+/* ************************************************************************* */
+Values IEVision60Robot::stepValuesQV(
+    const size_t k, const Values &init_values,
+    const std::optional<KeyVector> &optional_known_keys,
+    bool satisfy_i_constriants, bool ensure_feasible) const {
+  KeyVector known_keys =
+      optional_known_keys ? *optional_known_keys : basisKeys(k);
+  KeyVector known_q_keys, known_v_keys, known_ad_keys;
+  ClassifyKeysByLevel(known_keys, known_q_keys, known_v_keys, known_ad_keys);
+  // LevenbergMarquardtParams lm_params;
+  Values known_values = stepValuesQ(k, init_values, known_q_keys,
+                                    satisfy_i_constriants, ensure_feasible);
+  known_values.insert(stepValuesV(k, init_values, known_values, known_v_keys,
+                                  satisfy_i_constriants, ensure_feasible));
+  return known_values;
+}
+
+/* ************************************************************************* */
+Values
+IEVision60Robot::stepValues(const size_t k, const Values &init_values,
+                            const std::optional<KeyVector> &optional_known_keys,
+                            bool satisfy_i_constriants,
+                            bool ensure_feasible) const {
+  KeyVector known_keys =
+      optional_known_keys ? *optional_known_keys : basisKeys(k);
+  KeyVector known_q_keys, known_v_keys, known_ad_keys;
+  ClassifyKeysByLevel(known_keys, known_q_keys, known_v_keys, known_ad_keys);
+  Values known_values = stepValuesQ(k, init_values, known_q_keys,
+                                    satisfy_i_constriants, ensure_feasible);
+  known_values.insert(stepValuesV(k, init_values, known_values, known_v_keys,
+                                  satisfy_i_constriants, ensure_feasible));
+  known_values.insert(stepValuesAD(k, init_values, known_values, known_ad_keys,
+                                   satisfy_i_constriants, ensure_feasible));
+  return known_values;
+}
+
+/* ************************************************************************* */
+Values IEVision60Robot::stepValuesByIntegration(
+    const size_t k, const double dt, const Values &prev_values,
+    const std::optional<KeyVector> &optional_intagration_keys) const {
+  KeyVector integration_keys =
+      optional_intagration_keys ? *optional_intagration_keys : basisKeys(k);
+  KeySet integration_q_keys, integration_v_keys, integration_ad_keys;
+  ClassifyKeysByLevel(integration_keys, integration_q_keys, integration_v_keys,
+                      integration_ad_keys);
+
+  Values values = DynamicsValuesFromPrev(prev_values);
+
+  // integrate in q-level
+  for (const Key &key : integration_q_keys) {
+    DynamicsSymbol symb(key);
+    if (symb.label() == "p") {
+      Pose3 prev_pose = Pose(prev_values, symb.linkIdx(), k - 1);
+      Vector6 prev_twist = Twist(prev_values, symb.linkIdx(), k - 1);
+      Pose3 curr_pose = predictPose(prev_pose, dt * prev_twist);
+      values.update(key, curr_pose);
+    }
+    if (symb.label() == "q") {
+      double prev_q = JointAngle(prev_values, symb.jointIdx(), k - 1);
+      double prev_v = JointVel(prev_values, symb.jointIdx(), k - 1);
+      double curr_q = prev_q + dt * prev_v;
+      values.update(key, curr_q);
+    }
+  }
+
+  // integrate in v-level
+  for (const Key &key : integration_v_keys) {
+    DynamicsSymbol symb(key);
+    if (symb.label() == "V") {
+      Vector6 prev_twist = Twist(prev_values, symb.linkIdx(), k - 1);
+      Vector6 prev_twistaccel = TwistAccel(prev_values, symb.linkIdx(), k - 1);
+      Vector6 curr_twist = prev_twist + dt * prev_twistaccel;
+      values.update(key, curr_twist);
+    }
+    if (symb.label() == "v") {
+      double prev_v = JointVel(prev_values, symb.jointIdx(), k - 1);
+      double prev_a = JointAccel(prev_values, symb.jointIdx(), k - 1);
+      double curr_v = prev_v + dt * prev_a;
+      values.update(key, curr_v);
+    }
+  }
+
+  return values;
+}
+
+/* ************************************************************************* */
+Values IEVision60Robot::getInitValuesStep(const size_t k,
+                                          const Pose3 &base_pose,
+                                          const Vector6 &base_twist,
+                                          const Vector6 &base_accel,
+                                          Values init_values_t) const {
+  if (init_values_t.size() == 0) {
+    Vector6 zero_vec6 = Vector6::Zero();
+    for (auto &&joint : robot.joints()) {
+      int j = joint->id();
+      InsertJointAngle(&init_values_t, j, k, JointAngle(nominal_values, j));
+      InsertJointVel(&init_values_t, j, k, JointVel(nominal_values, j));
+      InsertJointAccel(&init_values_t, j, k, 0.0);
+      InsertTorque(&init_values_t, j, k, 0.0);
+      InsertWrench(&init_values_t, joint->parent()->id(), j, k, zero_vec6);
+      InsertWrench(&init_values_t, joint->child()->id(), j, k, zero_vec6);
+    }
+    for (const auto &cp : contact_points) {
+      int i = cp.link->id();
+      init_values_t.insert(ContactWrenchKey(i, 0, k), zero_vec6);
+    }
+    for (auto &&link : robot.links()) {
+      int i = link->id();
+      InsertPose(&init_values_t, i, k, Pose(nominal_values, i));
+      InsertTwist(&init_values_t, i, k, Twist(nominal_values, i));
+      InsertTwistAccel(&init_values_t, i, k, zero_vec6);
+    }
+    if (params->express_redundancy) {
+      init_values_t.insert(ContactRedundancyKey(k), zero_vec6);
+    }
+  }
+
+  Values known_values;
+  LevenbergMarquardtParams lm_params;
+  // lm_params->setVerbosityLM("SUMMARY");
+
+  // solve q level
+  NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(k);
+  graph_q.addPrior<Pose3>(PoseKey(base_id, k), base_pose,
+                          graph_builder.opt().p_cost_model);
+  for (size_t i = 0; i < 4; i++) {
+    if (!phase_info->contact_indices.exists(i)) {
+      Key hip_joint_key = JointAngleKey(legs[i].hip_joint_id, k);
+      Key upper_joint_key = JointAngleKey(legs[i].upper_joint_id, k);
+      Key lower_joint_key = JointAngleKey(legs[i].lower_joint_id, k);
+      graph_q.addPrior<double>(hip_joint_key,
+                               init_values_t.atDouble(hip_joint_key),
+                               graph_builder.opt().prior_q_cost_model);
+      graph_q.addPrior<double>(upper_joint_key,
+                               init_values_t.atDouble(upper_joint_key),
+                               graph_builder.opt().prior_q_cost_model);
+      graph_q.addPrior<double>(lower_joint_key,
+                               init_values_t.atDouble(lower_joint_key),
+                               graph_builder.opt().prior_q_cost_model);
+    }
+  }
+
+  Values init_values_q = SubValues(init_values_t, graph_q.keys());
+  LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lm_params);
+  auto results_q = optimizer_q.optimize();
+  if (graph_q.error(results_q) > 1e-5) {
+    std::cout << "solving q fails! error: " << graph_q.error(results_q) << "\n";
+    PrintGraphWithError(graph_q, init_values_q);
+    PrintGraphWithError(graph_q, results_q);
+  }
+  known_values.insert(results_q);
+
+  // solve v level
+  NonlinearFactorGraph graph_v = getConstraintsGraphStepV(k);
+  graph_v.addPrior<Vector6>(TwistKey(base_id, k), base_twist,
+                            graph_builder.opt().v_cost_model);
+  graph_v = ConstVarGraph(graph_v, known_values);
+  Values init_values_v = SubValues(init_values_t, graph_v.keys());
+  LevenbergMarquardtOptimizer optimizer_v(graph_v, init_values_v, lm_params);
+  auto results_v = optimizer_v.optimize();
+  if (graph_v.error(results_v) > 1e-5) {
+    std::cout << "solving v fails! error: " << graph_v.error(results_v) << "\n";
+    PrintGraphWithError(graph_v, init_values_v);
+    PrintGraphWithError(graph_v, results_v);
+  }
+  known_values.insert(results_v);
+
+  // solve a and dynamics level
+  NonlinearFactorGraph graph_ad = getConstraintsGraphStepAD(k);
+  // TODO: handle for boundary phases
+  if (phase_info->leaving_indices.size() < 4) {
+    graph_ad.addPrior<Vector6>(TwistAccelKey(base_id, k), base_accel,
+                               graph_builder.opt().a_cost_model);
+  }
+
+  Vector6 zero_vec6 = Vector6::Zero();
+  if (params->express_redundancy) {
+    graph_ad.addPrior<Vector6>(ContactRedundancyKey(k), zero_vec6,
+                               redundancy_model);
+  }
+  graph_ad = ConstVarGraph(graph_ad, known_values);
+  Values init_values_ad = SubValues(init_values_t, graph_ad.keys());
+  LevenbergMarquardtOptimizer optimizer_ad(graph_ad, init_values_ad, lm_params);
+  auto results_ad = optimizer_ad.optimize();
+  if (graph_ad.error(results_ad) > 1e-5) {
+    std::cout << "solving ad fails! error: " << graph_ad.error(results_ad)
+              << "\n";
+    PrintGraphWithError(graph_ad, init_values_ad);
+    PrintGraphWithError(graph_ad, results_ad);
+  }
+  known_values.insert(results_ad);
+
+  return known_values;
+}
+
+/* <=======================================================================> */
+/* <========================== trajectory values ==========================> */
+/* <=======================================================================> */
+
+/* ************************************************************************* */
+Values IEVision60Robot::getInitValuesTrajectory(
+    const size_t num_steps, double dt, const Pose3 &base_pose_init,
+    const std::vector<Pose3> &des_poses,
+    std::vector<double> &des_poses_t,
+    const std::string initialization_technique) const {
+  // Initialize solution.
+  Values init_vals;
+  Initializer initializer;
+
+  // solve 1 step value
+  Values init_values_0 = getInitValuesStep(0, base_pose_init);
+
+  // copy for all steps
+  if (initialization_technique == "zero") {
+    for (int t = 0; t <= num_steps; t++) {
+      for (const Key &key : init_values_0.keys()) {
+        init_vals.insert(key + t, init_values_0.at(key));
+      }
+    }
+  } else if (initialization_technique == "interp") {
+    /// interpolate base pose
+    auto interp_values = initializer.InitializeSolutionInterpolationMultiPhase(
+        robot, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
+        contact_points);
+    Values base_link_values;
+    for (int t = 0; t <= num_steps; t++) {
+      base_link_values.insert(PoseKey(base_id, t),
+                              interp_values.at(PoseKey(base_id, t)));
+    }
+    /// compute base twist
+    Vector6 zero_vector6 = Vector6::Zero();
+    base_link_values.insert(TwistKey(base_id, 0), zero_vector6);
+    for (int t = 0; t < num_steps; t++) {
+      Pose3 pose_prev = base_link_values.at<Pose3>(PoseKey(base_id, t));
+      Pose3 pose_curr = base_link_values.at<Pose3>(PoseKey(base_id, t + 1));
+      Pose3 pose_rel = pose_prev.inverse().compose(pose_curr);
+      Vector6 twist_interval = Pose3::Logmap(pose_rel) / dt;
+      Vector6 twist_prev = base_link_values.at<Vector6>(TwistKey(base_id, t));
+      // Vector6 twist_curr = 2 * twist_interval - twist_prev;
+      Vector6 twist_curr = twist_interval;
+      base_link_values.insert(TwistKey(base_id, t + 1), twist_curr);
+    }
+    /// compute base accel
+    base_link_values.insert(TwistAccelKey(base_id, 0), zero_vector6);
+    for (int t = 0; t < num_steps; t++) {
+      Vector6 twist_prev = base_link_values.at<Vector6>(TwistKey(base_id, t));
+      Vector6 twist_curr =
+          base_link_values.at<Vector6>(TwistKey(base_id, t + 1));
+      Vector6 twist_rel = twist_curr - twist_prev;
+      Vector6 accel_interval = twist_rel / dt;
+      Vector6 accel_prev =
+          base_link_values.at<Vector6>(TwistAccelKey(base_id, t));
+      // Vector6 accel_curr = 2 * accel_interval - accel_prev;
+      Vector6 accel_curr = accel_interval;
+      base_link_values.insert(TwistAccelKey(base_id, t + 1), accel_curr);
+    }
+    /// solve kinodynamics for each step
+    Values prev_values = init_values_0;
+    init_vals = init_values_0;
+    for (int t = 1; t <= num_steps; t++) {
+      Values init_values_t;
+      for (const Key &key : prev_values.keys()) {
+        init_values_t.insert(key + 1, prev_values.at(key));
+      }
+      Values values_t = getInitValuesStep(
+          t, Pose(base_link_values, base_id, t),
+          Twist(base_link_values, base_id, t),
+          TwistAccel(base_link_values, base_id, t), init_values_t);
+      prev_values = values_t;
+      init_vals.insert(values_t);
+    }
+  }
+
+  return init_vals;
+}
+
+/* ************************************************************************* */
+Values
+TrajectoryWithTrapezoidal(const IEVision60RobotMultiPhase &vision60_multi_phase,
+                          const std::vector<double> &phases_dt,
+                          const Values &values) {
+
+  size_t num_steps = vision60_multi_phase.phase_num_steps_[0] +
+                     vision60_multi_phase.phase_num_steps_[1];
+
+  Pose3 base_pose_init = Pose(values, IEVision60Robot::base_id, 0);
+  Vector6 base_twist_init = Twist(values, IEVision60Robot::base_id, 0);
+  ;
+
+  // Create graph with e-constraints and collocation constraints
+  NonlinearEqualityConstraints e_constraints;
+  for (size_t k = 0; k <= num_steps; k++) {
+    const IEVision60Robot &vision60 = vision60_multi_phase.robotAtStep(k);
+    e_constraints.add(vision60.eConstraints(k));
+  }
+
+  NonlinearFactorGraph graph = e_constraints.penaltyGraph();
+  graph.addPrior(PoseKey(IEVision60Robot::base_id, 0), base_pose_init,
+                 noiseModel::Isotropic::Sigma(
+                     6, vision60_multi_phase.params()->tol_prior_q));
+  graph.addPrior(TwistKey(IEVision60Robot::base_id, 0), base_twist_init,
+                 noiseModel::Isotropic::Sigma(
+                     6, vision60_multi_phase.params()->tol_prior_v));
+  graph.add(vision60_multi_phase.collocationCosts());
+
+  auto dt_model = noiseModel::Isotropic::Sigma(1, 1e-3);
+  for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx++) {
+    graph.addPrior<double>(PhaseKey(phase_idx), phases_dt.at(phase_idx),
+                           dt_model);
+  }
+
+  LevenbergMarquardtParams lm_params;
+  // lm_params->setVerbosityLM("SUMMARY");
+  LevenbergMarquardtOptimizer optimizer(graph, values, lm_params);
+  return optimizer.optimize();
+}
+
+/* ************************************************************************* */
+Values IEVision60RobotMultiPhase::trajectoryValuesNominal(
+    const std::vector<double> &phases_dt, bool include_i_constriants,
+    bool ensure_feasible) const {
+  Values values;
+  size_t num_steps = numSteps();
+  for (size_t k = 0; k <= num_steps; k++) {
+    const auto &robot = robotAtStep(k);
+    Values init_values_k = DynamicsValuesFromPrev(robot.nominal_values, k);
+    KeyVector known_qv_keys{PoseKey(IEVision60Robot::base_id, k),
+                            TwistKey(IEVision60Robot::base_id, k)};
+    Values step_values_qv =
+        robot.stepValuesQV(k, init_values_k, known_qv_keys,
+                           include_i_constriants, ensure_feasible);
+    KeyVector known_ad_keys;
+    Values step_values_ad =
+        robot.stepValuesAD(k, init_values_k, step_values_qv, known_ad_keys,
+                           include_i_constriants, ensure_feasible);
+    Values step_values_k = step_values_qv;
+    step_values_k.insert(step_values_ad);
+    values.insert(step_values_k);
+  }
+
+  for (size_t phase_idx = 0; phase_idx < phase_robots_.size(); phase_idx++) {
+    values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
+  }
+  return values;
+}
+
+/* ************************************************************************* */
+Values IEVision60RobotMultiPhase::trajectoryValuesByInterpolation(
+    const std::vector<double> &phases_dt,
+    const std::vector<std::pair<size_t, Pose3>> &prior_poses,
+    bool include_i_constriants, bool ensure_feasible) const {
+  Values values;
+  size_t num_steps = numSteps();
+
+  // Interpolate torso pose
+  std::vector<Pose3> torso_poses(num_steps + 1);
+  std::vector<Vector6> torso_twists(num_steps + 1);
+  for (size_t prior_idx = 0; prior_idx < prior_poses.size() - 1; prior_idx++) {
+    const auto &[prev_prior_k, prev_prior_pose] = prior_poses.at(prior_idx);
+    const auto &[next_prior_k, next_prior_pose] = prior_poses.at(prior_idx + 1);
+    for (size_t k = prev_prior_k; k < next_prior_k; k++) {
+      double rate = double(k - prev_prior_k) / (next_prior_k - prev_prior_k);
+      torso_poses.at(k) =
+          interpolate<Pose3>(prev_prior_pose, next_prior_pose, rate);
+    }
+  }
+  torso_poses.at(num_steps) = prior_poses.back().second;
+
+  // Compute torso twist
+  for (size_t k = 0; k < num_steps; k++) {
+    double dt = dtAtStep(phases_dt, k);
+    const Pose3 &curr_pose = torso_poses.at(k);
+    const Pose3 &next_pose = torso_poses.at(k + 1);
+    torso_twists.at(k) =
+        traits<Pose3>::Logmap(traits<Pose3>::Between(curr_pose, next_pose)) /
+        dt;
+  }
+  torso_twists.at(num_steps) = torso_twists.at(num_steps - 1);
+
+  // set values
+  for (size_t k = 0; k <= num_steps; k++) {
+    const auto &robot = robotAtStep(k);
+    Values init_values_k = DynamicsValuesFromPrev(robot.nominal_values, k);
+    KeyVector known_qv_keys{PoseKey(IEVision60Robot::base_id, k),
+                            TwistKey(IEVision60Robot::base_id, k)};
+    init_values_k.update(PoseKey(IEVision60Robot::base_id, k),
+                         torso_poses.at(k));
+    init_values_k.update(TwistKey(IEVision60Robot::base_id, k),
+                         torso_twists.at(k));
+    Values step_values_qv =
+        robot.stepValuesQV(k, init_values_k, known_qv_keys,
+                           include_i_constriants, ensure_feasible);
+    KeyVector known_ad_keys;
+    Values step_values_ad =
+        robot.stepValuesAD(k, init_values_k, step_values_qv, known_ad_keys,
+                           include_i_constriants, ensure_feasible);
+    Values step_values_k = step_values_qv;
+    step_values_k.insert(step_values_ad);
+    values.insert(step_values_k);
+  }
+
+  for (size_t phase_idx = 0; phase_idx < phase_robots_.size(); phase_idx++) {
+    values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
+  }
+  return values;
+}
+
+} // namespace gtdynamics
+
+/* <=======================================================================> */
+/* <====================== vertical jump trajectory =======================> */
+/* <=======================================================================> */
+
+namespace gtdynamics {
+using namespace gtsam;
+namespace quadruped_vertical_jump {
+/* ************************************************************************* */
+Values
+InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
+                     const std::vector<double> &phases_dt,
+                     const double torso_accel_z, const size_t ground_switch_k,
+                     bool use_trapezoidal) {
+
+  Values values;
+  for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx += 1) {
+    values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
+  }
+
+  //// Phase on ground: part1: const accel of torso
+  const IEVision60Robot &vision60_ground =
+      vision60_multi_phase.phase_robots_[0];
+  size_t num_steps_ground = vision60_multi_phase.phase_num_steps_[0];
+  double dt_ground = phases_dt[0];
+
+  double base_z = vision60_ground.nominal_height;
+  double base_v = 0;
+  Values prev_values;
+  for (size_t k = 0; k <= ground_switch_k; k++) {
+    // set a,v,q level for each step of base_link
+    Vector6 base_accel = (Vector(6) << 0, 0, 0, 0, 0, torso_accel_z).finished();
+    Vector6 base_twist = (Vector(6) << 0, 0, 0, 0, 0, base_v).finished();
+    Pose3 base_pose(Rot3::Identity(), Point3(0, 0, base_z));
+    base_z += base_v * dt_ground;
+    base_v += torso_accel_z * dt_ground;
+
+    /// solve kinodynamics
+    Values init_values_k = k == 0 ? vision60_ground.nominal_values
+                                  : DynamicsValuesFromPrev(prev_values);
+    init_values_k.update(PoseKey(vision60_ground.base_id, k), base_pose);
+    init_values_k.update(TwistKey(vision60_ground.base_id, k), base_twist);
+    init_values_k.update(TwistAccelKey(vision60_ground.base_id, k), base_accel);
+    KeyVector known_keys{PoseKey(vision60_ground.base_id, k),
+                         TwistKey(vision60_ground.base_id, k),
+                         TwistAccelKey(vision60_ground.base_id, k),
+                         ContactRedundancyKey(k)};
+    Values values_k = vision60_ground.stepValues(k, init_values_k, known_keys);
+    values.insert(values_k);
+    prev_values = values_k;
+  }
+
+  //// Phase on ground: part2: reduce contact force to 0
+  std::map<uint8_t, Vector3> contact_forces;
+  for (const auto &link_id : vision60_ground.contact_link_ids) {
+    contact_forces.insert({link_id, prev_values.at<Vector3>(ContactForceKey(
+                                        link_id, 0, ground_switch_k))});
+  }
+
+  size_t num_steps_ground2 = num_steps_ground - ground_switch_k;
+  for (size_t k = ground_switch_k + 1; k <= num_steps_ground; k++) {
+    // integrate prev values
+    Values init_values_k =
+        vision60_ground.stepValuesByIntegration(k, dt_ground, prev_values);
+
+    // set contact force
+    for (const auto &link_id : vision60_ground.contact_link_ids) {
+      Vector3 boundary_contact_force = contact_forces.at(link_id);
+      Vector3 contact_force =
+          boundary_contact_force *
+          (double(num_steps_ground - k) / num_steps_ground2);
+      init_values_k.update(ContactForceKey(link_id, 0, k), contact_force);
+    }
+
+    // solve for ad level
+    KeyVector basis_keys;
+    basis_keys.push_back(PoseKey(vision60_ground.base_id, k));
+    basis_keys.push_back(TwistKey(vision60_ground.base_id, k));
+    for (const auto &link_id : vision60_ground.contact_link_ids) {
+      basis_keys.push_back(ContactForceKey(link_id, 0, k));
+    }
+    init_values_k = vision60_ground.stepValues(k, init_values_k, basis_keys);
+    values.insert(init_values_k);
+    prev_values = init_values_k;
+  }
+
+  //// boundary step same as last step in ground phase
+
+  //// Phase in air
+  const IEVision60Robot &vision60_air = vision60_multi_phase.phase_robots_[1];
+  size_t num_steps_air = vision60_multi_phase.phase_num_steps_[1];
+  double dt_air = phases_dt[1];
+
+  std::map<uint8_t, double> prev_torques;
+  for (const auto &joint : vision60_air.robot.joints()) {
+    uint8_t j = joint->id();
+    prev_torques.insert({j, Torque(prev_values, j, num_steps_ground)});
+  }
+
+  size_t num_steps = num_steps_ground + num_steps_air;
+  for (size_t k = num_steps_ground + 1; k <= num_steps; k++) {
+    // integrate prev values
+    Values init_values_k =
+        vision60_air.stepValuesByIntegration(k, dt_air, prev_values);
+
+    // set joint torques
+    for (const auto &joint : vision60_air.robot.joints()) {
+      uint8_t j = joint->id();
+      double prev_torque = prev_torques.at(j);
+      double torque = prev_torque * (double(num_steps - k) / num_steps_air);
+      init_values_k.update(TorqueKey(j, k), torque);
+    }
+
+    // solve for ad-level
+    KeyVector basis_keys;
+    basis_keys.push_back(PoseKey(vision60_air.base_id, k));
+    basis_keys.push_back(TwistKey(vision60_air.base_id, k));
+    for (const auto &joint : vision60_air.robot.orderedJoints()) {
+      basis_keys.push_back(JointAngleKey(joint->id(), k));
+      basis_keys.push_back(JointVelKey(joint->id(), k));
+      basis_keys.push_back(TorqueKey(joint->id(), k));
+    }
+    init_values_k = vision60_air.stepValues(k, init_values_k, basis_keys);
+    values.insert(init_values_k);
+    prev_values = init_values_k;
+  }
+
+  if (use_trapezoidal) {
+    values = TrajectoryWithTrapezoidal(vision60_multi_phase, phases_dt, values);
+  }
+
+  return values;
+}
+
+/* ************************************************************************* */
+Values InitValuesTrajectoryInfeasible(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt) {
+  const auto &vision60_ground = vision60_multi_phase.phase_robots_[0];
+  const auto &vision60_air = vision60_multi_phase.phase_robots_[1];
+  const auto &vision60_bound = vision60_multi_phase.boundary_robots_[0];
+  size_t num_steps_ground = vision60_multi_phase.phase_num_steps_[0];
+  size_t num_steps_air = vision60_multi_phase.phase_num_steps_[1];
+  size_t num_steps = num_steps_ground + num_steps_air;
+  double dt_ground = phases_dt[0];
+  double dt_air = phases_dt[1];
+
+  Vector6 torso_twistaccel_ground = (Vector(6) << 0, 0, 0, 0, 0, 15).finished();
+  ;
+  Vector6 torso_twistaccel_air = (Vector(6) << 0, 0, 0, 3, 0, -9.8).finished();
+  ;
+
+  std::vector<Values> step_values(num_steps + 1);
+  std::vector<Vector6> step_torso_twistaccels(num_steps + 1);
+
+  // ground
+  Pose3 torso_pose =
+      Pose(vision60_ground.nominal_values, vision60_ground.base_id);
+  Vector6 torso_twist = Vector6::Zero();
+
+  for (size_t k = 0; k <= num_steps_ground; k++) {
+    Values init_values_k = k == 0 ? vision60_ground.nominal_values
+                                  : DynamicsValuesFromPrev(step_values[k - 1]);
+    init_values_k.update(PoseKey(vision60_ground.base_id, k), torso_pose);
+    init_values_k.update(TwistKey(vision60_ground.base_id, k), torso_twist);
+    KeyVector known_keys{PoseKey(vision60_ground.base_id, k),
+                         TwistKey(vision60_ground.base_id, k)};
+    step_values[k] = vision60_ground.stepValuesQV(k, init_values_k, known_keys);
+
+    // set a,v,q level of base_link for next step
+    Vector6 torso_twistaccel =
+        k < num_steps_ground ? torso_twistaccel_ground : torso_twistaccel_air;
+    step_torso_twistaccels[k] = torso_twistaccel;
+    torso_pose = predictPose(torso_pose, torso_twist * dt_ground);
+    torso_twist += torso_twistaccel * dt_ground;
+  }
+
+  // air
+  std::map<uint8_t, double> bound_ba_jangles;
+  for (const auto &joint : vision60_ground.robot.joints()) {
+    uint8_t j = joint->id();
+    bound_ba_jangles.insert(
+        {j, JointAngle(step_values[num_steps_ground], j, num_steps_ground)});
+  }
+
+  for (size_t k = num_steps_ground + 1; k <= num_steps; k++) {
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    init_values_k.update(PoseKey(IEVision60Robot::base_id, k), torso_pose);
+    init_values_k.update(TwistKey(IEVision60Robot::base_id, k), torso_twist);
+    KeyVector known_keys{PoseKey(IEVision60Robot::base_id, k),
+                         TwistKey(IEVision60Robot::base_id, k)};
+
+    // set q,v for front legs
+    for (const auto &joint : vision60_air.robot.joints()) {
+      uint8_t j = joint->id();
+      double q = bound_ba_jangles.at(j);
+      q *= double(num_steps - k) / num_steps_air;
+      init_values_k.update(JointAngleKey(j, k), q);
+      init_values_k.update(JointVelKey(j, k), 0.0);
+      known_keys.push_back(JointAngleKey(j, k));
+      known_keys.push_back(JointVelKey(j, k));
+    }
+    step_values[k] = vision60_air.stepValuesQV(k, init_values_k, known_keys);
+
+    // set a,v,q level of base_link for next step
+    Vector6 torso_twistaccel = torso_twistaccel_air;
+    step_torso_twistaccels[k] = torso_twistaccel;
+    torso_pose = predictPose(torso_pose, torso_twist * dt_air);
+    torso_twist += torso_twistaccel * dt_air;
+  }
+
+  // dynamics
+  // ground
+  for (size_t k = 0; k < num_steps_ground; k++) {
+    KeyVector known_ad_keys;
+    Values init_values_k = k == 0 ? vision60_ground.nominal_values
+                                  : DynamicsValuesFromPrev(step_values[k - 1]);
+    for (const auto &joint : vision60_ground.robot.joints()) {
+      known_ad_keys.push_back(TorqueKey(joint->id(), k));
+      init_values_k.update(TorqueKey(joint->id(), k), 0.0);
+    }
+    Values ad_values = vision60_ground.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys);
+    step_values[k].insert(ad_values);
+  }
+  // bound_ga
+  {
+    size_t k = num_steps_ground;
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    KeyVector known_ad_keys;
+    Vector3 zero_vec = Vector3::Zero();
+    for (const auto &link_idx : vision60_bound.leaving_link_indices) {
+      known_ad_keys.push_back(ContactForceKey(link_idx, 0, k));
+      init_values_k.update(ContactForceKey(link_idx, 0, k), zero_vec);
+    }
+    Values ad_values = vision60_ground.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys);
+    step_values[k].insert(ad_values);
+  }
+  // air
+  for (size_t k = num_steps_ground + 1; k <= num_steps; k++) {
+    KeyVector known_ad_keys; //{TwistAccelKey(IEVision60Robot::base_id, k)};
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    for (const auto &joint : vision60_air.robot.joints()) {
+      uint8_t j = joint->id();
+      known_ad_keys.emplace_back(TorqueKey(j, k));
+      init_values_k.update(TorqueKey(j, k), 0.0);
+    }
+    // init_values_k.update(TwistAccelKey(IEVision60Robot::base_id, k),
+    //  step_torso_twistaccels[k]);
+    Values ad_values = vision60_air.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys);
+    step_values[k].insert(ad_values);
+  }
+
+  Values values;
+  for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx += 1) {
+    values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
+  }
+
+  for (size_t k = 0; k <= num_steps; k++) {
+    values.insert(step_values.at(k));
+  }
+  return values;
+}
+
+/* ************************************************************************* */
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const Pose3 &des_pose) {
+  size_t num_steps =
+      std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
+  Values des_values;
+  // for (const auto &joint : IEVision60Robot::robot.joints()) {
+  //   InsertJointAngle(&des_values, joint->id(), num_steps, 0.0);
+  // }
+  for (const auto &joint : IEVision60Robot::robot.joints()) {
+    InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
+  }
+  InsertTwist(&des_values, IEVision60Robot::base_id, num_steps,
+              Vector6::Zero());
+  InsertPose(&des_values, IEVision60Robot::base_id, num_steps, des_pose);
+  return des_values;
+}
+
+} // namespace quadruped_vertical_jump
+
+/* <=======================================================================> */
+/* <======================= forward jump trajectory =======================> */
+/* <=======================================================================> */
+
+namespace quadruped_forward_jump {
+/* ************************************************************************* */
+Values
+InitValuesTrajectory(const IEVision60RobotMultiPhase &vision60_multi_phase,
+                     const std::vector<double> &phases_dt,
+                     bool include_i_constriants, bool ensure_feasible,
+                     bool ignore_last_step) {
+
+  const auto &vision60_ground = vision60_multi_phase.phase_robots_[0];
+  const auto &vision60_back = vision60_multi_phase.phase_robots_[1];
+  const auto &vision60_air = vision60_multi_phase.phase_robots_[2];
+  const auto &vision60_bound_gb = vision60_multi_phase.boundary_robots_[0];
+  const auto &vision60_bound_ba = vision60_multi_phase.boundary_robots_[1];
+  size_t num_steps_ground = vision60_multi_phase.phase_num_steps_[0];
+  size_t num_steps_back = vision60_multi_phase.phase_num_steps_[1];
+  size_t num_steps_air = vision60_multi_phase.phase_num_steps_[2];
+  size_t num_steps = num_steps_ground + num_steps_back + num_steps_air;
+  size_t last_step = ignore_last_step ? num_steps - 1 : num_steps;
+  double dt_ground = phases_dt[0];
+  double dt_back = phases_dt[1];
+  double dt_air = phases_dt[2];
+
+  Vector6 torso_twistaccel_ground_w =
+      (Vector(6) << 0, -5, 0, 3, 0, 5).finished();
+  Vector6 torso_twistaccel_back_w = (Vector(6) << 0, 5, 0, 5, 0, 5).finished();
+  Vector6 torso_twistaccel_air_w =
+      (Vector(6) << 0, 0, 0, 0, 0, -9.8).finished();
+
+  std::vector<Values> step_values(num_steps + 1);
+  std::vector<Vector6> step_torso_twistaccels(num_steps + 1);
+
+  //// Phase on ground: const accel of torso
+  Pose3 torso_pose =
+      Pose(vision60_ground.nominal_values, vision60_ground.base_id);
+  Vector6 torso_twist = Vector6::Zero();
+
+  for (size_t k = 0; k <= num_steps_ground; k++) {
+    Values init_values_k = k == 0 ? vision60_ground.nominal_values
+                                  : DynamicsValuesFromPrev(step_values[k - 1]);
+    init_values_k.update(PoseKey(IEVision60Robot::base_id, k), torso_pose);
+    init_values_k.update(TwistKey(IEVision60Robot::base_id, k), torso_twist);
+    KeyVector known_keys{PoseKey(IEVision60Robot::base_id, k),
+                         TwistKey(IEVision60Robot::base_id, k)};
+    step_values[k] = vision60_ground.stepValuesQV(
+        k, init_values_k, known_keys, include_i_constriants, ensure_feasible);
+
+    // set a,v,q level of base_link for next step
+    Vector torso_twistaccel_w = k < num_steps_ground ? torso_twistaccel_ground_w
+                                                     : torso_twistaccel_back_w;
+    Vector6 torso_twistaccel =
+        torso_pose.inverse().AdjointMap() * torso_twistaccel_w;
+    step_torso_twistaccels[k] = torso_twistaccel;
+    torso_pose = predictPose(torso_pose, torso_twist * dt_ground);
+    torso_twist += torso_twistaccel * dt_ground;
+  }
+
+  //// boundary step same as last step in ground phase
+
+  //// Back on ground
+  std::map<uint8_t, double> bound_gb_jangles;
+  for (const auto &leg_idx : vision60_bound_gb.phase_info->leaving_indices) {
+    for (const auto &joint : vision60_bound_gb.legs.at(leg_idx).joints) {
+      uint8_t j = joint->id();
+      bound_gb_jangles.insert(
+          {j, JointAngle(step_values[num_steps_ground], j, num_steps_ground)});
+    }
+  }
+
+  for (size_t k = num_steps_ground + 1; k <= num_steps_ground + num_steps_back;
+       k++) {
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    init_values_k.update(PoseKey(IEVision60Robot::base_id, k), torso_pose);
+    init_values_k.update(TwistKey(IEVision60Robot::base_id, k), torso_twist);
+    KeyVector known_keys{PoseKey(IEVision60Robot::base_id, k),
+                         TwistKey(IEVision60Robot::base_id, k)};
+    // set q,v for front legs
+    for (const auto &leg_idx : vision60_bound_gb.phase_info->leaving_indices) {
+      for (const auto &joint : vision60_bound_gb.legs.at(leg_idx).joints) {
+        uint8_t j = joint->id();
+        double q = bound_gb_jangles.at(j);
+        q *= double(num_steps_ground + num_steps_back - k) / num_steps_back;
+        init_values_k.update(JointAngleKey(j, k), q);
+        init_values_k.update(JointVelKey(j, k), 0.0);
+        known_keys.push_back(JointAngleKey(j, k));
+        known_keys.push_back(JointVelKey(j, k));
+      }
+    }
+    step_values[k] = vision60_back.stepValuesQV(
+        k, init_values_k, known_keys, include_i_constriants, ensure_feasible);
+
+    // set a,v,q level of base_link for next step
+    Vector torso_twistaccel_w = k < num_steps_ground + num_steps_back
+                                    ? torso_twistaccel_back_w
+                                    : torso_twistaccel_air_w;
+    Vector6 torso_twistaccel =
+        torso_pose.inverse().AdjointMap() * torso_twistaccel_w;
+    step_torso_twistaccels[k] = torso_twistaccel;
+    torso_pose = predictPose(torso_pose, torso_twist * dt_back);
+    torso_twist += torso_twistaccel * dt_back;
+  }
+
+  //// boundary step same as last step in back phase
+
+  //// Phase in air
+  std::map<uint8_t, double> bound_ba_jangles;
+  for (const auto &joint : vision60_bound_gb.robot.joints()) {
+    uint8_t j = joint->id();
+    bound_ba_jangles.insert(
+        {j, JointAngle(step_values[num_steps_ground + num_steps_back], j,
+                       num_steps_ground + num_steps_back)});
+  }
+
+  for (size_t k = num_steps_ground + num_steps_back + 1; k <= last_step; k++) {
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    init_values_k.update(PoseKey(IEVision60Robot::base_id, k), torso_pose);
+    init_values_k.update(TwistKey(IEVision60Robot::base_id, k), torso_twist);
+    KeyVector known_keys{PoseKey(IEVision60Robot::base_id, k),
+                         TwistKey(IEVision60Robot::base_id, k)};
+
+    // set q,v for front legs
+    for (const auto &joint : vision60_air.robot.joints()) {
+      uint8_t j = joint->id();
+      double q = bound_ba_jangles.at(j);
+      q *= double(num_steps - k) / num_steps_air;
+      init_values_k.update(JointAngleKey(j, k), q);
+      init_values_k.update(JointVelKey(j, k), 0.0);
+      known_keys.push_back(JointAngleKey(j, k));
+      known_keys.push_back(JointVelKey(j, k));
+    }
+    step_values[k] = vision60_air.stepValuesQV(
+        k, init_values_k, known_keys, include_i_constriants, ensure_feasible);
+
+    // set a,v,q level of base_link for next step
+    Vector torso_twistaccel_w = torso_twistaccel_air_w;
+    Vector6 torso_twistaccel =
+        torso_pose.inverse().AdjointMap() * torso_twistaccel_w;
+    step_torso_twistaccels[k] = torso_twistaccel;
+    torso_pose = predictPose(torso_pose, torso_twist * dt_air);
+    torso_twist += torso_twistaccel * dt_air;
+  }
+
+  //// Solve dynamics
+  // ground
+  for (size_t k = 0; k < num_steps_ground; k++) {
+    KeyVector known_ad_keys{TwistAccelKey(IEVision60Robot::base_id, k)};
+    Values init_values_k = k == 0 ? vision60_ground.nominal_values
+                                  : DynamicsValuesFromPrev(step_values[k - 1]);
+    init_values_k.update(TwistAccelKey(IEVision60Robot::base_id, k),
+                         step_torso_twistaccels[k]);
+    // KeyVector known_ad_keys;
+    // for (const auto &joint : IEVision60Robot::robot.joints()) {
+    //   uint8_t j = joint->id();
+    //   known_ad_keys.emplace_back(TorqueKey(j, k));
+    //   init_values_k.update(TorqueKey(j, k), 0.0);
+    // }
+    Values ad_values = vision60_ground.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
+    step_values[k].insert(ad_values);
+  }
+  // bound_gb
+  {
+    size_t k = num_steps_ground;
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    KeyVector known_ad_keys;
+    Vector3 zero_vec = Vector3::Zero();
+    for (const auto &link_idx : vision60_bound_gb.leaving_link_indices) {
+      known_ad_keys.push_back(ContactForceKey(link_idx, 0, k));
+      init_values_k.update(ContactForceKey(link_idx, 0, k), zero_vec);
+    }
+    Values ad_values = vision60_ground.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
+    step_values[k].insert(ad_values);
+  }
+  // back
+  for (size_t k = num_steps_ground + 1; k < num_steps_ground + num_steps_back;
+       k++) {
+    KeyVector known_ad_keys{TwistAccelKey(IEVision60Robot::base_id, k)};
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    init_values_k.update(TwistAccelKey(IEVision60Robot::base_id, k),
+                         step_torso_twistaccels[k]);
+    // KeyVector known_ad_keys;
+    // for (const auto &joint : IEVision60Robot::robot.joints()) {
+    //   uint8_t j = joint->id();
+    //   known_ad_keys.emplace_back(TorqueKey(j, k));
+    //   init_values_k.update(TorqueKey(j, k), 0.0);
+    // }
+    Values ad_values = vision60_back.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
+    step_values[k].insert(ad_values);
+  }
+  // bound_ba
+  {
+    size_t k = num_steps_ground + num_steps_back;
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    KeyVector known_ad_keys;
+    Vector3 zero_vec = Vector3::Zero();
+    for (const auto &link_idx : vision60_bound_ba.leaving_link_indices) {
+      known_ad_keys.push_back(ContactForceKey(link_idx, 0, k));
+      init_values_k.update(ContactForceKey(link_idx, 0, k), zero_vec);
+    }
+    Values ad_values = vision60_back.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
+    step_values[k].insert(ad_values);
+  }
+  // air
+  for (size_t k = num_steps_ground + num_steps_back + 1; k <= last_step; k++) {
+    KeyVector known_ad_keys; //{TwistAccelKey(IEVision60Robot::base_id, k)};
+    Values init_values_k = DynamicsValuesFromPrev(step_values[k - 1]);
+    for (const auto &joint : vision60_air.robot.joints()) {
+      uint8_t j = joint->id();
+      // known_ad_keys.emplace_back(TorqueKey(j, k));
+      // init_values_k.update(TorqueKey(j, k), 0.0);
+      known_ad_keys.emplace_back(JointAccelKey(j, k));
+      init_values_k.update(JointAccelKey(j, k), 0.0);
+    }
+    // init_values_k.update(TwistAccelKey(IEVision60Robot::base_id, k),
+    //  step_torso_twistaccels[k]);
+    Values ad_values = vision60_air.stepValuesAD(
+        k, init_values_k, step_values.at(k), known_ad_keys,
+        include_i_constriants, ensure_feasible);
+    step_values[k].insert(ad_values);
+  }
+
+  Values values;
+  for (size_t phase_idx = 0; phase_idx < phases_dt.size(); phase_idx += 1) {
+    values.insert(PhaseKey(phase_idx), phases_dt.at(phase_idx));
+  }
+
+  for (size_t k = 0; k <= num_steps; k++) {
+    values.insert(step_values.at(k));
+  }
+
+  // if (use_trapezoidal) {
+  //   values = TrajectoryWithTrapezoidal(vision60_multi_phase, phases_dt,
+  //   values);
+  // }
+
+  return values;
+}
+
+/* ************************************************************************* */
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const Point3 &displacement) {
+  size_t num_steps =
+      std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
+  IEVision60Robot vision60_tmp(vision60_params,
+                               IEVision60Robot::PhaseInfo::Ground());
+
+  Values des_values;
+  Pose3 nominal_base_pose =
+      Pose(vision60_tmp.nominal_values, IEVision60Robot::base_id);
+  Pose3 des_pose = Pose3(Rot3::Identity(), displacement) * nominal_base_pose;
+  InsertPose(&des_values, IEVision60Robot::base_id, num_steps, des_pose);
+  for (const auto &joint : IEVision60Robot::robot.joints()) {
+    InsertJointAngle(&des_values, joint->id(), num_steps, 0.0);
+  }
+  return des_values;
+}
+
+/* ************************************************************************* */
+std::pair<
+    std::vector<std::tuple<size_t, Point3, Point3, size_t>>,
+    std::vector<std::tuple<size_t, Point3, Vector3, size_t>>>
+DesPoints(const std::vector<size_t> &phase_num_steps,
+          const Point3 &displacement) {
+  size_t num_steps =
+      std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
+  IEVision60Robot vision60_tmp(vision60_params,
+                               IEVision60Robot::PhaseInfo::Ground());
+
+  std::vector<std::tuple<size_t, Point3, Point3, size_t>>
+      des_points;
+  std::vector<std::tuple<size_t, Point3, Vector3, size_t>>
+      des_point_vels;
+  for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
+    const auto &leg = IEVision60Robot::legs.at(leg_idx);
+    size_t link_id = leg.lower_link_id;
+    Point3 point_l = IEVision60Robot::contact_in_com;
+    Point3 point_w =
+        vision60_tmp.nominal_contact_in_world.at(leg_idx) + displacement;
+    des_points.emplace_back(link_id, point_l, point_w, num_steps);
+    // Vector3 vel_w = Vector3::Zero();
+    // des_point_vels.emplace_back(link_id, point_l, vel_w, num_steps);
+  }
+  return {des_points, des_point_vels};
+}
+
+} // namespace quadruped_forward_jump
+
+/* <=======================================================================> */
+/* <==================== forward jump land trajectory =====================> */
+/* <=======================================================================> */
+
+namespace quadruped_forward_jump_land {
+Values InitValuesTrajectory(
+    const IEVision60RobotMultiPhase &vision60_multi_phase,
+    const std::vector<double> &phases_dt, bool include_i_constriants,
+    bool ensure_feasible) {
+
+  const IEVision60Robot &vision60_ground_forward =
+      vision60_multi_phase.phase_robots_.back();
+  const IEVision60Robot &vision60_bound_ag =
+      vision60_multi_phase.boundary_robots_.back();
+
+  // initialize the jumping phases
+  std::vector<IEVision60Robot> phase_robots;
+  std::vector<IEVision60Robot> boundary_robots;
+  std::vector<size_t> phase_num_steps;
+  std::vector<double> phases_dt_jump;
+  for (int i = 0; i < vision60_multi_phase.phase_robots_.size() - 1; i++) {
+    phase_robots.push_back(vision60_multi_phase.phase_robots_.at(i));
+    phase_num_steps.push_back(vision60_multi_phase.phase_num_steps_.at(i));
+    if (i != 0) {
+      boundary_robots.push_back(
+          vision60_multi_phase.boundary_robots_.at(i - 1));
+    }
+    phases_dt_jump.push_back(phases_dt.at(i));
+  }
+  IEVision60RobotMultiPhase vision60_multi_phase_jump(
+      phase_robots, boundary_robots, phase_num_steps);
+  Values values = quadruped_forward_jump::InitValuesTrajectory(
+      vision60_multi_phase_jump, phases_dt_jump, include_i_constriants,
+      ensure_feasible, true);
+
+  // initialize landing phase
+  size_t jumping_steps = vision60_multi_phase_jump.numSteps();
+  size_t landing_steps = vision60_multi_phase.phase_num_steps_.back();
+  std::vector<Values> step_values(landing_steps + 1);
+
+  Pose3 nominal_base_pose =
+      Pose(vision60_ground_forward.nominal_values, IEVision60Robot::base_id);
+  for (int landing_k = landing_steps; landing_k >= 0; landing_k--) {
+    double height = (1 - (double)landing_k / landing_steps) * 0.3;
+    Pose3 torso_pose =
+        Pose3(Rot3::Identity(), Point3(0, 0, height)) * nominal_base_pose;
+    Vector6 torso_twist = Vector6::Zero();
+    size_t k = landing_k + jumping_steps;
+    Values init_values_k =
+        landing_k == landing_steps
+            ? DynamicsValuesFromPrev(vision60_ground_forward.nominal_values, k)
+            : DynamicsValuesFromPrev(step_values[landing_k + 1], -1);
+    init_values_k.update(PoseKey(IEVision60Robot::base_id, k), torso_pose);
+    init_values_k.update(TwistKey(IEVision60Robot::base_id, k), torso_twist);
+    KeyVector known_keys{PoseKey(IEVision60Robot::base_id, k),
+                         TwistKey(IEVision60Robot::base_id, k)};
+    for (const auto &joint : IEVision60Robot::robot.joints()) {
+      known_keys.push_back(JointAccelKey(joint->id(), k));
+      init_values_k.update(JointAccelKey(joint->id(), k), 0.0);
+    }
+    step_values[landing_k] = vision60_ground_forward.stepValues(
+        k, init_values_k, known_keys, include_i_constriants, ensure_feasible);
+    values.insert(step_values[landing_k]);
+  }
+  values.insert(PhaseKey(phases_dt.size() - 1), phases_dt.back());
+  return values;
+}
+
+/* ************************************************************************* */
+Values DesValues(const std::vector<size_t> &phase_num_steps,
+                 const Point3 &displacement) {
+  size_t num_steps =
+      std::accumulate(phase_num_steps.begin(), phase_num_steps.end(), 0);
+
+  Values des_values;
+  for (const auto &joint : IEVision60Robot::robot.joints()) {
+    InsertJointAngle(&des_values, joint->id(), num_steps, 0.0);
+  }
+  for (const auto &joint : IEVision60Robot::robot.joints()) {
+    InsertJointVel(&des_values, joint->id(), num_steps, 0.0);
+  }
+  InsertTwist(&des_values, IEVision60Robot::base_id, num_steps,
+              Vector6::Zero());
+
+  auto vision60_params = std::make_shared<IEVision60Robot::Params>();
+  IEVision60Robot vision60_tmp(vision60_params,
+                               IEVision60Robot::PhaseInfo::Ground());
+  Pose3 nominal_base_pose =
+      Pose(vision60_tmp.nominal_values, IEVision60Robot::base_id);
+  Pose3 des_pose = Pose3(Rot3::Identity(), displacement) * nominal_base_pose;
+  InsertPose(&des_values, IEVision60Robot::base_id, num_steps, des_pose);
+  return des_values;
+}
+
+} // namespace quadruped_forward_jump_land
+
+} // namespace gtdynamics

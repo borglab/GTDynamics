@@ -42,7 +42,7 @@ namespace gtdynamics {
 /* ************************************************************************* */
 Values LMManifoldOptimizer::optimize(
     const NonlinearFactorGraph &costs,
-    const EqualityConstraints &constraints,
+    const NonlinearEqualityConstraints &constraints,
     const Values &init_values) const {
   auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
   return optimize(costs, mopt_problem);

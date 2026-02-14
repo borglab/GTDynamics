@@ -74,7 +74,7 @@ class NonlinearMOptimizer : public ManifoldOptimizer {
    * @return Optimized base-variable values.
    */
   virtual Values optimize(const NonlinearFactorGraph& graph,
-                          const EqualityConstraints& constraints,
+                          const NonlinearEqualityConstraints& constraints,
                           const Values& initial_values) const override;
 
   /**

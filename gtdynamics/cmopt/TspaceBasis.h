@@ -36,7 +36,7 @@
 
 namespace gtdynamics {
 
-using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
+using gtsam::NonlinearEqualityConstraints;
 using gtsam::DefaultKeyFormatter;
 using gtsam::GaussianFactorGraph;
 using gtsam::Key;
@@ -114,7 +114,7 @@ class TspaceBasis {
    * @return New basis object.
    */
   virtual shared_ptr createWithAdditionalConstraints(
-      const EqualityConstraints &constraints, const Values &values,
+      const NonlinearEqualityConstraints &constraints, const Values &values,
       bool create_from_scratch = false) const = 0;
 
   /** Compute the tangent vector in the ambient space, given a vector xi
@@ -185,7 +185,7 @@ class OrthonormalBasis : public TspaceBasis {
    * @param values Current values for variables in the component.
    * @param params Basis construction parameters.
    */
-  OrthonormalBasis(const EqualityConstraints::shared_ptr &constraints,
+  OrthonormalBasis(const NonlinearEqualityConstraints::shared_ptr &constraints,
                    const Values &values,
                    const TspaceBasisParams::shared_ptr &params);
 
@@ -234,7 +234,7 @@ class OrthonormalBasis : public TspaceBasis {
    * @return New basis object.
    */
   TspaceBasis::shared_ptr createWithAdditionalConstraints(
-      const EqualityConstraints &constraints, const Values &values,
+      const NonlinearEqualityConstraints &constraints, const Values &values,
       bool create_from_scratch = false) const override;
 
   /// Construct the actual basis, all the heavy computation goes here.
@@ -398,7 +398,7 @@ class EliminationBasis : public TspaceBasis {
    * @param params Basis construction parameters.
    * @param basis_keys Optional variables selected as basis variables.
    */
-  EliminationBasis(const EqualityConstraints::shared_ptr &constraints,
+  EliminationBasis(const NonlinearEqualityConstraints::shared_ptr &constraints,
                    const Values &values,
                    const TspaceBasisParams::shared_ptr &params,
                    std::optional<const KeyVector> basis_keys = {});
@@ -428,7 +428,7 @@ class EliminationBasis : public TspaceBasis {
    * @return New basis object.
    */
   TspaceBasis::shared_ptr createWithAdditionalConstraints(
-      const EqualityConstraints &constraints, const Values &values,
+      const NonlinearEqualityConstraints &constraints, const Values &values,
       bool create_from_scratch = false) const override;
 
   /// Compute the tangent vector in the ambient space.
@@ -492,7 +492,7 @@ class TspaceBasisCreator {
    * @return Created basis object.
    */
   virtual TspaceBasis::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints,
+      const NonlinearEqualityConstraints::shared_ptr constraints,
       const Values &values) const = 0;
 };
 
@@ -516,7 +516,7 @@ class OrthonormalBasisCreator : public TspaceBasisCreator {
   virtual ~OrthonormalBasisCreator() {}
 
   TspaceBasis::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints,
+      const NonlinearEqualityConstraints::shared_ptr constraints,
       const Values &values) const override {
     return std::make_shared<OrthonormalBasis>(constraints, values, params_);
   }
@@ -555,7 +555,7 @@ class EliminationBasisCreator : public TspaceBasisCreator {
    * @return Created elimination basis.
    */
   TspaceBasis::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints,
+      const NonlinearEqualityConstraints::shared_ptr constraints,
       const Values &values) const override {
     if (params_->use_basis_keys) {
       KeyVector basis_keys = basis_key_func_(values.keys());
