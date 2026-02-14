@@ -86,7 +86,7 @@ class LMManifoldOptimizer : public ManifoldOptimizer {
    */
   virtual gtsam::Values optimize(
       const gtsam::NonlinearFactorGraph &graph,
-      const EqualityConstraints &constraints,
+      const NonlinearEqualityConstraints &constraints,
       const gtsam::Values &initial_values) const override;
 
   /**

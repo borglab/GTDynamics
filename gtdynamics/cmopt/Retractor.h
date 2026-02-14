@@ -30,7 +30,7 @@
 
 namespace gtdynamics {
 
-using EqualityConstraints = gtsam::NonlinearEqualityConstraints;
+using gtsam::NonlinearEqualityConstraints;
 using gtsam::Key;
 using gtsam::KeySet;
 using gtsam::KeyVector;
@@ -159,7 +159,7 @@ class UoptRetractor : public Retractor {
    * @param constraints Equality constraints for the component.
    * @param params Retraction parameters.
    */
-  UoptRetractor(const EqualityConstraints::shared_ptr &constraints,
+  UoptRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
                 const RetractParams::shared_ptr &params =
                     std::make_shared<RetractParams>());
 
@@ -187,7 +187,7 @@ class ProjRetractor : public Retractor {
    * @param params Retraction parameters.
    * @param basis_keys Optional basis keys used when `use_basis_keys` is true.
    */
-  ProjRetractor(const EqualityConstraints::shared_ptr &constraints,
+  ProjRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
                 const RetractParams::shared_ptr &params,
                 std::optional<const KeyVector> basis_keys = {});
 
@@ -224,7 +224,7 @@ class BasisRetractor : public Retractor {
    * @param params Retraction parameters.
    * @param basis_keys Basis keys held fixed during inner solve.
    */
-  BasisRetractor(const EqualityConstraints::shared_ptr &constraints,
+  BasisRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
                  const RetractParams::shared_ptr &params,
                  const KeyVector &basis_keys);
 
@@ -239,7 +239,7 @@ class BasisRetractor : public Retractor {
    * @param constraints Equality constraints for the component.
    * @param basis_keys Basis keys held fixed during inner solve.
    */
-  void constructGraph(const EqualityConstraints::shared_ptr &constraints,
+  void constructGraph(const NonlinearEqualityConstraints::shared_ptr &constraints,
                       const KeyVector &basis_keys);
 };
 
@@ -267,7 +267,7 @@ class DynamicsRetractor : public Retractor {
    * @param params Retraction parameters.
    * @param basis_keys Optional basis keys.
    */
-  DynamicsRetractor(const EqualityConstraints::shared_ptr &constraints,
+  DynamicsRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
                     const RetractParams::shared_ptr &params,
                     std::optional<const KeyVector> basis_keys = {});
 
@@ -314,7 +314,7 @@ class RetractorCreator {
   virtual ~RetractorCreator() {}
 
   virtual Retractor::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints) const = 0;
+      const NonlinearEqualityConstraints::shared_ptr constraints) const = 0;
 };
 
 /**
@@ -331,7 +331,7 @@ class UoptRetractorCreator : public RetractorCreator {
   virtual ~UoptRetractorCreator() {}
 
   Retractor::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints) const override {
+      const NonlinearEqualityConstraints::shared_ptr constraints) const override {
     return std::make_shared<UoptRetractor>(constraints, params_);
   }
 };
@@ -350,7 +350,7 @@ class ProjRetractorCreator : public RetractorCreator {
   virtual ~ProjRetractorCreator() {}
 
   Retractor::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints) const override {
+      const NonlinearEqualityConstraints::shared_ptr constraints) const override {
     return std::make_shared<ProjRetractor>(constraints, params_);
   }
 };
@@ -383,7 +383,7 @@ class BasisRetractorCreator : public RetractorCreator {
   virtual ~BasisRetractorCreator() {}
 
   Retractor::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints) const override {
+      const NonlinearEqualityConstraints::shared_ptr constraints) const override {
     KeyVector basis_keys = basis_key_func_(constraints->keyVector());
     return std::make_shared<BasisRetractor>(constraints, params_, basis_keys);
   }
@@ -414,7 +414,7 @@ class DynamicsRetractorCreator : public RetractorCreator {
   virtual ~DynamicsRetractorCreator() {}
 
   Retractor::shared_ptr create(
-      const EqualityConstraints::shared_ptr constraints) const override {
+      const NonlinearEqualityConstraints::shared_ptr constraints) const override {
     if (params_->use_basis_keys) {
       KeyVector basis_keys = basis_key_func_(constraints->keyVector());
       return std::make_shared<DynamicsRetractor>(constraints, params_,

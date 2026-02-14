@@ -47,7 +47,7 @@ void Retractor::checkFeasible(const NonlinearFactorGraph &graph,
 }
 
 /* ************************************************************************* */
-UoptRetractor::UoptRetractor(const EqualityConstraints::shared_ptr &constraints,
+UoptRetractor::UoptRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
                              const RetractParams::shared_ptr &params)
     : Retractor(params),
       optimizer_(constraints->penaltyGraph(), params->lm_params) {}
@@ -69,7 +69,7 @@ Values UoptRetractor::retractConstraints(Values &&values) {
 }
 
 /* ************************************************************************* */
-ProjRetractor::ProjRetractor(const EqualityConstraints::shared_ptr &constraints,
+ProjRetractor::ProjRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
                              const RetractParams::shared_ptr &params,
                              std::optional<const KeyVector> basis_keys)
     : Retractor(params), merit_graph_(constraints->penaltyGraph()) {
@@ -115,7 +115,7 @@ Values ProjRetractor::retract(const Values &values, const VectorValues &delta) {
 
 /* ************************************************************************* */
 BasisRetractor::BasisRetractor(
-    const EqualityConstraints::shared_ptr &constraints,
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
     const RetractParams::shared_ptr &params, const KeyVector &basis_keys)
     : Retractor(params),
       merit_graph_(constraints->penaltyGraph()),
@@ -283,7 +283,7 @@ void DynamicsRetractor::classifyKeys(const CONTAINER &keys, KeySet &q_keys,
 
 /* ************************************************************************* */
 DynamicsRetractor::DynamicsRetractor(
-    const EqualityConstraints::shared_ptr &constraints,
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
     const RetractParams::shared_ptr &params,
     std::optional<const KeyVector> basis_keys)
     : Retractor(params),
