@@ -22,6 +22,7 @@ from cdpr_planar_sim import CdprSimulator
 from gtsam.utils.test_case import GtsamTestCase
 
 class TestCdprControllerTensionDist(GtsamTestCase):
+    @unittest.skip("Temporarily disabled: tension-distribution controller uses unfinished PR #331 Python APIs.")
     def testTrajFollow(self):
         """Tests trajectory tracking controller
         """
