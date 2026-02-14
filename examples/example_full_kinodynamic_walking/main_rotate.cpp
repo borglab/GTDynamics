@@ -14,7 +14,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/kinematics/PointGoalFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
@@ -88,6 +88,9 @@ int main(int argc, char** argv) {
   opt.v_col_cost_model = dynamics_model_1;
   opt.time_cost_model = dynamics_model_1;
   auto graph_builder = gtdynamics::DynamicsGraph(opt);
+  KinematicsParameters kinematics_params;
+  kinematics_params.g_cost_model = objectives_model_3;
+  const Kinematics kinematics(kinematics_params);
 
   // Env parameters.
   Vector3 gravity(0, 0, -9.8);
@@ -210,36 +213,38 @@ int main(int argc, char** argv) {
     for (auto&& psl : phase_swing_links)
       prev_theta[psl] = prev_theta[psl] + theta_inc;
 
+    ContactGoals stance_goals;
+    stance_goals.reserve(phase_contact_links.size());
+    for (auto&& pcl : phase_contact_links) {
+      auto new_cp = Point3(centroid.x() + centroid_contact_dist[pcl] *
+                                              std::cos(prev_theta[pcl]),
+                           centroid.y() + centroid_contact_dist[pcl] *
+                                              std::sin(prev_theta[pcl]),
+                           GROUND_HEIGHT - 0.03);
+      stance_goals.emplace_back(PointOnLink(link_map[pcl], c0.point), new_cp);
+    }
+    objective_factors.add(
+        kinematics.pointGoalObjectives(Interval(t_p_i, t_p_f), stance_goals));
+
     for (int t = t_p_i; t <= t_p_f; t++) {
       // Normalized phase progress.
       double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
-      for (auto&& pcl : phase_contact_links) {
-        // TODO(aescontrela): Use correct contact point for each link.
-        auto new_cp = Point3(centroid.x() + centroid_contact_dist[pcl] *
-                                                std::cos(prev_theta[pcl]),
-                             centroid.y() + centroid_contact_dist[pcl] *
-                                                std::sin(prev_theta[pcl]),
-                             GROUND_HEIGHT - 0.03);
-
-        objective_factors.add(
-            gtdynamics::PointGoalFactor(PoseKey(link_map[pcl]->id(), t),
-                                        objectives_model_3, c0.point, new_cp));
-      }
 
       double h = GROUND_HEIGHT +
                  0.05 * std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
 
+      ContactGoals swing_goals;
+      swing_goals.reserve(phase_swing_links.size());
       for (auto&& psl : phase_swing_links) {
         auto new_cp = Point3(centroid.x() + centroid_contact_dist[psl] *
                                                 std::cos(prev_theta[psl]),
                              centroid.y() + centroid_contact_dist[psl] *
                                                 std::sin(prev_theta[psl]),
                              h);
-
-        objective_factors.add(
-            gtdynamics::PointGoalFactor(PoseKey(link_map[psl]->id(), t),
-                                        objectives_model_3, c0.point, new_cp));
+        swing_goals.emplace_back(PointOnLink(link_map[psl], c0.point), new_cp);
       }
+      objective_factors.add(
+          kinematics.pointGoalObjectives(Slice(t), swing_goals));
     }
   }
 

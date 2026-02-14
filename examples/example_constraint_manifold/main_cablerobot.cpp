@@ -19,7 +19,6 @@
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/kinematics/JointLimitFactor.h>
-#include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>

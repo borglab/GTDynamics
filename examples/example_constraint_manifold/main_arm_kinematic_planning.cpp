@@ -15,7 +15,6 @@
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/kinematics/JointLimitFactor.h>
-#include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Slice.h>

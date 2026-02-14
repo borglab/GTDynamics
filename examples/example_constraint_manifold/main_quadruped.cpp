@@ -12,12 +12,7 @@
  */
 
 #include <gtdynamics/config.h>
-#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/mechanics/TorqueFactor.h>
-#include <gtdynamics/mechanics/WrenchEquivalenceFactor.h>
-#include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
