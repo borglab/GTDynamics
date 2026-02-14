@@ -14,13 +14,13 @@
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 #include <gtdynamics/factors/CollocationFactors.h>
-#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/mechanics/TorqueFactor.h>
+#include <gtdynamics/mechanics/WrenchEquivalenceFactor.h>
+#include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/expressions.h>
 

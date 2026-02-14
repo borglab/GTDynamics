@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/kinematics/ContactKinematicsTwistFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
