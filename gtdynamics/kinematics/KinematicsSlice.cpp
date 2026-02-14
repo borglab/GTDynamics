@@ -127,7 +127,8 @@ NonlinearFactorGraph Kinematics::contactTwistObjectives<Slice>(
   return graph;
 }
 
-NonlinearFactorGraph Kinematics::vFactors(
+template <>
+NonlinearFactorGraph Kinematics::vFactors<Slice>(
     const Slice& slice, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points) const {
   NonlinearFactorGraph graph;
@@ -206,7 +207,8 @@ NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
   return graph;
 }
 
-NonlinearFactorGraph Kinematics::qFactors(
+template <>
+NonlinearFactorGraph Kinematics::qFactors<Slice>(
     const Slice& slice, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points,
     const gtsam::Vector3& gravity) const {

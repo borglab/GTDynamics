@@ -17,11 +17,11 @@
 
 #pragma once
 
-#include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/universal_robot/RobotTypes.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
+#include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -362,21 +362,19 @@ class Joint : public std::enable_shared_from_this<Joint> {
       gtsam::OptionalJacobian<1, 6> H_wrench = {}) const;
 
   /// Returns forward dynamics priors on torque
-  gtsam::GaussianFactorGraph linearFDPriors(size_t t,
-                                            const gtsam::Values &torques,
-                                            const OptimizerSetting &opt) const;
+  gtsam::GaussianFactorGraph linearFDPriors(
+      size_t t, const gtsam::Values &torques) const;
 
   /**
    * Returns linear acceleration factors in the dynamics graph.
    *
    * @param[in] t The timestep for which to generate factors.
    * @param[in] known_values Link poses, twists, Joint angles, Joint velocities.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
    * @param[in] planar_axis   Optional planar axis.
    * @return linear accel factors.
    */
   gtsam::GaussianFactorGraph linearAFactors(
-      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+      size_t t, const gtsam::Values &known_values,
       const std::optional<gtsam::Vector3> &planar_axis = {}) const;
 
   /**
@@ -385,26 +383,25 @@ class Joint : public std::enable_shared_from_this<Joint> {
    * @param[in] t             The timestep for which to generate factors.
    * @param[in] known_values  Link poses, twists, Joint angles, Joint
    * velocities.
-   * @param[in] opt           OptimizerSetting object containing NoiseModels
-   *    for factors.
    * @param[in] planar_axis   Optional planar axis.
    * @return linear dynamics factors.
    */
   gtsam::GaussianFactorGraph linearDynamicsFactors(
-      size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+      size_t t, const gtsam::Values &known_values,
       const std::optional<gtsam::Vector3> &planar_axis = {}) const;
 
   /**
    * Return joint limit factors in the dynamics graph.
    *
    * @param[in] t   The timestep for which to generate joint limit factors.
-   * @param[in] opt OptimizerSetting object containing NoiseModels for factors.
+   * @param[in] jl_cost_model Noise model for all joint limit factors.
    * @return joint limit factors.
    *
    * TODO(gerry): remove this out of Joint and into DynamicsGraph
    */
   gtsam::NonlinearFactorGraph jointLimitFactors(
-      size_t t, const OptimizerSetting &opt) const;
+      size_t t,
+      const gtsam::noiseModel::Base::shared_ptr &jl_cost_model) const;
 
   /// Joint-induced twist in child frame
   Vector6 childTwist(double q_dot) const;

@@ -13,7 +13,9 @@
 
 #pragma once
 
+#include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/PointOnLink.h>
@@ -40,8 +42,14 @@ enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
  */
 class DynamicsGraph {
  private:
+  static OptimizerSetting configuredSettings(
+      const OptimizerSetting& opt, const gtsam::Vector3& gravity,
+      const std::optional<gtsam::Vector3>& planar_axis);
+
   OptimizerSetting opt_;
   const Kinematics kinematics_;
+  const Mechanics mechanics_;
+  const Dynamics dynamics_;
   const gtsam::Vector3 gravity_;
   std::optional<gtsam::Vector3> planar_axis_;
 
@@ -53,8 +61,10 @@ class DynamicsGraph {
    */
   DynamicsGraph(const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, -9.81),
                 const std::optional<gtsam::Vector3> &planar_axis = {})
-      : opt_(OptimizerSetting()),
+      : opt_(configuredSettings(OptimizerSetting(), gravity, planar_axis)),
         kinematics_(opt_),
+        mechanics_(opt_),
+        dynamics_(opt_),
         gravity_(gravity),
         planar_axis_(planar_axis) {}
 
@@ -67,8 +77,10 @@ class DynamicsGraph {
   DynamicsGraph(const OptimizerSetting &opt,
                 const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, -9.8),
                 const std::optional<gtsam::Vector3> &planar_axis = {})
-      : opt_(opt),
+      : opt_(configuredSettings(opt, gravity, planar_axis)),
         kinematics_(opt_),
+        mechanics_(opt_),
+        dynamics_(opt_),
         gravity_(gravity),
         planar_axis_(planar_axis) {}
 

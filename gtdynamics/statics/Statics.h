@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -55,29 +56,44 @@ gtsam::Vector6 ResultantWrench(const std::vector<gtsam::Vector6>& wrenches,
                                std::optional<gtsam::Vector3> gravity,
                                gtsam::OptionalMatrixVecType H = nullptr);
 
-/// Noise models etc specific to Statics class
-struct StaticsParameters : public KinematicsParameters {
-  std::optional<gtsam::Vector3> gravity, planar_axis;
-
+/// Noise models and settings specific to static wrench balancing.
+struct StaticsParameters : public KinematicsParameters, public MechanicsParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
-  const gtsam::SharedNoiseModel fs_cost_model,  // statics cost model
-      f_cost_model,                             // wrench equivalence factor
-      t_cost_model,                             // torque factor
-      planar_cost_model;                        // planar factor
+  gtsam::SharedNoiseModel fs_cost_model;  // statics cost model
 
-  /// Constructor with default arguments
+  /**
+   * Constructor with scalar defaults.
+   * @param sigma_dynamics Shared sigma for mechanics/static factors.
+   * @param gravity Optional gravity vector.
+   * @param planar_axis Optional planar axis for planar robots.
+   */
   StaticsParameters(double sigma_dynamics = 1e-5,
                     const std::optional<gtsam::Vector3>& gravity = {},
                     const std::optional<gtsam::Vector3>& planar_axis = {})
-      : gravity(gravity),
-        planar_axis(planar_axis),
-        fs_cost_model(Isotropic::Sigma(6, 1e-4)),
-        f_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, sigma_dynamics)),
-        t_cost_model(gtsam::noiseModel::Isotropic::Sigma(1, sigma_dynamics)) {}
+      : KinematicsParameters(),
+        MechanicsParameters(sigma_dynamics, gravity, planar_axis),
+        fs_cost_model(Isotropic::Sigma(6, 1e-4)) {}
+
+  /**
+   * Constructor from shared mechanics parameters.
+   * @param mechanics_parameters Pre-configured mechanics parameters.
+   * @param fs_cost_model Noise model for static wrench balance factors.
+   */
+  explicit StaticsParameters(const MechanicsParameters& mechanics_parameters,
+                             const gtsam::SharedNoiseModel& fs_cost_model =
+                                 Isotropic::Sigma(6, 1e-4))
+      : KinematicsParameters(),
+        MechanicsParameters(mechanics_parameters),
+        fs_cost_model(fs_cost_model) {}
 };
 
-/// Algorithms for Statics, i.e. kinematics + wrenches at rest
-class Statics : public Kinematics {
+/**
+ * Algorithms for statics, i.e. kinematics + wrenches at rest.
+ *
+ * For the templated API below, `CONTEXT` is typically `Slice`, `Interval`,
+ * or `Phase`, and `robot` is always the same model.
+ */
+class Statics : public Kinematics, public Mechanics {
  protected:
   const StaticsParameters p_;  // overrides Base::p_
 
@@ -86,54 +102,44 @@ class Statics : public Kinematics {
    * @fn Constructor.
    */
   Statics(const StaticsParameters& parameters = StaticsParameters())
-      : Kinematics(parameters), p_(parameters) {}
+      : Kinematics(parameters), Mechanics(parameters), p_(parameters) {}
 
-  /// Graph with a WrenchEquivalenceFactor for each joint
-  gtsam::NonlinearFactorGraph wrenchEquivalenceFactors(
-      const Slice& slice, const Robot& robot) const;
-
-  /// Graph with a TorqueFactor for each joint
-  gtsam::NonlinearFactorGraph torqueFactors(const Slice& slice,
-                                            const Robot& robot) const;
-
-  /// Graph with a WrenchPlanarFactor for each joint
-  gtsam::NonlinearFactorGraph wrenchPlanarFactors(const Slice& slice,
-                                                  const Robot& robot) const;
+  using Mechanics::torqueFactors;
+  using Mechanics::wrenchEquivalenceFactors;
+  using Mechanics::wrenchPlanarFactors;
 
   /**
    * Create graph with only static balance factors.
    * TODO(frank): if we inherit, should we have *everything below us?
-   * @param slice Slice instance.
-   * @param robot Robot specification from URDF/SDF.
    */
-  gtsam::NonlinearFactorGraph graph(const Slice& slice,
+  template <class CONTEXT>
+  gtsam::NonlinearFactorGraph graph(const CONTEXT& context,
                                     const Robot& robot) const;
 
   /**
    * Create keys for unknowns and initial values.
    * TODO(frank): if we inherit, should we have *everything below us?
-   * @param slice Slice instance.
-   * @param robot Robot specification from URDF/SDF.
-   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
+   * @param gaussian_noise Noise (stddev) added to initial values.
    */
-  gtsam::Values initialValues(const Slice& slice, const Robot& robot,
+  template <class CONTEXT>
+  gtsam::Values initialValues(const CONTEXT& context, const Robot& robot,
                               double gaussian_noise = 0.0) const;
 
   /**
    * Solve for wrenches given kinematics configuration.
-   * @param slice Slice instance.
-   * @param robot Robot specification from URDF/SDF.
    * @param configuration A known kinematics configuration.
-   * @param gaussian_noise noise (stddev) added to initial values (default 0.0).
+   * @param gaussian_noise Noise (stddev) added to initial values.
    */
-  gtsam::Values solve(const Slice& slice, const Robot& robot,
+  template <class CONTEXT>
+  gtsam::Values solve(const CONTEXT& context, const Robot& robot,
                       const gtsam::Values& configuration,
                       double gaussian_noise = 0.0) const;
 
   /**
    * Solve for wrenches and kinematics configuration.
-   * @param slice Slice instance.
    */
-  gtsam::Values minimizeTorques(const Slice& slice, const Robot& robot) const;
+  template <class CONTEXT>
+  gtsam::Values minimizeTorques(const CONTEXT& context,
+                                const Robot& robot) const;
 };
 }  // namespace gtdynamics
