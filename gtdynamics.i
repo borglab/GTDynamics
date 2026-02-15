@@ -152,8 +152,10 @@ class Link  {
   size_t numJoints() const;
   string name() const;
   double mass() const;
+  void setMass(const double mass);
   const gtsam::Pose3 &centerOfMass();
   const gtsam::Matrix &inertia();
+  void setInertia(const gtsam::Matrix3 &inertia);
   gtsam::Matrix6 inertiaMatrix();
 
   void print(const std::string &s = "") const;
@@ -281,7 +283,7 @@ class Robot {
 
 #include <gtdynamics/universal_robot/sdf.h>
 // Only SDF files require the model_name specified..
-gtdynamics::Robot CreateRobotFromFile(const string &urdf_file_path,
+gtdynamics::Robot CreateRobotFromFile(const string &file_path,
                                       const string &model_name = "",
                                       bool preserve_fixed_joint = false);
 
@@ -290,7 +292,7 @@ gtdynamics::Robot CreateRobotFromFile(const string &urdf_file_path,
 
 class PointOnLink {
   PointOnLink();
-  PointOnLink(const gtdynamics::Link* link, const gtsam::Point3 &point);
+  PointOnLink(const gtdynamics::LinkSharedPtr& link, const gtsam::Point3 &point);
 
   gtdynamics::LinkSharedPtr link;
   gtsam::Point3 point;
@@ -300,6 +302,24 @@ class PointOnLink {
 };
 
 // PointOnLinks defined in specializations.h
+
+#include <gtdynamics/utils/ConstraintSpec.h>
+virtual class ConstraintSpec {
+  void print(const string &s) const;
+};
+
+#include <gtdynamics/utils/FootContactConstraintSpec.h>
+class FootContactConstraintSpec : gtdynamics::ConstraintSpec {
+  FootContactConstraintSpec();
+  FootContactConstraintSpec(const std::vector<gtdynamics::PointOnLink> &points_on_links);
+  FootContactConstraintSpec(const std::vector<gtdynamics::LinkSharedPtr> &links,
+                            const gtsam::Point3 &contact_in_com);
+  const gtdynamics::PointOnLinks &contactPoints() const;
+  bool hasContact(const gtdynamics::LinkSharedPtr &link) const;
+  const gtsam::Point3 &contactPoint(const string &link_name) const;
+  void print(const string &s = "") const;
+  std::vector<string> swingLinks() const;
+};
 
 /********************** Optimizer **********************/
 #include <gtdynamics/optimizer/Optimizer.h>
