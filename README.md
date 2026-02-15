@@ -250,6 +250,8 @@ To compile and install the GTDynamics python library:
 
     For VS Code / Pylance setup (including `python.analysis.extraPaths`), see `python/README.md`.
 
+    Important: use a `gtsam` Python package built from the same install/prefix as the GTSAM library linked into GTDynamics. Mixing a local GTDynamics build with an unrelated pip/conda `gtsam` wheel can cause runtime aborts.
+
 4. To run the Python tests, you can simply run:
 
     ```sh

@@ -32,6 +32,17 @@ This directory is where the Pybind11-generated GTDynamics package lives and wher
    ```
    This runs `${PYTHON_EXECUTABLE} -m pip install .` in `build/python`, which produces a wheel in `pip`'s cache before installing it. On non-Windows platforms, `python-install` depends on `python-stubs`, so `.pyi` files are generated first.
 
+## GTSAM Python compatibility (important)
+
+Use a `gtsam` Python package built from the same GTSAM install/prefix that GTDynamics links against.
+Mixing a local GTDynamics build with an unrelated pip/conda `gtsam` wheel can cause hard runtime failures (for example, process aborts when adding factors to a graph).
+
+If you built GTSAM from source in a sibling repo, prepend it before importing:
+
+```sh
+export PYTHONPATH=/path/to/gtsam/build/python:/path/to/GTDynamics/build/python:$PYTHONPATH
+```
+
 ## Generating type stubs
 
 - Run `make python-stubs` to generate stubs with `pybind11-stubgen`.
