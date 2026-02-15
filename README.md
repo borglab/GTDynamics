@@ -240,6 +240,16 @@ To compile and install the GTDynamics python library:
     make && make python-install
     ```
 
+    To generate stubs explicitly (useful for IDEs/type checkers), run:
+
+    ```sh
+    make python-stubs
+    ```
+
+    On non-Windows platforms, `python-install` depends on `python-stubs`.
+
+    For VS Code / Pylance setup (including `python.analysis.extraPaths`), see `python/README.md`.
+
 4. To run the Python tests, you can simply run:
 
     ```sh

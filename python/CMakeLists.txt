@@ -46,17 +46,34 @@ set_target_properties(
              RELWITHDEBINFO_POSTFIX "" # Otherwise you will have a wrong name
 )
 
-add_custom_target(
-  python-install
-  COMMAND ${PYTHON_EXECUTABLE} -m pip install .
-  DEPENDS ${PROJECT_NAME}_py
-  WORKING_DIRECTORY ${GTD_PYTHON_BINARY_DIR})
-
 if(UNIX)
   set(GTD_PATH_SEP ":")
 else()
   set(GTD_PATH_SEP ";")
 endif()
+
+set(GTD_PYTHON_INSTALL_EXTRA "")
+set(GTD_PYTHON_STUB_MODULE "${PROJECT_NAME}.${PROJECT_NAME}")
+
+add_custom_target(
+  python-stubs
+  COMMAND
+    ${CMAKE_COMMAND} -E env
+    "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
+    ${PYTHON_EXECUTABLE} -m pybind11_stubgen -o . --ignore-all-errors
+    ${GTD_PYTHON_STUB_MODULE}
+  DEPENDS ${PROJECT_NAME}_py
+  WORKING_DIRECTORY ${GTD_PYTHON_BINARY_DIR})
+
+if(NOT WIN32)
+  list(APPEND GTD_PYTHON_INSTALL_EXTRA python-stubs)
+endif()
+
+add_custom_target(
+  python-install
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install .
+  DEPENDS ${PROJECT_NAME}_py ${GTD_PYTHON_INSTALL_EXTRA}
+  WORKING_DIRECTORY ${GTD_PYTHON_BINARY_DIR})
 
 # Unit tests
 set(python_unit_test_suites)
