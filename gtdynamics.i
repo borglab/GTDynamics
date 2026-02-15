@@ -636,6 +636,35 @@ class DynamicsGraph {
   const gtdynamics::OptimizerSetting &opt() const;
 };
 
+#include <gtdynamics/dynamics/ChainDynamicsGraph.h>
+class ChainDynamicsGraph : gtdynamics::DynamicsGraph {
+  ChainDynamicsGraph(const gtdynamics::Robot &robot,
+                     const gtdynamics::OptimizerSetting &opt,
+                     const gtsam::Vector3 &gravity);
+
+  ChainDynamicsGraph(const gtdynamics::Robot &robot,
+                     const gtdynamics::OptimizerSetting &opt,
+                     const gtsam::Vector3 &gravity,
+                     const std::optional<gtsam::Vector3> &planar_axis);
+
+  ChainDynamicsGraph(const gtdynamics::Robot &robot,
+                     const gtdynamics::OptimizerSetting &opt);
+
+  gtsam::NonlinearFactorGraph qFactors(
+      const gtdynamics::Robot &robot, const int t,
+      const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
+
+  gtsam::NonlinearFactorGraph dynamicsFactors(
+      const gtdynamics::Robot &robot, const int t,
+      const std::optional<gtdynamics::PointOnLinks> &contact_points,
+      const std::optional<double> &mu) const;
+
+  gtsam::NonlinearFactorGraph dynamicsFactorGraph(
+      const gtdynamics::Robot &robot, const int t,
+      const std::optional<gtdynamics::PointOnLinks> &contact_points,
+      const std::optional<double> &mu) const;
+};
+
 /********************** Objective Factors **********************/
 #include <gtdynamics/factors/ObjectiveFactors.h>
 class LinkObjectives : gtsam::NonlinearFactorGraph {
@@ -695,12 +724,36 @@ class Initializer {
   Initializer();
 
   gtsam::Values ZeroValues(
-      const gtdynamics::Robot& robot, const int t, double gaussian_noise);
+      const gtdynamics::Robot& robot, const int t,
+      double gaussian_noise = 0.0);
+
+  gtsam::Values ZeroValues(
+      const gtdynamics::Robot& robot, const int t,
+      double gaussian_noise = 0.0,
+      const std::optional<gtdynamics::PointOnLinks>& contact_points);
 
   gtsam::Values ZeroValuesTrajectory(
-      const gtdynamics::Robot& robot, const int num_steps, const int num_phases,
-      double gaussian_noise,
+      const gtdynamics::Robot& robot, const int num_steps,
+      const int num_phases = -1, double gaussian_noise = 0.0);
+
+  gtsam::Values ZeroValuesTrajectory(
+      const gtdynamics::Robot& robot, const int num_steps,
+      const int num_phases = -1, double gaussian_noise = 0.0,
       const std::optional<gtdynamics::PointOnLinks>& contact_points);
+};
+
+#include <gtdynamics/utils/ChainInitializer.h>
+class ChainInitializer : gtdynamics::Initializer {
+  ChainInitializer();
+
+  gtsam::Values ZeroValues(
+      const gtdynamics::Robot& robot, const int t,
+      double gaussian_noise = 0.0) const;
+
+  gtsam::Values ZeroValues(
+      const gtdynamics::Robot& robot, const int t,
+      double gaussian_noise = 0.0,
+      const std::optional<gtdynamics::PointOnLinks>& contact_points) const;
 };
 
 /********************** symbols **********************/
