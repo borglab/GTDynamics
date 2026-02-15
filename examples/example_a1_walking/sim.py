@@ -176,7 +176,7 @@ torques[:,0] = np.array(ts)
 torques[:,1] = np.array(all_torques_hip)
 torques[:,2] = np.array(all_torques_upper)
 torques[:,3] = np.array(all_torques_lower)
-np.savetxt('/home/dan/Desktop/Projects/GTDynamics/build/examples/example_a1_walking/torques_pyb.txt', torques)
+np.savetxt('torques_pyb.txt', torques)
 
 pos, orn = p.getBasePositionAndOrientation(robot_id)
 print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,
