@@ -88,6 +88,9 @@ export class MuJoCoClipDemo {
 
     this.kp = new Float64Array();
     this.kd = new Float64Array();
+    // GTD edit from the upstream policy viewer:
+    // use actuator position targets by default, which matches menagerie models.
+    this.controlMode = 'position';
     this.defaultJointPos = new Float64Array();
     this.defaultRootPos = [0, 0, 0.8];
     this.defaultRootQuat = [1, 0, 0, 0];
@@ -130,6 +133,11 @@ export class MuJoCoClipDemo {
     this.configureJointMappings(this.clipJointNames);
     this.kp = toFloatArray(config.stiffness, this.numActions, 30.0);
     this.kd = toFloatArray(config.damping, this.numActions, 1.0);
+    // GTD edit: select controller type from config.
+    // "position" is the default for MuJoCo <position> actuators.
+    this.controlMode = typeof config.control_mode === 'string'
+      ? config.control_mode
+      : 'position';
 
     if (Array.isArray(config.default_joint_pos) && config.default_joint_pos.length === this.numActions) {
       this.defaultJointPos = new Float64Array(config.default_joint_pos);
@@ -204,8 +212,18 @@ export class MuJoCoClipDemo {
 
   loadClipPayload(payload, clipName = 'default') {
     this.clipPlayer.loadClip(payload, { clipName });
+    // GTD edit: align control update cadence with clip timestep when possible.
+    this.updateControlRateFromClip();
     this.configureClipMapping();
     this.setTime(0, true);
+  }
+
+  updateControlRateFromClip() {
+    const clipDt = Number(this.clipPlayer.dt);
+    if (!Number.isFinite(clipDt) || clipDt <= 0 || !Number.isFinite(this.timestep) || this.timestep <= 0) {
+      return;
+    }
+    this.decimation = Math.max(1, Math.round(clipDt / this.timestep));
   }
 
   configureClipMapping() {
@@ -340,6 +358,42 @@ export class MuJoCoClipDemo {
     }
   }
 
+  applyPositionControl(targets) {
+    if (!this.simulation) {
+      return;
+    }
+    // GTD edit: for MuJoCo <position> actuators, ctrl is desired joint position.
+    const ctrl = this.simulation.ctrl;
+    const ctrlRange = this.model?.actuator_ctrlrange;
+
+    for (let i = 0; i < this.numActions; i += 1) {
+      const clipIdx = this.clipJointMap[i];
+      const targetJpos = Number(targets?.jointPos?.[clipIdx]);
+      const desired = Number.isFinite(targetJpos) ? targetJpos : (this.defaultJointPos[i] ?? 0.0);
+      const ctrlAdr = this.ctrlAdr[i];
+      let ctrlValue = desired;
+
+      if (ctrlRange && ctrlRange.length >= (ctrlAdr + 1) * 2) {
+        const min = ctrlRange[ctrlAdr * 2];
+        const max = ctrlRange[(ctrlAdr * 2) + 1];
+        if (Number.isFinite(min) && Number.isFinite(max) && min < max) {
+          ctrlValue = clamp(ctrlValue, min, max);
+        }
+      }
+
+      ctrl[ctrlAdr] = ctrlValue;
+    }
+  }
+
+  applyControl(targets) {
+    // GTD edit: keep explicit dispatch so configs can switch control strategy.
+    if (this.controlMode === 'torque_pd') {
+      this.applyPdControl(targets);
+      return;
+    }
+    this.applyPositionControl(targets);
+  }
+
   stepClipTime() {
     const controlDt = this.timestep * this.decimation;
     if (!this.playing) {
@@ -373,7 +427,7 @@ export class MuJoCoClipDemo {
         this.applyRootTarget(targets);
 
         for (let substep = 0; substep < this.decimation; substep += 1) {
-          this.applyPdControl(targets);
+          this.applyControl(targets);
           this.simulation.step();
         }
 

@@ -29,6 +29,25 @@ npm install
 npm run dev
 ```
 
+## Control model
+
+This demo runs MuJoCo dynamics; it is not pure kinematic teleporting.
+
+- Default behavior in this GTD fork: `control_mode: "position"`
+- Meaning: `ctrl` is sent as desired joint positions for MuJoCo `<position>` actuators
+- MuJoCo still resolves forces/torques, contacts, and friction physically
+
+Optional fallback for custom models:
+
+- `control_mode: "torque_pd"` uses explicit torque-like PD in JS before writing `ctrl`
+
+Per-robot controller mode is configured in:
+- `webdemo/public/examples/configs/<robot>.json`
+
+Note:
+- If a clip includes `root_pos` / `root_quat`, the root can be replayed directly from the clip.
+- For fully dynamic locomotion evaluation, use clips/controllers that do not hard-impose root motion every tick.
+
 ## File layout
 
 - Scene assets (symlinked by bootstrap script):
