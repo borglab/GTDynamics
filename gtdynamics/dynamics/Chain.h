@@ -176,9 +176,9 @@ class Chain {
    * @param k .................... Time slice.
    * @return ..................... GTSAM expression of the chain constraint.
    */
-  gtsam::Vector6_ Poe3Factor(const std::vector<JointSharedPtr> &joints,
-                             const gtsam::Key wTb_key, const gtsam::Key wTe_key,
-                             size_t k) const;
+  gtsam::Vector6_ Poe3Expression(const std::vector<JointSharedPtr> &joints,
+                                 const gtsam::Key wTb_key,
+                                 const gtsam::Key wTe_key, size_t k) const;
 
   /**
    *  This function calculates the end-effector pose using POE and chain
@@ -188,19 +188,18 @@ class Chain {
    *  BODY TO END-EFFECTOR.
    * @return ...................  gtsam expression of the  end-effector wrench
    */
-  gtsam::Pose3 PoeEquality3(
-      const gtsam::Vector3 &angles,
-      gtsam::OptionalJacobian<6, 3> H_angles = {}) const;
+  gtsam::Pose3 PoeEquality3(const gtsam::Vector3 &angles,
+                            gtsam::OptionalJacobian<6, 3> H_angles = {}) const;
 
 };  // Chain class
 
 // Helper function to create expression with a vector, used in
 // ChainConstraint3.
 inline gtsam::Vector3 MakeVector3(const double &value0, const double &value1,
-                           const double &value2,
-                           gtsam::OptionalJacobian<3, 1> J0 = {},
-                           gtsam::OptionalJacobian<3, 1> J1 = {},
-                           gtsam::OptionalJacobian<3, 1> J2 = {}) {
+                                  const double &value2,
+                                  gtsam::OptionalJacobian<3, 1> J0 = {},
+                                  gtsam::OptionalJacobian<3, 1> J1 = {},
+                                  gtsam::OptionalJacobian<3, 1> J2 = {}) {
   gtsam::Vector3 q;
   q << value0, value1, value2;
   if (J0) {
