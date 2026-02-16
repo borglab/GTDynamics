@@ -45,6 +45,16 @@ using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
 using std::vector;
+static constexpr double kGroundHeight = 4.2;
+
+static gtsam::Pose3 poseWithContactHeight(const gtsam::Pose3& wTl,
+                                          const gtsam::Point3& comPc,
+                                          double ground_height) {
+  const double current_height = (wTl * comPc).z();
+  const double delta_z = ground_height - current_height;
+  const gtsam::Point3 t = wTl.translation();
+  return gtsam::Pose3(wTl.rotation(), gtsam::Point3(t.x(), t.y(), t.z() + delta_z));
+}
 
 // ============================ VALUES-STYLE ================================
 
@@ -102,7 +112,8 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
   size_t t = 777;
   DynamicsGraph graph_builder(simple_urdf_eq_mass::gravity,
                               simple_urdf_eq_mass::planar_axis);
-  auto graph = graph_builder.dynamicsFactorGraph(robot, t);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, t, {}, {},
+                                                 kGroundHeight);
 
   // Create values with rest kinematics and unit torques
   Values known_values = zero_values(robot, t);
@@ -157,7 +168,8 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
                                     graph_builder.opt().bv_cost_model);
   }
 
-  auto graph = graph_builder.dynamicsFactorGraph(robot, 0);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, {}, {},
+                                                 kGroundHeight);
   graph.add(prior_factors);
 
   Initializer initializer;
@@ -172,7 +184,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
 
   // test the condition when we fix link "l1"
   robot = robot.fixLink("l1");
-  graph = graph_builder.dynamicsFactorGraph(robot, 0);
+  graph = graph_builder.dynamicsFactorGraph(robot, 0, {}, {}, kGroundHeight);
   graph.add(prior_factors);
 
   gtsam::GaussNewtonOptimizer optimizer2(graph, init_values);
@@ -200,7 +212,8 @@ TEST(dynamicsFactorGraph_FD, jumping_robot) {
   // build the dynamics factor graph
   DynamicsGraph graph_builder(jumping_robot::gravity,
                               jumping_robot::planar_axis);
-  auto graph = graph_builder.dynamicsFactorGraph(robot, 0);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, {}, {},
+                                                 kGroundHeight);
   graph.add(graph_builder.forwardDynamicsPriors(robot, 0, known_values));
 
   // test jumping robot FD
@@ -334,7 +347,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // test Euler
   auto euler_graph = graph_builder.trajectoryFG(robot, num_steps, dt,
-                                                CollocationScheme::Euler);
+                                                CollocationScheme::Euler, {},
+                                                {}, kGroundHeight);
   euler_graph.add(
       graph_builder.trajectoryFDPriors(robot, num_steps, known_values));
 
@@ -350,7 +364,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // test trapezoidal
   auto trapezoidal_graph = graph_builder.trajectoryFG(
-      robot, num_steps, dt, CollocationScheme::Trapezoidal);
+      robot, num_steps, dt, CollocationScheme::Trapezoidal, {}, {},
+      kGroundHeight);
   trapezoidal_graph.add(
       graph_builder.trajectoryFDPriors(robot, num_steps, known_values));
 
@@ -366,7 +381,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // test the scenario with dt as a variable
   vector<int> phase_steps{1, 1};
-  auto transition_graph = graph_builder.dynamicsFactorGraph(robot, 1);
+  auto transition_graph =
+      graph_builder.dynamicsFactorGraph(robot, 1, {}, {}, kGroundHeight);
   vector<NonlinearFactorGraph> transition_graphs{transition_graph};
   double dt0 = 1;
   double dt1 = 2;
@@ -380,7 +396,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
-      robot, phase_steps, transition_graphs, CollocationScheme::Euler);
+      robot, phase_steps, transition_graphs, CollocationScheme::Euler, {}, {},
+      kGroundHeight);
   mp_euler_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpe(mp_euler_graph, init_values);
   Values mp_euler_result = optimizer_mpe.optimize();
@@ -400,7 +417,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
 
   // multi-phase Trapezoidal
   auto mp_trapezoidal_graph = graph_builder.multiPhaseTrajectoryFG(
-      robot, phase_steps, transition_graphs, CollocationScheme::Trapezoidal);
+      robot, phase_steps, transition_graphs, CollocationScheme::Trapezoidal,
+      {}, {}, kGroundHeight);
   mp_trapezoidal_graph.add(mp_prior_graph);
   gtsam::GaussNewtonOptimizer optimizer_mpt(mp_trapezoidal_graph,
                                             mp_euler_result);
@@ -428,12 +446,14 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
   // Add some contact points.
   PointOnLinks contact_points;
   LinkSharedPtr l0 = robot.link("link_0");
-  contact_points.emplace_back(l0, gtsam::Point3(0, 0, -0.1));
+  const gtsam::Point3 contact_in_com(0, 0, -0.1);
+  contact_points.emplace_back(l0, contact_in_com);
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   DynamicsGraph graph_builder(gravity);
-  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0,
+                                                 kGroundHeight);
 
   Values known_values = zero_values(robot, 0, true);
   // Compute inverse dynamics prior factors.
@@ -441,7 +461,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
       graph_builder.inverseDynamicsPriors(robot, 0, known_values);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.addPrior(PoseKey(l0->id(), 0), l0->bMcom(),
+  prior_factors.addPrior(PoseKey(l0->id(), 0),
+                         poseWithContactHeight(l0->bMcom(), contact_in_com,
+                                               kGroundHeight),
                          gtsam::noiseModel::Constrained::All(6));
   prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Z_6x1,
                                   gtsam::noiseModel::Constrained::All(6));
@@ -488,7 +510,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.81).finished();
   DynamicsGraph graph_builder(gravity);
-  auto graph = graph_builder.dynamicsFactorGraph(biped, 0, contact_points, 1.0);
+  auto graph = graph_builder.dynamicsFactorGraph(biped, 0, contact_points, 1.0,
+                                                 kGroundHeight);
 
   // Compute inverse dynamics prior factors.
   // Inverse dynamics priors. We care about the torques.
@@ -560,12 +583,14 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
   // Add some contact points.
   PointOnLinks contact_points;
   LinkSharedPtr l0 = robot.link("link_0");
-  contact_points.emplace_back(l0, gtsam::Point3(0, 0, -0.1));
+  const gtsam::Point3 contact_in_com(0, 0, -0.1);
+  contact_points.emplace_back(l0, contact_in_com);
 
   // Build the dynamics FG.
   gtsam::Vector3 gravity = (gtsam::Vector(3) << 0, 0, -9.8).finished();
   DynamicsGraph graph_builder(gravity);
-  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0);
+  auto graph = graph_builder.dynamicsFactorGraph(robot, 0, contact_points, 1.0,
+                                                 kGroundHeight);
 
   // Compute inverse dynamics prior factors.
   gtsam::Values known_values = zero_values(robot, 0, true);
@@ -573,7 +598,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
       graph_builder.inverseDynamicsPriors(robot, 0, known_values);
 
   // Specify pose and twist priors for one leg.
-  prior_factors.addPrior(PoseKey(l0->id(), 0), l0->bMcom(),
+  prior_factors.addPrior(PoseKey(l0->id(), 0),
+                         poseWithContactHeight(l0->bMcom(), contact_in_com,
+                                               kGroundHeight),
                          gtsam::noiseModel::Constrained::All(6));
   prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Z_6x1,
                                   gtsam::noiseModel::Constrained::All(6));

@@ -92,8 +92,8 @@ TEST(WalkCycle, objectives) {
   EXPECT_LONGS_EQUAL(swing_links0.size(), 2);
   EXPECT_LONGS_EQUAL(swing_links1.size(), 2);
 
-  // Expected contact goal points use world-frame ground height.
-  constexpr double ground_height = -0.191839;
+  // Use a non-zero ground height to exercise explicit wiring.
+  constexpr double ground_height = 4.2;
   Point3 goal_LH(-0.371306, 0.1575, ground_height);   // LH
   Point3 goal_LF(0.278694, 0.1575, ground_height);    // LF
   Point3 goal_RF(0.278694, -0.1575, ground_height);   // RF

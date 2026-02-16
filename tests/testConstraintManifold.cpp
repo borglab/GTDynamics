@@ -418,12 +418,14 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
                    .fixLink("l0");
   int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
   const gtsam::Vector3 gravity(0, 0, -10);
+  constexpr double ground_plane_height = 4.2;
   OptimizerSetting opt;
   auto graph_builder = DynamicsGraph(opt, gravity);
 
   // constraints graph
   NonlinearFactorGraph constraints_graph;
-  constraints_graph.add(graph_builder.dynamicsFactorGraph(robot, 0));
+  constraints_graph.add(
+      graph_builder.dynamicsFactorGraph(robot, 0, {}, {}, ground_plane_height));
 
   // initial values
   Initializer initializer;
