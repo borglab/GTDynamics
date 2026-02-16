@@ -67,20 +67,6 @@ class TestDynamicsGraph(unittest.TestCase):
         self.assertEqual(graph.size(), 10)
         self.assertEqual(graph.keys().size(), 9)
 
-    def test_chain_wrappers(self):
-        """Test wrapped chain-graph classes are usable from Python."""
-        a1 = gtd.CreateRobotFromFile(gtd.URDF_PATH + "/a1/a1.urdf", "a1")
-        opt = gtd.OptimizerSetting()
-        gravity = np.array([0.0, 0.0, -9.8])
-
-        chain_graph = gtd.ChainDynamicsGraph(a1, opt, gravity)
-        graph = chain_graph.dynamicsFactorGraph(a1, 0, None, None)
-        self.assertGreater(graph.size(), 0)
-
-        chain_initializer = gtd.ChainInitializer()
-        init_values = chain_initializer.ZeroValues(a1, 0, 0.0, None)
-        self.assertGreater(init_values.size(), 0)
-
 
 if __name__ == "__main__":
     unittest.main()

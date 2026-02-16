@@ -196,13 +196,12 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
 template <>
 NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
     const Slice& slice, const PointOnLinks& contact_points,
-    const gtsam::Vector3& gravity, double ground_plane_height) const {
+    const gtsam::Vector3& gravity) const {
   NonlinearFactorGraph graph;
 
   for (const PointOnLink& cp : contact_points) {
     graph.emplace_shared<ContactHeightFactor>(
-        PoseKey(cp.link->id(), slice.k), p_.cp_cost_model, cp.point, gravity,
-        ground_plane_height);
+        PoseKey(cp.link->id(), slice.k), p_.cp_cost_model, cp.point, gravity);
   }
 
   return graph;
@@ -212,13 +211,12 @@ template <>
 NonlinearFactorGraph Kinematics::qFactors<Slice>(
     const Slice& slice, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points,
-    const gtsam::Vector3& gravity, double ground_plane_height) const {
+    const gtsam::Vector3& gravity) const {
   NonlinearFactorGraph graph;
   graph.add(fixedLinkObjectives(slice, robot));
   graph.add(this->graph(slice, robot));
   if (contact_points) {
-    graph.add(contactHeightObjectives(slice, *contact_points, gravity,
-                                      ground_plane_height));
+    graph.add(contactHeightObjectives(slice, *contact_points, gravity));
   }
   return graph;
 }

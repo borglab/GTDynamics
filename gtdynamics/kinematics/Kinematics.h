@@ -135,15 +135,13 @@ class Kinematics : public Optimizer {
    * @fn Create q-level kinematics factors.
    * @param contact_points Optional contact points on links.
    * @param gravity Gravity vector used to define up direction.
-   * @param ground_plane_height Contact ground-plane height in world frame.
    * @returns graph with q-level factors.
    */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph qFactors(
       const CONTEXT& context, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {},
-      const gtsam::Vector3& gravity = gtsam::Vector3(0, 0, -9.8),
-      double ground_plane_height = 0.0) const;
+      const gtsam::Vector3& gravity = gtsam::Vector3(0, 0, -9.8)) const;
 
   /**
    * @fn Create v-level kinematics factors.
@@ -184,14 +182,12 @@ class Kinematics : public Optimizer {
    * @fn Create contact-height objectives.
    * @param contact_points Contact points on links.
    * @param gravity Gravity vector used to define up direction.
-   * @param ground_plane_height Contact ground-plane height in world frame.
    * @returns graph with contact-height factors.
    */
   template <class CONTEXT>
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const CONTEXT& context, const PointOnLinks& contact_points,
-      const gtsam::Vector3& gravity,
-      double ground_plane_height = 0.0) const;
+      const gtsam::Vector3& gravity) const;
 
   /**
    * @fn Create fixed-link pose prior objectives.

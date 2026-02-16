@@ -13,6 +13,7 @@
 
 #include <gtdynamics/dynamics/Chain.h>
 
+
 namespace gtdynamics {
 
 Chain operator*(const Chain &chainA, const Chain &chainB) {
@@ -236,20 +237,19 @@ gtsam::Vector6 Chain::AdjointWrenchEquality3(
   Pose3 T_theta = poe(angles, {}, H_angles ? &J_theta : nullptr);
 
   // Get end-effector wrench by Adjoint. This is true for a massless leg.
-  gtsam::Vector6 transformed_wrench = T_theta.AdjointTranspose(
-      wrench_body, H_angles ? &H_T : nullptr, H_wrench_body);
+  gtsam::Vector6 transformed_wrench =
+      T_theta.AdjointTranspose(wrench_body,H_angles ? &H_T : nullptr , H_wrench_body);
 
   if (H_angles) {
-    *H_angles = H_T * J_theta;
+    *H_angles =  H_T * J_theta;
   }
 
   return transformed_wrench;
 }
 
-gtsam::Vector6_ Chain::Poe3Expression(const std::vector<JointSharedPtr> &joints,
-                                      const gtsam::Key wTb_key,
-                                      const gtsam::Key wTe_key,
-                                      size_t k) const {
+gtsam::Vector6_ Chain::Poe3Factor(const std::vector<JointSharedPtr> &joints,
+                                  const gtsam::Key wTb_key,
+                                  const gtsam::Key wTe_key, size_t k) const {
   // Get Expression for poses
   gtsam::Pose3_ wTb(wTb_key);
   gtsam::Pose3_ wTe(wTe_key);
@@ -266,12 +266,12 @@ gtsam::Vector6_ Chain::Poe3Expression(const std::vector<JointSharedPtr> &joints,
                 std::placeholders::_2),
       angles);
 
-  // compose
+  // compose 
   gtsam::Pose3_ wTe_hat = wTb * end_effector_pose;
 
   // get error expression
   gtsam::Vector6_ error_expression = gtsam::logmap(wTe_hat, wTe);
-
+  
   return error_expression;
 }
 
@@ -283,7 +283,7 @@ gtsam::Pose3 Chain::PoeEquality3(const gtsam::Vector3 &angles,
   Pose3 T_theta = poe(angles, {}, H_angles ? &J_theta : nullptr);
 
   if (H_angles) {
-    *H_angles = J_theta;
+    *H_angles =J_theta;
   }
 
   return T_theta;

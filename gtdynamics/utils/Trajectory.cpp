@@ -36,30 +36,25 @@ using std::vector;
 namespace gtdynamics {
 
 vector<NonlinearFactorGraph> Trajectory::getTransitionGraphs(
-    const Robot &robot, const DynamicsGraph &graph_builder, double mu,
-    double ground_plane_height) const {
+    const Robot &robot, const DynamicsGraph &graph_builder, double mu) const {
   vector<NonlinearFactorGraph> transition_graphs;
   const vector<int> final_timesteps = finalTimeSteps();
   const vector<PointOnLinks> trans_cps = transitionContactPoints();
   for (int p = 1; p < numPhases(); p++) {
     transition_graphs.push_back(graph_builder.dynamicsFactorGraph(
-        robot, final_timesteps[p - 1], trans_cps[p - 1], mu,
-        ground_plane_height));
+        robot, final_timesteps[p - 1], trans_cps[p - 1], mu));
   }
   return transition_graphs;
 }
 
 NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
     const Robot &robot, const DynamicsGraph &graph_builder,
-    const CollocationScheme collocation, double mu,
-    double ground_plane_height) const {
+    const CollocationScheme collocation, double mu) const {
   // Graphs for transition between phases + their initial values.
-  auto transition_graphs =
-      getTransitionGraphs(robot, graph_builder, mu, ground_plane_height);
+  auto transition_graphs = getTransitionGraphs(robot, graph_builder, mu);
   return graph_builder.multiPhaseTrajectoryFG(robot, phaseDurations(),
                                               transition_graphs, collocation,
-                                              phaseContactPoints(), mu,
-                                              ground_plane_height);
+                                              phaseContactPoints(), mu);
 }
 
 vector<Values> Trajectory::transitionPhaseInitialValues(

@@ -92,15 +92,14 @@ TEST(WalkCycle, objectives) {
   EXPECT_LONGS_EQUAL(swing_links0.size(), 2);
   EXPECT_LONGS_EQUAL(swing_links1.size(), 2);
 
-  // Use a non-zero ground height to exercise explicit wiring.
-  constexpr double ground_height = 4.2;
-  Point3 goal_LH(-0.371306, 0.1575, ground_height);   // LH
-  Point3 goal_LF(0.278694, 0.1575, ground_height);    // LF
-  Point3 goal_RF(0.278694, -0.1575, ground_height);   // RF
-  Point3 goal_RH(-0.371306, -0.1575, ground_height);  // RH
+  // Expected contact goal points.
+  Point3 goal_LH(-0.371306, 0.1575, 0);   // LH
+  Point3 goal_LF(0.278694, 0.1575, 0);    // LF
+  Point3 goal_RF(0.278694, -0.1575, 0);   // RF
+  Point3 goal_RH(-0.371306, -0.1575, 0);  // RH
 
   // Check initalization of contact goals.
-  auto cp_goals = walk_cycle.initContactPointGoal(robot, ground_height);
+  auto cp_goals = walk_cycle.initContactPointGoal(robot, -0.191839);
   EXPECT_LONGS_EQUAL(4, cp_goals.size());
   EXPECT(gtsam::assert_equal(goal_LH, cp_goals["lower1"], 1e-6));
   EXPECT(gtsam::assert_equal(goal_LF, cp_goals["lower0"], 1e-6));

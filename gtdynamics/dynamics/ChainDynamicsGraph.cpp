@@ -12,7 +12,6 @@
  */
 
 #include "gtdynamics/dynamics/ChainDynamicsGraph.h"
-
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 
@@ -118,35 +117,36 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
   // Create expression for wrench constraint on trunk
   Vector6_ trunk_wrench_constraint = gravity_wrench;
 
+  // Set tolerances
+
   // Get tolerance
   Vector6 wrench_tolerance = opt().f_cost_model->sigmas();
   Vector3 contact_tolerance = opt().cm_cost_model->sigmas();
 
   std::vector<Key> wrench_keys;
 
-  constexpr int root = 0;  // TODO(Frank): Hard-coded for A1.
-  const Vector6 wrench_zero = gtsam::Z_6x1;
-
-  for (int leg = 0; leg < 4; ++leg) {
+  for (int i = 0; i < 4; ++i) {
     bool foot_in_contact = false;
     // Get key for wrench at hip joint with id 0
-    const int joint_id = 3 * leg;  // TODO(Frank): Hard-coded for A1.
-    const Key wrench_key = WrenchKey(root, joint_id, t);
+    const Key wrench_key_3i_T = WrenchKey(0, 3 * i, t);
+
+    // create expression for the wrench and initialize to zero
+    Vector6_ wrench_3i_T(Vector6::Zero());
 
     // Set wrench expression on trunk by leg, according to contact
     for (auto &&cp : *contact_points) {
-      if (cp.link->id() == 3 * (leg + 1)) {
+      if (cp.link->id() == 3 * (i + 1)) {
+        wrench_3i_T = Vector6_(wrench_key_3i_T);
         foot_in_contact = true;
       }
     }
 
     // add wrench to trunk constraint
-    wrench_keys.push_back(wrench_key);
+    wrench_keys.push_back(wrench_key_3i_T);
 
     // Get expression for end effector wrench using chain
-    Vector6_ wrench_end_effector =
-        composed_chains_[leg].AdjointWrenchConstraint3(chain_joints_[leg],
-                                                       wrench_key, t);
+    Vector6_ wrench_end_effector = composed_chains_[i].AdjointWrenchConstraint3(
+        chain_joints_[i], wrench_key_3i_T, t);
 
     // Create contact constraint
     Point3 contact_in_com(0.0, 0.0, -0.07);
@@ -158,7 +158,8 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
     if (foot_in_contact) {
       graph.add(contact_expression.penaltyFactor(1.0));
     } else {
-      graph.addPrior(wrench_key, wrench_zero, opt().f_cost_model);
+      Vector6 wrench_zero = gtsam::Z_6x1;
+      graph.addPrior(wrench_key_3i_T, wrench_zero, opt().f_cost_model);
     }
   }
 
@@ -171,8 +172,7 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
 
 gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
     const Robot &robot, const int t,
-    const std::optional<PointOnLinks> &contact_points,
-    double ground_plane_height) const {
+    const std::optional<PointOnLinks> &contact_points) const {
   NonlinearFactorGraph graph;
 
   // Get Pose key for base link
@@ -186,7 +186,7 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
     const Key end_effector_key = PoseKey(3 * (i + 1), t);
 
     // Get expression for end effector pose
-    gtsam::Vector6_ chain_expression = composed_chains_[i].Poe3Expression(
+    gtsam::Vector6_ chain_expression = composed_chains_[i].Poe3Factor(
         chain_joints_[i], base_key, end_effector_key, t);
 
     gtsam::ExpressionEqualityConstraint<gtsam::Vector6> chain_constraint(
@@ -198,8 +198,8 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
   // Add contact factors.
   if (contact_points) {
     const Kinematics kinematics(opt());
-    graph.add(kinematics.contactHeightObjectives(
-        Slice(t), *contact_points, gravity(), ground_plane_height));
+    graph.add(
+        kinematics.contactHeightObjectives(Slice(t), *contact_points, gravity()));
   }
 
   return graph;
@@ -208,12 +208,10 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
 gtsam::NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactorGraph(
     const Robot &robot, const int t,
     const std::optional<PointOnLinks> &contact_points,
-    const std::optional<double> &mu, double ground_plane_height) const {
+    const std::optional<double> &mu) const {
   NonlinearFactorGraph graph;
-  graph.add(qFactors(robot, t, contact_points, ground_plane_height));
-  // NOTE(Frank): In chain factors, there is no need to model the intermediate
-  // velocities/accelerations of the joints, as they do not influence the
-  // solution, see Dan's thesis.
+  graph.add(qFactors(robot, t, contact_points));
+  // TODO(Varun): Why are these commented out?
   // graph.add(vFactors(robot, t, contact_points));
   // graph.add(aFactors(robot, t, contact_points));
   graph.add(dynamicsFactors(robot, t, contact_points, mu));

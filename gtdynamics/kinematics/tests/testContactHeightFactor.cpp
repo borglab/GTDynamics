@@ -29,7 +29,6 @@
 using namespace gtdynamics;
 using gtsam::assert_equal;
 using gtsam::Vector3, gtsam::Vector1, gtsam::Rot3, gtsam::Pose3, gtsam::Point3;
-static constexpr double kGroundHeight = 4.2;
 
 /**
  * Test the unwhitenedError method with various link twists.
@@ -43,21 +42,21 @@ TEST(ContactHeightFactor, Error) {
   // Transform from the robot com to the link end.
   Point3 comPc(0, 0, 1);
   ContactHeightFactor factor(pose_key, cost_model, comPc,
-                             gtsam::Vector3(0, 0, -9.8), kGroundHeight);
+                             gtsam::Vector3(0, 0, -9.8), 0);
 
   // Leg oriented upwards with contact away from the ground.
   gtsam::Values values1;
-  values1.insert(pose_key, Pose3(Rot3(), Point3(0., 0., 6.2)));
+  values1.insert(pose_key, Pose3(Rot3(), Point3(0., 0., 2.)));
   EXPECT(assert_equal(factor.unwhitenedError(values1), Vector1(3)));
 
   // Leg oriented down with contact 1m away from the ground.
   gtsam::Values values2;
-  values2.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 6.2)));
+  values2.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 2.)));
   EXPECT(assert_equal(factor.unwhitenedError(values2), Vector1(1)));
 
   // Contact touching the ground.
   gtsam::Values values3;
-  values3.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 5.2)));
+  values3.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 1.)));
   EXPECT(assert_equal(factor.unwhitenedError(values3), Vector1(0)));
 
   // Check that Jacobian computation is correct by comparison to finite
@@ -94,23 +93,23 @@ TEST(ContactHeightFactor, ErrorWithHeight) {
   // Transform from the contact frame to the link com.
   Point3 comPc(0, 0, 1);
 
-  // Create a factor that establishes a ground plane at z = 4.2.
+  // Create a factor that establishes a ground plane at z = -1.0.
   ContactHeightFactor factor(pose_key, cost_model, comPc,
-                             gtsam::Vector3(0, 0, -9.8), kGroundHeight);
+                             gtsam::Vector3(0, 0, -9.8), -1.0);
 
   // Leg oriented upwards with contact away from the ground.
   gtsam::Values values1;
-  values1.insert(pose_key, Pose3(Rot3(), Point3(0., 0., 7.2)));
+  values1.insert(pose_key, Pose3(Rot3(), Point3(0., 0., 2.)));
   EXPECT(assert_equal(factor.unwhitenedError(values1), gtsam::Vector1(4)));
 
   // Leg oriented down with contact 1m away from the ground.
   gtsam::Values values2;
-  values2.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 7.2)));
+  values2.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 2.)));
   EXPECT(assert_equal(factor.unwhitenedError(values2), gtsam::Vector1(2)));
 
-  // Contact 1m above the ground.
+  // Contact touching the ground.
   gtsam::Values values3;
-  values3.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 6.2)));
+  values3.insert(pose_key, Pose3(Rot3::Rx(M_PI), Point3(0., 0., 1.)));
   EXPECT(assert_equal(factor.unwhitenedError(values3), gtsam::Vector1(1)));
 
   // Check that Jacobian computation is correct by comparison to finite
@@ -148,7 +147,7 @@ TEST(ContactHeightFactor, Optimization) {
   // Transform from the contact frame to the link com.
   Point3 comPc(0, 0, 1);
   ContactHeightFactor factor(pose_key, cost_model, comPc,
-                             gtsam::Vector3(0, 0, -9.8), kGroundHeight);
+                             gtsam::Vector3(0, 0, -9.8));
 
   // Initial link pose.
   Pose3 link_pose_init =
