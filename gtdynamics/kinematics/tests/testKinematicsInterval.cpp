@@ -26,6 +26,44 @@ using std::string;
 
 #include "contactGoalsExample.h"
 
+namespace {
+
+ContactGoals InterpolateContactGoals(const ContactGoals& contact_goals_start,
+                                     const ContactGoals& contact_goals_end,
+                                     double alpha) {
+  ContactGoals contact_goals;
+  std::transform(
+      contact_goals_start.begin(), contact_goals_start.end(),
+      contact_goals_end.begin(), std::back_inserter(contact_goals),
+      [alpha](const ContactGoal& start_goal, const ContactGoal& end_goal) {
+        return ContactGoal{
+            start_goal.point_on_link,
+            (1.0 - alpha) * start_goal.goal_point + alpha * end_goal.goal_point};
+      });
+  return contact_goals;
+}
+
+gtsam::Values ManualInterpolateByInverse(
+    const Kinematics& kinematics, const Interval& interval, const Robot& robot,
+    const ContactGoals& contact_goals_start,
+    const ContactGoals& contact_goals_end) {
+  gtsam::Values result;
+  const double denominator =
+      static_cast<double>(interval.k_end - interval.k_start);
+  for (size_t k = interval.k_start; k <= interval.k_end; ++k) {
+    const double alpha =
+        denominator > 0.0
+            ? static_cast<double>(k - interval.k_start) / denominator
+            : 0.0;
+    const auto goals =
+        InterpolateContactGoals(contact_goals_start, contact_goals_end, alpha);
+    result.insert(kinematics.inverse(Slice(k), robot, goals));
+  }
+  return result;
+}
+
+}  // namespace
+
 TEST(Interval, InverseKinematics) {
   // Load robot and establish contact/goal pairs
   // TODO(frank): the goals for contact will differ for a Interval vs Slice.
@@ -73,7 +111,7 @@ TEST(Interval, Interpolate) {
   parameters.method = OptimizationParameters::Method::SOFT_CONSTRAINTS;
   Kinematics kinematics(parameters);
   auto result1 = kinematics.inverse(Slice(5), robot, contact_goals);
-  auto result2 = kinematics.inverse(Slice(9), robot, contact_goals);
+  auto result2 = kinematics.inverse(Slice(9), robot, contact_goals2);
 
   // Create a kinematic trajectory over timesteps 5, 6, 7, 8, 9 that
   // interpolates between goal configurations at timesteps 5 and 9.
@@ -83,6 +121,37 @@ TEST(Interval, Interpolate) {
   EXPECT(result.exists(PoseKey(0, 9)));
   EXPECT(assert_equal(Pose(result1, 0, 5), Pose(result, 0, 5)));
   EXPECT(assert_equal(Pose(result2, 0, 9), Pose(result, 0, 9)));
+}
+
+TEST(Interval, InterpolateMatchesManualInverseLoop) {
+  using namespace contact_goals_example;
+
+  // Move RF foot by 10 cm in +x at the end of interval.
+  auto contact_goals2 = contact_goals;
+  contact_goals2[2] = {{RF, contact_in_com}, {0.4, -0.16, -0.2}};
+
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  const Interval interval(5, 9);
+  const auto manual_result = ManualInterpolateByInverse(
+      kinematics, interval, robot, contact_goals, contact_goals2);
+  const auto interpolate_result =
+      kinematics.interpolate(interval, robot, contact_goals, contact_goals2);
+
+  // Interpolate should match an explicit per-k call to inverse on interpolated
+  // goal points.
+  constexpr double tol = 1e-5;
+  for (size_t k = interval.k_start; k <= interval.k_end; ++k) {
+    for (const auto& joint : robot.joints()) {
+      const auto key = JointAngleKey(joint->id(), k);
+      EXPECT(manual_result.exists(key));
+      EXPECT(interpolate_result.exists(key));
+      EXPECT_DOUBLES_EQUAL(manual_result.at<double>(key),
+                           interpolate_result.at<double>(key), tol);
+    }
+  }
 }
 
 int main() {

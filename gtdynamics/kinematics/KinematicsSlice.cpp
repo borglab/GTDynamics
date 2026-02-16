@@ -14,10 +14,10 @@
 #include <gtdynamics/kinematics/ContactHeightFactor.h>
 #include <gtdynamics/kinematics/ContactKinematicsTwistFactor.h>
 #include <gtdynamics/kinematics/JointLimitFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/kinematics/PointGoalFactor.h>
 #include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtdynamics/kinematics/TwistFactor.h>
-#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -371,6 +371,7 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
   // graph.addPrior<gtsam::Pose3>(PoseKey(0, slice.k),
   // gtsam::Pose3(), nullptr);
 
+  // TODO(frank): we should allow warm start when used in interval context.
   auto initial_values = initialValues(slice, robot);
 
   return optimize(graph, constraints, initial_values);

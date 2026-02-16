@@ -149,9 +149,12 @@ Values Kinematics::interpolate<Interval>(
     const ContactGoals& contact_goals1,
     const ContactGoals& contact_goals2) const {
   Values result;
-  const double dt = 1.0 / (interval.k_start - interval.k_end);  // 5 6 7 8 9 [10
+  const double denominator =
+      static_cast<double>(interval.k_end - interval.k_start);
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    const double t = dt * (k - interval.k_start);
+    const double t = denominator > 0.0
+                         ? static_cast<double>(k - interval.k_start) / denominator
+                         : 0.0;
     ContactGoals goals;
     transform(contact_goals1.begin(), contact_goals1.end(),
               contact_goals2.begin(), std::back_inserter(goals),
