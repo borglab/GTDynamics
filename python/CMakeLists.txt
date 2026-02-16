@@ -55,11 +55,23 @@ endif()
 set(GTD_PYTHON_INSTALL_EXTRA "")
 set(GTD_PYTHON_STUB_MODULE "${PROJECT_NAME}.${PROJECT_NAME}")
 
+# Determine library path for stub generation
+# On Linux/Unix, we need LD_LIBRARY_PATH; on macOS, DYLD_LIBRARY_PATH
+get_target_property(GTSAM_LIBRARY_LOCATION gtsam LOCATION)
+get_filename_component(GTSAM_LIBRARY_DIR "${GTSAM_LIBRARY_LOCATION}" DIRECTORY)
+
+if(APPLE)
+  set(GTD_STUB_LIB_PATH_VAR "DYLD_LIBRARY_PATH")
+else()
+  set(GTD_STUB_LIB_PATH_VAR "LD_LIBRARY_PATH")
+endif()
+
 add_custom_target(
   python-stubs
   COMMAND
     ${CMAKE_COMMAND} -E env
     "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
+    "${GTD_STUB_LIB_PATH_VAR}=${GTSAM_LIBRARY_DIR}${GTD_PATH_SEP}${CMAKE_LIBRARY_OUTPUT_DIRECTORY}${GTD_PATH_SEP}$ENV{${GTD_STUB_LIB_PATH_VAR}}"
     ${PYTHON_EXECUTABLE} -m pybind11_stubgen -o . --ignore-all-errors
     ${GTD_PYTHON_STUB_MODULE}
   DEPENDS ${PROJECT_NAME}_py
