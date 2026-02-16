@@ -97,11 +97,14 @@ $ make help
 
 # Run all C++ tests or grouped test sets
 $ make check
-$ make check.tests
 $ make check.kinematics
 $ make check.mechanics
 $ make check.statics
 $ make check.dynamics
+$ make check.cablerobot
+$ make check.jumpingrobot
+$ make check.pandarobot
+$ make check.tests # other tests
 
 # Run a single C++ test executable target
 $ make testTwistAccelFactor.run

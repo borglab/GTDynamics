@@ -21,9 +21,6 @@ foreach(EXAMPLE ${EXAMPLE_SUBDIRS})
   add_subdirectory(${EXAMPLE})
 endforeach()
 
-# Convenience alias: build all examples via a check-style target name.
-add_custom_target(check.examples DEPENDS examples)
-
 # --- Process Python Animation Scripts ---
 # This automatically finds 'animate.py' scripts and creates .animate targets.
 message(STATUS "Searching for python animation scripts...")
