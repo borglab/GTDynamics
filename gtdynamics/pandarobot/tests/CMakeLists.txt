@@ -1,1 +1,1 @@
-gtsamAddTestsGlob(tests "test*.cpp" "" "gtdynamics")
+gtsamAddTestsGlob(pandarobot "test*.cpp" "" "gtdynamics")
