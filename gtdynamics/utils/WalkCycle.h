@@ -134,10 +134,10 @@ class WalkCycle {
   /// Returns the number of time steps, summing over all phases.
   size_t numTimeSteps() const;
 
- /**
+  /**
    * @fn Returns the initial contact point goal for every contact link.
    * @param[in] robot Robot specification from URDF/SDF.
-   * @param[in] ground_height z-coordinate of ground in URDF/SDF rest config.
+   * @param[in] ground_height z-coordinate of ground plane in world frame.
    * @return Map from link name to goal points.
    */
   ContactPointGoals initContactPointGoal(const Robot &robot,
@@ -148,7 +148,7 @@ class WalkCycle {
    * @param[in] robot Robot specification from URDF/SDF.
    * @param[in] cost_model Noise model
    * @param[in] step The 3D vector the foot moves in a step.
-   * @param[in] ground_height z-coordinate of ground in URDF/SDF rest config.
+   * @param[in] ground_height z-coordinate of ground plane in world frame.
    * @return All objective factors as a NonlinearFactorGraph
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(

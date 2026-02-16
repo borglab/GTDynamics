@@ -7,7 +7,7 @@
 
 /**
  * @file  ContactHeightFactor.h
- * @brief Factor to enforce zero height at the contact point.
+ * @brief Factor to enforce ground-plane height at the contact point.
  * @author: Alejandro Escontrela, Varun Agrawal
  */
 

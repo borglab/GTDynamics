@@ -502,7 +502,8 @@ class DynamicsGraph {
 
   gtsam::NonlinearFactorGraph qFactors(
       const gtdynamics::Robot &robot, const int k,
-      const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
+      const std::optional<gtdynamics::PointOnLinks> &contact_points,
+      double ground_plane_height = 0.0) const;
 
   /* return v-level nonlinear factor graph (twist related factors) */
   gtsam::NonlinearFactorGraph vFactors(
@@ -523,7 +524,8 @@ class DynamicsGraph {
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const gtdynamics::Robot &robot, const int k,
       const std::optional<gtdynamics::PointOnLinks> &contact_points,
-      const std::optional<double> &mu) const;
+      const std::optional<double> &mu,
+      double ground_plane_height = 0.0) const;
 
   gtsam::NonlinearFactorGraph inverseDynamicsPriors(
       const gtdynamics::Robot &robot, const int k,
@@ -544,7 +546,8 @@ class DynamicsGraph {
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
       const gtdynamics::CollocationScheme collocation,
       const std::optional<gtdynamics::PointOnLinks> &contact_points,
-      const std::optional<double> &mu) const;
+      const std::optional<double> &mu,
+      double ground_plane_height = 0.0) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const gtdynamics::Robot &robot,
@@ -672,7 +675,8 @@ class ChainDynamicsGraph : gtdynamics::DynamicsGraph {
 
   gtsam::NonlinearFactorGraph qFactors(
       const gtdynamics::Robot &robot, const int t,
-      const std::optional<gtdynamics::PointOnLinks> &contact_points) const;
+      const std::optional<gtdynamics::PointOnLinks> &contact_points,
+      double ground_plane_height = 0.0) const;
 
   gtsam::NonlinearFactorGraph dynamicsFactors(
       const gtdynamics::Robot &robot, const int t,
@@ -682,7 +686,8 @@ class ChainDynamicsGraph : gtdynamics::DynamicsGraph {
   gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const gtdynamics::Robot &robot, const int t,
       const std::optional<gtdynamics::PointOnLinks> &contact_points,
-      const std::optional<double> &mu) const;
+      const std::optional<double> &mu,
+      double ground_plane_height = 0.0) const;
 };
 
 /********************** Objective Factors **********************/
@@ -957,12 +962,14 @@ class Trajectory {
   std::vector<gtsam::NonlinearFactorGraph>
   getTransitionGraphs(const gtdynamics::Robot& robot, 
                       const gtdynamics::DynamicsGraph &graph_builder,
-                      double mu) const;
+                      double mu,
+                      double ground_plane_height = 0.0) const;
   gtsam::NonlinearFactorGraph
   multiPhaseFactorGraph(const gtdynamics::Robot& robot, 
                         const gtdynamics::DynamicsGraph &graph_builder,
                         const gtdynamics::CollocationScheme collocation,
-                        double mu) const;
+                        double mu,
+                        double ground_plane_height = 0.0) const;
   std::vector<gtsam::Values>
   transitionPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::Initializer &initializer,
                                double gaussian_noise) const;
