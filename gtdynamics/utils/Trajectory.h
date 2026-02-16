@@ -103,10 +103,12 @@ class Trajectory {
    * @param[in] robot            Robot specification from URDF/SDF.
    * @param[in] graph_builder    Dynamics Graph
    * @param[in] mu               Coefficient of static friction
+   * @param[in] ground_plane_height Contact ground-plane height in world frame.
    * @return Vector of Transition Graphs
    */
   std::vector<gtsam::NonlinearFactorGraph> getTransitionGraphs(
-      const Robot &robot, const DynamicsGraph &graph_builder, double mu) const;
+      const Robot &robot, const DynamicsGraph &graph_builder, double mu,
+      double ground_plane_height = 0.0) const;
 
   /**
    * @fn Builds multi-phase factor graph.
@@ -114,11 +116,13 @@ class Trajectory {
    * @param[in] graph_builder    GraphBuilder instance.
    * @param[in] collocation      Which collocation scheme to use.
    * @param[in] mu               Coefficient of static friction.
+   * @param[in] ground_plane_height Contact ground-plane height in world frame.
    * @return Multi-phase factor graph
    */
   gtsam::NonlinearFactorGraph multiPhaseFactorGraph(
       const Robot &robot, const DynamicsGraph &graph_builder,
-      const CollocationScheme collocation, double mu) const;
+      const CollocationScheme collocation, double mu,
+      double ground_plane_height = 0.0) const;
 
   /**
    * @fn Returns Initial values for transition graphs.
@@ -209,7 +213,7 @@ class Trajectory {
    * @param[in] robot Robot specification from URDF/SDF.
    * @param[in] cost_model Noise model
    * @param[in] step The 3D vector the foot moves in a step.
-   * @param[in] ground_height z-coordinate of ground in URDF/SDF rest config.
+   * @param[in] ground_height z-coordinate of ground plane in world frame.
    * @return All objective factors as a NonlinearFactorGraph
    */
   gtsam::NonlinearFactorGraph contactPointObjectives(
@@ -230,7 +234,7 @@ class Trajectory {
   /**
    * @fn Create objective factors for slice 0 and slice K.
    *
-   * Links at time step 0 are constrainted to their wTcom poses and
+   * Links at time step 0 are constrained to their wTcom poses and
    * zero twist, and zero twist and twist acceleration at last time step.
    * Joint angles velocities and accelerations are set to zero for all joints at
    * start *and* end.

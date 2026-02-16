@@ -61,7 +61,6 @@ size_t WalkCycle::numTimeSteps() const {
 ContactPointGoals WalkCycle::initContactPointGoal(const Robot &robot,
                                                   double ground_height) const {
   ContactPointGoals cp_goals;
-  const Point3 adjust(0, 0, -ground_height);
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
@@ -73,7 +72,10 @@ ContactPointGoals WalkCycle::initContactPointGoal(const Robot &robot,
         // If no goal set yet, add it here
         if (cp_goals.count(link_name) == 0) {
           LinkSharedPtr link = robot.link(link_name);
-          const Point3 foot_w = link->bMcom() * cp.point + adjust;
+          // Preserve nominal x/y and set contact z to the requested world
+          // ground height.
+          const Point3 foot_rest_w = link->bMcom() * cp.point;
+          const Point3 foot_w(foot_rest_w.x(), foot_rest_w.y(), ground_height);
           cp_goals.emplace(link_name, foot_w);
         }
       }

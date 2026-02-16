@@ -36,9 +36,9 @@ template <>
 NonlinearFactorGraph Kinematics::qFactors<Interval>(
     const Interval& interval, const Robot& robot,
     const std::optional<PointOnLinks>& contact_points,
-    const gtsam::Vector3& gravity) const {
+    const gtsam::Vector3& gravity, double ground_plane_height) const {
   return collectFactors(interval, [&](const Slice& slice) {
-    return qFactors(slice, robot, contact_points, gravity);
+    return qFactors(slice, robot, contact_points, gravity, ground_plane_height);
   });
 }
 

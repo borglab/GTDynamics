@@ -171,7 +171,8 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
 
 gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
     const Robot &robot, const int t,
-    const std::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points,
+    double ground_plane_height) const {
   NonlinearFactorGraph graph;
 
   // Get Pose key for base link
@@ -197,8 +198,8 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
   // Add contact factors.
   if (contact_points) {
     const Kinematics kinematics(opt());
-    graph.add(kinematics.contactHeightObjectives(Slice(t), *contact_points,
-                                                 gravity()));
+    graph.add(kinematics.contactHeightObjectives(
+        Slice(t), *contact_points, gravity(), ground_plane_height));
   }
 
   return graph;
@@ -207,9 +208,9 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
 gtsam::NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactorGraph(
     const Robot &robot, const int t,
     const std::optional<PointOnLinks> &contact_points,
-    const std::optional<double> &mu) const {
+    const std::optional<double> &mu, double ground_plane_height) const {
   NonlinearFactorGraph graph;
-  graph.add(qFactors(robot, t, contact_points));
+  graph.add(qFactors(robot, t, contact_points, ground_plane_height));
   // NOTE(Frank): In chain factors, there is no need to model the intermediate
   // velocities/accelerations of the joints, as they do not influence the
   // solution, see Dan's thesis.

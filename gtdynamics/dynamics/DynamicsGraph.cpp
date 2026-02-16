@@ -197,9 +197,11 @@ Values DynamicsGraph::linearSolveID(const Robot &robot, const int k,
 
 gtsam::NonlinearFactorGraph DynamicsGraph::qFactors(
     const Robot &robot, const int k,
-    const std::optional<PointOnLinks> &contact_points) const {
+    const std::optional<PointOnLinks> &contact_points,
+    double ground_plane_height) const {
   const Slice slice(k);
-  return kinematics_.qFactors(slice, robot, contact_points, gravity_);
+  return kinematics_.qFactors(slice, robot, contact_points, gravity_,
+                              ground_plane_height);
 }
 
 gtsam::NonlinearFactorGraph DynamicsGraph::vFactors(
@@ -232,9 +234,9 @@ gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactors(
 gtsam::NonlinearFactorGraph DynamicsGraph::dynamicsFactorGraph(
     const Robot &robot, const int k,
     const std::optional<PointOnLinks> &contact_points,
-    const std::optional<double> &mu) const {
+    const std::optional<double> &mu, double ground_plane_height) const {
   NonlinearFactorGraph graph;
-  graph.add(qFactors(robot, k, contact_points));
+  graph.add(qFactors(robot, k, contact_points, ground_plane_height));
   graph.add(vFactors(robot, k, contact_points));
   graph.add(aFactors(robot, k, contact_points));
   graph.add(dynamicsFactors(robot, k, contact_points, mu));
@@ -245,10 +247,11 @@ gtsam::NonlinearFactorGraph DynamicsGraph::trajectoryFG(
     const Robot &robot, const int num_steps, const double dt,
     const CollocationScheme collocation,
     const std::optional<PointOnLinks> &contact_points,
-    const std::optional<double> &mu) const {
+    const std::optional<double> &mu, double ground_plane_height) const {
   NonlinearFactorGraph graph;
   for (int k = 0; k <= num_steps; k++) {
-    graph.add(dynamicsFactorGraph(robot, k, contact_points, mu));
+    graph.add(
+        dynamicsFactorGraph(robot, k, contact_points, mu, ground_plane_height));
     if (k < num_steps) {
       graph.add(collocationFactors(robot, k, dt, collocation));
     }
@@ -261,7 +264,7 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
     const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
     const CollocationScheme collocation,
     const std::optional<std::vector<PointOnLinks>> &phase_contact_points,
-    const std::optional<double> &mu) const {
+    const std::optional<double> &mu, double ground_plane_height) const {
   NonlinearFactorGraph graph;
   int num_phases = phase_steps.size();
 
@@ -273,18 +276,21 @@ gtsam::NonlinearFactorGraph DynamicsGraph::multiPhaseTrajectoryFG(
   };
 
   // First slice, k==0
-  graph.add(dynamicsFactorGraph(robot, 0, contact_points(0), mu));
+  graph.add(
+      dynamicsFactorGraph(robot, 0, contact_points(0), mu, ground_plane_height));
 
   int k = 0;
   for (int p = 0; p < num_phases; p++) {
     // in-phase
     // add dynamics for each step
     for (int step = 0; step < phase_steps[p] - 1; step++) {
-      graph.add(dynamicsFactorGraph(robot, ++k, contact_points(p), mu));
+      graph.add(dynamicsFactorGraph(robot, ++k, contact_points(p), mu,
+                                    ground_plane_height));
     }
     if (p == num_phases - 1) {
       // Last slice, k==K-1
-      graph.add(dynamicsFactorGraph(robot, ++k, contact_points(p), mu));
+      graph.add(dynamicsFactorGraph(robot, ++k, contact_points(p), mu,
+                                    ground_plane_height));
     } else {
       // transition
       graph.add(transition_graphs[p]);
