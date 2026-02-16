@@ -17,7 +17,7 @@
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
@@ -97,6 +97,9 @@ int main(int argc, char** argv) {
   double mu = 1.0;
 
   auto graph_builder = gtdynamics::DynamicsGraph(opt, gravity);
+  KinematicsParameters kinematics_params;
+  kinematics_params.g_cost_model = Isotropic::Sigma(3, 1e-7);
+  const Kinematics kinematics(kinematics_params);
 
   vector<string> links = {"tarsus_1_L1", "tarsus_2_L2", "tarsus_3_L3",
                           "tarsus_4_L4", "tarsus_5_R4", "tarsus_6_R3",
@@ -231,27 +234,32 @@ int main(int argc, char** argv) {
       }
     }
 
+    ContactGoals stance_goals;
+    stance_goals.reserve(phase_contact_links.size());
+    for (auto&& pcl : phase_contact_links) {
+      stance_goals.emplace_back(
+          PointOnLink(link_map[pcl], cp1.point),
+          Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05));
+    }
+    objective_factors.add(
+        kinematics.pointGoalObjectives(Interval(t_p_i, t_p_f), stance_goals));
+
     for (int t = t_p_i; t <= t_p_f; t++) {
       // Normalized phase progress.
       double t_normed = (double)(t - t_p_i) / (double)(t_p_f - t_p_i);
 
-      for (auto&& pcl : phase_contact_links) {
-        // TODO(aescontrela): Use correct contact point for each link.
-        // TODO(frank): #179 make sure height is handled correctly.
-        objective_factors.add(gtdynamics::PointGoalFactor(
-            PoseKey(link_map[pcl]->id(), t), Isotropic::Sigma(3, 1e-7),
-            cp1.point,
-            Point3(prev_cp[pcl].x(), prev_cp[pcl].y(), GROUND_HEIGHT - 0.05)));
-      }
-
       double h =
           GROUND_HEIGHT + std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
 
+      ContactGoals swing_goals;
+      swing_goals.reserve(phase_swing_links.size());
       for (auto&& psl : phase_swing_links) {
-        objective_factors.add(gtdynamics::PointGoalFactor(
-            PoseKey(link_map[psl]->id(), t), Isotropic::Sigma(3, 1e-7),
-            cp1.point, Point3(prev_cp[psl].x(), prev_cp[psl].y(), h)));
+        swing_goals.emplace_back(
+            PointOnLink(link_map[psl], cp1.point),
+            Point3(prev_cp[psl].x(), prev_cp[psl].y(), h));
       }
+      objective_factors.add(
+          kinematics.pointGoalObjectives(Slice(t), swing_goals));
 
       // Update the goal point for the swing links.
       for (auto&& psl : phase_swing_links) {

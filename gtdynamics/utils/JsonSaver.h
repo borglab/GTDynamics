@@ -9,13 +9,13 @@
 
 #pragma once
 
-#include <gtdynamics/factors/PoseFactor.h>
-#include <gtdynamics/factors/TorqueFactor.h>
-#include <gtdynamics/factors/TwistAccelFactor.h>
-#include <gtdynamics/factors/TwistFactor.h>
-#include <gtdynamics/factors/WrenchEquivalenceFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
-#include <gtdynamics/factors/WrenchPlanarFactor.h>
+#include <gtdynamics/kinematics/PoseFactor.h>
+#include <gtdynamics/mechanics/TorqueFactor.h>
+#include <gtdynamics/dynamics/TwistAccelFactor.h>
+#include <gtdynamics/kinematics/TwistFactor.h>
+#include <gtdynamics/mechanics/WrenchEquivalenceFactor.h>
+#include <gtdynamics/dynamics/WrenchFactor.h>
+#include <gtdynamics/mechanics/WrenchPlanarFactor.h>
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Matrix.h>

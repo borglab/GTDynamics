@@ -14,7 +14,7 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/Chain.h>
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtdynamics/universal_robot/sdf.h>

@@ -15,8 +15,8 @@
 
 #include <gtdynamics/dynamics/Chain.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 
 namespace gtdynamics {

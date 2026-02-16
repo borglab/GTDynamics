@@ -11,12 +11,12 @@
  * @author: Frank Dellaert
  */
 
-#include <gtdynamics/factors/ContactHeightFactor.h>
-#include <gtdynamics/factors/ContactKinematicsTwistFactor.h>
-#include <gtdynamics/factors/JointLimitFactor.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
-#include <gtdynamics/factors/PoseFactor.h>
-#include <gtdynamics/factors/TwistFactor.h>
+#include <gtdynamics/kinematics/ContactHeightFactor.h>
+#include <gtdynamics/kinematics/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/kinematics/JointLimitFactor.h>
+#include <gtdynamics/kinematics/PointGoalFactor.h>
+#include <gtdynamics/kinematics/PoseFactor.h>
+#include <gtdynamics/kinematics/TwistFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/linear/Sampler.h>

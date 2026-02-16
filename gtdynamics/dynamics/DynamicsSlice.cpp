@@ -11,11 +11,11 @@
  */
 
 #include <gtdynamics/dynamics/Dynamics.h>
-#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/ContactKinematicsAccelFactor.h>
-#include <gtdynamics/factors/TwistAccelFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/dynamics/ContactKinematicsAccelFactor.h>
+#include <gtdynamics/dynamics/TwistAccelFactor.h>
+#include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtdynamics/utils/utils.h>
 
 namespace gtdynamics {

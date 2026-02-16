@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/factors/TorqueFactor.h>
+#include <gtdynamics/mechanics/TorqueFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>

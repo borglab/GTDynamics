@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/values.h>
@@ -329,6 +329,10 @@ int main(int argc, char **argv) {
   gtsam::LevenbergMarquardtParams params;
   params.setMaxIterations(50);
   params.setlambdaInitial(1e5);
+  auto model3 = gtsam::noiseModel::Constrained::All(3);
+  KinematicsParameters kinematics_params;
+  kinematics_params.g_cost_model = model3;
+  const Kinematics kinematics(kinematics_params);
 
   // params.setVerbosityLM("SUMMARY");
 
@@ -345,12 +349,14 @@ int main(int argc, char **argv) {
                  gtsam::noiseModel::Constrained::All(6));
 
     // Constrain the footholds.
-    auto model3 = gtsam::noiseModel::Constrained::All(3);
+    ContactGoals contact_goals;
+    contact_goals.reserve(swing_sequence.size());
     for (auto &&leg : swing_sequence) {
-      kfg.add(PointGoalFactor(PoseKey(robot.link(leg)->id(), k), model3,
-                              comTfoot.translation(),
-                              tposes.at(leg).translation()));
+      contact_goals.emplace_back(
+          PointOnLink(robot.link(leg), comTfoot.translation()),
+          tposes.at(leg).translation());
     }
+    kfg.add(kinematics.pointGoalObjectives(Slice(k), contact_goals));
 
     // gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values, params);
     gtsam::GaussNewtonOptimizer optimizer(kfg, values);
