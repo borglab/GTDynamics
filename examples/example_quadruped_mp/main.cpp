@@ -11,8 +11,7 @@
  * @author Alejandro Escontrela
  */
 
-#include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/PointGoalFactor.h>
+#include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/values.h>
@@ -65,156 +64,157 @@ using namespace gtdynamics;
  * for cubic polynomials:
  * http://www.cs.cmu.edu/afs/cs/academic/class/15462-s10/www/lec-slides/lec06.pdf
  */
-CoeffMatrix compute_spline_coefficients(const Pose3 &wTb_i, const Pose3 &wTb_f,
-                                        const Vector3 &x_0_p,
-                                        const Vector3 &x_1_p,
-                                        const double horizon) {
-  // Extract position at the starting and ending knot.
-  Vector3 x_0 = wTb_i.translation();
-  Vector3 x_1 = wTb_f.translation();
+struct Spline {
+  Pose3 wTb_i;
+  CoeffMatrix A;  // coefficients
 
-  // Hermite parameterization: p(u)=U(u)*B*C where vector U(u) includes the
-  // polynomial terms, and B and C are the basis matrix and control matrices
-  // respectively.
-  gtsam::Matrix43 C;
-  C.row(0) = x_0;
-  C.row(1) = x_1;
-  C.row(2) = x_0_p;
-  C.row(3) = x_1_p;
+  /**
+   * Construct spline data and precompute cubic Hermite coefficients.
+   */
+  Spline(const Pose3 &wTb_i, const Pose3 &wTb_f,  //
+         const Vector3 &x_0_p,                    //
+         const Vector3 &x_1_p,                    //
+         const double horizon)
+      : wTb_i(wTb_i) {
+    // Extract position at the starting and ending knot.
+    Vector3 x_0 = wTb_i.translation();
+    Vector3 x_1 = wTb_f.translation();
 
-  gtsam::Matrix4 B;
-  B << 2, -2, 1, 1, -3, 3, -2, -1, 0, 0, 1, 0, 1, 0, 0, 0;
-  gtsam::Matrix43 A = B * C;
+    // Hermite parameterization: p(u)=U(u)*B*C where vector U(u) includes the
+    // polynomial terms, and B and C are the basis matrix and control matrices
+    // respectively.
+    gtsam::Matrix43 C;
+    C.row(0) = x_0;
+    C.row(1) = x_1;
+    C.row(2) = x_0_p;
+    C.row(3) = x_1_p;
 
-  // Scale U by the horizon `t = u/horizon` so that we can directly use t.
-  A.row(0) /= (horizon * horizon * horizon);
-  A.row(1) /= (horizon * horizon);
-  A.row(2) /= horizon;
+    gtsam::Matrix4 B;
+    B << 2, -2, 1, 1, -3, 3, -2, -1, 0, 0, 1, 0, 1, 0, 0, 0;
+    A = B * C;
 
-  return A;
-}
+    // Scale U by the horizon `t = u/horizon` so that we can directly use t.
+    A.row(0) /= (horizon * horizon * horizon);
+    A.row(1) /= (horizon * horizon);
+    A.row(2) /= horizon;
+  }
 
-/**
- * Compute the robot base pose as defined by the calculated trajectory.
- * The calculated trajectory is a piecewise polynomial consisting of
- * cubic hermite splines; the base pose will move along this trajectory.
- *
- * @param coeffs 4*3 matrix of cubic polynomial coefficients
- * @param x_0_p tangent at the starting knot
- * @param t time at which pose will be evaluated
- * @param wTb_i initial pose corresponding to the knot at the start
- *
- * @return rotation and position
- */
-Pose3 compute_hermite_pose(const CoeffMatrix &coeffs, const Vector3 &x_0_p,
-                           const double t, const Pose3 &wTb_i) {
-  // The position computed from the spline equation as a function of time,
-  // p(t)=U(t)*A where U(t)=[t^3,t^2,t,1].
-  gtsam::Matrix14 t_vec(std::pow(t, 3), std::pow(t, 2), t, 1);
-  Point3 p(t_vec * coeffs);
+  /**
+   * Compute the robot base pose as defined by the calculated trajectory.
+   * The calculated trajectory is a piecewise polynomial consisting of
+   * cubic hermite splines; the base pose will move along this trajectory.
+   *
+   * @param x_0_p tangent at the starting knot
+   * @param t time at which pose will be evaluated
+   *
+   * @return rotation and position
+   */
+  Pose3 compute_hermite_pose(const Vector3 &x_0_p, const double t) const {
+    // The position computed from the spline equation as a function of time,
+    // p(t)=U(t)*A where U(t)=[t^3,t^2,t,1].
+    gtsam::Matrix14 t_vec(std::pow(t, 3), std::pow(t, 2), t, 1);
+    Point3 p(t_vec * A);
 
-  // Differentiate position with respect to t for velocity.
-  gtsam::Matrix14 du(3 * t * t, 2 * t, 1, 0);
-  Point3 dpdt_v3 = Point3(du * coeffs);
+    // Differentiate position with respect to t for velocity.
+    gtsam::Matrix14 du(3 * t * t, 2 * t, 1, 0);
+    Point3 dpdt_v3 = Point3(du * A);
 
-  // Unit vector for velocity.
-  dpdt_v3 = dpdt_v3 / dpdt_v3.norm();
-  Point3 x_0_p_point(x_0_p);
-  x_0_p_point = x_0_p_point / x_0_p_point.norm();
+    // Unit vector for velocity.
+    dpdt_v3 = dpdt_v3 / dpdt_v3.norm();
+    Point3 x_0_p_point(x_0_p);
+    x_0_p_point = x_0_p_point / x_0_p_point.norm();
 
-  Point3 axis = x_0_p_point.cross(dpdt_v3);
-  double angle = std::acos(x_0_p_point.dot(dpdt_v3));
-  // The rotation.
-  Rot3 R = wTb_i.rotation() * Rot3::AxisAngle(axis, angle);
+    Point3 axis = x_0_p_point.cross(dpdt_v3);
+    double angle = std::acos(x_0_p_point.dot(dpdt_v3));
+    // The rotation.
+    Rot3 R = wTb_i.rotation() * Rot3::AxisAngle(axis, angle);
 
-  return Pose3(R, p);
-}
+    return Pose3(R, p);
+  }
 
-/** Compute the target footholds for each support phase. */
-TargetFootholds compute_target_footholds(
-    const CoeffMatrix &coeffs, const Vector3 &x_0_p, const Pose3 &wTb_i,
-    const double horizon, const double t_support,
-    const std::map<std::string, Pose3> &bTfs) {
-  TargetFootholds target_footholds;
+  /** Compute the target footholds for each support phase. */
+  TargetFootholds compute_target_footholds(
+      const Vector3 &x_0_p,  //
+      const double horizon, const double t_support,
+      const std::map<std::string, Pose3> &bTfs) const {
+    TargetFootholds target_footholds;
+    int n_support_phases = horizon / t_support;
 
-  double t_swing = t_support / 4.0;  // Time for each swing foot trajectory.
-  int n_support_phases = horizon / t_support;
-
-  for (int i = 0; i <= n_support_phases; i++) {
-    Pose3 wTb =
-        compute_hermite_pose(coeffs, x_0_p, i * t_support / horizon, wTb_i);
-    std::map<std::string, Pose3> target_footholds_i;
-    for (auto &&bTf : bTfs) {
-      Pose3 wTf = wTb * bTf.second;
-      // TODO(frank): #179 make sure height is handled correctly.
-      Pose3 wTf_gh(wTf.rotation(), Point3(wTf.translation()[0],
-                                          wTf.translation()[1], GROUND_HEIGHT));
-      target_footholds_i.emplace(bTf.first, wTf_gh);
+    for (int i = 0; i <= n_support_phases; i++) {
+      Pose3 wTb = compute_hermite_pose(x_0_p, i * t_support / horizon);
+      std::map<std::string, Pose3> target_footholds_i;
+      for (auto &&bTf : bTfs) {
+        Pose3 wTf = wTb * bTf.second;
+        // TODO(frank): #179 make sure height is handled correctly.
+        Pose3 wTf_gh(
+            wTf.rotation(),
+            Point3(wTf.translation()[0], wTf.translation()[1], GROUND_HEIGHT));
+        target_footholds_i.emplace(bTf.first, wTf_gh);
+      }
+      target_footholds.emplace(i, target_footholds_i);
     }
-    target_footholds.emplace(i, target_footholds_i);
-  }
-  return target_footholds;
-}
-
-/** Get base pose and foot positions at any time t. */
-TargetPoses compute_target_poses(const TargetFootholds &targ_footholds,
-                                 const double horizon, const double t_support,
-                                 const double t,
-                                 const std::vector<std::string> &swing_sequence,
-                                 const CoeffMatrix &coeffs,
-                                 const Vector3 &x_0_p, const Pose3 &wTb_i) {
-  TargetPoses t_poses;
-  // Compute the body pose.
-  Pose3 wTb = compute_hermite_pose(coeffs, x_0_p, t / horizon, wTb_i);
-  t_poses.emplace("body", wTb);
-
-  const std::map<std::string, Pose3> &prev_targ_foothold =
-      targ_footholds.at(static_cast<int>(std::floor(t / t_support)));
-  const std::map<std::string, Pose3> &next_targ_foothold =
-      targ_footholds.at(static_cast<int>(std::ceil(t / t_support)));
-
-  // Time spent in current support phase.
-  double t_in_support = std::fmod(t, t_support);
-  double t_swing = t_support / 4.0;  // Duration of swing phase.
-
-  int swing_leg_idx;
-  if (t_in_support <= t_swing)
-    swing_leg_idx = 0;
-  else if (t_in_support <= (2 * t_swing))
-    swing_leg_idx = 1;
-  else if (t_in_support <= (3 * t_swing))
-    swing_leg_idx = 2;
-  else
-    swing_leg_idx = 3;
-
-  // Normalized swing duration.
-  double t_normed = (t_in_support - swing_leg_idx * t_swing) / t_swing;
-
-  // Already completed swing phase in this support phase.
-  for (int i = 0; i < swing_leg_idx; i++) {
-    std::string leg_i = swing_sequence[i];
-    t_poses.emplace(leg_i, next_targ_foothold.at(leg_i));
+    return target_footholds;
   }
 
-  // Currently swinging.
-  std::string swing_leg = swing_sequence[swing_leg_idx];
-  auto prev_foot_pos = prev_targ_foothold.at(swing_leg).translation();
-  auto next_foot_pos = next_targ_foothold.at(swing_leg).translation();
-  Point3 curr_foot_pos =
-      prev_foot_pos + (next_foot_pos - prev_foot_pos) * t_normed;
-  double h = GROUND_HEIGHT +
-             0.2 * std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
+  /** Get base pose and foot positions at any time t. */
+  TargetPoses compute_target_poses(
+      const TargetFootholds &targ_footholds, const double horizon,
+      const double t_support, const double t,
+      const std::vector<std::string> &swing_sequence,
+      const Vector3 &x_0_p) const {
+    TargetPoses t_poses;
+    // Compute the body pose.
+    Pose3 wTb = compute_hermite_pose(x_0_p, t / horizon);
+    t_poses.emplace("body", wTb);
 
-  t_poses.emplace(swing_leg,
-                  Pose3(Rot3(), Point3(curr_foot_pos[0], curr_foot_pos[1], h)));
+    const std::map<std::string, Pose3> &prev_targ_foothold =
+        targ_footholds.at(static_cast<int>(std::floor(t / t_support)));
+    const std::map<std::string, Pose3> &next_targ_foothold =
+        targ_footholds.at(static_cast<int>(std::ceil(t / t_support)));
 
-  // Yet to complete swing phase in this support phase.
-  for (int i = swing_leg_idx + 1; i < 4; i++) {
-    std::string leg_i = swing_sequence[i];
-    t_poses.emplace(leg_i, prev_targ_foothold.at(leg_i));
+    // Time spent in current support phase.
+    double t_in_support = std::fmod(t, t_support);
+    double t_swing = t_support / 4.0;  // Duration of swing phase.
+
+    int swing_leg_idx;
+    if (t_in_support <= t_swing)
+      swing_leg_idx = 0;
+    else if (t_in_support <= (2 * t_swing))
+      swing_leg_idx = 1;
+    else if (t_in_support <= (3 * t_swing))
+      swing_leg_idx = 2;
+    else
+      swing_leg_idx = 3;
+
+    // Normalized swing duration.
+    double t_normed = (t_in_support - swing_leg_idx * t_swing) / t_swing;
+
+    // Already completed swing phase in this support phase.
+    for (int i = 0; i < swing_leg_idx; i++) {
+      std::string leg_i = swing_sequence[i];
+      t_poses.emplace(leg_i, next_targ_foothold.at(leg_i));
+    }
+
+    // Currently swinging.
+    std::string swing_leg = swing_sequence[swing_leg_idx];
+    auto prev_foot_pos = prev_targ_foothold.at(swing_leg).translation();
+    auto next_foot_pos = next_targ_foothold.at(swing_leg).translation();
+    Point3 curr_foot_pos =
+        prev_foot_pos + (next_foot_pos - prev_foot_pos) * t_normed;
+    double h = GROUND_HEIGHT +
+               0.2 * std::pow(t_normed, 1.1) * std::pow(1 - t_normed, 0.7);
+
+    t_poses.emplace(swing_leg, Pose3(Rot3(), Point3(curr_foot_pos[0],
+                                                    curr_foot_pos[1], h)));
+
+    // Yet to complete swing phase in this support phase.
+    for (int i = swing_leg_idx + 1; i < 4; i++) {
+      std::string leg_i = swing_sequence[i];
+      t_poses.emplace(leg_i, prev_targ_foothold.at(leg_i));
+    }
+    return t_poses;
   }
-  return t_poses;
-}
+};
 
 struct CsvWriter {
   std::ofstream pose_file;
@@ -277,8 +277,8 @@ int main(int argc, char **argv) {
   Point3 x_0_p(1, 0, 0);
   Point3 x_0_p_traj(1, 0, 0.4);
   Point3 x_1_p_traj(1, 0, 0);
-  auto coeffs =
-      compute_spline_coefficients(wTb_i, wTb_f, x_0_p_traj, x_1_p_traj, 1);
+
+  Spline spline(wTb_i, wTb_f, x_0_p_traj, x_1_p_traj, 1.0);
 
   // Time horizon.
   double horizon = 72;
@@ -307,19 +307,18 @@ int main(int argc, char **argv) {
 
   // Calculate foothold at the end of each support phase.
   TargetFootholds targ_footholds =
-      compute_target_footholds(coeffs, x_0_p, wTb_i, horizon, t_support, bTfs);
+      spline.compute_target_footholds(x_0_p, horizon, t_support, bTfs);
 
   // Iteratively solve the inverse kinematics problem to obtain joint angles.
-  double dt = 1. / 240., curr_t = 0.0;
+  double dt = 1. / 24., curr_t = 0.0;
   int k = 0;  // The time index.
-  auto dgb = DynamicsGraph();
 
   // Initialize values.
   gtsam::Values values;
   for (auto &&link : robot.links())
     InsertPose(&values, link->id(), link->bMcom());
   for (auto &&joint : robot.joints())
-    InsertJointAngle(&values, joint->id(), 0.0);
+    InsertJointAngle(&values, joint->id(), 1.0);
 
   // Write body,foot poses and joint angles to csv file.
   CsvWriter writer("traj.csv", swing_sequence, robot);
@@ -327,37 +326,52 @@ int main(int argc, char **argv) {
 
   // Set parameters for optimizer
   gtsam::LevenbergMarquardtParams params;
-  params.setMaxIterations(50);
+  // params.setMaxIterations(50);
   params.setlambdaInitial(1e5);
+  auto model3 = gtsam::noiseModel::Constrained::All(3);
+  KinematicsParameters kinematics_params;
+  kinematics_params.g_cost_model = model3;
+  const Kinematics kinematics(kinematics_params);
 
   // params.setVerbosityLM("SUMMARY");
 
   while (curr_t < horizon) {
-    const TargetPoses tposes =
-        compute_target_poses(targ_footholds, horizon, t_support, curr_t,
-                             swing_sequence, coeffs, x_0_p, wTb_i);
+    const TargetPoses tposes = spline.compute_target_poses(
+        targ_footholds, horizon, t_support, curr_t, swing_sequence, x_0_p);
+    // for (const auto &pose_pair : tposes) {
+    //   const std::string &name = pose_pair.first;
+    //   const Pose3 &pose = pose_pair.second;
+    //   pose.print(name + ": ");
+    // }
 
     // Create factor graph of kinematics constraints.
-    gtsam::NonlinearFactorGraph kfg = dgb.qFactors(robot, k);
+    gtsam::NonlinearFactorGraph kfg = kinematics.qFactors(Slice(k), robot);
 
     // Constrain the base pose using trajectory value.
     kfg.addPrior(PoseKey(robot.link("body")->id(), k), tposes.at("body"),
                  gtsam::noiseModel::Constrained::All(6));
 
     // Constrain the footholds.
-    auto model3 = gtsam::noiseModel::Constrained::All(3);
+    ContactGoals contact_goals;
+    contact_goals.reserve(swing_sequence.size());
     for (auto &&leg : swing_sequence) {
-      kfg.add(PointGoalFactor(PoseKey(robot.link(leg)->id(), k), model3,
-                              comTfoot.translation(),
-                              tposes.at(leg).translation()));
+      contact_goals.emplace_back(
+          PointOnLink(robot.link(leg), comTfoot.translation()),
+          tposes.at(leg).translation());
     }
+    kfg.add(kinematics.pointGoalObjectives(Slice(k), contact_goals));
+
+    double error_before = kfg.error(values);
 
     // gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values, params);
     gtsam::GaussNewtonOptimizer optimizer(kfg, values);
     gtsam::Values results = optimizer.optimize();
 
+    double error_after = kfg.error(results);
+
     if ((k % 100) == 0)
-      cout << "iter: " << k << ", err: " << kfg.error(results) << endl;
+      cout << "iter: " << k << ", err_before: " << error_before
+           << ", err_after: " << error_after << endl;
 
     // Update the values for next iteration.
     values.clear();
@@ -372,6 +386,7 @@ int main(int argc, char **argv) {
     writer.writerow(tposes, results, k);
     curr_t = curr_t + dt;
     k = k + 1;
+    // break;
   }
 
   return 0;

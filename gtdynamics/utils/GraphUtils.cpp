@@ -113,12 +113,17 @@ VectorValues SolveLinear(const GaussianFactorGraph &gfg,
 
 /* ************************************************************************* */
 
-#if GTSAM_ENABLE_BOOST_SERIALIZATION
 void ExportValuesToFile(const Values &values, const std::string &file_path) {
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
   gtsam::serializeToBinaryFile(values, file_path);
+#else
+  throw std::runtime_error(
+      "ExportValuesToFile requires GTSAM_ENABLE_BOOST_SERIALIZATION.");
+#endif
 }
 
 /* ************************************************************************* */
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
 Values LoadValuesFromFile(const std::string &file_path) {
   Values values;
   gtsam::deserializeFromBinaryFile(file_path, values);

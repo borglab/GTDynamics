@@ -1,1 +1,1 @@
-gtsamAddTestsGlob(tests "test*.cpp" "" "gtdynamics")
+gtsamAddTestsGlob(cablerobot "test*.cpp" "" "gtdynamics")

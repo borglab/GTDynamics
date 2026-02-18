@@ -89,6 +89,38 @@ $ sudo make install
 $ make check
 ```
 
+Common target patterns (not exhaustive), from the `build` directory:
+
+```sh
+# Discover available targets
+$ make help
+
+# Run all C++ tests or grouped test sets
+$ make check
+$ make check.kinematics
+$ make check.mechanics
+$ make check.statics
+$ make check.dynamics
+$ make check.cablerobot
+$ make check.jumpingrobot
+$ make check.pandarobot
+$ make check.tests # other tests
+
+# Run a single C++ test executable target
+$ make testTwistAccelFactor.run
+$ make testForwardKinematicsFactor.run
+
+# Build/run examples and simulations
+$ make example_forward_dynamics.run
+$ make example_spider_walking.sim
+
+# Python wrapper and Python test targets
+$ make pybind_wrap_gtdynamics
+$ make python-test
+$ make python-test.base
+$ make python-test.cablerobot
+```
+
 ## Running Examples
 
 The `examples` directory contains various full example projects demonstrating the use of GTDynamics for various robotic applications.
@@ -207,6 +239,18 @@ To compile and install the GTDynamics python library:
     ```sh
     make && make python-install
     ```
+
+    To generate stubs explicitly (useful for IDEs/type checkers), run:
+
+    ```sh
+    make python-stubs
+    ```
+
+    On non-Windows platforms, `python-install` depends on `python-stubs`.
+
+    For VS Code / Pylance setup (including `python.analysis.extraPaths`), see `python/README.md`.
+
+    Important: use a `gtsam` Python package built from the same install/prefix as the GTSAM library linked into GTDynamics. Mixing a local GTDynamics build with an unrelated pip/conda `gtsam` wheel can cause runtime aborts.
 
 4. To run the Python tests, you can simply run:
 

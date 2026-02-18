@@ -15,8 +15,8 @@
 
 #include <gtdynamics/dynamics/Chain.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/factors/ContactDynamicsMomentFactor.h>
-#include <gtdynamics/factors/WrenchFactor.h>
+#include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
+#include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 
 namespace gtdynamics {
@@ -60,7 +60,8 @@ class ChainDynamicsGraph : public DynamicsGraph {
   /// Return q-level nonlinear factor graph (pose related factors)
   NonlinearFactorGraph qFactors(
       const Robot &robot, const int t,
-      const std::optional<PointOnLinks> &contact_points = {}) const override;
+      const std::optional<PointOnLinks> &contact_points = {},
+      double ground_plane_height = 0.0) const override;
 
   /**
    * Return nonlinear factor graph of all dynamics factors.
@@ -84,7 +85,8 @@ class ChainDynamicsGraph : public DynamicsGraph {
   NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int t,
       const std::optional<PointOnLinks> &contact_points = {},
-      const std::optional<double> &mu = {}) const override;
+      const std::optional<double> &mu = {},
+      double ground_plane_height = 0.0) const override;
 
   // Get a vector of legs, each leg is a vector of its joints
   static std::vector<std::vector<JointSharedPtr>> getChainJoints(

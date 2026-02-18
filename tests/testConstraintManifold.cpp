@@ -42,7 +42,7 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   Key x3_key = 3;
 
   // Constraints.
-  auto constraints = std::make_shared<EqualityConstraints>();
+  auto constraints = std::make_shared<NonlinearEqualityConstraints>();
   auto noise = noiseModel::Unit::Create(6);
   auto factor12 = std::make_shared<BetweenFactor<Pose3>>(
       x1_key, x2_key, Pose3(Rot3(), Point3(0, 0, 1)), noise);
@@ -418,12 +418,14 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
                    .fixLink("l0");
   int j0_id = robot.joint("j0")->id(), j1_id = robot.joint("j1")->id();
   const gtsam::Vector3 gravity(0, 0, -10);
+  constexpr double ground_plane_height = 4.2;
   OptimizerSetting opt;
   auto graph_builder = DynamicsGraph(opt, gravity);
 
   // constraints graph
   NonlinearFactorGraph constraints_graph;
-  constraints_graph.add(graph_builder.dynamicsFactorGraph(robot, 0));
+  constraints_graph.add(
+      graph_builder.dynamicsFactorGraph(robot, 0, {}, {}, ground_plane_height));
 
   // initial values
   Initializer initializer;
@@ -455,7 +457,7 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   };
 
   // constraint manifold
-  auto constraints = std::make_shared<EqualityConstraints>(
+  auto constraints = std::make_shared<NonlinearEqualityConstraints>(
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph));
   auto cc_params = std::make_shared<ConstraintManifold::Params>();
   cc_params->retractor_creator =

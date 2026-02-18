@@ -32,4 +32,21 @@ NonlinearFactorGraph Kinematics::graph<Phase>(const Phase& phase,
   return this->graph<Interval>(interval, robot);
 }
 
+template <>
+NonlinearFactorGraph Kinematics::qFactors<Phase>(
+    const Phase& phase, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points,
+    const gtsam::Vector3& gravity, double ground_plane_height) const {
+  const Interval& interval = static_cast<const Interval&>(phase);
+  return qFactors(interval, robot, contact_points, gravity, ground_plane_height);
+}
+
+template <>
+NonlinearFactorGraph Kinematics::vFactors<Phase>(
+    const Phase& phase, const Robot& robot,
+    const std::optional<PointOnLinks>& contact_points) const {
+  const Interval& interval = static_cast<const Interval&>(phase);
+  return vFactors(interval, robot, contact_points);
+}
+
 }  // namespace gtdynamics

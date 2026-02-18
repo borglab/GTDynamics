@@ -14,7 +14,7 @@
  * @brief Abstract representation of a robot joint.
  */
 
-#include <gtdynamics/factors/JointLimitFactor.h>
+#include <gtdynamics/kinematics/JointLimitFactor.h>
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/slam/expressions.h>
@@ -171,11 +171,9 @@ double Joint::transformWrenchToTorque(
 
 /* ************************************************************************* */
 gtsam::GaussianFactorGraph Joint::linearFDPriors(
-    size_t t, const gtsam::Values &known_values,
-    const OptimizerSetting &opt) const {
+    size_t t, const gtsam::Values &known_values) const {
   gtsam::GaussianFactorGraph priors;
   gtsam::Vector1 rhs(Torque(known_values, id(), t));
-  // TODO(alej`andro): use optimizer settings
   priors.add(TorqueKey(id(), t), gtsam::I_1x1, rhs,
              gtsam::noiseModel::Constrained::All(1));
   return priors;
@@ -183,8 +181,9 @@ gtsam::GaussianFactorGraph Joint::linearFDPriors(
 
 /* ************************************************************************* */
 gtsam::GaussianFactorGraph Joint::linearAFactors(
-    size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+    size_t t, const gtsam::Values &known_values,
     const std::optional<gtsam::Vector3> &planar_axis) const {
+  (void)planar_axis;
   gtsam::GaussianFactorGraph graph;
 
   const Pose3 T_wi1 = Pose(known_values, parent()->id(), t);
@@ -207,7 +206,7 @@ gtsam::GaussianFactorGraph Joint::linearAFactors(
 
 /* ************************************************************************* */
 gtsam::GaussianFactorGraph Joint::linearDynamicsFactors(
-    size_t t, const gtsam::Values &known_values, const OptimizerSetting &opt,
+    size_t t, const gtsam::Values &known_values,
     const std::optional<gtsam::Vector3> &planar_axis) const {
   gtsam::GaussianFactorGraph graph;
 
@@ -248,30 +247,31 @@ Vector6 Joint::parentTwist(double q_dot) const { return pScrewAxis_ * q_dot; }
 
 /* ************************************************************************* */
 gtsam::NonlinearFactorGraph Joint::jointLimitFactors(
-    size_t t, const OptimizerSetting &opt) const {
+    size_t t,
+    const gtsam::noiseModel::Base::shared_ptr &jl_cost_model) const {
   gtsam::NonlinearFactorGraph graph;
   auto id = this->id();
   // Add joint angle limit factor.
   graph.emplace_shared<JointLimitFactor>(
-      JointAngleKey(id, t), opt.jl_cost_model,
+      JointAngleKey(id, t), jl_cost_model,
       parameters().scalar_limits.value_lower_limit,
       parameters().scalar_limits.value_upper_limit,
       parameters().scalar_limits.value_limit_threshold);
 
   // Add joint velocity limit factors.
   graph.emplace_shared<JointLimitFactor>(
-      JointVelKey(id, t), opt.jl_cost_model, -parameters().velocity_limit,
+      JointVelKey(id, t), jl_cost_model, -parameters().velocity_limit,
       parameters().velocity_limit, parameters().velocity_limit_threshold);
 
   // Add joint acceleration limit factors.
   graph.emplace_shared<JointLimitFactor>(
-      JointAccelKey(id, t), opt.jl_cost_model, -parameters().acceleration_limit,
+      JointAccelKey(id, t), jl_cost_model, -parameters().acceleration_limit,
       parameters().acceleration_limit,
       parameters().acceleration_limit_threshold);
 
   // Add joint torque limit factors.
   graph.emplace_shared<JointLimitFactor>(
-      TorqueKey(id, t), opt.jl_cost_model, -parameters().torque_limit,
+      TorqueKey(id, t), jl_cost_model, -parameters().torque_limit,
       parameters().torque_limit, parameters().torque_limit_threshold);
   return graph;
 }

@@ -11,7 +11,7 @@ This directory is where the Pybind11-generated GTDynamics package lives and wher
 ## Build prerequisites
 
 1. **GTSAM** must be built with Python support (i.e., `-DGTSAM_BUILD_PYTHON=ON`) and installed to a prefix that GTDynamics can see via `GTSAM_DIR` or `CMAKE_PREFIX_PATH`.
-2. **Python tooling**: the CI job installs `setuptools<70`, `wheel`, `numpy`, `pyparsing`, `pyyaml`, and `pybind11-stubgen` before configuring the project; matching this list locally avoids the same runtime issues.
+2. **Python tooling**: the CI job installs `setuptools<70`, `wheel`, `numpy`, `pyparsing`, `pyyaml`, and `pybind11-stubgen` before configuring the project; matching this list locally avoids the same runtime issues. `pybind11-stubgen` is required for the `python-stubs` CMake target.
 3. On macOS, the workflow creates and activates a virtual environment (`pythonX -m venv venv`) so that `pip install` and the tests run in the same interpreter that baked the bindings.
 
 ## Building and installing locally
@@ -30,7 +30,47 @@ This directory is where the Pybind11-generated GTDynamics package lives and wher
    ```sh
    make python-install
    ```
-   This runs `${PYTHON_EXECUTABLE} -m pip install .` in `build/python`, which produces a wheel in `pip`'s cache before installing it.
+   This runs `${PYTHON_EXECUTABLE} -m pip install .` in `build/python`, which produces a wheel in `pip`'s cache before installing it. On non-Windows platforms, `python-install` depends on `python-stubs`, so `.pyi` files are generated first.
+
+## GTSAM Python compatibility (important)
+
+Use a `gtsam` Python package built from the same GTSAM install/prefix that GTDynamics links against.
+Mixing a local GTDynamics build with an unrelated pip/conda `gtsam` wheel can cause hard runtime failures (for example, process aborts when adding factors to a graph).
+
+If you built GTSAM from source in a sibling repo, prepend it before importing:
+
+```sh
+export PYTHONPATH=/path/to/gtsam/build/python:/path/to/GTDynamics/build/python:$PYTHONPATH
+```
+
+## Generating type stubs
+
+- Run `make python-stubs` to generate stubs with `pybind11-stubgen`.
+- Stubs are generated in `build/python/gtdynamics/*.pyi`.
+- The generated `gtdynamics.pyi` file is what tools like Pylance use for attribute completion/type checking on wrapped symbols.
+
+### VS Code / Pylance configuration
+
+If your runtime works but Pylance still reports unknown attributes (for example, `CreateRobotFromFile`), make sure VS Code analyzes the build package path.
+
+In workspace `.vscode/settings.json`:
+
+```json
+{
+  "python.defaultInterpreterPath": "/path/to/your/python",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/build/python"
+  ]
+}
+```
+
+Then run:
+
+```sh
+make python-stubs
+```
+
+and reload the VS Code window.
 
 ## Running Python tests
 
@@ -40,9 +80,9 @@ This directory is where the Pybind11-generated GTDynamics package lives and wher
 
 ## Packaging tips
 
-- `python/templates/setup.py.in` reads the CMake-generated `requirements.txt` and packages the shared library blobs (`.so` / `.pyd`) from `python/gtdynamics` so running `pip wheel .` in `build/python` yields a complete asset.
-- Keep `python/requirements.txt` in sync with the requirements file copied to `build/python/requirements.txt` so that CI and a local `pip install` use the same dependency list.
-- If you need to publish a wheel manually, the packaged wheel that `pip install .` writes to `~/.cache/pip` already encodes the GTDynamics version reported by `CMakeLists.txt`.
+- `python/templates/pyproject.toml.in` drives packaging in `build/python`.
+- `make python-install` runs `pip install .` from `build/python`, which installs the generated extension module and package files from `build/python/gtdynamics`.
+- If you need to publish a wheel manually, the wheel produced by `pip` already encodes the GTDynamics version reported by CMake.
 
 ## Wheels
 ### CI wheel pipeline
