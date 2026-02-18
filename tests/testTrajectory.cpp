@@ -29,6 +29,7 @@ auto kModel1 = gtsam::noiseModel::Unit::Create(1);
 auto kModel6 = gtsam::noiseModel::Unit::Create(6);
 
 using namespace gtdynamics;
+static constexpr double kGroundHeight = 4.2;
 
 TEST(Trajectory, error) {
   using namespace walk_cycle_example;
@@ -64,10 +65,10 @@ TEST(Trajectory, error) {
   EXPECT_LONGS_EQUAL(6, trajectory.getStartTimeStep(2));
   EXPECT_LONGS_EQUAL(7, trajectory.getEndTimeStep(2));
 
-  auto cp_goals = walk_cycle.initContactPointGoal(robot, 0);
+  auto cp_goals = walk_cycle.initContactPointGoal(robot, kGroundHeight);
   EXPECT_LONGS_EQUAL(5, cp_goals.size());
   // regression
-  EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, 0.000151302),
+  EXPECT(gtsam::assert_equal(gtsam::Point3(-0.926417, 1.19512, kGroundHeight),
                              cp_goals["tarsus_2_L2"], 1e-5));
 
   double gaussian_noise = 1e-5;
@@ -84,14 +85,16 @@ TEST(Trajectory, error) {
 
   // Check transition graphs
   vector<gtsam::NonlinearFactorGraph> transition_graphs =
-      trajectory.getTransitionGraphs(robot, graph_builder, mu);
+      trajectory.getTransitionGraphs(robot, graph_builder, mu,
+                                     kGroundHeight);
   EXPECT_LONGS_EQUAL(repeat * 2 - 1, transition_graphs.size());
   // regression test
   EXPECT_LONGS_EQUAL(203, transition_graphs[0].size());
 
   // Test multi-phase factor graph.
   auto graph = trajectory.multiPhaseFactorGraph(robot, graph_builder,
-                                                CollocationScheme::Euler, mu);
+                                                CollocationScheme::Euler, mu,
+                                                kGroundHeight);
   // regression test
   EXPECT_LONGS_EQUAL(4298, graph.size());
   EXPECT_LONGS_EQUAL(4712, graph.keys().size());
@@ -102,7 +105,7 @@ TEST(Trajectory, error) {
   // Test objectives for contact links.
   const Point3 step(0, 0.4, 0);
   auto contact_link_objectives = trajectory.contactPointObjectives(
-      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step, 0);
+      robot, noiseModel::Isotropic::Sigma(3, 1e-7), step, kGroundHeight);
   // steps = 2+3 per walk cycle, 5 legs involved
   const size_t expected = repeat * ((2 + 3) * 5);
   EXPECT_LONGS_EQUAL(expected, contact_link_objectives.size());

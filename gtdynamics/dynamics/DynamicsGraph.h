@@ -130,7 +130,8 @@ class DynamicsGraph {
   /// Return q-level nonlinear factor graph (pose related factors)
   virtual gtsam::NonlinearFactorGraph qFactors(
       const Robot &robot, const int k,
-      const std::optional<PointOnLinks> &contact_points = {}) const;
+      const std::optional<PointOnLinks> &contact_points = {},
+      double ground_plane_height = 0.0) const;
 
   /// Return v-level nonlinear factor graph (twist related factors)
   gtsam::NonlinearFactorGraph vFactors(
@@ -154,11 +155,13 @@ class DynamicsGraph {
    * @param k              time step
    * @param contact_points optional vector of contact points.
    * @param mu             optional coefficient of static friction.
+   * @param ground_plane_height contact ground-plane height in world frame.
    */
   virtual gtsam::NonlinearFactorGraph dynamicsFactorGraph(
       const Robot &robot, const int k,
       const std::optional<PointOnLinks> &contact_points = {},
-      const std::optional<double> &mu = {}) const;
+      const std::optional<double> &mu = {},
+      double ground_plane_height = 0.0) const;
 
   /**
    * Return prior factors of torque, angle, velocity
@@ -194,12 +197,14 @@ class DynamicsGraph {
    * @param num_steps   total time steps
    * @param dt          duration of each time step
    * @param collocation the collocation scheme
+   * @param ground_plane_height contact ground-plane height in world frame.
    */
   gtsam::NonlinearFactorGraph trajectoryFG(
       const Robot &robot, const int num_steps, const double dt,
       const CollocationScheme collocation = Trapezoidal,
       const std::optional<PointOnLinks> &contact_points = {},
-      const std::optional<double> &mu = {}) const;
+      const std::optional<double> &mu = {},
+      double ground_plane_height = 0.0) const;
 
   /**
    * Return nonlinear factor graph of the entire trajectory for multi-phase
@@ -209,13 +214,15 @@ class DynamicsGraph {
    * @param collocation          the collocation scheme
    * @param phase_contact_points contact points at each phase
    * @param mu                   optional coefficient of static friction
+   * @param ground_plane_height  contact ground-plane height in world frame.
    */
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const Robot &robot, const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
       const CollocationScheme collocation = Trapezoidal,
       const std::optional<std::vector<PointOnLinks>> &phase_contact_points = {},
-      const std::optional<double> &mu = {}) const;
+      const std::optional<double> &mu = {},
+      double ground_plane_height = 0.0) const;
 
   static std::shared_ptr<gtsam::ExpressionFactor<double>>
   collocationFactorDouble(const gtsam::Key x0_key, const gtsam::Key x1_key,

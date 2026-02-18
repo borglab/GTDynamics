@@ -3,8 +3,6 @@ Run kinematic motion planning using GTDynamics outputs.
 Author: Alejandro Escontrela
 """
 
-import time
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import pybullet as p
@@ -30,7 +28,7 @@ for i in range(p.getNumJoints(quad_id)):
 
 df = pd.read_csv('traj.csv')
 
-input("Press ENTER to continue.")
+# input("Press ENTER to continue.")
 
 pos_des = df.loc[0][['bodyx', 'bodyy', 'bodyz']].tolist()
 pos_des[2] = pos_des[2] + 0.2
@@ -68,8 +66,8 @@ for i in range(len(df)):
     all_pos_des.append(new_pos_des)
 
     p.stepSimulation()
-    time.sleep(1. / 240.)
-    t += 1. / 240.
+    # time.sleep(1. / 24.)
+    t += 1. / 24.
 
 pos, orn = p.getBasePositionAndOrientation(quad_id)
 print("Final Base\n\tPos: {}\n\tOrn: {}".format(pos,
