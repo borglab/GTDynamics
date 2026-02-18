@@ -76,9 +76,13 @@ def ZeroValues(graph, dt=None):
 
 def UpdateFromValues(src, dst, key, shift_time_by=0):
     label = key.label()
-    if shift_time_by:
-        new_key = gtd.DynamicsSymbol.LinkJointSymbol(key.label(), key.linkIdx(), key.jointIdx(),
-                                                     key.time() + shift_time_by)
+    if key.key() == 0:
+        # Special case for dt: always keep it at key 0, regardless of any time shift.
+        new_key = key
+    elif shift_time_by:
+        new_key = gtd.DynamicsSymbol.LinkJointSymbol(
+            key.label(), key.linkIdx(), key.jointIdx(), key.time() + shift_time_by
+        )
     else:
         new_key = key
 

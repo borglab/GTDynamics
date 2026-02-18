@@ -13,7 +13,7 @@ See LICENSE for the license information
 import gtsam
 import gtdynamics as gtd
 import numpy as np
-from utils import MyLMParams, InitValues
+from utils import MyLMParams
 
 class CdprSimulator:
     """Simulates a cable robot forward in time, given a robot, initial state, and controller.
@@ -58,9 +58,10 @@ class CdprSimulator:
 
     @staticmethod
     def update_kinematics(cdpr, x, k):
-        """Runs IK to solve for the cable lengths and velocities at time step k.  Modifies x
-        inplace!!!
+        """Runs IK to solve for the cable lengths and velocities at time step k.
 
+        This method creates and returns a new ``gtsam.Values`` containing the solved
+        kinematic quantities and does not modify the input ``x`` in place.
         Args:
             x (gtsam.Values): Values object containing at least the current Pose and current Twist
             k (int): current time step
