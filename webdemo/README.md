@@ -89,6 +89,7 @@ Then add `my_clip.json` to `webdemo/public/examples/motions/g1/motions.json`.
 ## Attribution
 
 - Direct code structure origin: [Axellwppr/humanoid-policy-viewer](https://github.com/Axellwppr/humanoid-policy-viewer)
+  Qingzhou Lu (Axellwppr on Github) said: "The framework code will be MIT-licensed (I’ll update the repo shortly). Mjlab and any motion datasets remain under their respective licenses."
 - Runtime dependencies:
   - [mujoco-js](https://www.npmjs.com/package/mujoco-js) (MuJoCo WASM)
   - [three.js](https://threejs.org/)
