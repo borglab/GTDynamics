@@ -1,0 +1,70 @@
+{
+  "scene": "unitree_a1/scene.xml",
+  "clip_joint_names": [
+    "FR_hip_joint",
+    "FR_thigh_joint",
+    "FR_calf_joint",
+    "FL_hip_joint",
+    "FL_thigh_joint",
+    "FL_calf_joint",
+    "RR_hip_joint",
+    "RR_thigh_joint",
+    "RR_calf_joint",
+    "RL_hip_joint",
+    "RL_thigh_joint",
+    "RL_calf_joint"
+  ],
+  "stiffness": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+  ],
+  "damping": [
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0,
+    2.0
+  ],
+  "default_joint_pos": [
+    0.0,
+    0.9,
+    -1.8,
+    0.0,
+    0.9,
+    -1.8,
+    0.0,
+    0.9,
+    -1.8,
+    0.0,
+    0.9,
+    -1.8
+  ],
+  "default_root_pos": [
+    0.0,
+    0.0,
+    0.27
+  ],
+  "default_root_quat": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

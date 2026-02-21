@@ -1,0 +1,11 @@
+{
+  "format": "gtd-motion-index-v1",
+  "base_path": "./motions",
+  "motions": [
+    {
+      "name": "synthetic_sway",
+      "file": "synthetic_sway.json",
+      "clip": "default"
+    }
+  ]
+}

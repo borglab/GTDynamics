@@ -1,0 +1,11 @@
+{
+  "format": "gtd-motion-index-v1",
+  "base_path": "./motions",
+  "motions": [
+    {
+      "name": "synthetic_trot",
+      "file": "synthetic_trot.json",
+      "clip": "default"
+    }
+  ]
+}
