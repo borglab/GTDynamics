@@ -23,7 +23,7 @@ bool eval_proj_cost_progress = false;
 
 IECartPoleWithFriction GetCP() {
   IECartPoleWithFriction cp;
-  cp.include_torque_limits = true;
+  cp.include_torque_limits_ = true;
   return cp;
 }
 

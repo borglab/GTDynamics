@@ -1,8 +1,12 @@
+#pragma once
+
 #include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
+
+#include <string>
 
 namespace gtdynamics {
 using namespace gtsam;
@@ -10,35 +14,35 @@ using namespace gtsam;
 class IECartPoleWithLimits {
  public:
   // robot and environmental settings
-  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
-                    .fixLink("l0");
-  size_t p_joint_id = robot.joint("j0")->id();
-  size_t r_joint_id = robot.joint("j1")->id();
-  Vector6 X_i = Vector6::Constant(6, 0);
-  Vector6 X_T = (Vector(6) << 0, 0, 0, M_PI, 0, 0).finished();
-  Vector3 gravity = Vector3(0, 0, -9.8);
-  bool constrain_final_x = false;
-  CollocationScheme collocation_scheme = CollocationScheme::Trapezoidal;
+  Robot robot_ = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
+                     .fixLink("l0");
+  size_t p_joint_id_ = robot_.joint("j0")->id();
+  size_t r_joint_id_ = robot_.joint("j1")->id();
+  Vector6 initial_state_ = Vector6::Constant(6, 0);
+  Vector6 target_state_ = (Vector(6) << 0, 0, 0, M_PI, 0, 0).finished();
+  Vector3 gravity_ = Vector3(0, 0, -9.8);
+  bool constrain_final_x_ = false;
+  CollocationScheme collocation_scheme_ = CollocationScheme::Trapezoidal;
 
   // limits on x-range and force
-  double x_min = -.2;
-  double x_max = .2;
-  double f_min = -100;
-  double f_max = 100;
+  double x_min_ = -.2;
+  double x_max_ = .2;
+  double f_min_ = -100;
+  double f_max_ = 100;
 
   // noise/tolerance settings for costs and constraints
-  double tol = 1.0;
-  OptimizerSetting opt = getOptSetting();
-  DynamicsGraph graph_builder = DynamicsGraph(opt, gravity);
-  double sigma_pos_objective = 1e-5;
-  double sigma_objectives = 5e-3;
-  double sigma_min_torque = 2e1;
-  SharedNoiseModel pos_objectives_model =
-      noiseModel::Isotropic::Sigma(1, sigma_pos_objective);  // Pos objectives.
-  SharedNoiseModel objectives_model = noiseModel::Isotropic::Sigma(
-      1, sigma_objectives);  // Additional objectives.
-  SharedNoiseModel control_model =
-      noiseModel::Isotropic::Sigma(1, sigma_min_torque);  // Controls.
+  double tol_ = 1.0;
+  OptimizerSetting opt_ = getOptSetting();
+  DynamicsGraph graph_builder_ = DynamicsGraph(opt_, gravity_);
+  double sigma_pos_objective_ = 1e-5;
+  double sigma_objectives_ = 5e-3;
+  double sigma_min_torque_ = 2e1;
+  SharedNoiseModel pos_objectives_model_ =
+      noiseModel::Isotropic::Sigma(1, sigma_pos_objective_);  // Pos objectives.
+  SharedNoiseModel objectives_model_ = noiseModel::Isotropic::Sigma(
+      1, sigma_objectives_);  // Additional objectives.
+  SharedNoiseModel control_model_ =
+      noiseModel::Isotropic::Sigma(1, sigma_min_torque_);  // Controls.
 
   static OptimizerSetting getOptSetting() {
     auto opt = OptimizerSetting();

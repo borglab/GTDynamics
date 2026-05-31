@@ -17,8 +17,8 @@ using namespace gtsam;
 TEST(HalfSphere, constraints) {
   double r = 3.0;
   IEHalfSphere half_sphere(r);
-  half_sphere.sphere_tol = 1e-5;
-  half_sphere.z_tol = 1e-5;
+  half_sphere.sphere_tol_ = 1e-5;
+  half_sphere.z_tol_ = 1e-5;
 
   auto e_constraints = half_sphere.eConstraints(0);
   auto i_constraints = half_sphere.iConstraints(0);
@@ -48,10 +48,10 @@ TEST(HalfSphereRetractor, retract) {
   auto retractor = std::make_shared<HalfSphereRetractor>(half_sphere);
 
   // Create manifold.
-  auto e_constraints =
-      std::make_shared<NonlinearEqualityConstraints>(half_sphere.eConstraints(0));
-  auto i_constraints =
-      std::make_shared<NonlinearInequalityConstraints>(half_sphere.iConstraints(0));
+  auto e_constraints = std::make_shared<NonlinearEqualityConstraints>(
+      half_sphere.eConstraints(0));
+  auto i_constraints = std::make_shared<NonlinearInequalityConstraints>(
+      half_sphere.iConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
@@ -86,8 +86,8 @@ TEST(HalfSphere, Dome) {
   values.insert(point_key, Point3(1, 0, 0));
 
   auto e_constraints = std::make_shared<NonlinearEqualityConstraints>();
-  auto i_constraints =
-      std::make_shared<NonlinearInequalityConstraints>(half_sphere.iDomeConstraints(0));
+  auto i_constraints = std::make_shared<NonlinearInequalityConstraints>(
+      half_sphere.iDomeConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->retractor_creator =
       std::make_shared<UniversalIERetractorCreator>(retractor);

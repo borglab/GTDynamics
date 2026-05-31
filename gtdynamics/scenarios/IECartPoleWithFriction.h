@@ -35,15 +35,15 @@ inline Key FxKey(const int k) { return Symbol('x', k); }
 inline Key FyKey(const int k) { return Symbol('y', k); }
 
 class IECartPoleWithFriction {
-public:
-  double m = 1;
-  double M = 1;
-  double r = 1;
-  double g = 10;
-  double mu = 0.8;
-  double tau_min = -25;
-  double tau_max = 25;
-  bool include_torque_limits = false;
+ public:
+  double mass_ = 1;
+  double cart_mass_ = 1;
+  double length_ = 1;
+  double gravity_ = 10;
+  double friction_coefficient_ = 0.8;
+  double torque_min_ = -25;
+  double torque_max_ = 25;
+  bool include_torque_limits_ = false;
 
   IECartPoleWithFriction() {}
 
@@ -98,34 +98,34 @@ public:
 };
 
 class CartPoleWithFrictionRetractor : public IERetractor {
-protected:
+ protected:
   const IECartPoleWithFriction &cp_;
 
-public:
+ public:
   CartPoleWithFrictionRetractor(const IECartPoleWithFriction &cp)
       : IERetractor(), cp_(cp) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override;
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override;
 
   IEConstraintManifold retract1(const IEConstraintManifold *manifold,
                                 const VectorValues &delta) const;
 };
 
 class CPBarrierRetractor : public IERetractor {
-protected:
+ protected:
   const IECartPoleWithFriction &cp_;
 
-public:
+ public:
   CPBarrierRetractor(const IECartPoleWithFriction &cp)
       : IERetractor(), cp_(cp) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override;
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override;
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

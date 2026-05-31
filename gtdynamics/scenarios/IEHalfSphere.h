@@ -33,22 +33,22 @@ inline Key PointKey(const int k) { return Symbol('p', k); }
  * 2) z >= 0
  */
 class IEHalfSphere {
-public:
-  double r;                // radius
-  double sphere_tol = 1.0; // sphere constraint tolerance
-  double z_tol = 1.0;      // positive z constraint tolerance
+ public:
+  double radius_;            // radius
+  double sphere_tol_ = 1.0;  // sphere constraint tolerance
+  double z_tol_ = 1.0;       // positive z constraint tolerance
 
   /// Constructor.
-  IEHalfSphere(const double _r = 1.0) : r(_r) {}
+  IEHalfSphere(const double radius = 1.0) : radius_(radius) {}
 
   /// Equality constraints defining the manifold.
   NonlinearEqualityConstraints eConstraints(const int k) const {
     NonlinearEqualityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(&norm3, point_expr);
-    Double_ sphere_expr = Double_(r) - norm_expr;
+    Double_ sphere_expr = Double_(radius_) - norm_expr;
     constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
-        sphere_expr, 0.0, Vector1(sphere_tol));
+        sphere_expr, 0.0, Vector1(sphere_tol_));
     return constraints;
   }
 
@@ -58,7 +58,7 @@ public:
     Expression<Point3> point_expr(PointKey(k));
     Expression<double> z_expr(&point3_z, point_expr);
     constraints.push_back(
-        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol));
+        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol_));
     return constraints;
   }
 
@@ -67,12 +67,12 @@ public:
     NonlinearInequalityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(norm3, point_expr);
-    Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.push_back(
-        ScalarExpressionInequalityConstraint::GeqZero(sphere_expr, sphere_tol));
+    Double_ sphere_expr = Double_(radius_) - norm_expr;
+    constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
+        sphere_expr, sphere_tol_));
     Double_ z_expr(&point3_z, point_expr);
     constraints.push_back(
-        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol));
+        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol_));
     return constraints;
   }
 
@@ -82,7 +82,7 @@ public:
       projected_pt.z() = 0;
     }
     double pt_norm = projected_pt.norm();
-    projected_pt = projected_pt * (r / pt_norm);
+    projected_pt = projected_pt * (radius_ / pt_norm);
     return projected_pt;
   }
 
@@ -138,14 +138,14 @@ public:
 class HalfSphereRetractor : public IERetractor {
   double r_;
 
-public:
+ public:
   HalfSphereRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.r) {}
+      : IERetractor(), r_(half_sphere.radius_) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override {
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -167,14 +167,14 @@ public:
 class SphereRetractor : public IERetractor {
   double r_;
 
-public:
+ public:
   SphereRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.r) {}
+      : IERetractor(), r_(half_sphere.radius_) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override {
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -191,15 +191,14 @@ public:
 class DomeRetractor : public IERetractor {
   double r_;
 
-public:
+ public:
   DomeRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.r) {}
+      : IERetractor(), r_(half_sphere.radius_) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override {
-
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -215,10 +214,9 @@ public:
     return manifold->createWithNewValues(new_values);
   }
 
-  IEConstraintManifold
-  moveToBoundary(const IEConstraintManifold *manifold,
-                 const IndexSet &blocking_indices,
-                 IERetractInfo *retract_info = nullptr) const override {
+  IEConstraintManifold moveToBoundary(
+      const IEConstraintManifold *manifold, const IndexSet &blocking_indices,
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
 
@@ -257,4 +255,4 @@ public:
   }
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics
