@@ -1,3 +1,16 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  IECartPoleWithFriction.cpp
+ * @brief Cart-pole trajectory optimization problem with friction cone limits.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 

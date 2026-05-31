@@ -25,6 +25,8 @@ std::pair<IndexSet, Vector> TangentCone::project(const Vector &xi) const {
     return {IndexSet(), xi};
   }
 
+  // Encode min ||x - xi||^2 as a least-squares objective and let the convex
+  // IQP solver enforce the cone inequalities A x >= 0.
   GaussianFactorGraph graph;
   Key x_key = 1;
   size_t dim = xi.size();

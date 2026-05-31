@@ -55,7 +55,7 @@ Matrix RetrieveVarJacobian(const GaussianFactor::shared_ptr &linear_factor,
  *   3) build `LinearInequalityConstraint`s for tangent-cone projection.
  *
  * How it maps old behavior:
- * - We form the equality counterpart g(x)=0 of the inequality g(x)<=0 via
+ * - We form the equality counterpart g(x)=0 of the inequality boundary via
  *   `createEqualityConstraint()`.
  * - We linearize that equality at `values`.
  * - We normalize to `JacobianFactor` so downstream code can use block access
@@ -79,6 +79,8 @@ std::pair<IndexSet, Vector>
 IEConstraintManifold::projectTangentCone(const Vector &xi) const {
   auto result = i_cone_->project(xi);
 
+  // TangentCone::project returns row indices in the active-constraint list;
+  // map them back to the original inequality indices from thesis Eq. (4.3).
   IndexSet blocking_indices;
   std::vector<size_t> active_indices_vector(active_indices_.begin(),
                                             active_indices_.end());
@@ -129,6 +131,9 @@ IndexSet IEConstraintManifold::blockingIndices(
         error += linear_factor->getA(it) * tangent_vector.at(*it);
       }
     }
+    // A negative directional derivative means this active face would be
+    // violated by the proposed tangent step; these are blocking constraints
+    // in the sense of thesis Eq. (4.45).
     if ((error.array() < -1e-5).any()) {
       blocking_indices.insert(idx);
     }
@@ -206,6 +211,8 @@ TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
   for (const auto &constraint_idx : active_indices) {
     auto i_constraint = i_constraints.at(constraint_idx);
     auto linear_factor = LinearizedIConstraint(i_constraint, values);
+    // Form Dg_A(x) B_x, i.e. the K matrix in thesis Eq. (4.15), so cone
+    // projection happens in equality-manifold coordinates.
     Matrix man_jacobian = Matrix::Zero(linear_factor->rows(), t_basis->dim());
     for (auto it = linear_factor->begin(); it != linear_factor->end(); ++it) {
       const Key key = *it;

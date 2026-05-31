@@ -1,3 +1,16 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  IECartPoleWithLimits.cpp
+ * @brief Cart-pole trajectory optimization problem with cart and force limits.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>

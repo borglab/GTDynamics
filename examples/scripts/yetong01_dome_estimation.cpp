@@ -5,6 +5,12 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
+/**
+ * @file  yetong01_dome_estimation.cpp
+ * @brief Dome estimation example using inequality-constrained optimization.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>

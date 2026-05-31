@@ -79,6 +79,8 @@ BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
                                  const IndexSet &blocking_indices,
                                  IERetractInfo *retract_info) const {
 
+  // Turning blocking inequalities into equalities picks the boundary face that
+  // the next mode should land on.
   NonlinearEqualityConstraints blocking_constraints;
   for (const auto &blocking_idx : blocking_indices) {
     blocking_constraints.push_back(
@@ -116,13 +118,16 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
                           const std::optional<IndexSet> &blocking_indices,
                           IERetractInfo *retract_info) const {
 
-  // cost as priors
+  // The prior graph is the quadratic stay-close term centered at x + delta.
+  // This implements the metric-projection objective in thesis Eq. (4.26), and
+  // blocking indices below turn it into the on-corner form in Eq. (4.46).
   Values new_values = manifold->values().retract(delta);
   KeyVector prior_keys = use_basis_keys_ ? basis_keys_ : new_values.keys();
   NonlinearFactorGraph prior_graph;
   params_->addPriors(new_values, prior_keys, prior_graph);
 
-  // i and e constraints
+  // Promote blocked inequalities to equalities so the retraction stays on the
+  // same active face instead of immediately stepping off it.
   NonlinearInequalityConstraints i_constraints = *manifold->iConstraints();
   NonlinearEqualityConstraints e_constraints = *manifold->eConstraints();
   if (blocking_indices) {
@@ -132,7 +137,8 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
     }
   }
 
-  // run penalty optimization
+  // First solve the soft penalty subproblem, then recover the hard active set
+  // from the resulting feasible-or-nearly-feasible point.
   const Values &init_values =
       params_->init_values_as_x ? manifold->values() : new_values;
   Values opt_values = RunPenaltyOptimization(
@@ -150,7 +156,8 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
     }
   }
 
-  // final optimization without priors to make strictly feasible solution
+  // Drop the stay-close priors and clean up on the final active manifold so the
+  // returned point is strictly feasible in the chosen mode.
   NonlinearEqualityConstraints active_constraints =
       *manifold->eConstraints();
   for (const auto &constraint_idx : active_indices) {

@@ -5,6 +5,12 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
+/**
+ * @file  rss03_cp_friction.cpp
+ * @brief RSS cart-pole friction benchmark for CMC-Opt comparisons.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 

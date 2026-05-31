@@ -1,3 +1,16 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  yetong04_cart_pole_friction.cpp
+ * @brief Cart-pole friction example using inequality-constrained optimization.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>

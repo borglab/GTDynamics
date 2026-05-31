@@ -1,4 +1,15 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
 
+/**
+ * @file  testIEHalfSphere.cpp
+ * @brief Unit tests for the inequality-constrained half-sphere examples.
+ * @author Yetong Zhang
+ */
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
