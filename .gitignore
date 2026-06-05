@@ -129,3 +129,7 @@ models/mujoco/unitree_g1
 models/mujoco/boston_dynamics_spot
 /webdemo/.vite/deps/_metadata.json
 /webdemo/.vite/deps/package.json
+
+# sdformat-15.0.0
+sdformat-15.0.0
+sdformat-15.0.0.tar.bz2
