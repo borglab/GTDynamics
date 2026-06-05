@@ -44,7 +44,9 @@ sudo apt-get install -y ruby-dev build-essential libboost-all-dev \
     cmake pkg-config wget lsb-release
 
 # Setup the repo
-sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+GAZEBO_REPO="http://packages.osrfoundation.org/gazebo/ubuntu-stable"
+echo "deb ${GAZEBO_REPO} $(lsb_release -cs) main" \
+    | sudo tee /etc/apt/sources.list.d/gazebo-stable.list
 wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
 sudo apt-get update
 
