@@ -40,7 +40,8 @@ We provide an Ubuntu-based process below. Please reference [this tutorial](http:
 
 ```sh
 # Install basic dependencies
-sudo apt-get install -y ruby-dev build-essential libboost-all-dev cmake pkg-config wget lsb-release
+sudo apt-get install -y ruby-dev build-essential libboost-all-dev \
+    cmake pkg-config wget lsb-release
 
 # Setup the repo
 sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
@@ -48,7 +49,9 @@ wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
 sudo apt-get update
 
 # Install SDFormat dependencies
-sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libgz-cmake4-dev libgz-tools2-dev libgz-math8-dev libgz-utils3-dev libgz-utils3-cli-dev pybind11-dev python3-psutil python3-pytest 
+sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libgz-cmake4-dev \
+    libgz-tools2-dev libgz-math8-dev libgz-utils3-dev libgz-utils3-cli-dev \
+    pybind11-dev python3-psutil python3-pytest
 
 # Set the version to install
 export GTD_SDFormat_VERSION="15.0.0"
@@ -67,7 +70,7 @@ sudo make install
 ```
 
 ## Installing GTDynamics
-If you are choosing to link this to your own local GTSAM repo, you must have ran ```make install``` with the pybind11 option (found in ```HandleGeneralOptions.cmake```) set to ```ON```. 
+If you are choosing to link this to your own local GTSAM repo, make sure to follow the instructions below on ```Python Wrapper (Recommended use case)```. 
 ```sh
 $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
