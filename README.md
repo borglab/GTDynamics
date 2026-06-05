@@ -33,7 +33,7 @@ $ brew install sdformat15
 
 ### Source
 
-Alternatively, you can install from source if you are on Linux or want more fine-tuned control.
+Alternatively, you can install from source if you are on Linux or want more fine-tuned control. We recommend using Ubuntu 24.04, and GCC/G++ 13 if you are on Linux.
 
 We provide an Ubuntu-based process below. Please reference [this tutorial](http://gazebosim.org/tutorials?tut=install_dependencies_from_source) for complete details on installing from source.
 
@@ -48,7 +48,7 @@ wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
 sudo apt-get update
 
 # Install SDFormat dependencies
-sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libgz-cmake2-dev libgz-tools-dev libgz-math6-dev
+sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libgz-cmake4-dev libgz-tools2-dev libgz-math8-dev libgz-utils3-dev libgz-utils3-cli-dev pybind11-dev python3-psutil python3-pytest 
 
 # Set the version to install
 export GTD_SDFormat_VERSION="15.0.0"
@@ -67,6 +67,7 @@ sudo make install
 ```
 
 ## Installing GTDynamics
+If you are choosing to link this to your own local GTSAM repo, you must have ran ```make install``` with the pybind11 option (found in ```HandleGeneralOptions.cmake```) set to ```ON```. 
 ```sh
 $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
