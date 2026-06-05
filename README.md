@@ -57,7 +57,8 @@ sudo apt-get install -y libtinyxml2-dev liburdfdom-dev libgz-cmake4-dev \
 export GTD_SDFormat_VERSION="15.0.0"
 
 # Download specific version of SDFormat
-wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-${GTD_SDFormat_VERSION}.tar.bz2
+SDFormat_BASE_URL="http://osrf-distributions.s3.amazonaws.com/sdformat/releases"
+wget "${SDFormat_BASE_URL}/sdformat-${GTD_SDFormat_VERSION}.tar.bz2"
 
 tar -xvjf sdformat-${GTD_SDFormat_VERSION}.tar.bz2
 
@@ -70,7 +71,9 @@ sudo make install
 ```
 
 ## Installing GTDynamics
-If you are choosing to link this to your own local GTSAM repo, make sure to follow the instructions below on ```Python Wrapper (Recommended use case)```. 
+
+If you are choosing to link this to your own local GTSAM repo, make sure to follow the instructions below on ```Python Wrapper (Recommended use case)```.
+
 ```sh
 $ git clone https://github.com/borglab/GTDynamics.git
 $ cd GTDynamics
