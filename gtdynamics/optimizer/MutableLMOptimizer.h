@@ -60,7 +60,9 @@ class GTSAM_EXPORT MutableLMOptimizer : public NonlinearOptimizer {
  public:
   typedef std::shared_ptr<MutableLMOptimizer> shared_ptr;
 
-  NonlinearFactorGraph& mutableGraph() { return graph_; }
+  NonlinearFactorGraph& mutableGraph() { 
+    return const_cast<NonlinearFactorGraph&>(*graph_); 
+  }
 
   /// @name Constructors/Destructor
   /// @{

@@ -81,7 +81,7 @@ int MutableLMOptimizer::getInnerIterations() const {
 
 /* ************************************************************************* */
 GaussianFactorGraph::shared_ptr MutableLMOptimizer::linearize() const {
-  return graph_.linearize(state_->values);
+  return graph_->linearize(state_->values);
 }
 
 /* ************************************************************************* */
@@ -178,7 +178,7 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
       // compute new error
       gttic(compute_error);
       if (verbose) cout << "calculating error:" << endl;
-      newError = graph_.error(newValues);
+      newError = graph_->error(newValues);
       gttoc(compute_error);
 
       if (verbose)
@@ -324,20 +324,20 @@ MutableLMOptimizer::MutableLMOptimizer(const NonlinearFactorGraph& graph,
 
 /* ************************************************************************* */
 void MutableLMOptimizer::setGraph(const NonlinearFactorGraph& graph) {
-  graph_ = graph;
+  graph_ = std::make_shared<const NonlinearFactorGraph>(graph);
   params_ = LevenbergMarquardtParams::EnsureHasOrdering(params_, graph);
 }
 
 /* ************************************************************************* */
 void MutableLMOptimizer::setGraph(const NonlinearFactorGraph& graph,
                                   const Ordering& ordering) {
-  graph_ = graph;
+  graph_ = std::make_shared<const NonlinearFactorGraph>(graph);
   params_ = LevenbergMarquardtParams::ReplaceOrdering(params_, ordering);
 }
 
 /* ************************************************************************* */
 void MutableLMOptimizer::setValues(const Values& values) {
-  state_ = std::unique_ptr<State>(new State((values), graph_.error(values),
+  state_ = std::unique_ptr<State>(new State((values), graph_->error(values),
                                             params_.lambdaInitial,
                                             params_.lambdaFactor));
 }
@@ -345,7 +345,7 @@ void MutableLMOptimizer::setValues(const Values& values) {
 /* ************************************************************************* */
 void MutableLMOptimizer::setValues(Values&& values) {
   // Evaluate error before moving values into State to avoid use-after-move UB.
-  const double error = graph_.error(values);
+  const double error = graph_->error(values);
   state_ = std::unique_ptr<State>(new State(
       std::move(values), error, params_.lambdaInitial, params_.lambdaFactor));
 }
