@@ -19,6 +19,7 @@ jobs:
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
       PYTHON_VERSION: ${{ matrix.python_version }}
       GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install
+      # In the future as Homebrew 6 becomes more mature, change this
       HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
 
     strategy:
@@ -40,6 +41,8 @@ jobs:
       - name: Install System Dependencies
         run: |
           set -e
+          # Clear out broken taps
+          brew untap hashicorp/tap aws/tap azure/bicep 2>/dev/null || true
           NTHREADS="$(sysctl -n hw.ncpu)"
           echo "NTHREADS=${NTHREADS}" >> $GITHUB_ENV
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
