@@ -21,6 +21,7 @@ jobs:
       GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install
       # In the future as Homebrew 6 becomes more mature, change this
       HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+      HOMEBREW_NO_AUTO_UPDATE: 1
 
     strategy:
       fail-fast: false
