@@ -134,9 +134,11 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
     const Key wrench_key = WrenchKey(root, joint_id, t);
 
     // Set wrench expression on trunk by leg, according to contact
-    for (auto &&cp : *contact_points) {
-      if (cp.link->id() == 3 * (leg + 1)) {
-        foot_in_contact = true;
+    if (contact_points) {
+      for (auto &&cp : *contact_points) {
+        if (cp.link->id() == 3 * (leg + 1)) {
+          foot_in_contact = true;
+        }
       }
     }
 

@@ -92,6 +92,7 @@ jobs:
           if [ "${{ matrix.build_type }}" = "Release" ]; then
             if [ "${{ matrix.compiler }}" = "gcc" ]; then
               MARCH_NATIVE=OFF
+              NTHREADS=2
             else
               MARCH_NATIVE=ON
             fi
