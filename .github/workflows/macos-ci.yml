@@ -1,6 +1,11 @@
 name: macOS CI
 
-on: [pull_request]
+on: 
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '49 0 * * 4'  # Thursday 00:33 UTC (one-time test)
+
 
 # Cancels any in-progress workflow runs for the same PR when a new push is made,
 # allowing the runner to become available more quickly for the latest changes.
