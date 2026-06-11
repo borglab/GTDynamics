@@ -52,6 +52,7 @@ jobs:
           fi
           brew install boost
           brew tap osrf/simulation
+          brew --version
           brew trust --formula osrf/simulation/sdformat15
           # Refresh formula metadata on GitHub runners to avoid stale bottle mixes.
           brew update
