@@ -191,7 +191,7 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
     const std::optional<KeyVector> &basis_keys)
     : IERetractor(params), graph_q_(), graph_v_(), graph_ad_() {
 
-  /// Create merit graph for e-constriants and i-constraints
+  /// Create merit graph for e-constraints and i-constraints
   merit_graph_ = manifold.eConstraints()->penaltyGraph(1.0);
   const auto &i_constraints = *manifold.iConstraints();
   for (const auto &i_constraint : i_constraints) {

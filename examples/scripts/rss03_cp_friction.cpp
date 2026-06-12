@@ -18,7 +18,7 @@ std::string scenario_folder = "../../data/" + scenario + "/";
 bool display_result = true;
 bool evaluate_cost_terms = true;
 bool second_phase_opt = false;
-bool log_progress = false;
+bool log_progress = true;
 bool eval_proj_cost_progress = false;
 
 IECartPoleWithFriction GetCP() {
@@ -183,14 +183,15 @@ std::vector<NonlinearFactorGraph> GetCostTerms() {
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails>
-SecondPhaseOptimization(const Values values, std::string exp_name) {
+std::pair<IEResultSummary, IELMItersDetails> SecondPhaseOptimization(
+    const Values values, std::string exp_name) {
   auto problem = CreateProblem();
   problem.values_ = values;
 
   IELMParams ie_params;
   ie_params.boundary_approach_rate_threshold = 1e10;
-  return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name, false);
+  return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
+                             false);
 }
 
 int main(int argc, char **argv) {
@@ -205,7 +206,8 @@ int main(int argc, char **argv) {
   std::cout << "optimize soft...\n";
   LevenbergMarquardtParams lm_params;
   // lm_params.setVerbosityLM("SUMMARY");
-  auto soft_result = OptimizeIE_Soft(problem, lm_params, 1e2, eval_proj_cost_progress);
+  auto soft_result =
+      OptimizeIE_Soft(problem, lm_params, 1e2, eval_proj_cost_progress);
 
   // penalty method
   std::cout << "optimize penalty...\n";
@@ -213,7 +215,8 @@ int main(int argc, char **argv) {
   penalty_params->initial_mu = 1e2;
   penalty_params->mu_increase_rate = 4;
   penalty_params->num_iterations = 8;
-  auto penalty_result = OptimizeIE_Penalty(problem, penalty_params, eval_proj_cost_progress);
+  auto penalty_result =
+      OptimizeIE_Penalty(problem, penalty_params, eval_proj_cost_progress);
 
   // augmented Lagrangian
   std::cout << "optimize augmented Lagrangian...\n";
@@ -228,7 +231,8 @@ int main(int argc, char **argv) {
     al_params->store_iter_details = true;
     al_params->store_lm_details = true;
   }
-  auto al_result = OptimizeIE_AugmentedLagrangian(problem, al_params, eval_proj_cost_progress);
+  auto al_result = OptimizeIE_AugmentedLagrangian(problem, al_params,
+                                                  eval_proj_cost_progress);
 
   // SQP method
   std::cout << "optimize SQP...\n";
@@ -239,7 +243,8 @@ int main(int argc, char **argv) {
   sqp_params->merit_i_l1_mu = 1e0;
   // sqp_params->lm_params.setVerbosityLM("SUMMARY");
   sqp_params->lm_params.setlambdaUpperBound(1e10);
-  auto sqp_result = OptimizeIE_SQP(problem, sqp_params, eval_proj_cost_progress);
+  auto sqp_result =
+      OptimizeIE_SQP(problem, sqp_params, eval_proj_cost_progress);
 
   // IP method
   std::cout << "optimize IP...\n";
@@ -247,12 +252,14 @@ int main(int argc, char **argv) {
 
   // ELM with penalty for i-constraints
   std::cout << "optimize CM-Opt(E-LM)...\n";
-  auto cmopt_result = OptimizeIE_CMOpt(problem, ie_params, GetIECMParamsSP(), 1e2);
+  auto cmopt_result =
+      OptimizeIE_CMOpt(problem, ie_params, GetIECMParamsSP(), 1e2);
 
   // // IEGD method
   // std::cout << "optimize CMOpt(IE-GD)...\n";
   // GDParams gd_params;
-  // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params, GetIECMParamsSP());
+  // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
+  // GetIECMParamsSP());
 
   // IELM standard projection
   std::cout << "optimize CMC-Opt(IE-LM-SP)...\n";
@@ -262,9 +269,10 @@ int main(int argc, char **argv) {
   // // IELM cost-aware projection
   // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
   // auto ielm_cr_result =
-  //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), "CMOpt(IE-LM-CR)");
+  //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(),
+  //     "CMOpt(IE-LM-CR)");
 
-  if(display_result) {
+  if (display_result) {
     soft_result.first.printLatex(std::cout);
     sqp_result.first.printLatex(std::cout);
     cmopt_result.first.printLatex(std::cout);
@@ -282,14 +290,14 @@ int main(int argc, char **argv) {
     cmopt_result.first.exportFile(scenario_folder + "elm_progress.csv");
     // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
     cmcopt_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
-    // ielm_cr_result.first.exportFile(scenario_folder + "ielm_cr_progress.csv");
+    // ielm_cr_result.first.exportFile(scenario_folder +
+    // "ielm_cr_progress.csv");
 
     IECartPoleWithFriction::ExportValues(problem.initValues(), num_steps,
-                                        scenario_folder + "init_traj.csv");
+                                         scenario_folder + "init_traj.csv");
     IECartPoleWithFriction::ExportValues(cmcopt_result.first.values, num_steps,
-                                        scenario_folder + "ielm_traj.csv");
+                                         scenario_folder + "ielm_traj.csv");
   }
-
 
   if (second_phase_opt) {
     auto soft_continued = SecondPhaseOptimization(
@@ -315,13 +323,20 @@ int main(int argc, char **argv) {
 
   if (evaluate_cost_terms) {
     auto cost_terms = GetCostTerms();
-    EvaluateCostTerms(std::cout, cost_terms, problem.initValues(), problem.initValues(), "Initital Values");
-    EvaluateCostTerms(std::cout, cost_terms, soft_result.first.values, soft_result.first.projected_values, "Soft");
-    EvaluateCostTerms(std::cout, cost_terms, cmopt_result.first.values, cmopt_result.first.projected_values, "CM-Opt");
-    EvaluateCostTerms(std::cout, cost_terms, sqp_result.first.values, sqp_result.first.projected_values, "SQP");
-    EvaluateCostTerms(std::cout, cost_terms, penalty_result.first.values, penalty_result.first.projected_values, "Penalty");
-    EvaluateCostTerms(std::cout, cost_terms, al_result.first.values, al_result.first.projected_values, "AugL");
-    EvaluateCostTerms(std::cout, cost_terms, cmcopt_result.first.values, cmcopt_result.first.projected_values, "CMC-Opt");
+    EvaluateCostTerms(std::cout, cost_terms, problem.initValues(),
+                      problem.initValues(), "Initital Values");
+    EvaluateCostTerms(std::cout, cost_terms, soft_result.first.values,
+                      soft_result.first.projected_values, "Soft");
+    EvaluateCostTerms(std::cout, cost_terms, cmopt_result.first.values,
+                      cmopt_result.first.projected_values, "CM-Opt");
+    EvaluateCostTerms(std::cout, cost_terms, sqp_result.first.values,
+                      sqp_result.first.projected_values, "SQP");
+    EvaluateCostTerms(std::cout, cost_terms, penalty_result.first.values,
+                      penalty_result.first.projected_values, "Penalty");
+    EvaluateCostTerms(std::cout, cost_terms, al_result.first.values,
+                      al_result.first.projected_values, "AugL");
+    EvaluateCostTerms(std::cout, cost_terms, cmcopt_result.first.values,
+                      cmcopt_result.first.projected_values, "CMC-Opt");
   }
 
   return 0;

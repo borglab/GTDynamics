@@ -782,7 +782,7 @@ TEST(IEVision60Robot_ground_air_boundary, manifold) {
         i_constraints->violationNorm(new_manifold.values()), 0.0));
   }
 
-  // TODO: consider about handling cases that violate i-constriants.
+  // TODO: consider about handling cases that violate i-constraints.
 }
 
 int main() {

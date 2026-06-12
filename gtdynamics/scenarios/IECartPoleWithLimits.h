@@ -1,19 +1,17 @@
-#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
 
 namespace gtdynamics {
 using namespace gtsam;
 
 class IECartPoleWithLimits {
-public:
+ public:
   // robot and environmental settings
-  Robot robot =
-      CreateRobotFromFile(kUrdfPath +
-                                      std::string("cart_pole.urdf"))
-          .fixLink("l0");
+  Robot robot = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
+                    .fixLink("l0");
   size_t p_joint_id = robot.joint("j0")->id();
   size_t r_joint_id = robot.joint("j1")->id();
   Vector6 X_i = Vector6::Constant(6, 0);
@@ -31,16 +29,16 @@ public:
   // noise/tolerance settings for costs and constraints
   double tol = 1.0;
   OptimizerSetting opt = getOptSetting();
-  DynamicsGraph graph_builder =
-      DynamicsGraph(opt, gravity);
+  DynamicsGraph graph_builder = DynamicsGraph(opt, gravity);
   double sigma_pos_objective = 1e-5;
   double sigma_objectives = 5e-3;
   double sigma_min_torque = 2e1;
-  SharedNoiseModel pos_objectives_model = noiseModel::Isotropic::Sigma(1, sigma_pos_objective);  // Pos objectives.
-  SharedNoiseModel objectives_model = noiseModel::Isotropic::Sigma(1, sigma_objectives);  // Additional objectives.
-  SharedNoiseModel control_model = noiseModel::Isotropic::Sigma(1, sigma_min_torque);       // Controls.
-  
-
+  SharedNoiseModel pos_objectives_model =
+      noiseModel::Isotropic::Sigma(1, sigma_pos_objective);  // Pos objectives.
+  SharedNoiseModel objectives_model = noiseModel::Isotropic::Sigma(
+      1, sigma_objectives);  // Additional objectives.
+  SharedNoiseModel control_model =
+      noiseModel::Isotropic::Sigma(1, sigma_min_torque);  // Controls.
 
   static OptimizerSetting getOptSetting() {
     auto opt = OptimizerSetting();
@@ -70,11 +68,11 @@ public:
     return opt;
   }
 
-public:
+ public:
   // Constructor.
   IECartPoleWithLimits() {}
 
-  // Equality constriants include all dynamic constraints, and 0 torque
+  // Equality constraints include all dynamic constraints, and 0 torque
   // constraints.
   NonlinearEqualityConstraints eConstraints(const int k) const;
 
@@ -85,11 +83,11 @@ public:
   // Equality constraints that specify q,v of initial state.
   NonlinearEqualityConstraints initStateConstraints() const;
 
-  // Equality constriants that specify q,v of final state.
+  // Equality constraints that specify q,v of final state.
   NonlinearEqualityConstraints finalStateConstraints(size_t num_steps) const;
 
   // Cost for achieving q,v in final state.
-  NonlinearFactorGraph finalStateCosts(size_t num_steps) const ;
+  NonlinearFactorGraph finalStateCosts(size_t num_steps) const;
 
   // Cost for minimizing accumulative force.
   NonlinearFactorGraph minTorqueCosts(size_t num_steps) const;
@@ -120,21 +118,20 @@ public:
 
   /// Return function that select basis keys for constraint manifolds.
   BasisKeyFunc getBasisKeyFunc() const;
-
 };
 
 class CartPoleWithLimitsRetractor : public IERetractor {
-protected:
+ protected:
   const IECartPoleWithLimits &cp_;
 
-public:
+ public:
   CartPoleWithLimitsRetractor(const IECartPoleWithLimits &cp)
       : IERetractor(), cp_(cp) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override;
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override;
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

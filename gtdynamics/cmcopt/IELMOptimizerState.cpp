@@ -574,7 +574,7 @@ IELMTrial::LinearUpdate::InitEstimate(const GaussianFactorGraph &quadratic_cost,
       return {delta, blocking_indices, num_solves, false};
     }
 
-    // check if satisfy tagent cone, if not, add constraints and recompute
+    // check if satisfy tangent cone, if not, add constraints and recompute
     bool feasible = true;
     for (const auto &[key, manifold] : state.manifolds) {
       const Vector &xi = delta.at(key);
