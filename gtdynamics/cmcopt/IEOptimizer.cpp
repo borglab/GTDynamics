@@ -45,6 +45,8 @@ ComponentInfo IdentifyConnectedComponent(
     const VariableIndex &i_var_index, const Key start_key) {
   ComponentInfo component_info;
 
+  // Flood-fill the bipartite variable/constraint graph to recover one
+  // manifold-with-boundary component.
   std::stack<Key> key_stack;
   key_stack.push(start_key);
   while (!key_stack.empty()) {
@@ -127,7 +129,8 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
     const NonlinearInequalityConstraints &i_constraints,
     const Values &values,
     const IEConstraintManifold::Params::shared_ptr &iecm_params) {
-  // find connected components by equality constraints
+  // Each thesis Eq. (4.33) connected component becomes one Eq. (4.34)
+  // IEConstraintManifold with its own active set, basis, and tangent cone.
   auto components = IdentifyConnectedComponents(e_constraints, i_constraints);
 
   IEManifoldValues ie_manifolds;
@@ -188,6 +191,8 @@ IEOptimizer::ProjectTangentCone(const IEManifoldValues &manifolds,
     const Vector &xi = v.at(key);
     IndexSet active_indices;
     Vector proj_xi;
+    // Project independently on each component cone C_x as in thesis Eq. (4.42)
+    // because the connected components have separated the coupling structure.
     std::tie(active_indices, proj_xi) = it.second.projectTangentCone(xi);
     proj_v.insert(key, proj_xi);
     active_indices_all.emplace(key, active_indices);
@@ -294,6 +299,8 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
       const auto &constraint = i_constraints->at(idx);
       double eval = constraint->unwhitenedExpr(manifold.values())(0);
       double new_eval = constraint->unwhitenedExpr(new_manifold.values())(0);
+      // Large positive eval/new_eval means the step is rapidly driving this
+      // inactive inequality toward a new active boundary/mode.
       double approach_rate = eval / new_eval;
       // std::cout << "eval: " << eval << "\n";
       // std::cout << "new_eval: " << new_eval << "\n";

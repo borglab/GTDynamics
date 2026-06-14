@@ -7,7 +7,7 @@
 
 /**
  * @file  testTspaceBasis.cpp
- * @brief Test tagent space basis for constraint manifold.
+ * @brief Test tangent space basis for constraint manifold.
  * @author Yetong Zhang
  */
 

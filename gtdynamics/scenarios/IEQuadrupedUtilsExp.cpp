@@ -36,7 +36,7 @@ void EvaluateAndExportIELMResult(
   }
 
   /// Show active constraints
-  std::cout << "active constriants:\n";
+  std::cout << "active constraints:\n";
   for (const auto &[key, manifold] : ielm_iters.back().state.manifolds) {
     for (const auto &i_idx : manifold.activeIndices()) {
       auto constraint = manifold.iConstraints()->at(i_idx);

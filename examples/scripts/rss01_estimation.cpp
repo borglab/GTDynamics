@@ -25,7 +25,7 @@ bool display_result = true;
 bool evaluate_cost_terms = false;
 bool second_phase_opt = false;
 bool log_progress = false;
-bool log_values =false;
+bool log_values = false;
 bool eval_proj_cost_progress = false;
 
 /* ************************************************************************* */
@@ -162,14 +162,15 @@ IEConsOptProblem CreateProblem() {
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails>
-SecondPhaseOptimization(const Values values, std::string exp_name) {
+std::pair<IEResultSummary, IELMItersDetails> SecondPhaseOptimization(
+    const Values values, std::string exp_name) {
   auto problem = CreateProblem();
   problem.values_ = values;
 
   IELMParams ie_params;
   ie_params.boundary_approach_rate_threshold = 1e10;
-  return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name, false);
+  return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
+                             false);
 }
 
 /* ************************************************************************* */
@@ -219,25 +220,28 @@ int main(int argc, char **argv) {
 
   // ELM with penalty for i-constraints
   std::cout << "optimize CMOpt(E-LM)...\n";
-  auto elm_result = OptimizeIE_CMOpt(problem, ie_params, GetECMParamsManual(), 1e2);
+  auto elm_result =
+      OptimizeIE_CMOpt(problem, ie_params, GetECMParamsManual(), 1e2);
 
   // // // IEGD method
   // // std::cout << "optimize CMOpt(IE-GD)...\n";
   // // GDParams gd_params;
   // // // gd_params.muLowerBound = 1e-10;
   // // // gd_params.verbose = true;
-  // // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params, GetIECMParamsManual());
+  // // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
+  // GetIECMParamsManual());
 
   // IELM standard projection
   std::cout << "optimize CMOpt(IE-LM)...\n";
-  auto ielm_sp_result = OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsManual(),
-                                     "CMC-Opt");
+  auto ielm_sp_result =
+      OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsManual(), "CMC-Opt");
 
   // // // IELM cost-aware projection
   // // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
   // // // ie_params.lm_params.setVerbosityLM("SUMMARY");
   // // auto ielm_cr_result =
-  // //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), "CMOpt(IE-LM-CR)");
+  // //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(),
+  // "CMOpt(IE-LM-CR)");
 
   if (display_result) {
     soft_result.first.printLatex(std::cout);
@@ -258,9 +262,9 @@ int main(int argc, char **argv) {
     elm_result.first.exportFile(scenario_folder + "elm_progress.csv");
     // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
     ielm_sp_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
-    // ielm_cr_result.first.exportFile(scenario_folder + "ielm_cr_progress.csv");
+    // ielm_cr_result.first.exportFile(scenario_folder +
+    // "ielm_cr_progress.csv");
   }
-
 
   if (log_values) {
     SaveValues("init_values.csv", problem.initValues());
@@ -268,24 +272,23 @@ int main(int argc, char **argv) {
     SaveValues("penalty_values.csv", penalty_result.second.back().values);
     SaveValues("sqp_values.csv", sqp_result.second.back().state.values);
     SaveValues("elm_values.csv", elm_result.second.back().state.baseValues());
-    // SaveValues("iegd_values.csv", iegd_result.second.back().state.baseValues());
+    // SaveValues("iegd_values.csv",
+    // iegd_result.second.back().state.baseValues());
     SaveValues("ielm_sp_values.csv",
-              ielm_sp_result.second.back().state.baseValues());
+               ielm_sp_result.second.back().state.baseValues());
     // SaveValues("ielm_cr_values.csv",
     //            ielm_cr_result.second.back().state.baseValues());
   }
 
-
-
   if (second_phase_opt) {
-    auto soft_continued =
-        SecondPhaseOptimization(soft_result.first.projected_values, "soft-continued");
+    auto soft_continued = SecondPhaseOptimization(
+        soft_result.first.projected_values, "soft-continued");
     auto penalty_continued = SecondPhaseOptimization(
         penalty_result.first.projected_values, "penalty-continued");
-    auto sqp_continued =
-        SecondPhaseOptimization(sqp_result.first.projected_values, "sqp-continued");
-    auto elm_continued =
-        SecondPhaseOptimization(elm_result.first.projected_values, "CM-Opt-continued");
+    auto sqp_continued = SecondPhaseOptimization(
+        sqp_result.first.projected_values, "sqp-continued");
+    auto elm_continued = SecondPhaseOptimization(
+        elm_result.first.projected_values, "CM-Opt-continued");
 
     soft_continued.first.printLatex(std::cout);
     elm_continued.first.printLatex(std::cout);

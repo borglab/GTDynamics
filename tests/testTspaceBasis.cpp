@@ -7,7 +7,7 @@
 
 /**
  * @file  testTspaceBasis.cpp
- * @brief Test tagent space basis for constraint manifold.
+ * @brief Test tangent space basis for constraint manifold.
  * @author Yetong Zhang
  */
 
@@ -71,7 +71,7 @@ TEST(TspaceBasis, connected_poses) {
     EXPECT_LONGS_EQUAL(6, basis->dim());
   }
 
-  // Check tagent vector properties
+  // Check tangent vector properties
   for (int i = 0; i < 6; i++) {
     Vector xi1 = Vector::Zero(6);
     xi1(i) = 1;

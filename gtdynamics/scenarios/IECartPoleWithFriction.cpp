@@ -1,3 +1,16 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  IECartPoleWithFriction.cpp
+ * @brief Cart-pole trajectory optimization problem with friction cone limits.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -14,12 +27,10 @@ double IECartPoleWithFriction::computeFx(const double q, const double v,
                                          OptionalJacobian<1, 1> H_a) const {
   double s = sin(q), c = cos(q);
   if (H_q)
-    H_q->setConstant(m * v * v * r * s - m * a * r * c);
-  if (H_v)
-    H_v->setConstant(-2 * m * r * v * c);
-  if (H_a)
-    H_a->setConstant(-m * r * s);
-  return -m * v * v * r * c - m * a * r * s;
+    H_q->setConstant(mass_ * v * v * length_ * s - mass_ * a * length_ * c);
+  if (H_v) H_v->setConstant(-2 * mass_ * length_ * v * c);
+  if (H_a) H_a->setConstant(-mass_ * length_ * s);
+  return -mass_ * v * v * length_ * c - mass_ * a * length_ * s;
 }
 
 /* ************************************************************************* */
@@ -30,22 +41,19 @@ double IECartPoleWithFriction::computeFy(const double q, const double v,
                                          OptionalJacobian<1, 1> H_a) const {
   double s = sin(q), c = cos(q);
   if (H_q)
-    H_q->setConstant(-m * v * v * r * c - m * a * r * s);
-  if (H_v)
-    H_v->setConstant(-2 * m * v * r * s);
-  if (H_a)
-    H_a->setConstant(m * r * c);
-  return (M + m) * g - m * v * v * r * s + m * a * r * c;
+    H_q->setConstant(-mass_ * v * v * length_ * c - mass_ * a * length_ * s);
+  if (H_v) H_v->setConstant(-2 * mass_ * v * length_ * s);
+  if (H_a) H_a->setConstant(mass_ * length_ * c);
+  return (cart_mass_ + mass_) * gravity_ - mass_ * v * v * length_ * s +
+         mass_ * a * length_ * c;
 }
 
 double IECartPoleWithFriction::computeTau(const double q, const double a,
                                           OptionalJacobian<1, 1> H_q,
                                           OptionalJacobian<1, 1> H_a) const {
-  if (H_q)
-    H_q->setConstant(-m * g * r * sin(q));
-  if (H_a)
-    H_a->setConstant(m * r * r);
-  return m * r * r * a + m * g * r * cos(q);
+  if (H_q) H_q->setConstant(-mass_ * gravity_ * length_ * sin(q));
+  if (H_a) H_a->setConstant(mass_ * length_ * length_);
+  return mass_ * length_ * length_ * a + mass_ * gravity_ * length_ * cos(q);
 }
 
 /* ************************************************************************* */
@@ -83,32 +91,30 @@ Double_ IECartPoleWithFriction::balanceRotExpr(const Double_ &q_expr,
                                                const Double_ &a_expr,
                                                const Double_ &tau_expr) const {
   auto compute_tau_function = [&](const double q, const double a,
-                                 OptionalJacobian<1, 1> H_q = {},
-                                 OptionalJacobian<1, 1> H_a = {}) {
+                                  OptionalJacobian<1, 1> H_q = {},
+                                  OptionalJacobian<1, 1> H_a = {}) {
     return computeTau(q, a, H_q, H_a);
   };
   Double_ compute_tau_expr(compute_tau_function, q_expr, a_expr);
-  
+
   return tau_expr - compute_tau_expr;
 }
 
 /* ************************************************************************* */
-Double_
-IECartPoleWithFriction::frictionConeExpr1(const Double_ &fx_expr,
-                                          const Double_ &fy_expr) const {
-  return mu * fy_expr - fx_expr;
+Double_ IECartPoleWithFriction::frictionConeExpr1(
+    const Double_ &fx_expr, const Double_ &fy_expr) const {
+  return friction_coefficient_ * fy_expr - fx_expr;
 }
 
 /* ************************************************************************* */
-Double_
-IECartPoleWithFriction::frictionConeExpr2(const Double_ &fx_expr,
-                                          const Double_ &fy_expr) const {
-  return mu * fy_expr + fx_expr;
+Double_ IECartPoleWithFriction::frictionConeExpr2(
+    const Double_ &fx_expr, const Double_ &fy_expr) const {
+  return friction_coefficient_ * fy_expr + fx_expr;
 }
 
 /* ************************************************************************* */
-NonlinearEqualityConstraints
-IECartPoleWithFriction::eConstraints(const int k) const {
+NonlinearEqualityConstraints IECartPoleWithFriction::eConstraints(
+    const int k) const {
   NonlinearEqualityConstraints constraints;
   Double_ q_expr(QKey(k));
   Double_ v_expr(VKey(k));
@@ -126,8 +132,8 @@ IECartPoleWithFriction::eConstraints(const int k) const {
 }
 
 /* ************************************************************************* */
-NonlinearInequalityConstraints
-IECartPoleWithFriction::iConstraints(const int k) const {
+NonlinearInequalityConstraints IECartPoleWithFriction::iConstraints(
+    const int k) const {
   NonlinearInequalityConstraints constraints;
   Double_ fx_expr(FxKey(k));
   Double_ fy_expr(FyKey(k));
@@ -135,14 +141,14 @@ IECartPoleWithFriction::iConstraints(const int k) const {
       frictionConeExpr1(fx_expr, fy_expr), 1.0));
   constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
       frictionConeExpr2(fx_expr, fy_expr), 1.0));
-  if (include_torque_limits) {
+  if (include_torque_limits_) {
     Double_ torque_expr(TauKey(k));
-    Double_ lower_limit_expr = torque_expr - Double_(tau_min);
-    Double_ upper_limit_expr = Double_(tau_max) - torque_expr;
-    constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
-        lower_limit_expr, 1.0));
-    constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
-        upper_limit_expr, 1.0));
+    Double_ lower_limit_expr = torque_expr - Double_(torque_min_);
+    Double_ upper_limit_expr = Double_(torque_max_) - torque_expr;
+    constraints.push_back(
+        ScalarExpressionInequalityConstraint::GeqZero(lower_limit_expr, 1.0));
+    constraints.push_back(
+        ScalarExpressionInequalityConstraint::GeqZero(upper_limit_expr, 1.0));
   }
   return constraints;
 }
@@ -220,8 +226,8 @@ void IECartPoleWithFriction::ExportValues(const Values &values,
     double tau = values.atDouble(TauKey(k));
     double fx = values.atDouble(FxKey(k));
     double fy = values.atDouble(FyKey(k));
-    file << t << "," << q << "," << v << "," << a << "," << tau << "," << fx << "," << fy
-         << "\n";
+    file << t << "," << q << "," << v << "," << a << "," << tau << "," << fx
+         << "," << fy << "\n";
   }
   file.close();
 }
@@ -270,21 +276,24 @@ void UpdateBoundary(const double &a, const double &b, const size_t &index,
 IEConstraintManifold CartPoleWithFrictionRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo* retract_info) const {
-
+    IERetractInfo *retract_info) const {
   Values new_values = manifold->values().retract(delta);
   int k = Symbol(new_values.keys().front()).index();
   double q = new_values.atDouble(QKey(k));
   double v = new_values.atDouble(VKey(k));
   double a = new_values.atDouble(AKey(k));
-  double a1 = cp_.mu * cp_.m * cp_.r * cos(q) + cp_.m * cp_.r * sin(q);
-  double a2 = cp_.mu * cp_.m * cp_.r * cos(q) - cp_.m * cp_.r * sin(q);
-  double b1 = -cp_.mu * (cp_.M + cp_.m) * cp_.g +
-              cp_.mu * cp_.m * v * v * cp_.r * sin(q) -
-              cp_.m * v * v * cp_.r * cos(q);
-  double b2 = -cp_.mu * (cp_.M + cp_.m) * cp_.g +
-              cp_.mu * cp_.m * v * v * cp_.r * sin(q) +
-              cp_.m * v * v * cp_.r * cos(q);
+  double a1 = cp_.friction_coefficient_ * cp_.mass_ * cp_.length_ * cos(q) +
+              cp_.mass_ * cp_.length_ * sin(q);
+  double a2 = cp_.friction_coefficient_ * cp_.mass_ * cp_.length_ * cos(q) -
+              cp_.mass_ * cp_.length_ * sin(q);
+  double b1 =
+      -cp_.friction_coefficient_ * (cp_.cart_mass_ + cp_.mass_) * cp_.gravity_ +
+      cp_.friction_coefficient_ * cp_.mass_ * v * v * cp_.length_ * sin(q) -
+      cp_.mass_ * v * v * cp_.length_ * cos(q);
+  double b2 =
+      -cp_.friction_coefficient_ * (cp_.cart_mass_ + cp_.mass_) * cp_.gravity_ +
+      cp_.friction_coefficient_ * cp_.mass_ * v * v * cp_.length_ * sin(q) +
+      cp_.mass_ * v * v * cp_.length_ * cos(q);
   double ub, lb;
   bool is_ub = false, is_lb = false;
   size_t ub_index, lb_index;
@@ -334,14 +343,11 @@ IEConstraintManifold CartPoleWithFrictionRetractor::retract(
 }
 
 /* ************************************************************************* */
-IEConstraintManifold
-CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
-                                        const VectorValues &delta) const {
-
+IEConstraintManifold CartPoleWithFrictionRetractor::retract1(
+    const IEConstraintManifold *manifold, const VectorValues &delta) const {
   const NonlinearInequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const NonlinearEqualityConstraints &e_constraints =
-      *manifold->eConstraints();
+  const NonlinearEqualityConstraints &e_constraints = *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
 
@@ -431,12 +437,10 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
 IEConstraintManifold CPBarrierRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo* retract_info) const {
-
+    IERetractInfo *retract_info) const {
   const NonlinearInequalityConstraints &i_constraints =
       *manifold->iConstraints();
-  const NonlinearEqualityConstraints &e_constraints =
-      *manifold->eConstraints();
+  const NonlinearEqualityConstraints &e_constraints = *manifold->eConstraints();
 
   NonlinearFactorGraph graph;
 
@@ -495,4 +499,4 @@ IEConstraintManifold CPBarrierRetractor::retract(
   return manifold->createWithNewValues(result, active_indices);
 }
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

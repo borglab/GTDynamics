@@ -13,8 +13,9 @@
 
 #include <Eigen/SparseQR>
 #if defined(GTDYNAMICS_WITH_SUITESPARSE)
-#include <SuiteSparseQR.hpp>
 #include <cholmod.h>
+
+#include <SuiteSparseQR.hpp>
 #endif
 #include <gtdynamics/cmopt/TspaceBasis.h>
 #include <gtdynamics/utils/values.h>
@@ -22,6 +23,7 @@
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/VectorValues.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+
 #include <stdexcept>
 #include <utility>
 
@@ -68,8 +70,8 @@ Matrix OrthonormalBasis::computeConstraintJacobian(const Values &values) const {
 
 /* ************************************************************************* */
 OrthonormalBasis::OrthonormalBasis(
-    const NonlinearEqualityConstraints::shared_ptr &constraints, const Values &values,
-    const TspaceBasisParams::shared_ptr &params)
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const Values &values, const TspaceBasisParams::shared_ptr &params)
     : TspaceBasis(params), attributes_(std::make_shared<Attributes>()) {
   // set attributes
   attributes_->total_constraint_dim = constraints->dim();
@@ -106,9 +108,9 @@ void OrthonormalBasis::construct(const Values &values) {
 
 /* ************************************************************************* */
 void OrthonormalBasis::constructDense(const Values &values) {
-  Matrix A = computeConstraintJacobian(values); // m x n
+  Matrix A = computeConstraintJacobian(values);  // m x n
   Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
-  basis_ = lu.kernel(); // n x n-m
+  basis_ = lu.kernel();  // n x n-m
 }
 
 /* ************************************************************************* */
@@ -337,9 +339,8 @@ cholmod_sparse *OrthonormalBasis::LastColsSelectionMat(const size_t nrows,
 }
 
 /* ************************************************************************* */
-OrthonormalBasis::SpMatrix
-OrthonormalBasis::CholmodToEigen(cholmod_sparse *A, cholmod_common *cc) {
-
+OrthonormalBasis::SpMatrix OrthonormalBasis::CholmodToEigen(
+    cholmod_sparse *A, cholmod_common *cc) {
   cholmod_triplet *T = cholmod_l_sparse_to_triplet(A, cc);
   std::vector<Eigen::Triplet<double>> triplets;
   triplets.reserve(T->nnz);
@@ -372,8 +373,8 @@ OrthonormalBasis::SpMatrix OrthonormalBasis::SparseJacobianTranspose(
   return A_t;
 }
 
-OrthonormalBasis::SpMatrix
-OrthonormalBasis::LastColsSelectionMat(const size_t nrows, const size_t ncols) {
+OrthonormalBasis::SpMatrix OrthonormalBasis::LastColsSelectionMat(
+    const size_t nrows, const size_t ncols) {
   std::vector<Eigen::Triplet<double>> entries;
   entries.reserve(ncols);
   const size_t pad = nrows - ncols;
@@ -388,8 +389,8 @@ OrthonormalBasis::LastColsSelectionMat(const size_t nrows, const size_t ncols) {
 #endif
 
 /* ************************************************************************* */
-OrthonormalBasis::SpMatrix
-OrthonormalBasis::EigenSparseJacobian(const GaussianFactorGraph &graph) {
+OrthonormalBasis::SpMatrix OrthonormalBasis::EigenSparseJacobian(
+    const GaussianFactorGraph &graph) {
   Ordering ordering(graph.keys());
   size_t rows, cols;
   auto triplets = graph.sparseJacobian(ordering, rows, cols);
@@ -406,9 +407,8 @@ OrthonormalBasis::EigenSparseJacobian(const GaussianFactorGraph &graph) {
 }
 
 /* ************************************************************************* */
-OrthonormalBasis::SpMatrix
-OrthonormalBasis::eigenSparseJacobian(const GaussianFactorGraph &graph) const {
-
+OrthonormalBasis::SpMatrix OrthonormalBasis::eigenSparseJacobian(
+    const GaussianFactorGraph &graph) const {
   std::vector<Eigen::Triplet<double>> entries;
 
   size_t nrows = 0;
@@ -435,16 +435,23 @@ OrthonormalBasis::eigenSparseJacobian(const GaussianFactorGraph &graph) const {
 
 /* ************************************************************************* */
 EliminationBasis::EliminationBasis(
-    const NonlinearEqualityConstraints::shared_ptr &constraints, const Values &values,
-    const TspaceBasisParams::shared_ptr &params,
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const Values &values, const TspaceBasisParams::shared_ptr &params,
     std::optional<const KeyVector> basis_keys)
     : TspaceBasis(params), attributes_(std::make_shared<Attributes>()) {
-  // Set the location of each basis variable.
+  // Structural setup happens once for this basis object. It records the
+  // component dimension, per-variable dimensions, and the constraint merit
+  // graph used later for numeric construction. This part is not repeated by
+  // computeTangentVector during retraction.
   attributes_->total_basis_dim = values.dim() - constraints->dim();
   attributes_->var_dim = values.dims();
   attributes_->merit_graph = constraints->penaltyGraph();
 
   if (basis_keys) {
+    // Lay out xi by concatenating the selected basis-key tangent spaces. The
+    // total selected dimension must exactly equal the component manifold
+    // dimension; otherwise the chosen variables are not a valid coordinate
+    // chart for this elimination basis.
     attributes_->basis_keys = *basis_keys;
     size_t location = 0;
     for (const Key &key : *basis_keys) {
@@ -458,14 +465,18 @@ EliminationBasis::EliminationBasis(
           "\tbasis keys dim: " + std::to_string(location));
     }
   } else {
+    // The no-basis-key path would require automatically choosing independent
+    // variables. That symbolic choice is not implemented; all production uses
+    // route through EliminationBasisCreator with use_basis_keys enabled.
     throw std::runtime_error(
-        "elimination basis wihthout keys not implemented.");
+        "elimination basis without keys not implemented.");
   }
 
-  // Partially eliminate all other variables (except for the basis variables) in
-  // the merit graph of constraints, and form a bayes net. The bays net
-  // represents how other variables depends on the basis variables, e.g.,
-  // X_other = B x X_basis.
+  // Build the symbolic elimination order once for this component structure.
+  // Basis keys are constrained to appear last, then removed from the ordering,
+  // so eliminatePartialSequential later eliminates only non-basis variables.
+  // This ordering cost is paid when the basis object is created, not on every
+  // tangent lift.
   auto full_ordering = Ordering::ColamdConstrainedLast(attributes_->merit_graph,
                                                        attributes_->basis_keys);
   attributes_->ordering = full_ordering;
@@ -473,7 +484,10 @@ EliminationBasis::EliminationBasis(
     attributes_->ordering.pop_back();
   }
 
-  // Compute jacobians w.r.t. basis variables.
+  // If requested, pay the expensive numeric construction immediately. If this
+  // flag is false, ConstraintManifold::makeSureBasisConstructed will call
+  // construct lazily on first recover-with-Jacobian, localCoordinates, or
+  // retract use.
   if (params_->always_construct_basis) {
     construct(values);
   }
@@ -483,6 +497,9 @@ EliminationBasis::EliminationBasis(
 EliminationBasis::EliminationBasis(const Values &values,
                                    const EliminationBasis &other)
     : TspaceBasis(other.params_), attributes_(other.attributes_) {
+  // This path is used after a manifold moves to new values. The symbolic
+  // structure is reused, but the numeric Jacobians are value-dependent and are
+  // rebuilt here only for eager-construction configurations.
   if (params_->always_construct_basis) {
     construct(values);
   }
@@ -491,10 +508,22 @@ EliminationBasis::EliminationBasis(const Values &values,
 /* ************************************************************************* */
 void EliminationBasis::construct(const Values &values) {
   // TODO: scenarios with unconstrained keys
+  // Expensive numeric step. This linearization is with respect to the current
+  // values, so it must be refreshed when a new manifold state needs an eager or
+  // lazily constructed basis.
   auto linear_graph = attributes_->merit_graph.linearize(values);
+
+  // Eliminate non-basis variables and keep basis variables as parents in the
+  // resulting Bayes net. Runtime is dominated by QR elimination and graph
+  // fill-in; it is comparable to one linear solve/elimination over this
+  // component's constraint graph.
   auto elim_result = linear_graph->eliminatePartialSequential(
       attributes_->ordering, gtsam::EliminateQR);
   auto bayes_net = elim_result.first;
+
+  // Convert Bayes-net conditionals into recovery Jacobians d(non-basis)/d(basis)
+  // used by computeTangentVector and recoverJacobian. After this cache is
+  // filled, per-retraction tangent lifting is just block multiplication.
   ComputeBayesNetJacobian(*bayes_net, attributes_->basis_keys,
                           attributes_->var_dim, jacobians_);
   is_constructed_ = true;
@@ -504,8 +533,9 @@ void EliminationBasis::construct(const Values &values) {
 TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
     const NonlinearEqualityConstraints &constraints, const Values &values,
     bool create_from_scratch) const {
-
-  // Identify the keys to eliminate
+  // This path is used when active inequality constraints are temporarily added
+  // as equalities. Basis variables constrained by the new active set are no
+  // longer independent, so they are removed from the new basis-key list.
   NonlinearFactorGraph new_merit_graph = constraints.penaltyGraph();
   KeyVector new_basis_keys;
   KeySet new_constraint_keys = constraints.keys();
@@ -515,7 +545,8 @@ TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
     }
   }
 
-  // Identify basis keys locations in xi
+  // Recompute xi offsets for the smaller coordinate chart. This bookkeeping is
+  // cheap relative to graph linearization/elimination.
   std::map<Key, size_t> new_basis_location;
   size_t location = 0;
   for (const Key &key : new_basis_keys) {
@@ -551,8 +582,13 @@ TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
   new_attributes->var_dim = attributes_->var_dim;
   auto new_basis = std::make_shared<EliminationBasis>(params_, new_attributes);
   if (create_from_scratch) {
+    // Full rebuild: pay one fresh linearization and partial elimination at the
+    // current values. This is more robust but more expensive.
     new_basis->construct(values);
   } else {
+    // Fast path: avoid relinearizing the full merit graph by composing the
+    // existing recovery Jacobians with a sparse identity/zero map representing
+    // the basis variables that remain free after adding constraints.
     MultiJacobians new_jacobians;
     for (const Key &key : new_basis_keys) {
       size_t dim = attributes_->var_dim.at(key);
@@ -571,16 +607,17 @@ TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
 /* ************************************************************************* */
 VectorValues EliminationBasis::computeTangentVector(const Vector &xi) const {
   VectorValues delta;
-  // Set tangent vector for basis variables to corresponding segment in xi
+  // Per-retraction path. Basis variables are independent coordinates, so their
+  // tangent vectors are direct slices of xi.
   for (const Key &key : attributes_->basis_keys) {
     delta.insert(key, xi.segment(attributes_->basis_location.at(key),
                                  attributes_->var_dim.at(key)));
   }
-  // Compute tangent vector of non-basis variables
+  // Dependent variables are recovered by multiplying cached Jacobian blocks by
+  // the basis-key tangent entries. No factor graph work occurs here.
   for (const auto &it : jacobians_) {
     const Key &var_key = it.first;
-    if (delta.exists(var_key))
-      continue;
+    if (delta.exists(var_key)) continue;
     Vector v = Vector::Zero(attributes_->var_dim.at(var_key));
     for (const auto &jac_it : it.second) {
       const Key &basis_key = jac_it.first;
@@ -593,6 +630,8 @@ VectorValues EliminationBasis::computeTangentVector(const Vector &xi) const {
 
 /* ************************************************************************* */
 Vector EliminationBasis::computeXi(const VectorValues &delta) const {
+  // Project an ambient tangent vector back to the independent coordinates by
+  // reading only basis-key entries. Dependent entries are ignored.
   Vector xi = Vector::Zero(attributes_->total_basis_dim);
   for (const Key &key : attributes_->basis_keys) {
     xi.segment(attributes_->basis_location.at(key),
@@ -603,6 +642,9 @@ Vector EliminationBasis::computeXi(const VectorValues &delta) const {
 
 /* ************************************************************************* */
 Matrix EliminationBasis::recoverJacobian(const Key &key) const {
+  // Allocate the dense Jacobian expected by GTSAM factor linearization and fill
+  // only the blocks for basis variables on which this recovered variable
+  // depends.
   Matrix H =
       Matrix::Zero(attributes_->var_dim.at(key), attributes_->total_basis_dim);
   for (const auto &it : jacobians_.at(key)) {
@@ -616,6 +658,9 @@ Matrix EliminationBasis::recoverJacobian(const Key &key) const {
 /* ************************************************************************* */
 Vector EliminationBasis::localCoordinates(const Values &values,
                                           const Values &values_other) const {
+  // The chart coordinates are exactly the local coordinates of the basis
+  // variables. Non-basis coordinates are functions of those basis variables and
+  // are therefore not read here.
   Vector xi = Vector::Zero(attributes_->total_basis_dim);
   for (const Key &key : attributes_->basis_keys) {
     Vector x_xi = values.at(key).localCoordinates_(values_other.at(key));
@@ -625,4 +670,4 @@ Vector EliminationBasis::localCoordinates(const Values &values,
   return xi;
 }
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

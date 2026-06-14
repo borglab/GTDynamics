@@ -5,10 +5,16 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
+/**
+ * @file  yetong01_dome_estimation.cpp
+ * @brief Dome estimation example using inequality-constrained optimization.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
-#include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -20,11 +26,11 @@ using namespace gtsam;
 using namespace gtdynamics;
 
 class RandEngine {
-private:
+ private:
   std::default_random_engine generator_;
   std::normal_distribution<double> distribution_;
 
-public:
+ public:
   RandEngine() : generator_(), distribution_(0.0, 1.0) {
     generator_.seed(
         std::chrono::system_clock::now().time_since_epoch().count());
@@ -69,7 +75,7 @@ std::vector<Vector3> ToyMeasurements() {
 }
 
 Values SimpleTrajectory(const IEHalfSphere &half_sphere) {
-  double r = half_sphere.r;
+  double r = half_sphere.radius_;
   size_t num_steps_1 = 10;
   size_t num_steps_2 = 10;
   size_t num_steps_3 = 10;
@@ -92,9 +98,8 @@ Values SimpleTrajectory(const IEHalfSphere &half_sphere) {
 
 /// Generate noisy measurements by injecting noise into the ground-truth
 /// measurements
-std::vector<Vector3>
-GenerateMeasurements(const Values &values, const Vector &odometry_sigmas) {
-
+std::vector<Vector3> GenerateMeasurements(const Values &values,
+                                          const Vector &odometry_sigmas) {
   size_t num_steps = values.size() - 1;
   size_t random_seed = 100;
   RandEngine rand_engine(random_seed);
@@ -144,7 +149,7 @@ Values InitValuesByOdometry(const IEHalfSphere &half_sphere,
     points[k + 1] = points[k] + rel;
   }
 
-  const double &r = half_sphere.r;
+  const double &r = half_sphere.radius_;
 
   Values values;
   for (size_t k = 0; k <= num_steps; k++) {
@@ -271,9 +276,8 @@ int main(int argc, char **argv) {
   std::filesystem::create_directory(folder);
   std::string folder_lm = folder + "lm/";
   std::filesystem::create_directory(folder_lm);
-  IEHalfSphere::ExportValues(
-      lm_result.second.back().state.baseValues(), num_steps,
-      folder_lm + "values_final.txt");
+  IEHalfSphere::ExportValues(lm_result.second.back().state.baseValues(),
+                             num_steps, folder_lm + "values_final.txt");
   IEHalfSphere::ExportValues(gt, num_steps, folder_lm + "values_gt.txt");
 
   auto soft_error = TranslationError(gt, soft_result.second.back().values);
@@ -281,8 +285,8 @@ int main(int argc, char **argv) {
       TranslationError(gt, barrier_result.second.back().values);
   auto gd_error = TranslationError(
       gt, gd_result.second.back().state.manifolds.baseValues());
-  auto lm_error = TranslationError(
-      gt, lm_result.second.back().state.baseValues());
+  auto lm_error =
+      TranslationError(gt, lm_result.second.back().state.baseValues());
   std::cout << soft_error << "\t" << barrier_error << "\t" << gd_error << "\t"
             << lm_error << "\n";
 

@@ -20,7 +20,8 @@ namespace gtdynamics {
 using namespace gtsam;
 
 
-/** A hyper cone that represents the space defined by A*x >= 0. */
+/// Tangent cone C = {x | A x >= 0} from thesis Eq. (4.16), built from
+/// linearized active inequalities.
 class TangentCone {
 public:
   typedef std::shared_ptr<TangentCone> shared_ptr;
@@ -32,11 +33,8 @@ public:
   TangentCone(LinearInequalityConstraints& constraints)
       :constraints_(constraints) {}
 
-  /** Project the vector xi into cone, by solving the convex IQP problem:
-   *       argmin x     ||x - xi||^2
-   *         s.t.       A * x >=0
-   * @return Indices of blocking constraints and the projected vector.
-   */
+  /// Project xi as in thesis Eq. (4.31), solving argmin_x ||x - xi||^2 subject
+  /// to A x >= 0, and return the active rows that block xi.
   std::pair<IndexSet, Vector> project(const Vector &xi) const;
 };
 

@@ -532,7 +532,7 @@ public:
    * @param known_keys variables that can be used as priors
    * @param satisfy_i_constraints include i-constraints
    * @param ensure_feasible run a 2nd phase optimization without priors to
-   * ensure constriant satisfaction
+   * ensure constraint satisfaction
    */
   Values stepValues(const size_t k, const Values &init_values,
                     const std::optional<KeyVector> &known_keys = {},
@@ -674,7 +674,7 @@ public:
   /** Inequality constraints that limit the min phase durations. */
   NonlinearInequalityConstraints phaseMinDurationConstraints() const;
 
-  /// Pair of inequality constriants with associated type.
+  /// Pair of inequality constraints with associated type.
   std::vector<std::pair<std::string, NonlinearInequalityConstraints>>
   classifiedIConstraints() const;
 

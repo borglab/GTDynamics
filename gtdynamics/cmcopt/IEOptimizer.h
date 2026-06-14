@@ -33,6 +33,8 @@ protected:
   IEConstraintManifold::Params::shared_ptr iecm_params_;
 
 public:
+  /// Base class for CMC-Opt solvers that optimize over IE manifolds plus any
+  /// unconstrained variables left outside the connected components.
   IEOptimizer(const IEConstraintManifold::Params::shared_ptr &iecm_params)
       : iecm_params_(iecm_params) {}
 
@@ -43,6 +45,8 @@ public:
       const NonlinearEqualityConstraints &e_constraints,
       const NonlinearInequalityConstraints &i_constraints,
       const Values &initial_values) const {
+    // Split the original problem into IE manifold variables and free
+    // variables before the concrete LM/GD solver takes over.
     auto manifolds = IdentifyManifolds(e_constraints, i_constraints,
                                        initial_values, iecm_params_);
     Values unconstrained_values = IdentifyUnconstrainedValues(
@@ -50,46 +54,63 @@ public:
     return optimizeManifolds(graph, manifolds, unconstrained_values);
   }
 
+  /// Solve the reduced problem once the IE manifold blocks are identified.
   virtual Values optimizeManifolds(const NonlinearFactorGraph &graph,
                                    const IEManifoldValues &manifolds,
                                    const Values &unconstrained_values) const = 0;
 
 public:
+  /// Map each original variable key to the connected-component manifold key
+  /// that owns it.
   static std::map<Key, Key>
   Var2ManifoldKeyMap(const IEManifoldValues &manifolds);
 
+  /// Build one IE manifold per constraint-connected component, following the
+  /// thesis CMC component construction in Eqs. (4.33)-(4.34).
   static IEManifoldValues IdentifyManifolds(
       const NonlinearEqualityConstraints &e_constraints,
       const NonlinearInequalityConstraints &i_constraints,
       const Values &values,
       const IEConstraintManifold::Params::shared_ptr &iecm_params);
 
+  /// Extract variables that do not participate in any equality or inequality
+  /// component.
   static Values IdentifyUnconstrainedValues(
       const NonlinearEqualityConstraints &e_constraints,
       const NonlinearInequalityConstraints &i_constraints,
       const Values &values);
 
+  /// Lift manifold coordinates xi back to ambient tangent vectors via the
+  /// equality-manifold basis B_x.
   static VectorValues ComputeTangentVector(const IEManifoldValues &manifolds,
                                            const VectorValues &delta);
 
-  /// Note: xi is given with the e_basis that only consider equality
-  /// constraints.
+  /// Project each component direction into its tangent cone, matching thesis
+  /// Eq. (4.31) componentwise as in Eq. (4.42).
+  /// Note: xi is given in the equality-only basis before cone projection.
   static std::pair<IndexSetMap, VectorValues>
   ProjectTangentCone(const IEManifoldValues &manifolds, const VectorValues &v);
 
+  /// Retract each manifold block independently back to the feasible set.
   static IEManifoldValues RetractManifolds(const IEManifoldValues &manifolds,
                                            const VectorValues &delta);
 
+  /// Drop the inequality state and expose only the equality manifolds.
   static Values EManifolds(const IEManifoldValues &manifolds);
 
-  /// Return e_manifolds and constant_e_manifolds.
+  /// Treat selected active inequalities as temporary equalities, corresponding
+  /// to the active-corner manifold in thesis Eq. (4.10).
   static std::pair<Values, Values>
   EManifolds(const IEManifoldValues &manifolds,
              const IndexSetMap &active_indices);
 
+  /// Two iterates are in the same mode when their active sets agree on every
+  /// IE manifold component; modes are the corners defined in thesis Eq. (4.9).
   static bool IsSameMode(const IEManifoldValues &manifolds1,
                          const IEManifoldValues &manifolds2);
 
+  /// Return newly activated inequality indices, i.e. constraints that entered
+  /// the active set from thesis Eq. (4.3) after a trial step.
   static IndexSetMap
   IdentifyChangeIndices(const IEManifoldValues &manifolds,
                         const IEManifoldValues &new_manifolds);
