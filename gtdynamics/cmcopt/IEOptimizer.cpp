@@ -21,7 +21,7 @@ using namespace gtsam;
 
 /* ************************************************************************* */
 std::map<Key, Key>
-IEOptimizer::Var2ManifoldKeyMap(const IEManifoldValues &manifolds) {
+IEOptimizer::varToManifoldKeyMap(const IEManifoldValues &manifolds) {
   std::map<Key, Key> keymap_var2manifold;
   for (const auto &it : manifolds) {
     for (const Key &variable_key : it.second.values().keys()) {
@@ -38,7 +38,7 @@ struct ComponentInfo {
 };
 
 /* ************************************************************************* */
-ComponentInfo IdentifyConnectedComponent(
+ComponentInfo identifyConnectedComponent(
     const NonlinearEqualityConstraints &e_constraints,
     const NonlinearInequalityConstraints &i_constraints,
     const VariableIndex &e_var_index,
@@ -84,7 +84,7 @@ ComponentInfo IdentifyConnectedComponent(
 /* ************************************************************************* */
   std::vector<std::pair<NonlinearEqualityConstraints::shared_ptr,
                       NonlinearInequalityConstraints::shared_ptr>>
-IdentifyConnectedComponents(
+identifyConnectedComponents(
     const NonlinearEqualityConstraints &e_constraints,
     const NonlinearInequalityConstraints &i_constraints) {
 
@@ -99,7 +99,7 @@ IdentifyConnectedComponents(
                         NonlinearInequalityConstraints::shared_ptr>>
       components;
   while (!keys.empty()) {
-    auto component_info = IdentifyConnectedComponent(
+    auto component_info = identifyConnectedComponent(
         e_constraints, i_constraints, e_var_index, i_var_index, *keys.begin());
     for (const Key &key : component_info.keys) {
       keys.erase(key);
@@ -124,14 +124,14 @@ IdentifyConnectedComponents(
 }
 
 /* ************************************************************************* */
-IEManifoldValues IEOptimizer::IdentifyManifolds(
+IEManifoldValues IEOptimizer::identifyManifolds(
     const NonlinearEqualityConstraints &e_constraints,
     const NonlinearInequalityConstraints &i_constraints,
     const Values &values,
     const IEConstraintManifold::Params::shared_ptr &iecm_params) {
   // Each thesis Eq. (4.33) connected component becomes one Eq. (4.34)
   // IEConstraintManifold with its own active set, basis, and tangent cone.
-  auto components = IdentifyConnectedComponents(e_constraints, i_constraints);
+  auto components = identifyConnectedComponents(e_constraints, i_constraints);
 
   IEManifoldValues ie_manifolds;
   for (const auto &[component_e_constraints, component_i_constraints] : components) {
@@ -151,38 +151,38 @@ IEManifoldValues IEOptimizer::IdentifyManifolds(
 }
 
 /* ************************************************************************* */
-Values IEOptimizer::IdentifyUnconstrainedValues(
+Values IEOptimizer::identifyUnconstrainedValues(
       const NonlinearEqualityConstraints &e_constraints,
       const NonlinearInequalityConstraints &i_constraints,
       const Values &values) {
-  Values unconstrained_values;
+  Values unconstrainedValues;
   KeySet constrained_keys = e_constraints.keys();
   constrained_keys.merge(i_constraints.keys());
   for (const Key& key: values.keys()) {
     if (!constrained_keys.exists(key)) {
-      unconstrained_values.insert(key, values.at(key));
+      unconstrainedValues.insert(key, values.at(key));
     }
   }
-  return unconstrained_values;
+  return unconstrainedValues;
 }
 
 /* ************************************************************************* */
 VectorValues
-IEOptimizer::ComputeTangentVector(const IEManifoldValues &manifolds,
+IEOptimizer::computeTangentVector(const IEManifoldValues &manifolds,
                                   const VectorValues &delta) {
-  VectorValues tangent_vector;
+  VectorValues tangentVector;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
     const Vector &xi = delta.at(key);
     VectorValues tv = manifolds.at(key).eBasis()->computeTangentVector(xi);
-    tangent_vector.insert(tv);
+    tangentVector.insert(tv);
   }
-  return tangent_vector;
+  return tangentVector;
 }
 
 /* ************************************************************************* */
 std::pair<IndexSetMap, VectorValues>
-IEOptimizer::ProjectTangentCone(const IEManifoldValues &manifolds,
+IEOptimizer::projectTangentCone(const IEManifoldValues &manifolds,
                                 const VectorValues &v) {
   VectorValues proj_v;
   IndexSetMap active_indices_all;
@@ -202,47 +202,47 @@ IEOptimizer::ProjectTangentCone(const IEManifoldValues &manifolds,
 
 /* ************************************************************************* */
 IEManifoldValues
-IEOptimizer::RetractManifolds(const IEManifoldValues &manifolds,
+IEOptimizer::retractManifolds(const IEManifoldValues &manifolds,
                               const VectorValues &delta) {
-  IEManifoldValues new_manifolds;
+  IEManifoldValues newManifolds;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
     const Vector &xi = delta.at(key);
-    new_manifolds.emplace(key, it.second.retract(xi));
+    newManifolds.emplace(key, it.second.retract(xi));
   }
-  return new_manifolds;
+  return newManifolds;
 }
 
 /* ************************************************************************* */
-Values IEOptimizer::EManifolds(const IEManifoldValues &manifolds) {
-  Values e_manifolds;
+Values IEOptimizer::equalityManifolds(const IEManifoldValues &manifolds) {
+  Values equalityManifolds;
   for (const auto &it : manifolds) {
-    e_manifolds.insert(it.first, it.second.eConstraintManifold());
+    equalityManifolds.insert(it.first, it.second.eConstraintManifold());
   }
-  return e_manifolds;
+  return equalityManifolds;
 }
 
 /* ************************************************************************* */
 std::pair<Values, Values>
-IEOptimizer::EManifolds(const IEManifoldValues &manifolds,
+IEOptimizer::equalityManifolds(const IEManifoldValues &manifolds,
                         const IndexSetMap &active_indices) {
-  Values e_manifolds;
+  Values equalityManifolds;
   Values const_e_manifolds;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
     ConstraintManifold e_manifold =
         it.second.eConstraintManifold(active_indices.at(key));
     if (e_manifold.dim() > 0) {
-      e_manifolds.insert(key, e_manifold);
+      equalityManifolds.insert(key, e_manifold);
     } else {
       const_e_manifolds.insert(key, e_manifold);
     }
   }
-  return std::make_pair(e_manifolds, const_e_manifolds);
+  return std::make_pair(equalityManifolds, const_e_manifolds);
 }
 
 /* ************************************************************************* */
-bool IEOptimizer::IsSameMode(const IEManifoldValues &manifolds1,
+bool IEOptimizer::isSameMode(const IEManifoldValues &manifolds1,
                              const IEManifoldValues &manifolds2) {
   for (const auto &it : manifolds1) {
     const IndexSet &indices1 = it.second.activeIndices();
@@ -259,13 +259,13 @@ bool IEOptimizer::IsSameMode(const IEManifoldValues &manifolds1,
 
 /* ************************************************************************* */
 IndexSetMap
-IEOptimizer::IdentifyChangeIndices(const IEManifoldValues &manifolds,
-                                   const IEManifoldValues &new_manifolds) {
+IEOptimizer::identifyChangeIndices(const IEManifoldValues &manifolds,
+                                   const IEManifoldValues &newManifolds) {
   IndexSetMap change_indices_map;
   for (const auto &it : manifolds) {
     const Key &key = it.first;
     const IndexSet &indices = it.second.activeIndices();
-    const IndexSet &new_indices = new_manifolds.at(key).activeIndices();
+    const IndexSet &new_indices = newManifolds.at(key).activeIndices();
     IndexSet change_indices;
     for (const auto &idx : new_indices) {
       if (indices.find(idx) == indices.end()) {
@@ -281,8 +281,8 @@ IEOptimizer::IdentifyChangeIndices(const IEManifoldValues &manifolds,
 
 /* ************************************************************************* */
 IndexSetMap
-IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
-                                        const IEManifoldValues &new_manifolds,
+IEOptimizer::identifyApproachingIndices(const IEManifoldValues &manifolds,
+                                        const IEManifoldValues &newManifolds,
                                         const IndexSetMap &change_indices_map,
                                         const double& approach_rate_threshold) {
   IndexSetMap approach_indices_map;
@@ -290,7 +290,7 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
     const Key &key = it.first;
     const IndexSet &change_indices = it.second;
     const IEConstraintManifold &manifold = manifolds.at(key);
-    const IEConstraintManifold &new_manifold = new_manifolds.at(key);
+    const IEConstraintManifold &new_manifold = newManifolds.at(key);
     auto i_constraints = manifolds.at(key).iConstraints();
 
     double max_approach_rate = -1;
@@ -321,7 +321,7 @@ IEOptimizer::IdentifyApproachingIndices(const IEManifoldValues &manifolds,
 }
 
 /* ************************************************************************* */
-std::string IEOptimizer::IndicesStr(const IndexSetMap &indices_map,
+std::string IEOptimizer::indicesString(const IndexSetMap &indices_map,
                                     const KeyFormatter &keyFormatter) {
   std::string str;
   for (const auto &it : indices_map) {
@@ -337,7 +337,7 @@ std::string IEOptimizer::IndicesStr(const IndexSetMap &indices_map,
 }
 
 /* ************************************************************************* */
-std::string IEOptimizer::IndicesStr(const IEManifoldValues &manifolds,
+std::string IEOptimizer::indicesString(const IEManifoldValues &manifolds,
                                     const KeyFormatter &keyFormatter) {
   std::string str;
   for (const auto &it : manifolds) {

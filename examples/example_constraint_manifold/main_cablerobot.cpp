@@ -150,11 +150,11 @@ void kinematic_planning(const ConstrainedOptBenchmark::Options& runOptions) {
   runner.setOuterLmBaseParams(lmParams);
   runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
-    moptParams.cc_params->retractor_creator->params()
-        ->lm_params.linearSolverType =
+    moptParams.constraintManifoldParams->retractorCreator->params()
+        ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-    moptParams.cc_params->retractor_creator->params()
-        ->lm_params.setlambdaUpperBound(1e2);
+    moptParams.constraintManifoldParams->retractorCreator->params()
+        ->lmParams.setlambdaUpperBound(1e2);
     return moptParams;
   });
 

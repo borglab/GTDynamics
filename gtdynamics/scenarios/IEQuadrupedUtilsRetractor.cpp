@@ -23,7 +23,7 @@ using namespace gtsam;
 IERetractor::shared_ptr Vision60HierarchicalRetractorCreator::create(
     const IEConstraintManifold &manifold) const {
   if (use_basis_keys_) {
-    KeyVector basis_keys = robot_.getBasisKeyFunc()(manifold.values().keys());
+    KeyVector basis_keys = robot_.getBasisKeyFunction()(manifold.values().keys());
     return std::make_shared<KinodynamicHierarchicalRetractor>(manifold, params_,
                                                               basis_keys);
   }
@@ -34,7 +34,7 @@ IERetractor::shared_ptr Vision60HierarchicalRetractorCreator::create(
 IERetractor::shared_ptr Vision60BarrierRetractorCreator::create(
     const IEConstraintManifold &manifold) const {
   if (use_basis_keys_) {
-    KeyVector basis_keys = robot_.getBasisKeyFunc()(manifold.values().keys());
+    KeyVector basis_keys = robot_.getBasisKeyFunction()(manifold.values().keys());
     return std::make_shared<BarrierRetractor>(params_, basis_keys);
   }
   return std::make_shared<BarrierRetractor>(params_);
@@ -50,7 +50,7 @@ IERetractor::shared_ptr Vision60MultiPhaseHierarchicalRetractorCreator::create(
     size_t k =
         DynamicsSymbol(*manifold.values().keys().begin()).time();
     KeyVector basis_keys =
-        vision60_multi_phase_->robotAtStep(k).getBasisKeyFunc()(manifold.values().keys());
+        vision60_multi_phase_->robotAtStep(k).getBasisKeyFunction()(manifold.values().keys());
     return std::make_shared<KinodynamicHierarchicalRetractor>(manifold, params_,
                                                               basis_keys);
   }
@@ -64,21 +64,21 @@ IERetractor::shared_ptr Vision60MultiPhaseBarrierRetractorCreator::create(
     size_t k =
         DynamicsSymbol(*manifold.values().keys().begin()).time();
     KeyVector basis_keys =
-        vision60_multi_phase_->robotAtStep(k).getBasisKeyFunc()(manifold.values().keys());
+        vision60_multi_phase_->robotAtStep(k).getBasisKeyFunction()(manifold.values().keys());
     return std::make_shared<BarrierRetractor>(params_, basis_keys);
   }
   return std::make_shared<BarrierRetractor>(params_);
 }
 
 /* ************************************************************************* */
-TspaceBasis::shared_ptr Vision60MultiPhaseTspaceBasisCreator::create(
+TangentSpaceBasis::shared_ptr Vision60MultiPhaseTangentSpaceBasisCreator::create(
     const NonlinearEqualityConstraints::shared_ptr constraints, const Values &values) const {
   if (values.size() == 1) {
     return std::make_shared<OrthonormalBasis>(constraints, values, params_);
   }
   size_t k = DynamicsSymbol(*values.keys().begin()).time();
   KeyVector basis_keys =
-      vision60_multi_phase_->robotAtStep(k).getBasisKeyFunc()(values.keys());
+      vision60_multi_phase_->robotAtStep(k).getBasisKeyFunction()(values.keys());
   return std::make_shared<EliminationBasis>(constraints, values, params_, basis_keys);
 }
 

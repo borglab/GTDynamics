@@ -411,7 +411,7 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
     auto moptParams =
         ConstrainedOptBenchmark::DefaultMoptParamsSV(&FindBasisKeys);
     auto* retractLm =
-        &moptParams.cc_params->retractor_creator->params()->lm_params;
+        &moptParams.constraintManifoldParams->retractorCreator->params()->lmParams;
     retractLm->linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     retractLm->setlambdaUpperBound(1e2);

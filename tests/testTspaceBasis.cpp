@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testTspaceBasis.cpp
+ * @file  testTangentSpaceBasis.cpp
  * @brief Test tangent space basis for constraint manifold.
  * @author Yetong Zhang
  */
@@ -15,7 +15,7 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
-#include <gtdynamics/cmopt/TspaceBasis.h>
+#include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Matrix.h>
@@ -32,7 +32,7 @@ using namespace gtsam;
 using namespace gtdynamics;
 
 /** Simple example Pose3 with between constraints. */
-TEST(TspaceBasis, connected_poses) {
+TEST(TangentSpaceBasis, connected_poses) {
   Key x1_key = 1;
   Key x2_key = 2;
   Key x3_key = 3;
@@ -55,16 +55,16 @@ TEST(TspaceBasis, connected_poses) {
 
   // Construct basis.
   KeyVector basis_keys{x3_key};
-  auto basis_params = std::make_shared<TspaceBasisParams>();
+  auto basis_params = std::make_shared<TangentSpaceBasisParams>();
   auto basis_m = std::make_shared<OrthonormalBasis>(constraints, cm_base_values,
                                                     basis_params);
   auto basis_e = std::make_shared<EliminationBasis>(constraints, cm_base_values,
                                                     basis_params, basis_keys);
-  auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
+  auto sparse_creator = OrthonormalBasisCreator::createSparse();
   auto basis_sm = sparse_creator->create(constraints, cm_base_values);
 
   auto linear_graph = constraints->penaltyGraph().linearize(cm_base_values);
-  std::vector<TspaceBasis::shared_ptr> basis_vec{basis_m, basis_e, basis_sm};
+  std::vector<TangentSpaceBasis::shared_ptr> basis_vec{basis_m, basis_e, basis_sm};
 
   // Check dimension.
   for (const auto& basis : basis_vec) {
@@ -124,7 +124,7 @@ TEST(TspaceBasis, connected_poses) {
 }
 
 /** Simple example Pose3 with between constraints. */
-TEST(TspaceBasis, linear_system) {
+TEST(TangentSpaceBasis, linear_system) {
   Key x1_key = 1;
   Key x2_key = 2;
   Key x3_key = 3;
@@ -146,12 +146,12 @@ TEST(TspaceBasis, linear_system) {
   values.insertDouble(x3_key, 0.0);
   values.insertDouble(x4_key, 0.0);
   KeyVector basis_keys{x1_key, x2_key};
-  auto basis_params = std::make_shared<TspaceBasisParams>();
+  auto basis_params = std::make_shared<TangentSpaceBasisParams>();
   // auto basis_m = std::make_shared<MatrixBasis>(basis_params, cc, values);
   auto basis_e =
       std::make_shared<EliminationBasis>(constraints, values, basis_params, basis_keys);
   auto basis_m = std::make_shared<OrthonormalBasis>(constraints, values, basis_params);
-  auto sparse_creator = OrthonormalBasisCreator::CreateSparse();
+  auto sparse_creator = OrthonormalBasisCreator::createSparse();
   auto basis_sm = sparse_creator->create(constraints, values);
 
   // Construct new basis by adding additional constraints

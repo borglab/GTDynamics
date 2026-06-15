@@ -230,59 +230,59 @@ IECM_PARAMS_LIST ConstructExpIECMParams(const EXP_SETTING_LIST &exp_settings,
   IECM_PARAMS_LIST iecm_params_list;
   for (const auto &[basis_type, retractor_type, metric_type] : exp_settings) {
     auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-    iecm_params->e_basis_build_from_scratch = false;
+    iecm_params->equalityBasisBuildFromScratch = false;
 
     /// Tspace Basis
     if (basis_type == "Orthonormal") {
-      iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
+      iecm_params->equalityBasisCreator = OrthonormalBasisCreator::createSparse();
     } else if (basis_type == "EliminationT") {
-      iecm_params->e_basis_creator =
-          std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
+      iecm_params->equalityBasisCreator =
+          std::make_shared<Vision60MultiPhaseTangentSpaceBasisCreator>(
               vision60_multi_phase_T);
     } else if (basis_type == "Eliminationa") {
-      iecm_params->e_basis_creator =
-          std::make_shared<Vision60MultiPhaseTspaceBasisCreator>(
+      iecm_params->equalityBasisCreator =
+          std::make_shared<Vision60MultiPhaseTangentSpaceBasisCreator>(
               vision60_multi_phase_a);
     }
 
     /// Retractor params
     auto retractor_params = std::make_shared<IERetractorParams>();
-    retractor_params->lm_params = LevenbergMarquardtParams();
-    retractor_params->check_feasible = true;
-    retractor_params->feasible_threshold = 1e-3;
-    retractor_params->prior_sigma = 1;
+    retractor_params->lmParams = LevenbergMarquardtParams();
+    retractor_params->checkFeasible = true;
+    retractor_params->feasibleThreshold = 1e-3;
+    retractor_params->priorSigma = 1;
     if ((metric_type == "cost") || (metric_type == "costscale")) {
-      retractor_params->use_varying_sigma = true;
-      retractor_params->metric_sigmas = std::make_shared<VectorValues>();
+      retractor_params->useVaryingSigma = true;
+      retractor_params->metricSigmas = std::make_shared<VectorValues>();
     }
     if (metric_type == "costscale") {
-      retractor_params->scale_varying_sigma = true;
+      retractor_params->scaleVaryingSigma = true;
     }
     /// Retractor
     if (retractor_type == "Barrier") {
       if (metric_type == "basisT") {
-        iecm_params->retractor_creator =
+        iecm_params->retractorCreator =
             std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
                 vision60_multi_phase_T, retractor_params, true);
       } else if (metric_type == "basisa") {
-        iecm_params->retractor_creator =
+        iecm_params->retractorCreator =
             std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
                 vision60_multi_phase_a, retractor_params, true);
       } else {
-        iecm_params->retractor_creator =
+        iecm_params->retractorCreator =
             std::make_shared<BarrierRetractorCreator>(retractor_params);
       }
     } else if (retractor_type == "Hierarchical") {
       if (metric_type == "basisT") {
-        iecm_params->retractor_creator =
+        iecm_params->retractorCreator =
             std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
                 vision60_multi_phase_T, retractor_params, true);
       } else if (metric_type == "basisa") {
-        iecm_params->retractor_creator =
+        iecm_params->retractorCreator =
             std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
                 vision60_multi_phase_a, retractor_params, true);
       } else {
-        iecm_params->retractor_creator =
+        iecm_params->retractorCreator =
             std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
                 vision60_multi_phase_T, retractor_params, false);
       }
@@ -303,13 +303,13 @@ void RetractorBenchMark() {
 
   /* <=========== IELM params ===========> */
   IELMParams ie_params;
-  ie_params.lm_params.setVerbosityLM("SUMMARY");
-  ie_params.lm_params.setMaxIterations(100);
-  ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-  ie_params.lm_params.setlambdaInitial(1e-2);
-  ie_params.lm_params.setlambdaUpperBound(1e10);
-  ie_params.show_active_constraints = true;
-  ie_params.active_constraints_group_as_categories = true;
+  ie_params.lmParams.setVerbosityLM("SUMMARY");
+  ie_params.lmParams.setMaxIterations(100);
+  ie_params.lmParams.setLinearSolverType("SEQUENTIAL_QR");
+  ie_params.lmParams.setlambdaInitial(1e-2);
+  ie_params.lmParams.setlambdaUpperBound(1e10);
+  ie_params.showActiveConstraints = true;
+  ie_params.activeConstraintsGroupedAsCategories = true;
 
   /* <=========== experimental settings ===========> */
   EXP_SETTING_LIST exp_settings;
@@ -351,13 +351,13 @@ void MultiStageOptimization() {
 
   /* <=========== IELM params ===========> */
   IELMParams ie_params;
-  ie_params.lm_params.setVerbosityLM("SUMMARY");
-  ie_params.lm_params.setMaxIterations(100);
-  ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-  ie_params.lm_params.setlambdaInitial(1e-5);
-  ie_params.lm_params.setlambdaUpperBound(1e10);
-  ie_params.show_active_constraints = true;
-  ie_params.active_constraints_group_as_categories = true;
+  ie_params.lmParams.setVerbosityLM("SUMMARY");
+  ie_params.lmParams.setMaxIterations(100);
+  ie_params.lmParams.setLinearSolverType("SEQUENTIAL_QR");
+  ie_params.lmParams.setlambdaInitial(1e-5);
+  ie_params.lmParams.setlambdaUpperBound(1e10);
+  ie_params.showActiveConstraints = true;
+  ie_params.activeConstraintsGroupedAsCategories = true;
 
   /* <=========== experimental settings ===========> */
   EXP_SETTING_LIST exp_settings1;

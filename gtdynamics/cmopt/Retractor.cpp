@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  TspaceBasis.cpp
+ * @file  TangentSpaceBasis.cpp
  * @brief Tagent space basis implementations.
  * @author: Yetong Zhang
  */
@@ -39,21 +39,22 @@ namespace gtdynamics {
 /* ************************************************************************* */
 void Retractor::checkFeasible(const NonlinearFactorGraph &graph,
                               const Values &values) const {
-  if (params_->check_feasible) {
-    if (graph.error(values) > params_->feasible_threshold) {
+  if (params_->checkFeasible) {
+    if (graph.error(values) > params_->feasibleThreshold) {
       std::cout << "fail: " << graph.error(values) << "\n";
     }
   }
 }
 
 /* ************************************************************************* */
-UoptRetractor::UoptRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
-                             const RetractParams::shared_ptr &params)
+UnconstrainedOptimizationRetractor::UnconstrainedOptimizationRetractor(
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const RetractionParams::shared_ptr &params)
     : Retractor(params),
-      optimizer_(constraints->penaltyGraph(), params->lm_params) {}
+      optimizer_(constraints->penaltyGraph(), params->lmParams) {}
 
 /* ************************************************************************* */
-Values UoptRetractor::retractConstraints(const Values &values) {
+Values UnconstrainedOptimizationRetractor::retractConstraints(const Values &values) {
   optimizer_.setValues(values);
   const Values &result = optimizer_.optimize();
   checkFeasible(optimizer_.mutableGraph(), result);
@@ -61,7 +62,7 @@ Values UoptRetractor::retractConstraints(const Values &values) {
 }
 
 /* ************************************************************************* */
-Values UoptRetractor::retractConstraints(Values &&values) {
+Values UnconstrainedOptimizationRetractor::retractConstraints(Values &&values) {
   optimizer_.setValues(values);
   auto result = optimizer_.optimize();
   checkFeasible(optimizer_.mutableGraph(), result);
@@ -69,45 +70,46 @@ Values UoptRetractor::retractConstraints(Values &&values) {
 }
 
 /* ************************************************************************* */
-ProjRetractor::ProjRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
-                             const RetractParams::shared_ptr &params,
-                             std::optional<const KeyVector> basis_keys)
+ProjectionRetractor::ProjectionRetractor(
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const RetractionParams::shared_ptr &params,
+    std::optional<const KeyVector> basis_keys)
     : Retractor(params), merit_graph_(constraints->penaltyGraph()) {
-  if (params->use_basis_keys) {
+  if (params->useBasisKeys) {
     basis_keys_ = *basis_keys;
   }
 }
 
 /* ************************************************************************* */
-Values ProjRetractor::retractConstraints(const Values &values) {
+Values ProjectionRetractor::retractConstraints(const Values &values) {
   gtsam::LevenbergMarquardtOptimizer optimizer(merit_graph_, values);
   return optimizer.optimize();
 }
 
 /* ************************************************************************* */
-Values ProjRetractor::retract(const Values &values, const VectorValues &delta) {
+Values ProjectionRetractor::retract(const Values &values, const VectorValues &delta) {
   // optimize with priors
   NonlinearFactorGraph graph = merit_graph_;
   Values values_retract_base = retractBaseVariables(values, delta);
-  if (params_->use_basis_keys) {
+  if (params_->useBasisKeys) {
     AddGeneralPriors(values_retract_base, basis_keys_, params_->sigma, graph);
   } else {
     AddGeneralPriors(values_retract_base, params_->sigma, graph);
   }
   // const Values &init_values =
-  //     params_->apply_base_retraction ? values_retract_base : values;
+  //     params_->applyBaseRetraction ? values_retract_base : values;
   const Values &init_values = values_retract_base;
   gtsam::LevenbergMarquardtOptimizer optimizer_with_priors(graph, init_values,
-                                                           params_->lm_params);
+                                                           params_->lmParams);
   const Values &result = optimizer_with_priors.optimize();
-  if (params_->use_basis_keys &&
-      optimizer_with_priors.error() < params_->feasible_threshold) {
+  if (params_->useBasisKeys &&
+      optimizer_with_priors.error() < params_->feasibleThreshold) {
     return result;
   }
 
   // optimize without priors
   gtsam::LevenbergMarquardtOptimizer optimizer_without_priors(
-      merit_graph_, result, params_->lm_params);
+      merit_graph_, result, params_->lmParams);
   const Values &final_result = optimizer_without_priors.optimize();
   checkFeasible(merit_graph_, final_result);
   return final_result;
@@ -116,11 +118,11 @@ Values ProjRetractor::retract(const Values &values, const VectorValues &delta) {
 /* ************************************************************************* */
 BasisRetractor::BasisRetractor(
     const NonlinearEqualityConstraints::shared_ptr &constraints,
-    const RetractParams::shared_ptr &params, const KeyVector &basis_keys)
+    const RetractionParams::shared_ptr &params, const KeyVector &basis_keys)
     : Retractor(params),
       merit_graph_(constraints->penaltyGraph()),
       basis_keys_(basis_keys),
-      optimizer_(params->lm_params) {
+      optimizer_(params->lmParams) {
   NonlinearFactorGraph graph;
   KeySet fixed_keys(basis_keys.begin(), basis_keys.end());
   for (const auto &factor : merit_graph_) {
@@ -153,7 +155,7 @@ BasisRetractor::BasisRetractor(
 /* ************************************************************************* */
 Values BasisRetractor::retractConstraints(const Values &values) {
   static const bool debug_retractor_stats = []() {
-    const char* env = std::getenv("GTDYN_DEBUG_RETRACTOR_STATS");
+    const char *env = std::getenv("GTDYN_DEBUG_RETRACTOR_STATS");
     return env && std::string(env) != "0";
   }();
   static size_t total_calls = 0;
@@ -176,7 +178,7 @@ Values BasisRetractor::retractConstraints(const Values &values) {
   // Fast path: if constraints are already satisfied to threshold, avoid
   // repeatedly running tiny LM solves.
   const double initial_error = optimizer_.graph().error(opt_values);
-  if (initial_error <= params_->feasible_threshold) {
+  if (initial_error <= params_->feasibleThreshold) {
     ++fast_path_calls;
     Values result = opt_values;
     for (const Key &key : basis_keys_) {
@@ -213,15 +215,14 @@ Values BasisRetractor::retractConstraints(const Values &values) {
     }
   }
 
-  // add fixed varaibles to the result
+  // add fixed variables to the result
   for (const Key &key : basis_keys_) {
     result.insert(key, values.at(key));
   }
   const auto end = std::chrono::steady_clock::now();
-  total_ms +=
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count() *
-      1e-3;
+  total_ms += std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                  .count() *
+              1e-3;
   if (debug_retractor_stats && total_calls % 200 == 0) {
     std::cout << "[RETRACTOR] calls=" << total_calls
               << ", fast_path=" << fast_path_calls
@@ -284,16 +285,16 @@ void DynamicsRetractor::classifyKeys(const CONTAINER &keys, KeySet &q_keys,
 /* ************************************************************************* */
 DynamicsRetractor::DynamicsRetractor(
     const NonlinearEqualityConstraints::shared_ptr &constraints,
-    const RetractParams::shared_ptr &params,
+    const RetractionParams::shared_ptr &params,
     std::optional<const KeyVector> basis_keys)
     : Retractor(params),
       merit_graph_(constraints->penaltyGraph()),
-      optimizer_wp_q_(params->lm_params),
-      optimizer_wp_v_(params->lm_params),
-      optimizer_wp_ad_(params->lm_params),
-      optimizer_np_q_(params->lm_params),
-      optimizer_np_v_(params->lm_params),
-      optimizer_np_ad_(params->lm_params) {
+      optimizer_wp_q_(params->lmParams),
+      optimizer_wp_v_(params->lmParams),
+      optimizer_wp_ad_(params->lmParams),
+      optimizer_np_q_(params->lmParams),
+      optimizer_np_v_(params->lmParams),
+      optimizer_np_ad_(params->lmParams) {
   /// classify keys
   KeySet q_keys, v_keys, ad_keys, qv_keys;
   classifyKeys(merit_graph_.keys(), q_keys, v_keys, ad_keys);
@@ -301,7 +302,7 @@ DynamicsRetractor::DynamicsRetractor(
   qv_keys.merge(v_keys);
 
   /// classify basis keys
-  if (params_->use_basis_keys) {
+  if (params_->useBasisKeys) {
     if (!basis_keys) {
       throw std::runtime_error("basis keys not provided for retractor.");
     }
@@ -405,13 +406,13 @@ Values DynamicsRetractor::retractConstraints(const Values &values) {
   // all_basis_keys.merge(basis_ad_keys_);
   // AddGeneralPriors(values, all_basis_keys, params_->sigma, graph_wp_all);
 
-  // LevenbergMarquardtParams lm_params = params_->lm_params;
-  // lm_params.setMaxIterations(10);
+  // LevenbergMarquardtParams lmParams = params_->lmParams;
+  // lmParams.setMaxIterations(10);
   // LevenbergMarquardtOptimizer optimizer_wp_all(graph_wp_all, known_values,
-  // params_->lm_params); auto result = optimizer_wp_all.optimize();
+  // params_->lmParams); auto result = optimizer_wp_all.optimize();
 
   // LevenbergMarquardtOptimizer optimizer_np_all(cc_->merit_graph_, result,
-  // params_->lm_params); result = optimizer_np_all.optimize();
+  // params_->lmParams); result = optimizer_np_all.optimize();
   // checkFeasible(cc_->merit_graph_, result);
 
   return known_values;

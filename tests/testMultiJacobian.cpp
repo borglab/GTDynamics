@@ -61,7 +61,7 @@ TEST(MultiJacobian, Add_Mult) {
   expected_mult1.insert({x2, (Matrix(2, 1) << 6, 4).finished()});
   EXPECT(expected_mult1.equals(m * jac1));
 
-  MultiJacobian jac12_stack = MultiJacobian::VerticalStack(jac1, jac2);
+  MultiJacobian jac12_stack = MultiJacobian::verticalStack(jac1, jac2);
   MultiJacobian expected_stack12;
   expected_stack12.insert(
       {x1, (Matrix(4, 2) << 1, 2, 3, 4, 2, 2, 3, 3).finished()});
@@ -103,7 +103,7 @@ TEST(MultiJacobians, Mult) {
   expected_jac_x4.insert({x1, (Matrix(1,2)<<1+2,2-2).finished()});
   expected_jac_x4.insert({x2, (Matrix(1,2)<<2-1,1+1).finished()});
 
-  MultiJacobians jacs_mult = JacobiansMultiply(jacs1, jacs2);
+  MultiJacobians jacs_mult = multiplyJacobians(jacs1, jacs2);
   EXPECT(expected_jac_x1.equals(jacs_mult.at(x1)));
   EXPECT(expected_jac_x2.equals(jacs_mult.at(x2)));
   EXPECT(expected_jac_x3.equals(jacs_mult.at(x3)));
@@ -111,7 +111,7 @@ TEST(MultiJacobians, Mult) {
 }
 
 /// Test computing jacobians from a bayes net.
-TEST(MultiJacobian, ComputeBayesNetJacobian) {
+TEST(MultiJacobian, computeBayesNetJacobian) {
   /// Construct a bayes net
   Key x1 = 1;
   Key x2 = 2;
@@ -140,7 +140,7 @@ TEST(MultiJacobian, ComputeBayesNetJacobian) {
   var_dim.emplace(x1, 1);
   var_dim.emplace(x2, 1);
   var_dim.emplace(x4, 1);
-  ComputeBayesNetJacobian(*bayes_net, basis_keys, var_dim, jacobians);
+  computeBayesNetJacobian(*bayes_net, basis_keys, var_dim, jacobians);
 
   MultiJacobian jacobian_x3, jacobian_x5;
   jacobian_x3.addJacobian(x1, I_1x1);
@@ -148,9 +148,9 @@ TEST(MultiJacobian, ComputeBayesNetJacobian) {
   jacobian_x5.addJacobian(x1, H_3);
   jacobian_x5.addJacobian(x2, H_3);
   jacobian_x5.addJacobian(x4, H_4);
-  EXPECT(jacobians.at(x1).equals(MultiJacobian::Identity(x1, 1)));
-  EXPECT(jacobians.at(x2).equals(MultiJacobian::Identity(x2, 1)));
-  EXPECT(jacobians.at(x4).equals(MultiJacobian::Identity(x4, 1)));
+  EXPECT(jacobians.at(x1).equals(MultiJacobian::identity(x1, 1)));
+  EXPECT(jacobians.at(x2).equals(MultiJacobian::identity(x2, 1)));
+  EXPECT(jacobians.at(x4).equals(MultiJacobian::identity(x4, 1)));
   EXPECT(jacobians.at(x3).equals(jacobian_x3));
   EXPECT(jacobians.at(x5).equals(jacobian_x5));
 }
