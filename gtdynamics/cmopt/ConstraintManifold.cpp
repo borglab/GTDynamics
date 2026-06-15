@@ -21,8 +21,8 @@ namespace gtdynamics {
 
 /* ************************************************************************* */
 Values ConstraintManifold::constructValues(
-    const gtsam::Values &values,
-    const Retractor::shared_ptr &retractor, bool retract_init) {
+    const gtsam::Values &values, const Retractor::shared_ptr &retractor,
+    bool retract_init) {
   if (retract_init) {
     return retractor->retractConstraints(std::move(values));
   } else {
@@ -52,12 +52,9 @@ ConstraintManifold ConstraintManifold::retract(const gtsam::Vector &xi,
   Values new_values = retractor_->retract(values_, delta);
 
   // Set jacobian as 0 since they are not used for optimization.
-  if (H1)
+  if (H1 || H2)
     throw std::runtime_error(
-        "ConstraintManifold retract jacobian not implemented.");
-  if (H2)
-    throw std::runtime_error(
-        "ConstraintManifold retract jacobian not implemented.");
+        "ConstraintManifold retract jacobians not implemented.");
 
   // Satisfy the constraints in the connected component.
   return createWithNewValues(new_values);
@@ -71,12 +68,9 @@ gtsam::Vector ConstraintManifold::localCoordinates(const ConstraintManifold &g,
   Vector xi = basis_->localCoordinates(values_, g.values_);
 
   // Set jacobian as 0 since they are not used for optimization.
-  if (H1)
+  if (H1 || H2)
     throw std::runtime_error(
-        "ConstraintManifold localCoordinates jacobian not implemented.");
-  if (H2)
-    throw std::runtime_error(
-        "ConstraintManifold localCoordinates jacobian not implemented.");
+        "ConstraintManifold localCoordinates jacobians not implemented.");
 
   return xi;
 }
@@ -95,7 +89,8 @@ bool ConstraintManifold::equals(const ConstraintManifold &other,
 
 /* ************************************************************************* */
 const Values ConstraintManifold::feasibleValues() const {
-  gtsam::LevenbergMarquardtOptimizer optimizer(constraints_->penaltyGraph(), values_);
+  gtsam::LevenbergMarquardtOptimizer optimizer(constraints_->penaltyGraph(),
+                                               values_);
   return optimizer.optimize();
 }
 
@@ -118,8 +113,8 @@ KeyVector EManifoldValues::keys() const {
 }
 
 /* ************************************************************************* */
-VectorValues
-EManifoldValues::computeTangentVector(const VectorValues &delta) const {
+VectorValues EManifoldValues::computeTangentVector(
+    const VectorValues &delta) const {
   VectorValues tangent_vector;
   for (const auto &it : *this) {
     tangent_vector.insert(
@@ -146,4 +141,4 @@ std::map<Key, size_t> EManifoldValues::dims() const {
   return dims_map;
 }
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

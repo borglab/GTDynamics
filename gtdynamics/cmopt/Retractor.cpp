@@ -47,8 +47,9 @@ void Retractor::checkFeasible(const NonlinearFactorGraph &graph,
 }
 
 /* ************************************************************************* */
-UoptRetractor::UoptRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
-                             const RetractParams::shared_ptr &params)
+UoptRetractor::UoptRetractor(
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const RetractParams::shared_ptr &params)
     : Retractor(params),
       optimizer_(constraints->penaltyGraph(), params->lm_params) {}
 
@@ -69,9 +70,10 @@ Values UoptRetractor::retractConstraints(Values &&values) {
 }
 
 /* ************************************************************************* */
-ProjRetractor::ProjRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
-                             const RetractParams::shared_ptr &params,
-                             std::optional<const KeyVector> basis_keys)
+ProjRetractor::ProjRetractor(
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const RetractParams::shared_ptr &params,
+    std::optional<const KeyVector> basis_keys)
     : Retractor(params), merit_graph_(constraints->penaltyGraph()) {
   if (params->use_basis_keys) {
     basis_keys_ = *basis_keys;
@@ -153,7 +155,7 @@ BasisRetractor::BasisRetractor(
 /* ************************************************************************* */
 Values BasisRetractor::retractConstraints(const Values &values) {
   static const bool debug_retractor_stats = []() {
-    const char* env = std::getenv("GTDYN_DEBUG_RETRACTOR_STATS");
+    const char *env = std::getenv("GTDYN_DEBUG_RETRACTOR_STATS");
     return env && std::string(env) != "0";
   }();
   static size_t total_calls = 0;
@@ -213,15 +215,14 @@ Values BasisRetractor::retractConstraints(const Values &values) {
     }
   }
 
-  // add fixed varaibles to the result
+  // add fixed variables to the result
   for (const Key &key : basis_keys_) {
     result.insert(key, values.at(key));
   }
   const auto end = std::chrono::steady_clock::now();
-  total_ms +=
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count() *
-      1e-3;
+  total_ms += std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                  .count() *
+              1e-3;
   if (debug_retractor_stats && total_calls % 200 == 0) {
     std::cout << "[RETRACTOR] calls=" << total_calls
               << ", fast_path=" << fast_path_calls
