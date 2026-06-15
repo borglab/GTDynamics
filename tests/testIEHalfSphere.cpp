@@ -13,7 +13,7 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/cmopt/TspaceBasis.h>
+#include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
@@ -64,9 +64,9 @@ TEST(HalfSphereRetractor, retract) {
   auto i_constraints = std::make_shared<NonlinearInequalityConstraints>(
       half_sphere.iConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->retractor_creator =
+  params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   Values values1;
   values1.insert(PointKey(0), Point3(3, 0, 0));
   IEConstraintManifold manifold1(params, e_constraints, i_constraints, values1);
@@ -100,9 +100,9 @@ TEST(HalfSphere, Dome) {
   auto i_constraints = std::make_shared<NonlinearInequalityConstraints>(
       half_sphere.iDomeConstraints(0));
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->retractor_creator =
+  params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
   IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
 

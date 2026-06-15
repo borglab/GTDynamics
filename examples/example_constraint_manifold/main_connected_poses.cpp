@@ -12,7 +12,7 @@
  * @author Yetong Zhang
  */
 
-#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
+#include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/geometry/Pose2.h>
@@ -203,7 +203,7 @@ Values get_init_values(
 
 void PrintCMComponentDebug(const EConsOptProblem& problem,
                            const ManifoldOptimizerParameters& mopt_params,
-                           const LevenbergMarquardtParams& lm_params,
+                           const LevenbergMarquardtParams& lmParams,
                            bool debug_enabled) {
   if (!debug_enabled) return;
 
@@ -212,22 +212,22 @@ void PrintCMComponentDebug(const EConsOptProblem& problem,
             << ", costs dim: " << problem.costsDimension()
             << ", values dim: " << problem.valuesDimension() << "\n";
 
-  NonlinearMOptimizer debug_optimizer(mopt_params, lm_params);
-  auto mopt_problem = debug_optimizer.initializeMoptProblem(
+  NonlinearManifoldOptimizer debug_optimizer(mopt_params, lmParams);
+  auto mopt_problem = debug_optimizer.initializeManifoldOptimizationProblem(
       problem.costs(), problem.constraints(), problem.initValues());
 
   mopt_problem.print("[CM DEBUG] ");
 
   std::map<Key, Key> key_component_map;
-  for (const Key& cm_key : mopt_problem.manifold_keys_) {
-    const auto& cm = mopt_problem.values_.at(cm_key).cast<ConstraintManifold>();
+  for (const Key& cm_key : mopt_problem.manifoldKeys) {
+    const auto& cm = mopt_problem.values.at(cm_key).cast<ConstraintManifold>();
     for (const Key& base_key : cm.values().keys()) {
       key_component_map[base_key] = cm_key;
     }
   }
-  for (const Key& cm_key : mopt_problem.fixed_manifolds_.keys()) {
+  for (const Key& cm_key : mopt_problem.fixedManifolds.keys()) {
     const auto& cm =
-        mopt_problem.fixed_manifolds_.at(cm_key).cast<ConstraintManifold>();
+        mopt_problem.fixedManifolds.at(cm_key).cast<ConstraintManifold>();
     for (const Key& base_key : cm.values().keys()) {
       key_component_map[base_key] = cm_key;
     }
@@ -265,8 +265,8 @@ void kinematic_planning(const ConnectedPosesArgs& args) {
 
   auto moptFactory = [](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
-    moptParams.cc_params->retractor_creator->params()
-        ->lm_params.linearSolverType =
+    moptParams.constraintManifoldParams->retractorCreator->params()
+        ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     return moptParams;
   };

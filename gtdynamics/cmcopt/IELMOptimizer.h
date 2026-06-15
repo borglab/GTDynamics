@@ -27,11 +27,11 @@ using namespace gtsam;
 
 struct IELMParams {
   IELMParams() {}
-  double boundary_approach_rate_threshold = 3;
-  LevenbergMarquardtParams lm_params;
-  size_t iqp_max_iters = 0;
-  bool show_active_constraints = false;
-  bool active_constraints_group_as_categories = false;
+  double boundaryApproachRateThreshold = 3;
+  LevenbergMarquardtParams lmParams;
+  size_t iqpMaxIterations = 0;
+  bool showActiveConstraints = false;
+  bool activeConstraintsGroupedAsCategories = false;
 };
 
 /**
@@ -41,19 +41,19 @@ class IELMOptimizer : public IEOptimizer {
 
 protected:
   const IELMParams ielm_params_;
-  std::shared_ptr<IELMItersDetails> details_;
+  std::shared_ptr<IELMOptimizationDetails> details_;
 
 public:
   typedef std::shared_ptr<IELMOptimizer> shared_ptr;
 
-  const IELMItersDetails &details() const { return *details_; }
+  const IELMOptimizationDetails &details() const { return *details_; }
 
   /** Constructor */
   IELMOptimizer(const IELMParams &ielm_params = IELMParams(),
                 const IEConstraintManifold::Params::shared_ptr &iecm_params =
                     std::make_shared<IEConstraintManifold::Params>())
       : IEOptimizer(iecm_params), ielm_params_(ielm_params),
-        details_(std::make_shared<IELMItersDetails>()) {}
+        details_(std::make_shared<IELMOptimizationDetails>()) {}
 
   /** Virtual destructor */
   ~IELMOptimizer() {}
@@ -64,7 +64,7 @@ public:
   /** Perform optimization on manifolds. */
   Values optimizeManifolds(const NonlinearFactorGraph &graph,
                            const IEManifoldValues &manifolds,
-                           const Values &unconstrained_values) const override;
+                           const Values &unconstrainedValues) const override;
 
   /** Convergence check including
    * 1) mode change
@@ -79,7 +79,7 @@ public:
   bool checkLambdaWithinLimits(const double &lambda) const;
 
   /** Perform one iterate, may need to make several trials. */
-  IELMIterDetails iterate(const NonlinearFactorGraph &graph,
+  IELMIterationDetails iterate(const NonlinearFactorGraph &graph,
                           const IELMState &state) const;
 
   /** Check if a mode change is required. The following conditions need to be
@@ -90,7 +90,7 @@ public:
    * with large enough rate.
    */
   bool checkModeChange(const NonlinearFactorGraph &graph,
-                       IELMIterDetails &current_iter_details) const;
+                       IELMIterationDetails &current_iter_details) const;
 };
 
 } // namespace gtdynamics

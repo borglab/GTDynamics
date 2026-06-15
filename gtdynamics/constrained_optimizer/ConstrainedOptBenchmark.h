@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
-#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
+#include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
 #include <gtsam/base/timing.h>
 #include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
 #include <gtsam/constrained/PenaltyOptimizer.h>
@@ -125,7 +125,7 @@ class ConstrainedOptBenchmark {
   /// Create default CM parameters using basis-key elimination + basis
   /// retraction.
   static ManifoldOptimizerParameters DefaultMoptParamsSV(
-      const BasisKeyFunc& basisKeyFunc);
+      const BasisKeyFunction& basisKeyFunction);
 
   /// Print common CLI usage flags for benchmark examples.
   static void PrintUsage(std::ostream& os, const char* programName,

@@ -22,8 +22,8 @@ namespace gtdynamics {
 /* ************************************************************************* */
 Values ConstraintManifold::constructValues(
     const gtsam::Values &values, const Retractor::shared_ptr &retractor,
-    bool retract_init) {
-  if (retract_init) {
+    bool retractInitialValues) {
+  if (retractInitialValues) {
     return retractor->retractConstraints(std::move(values));
   } else {
     return values;
@@ -115,12 +115,12 @@ KeyVector EManifoldValues::keys() const {
 /* ************************************************************************* */
 VectorValues EManifoldValues::computeTangentVector(
     const VectorValues &delta) const {
-  VectorValues tangent_vector;
+  VectorValues tangentVector;
   for (const auto &it : *this) {
-    tangent_vector.insert(
+    tangentVector.insert(
         it.second.basis()->computeTangentVector(delta.at(it.first)));
   }
-  return tangent_vector;
+  return tangentVector;
 }
 
 /* ************************************************************************* */

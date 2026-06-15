@@ -36,7 +36,7 @@
 
 #include "QuadrupedUtils.h"
 #include "gtdynamics/cmopt/ConstraintManifold.h"
-#include "gtdynamics/cmopt/TspaceBasis.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include "gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h"
 #include "gtdynamics/constrained_optimizer/ConstrainedOptimizer.h"
 #include "gtdynamics/factors/ContactPointFactor.h"
@@ -130,17 +130,17 @@ void TrajectoryOptimization(
   });
   runner.setMoptFactory([&](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(
-        vision60.getBasisKeyFunc());
-    moptParams.cc_params->retractor_creator->params()->use_basis_keys = true;
-    moptParams.cc_params->retractor_creator->params()->sigma = 1.0;
-    moptParams.cc_params->retractor_creator->params()->apply_base_retraction =
+        vision60.getBasisKeyFunction());
+    moptParams.constraintManifoldParams->retractorCreator->params()->useBasisKeys = true;
+    moptParams.constraintManifoldParams->retractorCreator->params()->sigma = 1.0;
+    moptParams.constraintManifoldParams->retractorCreator->params()->applyBaseRetraction =
         true;
-    moptParams.cc_params->retractor_creator->params()->check_feasible = true;
-    moptParams.cc_params->retractor_creator->params()
-        ->lm_params.linearSolverType =
+    moptParams.constraintManifoldParams->retractorCreator->params()->checkFeasible = true;
+    moptParams.constraintManifoldParams->retractorCreator->params()
+        ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-    moptParams.cc_params->retractor_creator->params()
-        ->lm_params.setlambdaUpperBound(1e2);
+    moptParams.constraintManifoldParams->retractorCreator->params()
+        ->lmParams.setlambdaUpperBound(1e2);
     return moptParams;
   });
   runner.setResultCallback(

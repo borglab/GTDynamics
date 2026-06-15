@@ -505,24 +505,24 @@ public:
   Values stepValuesQ(const size_t k, const Values &init_values,
                      const KeyVector &known_q_keys = KeyVector(),
                      bool satisfy_i_constriants = false,
-                     bool ensure_feasible = true) const;
+                     bool ensureFeasible = true) const;
 
   Values stepValuesV(const size_t k, const Values &init_values,
                      const Values &known_q_values,
                      const KeyVector &known_v_keys = KeyVector(),
                      bool satisfy_i_constriants = false,
-                     bool ensure_feasible = true) const;
+                     bool ensureFeasible = true) const;
 
   Values stepValuesAD(const size_t k, const Values &init_values,
                       const Values &known_qv_values,
                       const KeyVector &known_ad_keys = KeyVector(),
                       bool satisfy_i_constriants = false,
-                      bool ensure_feasible = true) const;
+                      bool ensureFeasible = true) const;
 
   Values stepValuesQV(const size_t k, const Values &init_values,
                       const std::optional<KeyVector> &known_keys = {},
                       bool satisfy_i_constriants = false,
-                      bool ensure_feasible = true) const;
+                      bool ensureFeasible = true) const;
 
   /** Return values of one step satisfying kinodynamic constraints. The
    * variables specified by known_keys will remain unchanged. If known_keys not
@@ -531,13 +531,13 @@ public:
    * @param init_values init estimate of variables of the step
    * @param known_keys variables that can be used as priors
    * @param satisfy_i_constraints include i-constraints
-   * @param ensure_feasible run a 2nd phase optimization without priors to
+   * @param ensureFeasible run a 2nd phase optimization without priors to
    * ensure constraint satisfaction
    */
   Values stepValues(const size_t k, const Values &init_values,
                     const std::optional<KeyVector> &known_keys = {},
                     bool satisfy_i_constriants = false,
-                    bool ensure_feasible = true) const;
+                    bool ensureFeasible = true) const;
 
   /// Return values of one step by integration from previous step. The variables
   /// specified with integration_keys will be used for integration. Variables of
@@ -595,7 +595,7 @@ public:
   }
 
   /// Return function that select basis keys for constraint manifolds.
-  BasisKeyFunc getBasisKeyFunc() const;
+  BasisKeyFunction getBasisKeyFunction() const;
 
   KeyVector basisKeys(const size_t k,
                       bool include_init_state_constraints = false) const;
@@ -696,13 +696,13 @@ public:
   /// nominal values for q, 0 for v. ad satsify constraints.
   Values trajectoryValuesNominal(const std::vector<double> &phases_dt,
                                  bool include_i_constriants,
-                                 bool ensure_feasible) const;
+                                 bool ensureFeasible) const;
 
   /// Interpolated values for q, v. ad satisfy constraints.
   Values trajectoryValuesByInterpolation(
       const std::vector<double> &phases_dt,
       const std::vector<std::pair<size_t, Pose3>> &boundary_poses,
-      bool include_i_constriants, bool ensure_feasible) const;
+      bool include_i_constriants, bool ensureFeasible) const;
 };
 
 /* ************************************************************************* */
@@ -718,9 +718,9 @@ protected:
 public:
   Vision60HierarchicalRetractorCreator(
       const IEVision60Robot &robot, const IERetractorParams::shared_ptr &params,
-      bool use_basis_keys)
+      bool useBasisKeys)
       : IERetractorCreator(params), robot_(robot),
-        use_basis_keys_(use_basis_keys) {}
+        use_basis_keys_(useBasisKeys) {}
 
   virtual ~Vision60HierarchicalRetractorCreator() {}
 
@@ -737,9 +737,9 @@ protected:
 public:
   Vision60BarrierRetractorCreator(const IEVision60Robot &robot,
                                   const IERetractorParams::shared_ptr &params,
-                                  bool use_basis_keys)
+                                  bool useBasisKeys)
       : IERetractorCreator(params), robot_(robot),
-        use_basis_keys_(use_basis_keys) {}
+        use_basis_keys_(useBasisKeys) {}
 
   virtual ~Vision60BarrierRetractorCreator() {}
 
@@ -757,9 +757,9 @@ protected:
 public:
   Vision60MultiPhaseHierarchicalRetractorCreator(
       const IEVision60RobotMultiPhase::shared_ptr &vision60_multi_phase,
-      const IERetractorParams::shared_ptr &params, bool use_basis_keys)
+      const IERetractorParams::shared_ptr &params, bool useBasisKeys)
       : IERetractorCreator(params), vision60_multi_phase_(vision60_multi_phase),
-        use_basis_keys_(use_basis_keys) {}
+        use_basis_keys_(useBasisKeys) {}
 
   virtual ~Vision60MultiPhaseHierarchicalRetractorCreator() {}
 
@@ -776,9 +776,9 @@ protected:
 public:
   Vision60MultiPhaseBarrierRetractorCreator(
       const IEVision60RobotMultiPhase::shared_ptr &vision60_multi_phase,
-      const IERetractorParams::shared_ptr &params, bool use_basis_keys)
+      const IERetractorParams::shared_ptr &params, bool useBasisKeys)
       : IERetractorCreator(params), vision60_multi_phase_(vision60_multi_phase),
-        use_basis_keys_(use_basis_keys) {}
+        use_basis_keys_(useBasisKeys) {}
 
   virtual ~Vision60MultiPhaseBarrierRetractorCreator() {}
 
@@ -787,19 +787,19 @@ public:
 };
 
 /** Tangent space creator for multiple phases. */
-class Vision60MultiPhaseTspaceBasisCreator : public TspaceBasisCreator {
+class Vision60MultiPhaseTangentSpaceBasisCreator : public TangentSpaceBasisCreator {
 protected:
   IEVision60RobotMultiPhase::shared_ptr vision60_multi_phase_;
 
 public:
-  Vision60MultiPhaseTspaceBasisCreator(
+  Vision60MultiPhaseTangentSpaceBasisCreator(
       const IEVision60RobotMultiPhase::shared_ptr &vision60_multi_phase,
-      const TspaceBasisParams::shared_ptr params =
-          std::make_shared<TspaceBasisParams>(true))
-      : TspaceBasisCreator(params),
+      const TangentSpaceBasisParams::shared_ptr params =
+          std::make_shared<TangentSpaceBasisParams>(true))
+      : TangentSpaceBasisCreator(params),
         vision60_multi_phase_(vision60_multi_phase) {}
 
-  TspaceBasis::shared_ptr
+  TangentSpaceBasis::shared_ptr
   create(const NonlinearEqualityConstraints::shared_ptr constraints,
          const Values &values) const override;
 };
@@ -825,7 +825,7 @@ struct JumpParams {
 void EvaluateAndExportIELMResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const IELMItersDetails &ielm_iters,
+    const IELMOptimizationDetails &ielm_iters,
     const std::string &scenario_folder, bool print_values = false,
     bool print_iter_details = false);
 
@@ -842,7 +842,7 @@ void EvaluateAndExportInitValues(
 
 void ExportOptimizationProgress(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::string &scenario_folder, const IELMItersDetails &iters_details);
+    const std::string &scenario_folder, const IELMOptimizationDetails &iters_details);
 
 } // namespace gtdynamics
 
@@ -898,7 +898,7 @@ GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
 Values InitValuesTrajectory(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,
-    bool ensure_feasible, bool ignore_last_step = false);
+    bool ensureFeasible, bool ignore_last_step = false);
 } // namespace quadruped_forward_jump
 
 namespace quadruped_forward_jump_land {
@@ -922,7 +922,7 @@ GetVision60MultiPhase(const IEVision60Robot::Params::shared_ptr &params,
 Values InitValuesTrajectory(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
     const std::vector<double> &phases_dt, bool include_i_constriants,
-    bool ensure_feasible);
+    bool ensureFeasible);
 } // namespace quadruped_forward_jump_land
 
 } // namespace gtdynamics

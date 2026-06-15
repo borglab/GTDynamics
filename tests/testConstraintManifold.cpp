@@ -58,21 +58,21 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
   cm_base_values.insert(x3_key, Pose3(Rot3(), Point3(0, 1, 1)));
 
   // Create constraint manifold with various tspacebasis and retractors
-  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
+  BasisKeyFunction basisKeyFunction = [=](const KeyVector& keys) -> KeyVector {
     return KeyVector{x3_key};
   };
-  std::vector<TspaceBasisCreator::shared_ptr> basis_creators{
+  std::vector<TangentSpaceBasisCreator::shared_ptr> basis_creators{
       std::make_shared<OrthonormalBasisCreator>(),
-      std::make_shared<EliminationBasisCreator>(basis_key_func)};
+      std::make_shared<EliminationBasisCreator>(basisKeyFunction)};
   std::vector<RetractorCreator::shared_ptr> retractor_creators{
-      std::make_shared<UoptRetractorCreator>(),
-      std::make_shared<BasisRetractorCreator>(basis_key_func)};
+      std::make_shared<UnconstrainedOptimizationRetractorCreator>(),
+      std::make_shared<BasisRetractorCreator>(basisKeyFunction)};
 
-  for (const auto& basis_creator : basis_creators) {
-    for (const auto& retractor_creator : retractor_creators) {
+  for (const auto& basisCreator : basis_creators) {
+    for (const auto& retractorCreator : retractor_creators) {
       auto params = std::make_shared<ConstraintManifold::Params>();
-      params->basis_creator = basis_creator;
-      params->retractor_creator = retractor_creator;
+      params->basisCreator = basisCreator;
+      params->retractorCreator = retractorCreator;
       ConstraintManifold manifold(constraints, cm_base_values, params, true);
 
       // Check recover
@@ -331,13 +331,13 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
   EConsOptProblem problem(costs, constraints, initValues);
   auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
   LevenbergMarquardtParams lmParams;
-  NonlinearMOptimizer optimizer(moptParams, lmParams);
+  NonlinearManifoldOptimizer optimizer(moptParams, lmParams);
 
   bool success = true;
   std::string errorMessage;
-  ManifoldOptProblem moptProblem;
+  ManifoldOptimizationProblem moptProblem;
   try {
-    moptProblem = optimizer.initializeMoptProblem(
+    moptProblem = optimizer.initializeManifoldOptimizationProblem(
         problem.costs(), problem.constraints(), problem.initValues());
   } catch (const std::exception& e) {
     success = false;
@@ -350,11 +350,11 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
   }
   EXPECT(success);
   if (success) {
-    EXPECT(moptProblem.components_.size() == (kNumSteps + 1));
-    EXPECT(moptProblem.manifold_keys_.size() == (kNumSteps + 1));
+    EXPECT(moptProblem.components.size() == (kNumSteps + 1));
+    EXPECT(moptProblem.manifoldKeys.size() == (kNumSteps + 1));
     for (size_t k = 0; k <= kNumSteps; ++k) {
-      EXPECT(moptProblem.manifold_keys_.find(A(k)) !=
-             moptProblem.manifold_keys_.end());
+      EXPECT(moptProblem.manifoldKeys.find(A(k)) !=
+             moptProblem.manifoldKeys.end());
     }
   }
 }
@@ -383,16 +383,16 @@ TEST(ConstraintManifold, sv_mode_fully_constrained_component_no_throw) {
   initValues.insert(x2Key, Pose3(Rot3(), Point3(0.0, 0.2, 0.8)));
   EConsOptProblem problem(costs, constraints, initValues);
 
-  BasisKeyFunc basisKeyFunc = [](const KeyVector& keys) { return keys; };
-  auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(basisKeyFunc);
+  BasisKeyFunction basisKeyFunction = [](const KeyVector& keys) { return keys; };
+  auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(basisKeyFunction);
   LevenbergMarquardtParams lmParams;
-  NonlinearMOptimizer optimizer(moptParams, lmParams);
+  NonlinearManifoldOptimizer optimizer(moptParams, lmParams);
 
   bool success = true;
   std::string errorMessage;
-  ManifoldOptProblem moptProblem;
+  ManifoldOptimizationProblem moptProblem;
   try {
-    moptProblem = optimizer.initializeMoptProblem(
+    moptProblem = optimizer.initializeManifoldOptimizationProblem(
         problem.costs(), problem.constraints(), problem.initValues());
   } catch (const std::exception& e) {
     success = false;
@@ -405,9 +405,9 @@ TEST(ConstraintManifold, sv_mode_fully_constrained_component_no_throw) {
   }
   EXPECT(success);
   if (success) {
-    EXPECT(moptProblem.components_.size() == 1);
-    EXPECT(moptProblem.manifold_keys_.size() == 0);
-    EXPECT(moptProblem.fixed_manifolds_.size() == 1);
+    EXPECT(moptProblem.components.size() == 1);
+    EXPECT(moptProblem.manifoldKeys.size() == 0);
+    EXPECT(moptProblem.fixedManifolds.size() == 1);
   }
 }
 
@@ -452,19 +452,19 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   basis_keys.push_back(JointVelKey(j1_id, 0));
   basis_keys.push_back(JointAccelKey(j0_id, 0));
   basis_keys.push_back(JointAccelKey(j1_id, 0));
-  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
+  BasisKeyFunction basisKeyFunction = [=](const KeyVector& keys) -> KeyVector {
     return basis_keys;
   };
 
   // constraint manifold
   auto constraints = std::make_shared<NonlinearEqualityConstraints>(
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph));
-  auto cc_params = std::make_shared<ConstraintManifold::Params>();
-  cc_params->retractor_creator =
-      std::make_shared<BasisRetractorCreator>(basis_key_func);
-  cc_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(basis_key_func);
-  auto cm = ConstraintManifold(constraints, init_values, cc_params, true);
+  auto constraintManifoldParams = std::make_shared<ConstraintManifold::Params>();
+  constraintManifoldParams->retractorCreator =
+      std::make_shared<BasisRetractorCreator>(basisKeyFunction);
+  constraintManifoldParams->basisCreator =
+      std::make_shared<EliminationBasisCreator>(basisKeyFunction);
+  auto cm = ConstraintManifold(constraints, init_values, constraintManifoldParams, true);
 
   // retract
   Vector xi = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
@@ -558,13 +558,13 @@ TEST(ConstraintManifold, lynch_park_four_bar_loop_closure_cmopt) {
 
   EConsOptProblem problem(costs, constraints, init_values);
   auto mopt_params = ConstrainedOptBenchmark::DefaultMoptParams();
-  LevenbergMarquardtParams lm_params;
-  NonlinearMOptimizer optimizer(mopt_params, lm_params);
+  LevenbergMarquardtParams lmParams;
+  NonlinearManifoldOptimizer optimizer(mopt_params, lmParams);
 
-  const auto mopt_problem = optimizer.initializeMoptProblem(
+  const auto mopt_problem = optimizer.initializeManifoldOptimizationProblem(
       problem.costs(), problem.constraints(), problem.initValues());
-  EXPECT_LONGS_EQUAL(1, mopt_problem.components_.size());
-  EXPECT_LONGS_EQUAL(1, mopt_problem.manifold_keys_.size());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.components.size());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.manifoldKeys.size());
   EXPECT_LONGS_EQUAL(1, mopt_problem.manifolds().begin()->second.dim());
 
   const Values result =

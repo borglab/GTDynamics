@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
+#include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
@@ -95,7 +95,7 @@ public:
   void printJointAngles(const Values& values, size_t num_steps) const;
 
   /// Return function that select basis keys for constraint manifolds.
-  BasisKeyFunc getBasisKeyFunc(bool unactuated_as_constraint = true) const;
+  BasisKeyFunction getBasisKeyFunction(bool unactuated_as_constraint = true) const;
 
 protected:
   /// Default optimizer setting.

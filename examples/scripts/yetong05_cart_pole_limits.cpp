@@ -1,4 +1,4 @@
-#include "gtdynamics/cmopt/TspaceBasis.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include <cmath>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
@@ -68,12 +68,12 @@ int main(int argc, char **argv) {
 
   // Parameters
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator = std::make_shared<EliminationBasisCreator>(cp.getBasisKeyFunc());
-  iecm_params->retractor_creator =
+  iecm_params->equalityManifoldParams->basisCreator = std::make_shared<EliminationBasisCreator>(cp.getBasisKeyFunction());
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<CartPoleWithLimitsRetractor>(cp));
-  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
-  iecm_params->e_basis_build_from_scratch = false;
+  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
+  iecm_params->equalityBasisBuildFromScratch = false;
 
   // optimize IELM
   IELMParams ie_params;
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
   Values result_values = 
       lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
-    IEOptimizer::PrintIterDetails(
+    IEOptimizer::printIterationDetails(
         iter_details, num_steps, false, IECartPoleWithLimits::PrintValues,
         IECartPoleWithLimits::PrintDelta, GTDKeyFormatter);
   }

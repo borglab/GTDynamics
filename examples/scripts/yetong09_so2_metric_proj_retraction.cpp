@@ -24,7 +24,7 @@
 #include <string>
 
 #include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/TspaceBasis.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -73,15 +73,15 @@ void SaveState(const IELMState &state, int iter_id,
 void SaveTrial(const IELMTrial &trial, int iter_id, int trial_id,
                const std::string &folder_path) {
   Values new_values;
-  for (const auto &[key, manifold] : trial.nonlinear_update.new_manifolds) {
+  for (const auto &[key, manifold] : trial.nonlinearUpdate.newManifolds) {
     new_values.insert(manifold.values());
   }
 
   double new_x1 = new_values.atDouble(x1_key);
   double new_x2 = new_values.atDouble(x2_key);
 
-  double delta_x1 = trial.linear_update.tangent_vector.at(x1_key)(0);
-  double delta_x2 = trial.linear_update.tangent_vector.at(x2_key)(0);
+  double delta_x1 = trial.linearUpdate.tangentVector.at(x1_key)(0);
+  double delta_x2 = trial.linearUpdate.tangentVector.at(x2_key)(0);
 
   std::string file_path = folder_path + "trial_" + std::to_string(iter_id) +
                           "_" + std::to_string(trial_id) + ".txt";
@@ -89,13 +89,13 @@ void SaveTrial(const IELMTrial &trial, int iter_id, int trial_id,
   file.open(file_path);
   file << delta_x1 << " " << delta_x2 << "\n";
   file << new_x1 << " " << new_x2 << "\n";
-  file << trial.linear_update.lambda << "\n";
-  file << trial.nonlinear_update.new_error << "\n";
-  file << trial.step_is_successful << "\n";
+  file << trial.linearUpdate.lambda << "\n";
+  file << trial.nonlinearUpdate.newError << "\n";
+  file << trial.stepIsSuccessful << "\n";
   file.close();
 }
 
-void SaveDetails(const IELMItersDetails &iters_details,
+void SaveDetails(const IELMOptimizationDetails &iters_details,
                  const std::string &folder_path) {
   std::filesystem::create_directory(folder_path);
   // int total_trials = 0;
@@ -143,19 +143,19 @@ void OptimizeSO2() {
   init_values.insert(x2_key, init_point.y());
 
   IELMParams ielm_params;
-  ielm_params.lm_params.setVerbosityLM("SUMMARY");
-  // ielm_params.lm_params.setMaxIterations(1);
+  ielm_params.lmParams.setVerbosityLM("SUMMARY");
+  // ielm_params.lmParams.setMaxIterations(1);
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
-  LevenbergMarquardtParams lm_params;
-  // lm_params.setVerbosityLM("SUMMARY");
-  lm_params.minModelFidelity = 0.5;
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
+  LevenbergMarquardtParams lmParams;
+  // lmParams.setVerbosityLM("SUMMARY");
+  lmParams.minModelFidelity = 0.5;
 
   //// Optimization with fixed sigmas
   {
-    auto barrier_params = std::make_shared<IERetractorParams>(lm_params, 0.1);
-    barrier_params->init_values_as_x = false;
-    iecm_params->retractor_creator =
+    auto barrier_params = std::make_shared<IERetractorParams>(lmParams, 0.1);
+    barrier_params->initValuesAsX = false;
+    iecm_params->retractorCreator =
         std::make_shared<BarrierRetractorCreator>(barrier_params);
     IELMOptimizer optimizer(ielm_params, iecm_params);
     auto result =
@@ -172,9 +172,9 @@ void OptimizeSO2() {
   //// Optimization with varying sigmas
   {
     auto barrier_params =
-        IERetractorParams::VarySigmas(lm_params);
-    barrier_params->init_values_as_x = false;
-    iecm_params->retractor_creator =
+        IERetractorParams::createVaryingSigmas(lmParams);
+    barrier_params->initValuesAsX = false;
+    iecm_params->retractorCreator =
         std::make_shared<BarrierRetractorCreator>(barrier_params);
     IELMOptimizer optimizer(ielm_params, iecm_params);
     auto result =

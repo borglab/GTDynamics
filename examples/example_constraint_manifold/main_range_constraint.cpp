@@ -215,8 +215,8 @@ void kinematic_planning(const RangeConstraintArgs& args) {
   runner.setOuterLmBaseParams(LevenbergMarquardtParams());
   runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
-    moptParams.cc_params->retractor_creator->params()
-        ->lm_params.linearSolverType =
+    moptParams.constraintManifoldParams->retractorCreator->params()
+        ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     return moptParams;
   });

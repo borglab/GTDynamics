@@ -319,9 +319,9 @@ Values Vision60Robot::getInitValuesStep(const int t, const Pose3 &base_pose,
   }
 
   Values known_values;
-  LevenbergMarquardtParams lm_params;
-  // lm_params.setVerbosityLM("SUMMARY");
-  lm_params.setlambdaUpperBound(1e20);
+  LevenbergMarquardtParams lmParams;
+  // lmParams.setVerbosityLM("SUMMARY");
+  lmParams.setlambdaUpperBound(1e20);
 
   // solve q level
   NonlinearFactorGraph graph_q = getConstraintsGraphStepQ(t);
@@ -329,7 +329,7 @@ Values Vision60Robot::getInitValuesStep(const int t, const Pose3 &base_pose,
                           graph_builder.opt().p_cost_model);
 
   Values init_values_q = SubValues(init_values_t, graph_q.keys());
-  LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lm_params);
+  LevenbergMarquardtOptimizer optimizer_q(graph_q, init_values_q, lmParams);
   auto results_q = optimizer_q.optimize();
   if (graph_q.error(results_q) > 1e-5) {
     std::cout << "solving q fails! error: " << graph_q.error(results_q) << "\n";
@@ -342,7 +342,7 @@ Values Vision60Robot::getInitValuesStep(const int t, const Pose3 &base_pose,
                             graph_builder.opt().v_cost_model);
   graph_v = ConstVarGraph(graph_v, known_values);
   Values init_values_v = SubValues(init_values_t, graph_v.keys());
-  LevenbergMarquardtOptimizer optimizer_v(graph_v, init_values_v, lm_params);
+  LevenbergMarquardtOptimizer optimizer_v(graph_v, init_values_v, lmParams);
   auto results_v = optimizer_v.optimize();
   if (graph_v.error(results_v) > 1e-5) {
     std::cout << "solving v fails! error: " << graph_v.error(results_v) << "\n";
@@ -360,7 +360,7 @@ Values Vision60Robot::getInitValuesStep(const int t, const Pose3 &base_pose,
   }
   graph_ad = ConstVarGraph(graph_ad, known_values);
   Values init_values_ad = SubValues(init_values_t, graph_ad.keys());
-  LevenbergMarquardtOptimizer optimizer_ad(graph_ad, init_values_ad, lm_params);
+  LevenbergMarquardtOptimizer optimizer_ad(graph_ad, init_values_ad, lmParams);
   auto results_ad = optimizer_ad.optimize();
   if (graph_ad.error(results_ad) > 1e-5) {
     std::cout << "solving ad fails! error: " << graph_ad.error(results_ad)
