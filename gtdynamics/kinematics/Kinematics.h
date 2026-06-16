@@ -21,6 +21,7 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
+#include <optional>
 
 namespace gtdynamics {
 
@@ -244,7 +245,8 @@ class Kinematics : public Optimizer {
   template <class CONTEXT>
   gtsam::NonlinearEqualityConstraints jointAngleConstraints(
       const CONTEXT& context, const Robot& robot,
-      const gtsam::Values& joint_targets) const;
+      const gtsam::Values& joint_targets,
+      const std::optional<double>& tolerance = {}) const;
 
   /**
    * @fn Create a pose prior for a given link for each given pose.
@@ -308,7 +310,8 @@ class Kinematics : public Optimizer {
   template <class CONTEXT>
   gtsam::Values inverse(const CONTEXT& context, const Robot& robot,
                         const ContactGoals& contact_goals,
-                        bool contact_goals_as_constraints = true) const;
+                        bool contact_goals_as_constraints = true,
+                        const gtsam::Values& joint_targets = gtsam::Values()) const;
 
   /**
    * @fn Inverse kinematics given a set of desired poses

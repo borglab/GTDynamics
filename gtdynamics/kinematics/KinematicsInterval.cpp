@@ -96,10 +96,12 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Interval>(
 template <>
 gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Interval>(
     const Interval& interval, const Robot& robot,
-    const gtsam::Values& joint_targets) const {
+    const gtsam::Values& joint_targets,
+    const std::optional<double>& tolerance) const {
   gtsam::NonlinearEqualityConstraints constraints;
   for (size_t k = interval.k_start; k <= interval.k_end; k++) {
-    auto slice_constraints = jointAngleConstraints(Slice(k), robot, joint_targets);
+    auto slice_constraints =
+        jointAngleConstraints(Slice(k), robot, joint_targets, tolerance);
     for (const auto& constraint : slice_constraints) {
       constraints.push_back(constraint);
     }
@@ -137,9 +139,10 @@ template <>
 Values Kinematics::inverse<Interval>(const Interval& interval,
                                      const Robot& robot,
                                      const ContactGoals& contact_goals,
-                                     bool contact_goals_as_constraints) const {
+                                     bool contact_goals_as_constraints,
+                                     const gtsam::Values& joint_targets) const {
   return collectValues(interval, [&](const Slice& slice) {
-    return inverse(slice, robot, contact_goals, contact_goals_as_constraints);
+    return inverse(slice, robot, contact_goals, contact_goals_as_constraints, joint_targets);
   });
 }
 

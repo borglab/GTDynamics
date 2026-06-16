@@ -82,6 +82,24 @@ TEST(Slice, InverseKinematics) {
     EXPECT(goal.satisfied(result, k, tol));
   }
 }
+TEST(Slice, InverseKinematicsLockedJoints) {
+  // Load robot and establish contact/goal pairs
+  using namespace contact_goals_example;
+
+  // Instantiate kinematics algorithms
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  // Lock the first joint to a chosen angle.
+  const auto joint_id = robot.joints()[0] -> id();
+  const double locked_angle = 0.3;
+  gtsam::Values joint_targets;
+  InsertJointAngle(&joint_targets, joint_id, k, locked_angle);
+  auto result = kinematics.inverse(kSlice, robot, contact_goals, false, joint_targets);
+  EXPECT_DOUBLES_EQUAL(locked_angle, result.at<double>(JointAngleKey(joint_id, k)), 1e-4);
+
+}
 
 gtsam::Values jointVectorToValues(const Robot& robot,
                                   const gtsam::Vector7& joints) {

@@ -244,10 +244,12 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Slice>(
 template <>
 gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Slice>(
     const Slice& slice, const Robot& robot,
-    const gtsam::Values& joint_targets) const {
+    const gtsam::Values& joint_targets,
+    const std::optional<double>& tolerance) const {
   gtsam::NonlinearEqualityConstraints constraints;
 
-  const gtsam::Vector1 tolerance(p_.prior_q_cost_model->sigmas()(0));
+  // If the user sets a tolerance, use it (needed for joint angle equality constraints)
+  const gtsam::Vector1 tol(tolerance.value_or(p_.prior_q_cost_model->sigmas()(0)));
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
     if (!joint_targets.exists(key)) {
@@ -255,7 +257,7 @@ gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Slice>(
     }
     const gtsam::Double_ joint_angle_expr(key);
     constraints.emplace_shared<gtsam::ExpressionEqualityConstraint<double>>(
-        joint_angle_expr, joint_targets.at<double>(key), tolerance);
+        joint_angle_expr, joint_targets.at<double>(key), tol);
   }
 
   return constraints;
@@ -351,7 +353,8 @@ Values Kinematics::initialValues<Slice>(const Slice& slice, const Robot& robot,
 template <>
 Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
                                   const ContactGoals& contact_goals,
-                                  bool contact_goals_as_constraints) const {
+                                  bool contact_goals_as_constraints,
+                                  const gtsam::Values& joint_targets) const {
   // Robot kinematics constraints
   auto constraints = this->constraints(slice, robot);
   NonlinearFactorGraph graph;
@@ -372,6 +375,10 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
   // TODO(frank): allow pose prior as well.
   // graph.addPrior<gtsam::Pose3>(PoseKey(0, slice.k),
   // gtsam::Pose3(), nullptr);
+
+  // Add equality constraints for joint angles
+  auto locked = this->jointAngleConstraints(slice, robot, joint_targets, 1e-3);
+  for (const auto& c : locked) constraints.push_back(c);
 
   // TODO(frank): we should allow warm start when used in interval context.
   auto initial_values = initialValues(slice, robot);

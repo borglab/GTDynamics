@@ -369,10 +369,14 @@ class Kinematics {
                  gtdynamics::KinematicsParameters());
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
-                        const gtdynamics::ContactGoals &contact_goals);
+                        const gtdynamics::ContactGoals &contact_goals,
+                        bool contact_goals_as_constraints = true,
+                        const gtsam::Values &joint_targets = gtsam::Values());
   gtsam::Values inverse(const gtdynamics::Interval interval,
                         const gtdynamics::Robot &robot,
-                        const gtdynamics::ContactGoals &contact_goals);
+                        const gtdynamics::ContactGoals &contact_goals,
+                        bool contact_goals_as_constraints = true,
+                        const gtsam::Values &joint_targets = gtsam::Values());
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
               const gtdynamics::Robot &robot,

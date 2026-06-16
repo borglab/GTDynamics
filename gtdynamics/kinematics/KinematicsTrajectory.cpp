@@ -74,11 +74,12 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Trajectory>
 template <>
 gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Trajectory>(
     const Trajectory& trajectory, const Robot& robot,
-    const Values& joint_targets) const {
+    const Values& joint_targets,
+    const std::optional<double>& tolerance) const {
   gtsam::NonlinearEqualityConstraints constraints;
   for (auto&& phase : trajectory.phases()) {
     auto phase_constraints =
-        jointAngleConstraints<Interval>(phase, robot, joint_targets);
+        jointAngleConstraints<Interval>(phase, robot, joint_targets, tolerance);
     for (const auto& constraint : phase_constraints) {
       constraints.push_back(constraint);
     }
@@ -113,11 +114,12 @@ template <>
 Values Kinematics::inverse<Trajectory>(
     const Trajectory& trajectory, const Robot& robot,
     const ContactGoals& contact_goals,
-    bool contact_goals_as_constraints) const {
+    bool contact_goals_as_constraints,
+    const gtsam::Values& joint_targets) const {
   Values results;
   for (auto&& phase : trajectory.phases()) {
     results.insert(inverse<Interval>(phase, robot, contact_goals,
-                                     contact_goals_as_constraints));
+                                     contact_goals_as_constraints, joint_targets));
   }
   return results;
 }
