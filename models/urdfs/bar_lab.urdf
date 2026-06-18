@@ -1,0 +1,695 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="bar_lab">
+  <!-- Define materials at the top -->
+  <!-- Using these as variables is not showing up correctly in RH/GH -->
+  <material name="off_white">
+    <color rgba="0.9254902 0.9254902 0.9058824 1.0"/>
+  </material>
+  <material name="gt_blue">
+    <color rgba="0.0 0.188235 0.341176 1.0"/>
+  </material>
+  <material name="gt_gold">
+    <color rgba="0.70196 0.63921 0.41176 1.0"/>
+  </material>
+  <material name="robot_default">
+    <color rgba="0.772549 0.7803922 0.7686275 1.0"/>
+  </material>
+  <!--  -->
+  <!-- LINK LIST -->
+  <link name="world">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/floor.stl"/>
+      </geometry>
+      <material name="off_white">
+        <color rgba="0.9254902 0.9254902 0.9058824 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/floor.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.01"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+  </link>
+  <link name="columns">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/columns.stl"/>
+      </geometry>
+      <material name="gt_blue">
+        <color rgba="0.0 0.188235 0.341176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/columns.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.01"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+  </link>
+  <link name="x_rail">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/x_rail.stl"/>
+      </geometry>
+      <material name="gt_blue">
+        <color rgba="0.0 0.188235 0.341176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/x_rail.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="3865.863149"/>
+      <inertia ixx="218.4790231" ixy="2.89154e-05" ixz="-0.000333651" iyy="98765.15138" iyz="-1.88894e-05" izz="98762.14971"/>
+    </inertial>
+  </link>
+  <link name="bridge1">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/y_gantry1.stl"/>
+      </geometry>
+      <material name="gt_blue">
+        <color rgba="0.0 0.188235 0.341176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/y_gantry1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="3128.642116"/>
+      <inertia ixx="25724.44148" ixy="3.146909571" ixz="-15.19417529" iyy="304.7829102" iyz="-4.723765267" izz="25688.12701"/>
+    </inertial>
+  </link>
+  <link name="robot1_xy_cart">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/xy_cart.stl"/>
+      </geometry>
+      <material name="off_white">
+        <color rgba="0.9254902 0.9254902 0.9058824 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/xy_cart.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="24.2548425"/>
+      <inertia ixx="7.76453356" ixy="0.004371796" ixz="0.898701153" iyy="6.0552125" iyz="-0.147836014" izz="3.185467711"/>
+    </inertial>
+  </link>
+  <link name="robot1_base">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/z_axis.stl"/>
+      </geometry>
+      <material name="off_white">
+        <color rgba="0.9254902 0.9254902 0.9058824 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/z_axis.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="153.1949058"/>
+      <inertia ixx="165.9723726" ixy="-0.485360333" ixz="1.023822175" iyy="163.7865371" iyz="-2.711001513" izz="9.808362924"/>
+    </inertial>
+  </link>
+  <link name="robot1_base_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/base_link.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/base_link.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="47.14131677"/>
+      <inertia ixx="1.55563357" ixy="0.001845254" ixz="-0.031743069" iyy="3.241858805" iyz="0.004788491" izz="4.484095776"/>
+    </inertial>
+  </link>
+  <link name="robot1_link_1">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_1.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.18 0.0 0.5" rpy="0.0 0.0 0.0"/>
+      <mass value="38.93729507"/>
+      <inertia ixx="1.679991231" ixy="0.133903845" ixz="0.779115477" iyy="2.719822356" iyz="0.15970215" izz="2.15149761"/>
+    </inertial>
+  </link>
+  <link name="robot1_link_2">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_2.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_2.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.94 0.08 -0.34" rpy="0.0 0.0 0.0"/>
+      <mass value="19.60816326"/>
+      <inertia ixx="1.89461366" ixy="-0.000187503" ixz="0.00438202" iyy="1.938882782" iyz="-0.17913416" izz="0.165137921"/>
+    </inertial>
+  </link>
+  <link name="robot1_link_3">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_3.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_3.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.07 -0.266 0.088" rpy="0.0 0.0 0.0"/>
+      <mass value="23.73508676"/>
+      <inertia ixx="0.706551668" ixy="-0.086988985" ixz="-0.095862541" iyy="0.654859664" iyz="0.122542731" izz="0.707750603"/>
+    </inertial>
+  </link>
+  <link name="robot1_link_4">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_4.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_4.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 1.0" rpy="0.0 0.0 0.0"/>
+      <mass value="17.10902341"/>
+      <inertia ixx="0.237542069" ixy="-0.039907378" ixz="0.000515743" iyy="0.687234118" iyz="-3.55e-05" izz="0.8124582"/>
+    </inertial>
+  </link>
+  <link name="robot1_link_5">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_5.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_5.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.14 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="3.032105276"/>
+      <inertia ixx="0.012369265" ixy="-0.000876464" ixz="-0.000315733" iyy="0.022421425" iyz="0.000232901" izz="0.024134226"/>
+    </inertial>
+  </link>
+  <link name="robot1_link_6">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_6.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_6.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.081 -0.091 0.332" rpy="0.0 0.0 0.0"/>
+      <mass value="0.437009449"/>
+      <inertia ixx="0.002238324" ixy="-3.98321e-07" ixz="-5.06741e-08" iyy="0.001151263" iyz="3.76945e-06" izz="0.001158304"/>
+    </inertial>
+  </link>
+  <link name="robot1_tool0"/>
+  <link name="bridge2">
+    <visual>
+      <origin xyz="0.0 0 0.0" rpy="0.0 0.0 0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/y_gantry2.stl"/>
+      </geometry>
+      <material name="gt_blue">
+        <color rgba="0.0 0.188235 0.341176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0 0.0" rpy="0.0 0.0 0"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/y_gantry2.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="3128.642116"/>
+      <inertia ixx="25724.80284" ixy="-2.662943795" ixz="15.19417529" iyy="304.7829102" iyz="-5.166866381" izz="25688.48837"/>
+    </inertial>
+  </link>
+  <link name="robot2_xy_cart">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -3.1415926535895866"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/xy_cart.stl"/>
+      </geometry>
+      <material name="off_white">
+        <color rgba="0.9254902 0.9254902 0.9058824 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -3.1415926535895866"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/xy_cart.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="24.2548425"/>
+      <inertia ixx="7.76453356" ixy="0.004371796" ixz="0.898701153" iyy="6.0552125" iyz="-0.147836014" izz="3.185467711"/>
+    </inertial>
+  </link>
+  <link name="robot2_base">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -3.1415926535895866"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/visual/z_axis.stl"/>
+      </geometry>
+      <material name="off_white">
+        <color rgba="0.9254902 0.9254902 0.9058824 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -3.1415926535895866"/>
+      <geometry>
+        <mesh filename="package://bar_gantry/meshes/collision/z_axis.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="153.1949058"/>
+      <inertia ixx="165.9723726" ixy="-0.485360333" ixz="1.023822175" iyy="163.7865371" iyz="-2.711001513" izz="9.808362924"/>
+    </inertial>
+  </link>
+  <link name="robot2_base_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/base_link.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/base_link.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="47.14131677"/>
+      <inertia ixx="1.55563357" ixy="0.001845254" ixz="-0.031743069" iyy="3.241858805" iyz="0.004788491" izz="4.484095776"/>
+    </inertial>
+  </link>
+  <link name="robot2_link_1">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_1.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.18 0.0 0.5" rpy="0.0 0.0 0.0"/>
+      <mass value="38.93729507"/>
+      <inertia ixx="1.679991231" ixy="0.133903845" ixz="0.779115477" iyy="2.719822356" iyz="0.15970215" izz="2.15149761"/>
+    </inertial>
+  </link>
+  <link name="robot2_link_2">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_2.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_2.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.94 0.08 -0.34" rpy="0.0 0.0 0.0"/>
+      <mass value="19.60816326"/>
+      <inertia ixx="1.89461366" ixy="-0.000187503" ixz="0.00438202" iyy="1.938882782" iyz="-0.17913416" izz="0.165137921"/>
+    </inertial>
+  </link>
+  <link name="robot2_link_3">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_3.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_3.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.07 -0.266 0.088" rpy="0.0 0.0 0.0"/>
+      <mass value="23.73508676"/>
+      <inertia ixx="0.706551668" ixy="-0.086988985" ixz="-0.095862541" iyy="0.654859664" iyz="0.122542731" izz="0.707750603"/>
+    </inertial>
+  </link>
+  <link name="robot2_link_4">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_4.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_4.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.0 0.0 1.0" rpy="0.0 0.0 0.0"/>
+      <mass value="17.10902341"/>
+      <inertia ixx="0.237542069" ixy="-0.039907378" ixz="0.000515743" iyy="0.687234118" iyz="-3.55e-05" izz="0.8124582"/>
+    </inertial>
+  </link>
+  <link name="robot2_link_5">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_5.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_5.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.14 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="3.032105276"/>
+      <inertia ixx="0.012369265" ixy="-0.000876464" ixz="-0.000315733" iyy="0.022421425" iyz="0.000232901" izz="0.024134226"/>
+    </inertial>
+  </link>
+  <link name="robot2_link_6">
+    <visual>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/visual/link_6.stl"/>
+      </geometry>
+      <material name="gt_gold">
+        <color rgba="0.70196 0.63921 0.41176 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://bar_abb_irb6620/meshes/collision/link_6.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.081 -0.091 0.332" rpy="0.0 0.0 0.0"/>
+      <mass value="0.437009449"/>
+      <inertia ixx="0.002238324" ixy="-3.98321e-07" ixz="-5.06741e-08" iyy="0.001151263" iyz="3.76945e-06" izz="0.001158304"/>
+    </inertial>
+  </link>
+  <link name="robot2_tool0"/>
+  <!--  -->
+  <!--  -->
+  <!-- GLOBAL JOINTS -->
+  <joint name="world_joint" type="fixed">
+    <parent link="world"/>
+    <child link="columns"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="columns_joint" type="fixed">
+    <parent link="columns"/>
+    <child link="x_rail"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <!--  -->
+  <!--  -->
+  <!-- BRIDGE 1 JOINTS -->
+  <joint name="bridge1_joint_EA_X" type="prismatic">
+    <parent link="x_rail"/>
+    <child link="bridge1"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="0.0" upper="13.000" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_EA_Y" type="prismatic">
+    <parent link="bridge1"/>
+    <child link="robot1_xy_cart"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="0.0" upper="7.300" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_EA_Z" type="prismatic">
+    <parent link="robot1_xy_cart"/>
+    <child link="robot1_base"/>
+    <axis xyz="0.0 0.0 1.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="0.00" upper="1.750" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 2.956" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <!--  -->
+  <!--  -->
+  <!-- ROBOT 1 JOINTS -->
+  <joint name="robot1_joint_0" type="fixed">
+    <parent link="robot1_base"/>
+    <child link="robot1_base_link"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <origin xyz="0.0 0.0 0.0" rpy="-3.1415926535895866 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_1" type="revolute">
+    <parent link="robot1_base_link"/>
+    <child link="robot1_link_1"/>
+    <axis xyz="0.0 0.0 1.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-2.96706" upper="2.96706" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_2" type="revolute">
+    <parent link="robot1_link_1"/>
+    <child link="robot1_link_2"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-1.13446" upper="2.44346" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.3200 0.0 0.6800" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_3" type="revolute">
+    <parent link="robot1_link_2"/>
+    <child link="robot1_link_3"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-3.14159" upper="1.22173" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.9750" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_4" type="revolute">
+    <parent link="robot1_link_3"/>
+    <child link="robot1_link_4"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-5.23599" upper="5.23599" effort="10000.0" velocity="6.2832"/>
+    <origin xyz="0.1820 0.0 0.2000" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_5" type="revolute">
+    <parent link="robot1_link_4"/>
+    <child link="robot1_link_5"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-2.26893" upper="2.26893" effort="100000.0" velocity="6.2832"/>
+    <origin xyz="0.7050 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot1_joint_6" type="revolute">
+    <parent link="robot1_link_5"/>
+    <child link="robot1_link_6"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-5.23599" upper="5.23599" effort="100000.0" velocity="7.854"/>
+    <origin xyz="0.163 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <!-- rotate joint so +z is the positive direction of tcp, specify tool offset in +z -->
+  <joint name="robot1_joint_6-tool0" type="fixed">
+    <parent link="robot1_link_6"/>
+    <child link="robot1_tool0"/>
+    <origin xyz="0.037 0.0 0.0" rpy="0.0 1.5707963267948966 0.0"/>
+  </joint>
+  <!--  -->
+  <!--  -->
+  <!-- BRIDGE 2 JOINTS -->
+  <joint name="bridge2_joint_EA_X" type="prismatic">
+    <parent link="x_rail"/>
+    <child link="bridge2"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="0.0" upper="14.400" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot2_joint_EA_Y" type="prismatic">
+    <parent link="bridge2"/>
+    <child link="robot2_xy_cart"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="0.0" upper="7.300" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot2_joint_EA_Z" type="prismatic">
+    <parent link="robot2_xy_cart"/>
+    <child link="robot2_base"/>
+    <axis xyz="0.0 0.0 1.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="0.00" upper="1.750" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 2.956" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <!--  -->
+  <!--  -->
+  <!-- ROBOT 2 JOINTS -->
+  <joint name="robot2_joint_0" type="fixed">
+    <parent link="robot2_base"/>
+    <child link="robot2_base_link"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <origin xyz="0.0 0.0 0.0" rpy="-3.1415926535895866 0.0 -3.1415926535895866"/>
+  </joint> <joint name="robot2_joint_1" type="revolute">
+    <parent link="robot2_base_link"/>
+    <child link="robot2_link_1"/>
+    <axis xyz="0.0 0.0 1.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-2.96706" upper="2.96706" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot2_joint_2" type="revolute">
+    <parent link="robot2_link_1"/>
+    <child link="robot2_link_2"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-1.13446" upper="2.44346" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.3200 0.0 0.6800" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot2_joint_3" type="revolute">
+    <parent link="robot2_link_2"/>
+    <child link="robot2_link_3"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-3.14159" upper="1.22173" effort="100000.0" velocity="2.618"/>
+    <origin xyz="0.0 0.0 0.9750" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot2_joint_4" type="revolute">
+    <parent link="robot2_link_3"/>
+    <child link="robot2_link_4"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-5.23599" upper="5.23599" effort="10000.0" velocity="6.2832"/>
+    <origin xyz="0.1820 0.0 0.2000" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot2_joint_5" type="revolute">
+    <parent link="robot2_link_4"/>
+    <child link="robot2_link_5"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-2.26893" upper="2.26893" effort="100000.0" velocity="6.2832"/>
+    <origin xyz="0.7050 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <joint name="robot2_joint_6" type="revolute">
+    <parent link="robot2_link_5"/>
+    <child link="robot2_link_6"/>
+    <axis xyz="1.0 0.0 0.0"/>
+    <dynamics damping="0.2" friction="0.0"/>
+    <limit lower="-5.23599" upper="5.23599" effort="100000.0" velocity="7.854"/>
+    <origin xyz="0.163 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  <!-- rotate joint so +z is the positive direction of tcp, specify tool offset in +z -->
+  <joint name="robot2_joint_6-tool0" type="fixed">
+    <parent link="robot2_link_6"/>
+    <child link="robot2_tool0"/>
+    <origin xyz="0.037 0.0 0.0" rpy="0.0 1.5707963267948966 0.0"/>
+  </joint>
+</robot>
