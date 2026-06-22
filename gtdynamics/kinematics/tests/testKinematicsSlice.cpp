@@ -348,7 +348,7 @@ TEST(Slice, BarLabEndEffectorPoseIK) {
   // Load the bar_lab gantry and anchor it at the world link.
   const Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"))
-          .fixLink("world");
+          .fixLink("columns");
 
   // Use augmented Lagrangian so the pose goal is enforced as a hard constraint.
   KinematicsParameters parameters;
@@ -383,7 +383,7 @@ TEST(Slice, BarLabPoseConstraintIK) {
 
   const Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"))
-          .fixLink("world");
+          .fixLink("columns");
 
   KinematicsParameters parameters;
   parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
@@ -415,7 +415,7 @@ TEST(Slice, BarLabPoseConstraintIK) {
   EXPECT(assert_equal(goal_pose, result.at<Pose3>(PoseKey(ee_id, k)), tol));
 
   // The anchored world link does not move.
-  auto world_link = robot.link("world");
+  auto world_link = robot.link("columns");
   EXPECT(assert_equal(world_link->bMcom(),
                       result.at<Pose3>(PoseKey(world_link->id(), k)), tol));
 }
