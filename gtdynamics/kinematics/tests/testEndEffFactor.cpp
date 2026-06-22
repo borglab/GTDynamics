@@ -79,16 +79,19 @@ TEST(PoseGoalFactor, expression) {
 
   auto expr = PoseGoalConstraint(pose_key, goal_pose);
 
-  // Evaluated at the goal, the residual vanishes.
+  // Evaluated at the goal, the residual vanishes. Compare as dynamic vectors to
+  // avoid the ambiguous Matrix/Vector assert_equal overloads on fixed Vector6.
   Values at_goal;
   at_goal.insert(pose_key, goal_pose);
-  EXPECT(assert_equal(Vector6::Zero(), expr.value(at_goal)));
+  EXPECT(assert_equal(gtsam::Vector(Vector6::Zero()),
+                      gtsam::Vector(expr.value(at_goal))));
 
   // Away from the goal, it matches Pose3::logmap.
-  Pose3 other = kRobot.link("robot1_base_link")->bMcom();
+  Pose3 other = kRobot.link("robot1_link_1")->bMcom();
   Values values;
   values.insert(pose_key, other);
-  EXPECT(assert_equal(other.logmap(goal_pose), expr.value(values), 1e-9));
+  EXPECT(assert_equal(gtsam::Vector(other.logmap(goal_pose)),
+                      gtsam::Vector(expr.value(values)), 1e-9));
 }
 
 // Test that optimizing a single link pose drives it to the goal pose.
@@ -100,7 +103,7 @@ TEST(PoseGoalFactor, optimization) {
   PoseGoalFactor factor(pose_key, cost_model, goal_pose);
 
   // Start from a nominal robot link pose, far from the goal.
-  Pose3 pose_init = kRobot.link("robot1_base_link")->bMcom();
+  Pose3 pose_init = kRobot.link("robot1_link_1")->bMcom();
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
