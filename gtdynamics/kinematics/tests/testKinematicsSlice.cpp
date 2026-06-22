@@ -77,6 +77,7 @@ TEST(Slice, InverseKinematics) {
   // GTD_PRINT(*factor);
 
   // Check that goals are achieved
+  // TODO: cleanup this test
   constexpr double tol = 1e-4;
   for (const ContactGoal& goal : contact_goals) {
     EXPECT(goal.satisfied(result, k, tol));

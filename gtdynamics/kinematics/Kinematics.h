@@ -256,6 +256,16 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const PoseGoals& pose_goals) const;
 
   /**
+   * @fn Create pose goal constraints.
+   * @param pose_goals Map of time step to desired pose, enforced as hard
+   * equality constraints.
+   * @returns Equality constraints with pose goal constraints.
+   */
+  template <class CONTEXT>
+  gtsam::NonlinearEqualityConstraints poseGoalConstraints(
+      const CONTEXT& context, const PoseGoals& pose_goals) const;
+
+  /**
    * @fn Factors that minimize joint angles.
    * @param joint_priors Values where the mean of the priors is specified. Uses
    * gtsam::Values to support different prior means across time steps. The
@@ -322,7 +332,8 @@ class Kinematics : public Optimizer {
   template <class CONTEXT>
   gtsam::Values inverse(
       const CONTEXT& context, const Robot& robot, const PoseGoals& pose_goals,
-      const gtsam::Values& joint_priors = gtsam::Values()) const;
+      const gtsam::Values& joint_priors = gtsam::Values(),
+      bool pose_goals_as_constraints = false) const;
 
   /**
    * Interpolate using inverse kinematics: the goals are linearly interpolated.
