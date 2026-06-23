@@ -757,7 +757,7 @@ gtsam::NonlinearFactorGraph PointGoalFactors(
 class PoseGoalFactor : gtsam::NoiseModelFactor {
   PoseGoalFactor(gtsam::Key pose_key,                 //
                  gtsam::SharedNoiseModel cost_model,  //
-                 gtsam::Pose3 goal_pose);
+                 gtsam::Pose3 wTcom_goal);
 
   gtsam::Pose3 goalPose();
 };
