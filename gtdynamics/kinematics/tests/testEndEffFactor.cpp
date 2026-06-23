@@ -42,26 +42,28 @@ static const Robot kRobot =
     CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"));
 
 // Test the unwhitened error of PoseGoalFactor at and away from the goal pose.
+// Naming follows the aTb convention: wTcom is the link CoM pose in the world
+// frame (the pose variable), wTcom_goal is the desired CoM pose in world.
 TEST(PoseGoalFactor, error) {
   auto cost_model = Unit::Create(6);
   LabeledSymbol pose_key('P', 0, 0);
 
   // Use a nominal end-effector link pose as the goal.
-  Pose3 goal_pose = kRobot.link("robot1_link_6")->bMcom();
-  PoseGoalFactor factor(pose_key, cost_model, goal_pose);
+  Pose3 wTcom_goal = kRobot.link("robot1_link_6")->bMcom();
+  PoseGoalFactor factor(pose_key, cost_model, wTcom_goal);
 
   // Zero error when the link is exactly at the goal pose.
   Values values_at_goal;
-  values_at_goal.insert(pose_key, goal_pose);
+  values_at_goal.insert(pose_key, wTcom_goal);
   EXPECT(assert_equal(Vector6::Zero(), factor.unwhitenedError(values_at_goal)));
 
   // Away from the goal, the error is the tangent-space difference (logmap),
   // computed here independently via Pose3::logmap.
-  Pose3 other(Rot3::RzRyRx(0.3, -0.2, 0.5), Point3(-1.0, 2.0, 0.5));
+  Pose3 wTcom(Rot3::RzRyRx(0.3, -0.2, 0.5), Point3(-1.0, 2.0, 0.5));
   Values values;
-  values.insert(pose_key, other);
-  EXPECT(assert_equal(other.logmap(goal_pose), factor.unwhitenedError(values),
-                      1e-9));
+  values.insert(pose_key, wTcom);
+  EXPECT(assert_equal(wTcom.logmap(wTcom_goal),
+                      factor.unwhitenedError(values), 1e-9));
 
   // The error should be non-trivial for this displaced pose.
   EXPECT(1e-3 < factor.unwhitenedError(values).norm());
@@ -75,22 +77,22 @@ TEST(PoseGoalFactor, error) {
 // expression (the building block used by both the factor and the constraints).
 TEST(PoseGoalFactor, expression) {
   LabeledSymbol pose_key('P', 0, 0);
-  Pose3 goal_pose(Rot3::RzRyRx(0.1, 0.2, -0.3), Point3(1.5, -2.0, 3.0));
+  Pose3 wTcom_goal(Rot3::RzRyRx(0.1, 0.2, -0.3), Point3(1.5, -2.0, 3.0));
 
-  auto expr = PoseGoalConstraint(pose_key, goal_pose);
+  auto expr = PoseGoalConstraint(pose_key, wTcom_goal);
 
   // Evaluated at the goal, the residual vanishes. Compare as dynamic vectors to
   // avoid the ambiguous Matrix/Vector assert_equal overloads on fixed Vector6.
   Values at_goal;
-  at_goal.insert(pose_key, goal_pose);
+  at_goal.insert(pose_key, wTcom_goal);
   EXPECT(assert_equal(gtsam::Vector(Vector6::Zero()),
                       gtsam::Vector(expr.value(at_goal))));
 
   // Away from the goal, it matches Pose3::logmap.
-  Pose3 other = kRobot.link("robot1_link_1")->bMcom();
+  Pose3 wTcom = kRobot.link("robot1_link_1")->bMcom();
   Values values;
-  values.insert(pose_key, other);
-  EXPECT(assert_equal(gtsam::Vector(other.logmap(goal_pose)),
+  values.insert(pose_key, wTcom);
+  EXPECT(assert_equal(gtsam::Vector(wTcom.logmap(wTcom_goal)),
                       gtsam::Vector(expr.value(values)), 1e-9));
 }
 
@@ -99,16 +101,16 @@ TEST(PoseGoalFactor, optimization) {
   auto cost_model = Constrained::All(6);
   LabeledSymbol pose_key('P', 0, 0);
 
-  Pose3 goal_pose(Rot3::RzRyRx(0.1, 0.2, -0.3), Point3(1.5, -2.0, 3.0));
-  PoseGoalFactor factor(pose_key, cost_model, goal_pose);
+  Pose3 wTcom_goal(Rot3::RzRyRx(0.1, 0.2, -0.3), Point3(1.5, -2.0, 3.0));
+  PoseGoalFactor factor(pose_key, cost_model, wTcom_goal);
 
   // Start from a nominal robot link pose, far from the goal.
-  Pose3 pose_init = kRobot.link("robot1_link_1")->bMcom();
+  Pose3 wTcom_init = kRobot.link("robot1_link_1")->bMcom();
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
   Values init_values;
-  init_values.insert(pose_key, pose_init);
+  init_values.insert(pose_key, wTcom_init);
 
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosity("SILENT");
@@ -119,8 +121,8 @@ TEST(PoseGoalFactor, optimization) {
   optimizer.optimize();
   Values results = optimizer.values();
 
-  Pose3 pose_optimized = results.at<Pose3>(pose_key);
-  EXPECT(assert_equal(goal_pose, pose_optimized, 1e-4));
+  Pose3 wTcom_opt = results.at<Pose3>(pose_key);
+  EXPECT(assert_equal(wTcom_goal, wTcom_opt, 1e-4));
   EXPECT(assert_equal(Vector6::Zero(), factor.unwhitenedError(results), 1e-4));
 }
 

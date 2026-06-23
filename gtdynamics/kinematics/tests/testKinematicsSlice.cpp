@@ -345,7 +345,7 @@ TEST(Slice, BarLabEndEffectorPoseIK) {
   using gtsam::Pose3;
   using gtsam::Values;
 
-  // Load the bar_lab gantry and anchor it at the world link.
+  // Load the bar_lab gantry and anchor it at the base link.
   const Robot robot =
       CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"))
           .fixLink("columns");
@@ -358,13 +358,14 @@ TEST(Slice, BarLabEndEffectorPoseIK) {
   auto ee_link = robot.link("robot1_link_6");
   const auto ee_id = ee_link->id();
 
-  // Reachable goal pose from forward kinematics of a feasible configuration.
+  // Reachable goal: the end-effector CoM pose in world (wTcom) from forward
+  // kinematics of a feasible configuration.
   Values fk = kinematics.initialValues(kSlice, robot, 0.0, barLabConfig(robot),
                                        true);
-  const Pose3 goal_pose = fk.at<Pose3>(PoseKey(ee_id, k));
+  const Pose3 wTcom_goal = fk.at<Pose3>(PoseKey(ee_id, k));
 
   // The pose goal is the only goal constraint (the rest is robot kinematics).
-  PoseGoals pose_goals = {{k, PoseGoal(ee_link, Pose3(), goal_pose)}};
+  PoseGoals pose_goals = {{k, PoseGoal(ee_link, Pose3(), wTcom_goal)}};
 
   // Solve with no warm start: we only care that the end-effector pose is met,
   // not which joint configuration achieves it.
@@ -372,7 +373,7 @@ TEST(Slice, BarLabEndEffectorPoseIK) {
                                    /*pose_goals_as_constraints=*/true);
 
   // The end-effector reaches the goal pose.
-  EXPECT(assert_equal(goal_pose, result.at<Pose3>(PoseKey(ee_id, k)), 1e-3));
+  EXPECT(assert_equal(wTcom_goal, result.at<Pose3>(PoseKey(ee_id, k)), 1e-3));
 }
 
 // Same hard pose constraint, but warm-started near a known configuration and
@@ -392,12 +393,13 @@ TEST(Slice, BarLabPoseConstraintIK) {
   auto ee_link = robot.link("robot1_link_6");
   const auto ee_id = ee_link->id();
 
-  // Reachable goal pose from forward kinematics of a feasible configuration.
+  // Reachable goal: the end-effector CoM pose in world (wTcom) from forward
+  // kinematics of a feasible configuration.
   Values q_true = barLabConfig(robot);
   Values fk = kinematics.initialValues(kSlice, robot, 0.0, q_true, true);
-  const Pose3 goal_pose = fk.at<Pose3>(PoseKey(ee_id, k));
+  const Pose3 wTcom_goal = fk.at<Pose3>(PoseKey(ee_id, k));
 
-  PoseGoals pose_goals = {{k, PoseGoal(ee_link, Pose3(), goal_pose)}};
+  PoseGoals pose_goals = {{k, PoseGoal(ee_link, Pose3(), wTcom_goal)}};
 
   // Warm start the solver with a noisy version of the true joint angles.
   Values initial_joints;
@@ -412,12 +414,12 @@ TEST(Slice, BarLabPoseConstraintIK) {
 
   // The end-effector reaches the goal pose.
   double tol = 1e-3;
-  EXPECT(assert_equal(goal_pose, result.at<Pose3>(PoseKey(ee_id, k)), tol));
+  EXPECT(assert_equal(wTcom_goal, result.at<Pose3>(PoseKey(ee_id, k)), tol));
 
-  // The anchored world link does not move.
-  auto world_link = robot.link("columns");
-  EXPECT(assert_equal(world_link->bMcom(),
-                      result.at<Pose3>(PoseKey(world_link->id(), k)), tol));
+  // The anchored base link does not move (bMcom is its rest CoM pose in base).
+  auto base_link = robot.link("columns");
+  EXPECT(assert_equal(base_link->bMcom(),
+                      result.at<Pose3>(PoseKey(base_link->id(), k)), tol));
 }
 
 int main() {

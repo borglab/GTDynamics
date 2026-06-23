@@ -30,17 +30,18 @@ namespace gtdynamics {
 
 /**
  * PoseGoalConstraint is a unary constraint enforcing that a link's CoM pose
- * reaches a desired goal pose. The error lives in the tangent space (logmap of
- * the relative pose), so it is a 6-vector (rotation, translation).
+ * (wTcom) reaches a desired goal pose (wTcom_goal), both in SE(3). The error
+ * lives in the tangent space (logmap of the relative pose), so it is a 6-vector
+ * (rotation, translation).
  *
- * @param pose_key key for the CoM pose of the link, in world coordinates
- * @param goal_pose desired CoM pose of the link, in world coordinates
+ * @param pose_key key for the link CoM pose in the world frame (wTcom)
+ * @param wTcom_goal desired CoM pose of the link, in the world frame
  */
 inline gtsam::Vector6_ PoseGoalConstraint(gtsam::Key pose_key,
-                                          const gtsam::Pose3 &goal_pose) {
-  gtsam::Pose3_ wTcom_expr(pose_key);
-  gtsam::Pose3_ goal_pose_expr(goal_pose);
-  return gtsam::logmap(wTcom_expr, goal_pose_expr);
+                                          const gtsam::Pose3 &wTcom_goal) {
+  gtsam::Pose3_ wTcom(pose_key);
+  gtsam::Pose3_ wTcom_goal_(wTcom_goal);
+  return gtsam::logmap(wTcom, wTcom_goal_);
 }
 
 /**
@@ -52,24 +53,24 @@ class PoseGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector6> {
  private:
   using This = PoseGoalFactor;
   using Base = gtsam::ExpressionFactor<gtsam::Vector6>;
-  gtsam::Pose3 goal_pose_;
+  gtsam::Pose3 wTcom_goal_;
 
  public:
   /**
    * Constructor from goal pose.
-   * @param pose_key key for the CoM pose of the link, in world coordinates
+   * @param pose_key key for the link CoM pose in the world frame (wTcom)
    * @param cost_model noise model
-   * @param goal_pose desired CoM pose of the link, in world coordinates
+   * @param wTcom_goal desired CoM pose of the link, in the world frame
    */
   PoseGoalFactor(gtsam::Key pose_key,
                  const gtsam::noiseModel::Base::shared_ptr &cost_model,
-                 const gtsam::Pose3 &goal_pose)
+                 const gtsam::Pose3 &wTcom_goal)
       : Base(cost_model, gtsam::Vector6::Zero(),
-             PoseGoalConstraint(pose_key, goal_pose)),
-        goal_pose_(goal_pose) {}
+             PoseGoalConstraint(pose_key, wTcom_goal)),
+        wTcom_goal_(wTcom_goal) {}
 
-  /// Return goal pose.
-  const gtsam::Pose3 &goalPose() const { return goal_pose_; }
+  /// Return goal pose (wTcom_goal).
+  const gtsam::Pose3 &goalPose() const { return wTcom_goal_; }
 
  private:
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION

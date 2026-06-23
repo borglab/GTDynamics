@@ -271,10 +271,8 @@ NonlinearFactorGraph Kinematics::poseGoalObjectives<Slice>(
   if (it != pose_goals.end()) {
     const auto& pose_goal = it->second;
     auto pose_key = PoseKey(pose_goal.link()->id(), slice.k);
-    const gtsam::Pose3& desired_pose = pose_goal.wTcom();
-    // TODO(toni): use pose prior from unstable gtsam slam or create new
-    // factors, to add pose from link7
-    graph.addPrior<gtsam::Pose3>(pose_key, desired_pose, p_.p_cost_model);
+    const gtsam::Pose3& wTcom_goal = pose_goal.wTcom();
+    graph.addPrior<gtsam::Pose3>(pose_key, wTcom_goal, p_.p_cost_model);
   }
 
   return graph;

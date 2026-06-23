@@ -67,29 +67,27 @@ struct ContactGoal {
 using ContactGoals = std::vector<ContactGoal>;
 
 /**
- * Similar to the previous struct ContactGoal but with poses instead of
- * points.
- * Desired world pose for a end-effector pose.
+ * Similar to the previous struct ContactGoal but with poses instead of points.
  *
  * This simple struct stores the robot link that holds the end-effector, the
- * end-effector's pose in the final link's CoM frame, and a `goal_pose` in
- * world coordinate frames. The goal is satisfied iff
- * `pose_on_link.predict(values, k) == goal_pose`.
+ * goal pose in that link's CoM frame (comTgoal, e.g. a TCP offset), and the
+ * goal pose in the world frame (wTgoal). The goal is satisfied iff the link's
+ * CoM pose equals wTcom() == wTgoal * comTgoal.inverse().
  */
 struct PoseGoal {
-  LinkSharedPtr ee_link;  ///< Link that hold end-effector
-  gtsam::Pose3 comTgoal;  ///< Goal pose in link's CoM frame.
-  gtsam::Pose3 wTgoal;    ///< Goal pose in world frame.
+  LinkSharedPtr ee_link;  ///< Link that holds the end-effector.
+  gtsam::Pose3 comTgoal;  ///< Goal pose in the link's CoM frame.
+  gtsam::Pose3 wTgoal;    ///< Goal pose in the world frame.
 
   /// Constructor
   PoseGoal(const LinkSharedPtr& ee_link, const gtsam::Pose3& comTgoal,
            const gtsam::Pose3& wTgoal)
       : ee_link(ee_link), comTgoal(comTgoal), wTgoal(wTgoal) {}
 
-  /// Return link associated with contact pose.
+  /// Return the end-effector link associated with this pose goal.
   const LinkSharedPtr& link() const { return ee_link; }
 
-  /// Return CoM pose needed to achieve goal pose.
+  /// Return the CoM pose in world (wTcom) needed to achieve the goal pose.
   const gtsam::Pose3 wTcom() const {
     return wTgoal.compose(comTgoal.inverse());
   }
@@ -101,10 +99,10 @@ struct PoseGoal {
   void print(const std::string& s) const;
 
   /**
-   * @fn Check that the contact goal has been achieved for given values.
-   * @param values a GTSAM Values instance that should contain link pose.
+   * @fn Check that the pose goal has been achieved for given values.
+   * @param values a GTSAM Values instance that should contain the link pose.
    * @param k time step to check (default 0).
-   * @param tol tolerance in 3D (default 1e-9).
+   * @param tol SE(3) tolerance (default 1e-9).
    */
   bool satisfied(const gtsam::Values& values, size_t k = 0,
                  double tol = 1e-9) const;
