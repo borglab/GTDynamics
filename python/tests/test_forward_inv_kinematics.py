@@ -115,7 +115,7 @@ class TestManipulator(GtsamTestCase):
         com_T_goal = gtsam.Pose3()       # identity: constrain the link frame itself
         w_T_goal = w_T_com_goal          # desired world pose == the FK pose
         pose_goal = gtd.PoseGoal(link6, com_T_goal, w_T_goal)
-        pose_goals = {link6.id(): pose_goal}  # inverse() takes {link_id: PoseGoal}
+        pose_goals = {k: pose_goal}  # inverse() takes {timestep: PoseGoal}
 
         # The FK solution must satisfy its own goal.
         self.assertTrue(pose_goal.satisfied(fk, k, 1e-5))
