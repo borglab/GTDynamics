@@ -6,7 +6,7 @@
  *
  * @file  test_forward_inv_kinematics.py
  * @brief Forward kinematics factor and pose-goal inverse kinematics tests.
- * @author Varun Agrawal
+ * @author Varun Agrawal, Karthik Shaji
 """
 
 import unittest
