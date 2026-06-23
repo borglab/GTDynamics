@@ -77,6 +77,7 @@ TEST(Slice, InverseKinematics) {
   // GTD_PRINT(*factor);
 
   // Check that goals are achieved
+  // TODO: cleanup this test
   constexpr double tol = 1e-4;
   for (const ContactGoal& goal : contact_goals) {
     EXPECT(goal.satisfied(result, k, tol));
@@ -315,6 +316,110 @@ TEST(Slice, PandaIK) {
     optimal_q[j] = values.at<double>(JointAngleKey(j, k));
   tol = 0.1;
   EXPECT(assert_equal(initial, optimal_q, tol));
+}
+
+// A feasible robot1 (gantry + arm) configuration for the bar_lab pose-goal
+// tests. Forward kinematics of this configuration yields a reachable
+// end-effector goal pose.
+static gtsam::Values barLabConfig(const Robot& robot) {
+  gtsam::Values q;
+  auto set_q = [&](const std::string& name, double value) {
+    q.insert(JointAngleKey(robot.joint(name)->id(), k), value);
+  };
+  set_q("bridge1_joint_EA_X", 2.0);
+  set_q("robot1_joint_EA_Y", 1.5);
+  set_q("robot1_joint_EA_Z", 0.5);
+  set_q("robot1_joint_1", 0.3);
+  set_q("robot1_joint_2", 0.4);
+  set_q("robot1_joint_3", -0.5);
+  set_q("robot1_joint_4", 0.2);
+  set_q("robot1_joint_5", 0.6);
+  set_q("robot1_joint_6", -0.3);
+  return q;
+}
+
+// IK on bar_lab driving a single end-effector pose as a hard constraint, where
+// we only care that the end-effector reaches the goal pose (any feasible joint
+// configuration is acceptable).
+TEST(Slice, BarLabEndEffectorPoseIK) {
+  using gtsam::Pose3;
+  using gtsam::Values;
+
+  // Load the bar_lab gantry and anchor it at the base link.
+  const Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"))
+          .fixLink("columns");
+
+  // Use augmented Lagrangian so the pose goal is enforced as a hard constraint.
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  auto ee_link = robot.link("robot1_link_6");
+  const auto ee_id = ee_link->id();
+
+  // Reachable goal: the end-effector CoM pose in world (wTcom) from forward
+  // kinematics of a feasible configuration.
+  Values fk = kinematics.initialValues(kSlice, robot, 0.0, barLabConfig(robot),
+                                       true);
+  const Pose3 wTcom_goal = fk.at<Pose3>(PoseKey(ee_id, k));
+
+  // The pose goal is the only goal constraint (the rest is robot kinematics).
+  PoseGoals pose_goals = {{k, PoseGoal(ee_link, Pose3(), wTcom_goal)}};
+
+  // Solve with no warm start: we only care that the end-effector pose is met,
+  // not which joint configuration achieves it.
+  auto result = kinematics.inverse(kSlice, robot, pose_goals, gtsam::Values(),
+                                   /*pose_goals_as_constraints=*/true);
+
+  // The end-effector reaches the goal pose.
+  EXPECT(assert_equal(wTcom_goal, result.at<Pose3>(PoseKey(ee_id, k)), 1e-3));
+}
+
+// Same hard pose constraint, but warm-started near a known configuration and
+// also checking that the anchored base link does not move.
+TEST(Slice, BarLabPoseConstraintIK) {
+  using gtsam::Pose3;
+  using gtsam::Values;
+
+  const Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"))
+          .fixLink("columns");
+
+  KinematicsParameters parameters;
+  parameters.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+  Kinematics kinematics(parameters);
+
+  auto ee_link = robot.link("robot1_link_6");
+  const auto ee_id = ee_link->id();
+
+  // Reachable goal: the end-effector CoM pose in world (wTcom) from forward
+  // kinematics of a feasible configuration.
+  Values q_true = barLabConfig(robot);
+  Values fk = kinematics.initialValues(kSlice, robot, 0.0, q_true, true);
+  const Pose3 wTcom_goal = fk.at<Pose3>(PoseKey(ee_id, k));
+
+  PoseGoals pose_goals = {{k, PoseGoal(ee_link, Pose3(), wTcom_goal)}};
+
+  // Warm start the solver with a noisy version of the true joint angles.
+  Values initial_joints;
+  gtsam::Sampler sampler(gtsam::noiseModel::Isotropic::Sigma(1, 0.05), 42u);
+  for (const auto key : q_true.keys()) {
+    initial_joints.insert(key, q_true.at<double>(key) + sampler.sample()(0));
+  }
+
+  // Solve IK with the pose goal as a hard constraint.
+  auto result = kinematics.inverse(kSlice, robot, pose_goals, initial_joints,
+                                   /*pose_goals_as_constraints=*/true);
+
+  // The end-effector reaches the goal pose.
+  double tol = 1e-3;
+  EXPECT(assert_equal(wTcom_goal, result.at<Pose3>(PoseKey(ee_id, k)), tol));
+
+  // The anchored base link does not move (bMcom is its rest CoM pose in base).
+  auto base_link = robot.link("columns");
+  EXPECT(assert_equal(base_link->bMcom(),
+                      result.at<Pose3>(PoseKey(base_link->id(), k)), tol));
 }
 
 int main() {
