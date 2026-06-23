@@ -69,17 +69,17 @@ TEST(PoseGoalFactor, error) {
   EXPECT(1e-3 < factor.unwhitenedError(values).norm());
 
   // Make sure the linearization (Jacobian) is correct.
-  double diffDelta = 1e-7;
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diffDelta, 1e-3);
+  double diff_delta = 1e-7;
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, diff_delta, 1e-3);
 }
 
-// Test that the goal pose is recovered by the standalone PoseGoalConstraint
+// Test that the goal pose is recovered by the standalone poseGoalConstraint
 // expression (the building block used by both the factor and the constraints).
 TEST(PoseGoalFactor, expression) {
   LabeledSymbol pose_key('P', 0, 0);
   Pose3 wTcom_goal(Rot3::RzRyRx(0.1, 0.2, -0.3), Point3(1.5, -2.0, 3.0));
 
-  auto expr = PoseGoalConstraint(pose_key, wTcom_goal);
+  auto expr = poseGoalConstraint(pose_key, wTcom_goal);
 
   // Evaluated at the goal, the residual vanishes. Compare as dynamic vectors to
   // avoid the ambiguous Matrix/Vector assert_equal overloads on fixed Vector6.

@@ -29,7 +29,7 @@
 namespace gtdynamics {
 
 /**
- * PoseGoalConstraint is a unary constraint enforcing that a link's CoM pose
+ * poseGoalConstraint is a unary constraint enforcing that a link's CoM pose
  * (wTcom) reaches a desired goal pose (wTcom_goal), both in SE(3). The error
  * lives in the tangent space (logmap of the relative pose), so it is a 6-vector
  * (rotation, translation).
@@ -37,17 +37,17 @@ namespace gtdynamics {
  * @param pose_key key for the link CoM pose in the world frame (wTcom)
  * @param wTcom_goal desired CoM pose of the link, in the world frame
  */
-inline gtsam::Vector6_ PoseGoalConstraint(gtsam::Key pose_key,
+inline gtsam::Vector6_ poseGoalConstraint(gtsam::Key pose_key,
                                           const gtsam::Pose3 &wTcom_goal) {
-  gtsam::Pose3_ wTcom(pose_key);
-  gtsam::Pose3_ wTcom_goal_(wTcom_goal);
-  return gtsam::logmap(wTcom, wTcom_goal_);
+  gtsam::Pose3_ wTcom_expr(pose_key);
+  gtsam::Pose3_ wTcom_goal_expr(wTcom_goal);
+  return gtsam::logmap(wTcom_expr, wTcom_goal_expr);
 }
 
 /**
  * PoseGoalFactor is a unary factor that penalizes the deviation of a link's
  * CoM pose from a desired goal pose. It is the soft-cost counterpart of
- * PoseGoalConstraint, analogous to PointGoalFactor for point goals.
+ * poseGoalConstraint, analogous to PointGoalFactor for point goals.
  */
 class PoseGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector6> {
  private:
@@ -66,7 +66,7 @@ class PoseGoalFactor : public gtsam::ExpressionFactor<gtsam::Vector6> {
                  const gtsam::noiseModel::Base::shared_ptr &cost_model,
                  const gtsam::Pose3 &wTcom_goal)
       : Base(cost_model, gtsam::Vector6::Zero(),
-             PoseGoalConstraint(pose_key, wTcom_goal)),
+             poseGoalConstraint(pose_key, wTcom_goal)),
         wTcom_goal_(wTcom_goal) {}
 
   /// Return goal pose (wTcom_goal).

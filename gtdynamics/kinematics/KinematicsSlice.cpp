@@ -288,7 +288,7 @@ gtsam::NonlinearEqualityConstraints Kinematics::poseGoalConstraints<Slice>(
   if (it != pose_goals.end()) {
     const auto& pose_goal = it->second;
     const gtsam::Key pose_key = PoseKey(pose_goal.link()->id(), slice.k);
-    auto constraint_expr = PoseGoalConstraint(pose_key, pose_goal.wTcom());
+    auto constraint_expr = poseGoalConstraint(pose_key, pose_goal.wTcom());
     constraints
         .emplace_shared<gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
             constraint_expr, gtsam::Vector6::Zero(), tolerance);
