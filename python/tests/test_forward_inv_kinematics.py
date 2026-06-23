@@ -4,8 +4,8 @@
  * All Rights Reserved
  * See LICENSE for the license information
  *
- * @file  test_robot.py
- * @brief Test Robot class.
+ * @file  test_forward_inv_kinematics.py
+ * @brief Forward kinematics factor and pose-goal inverse kinematics tests.
  * @author Varun Agrawal
 """
 
