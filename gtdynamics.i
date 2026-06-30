@@ -358,7 +358,7 @@ class PoseGoal {
 class KinematicsParameters : gtdynamics::OptimizationParameters {
   gtsam::SharedNoiseModel p_cost_model;
   gtsam::SharedNoiseModel g_cost_model;
-  std::map<string, gtsam::SharedNoiseModel> prior_q_cost_model;
+  gtsam::SharedNoiseModel prior_q_cost_model;
   gtsam::SharedNoiseModel bp_cost_model;
   gtsam::SharedNoiseModel cp_cost_model;
   gtsam::SharedNoiseModel bv_cost_model;
