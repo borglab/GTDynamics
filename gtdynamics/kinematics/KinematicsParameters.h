@@ -17,6 +17,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
 namespace gtdynamics {
 
@@ -35,6 +36,9 @@ struct KinematicsParameters : public OptimizationParameters {
   /// Per-joint joint-angle prior models keyed by joint name; overrides
   /// prior_q_cost_model for listed joints (used by kinematics IK only).
   std::map<std::string, gtsam::SharedNoiseModel> joint_prior_overrides;
+
+  /// Per-joint {lower, upper} limit overrides by joint name (IK only).
+  std::map<std::string, std::pair<double, double>> joint_limit_overrides;
 
   KinematicsParameters()
       : KinematicsParameters(1e-4, 1e-2, 0.5, 1e-4, 1e-2, 1e-4, 1e-4, 1e-2) {}
@@ -79,6 +83,11 @@ struct KinematicsParameters : public OptimizationParameters {
   /// Override the joint-angle prior sigma for one joint by name.
   void setJointPriorSigma(const std::string& joint_name, double sigma) {
     joint_prior_overrides[joint_name] = Isotropic::Sigma(1, sigma);
+  }
+
+  /// Override the joint-angle limits for one joint by name.
+  void setJointLimit(const std::string& joint_name, double lower, double upper) {
+    joint_limit_overrides[joint_name] = {lower, upper};
   }
 };
 

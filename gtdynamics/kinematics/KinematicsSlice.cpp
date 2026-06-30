@@ -321,12 +321,18 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
     const Slice& slice, const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    graph.add(JointLimitFactor(
-        JointAngleKey(joint->id(), slice.k),
-        gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
-        joint->parameters().scalar_limits.value_lower_limit,
-        joint->parameters().scalar_limits.value_upper_limit,
-        0.04));  // joint->parameters().scalar_limits.value_limit_threshold));
+    // Override URDF limits for joints listed in p_.joint_limit_overrides.
+    auto it = p_.joint_limit_overrides.find(joint->name());
+    const auto& limits = joint->parameters().scalar_limits;
+    const double lower =
+        (it != p_.joint_limit_overrides.end()) ? it->second.first
+                                               : limits.value_lower_limit;
+    const double upper =
+        (it != p_.joint_limit_overrides.end()) ? it->second.second
+                                               : limits.value_upper_limit;
+    graph.add(JointLimitFactor(JointAngleKey(joint->id(), slice.k),
+                               gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
+                               lower, upper, 0.04));
   }
   return graph;
 }
