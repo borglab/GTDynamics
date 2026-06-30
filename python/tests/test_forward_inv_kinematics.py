@@ -146,6 +146,44 @@ class TestManipulator(GtsamTestCase):
                 got = gtd.JointAngle(result, j.id(), k)
                 self.assertAlmostEqual(got, self.angle_rad[j.name()], delta=1e-2)
 
+    def test_gantry_prior_sigma(self):
+        """Looser gantry prior sigmas let the gantry absorb more of the motion."""
+        k = self.k
+        # Fix the gantry base so the gantry joints lie in the chain to the EE.
+        robot = gtd.CreateRobotFromFile(
+            str(Path(gtd.URDF_PATH) / "bar_lab.urdf")).fixLink("columns")
+        link6 = robot.link("robot1_link_6")
+        gantry_joints = ["bridge1_joint_EA_X", "robot1_joint_EA_Y",
+                         "robot1_joint_EA_Z"]
+
+        # Reachable goal from a config that uses the gantry (so it is redundant).
+        config = {
+            "bridge1_joint_EA_X": 2.0, "robot1_joint_EA_Y": 1.5,
+            "robot1_joint_EA_Z": 0.5, "robot1_joint_1": 0.3,
+            "robot1_joint_2": 0.4, "robot1_joint_3": -0.5,
+            "robot1_joint_4": 0.2, "robot1_joint_5": 0.6, "robot1_joint_6": -0.3,
+        }
+        q = gtsam.Values()
+        for j in robot.joints():
+            gtd.InsertJointAngle(q, j.id(), k, config.get(j.name(), 0.0))
+        fk = robot.forwardKinematics(q, k, "columns")
+        pose_goals = {k: gtd.PoseGoal(link6, gtsam.Pose3(),
+                                      gtd.Pose(fk, link6.id(), k))}
+        slice0 = gtd.Slice(k)
+
+        # Total gantry travel from the zero prior mean for a given gantry sigma.
+        def gantry_travel(gantry_sigma):
+            params = gtd.KinematicsParameters()
+            for name in gantry_joints:
+                params.setJointPriorSigma(name, gantry_sigma)
+            result = gtd.Kinematics(params).inverse(
+                slice0, robot, pose_goals, gtsam.Values(), True)
+            return sum(abs(gtd.JointAngle(result, robot.joint(n).id(), k))
+                       for n in gantry_joints)
+
+        # Looser gantry priors -> the gantry moves more to reach the goal.
+        self.assertLess(gantry_travel(0.1), gantry_travel(10.0))
+
 
 
 
