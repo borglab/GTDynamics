@@ -52,6 +52,8 @@ protected:
   IERetractor::shared_ptr retractor_;
 
 public:
+  /// Bundle one constraint-connected component as the feasible set from thesis
+  /// Eq. (4.34), M_IE = {x | h(x)=0, g(x)>=0}, plus its active set.
   IEConstraintManifold(
       const Params::shared_ptr &params,
       const NonlinearEqualityConstraints::shared_ptr &e_constraints,
@@ -92,11 +94,12 @@ public:
 
   const Values &values() const { return values_; }
 
-  /// Set of inequality constraints that are currently active.
+  /// Active set A(x): tight inequality indices, as in thesis Eq. (4.3).
   const IndexSet &activeIndices() const { return active_indices_; }
 
   const TspaceBasis::shared_ptr eBasis() const { return e_basis_; }
 
+  /// Tangent cone C_x induced by thesis Eqs. (4.14)-(4.16).
   const TangentCone::shared_ptr &tangentCone() const { return i_cone_; }
 
   const IERetractor::shared_ptr &retractor() const { return retractor_; }
@@ -111,28 +114,32 @@ public:
 
   const size_t &dim() const { return dim_; }
 
-  /// Set of blocking constraints when going in the direction g, return set of
-  /// blocking constraint indices, and the projected vector
+  /// Project xi onto the cone as in thesis Eq. (4.31)/(4.42), using the
+  /// active linearized inequalities in manifold coordinates.
   virtual std::pair<IndexSet, Vector>
   projectTangentCone(const Vector &xi) const;
 
+  /// Same projection as above, but starting from ambient tangent vectors.
   virtual std::pair<IndexSet, VectorValues>
   projectTangentCone(const VectorValues &tangent_vector) const;
 
-  /** retract that forces the set of blocking constraints as equality
-   * constraints. Will also enforce satisfying other inequality constraints. */
+  /// Retract using the on-corner rule from thesis Eq. (4.46) when blocking
+  /// inequalities are supplied.
   virtual IEConstraintManifold
   retract(const Vector &xi,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractInfo *retract_info = nullptr) const;
 
+  /// Retract an ambient tangent update back to a feasible IE manifold point.
   virtual IEConstraintManifold
   retract(const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractInfo *retract_info = nullptr) const;
 
+  /// Return active inequalities that block the step, matching thesis Eq. (4.45).
   IndexSet blockingIndices(const VectorValues &tangent_vector) const;
 
+  /// Force a mode change by moving directly onto the requested boundary set.
   IEConstraintManifold
   moveToBoundary(const IndexSet &active_indices,
                  IERetractInfo *retract_info = nullptr) const;
@@ -153,24 +160,23 @@ public:
     return e_constraints_->violationNorm(values_);
   }
 
-  /// Linearized active i-constraints w.r.t. the manifold variable.
+  /// Linearize active inequalities as Dg_A(x) B_x, the K matrix in thesis
+  /// Eq. (4.15), for manifold-space QPs.
   LinearIConstraintMap
   linearActiveManIConstraints(const Key manifold_key) const;
 
-  /// Linearized active i-constraints w.r.t. base variables.
+  /// Linearize the active inequalities directly in ambient variable space.
   LinearIConstraintMap linearActiveBaseIConstraints() const;
 
 protected:
-  /// Identify the current active inequality constraints.
+  /// Identify A(x), either from explicit mode information or from which
+  /// inequalities are tight at the current values.
   static IndexSet IdentifyActiveConstraints(
       const NonlinearInequalityConstraints &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {});
 
-  /** Construct the tangent cone with the following steps:
-   * 1) linearize active i-constraints
-   * 2) compute jacobians on t-space basis
-   * 3) use jacobian matrix to construct tangent cone
-   */
+  /// Construct the tangent cone in thesis Eqs. (4.14)-(4.16) by forming the
+  /// active Jacobian Dg_A(x) and projecting it through the equality basis B_x.
   static TangentCone::shared_ptr
   ConstructTangentCone(const NonlinearInequalityConstraints &i_constraints,
                        const Values &values, const IndexSet &active_indices,

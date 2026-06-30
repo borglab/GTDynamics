@@ -36,13 +36,13 @@
 
 namespace gtdynamics {
 
-using gtsam::NonlinearEqualityConstraints;
 using gtsam::DefaultKeyFormatter;
 using gtsam::GaussianFactorGraph;
 using gtsam::Key;
 using gtsam::KeyFormatter;
 using gtsam::KeyVector;
 using gtsam::Matrix;
+using gtsam::NonlinearEqualityConstraints;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Ordering;
 using gtsam::Values;
@@ -369,8 +369,39 @@ class OrthonormalBasis : public TspaceBasis {
 /**
  * Tangent basis parameterized by selected basis variables.
  *
- * Non-basis variable updates are computed by elimination/Jacobian propagation,
- * yielding an implicit `[B; I]`-style basis structure.
+ * `EliminationBasis` represents the tangent space of one
+ * constraint-connected component by treating caller-selected variables as the
+ * independent coordinates. A reduced tangent vector `xi` is laid out in
+ * `basis_keys` order. Basis-variable tangent entries are copied directly from
+ * `xi`, while all non-basis variable entries are recovered from Jacobians
+ * produced by partially eliminating the constraint graph. Conceptually this is
+ * an implicit `[B; I]` basis, where `I` applies to the selected basis keys and
+ * `B` maps those coordinates to the eliminated variables.
+ *
+ * Lifecycle:
+ * - The constructor builds structural data once for a component: variable
+ *   dimensions, basis-key offsets, the constraint merit graph, and a symbolic
+ *   elimination ordering.
+ * - If `params->always_construct_basis` is true, the constructor also calls
+ *   `construct(values)`. Otherwise construction is lazy and happens when a
+ *   caller such as `ConstraintManifold::retract`, `recover` with Jacobians, or
+ *   `localCoordinates` first needs the basis.
+ * - `createWithNewValues` is used whenever a manifold is rebuilt at new values,
+ *   including after retractions and across nonlinear optimization iterations.
+ *   It reuses the structural attributes but may reconstruct the numeric
+ *   Jacobians depending on `always_construct_basis`.
+ *
+ * Cost model:
+ * - Structural setup is dominated by basis-key bookkeeping and the constrained
+ *   COLAMD ordering over the constraint merit graph.
+ * - `construct(values)` is the expensive step: it linearizes all equality
+ *   constraints in the component, partially eliminates non-basis variables by
+ *   QR, and extracts Bayes-net Jacobians. Its cost is graph- and fill-in
+ *   dependent, comparable to one sparse linearization/elimination of the
+ *   component constraints.
+ * - Per-retraction calls to `computeTangentVector` do not relinearize or
+ *   eliminate; they only copy basis slices and multiply stored Jacobian blocks,
+ *   so their cost is proportional to the stored Jacobian nonzeros.
  *
  * @see README.md#tangent-basis
  * @see README.md#retraction
@@ -378,25 +409,36 @@ class OrthonormalBasis : public TspaceBasis {
 class EliminationBasis : public TspaceBasis {
  protected:
   struct Attributes {
-    NonlinearFactorGraph merit_graph;
-    KeyVector basis_keys;
-    Ordering ordering;
-    size_t total_basis_dim;
-    std::map<Key, size_t> basis_location;  // location of basis var in xi
-    std::map<Key, size_t> var_dim;
+    NonlinearFactorGraph merit_graph;      ///< Constraint penalty graph.
+    KeyVector basis_keys;                  ///< Independent coordinates.
+    Ordering ordering;                     ///< Non-basis elimination order.
+    size_t total_basis_dim;                ///< Reduced tangent dimension.
+    std::map<Key, size_t> basis_location;  ///< Offset of basis key in xi.
+    std::map<Key, size_t> var_dim;         ///< Ambient dimension per variable.
 
     using shared_ptr = std::shared_ptr<Attributes>;
   };
-  Attributes::shared_ptr attributes_;
-  MultiJacobians jacobians_;
+  Attributes::shared_ptr attributes_;  ///< Shared structural data.
+  MultiJacobians jacobians_;           ///< Numeric recovery Jacobian blocks.
 
  public:
   /**
-   * Constructor.
+   * Construct an elimination basis for one constraint-connected component.
+   *
+   * This constructor always builds the structural attributes and, when
+   * `params->always_construct_basis` is true, immediately calls
+   * `construct(values)`. Explicit `basis_keys` are required by the current
+   * implementation; omitting them throws at runtime. The selected keys must
+   * have total dimension `values.dim() - constraints->dim()`.
+   *
+   * Construction-time cost is dominated by the constrained COLAMD ordering; if
+   * immediate numeric construction is enabled, add the cost of one constraint
+   * linearization and QR partial elimination.
+   *
    * @param constraints Equality constraints for the component.
    * @param values Values of variables in the connected component.
    * @param params Basis construction parameters.
-   * @param basis_keys Optional variables selected as basis variables.
+   * @param basis_keys Variables selected as independent basis coordinates.
    */
   EliminationBasis(const NonlinearEqualityConstraints::shared_ptr &constraints,
                    const Values &values,
@@ -404,17 +446,46 @@ class EliminationBasis : public TspaceBasis {
                    std::optional<const KeyVector> basis_keys = {});
 
   /**
-   * Constructor from another basis, reusing structural attributes.
-   * @param values Current values.
-   * @param other Source basis.
+   * Recreate a basis at new values while reusing structural attributes.
+   *
+   * This is the path used by `createWithNewValues`, which is in turn called
+   * when `ConstraintManifold` or `IEConstraintManifold` creates a new manifold
+   * state after retraction or between nonlinear iterations. It avoids
+   * recomputing basis-key offsets and the symbolic ordering. If
+   * `always_construct_basis` is true, it still recomputes the numeric recovery
+   * Jacobians at `values`.
+   *
+   * @param values Current values for the same component structure.
+   * @param other Source basis providing shared structural attributes.
    */
   EliminationBasis(const Values &values, const EliminationBasis &other);
 
+  /**
+   * Construct from precomputed structural attributes.
+   *
+   * This internal constructor is used by `createWithAdditionalConstraints`
+   * after it has assembled updated structural attributes. It does not construct
+   * numeric Jacobians; the caller either invokes `construct(values)` or assigns
+   * a composed Jacobian cache.
+   *
+   * @param params Basis construction parameters.
+   * @param attributes Shared structural data for the new basis.
+   */
   EliminationBasis(const TspaceBasisParams::shared_ptr &params,
                    const Attributes::shared_ptr &attributes)
       : TspaceBasis(params), attributes_(attributes) {}
 
-  /// Create basis with new values.
+  /**
+   * Create a basis at new values with the same structural attributes.
+   *
+   * This is called when a manifold is rebuilt after a retraction or nonlinear
+   * trial/update. It is cheap when `always_construct_basis` is false, and
+   * otherwise costs one call to `construct(values)`.
+   *
+   * @param values Current values for the same component structure.
+   * @return Basis sharing structure with this basis and updated numerics if
+   * requested by the parameters.
+   */
   TspaceBasis::shared_ptr createWithNewValues(
       const Values &values) const override {
     return std::make_shared<EliminationBasis>(values, *this);
@@ -422,6 +493,18 @@ class EliminationBasis : public TspaceBasis {
 
   /**
    * Construct a basis by incorporating additional constraints.
+   *
+   * This is used by inequality-constrained manifolds when active inequalities
+   * are temporarily converted into equality constraints. Basis keys that appear
+   * in the additional constraints are removed from the independent coordinate
+   * set because those directions are no longer free.
+   *
+   * If `create_from_scratch` is true, the new basis pays the full
+   * `construct(values)` cost. Otherwise it composes the existing recovery
+   * Jacobians with a lightweight Jacobian map for the new active constraints,
+   * which avoids a fresh graph linearization/elimination but still costs a
+   * multiplication over the stored Jacobian blocks.
+   *
    * @param constraints Additional equality constraints.
    * @param values Current variable values.
    * @param create_from_scratch If true, rebuild basis from scratch.
@@ -431,17 +514,57 @@ class EliminationBasis : public TspaceBasis {
       const NonlinearEqualityConstraints &constraints, const Values &values,
       bool create_from_scratch = false) const override;
 
-  /// Compute the tangent vector in the ambient space.
+  /**
+   * Lift reduced coordinates into an ambient tangent vector.
+   *
+   * This is called during retractions and optimizer linear/nonlinear update
+   * paths. It is a per-call operation, often executed many times per nonlinear
+   * iteration/trial. It assumes the numeric basis has already been constructed;
+   * callers that need lazy construction should call through
+   * `ConstraintManifold::makeSureBasisConstructed`.
+   *
+   * Cost is proportional to the selected basis dimension plus the stored
+   * recovery Jacobian nonzeros. It does not linearize factors or eliminate.
+   *
+   * @param xi Reduced tangent coordinates in basis-key order.
+   * @return Ambient tangent vector for all variables represented by this basis.
+   */
   VectorValues computeTangentVector(const Vector &xi) const override;
 
-  /// Compute xi of basis components.
+  /**
+   * Extract reduced coordinates from an ambient tangent vector.
+   *
+   * Only the basis-key entries are read; non-basis entries are ignored because
+   * they are dependent coordinates. Cost is linear in the total basis
+   * dimension.
+   *
+   * @param tangent_vector Ambient tangent vector.
+   * @return Reduced coordinates in basis-key order.
+   */
   Vector computeXi(const VectorValues &tangent_vector) const override;
 
-  /// Jacobian of recover function.
+  /**
+   * Return the recover Jacobian for a variable.
+   *
+   * `ConstraintManifold::recover(key, H)` and transformed-factor
+   * linearization call this when derivatives with respect to manifold
+   * coordinates are needed. It allocates a dense
+   * `var_dim(key) x total_basis_dim` matrix and fills the blocks stored for
+   * `key`; it does not relinearize or eliminate.
+   *
+   * @param key Variable key to recover.
+   * @return Jacobian of the recovered variable local coordinates w.r.t. `xi`.
+   */
   Matrix recoverJacobian(const Key &key) const override;
 
   /**
    * Compute local coordinates between two value assignments.
+   *
+   * This is called by manifold `localCoordinates`, typically while evaluating
+   * optimizer deltas between two manifold states. It computes local coordinates
+   * only for basis keys because those are the independent coordinates. Cost is
+   * the sum of the basis-key local-coordinate costs.
+   *
    * @param values Source values.
    * @param values_other Target values.
    * @return Local coordinates in basis parameterization.
@@ -452,7 +575,17 @@ class EliminationBasis : public TspaceBasis {
   /// Dimension of the basis.
   size_t dim() const override { return attributes_->total_basis_dim; }
 
-  /// Construct the actual basis.
+  /**
+   * Construct numeric recovery Jacobians at the supplied values.
+   *
+   * This linearizes the constraint merit graph, partially eliminates the
+   * non-basis variables with QR, and extracts Bayes-net Jacobians. It is the
+   * expensive numeric step and may run at basis construction time, lazily on
+   * first use, or when a new manifold state is created, depending on
+   * `always_construct_basis`.
+   *
+   * @param values Current linearization point.
+   */
   void construct(const Values &values) override;
 
   /// print
@@ -525,6 +658,13 @@ class OrthonormalBasisCreator : public TspaceBasisCreator {
 /**
  * Factory for `EliminationBasis`.
  *
+ * This is the normal construction path used by `ConstraintManifold` params. At
+ * manifold construction time, `create` receives the keys in one
+ * constraint-connected component, applies `basis_key_func_`, and creates an
+ * `EliminationBasis` with those independent coordinates. The factory itself is
+ * cheap; all graph-ordering and numeric construction costs are paid by the
+ * basis object it creates.
+ *
  * @see README.md#tangent-basis
  */
 class EliminationBasisCreator : public TspaceBasisCreator {
@@ -532,6 +672,17 @@ class EliminationBasisCreator : public TspaceBasisCreator {
   BasisKeyFunc basis_key_func_;
 
  public:
+  /**
+   * Construct a factory without an explicit key selector.
+   *
+   * This constructor is retained for API compatibility, but normal callers
+   * should use the constructor that accepts a `BasisKeyFunc`. With the default
+   * parameters, `create` needs a key selector; with `use_basis_keys=false`, the
+   * current `EliminationBasis` implementation reaches the no-key path, which
+   * is not implemented.
+   *
+   * @param params Basis construction parameters.
+   */
   EliminationBasisCreator(TspaceBasisParams::shared_ptr params =
                               std::make_shared<TspaceBasisParams>(true))
       : TspaceBasisCreator(params) {}
@@ -550,6 +701,14 @@ class EliminationBasisCreator : public TspaceBasisCreator {
 
   /**
    * Create basis for one constraint-connected component.
+   *
+   * This is executed when a `ConstraintManifold` or `IEConstraintManifold`
+   * creates the tangent basis for a component. It is not called on every
+   * tangent lift, but it may be called again when a new manifold object is
+   * created for updated values or active constraints. The returned basis
+   * controls whether numeric construction happens immediately or lazily through
+   * `TspaceBasisParams::always_construct_basis`.
+   *
    * @param constraints Equality constraints for the component.
    * @param values Current values for variables in the component.
    * @return Created elimination basis.

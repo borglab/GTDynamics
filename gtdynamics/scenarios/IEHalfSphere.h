@@ -7,8 +7,8 @@
 
 /**
  * @file  IEHalfSphere.h
- * @brief Manifold with boundary representing upper half sphere
- * @author: Yetong Zhang
+ * @brief Manifold with boundary representing the upper half-sphere.
+ * @author Yetong Zhang
  */
 
 #pragma once
@@ -21,71 +21,82 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/nonlinear/expressions.h>
 
+#include <fstream>
 #include <iomanip>
+#include <iostream>
 
 namespace gtdynamics {
 using namespace gtsam;
 
+/** Key for the point variable at timestep k. */
 inline Key PointKey(const int k) { return Symbol('p', k); }
 
-/** Manifold with boundary representing the upper half sphere defined by
- * 1) sqrt(x^2 + y^2 + z^2) - r = 0
- * 2) z >= 0
+/**
+ * Manifold with boundary representing the upper half-sphere:
+ * 1) sqrt(x^2 + y^2 + z^2) - r = 0.
+ * 2) z >= 0.
  */
 class IEHalfSphere {
-public:
-  double r;                // radius
-  double sphere_tol = 1.0; // sphere constraint tolerance
-  double z_tol = 1.0;      // positive z constraint tolerance
+ public:
+  /// Radius of the sphere.
+  double radius_;
 
-  /// Constructor.
-  IEHalfSphere(const double _r = 1.0) : r(_r) {}
+  /// Sphere constraint tolerance.
+  double sphere_tol_ = 1.0;
 
-  /// Equality constraints defining the manifold.
+  /// Positive z constraint tolerance.
+  double z_tol_ = 1.0;
+
+  /** Constructor. */
+  IEHalfSphere(const double radius = 1.0) : radius_(radius) {}
+
+  /** Return equality constraints defining the sphere manifold. */
   NonlinearEqualityConstraints eConstraints(const int k) const {
     NonlinearEqualityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(&norm3, point_expr);
-    Double_ sphere_expr = Double_(r) - norm_expr;
+    Double_ sphere_expr = Double_(radius_) - norm_expr;
     constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
-        sphere_expr, 0.0, Vector1(sphere_tol));
+        sphere_expr, 0.0, Vector1(sphere_tol_));
     return constraints;
   }
 
-  /// Inequality constraints defining the manifold.
+  /** Return inequality constraints defining the upper half-space. */
   NonlinearInequalityConstraints iConstraints(const int k) const {
     NonlinearInequalityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Expression<double> z_expr(&point3_z, point_expr);
     constraints.push_back(
-        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol));
+        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol_));
     return constraints;
   }
 
-  /// Inequality constraints defining the dome manifold.
+  /** Return inequality constraints defining the solid upper dome. */
   NonlinearInequalityConstraints iDomeConstraints(const int k) const {
     NonlinearInequalityConstraints constraints;
     Expression<Point3> point_expr(PointKey(k));
     Double_ norm_expr(norm3, point_expr);
-    Double_ sphere_expr = Double_(r) - norm_expr;
-    constraints.push_back(
-        ScalarExpressionInequalityConstraint::GeqZero(sphere_expr, sphere_tol));
+    Double_ sphere_expr = Double_(radius_) - norm_expr;
+    constraints.push_back(ScalarExpressionInequalityConstraint::GeqZero(
+        sphere_expr, sphere_tol_));
     Double_ z_expr(&point3_z, point_expr);
     constraints.push_back(
-        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol));
+        ScalarExpressionInequalityConstraint::GeqZero(z_expr, z_tol_));
     return constraints;
   }
 
+  /** Project a point onto the feasible upper half-sphere. */
   Point3 project(const Point3 &pt) const {
     Point3 projected_pt = pt;
     if (projected_pt.z() < 0) {
       projected_pt.z() = 0;
     }
     double pt_norm = projected_pt.norm();
-    projected_pt = projected_pt * (r / pt_norm);
+    projected_pt = projected_pt * (radius_ / pt_norm);
     return projected_pt;
   }
 
+  /** Export trajectory values to a plain text file. */
   static void ExportValues(const Values &values, const size_t num_steps,
                            const std::string &file_path) {
     std::ofstream file;
@@ -98,6 +109,7 @@ public:
     file.close();
   }
 
+  /** Export tangent-vector values to a plain text file. */
   static void ExportVector(const VectorValues &values, const size_t num_steps,
                            const std::string &file_path) {
     std::ofstream file;
@@ -111,6 +123,7 @@ public:
     file.close();
   }
 
+  /** Print trajectory values in a compact table. */
   static void PrintValues(const Values &values, const size_t num_steps) {
     std::cout << std::setw(10) << "x" << std::setw(10) << "y" << std::setw(10)
               << "z"
@@ -122,6 +135,7 @@ public:
     }
   }
 
+  /** Print tangent-vector values in a compact table. */
   static void PrintDelta(const VectorValues &values, const size_t num_steps) {
     std::cout << std::setw(10) << "x" << std::setw(10) << "y" << std::setw(10)
               << "z"
@@ -136,16 +150,19 @@ public:
 
 /** Manually defined retractor for half sphere manifold. */
 class HalfSphereRetractor : public IERetractor {
+  /// Sphere radius.
   double r_;
 
-public:
+ public:
+  /** Constructor. */
   HalfSphereRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.r) {}
+      : IERetractor(), r_(half_sphere.radius_) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override {
+  /** Retract a tangent update and project back to the upper half-sphere. */
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -163,18 +180,21 @@ public:
   }
 };
 
-/** Manually defined retractor for half sphere manifold. */
+/** Manually defined retractor for the sphere manifold. */
 class SphereRetractor : public IERetractor {
+  /// Sphere radius.
   double r_;
 
-public:
+ public:
+  /** Constructor. */
   SphereRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.r) {}
+      : IERetractor(), r_(half_sphere.radius_) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override {
+  /** Retract a tangent update and project back to the sphere. */
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -187,19 +207,21 @@ public:
   }
 };
 
-/** Manually defined retractor for half sphere manifold. */
+/** Manually defined retractor for the dome manifold. */
 class DomeRetractor : public IERetractor {
+  /// Sphere radius.
   double r_;
 
-public:
+ public:
+  /** Constructor. */
   DomeRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.r) {}
+      : IERetractor(), r_(half_sphere.radius_) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override {
-
+  /** Retract a tangent update and clamp to the dome boundary if needed. */
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -215,10 +237,10 @@ public:
     return manifold->createWithNewValues(new_values);
   }
 
-  IEConstraintManifold
-  moveToBoundary(const IEConstraintManifold *manifold,
-                 const IndexSet &blocking_indices,
-                 IERetractInfo *retract_info = nullptr) const override {
+  /** Move the current point onto active dome boundary constraints. */
+  IEConstraintManifold moveToBoundary(
+      const IEConstraintManifold *manifold, const IndexSet &blocking_indices,
+      IERetractInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
 
@@ -257,4 +279,4 @@ public:
   }
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

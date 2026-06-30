@@ -1,4 +1,20 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  yetong04_cart_pole_friction.cpp
+ * @brief Cart-pole friction example using inequality-constrained optimization.
+ * @author Yetong Zhang
+ */
+
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -10,10 +26,6 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/scenarios/IECartPoleWithFriction.h>
-#include <gtdynamics/cmcopt/IEGDOptimizer.h>
-#include <gtdynamics/cmcopt/IELMOptimizer.h>
-
 #include <iomanip>
 #include <string>
 
@@ -24,7 +36,6 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
                             const size_t num_steps, const double dt) {
   Values values;
   for (size_t k = 0; k <= num_steps; k++) {
-
     double q = M_PI_2 - M_PI_2 * k / num_steps;
     double v = 0;
     double a = 0;
@@ -43,7 +54,7 @@ Values ComputeInitialValues(const IECartPoleWithFriction &cp,
 
 int main(int argc, char **argv) {
   IECartPoleWithFriction cp;
-  cp.include_torque_limits = true;
+  cp.include_torque_limits_ = true;
   size_t num_steps = 20;
   double dt = 0.05;
 

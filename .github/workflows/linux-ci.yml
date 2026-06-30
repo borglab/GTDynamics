@@ -1,8 +1,6 @@
 name: Linux CI
 
-on: 
-  pull_request:
-  workflow_dispatch:
+on: [pull_request]
 
 
 # Cancels any in-progress workflow runs for the same PR when a new push is made,
@@ -95,6 +93,7 @@ jobs:
           if [ "${{ matrix.build_type }}" = "Release" ]; then
             if [ "${{ matrix.compiler }}" = "gcc" ]; then
               MARCH_NATIVE=OFF
+              NTHREADS=2
             else
               MARCH_NATIVE=ON
             fi

@@ -66,6 +66,8 @@ struct IERetractorParams {
         _lm_param, std::make_shared<VectorValues>());
   }
 
+  /// Add the quadratic prior term that pulls the retraction solution toward
+  /// the trial point x + delta.
   template <typename CONTAINER>
   void addPriors(const Values &values, const CONTAINER &keys,
                  NonlinearFactorGraph &graph) const {
@@ -85,8 +87,8 @@ struct IERetractInfo {
   size_t num_lm_iters = 0;
 };
 
-/** Base class that implements the retraction operation for the constraint
- * manifold. */
+/// Base class for the feasibility-restoring map R_x(delta) used after each
+/// cone-constrained step.
 class IERetractor {
 
 protected:
@@ -102,12 +104,14 @@ public:
 
   virtual ~IERetractor() {}
 
-  /// Retract the base variables that compose the constraint manifold.
+  /// Retract the ambient variables back to h(x)=0, g(x)>=0, optionally with
+  /// selected blocking inequalities promoted to equalities.
   virtual IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractInfo *retract_info = nullptr) const = 0;
 
+  /// Zero-step retraction that lands directly on the requested boundary face.
   virtual IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
                  const IndexSet &blocking_indices,
@@ -116,7 +120,8 @@ public:
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
 
-/** Retraction by performing penalty optimization. */
+/// Penalty-based approximation to thesis Eq. (4.26); with blocking indices it
+/// implements the on-corner retraction in thesis Eq. (4.46).
 class BarrierRetractor : public IERetractor {
 
 protected:
@@ -140,6 +145,8 @@ public:
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractInfo *retract_info = nullptr) const override;
 
+  /// Solve the special case delta = 0 while forcing the requested inequalities
+  /// to become active.
   IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
                  const IndexSet &blocking_indices,

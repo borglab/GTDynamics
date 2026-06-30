@@ -343,6 +343,18 @@ class ContactGoal {
   void print(const string &s = "");
 };
 
+class PoseGoal {
+  PoseGoal(const gtdynamics::LinkSharedPtr &ee_link,
+           const gtsam::Pose3 &comTgoal, const gtsam::Pose3 &wTgoal);
+  gtsam::Pose3 comTgoal;
+  gtsam::Pose3 wTgoal;
+  gtdynamics::Link *link() const;
+  gtsam::Pose3 wTcom() const;
+  bool satisfied(const gtsam::Values &values, size_t k = 0,
+                 double tol = 1e-9) const;
+  void print(const string &s = "");
+};
+
 class KinematicsParameters : gtdynamics::OptimizationParameters {
   gtsam::SharedNoiseModel p_cost_model;
   gtsam::SharedNoiseModel g_cost_model;
@@ -373,6 +385,11 @@ class Kinematics {
   gtsam::Values inverse(const gtdynamics::Interval interval,
                         const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals);
+  gtsam::Values inverse(const gtdynamics::Slice &slice,
+                        const gtdynamics::Robot &robot,
+                        const gtdynamics::PoseGoals &pose_goals,
+                        const gtsam::Values &joint_priors = gtsam::Values(),
+                        bool pose_goals_as_constraints = false);
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
               const gtdynamics::Robot &robot,
@@ -735,6 +752,15 @@ gtsam::NonlinearFactorGraph PointGoalFactors(
     const gtsam::SharedNoiseModel &cost_model, const gtsam::Point3 &point_com,
     const std::vector<gtsam::Point3> &goal_trajectory, uint8_t i,
     size_t k = 0);
+
+#include <gtdynamics/kinematics/endEffGoalFactor.h>
+class PoseGoalFactor : gtsam::NoiseModelFactor {
+  PoseGoalFactor(gtsam::Key pose_key,                 //
+                 gtsam::SharedNoiseModel cost_model,  //
+                 gtsam::Pose3 wTcom_goal);
+
+  gtsam::Pose3 goalPose();
+};
 
 std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3 &stance_point,
                                             size_t num_steps);

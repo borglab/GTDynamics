@@ -1,47 +1,103 @@
-#include <gtdynamics/dynamics/DynamicsGraph.h>
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file  IECartPoleWithLimits.h
+ * @brief Cart-pole trajectory optimization problem with cart and force limits.
+ * @author Yetong Zhang
+ */
+
+#pragma once
+
 #include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
+
+#include <string>
 
 namespace gtdynamics {
 using namespace gtsam;
 
+/**
+ * Cart-pole problem with equality dynamics constraints and bound constraints on
+ * cart position and cart force.
+ */
 class IECartPoleWithLimits {
-public:
-  // robot and environmental settings
-  Robot robot =
-      CreateRobotFromFile(kUrdfPath +
-                                      std::string("cart_pole.urdf"))
-          .fixLink("l0");
-  size_t p_joint_id = robot.joint("j0")->id();
-  size_t r_joint_id = robot.joint("j1")->id();
-  Vector6 X_i = Vector6::Constant(6, 0);
-  Vector6 X_T = (Vector(6) << 0, 0, 0, M_PI, 0, 0).finished();
-  Vector3 gravity = Vector3(0, 0, -9.8);
-  bool constrain_final_x = false;
-  CollocationScheme collocation_scheme = CollocationScheme::Trapezoidal;
+ public:
+  /// Robot model fixed at the base link.
+  Robot robot_ = CreateRobotFromFile(kUrdfPath + std::string("cart_pole.urdf"))
+                     .fixLink("l0");
 
-  // limits on x-range and force
-  double x_min = -.2;
-  double x_max = .2;
-  double f_min = -100;
-  double f_max = 100;
+  /// Prismatic cart joint id.
+  size_t p_joint_id_ = robot_.joint("j0")->id();
 
-  // noise/tolerance settings for costs and constraints
-  double tol = 1.0;
-  OptimizerSetting opt = getOptSetting();
-  DynamicsGraph graph_builder =
-      DynamicsGraph(opt, gravity);
-  double sigma_pos_objective = 1e-5;
-  double sigma_objectives = 5e-3;
-  double sigma_min_torque = 2e1;
-  SharedNoiseModel pos_objectives_model = noiseModel::Isotropic::Sigma(1, sigma_pos_objective);  // Pos objectives.
-  SharedNoiseModel objectives_model = noiseModel::Isotropic::Sigma(1, sigma_objectives);  // Additional objectives.
-  SharedNoiseModel control_model = noiseModel::Isotropic::Sigma(1, sigma_min_torque);       // Controls.
-  
+  /// Revolute pole joint id.
+  size_t r_joint_id_ = robot_.joint("j1")->id();
 
+  /// Desired initial state `[x, xdot, xddot, theta, thetadot, thetaaccel]`.
+  Vector6 initial_state_ = Vector6::Constant(6, 0);
 
+  /// Desired terminal state `[x, xdot, xddot, theta, thetadot, thetaaccel]`.
+  Vector6 target_state_ = (Vector(6) << 0, 0, 0, M_PI, 0, 0).finished();
+
+  /// Gravity vector used by the dynamics graph.
+  Vector3 gravity_ = Vector3(0, 0, -9.8);
+
+  /// Whether the terminal cart position is constrained or only the pole state.
+  bool constrain_final_x_ = false;
+
+  /// Collocation scheme used for trajectory costs.
+  CollocationScheme collocation_scheme_ = CollocationScheme::Trapezoidal;
+
+  /// Lower cart position limit.
+  double x_min_ = -.2;
+
+  /// Upper cart position limit.
+  double x_max_ = .2;
+
+  /// Lower cart force limit.
+  double f_min_ = -100;
+
+  /// Upper cart force limit.
+  double f_max_ = 100;
+
+  /// Constraint tolerance.
+  double tol_ = 1.0;
+
+  /// Optimizer noise model settings.
+  OptimizerSetting opt_ = getOptSetting();
+
+  /// Dynamics graph builder configured for this problem.
+  DynamicsGraph graph_builder_ = DynamicsGraph(opt_, gravity_);
+
+  /// Sigma for terminal position objectives.
+  double sigma_pos_objective_ = 1e-5;
+
+  /// Sigma for other terminal objectives.
+  double sigma_objectives_ = 5e-3;
+
+  /// Sigma for cart force minimization.
+  double sigma_min_torque_ = 2e1;
+
+  /// Noise model for terminal position objectives.
+  SharedNoiseModel pos_objectives_model_ =
+      noiseModel::Isotropic::Sigma(1, sigma_pos_objective_);
+
+  /// Noise model for terminal velocity objectives.
+  SharedNoiseModel objectives_model_ = noiseModel::Isotropic::Sigma(
+      1, sigma_objectives_);
+
+  /// Noise model for cart force minimization.
+  SharedNoiseModel control_model_ =
+      noiseModel::Isotropic::Sigma(1, sigma_min_torque_);
+
+  /** Return optimizer settings used by this cart-pole problem. */
   static OptimizerSetting getOptSetting() {
     auto opt = OptimizerSetting();
     double tol = 1.0;
@@ -70,41 +126,41 @@ public:
     return opt;
   }
 
-public:
-  // Constructor.
+  /** Constructor. */
   IECartPoleWithLimits() {}
 
-  // Equality constriants include all dynamic constraints, and 0 torque
-  // constraints.
+  /** Return equality constraints for a single time step. */
   NonlinearEqualityConstraints eConstraints(const int k) const;
 
-  // Inequality constraints include position limits and force limits
-  // constraints.
+  /** Return position and force inequality constraints for a single time step. */
   NonlinearInequalityConstraints iConstraints(const int k) const;
 
-  // Equality constraints that specify q,v of initial state.
+  /** Return equality constraints that specify the initial joint state. */
   NonlinearEqualityConstraints initStateConstraints() const;
 
-  // Equality constriants that specify q,v of final state.
+  /** Return equality constraints that specify the terminal joint state. */
   NonlinearEqualityConstraints finalStateConstraints(size_t num_steps) const;
 
-  // Cost for achieving q,v in final state.
-  NonlinearFactorGraph finalStateCosts(size_t num_steps) const ;
+  /** Return terminal state objective factors. */
+  NonlinearFactorGraph finalStateCosts(size_t num_steps) const;
 
-  // Cost for minimizing accumulative force.
+  /** Return cart force minimization factors. */
   NonlinearFactorGraph minTorqueCosts(size_t num_steps) const;
 
-  // Cost for satisfying collocation.
+  /** Return trajectory collocation factors. */
   NonlinearFactorGraph collocationCosts(size_t num_steps, double dt) const;
 
-  // Compute all values for a given timestep.
+  /** Compute a full dynamics-consistent state from cart and pole coordinates. */
   Values computeValues(const size_t &k, const double &x, const double &v,
                        const double &q, const double &w) const;
 
+  /** Print trajectory values in a compact table. */
   static void PrintValues(const Values &values, const size_t num_steps);
 
+  /** Print tangent-vector values in a compact table. */
   static void PrintDelta(const VectorValues &values, const size_t num_steps);
 
+  /** Export trajectory values to a CSV file. */
   static void ExportValues(const Values &values, const size_t num_steps,
                            const std::string &file_path);
 
@@ -112,29 +168,32 @@ public:
   // num_steps,
   //                          const std::string &file_path);
 
-  /// Initial values seet as rest pose for all steps.
+  /** Return initial values set as the rest pose for all steps. */
   Values getInitValuesZero(size_t num_steps) const;
 
-  /// Initial values seet as rest pose for all steps.
+  /** Return initial values interpolated between initial and target states. */
   Values getInitValuesInterp(size_t num_steps) const;
 
-  /// Return function that select basis keys for constraint manifolds.
+  /** Return a function that selects basis keys for constraint manifolds. */
   BasisKeyFunc getBasisKeyFunc() const;
-
 };
 
+/** Retraction rule that clamps cart position and force to their limits. */
 class CartPoleWithLimitsRetractor : public IERetractor {
-protected:
+ protected:
+  /// Cart-pole problem parameters.
   const IECartPoleWithLimits &cp_;
 
-public:
+ public:
+  /** Constructor. */
   CartPoleWithLimitsRetractor(const IECartPoleWithLimits &cp)
       : IERetractor(), cp_(cp) {}
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo* retract_info = nullptr) const override;
+  /** Retract a tangent update and return a feasible constrained manifold. */
+  IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractInfo *retract_info = nullptr) const override;
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics
