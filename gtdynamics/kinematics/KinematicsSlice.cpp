@@ -248,7 +248,7 @@ gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Slice>(
     const gtsam::Values& joint_targets) const {
   gtsam::NonlinearEqualityConstraints constraints;
 
-  const gtsam::Vector1 tolerance(p_.prior_q_cost_model->sigmas()(0));
+  const gtsam::Vector1 tolerance(p_.prior_q_cost_model.at("")->sigmas()(0));
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
     if (!joint_targets.exists(key)) {
@@ -302,11 +302,15 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
     const Slice& slice, const Robot& robot, const Values& mean) const {
   NonlinearFactorGraph graph;
 
-  // Minimize the joint angles.
+  // Per-joint prior model from p_.prior_q_cost_model by name, else "" default.
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
+    auto it = p_.prior_q_cost_model.find(joint->name());
+    const gtsam::SharedNoiseModel cost_model =
+        (it != p_.prior_q_cost_model.end()) ? it->second
+                                            : p_.prior_q_cost_model.at("");
     graph.addPrior<double>(key, (mean.exists(key) ? mean.at<double>(key) : 0.0),
-                           p_.prior_q_cost_model);
+                           cost_model);
   }
 
   return graph;

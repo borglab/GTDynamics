@@ -15,6 +15,9 @@
 #include <gtdynamics/optimizer/Optimizer.h>
 #include <gtsam/linear/NoiseModel.h>
 
+#include <map>
+#include <string>
+
 namespace gtdynamics {
 
 /// Noise models etc specific to Kinematics class
@@ -22,12 +25,17 @@ struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
   gtsam::SharedNoiseModel p_cost_model,  // pose factor
       g_cost_model,                      // goal point
-      prior_q_cost_model,                // joint angle prior factor
       bp_cost_model,                     // fixed-link pose prior factor
       cp_cost_model,                     // contact-height factor
       bv_cost_model,                     // fixed-link twist prior factor
       v_cost_model,                      // twist factor
       cv_cost_model;                     // contact-twist factor
+
+  /// Joint-angle prior noise models, keyed by joint name. The "" key holds the
+  /// default applied to any joint not explicitly listed; override an individual
+  /// joint by inserting its name with a different (e.g. larger) sigma so that
+  /// joint is freer to move toward the goal.
+  std::map<std::string, gtsam::SharedNoiseModel> prior_q_cost_model;
 
   KinematicsParameters()
       : KinematicsParameters(1e-4, 1e-2, 0.5, 1e-4, 1e-2, 1e-4, 1e-4, 1e-2) {}
@@ -44,12 +52,12 @@ struct KinematicsParameters : public OptimizationParameters {
       const gtsam::SharedNoiseModel& cv_cost_model = Isotropic::Sigma(3, 1e-2))
       : p_cost_model(p_cost_model),
         g_cost_model(g_cost_model),
-        prior_q_cost_model(prior_q_cost_model),
         bp_cost_model(bp_cost_model),
         cp_cost_model(cp_cost_model),
         bv_cost_model(bv_cost_model),
         v_cost_model(v_cost_model),
-        cv_cost_model(cv_cost_model) {}
+        cv_cost_model(cv_cost_model),
+        prior_q_cost_model({{"", prior_q_cost_model}}) {}
 
   // TODO(yetong): replace noise model with tolerance.
   KinematicsParameters(double p_cost_model_sigma,
@@ -68,6 +76,11 @@ struct KinematicsParameters : public OptimizationParameters {
                              Isotropic::Sigma(6, bv_cost_model_sigma),
                              Isotropic::Sigma(6, v_cost_model_sigma),
                              Isotropic::Sigma(3, cv_cost_model_sigma)) {}
+
+  /// Override the prior sigma for one joint by name ("" = default).
+  void setJointPriorSigma(const std::string& joint_name, double sigma) {
+    prior_q_cost_model[joint_name] = Isotropic::Sigma(1, sigma);
+  }
 };
 
 }  // namespace gtdynamics
