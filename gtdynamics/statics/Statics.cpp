@@ -43,7 +43,7 @@ Vector6 GravityWrench(const gtsam::Vector3 &gravity, double mass,
 
 Vector6 ResultantWrench(const std::vector<gtsam::Vector6> &wrenches,
                         gtsam::OptionalMatrixVecType H) {
-  Vector6 sum = gtsam::Z_6x1;
+  Vector6 sum = gtsam::Vector6::Zero();
   const size_t n = wrenches.size();
   for (size_t i = 0; i < n; i++) {
     sum += wrenches[i];

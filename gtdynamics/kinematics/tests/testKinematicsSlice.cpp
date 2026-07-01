@@ -44,7 +44,7 @@ TEST(Slice, InverseKinematics) {
 
   // Set twists to zero for FK. TODO(frank): separate kinematics from velocity?
   for (auto&& link : robot.links()) {
-    InsertTwist(&values, link->id(), k, gtsam::Z_6x1);
+    InsertTwist(&values, link->id(), k, gtsam::Vector6::Zero());
   }
 
   // Do forward kinematics

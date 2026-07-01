@@ -70,7 +70,7 @@ TEST(linearDynamicsFactorGraph, simple_urdf_eq_mass_values) {
   int t = 777;
   auto j = robot.joint("j1")->id();
   InsertPose(&values, l1->id(), t, l1->bMcom());
-  InsertTwist(&values, l1->id(), t, gtsam::Z_6x1);
+  InsertTwist(&values, l1->id(), t, gtsam::Vector6::Zero());
 
   // Do forward kinematics.
   Values fk_results = robot.forwardKinematics(values, t, prior_link_name);
@@ -127,7 +127,7 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
     int i = link->id();
     graph.addPrior(PoseKey(i, t), link->bMcom(),
                    graph_builder.opt().bp_cost_model);
-    graph.addPrior<Vector6>(TwistKey(i, t), gtsam::Z_6x1,
+    graph.addPrior<Vector6>(TwistKey(i, t), gtsam::Vector6::Zero(),
                             graph_builder.opt().bv_cost_model);
   }
   Initializer initializer;
@@ -164,7 +164,7 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
     int i = link->id();
     prior_factors.addPrior(PoseKey(i, 0), link->bMcom(),
                            graph_builder.opt().bp_cost_model);
-    prior_factors.addPrior<Vector6>(TwistKey(i, 0), gtsam::Z_6x1,
+    prior_factors.addPrior<Vector6>(TwistKey(i, 0), gtsam::Vector6::Zero(),
                                     graph_builder.opt().bv_cost_model);
   }
 
@@ -465,7 +465,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
                          poseWithContactHeight(l0->bMcom(), contact_in_com,
                                                kGroundHeight),
                          gtsam::noiseModel::Constrained::All(6));
-  prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Vector6::Zero(),
                                   gtsam::noiseModel::Constrained::All(6));
   graph.add(prior_factors);
 
@@ -523,9 +523,9 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
   auto body = biped.link("body");
   prior_factors.addPrior(PoseKey(body->id(), 0), body->bMcom(),
                          graph_builder.opt().bp_cost_model);
-  prior_factors.addPrior<Vector6>(TwistKey(body->id(), 0), gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistKey(body->id(), 0), gtsam::Vector6::Zero(),
                                   graph_builder.opt().bv_cost_model);
-  prior_factors.addPrior<Vector6>(TwistAccelKey(body->id(), 0), gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistAccelKey(body->id(), 0), gtsam::Vector6::Zero(),
                                   graph_builder.opt().ba_cost_model);
   graph.add(prior_factors);
 
@@ -602,7 +602,7 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
                          poseWithContactHeight(l0->bMcom(), contact_in_com,
                                                kGroundHeight),
                          gtsam::noiseModel::Constrained::All(6));
-  prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Z_6x1,
+  prior_factors.addPrior<Vector6>(TwistKey(l0->id(), 0), gtsam::Vector6::Zero(),
                                   gtsam::noiseModel::Constrained::All(6));
   graph.add(prior_factors);
 

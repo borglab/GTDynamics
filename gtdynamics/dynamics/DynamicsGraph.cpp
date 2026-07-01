@@ -42,7 +42,7 @@ using gtsam::PriorFactor;
 using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
-using gtsam::Z_6x1;
+using gtsam::Vector6::Zero();
 
 namespace gtdynamics {
 

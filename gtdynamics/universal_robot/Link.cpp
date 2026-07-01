@@ -64,7 +64,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
   }
 
   // Calculate resultant wrench.
-  gtsam::Vector6_ error(gtsam::Z_6x1);
+  gtsam::Vector6_ error(gtsam::Vector6::Zero());
   for (const auto& wrench : wrenches) {
     error += wrench;
   }

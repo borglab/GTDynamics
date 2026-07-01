@@ -116,7 +116,7 @@ TEST(testSpiderWalking, WholeEnchilada) {
     objectives.add(
         LinkObjectives(base_link->id(), k)
             .pose(Pose3(Rot3(), Point3(0, 0.0, 0.5)), Isotropic::Sigma(6, 5e-5))
-            .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-5)));
+            .twist(gtsam::Vector6::Zero(), Isotropic::Sigma(6, 5e-5)));
   }
 
   // Add link and joint boundary conditions to FG.

@@ -27,7 +27,7 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using gtsam::SharedNoiseModel;
 using gtsam::Values;
-using gtsam::Z_6x1;
+using gtsam::Vector6::Zero();
 using std::map;
 using std::string;
 using std::to_string;

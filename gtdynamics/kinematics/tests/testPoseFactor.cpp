@@ -34,7 +34,7 @@ using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Values;
 using gtsam::Vector6;
-using gtsam::Z_6x1;
+using gtsam::Vector6::Zero();
 using gtsam::noiseModel::Gaussian;
 
 namespace example {

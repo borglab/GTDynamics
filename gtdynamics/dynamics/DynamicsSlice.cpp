@@ -30,7 +30,7 @@ NonlinearFactorGraph Dynamics::aFactors<Slice>(
   for (auto&& link : robot.links()) {
     if (link->isFixed()) {
       graph.addPrior<gtsam::Vector6>(TwistAccelKey(link->id(), slice.k),
-                                     gtsam::Z_6x1, p_.ba_cost_model);
+                                     gtsam::Vector6::Zero(), p_.ba_cost_model);
     }
   }
   for (auto&& joint : robot.joints()) {
