@@ -305,7 +305,7 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
   // Per-joint override from p_.joint_prior_overrides, else prior_q_cost_model.
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
-    auto it = p_.joint_prior_overrides.find(joint->name());
+    auto it = p_.joint_prior_overrides.find(joint->id());
     const gtsam::SharedNoiseModel cost_model =
         (it != p_.joint_prior_overrides.end()) ? it->second
                                                : p_.prior_q_cost_model;
@@ -322,7 +322,7 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
   NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
     // Override URDF limits for joints listed in p_.joint_limit_overrides.
-    auto it = p_.joint_limit_overrides.find(joint->name());
+    auto it = p_.joint_limit_overrides.find(joint->id());
     const auto& limits = joint->parameters().scalar_limits;
     const double lower =
         (it != p_.joint_limit_overrides.end()) ? it->second.first

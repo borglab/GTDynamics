@@ -33,12 +33,12 @@ struct KinematicsParameters : public OptimizationParameters {
       v_cost_model,                      // twist factor
       cv_cost_model;                     // contact-twist factor
 
-  /// Per-joint joint-angle prior models keyed by joint name; overrides
+  /// Per-joint joint-angle prior models keyed by joint id; overrides
   /// prior_q_cost_model for listed joints (used by kinematics IK only).
-  std::map<std::string, gtsam::SharedNoiseModel> joint_prior_overrides;
+  std::map<int, gtsam::SharedNoiseModel> joint_prior_overrides;
 
-  /// Per-joint {lower, upper} limit overrides by joint name (IK only).
-  std::map<std::string, std::pair<double, double>> joint_limit_overrides;
+  /// Per-joint {lower, upper} limit overrides by joint id (IK only).
+  std::map<int, std::pair<double, double>> joint_limit_overrides;
 
   KinematicsParameters()
       : KinematicsParameters(1e-4, 1e-2, 0.5, 1e-4, 1e-2, 1e-4, 1e-4, 1e-2) {}
@@ -80,14 +80,14 @@ struct KinematicsParameters : public OptimizationParameters {
                              Isotropic::Sigma(6, v_cost_model_sigma),
                              Isotropic::Sigma(3, cv_cost_model_sigma)) {}
 
-  /// Override the joint-angle prior sigma for one joint by name.
-  void setJointPriorSigma(const std::string& joint_name, double sigma) {
-    joint_prior_overrides[joint_name] = Isotropic::Sigma(1, sigma);
+  /// Override the joint-angle prior sigma for one joint by id.
+  void setJointPriorSigma(int joint_id, double sigma) {
+    joint_prior_overrides[joint_id] = Isotropic::Sigma(1, sigma);
   }
 
-  /// Override the joint-angle limits for one joint by name.
-  void setJointLimit(const std::string& joint_name, double lower, double upper) {
-    joint_limit_overrides[joint_name] = {lower, upper};
+  /// Override the joint-angle limits for one joint by id.
+  void setJointLimit(int joint_id, double lower, double upper) {
+    joint_limit_overrides[joint_id] = {lower, upper};
   }
 };
 
