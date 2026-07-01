@@ -41,7 +41,7 @@ double CableVelocityFactor::computeLdot(const Pose3 &wTx, const Vector6 &Vx,
   // TODO(gerry): use Adjoint
   Vector3 eePDOTem =
       Vx.tail<3>() + cross(Vx.head<3>(), xPb_, H_Vx ? &cross_H_omega : 0);
-  if (H_Vx) xPDOTb_H_Vx << cross_H_omega, I_3x3;
+  if (H_Vx) xPDOTb_H_Vx << cross_H_omega, gtsam::Matrix3::Identity();
   Vector3 wPDOTem = wTx.rotation().rotate(eePDOTem,  //
                                           H_wTx ? &wPDOTb_H_wRx : 0,
                                           H_Vx ? &wPDOTb_H_xPDOTb : 0);

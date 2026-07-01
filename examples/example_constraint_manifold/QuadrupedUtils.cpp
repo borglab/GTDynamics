@@ -40,7 +40,7 @@ Vector3 get_contact_force(const Pose3 &pose, const Vector6 wrench,
   Vector3 force_l(wrench(3), wrench(4), wrench(5));
   if (H_pose || H_wrench) {
     Matrix36 J_fl_wrench;
-    J_fl_wrench << Z_3x3, I_3x3;
+    J_fl_wrench << gtsam::Matrix3::Zero(), gtsam::Matrix3::Identity();
 
     Matrix36 J_rot_pose;
     Rot3 rot = pose.rotation(J_rot_pose);

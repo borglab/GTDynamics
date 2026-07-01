@@ -38,7 +38,7 @@ const double mass = robot.links()[0]->mass();
 const Vector3 gravity(0, -9.8, 0);
 
 noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(I_6x6);
+    noiseModel::Gaussian::Covariance(gtsam::Matrix6::Identity());
 
 }  // namespace example
 

@@ -85,7 +85,7 @@ class EulerPoseCollocationFactor
     auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
     gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
     if (H_pose_t1) {
-      *H_pose_t1 = -gtsam::I_6x6;
+      *H_pose_t1 = -gtsam::Matrix6::Identity();
     }
     if (H_twist) {
       *H_twist = H_twistdt * dt;
@@ -166,7 +166,7 @@ class TrapezoidalPoseCollocationFactor
     auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
     gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
     if (H_pose_t1) {
-      *H_pose_t1 = -gtsam::I_6x6;
+      *H_pose_t1 = -gtsam::Matrix6::Identity();
     }
     if (H_twist_t0) {
       *H_twist_t0 = 0.5 * dt * H_twistdt;
@@ -248,7 +248,7 @@ class FixTimeEulerPoseCollocationFactor
      auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
      gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
      if (H_pose_t1) {
-       *H_pose_t1 = -gtsam::I_6x6;
+       *H_pose_t1 = -gtsam::Matrix6::Identity();
      }
      if (H_twist_t0) {
        *H_twist_t0 = dt_ * H_twistdt;
@@ -327,7 +327,7 @@ class FixTimeTrapezoidalPoseCollocationFactor
     auto pose_t1_hat = predictPose(pose_t0, twistdt, H_pose_t0, H_twistdt);
     gtsam::Vector error = pose_t1.logmap(pose_t1_hat);
     if (H_pose_t1) {
-      *H_pose_t1 = -gtsam::I_6x6;
+      *H_pose_t1 = -gtsam::Matrix6::Identity();
     }
     if (H_twist_t0) {
       *H_twist_t0 = 0.5 * dt_ * H_twistdt;
@@ -401,13 +401,13 @@ class EulerTwistCollocationFactor
       gtsam::OptionalMatrixType H_dt = nullptr) const override {
     gtsam::Vector error = twist_t0 + dt * accel - twist_t1;
     if (H_twist_t1) {
-      *H_twist_t1 = -gtsam::I_6x6;
+      *H_twist_t1 = -gtsam::Matrix6::Identity();
     }
     if (H_twist_t0) {
-      *H_twist_t0 = gtsam::I_6x6;
+      *H_twist_t0 = gtsam::Matrix6::Identity();
     }
     if (H_accel) {
-      *H_accel = gtsam::I_6x6 * dt;
+      *H_accel = gtsam::Matrix6::Identity() * dt;
     }
     if (H_dt) {
       *H_dt = accel;
@@ -483,16 +483,16 @@ class TrapezoidalTwistCollocationFactor
     gtsam::Vector error =
         twist_t0 + 0.5 * dt * (accel_t0 + accel_t1) - twist_t1;
     if (H_twist_t1) {
-      *H_twist_t1 = -gtsam::I_6x6;
+      *H_twist_t1 = -gtsam::Matrix6::Identity();
     }
     if (H_twist_t0) {
-      *H_twist_t0 = gtsam::I_6x6;
+      *H_twist_t0 = gtsam::Matrix6::Identity();
     }
     if (H_accel_t0) {
-      *H_accel_t0 = 0.5 * dt * gtsam::I_6x6;
+      *H_accel_t0 = 0.5 * dt * gtsam::Matrix6::Identity();
     }
     if (H_accel_t1) {
-      *H_accel_t1 = 0.5 * dt * gtsam::I_6x6;
+      *H_accel_t1 = 0.5 * dt * gtsam::Matrix6::Identity();
     }
     if (H_dt) {
       *H_dt = 0.5 * (accel_t0 + accel_t1);
@@ -564,13 +564,13 @@ class FixTimeEulerTwistCollocationFactor
        gtsam::OptionalMatrixType H_accel_t0 = nullptr) const override {
      gtsam::Vector error = twist_t0 + dt_ * accel_t0 - twist_t1;
      if (H_twist_t1) {
-       *H_twist_t1 = -gtsam::I_6x6;
+       *H_twist_t1 = -gtsam::Matrix6::Identity();
      }
      if (H_twist_t0) {
-       *H_twist_t0 = gtsam::I_6x6;
+       *H_twist_t0 = gtsam::Matrix6::Identity();
      }
      if (H_accel_t0) {
-       *H_accel_t0 = dt_ * gtsam::I_6x6;
+       *H_accel_t0 = dt_ * gtsam::Matrix6::Identity();
      }
      return error;
   }
@@ -644,16 +644,16 @@ class FixTimeTrapezoidalTwistCollocationFactor
     gtsam::Vector error =
         twist_t0 + 0.5 * dt_ * (accel_t0 + accel_t1) - twist_t1;
     if (H_twist_t1) {
-      *H_twist_t1 = -gtsam::I_6x6;
+      *H_twist_t1 = -gtsam::Matrix6::Identity();
     }
     if (H_twist_t0) {
-      *H_twist_t0 = gtsam::I_6x6;
+      *H_twist_t0 = gtsam::Matrix6::Identity();
     }
     if (H_accel_t0) {
-      *H_accel_t0 = 0.5 * dt_ * gtsam::I_6x6;
+      *H_accel_t0 = 0.5 * dt_ * gtsam::Matrix6::Identity();
     }
     if (H_accel_t1) {
-      *H_accel_t1 = 0.5 * dt_ * gtsam::I_6x6;
+      *H_accel_t1 = 0.5 * dt_ * gtsam::Matrix6::Identity();
     }
     return error;
   }

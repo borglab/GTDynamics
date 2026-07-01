@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
     for (auto&& joint : vision60.joints())
       objective_factors.add(MinTorqueFactor(
           TorqueKey(joint->id(), t),
-          gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
+          gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity())));
   }
   graph.add(objective_factors);
 

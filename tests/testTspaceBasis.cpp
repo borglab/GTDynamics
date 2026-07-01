@@ -174,10 +174,10 @@ TEST(TspaceBasis, linear_system) {
     EXPECT(assert_equal(0.0, linear_graph->error(vector)));
   }
 
-  Matrix expected_H_x1 = I_1x1;
-  Matrix expected_H_x2 = I_1x1*0;
-  Matrix expected_H_x3 = I_1x1 * -1;
-  Matrix expected_H_x4 = I_1x1;
+  Matrix expected_H_x1 = gtsam::Matrix1::Identity();
+  Matrix expected_H_x2 = gtsam::Matrix1::Identity()*0;
+  Matrix expected_H_x3 = gtsam::Matrix1::Identity() * -1;
+  Matrix expected_H_x4 = gtsam::Matrix1::Identity();
   EXPECT(assert_equal(expected_H_x1, new_basis_e->recoverJacobian(x1_key)));
   EXPECT(assert_equal(expected_H_x2, new_basis_e->recoverJacobian(x2_key)));
   EXPECT(assert_equal(expected_H_x3, new_basis_e->recoverJacobian(x3_key)));

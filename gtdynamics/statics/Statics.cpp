@@ -49,7 +49,7 @@ Vector6 ResultantWrench(const std::vector<gtsam::Vector6> &wrenches,
     sum += wrenches[i];
   }
   if (H) {
-    std::fill(H->begin(), H->begin() + n, gtsam::I_6x6);
+    std::fill(H->begin(), H->begin() + n, gtsam::Matrix6::Identity());
   }
   return sum;
 }
@@ -72,7 +72,7 @@ Vector6 ResultantWrench(const std::vector<Vector6> &wrenches, double mass,
     return external_wrench + gravity_wrench;
   } else {
     if (H) {
-      H->back() = gtsam::Z_6x6;
+      H->back() = gtsam::Matrix6::Zero();
     }
     return external_wrench;
   }

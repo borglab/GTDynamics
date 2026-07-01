@@ -174,7 +174,7 @@ gtsam::GaussianFactorGraph Joint::linearFDPriors(
     size_t t, const gtsam::Values &known_values) const {
   gtsam::GaussianFactorGraph priors;
   gtsam::Vector1 rhs(Torque(known_values, id(), t));
-  priors.add(TorqueKey(id(), t), gtsam::I_1x1, rhs,
+  priors.add(TorqueKey(id(), t), gtsam::Matrix1::Identity(), rhs,
              gtsam::noiseModel::Constrained::All(1));
   return priors;
 }
@@ -196,7 +196,7 @@ gtsam::GaussianFactorGraph Joint::linearAFactors(
   // twist acceleration factor
   // A_i2 - Ad(T_21) * A_i1 - S_i2_j * a_j = ad(V_i2) * S_i2_j * v_j
   Vector6 rhs_tw = Pose3::adjointMap(V_i2) * S_i2_j * v_j;
-  graph.add(TwistAccelKey(child()->id(), t), gtsam::I_6x6,
+  graph.add(TwistAccelKey(child()->id(), t), gtsam::Matrix6::Identity(),
             TwistAccelKey(parent()->id(), t), -T_i2i1.AdjointMap(),
             JointAccelKey(id(), t), -S_i2_j, rhs_tw,
             gtsam::noiseModel::Constrained::All(6));
@@ -219,13 +219,13 @@ gtsam::GaussianFactorGraph Joint::linearDynamicsFactors(
   // S_i_j^T * F_i_j - tau = 0
   gtsam::Vector1 rhs_torque = gtsam::Vector1::Zero();
   graph.add(WrenchKey(child()->id(), id(), t), S_i2_j.transpose(),
-            TorqueKey(id(), t), -gtsam::I_1x1, rhs_torque,
+            TorqueKey(id(), t), -gtsam::Matrix1::Identity(), rhs_torque,
             gtsam::noiseModel::Constrained::All(1));
 
   // wrench equivalence factor
   // F_i1_j + Ad(T_i2i1)^T F_i2_j = 0
   Vector6 rhs_weq = Vector6::Zero();
-  graph.add(WrenchKey(parent()->id(), id(), t), gtsam::I_6x6,
+  graph.add(WrenchKey(parent()->id(), id(), t), gtsam::Matrix6::Identity(),
             WrenchKey(child()->id(), id(), t), T_i2i1.AdjointMap().transpose(),
             rhs_weq, gtsam::noiseModel::Constrained::All(6));
 

@@ -88,7 +88,7 @@ class CableTensionFactor
         (Vector6() << Fx - computeWrench(t, wTx, H_t, H_wTx)).finished();
     if (H_t) *H_t = -(*H_t);
     if (H_wTx) *H_wTx = -(*H_wTx);
-    if (H_Fx) *H_Fx = gtsam::I_6x6;
+    if (H_Fx) *H_Fx = gtsam::Matrix6::Identity();
     return error;
   }
 

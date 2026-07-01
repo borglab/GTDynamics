@@ -32,7 +32,7 @@ using gtsam::assert_equal;
 namespace example {
 // noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix3::Identity());
 const DynamicsSymbol wrench_key = WrenchKey(2, 1, 777);
 gtsam::Pose3 kMj;  // doesn't matter
 auto [joint, links] = make_joint(kMj, gtsam::Vector6::Zero());

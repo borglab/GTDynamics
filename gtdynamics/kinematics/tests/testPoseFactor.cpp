@@ -38,7 +38,7 @@ using gtsam::noiseModel::Gaussian;
 
 namespace example {
 // nosie model
-Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::I_6x6);
+Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::Matrix6::Identity());
 gtsam::Key wTp_key = PoseKey(1), wTc_key = PoseKey(2), q_key = JointAngleKey(1);
 }  // namespace example
 

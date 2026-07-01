@@ -33,7 +33,7 @@ Vector3 IEVision60Robot::GetContactForce(const Pose3 &pose,
   Vector3 force_l(wrench(3), wrench(4), wrench(5));
   if (H_pose || H_wrench) {
     Matrix36 J_fl_wrench;
-    J_fl_wrench << Z_3x3, I_3x3;
+    J_fl_wrench << gtsam::Matrix3::Zero(), gtsam::Matrix3::Identity();
 
     Matrix36 J_rot_pose;
     Rot3 rot = pose.rotation(J_rot_pose);
@@ -769,7 +769,7 @@ NoiseModelFactor::shared_ptr IEVision60Robot::statePointVelCostFactor(
   Pose3 lTc(Rot3::Identity(), point_l);
   Pose3 cTl = lTc.inverse();
   Matrix36 H_vel_c;
-  H_vel_c << Z_3x3, I_3x3;
+  H_vel_c << gtsam::Matrix3::Zero(), gtsam::Matrix3::Identity();
   H_vel_c = H_vel_c * cTl.AdjointMap();
   const std::function<Vector3(Vector6)> f =
       [H_vel_c](const Vector6 &A) { return H_vel_c * A; };

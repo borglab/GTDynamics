@@ -86,7 +86,7 @@ class CableAccelerationFactor
       gtsam::OptionalMatrixType H_Vx = nullptr,
       gtsam::OptionalMatrixType H_VAx = nullptr) const override {
     double expected_lddot = computeLddot(wTx, Vx, VAx, H_wTx, H_Vx, H_VAx);
-    if (H_lddot) *H_lddot = gtsam::I_1x1;
+    if (H_lddot) *H_lddot = gtsam::Matrix1::Identity();
     if (H_wTx) *H_wTx = -(*H_wTx);
     if (H_Vx) *H_Vx = -(*H_Vx);
     if (H_VAx) *H_VAx = -(*H_VAx);

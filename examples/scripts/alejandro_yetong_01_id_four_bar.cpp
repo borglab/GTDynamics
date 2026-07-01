@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
   for (auto joint : robot.joints())
     graph.add(
         MinTorqueFactor(TorqueKey(joint->id(), 0),
-                        gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
+                        gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity())));
 
   // Initialize solution.
   gtsam::Values init_values = initializer.ZeroValues(robot, 0);
