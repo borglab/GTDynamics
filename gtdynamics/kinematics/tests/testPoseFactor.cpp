@@ -34,7 +34,6 @@ using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Values;
 using gtsam::Vector6;
-using gtsam::Vector6::Zero();
 using gtsam::noiseModel::Gaussian;
 
 namespace example {
@@ -87,7 +86,7 @@ TEST(PoseFactor, breaking) {
     InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
     InsertPose(&values, 2, Pose3(Rot3(), Point3(3, 0, 0)));
     InsertJointAngle(&values, 1, 0.0);
-    EXPECT(assert_equal(Z_6x1, factor->unwhitenedError(values), 1e-6));
+    EXPECT(assert_equal(gtsam::Vector6::Zero(), factor->unwhitenedError(values), 1e-6));
   }
 
   // check prediction at half PI
@@ -96,7 +95,7 @@ TEST(PoseFactor, breaking) {
     InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
     InsertPose(&values, 2, Pose3(Rot3::Rz(M_PI / 2), Point3(2, 1, 0)));
     InsertJointAngle(&values, 1, M_PI / 2);
-    EXPECT(assert_equal(Z_6x1, factor->unwhitenedError(values), 1e-6));
+    EXPECT(assert_equal(gtsam::Vector6::Zero(), factor->unwhitenedError(values), 1e-6));
   }
 }
 
@@ -120,7 +119,7 @@ TEST(PoseFactor, breaking_rr) {
   InsertPose(&values, 1, Pose3());
   InsertPose(&values, 2, j1->relativePoseOf(l2, M_PI / 4));
   InsertJointAngle(&values, 1, M_PI / 4);
-  EXPECT(assert_equal(Z_6x1, factor->unwhitenedError(values), 1e-6));
+  EXPECT(assert_equal(gtsam::Vector6::Zero(), factor->unwhitenedError(values), 1e-6));
 }
 
 // Test non-zero cMp rotation case

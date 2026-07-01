@@ -42,7 +42,6 @@ using gtsam::PriorFactor;
 using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
-using gtsam::Vector6::Zero();
 
 namespace gtdynamics {
 
@@ -64,7 +63,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     if (link->isFixed()) {
       // prior on twist acceleration for fixed link
       // A_i = 0
-      graph.add(TwistAccelKey(i, k), I_6x6, Z_6x1, all_constrained);
+      graph.add(TwistAccelKey(i, k), I_6x6, gtsam::Vector6::Zero(), all_constrained);
     } else {
       // wrench factor
       // G_i * A_i - F_i_j1 - .. - F_i_jn  = ad(V_i)^T * G_i * V*i + m_i * R_i^T
