@@ -175,7 +175,7 @@ class TestManipulator(GtsamTestCase):
         def gantry_travel(gantry_sigma):
             params = gtd.KinematicsParameters()
             for name in gantry_joints:
-                params.setJointPriorSigma(robot.joint(name).id(), gantry_sigma)
+                params.setJointPriorSigma(robot.joint(name).key(), gantry_sigma)
             result = gtd.Kinematics(params).inverse(
                 slice0, robot, pose_goals, gtsam.Values(), True)
             return sum(abs(gtd.JointAngle(result, robot.joint(n).id(), k))

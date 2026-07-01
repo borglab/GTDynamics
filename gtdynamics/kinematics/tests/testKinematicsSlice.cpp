@@ -447,7 +447,7 @@ TEST(Slice, BarLabGantryPriorSigma) {
     KinematicsParameters params;
     params.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
     for (const auto& name : gantry_joints)
-      params.setJointPriorSigma(robot.joint(name)->id(), gantry_sigma);
+      params.setJointPriorSigma(robot.joint(name)->key(), gantry_sigma);
     return Kinematics(params).inverse(kSlice, robot, pose_goals, gtsam::Values(),
                                       /*pose_goals_as_constraints=*/true);
   };
