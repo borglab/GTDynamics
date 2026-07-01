@@ -124,13 +124,13 @@ class JointLimitFunctor {
   double operator()(const double& q,
                     OptionalJacobian<1, 1> H_q = nullptr) const {
     if (q < low_) {
-      if (H_q) *H_q = -I_1x1;
+      if (H_q) *H_q = -gtsam::Matrix1::Identity();
       return low_ - q;
     } else if (q <= high_) {
-      if (H_q) *H_q = Z_1x1;
+      if (H_q) *H_q = gtsam::Matrix1::Zero();
       return 0.0;
     } else {
-      if (H_q) *H_q = I_1x1;
+      if (H_q) *H_q = gtsam::Matrix1::Identity();
       return q - high_;
     }
   }

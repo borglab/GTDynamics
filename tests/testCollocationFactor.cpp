@@ -30,7 +30,7 @@ using gtsam::assert_equal, gtsam::Pose3, gtsam::Vector6, gtsam::Rot3;
 
 namespace example {
 // noise model
-auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
+auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix6::Identity());
 gtsam::Symbol pose_p_key('p', 1), pose_c_key('p', 2), twist_p_key('v', 1),
     twist_c_key('v', 2), accel_p_key('a', 1), accel_c_key('a', 2),
     dt_key('t', 0);

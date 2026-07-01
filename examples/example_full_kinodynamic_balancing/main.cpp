@@ -58,10 +58,10 @@ int main(int argc, char** argv) {
 
   // Specify boundary conditions for base and joints.
   gtsam::Pose3 base_pose_init = vision60.link("body")->bMcom();
-  gtsam::Vector6 base_twist_init = gtsam::Z_6x1,
-                 base_twist_final = gtsam::Z_6x1,
-                 base_accel_init = gtsam::Z_6x1,
-                 base_accel_final = gtsam::Z_6x1;
+  gtsam::Vector6 base_twist_init = gtsam::Vector6::Zero(),
+                 base_twist_final = gtsam::Vector6::Zero(),
+                 base_accel_init = gtsam::Vector6::Zero(),
+                 base_accel_final = gtsam::Vector6::Zero();
   gtsam::Vector joint_angles_init = gtsam::Vector::Zero(12),
                 joint_vels_init = gtsam::Vector::Zero(12),
                 joint_accels_init = gtsam::Vector::Zero(12),
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
     for (auto&& joint : vision60.joints())
       objective_factors.add(MinTorqueFactor(
           TorqueKey(joint->id(), t),
-          gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
+          gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity())));
   }
   graph.add(objective_factors);
 

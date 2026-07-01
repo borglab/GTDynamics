@@ -986,7 +986,7 @@ gtsam::Values OldGraphOneLeg() {
   OptimizerSetting opt(1e-4, 1e-4, 1e-4, 1e-4);
   DynamicsGraph graph_builder(opt, gravity);
 
-  gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
+  gtsam::Vector6 wrench_zero = gtsam::Vector6::Zero();
 
   gtsam::NonlinearFactorGraph graph;
 
@@ -1094,7 +1094,7 @@ gtsam::Values NewGraphOneLeg() {
     if (joint->id() > 2) continue;
     InsertJointAngle(&init_values, joint->id(), 0, 0.0);
   }
-  gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
+  gtsam::Vector6 wrench_zero = gtsam::Vector6::Zero();
   init_values.insert(gtdynamics::WrenchKey(0, 0, 0), wrench_zero);
 
   /// Solve the constraint problem with LM optimizer.
@@ -1199,7 +1199,7 @@ gtsam::Values OldGraphFourLegs() {
   OptimizerSetting opt(5e-5, 5e-5, 5e-5, 5e-5);
   DynamicsGraph graph_builder(opt, gravity);
 
-  gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
+  gtsam::Vector6 wrench_zero = gtsam::Vector6::Zero();
 
   gtsam::NonlinearFactorGraph graph;
 
@@ -1276,7 +1276,7 @@ gtsam::Values NewGraphFourLegs() {
   //ChainDynamicsGraph chain_graph(robot, opt, 1*(1e-4),  6*(1e-5),  10.08*(1e-5), gravity);
   ChainDynamicsGraph chain_graph(robot, opt, gravity);
 
-  gtsam::Vector6 wrench_zero = gtsam::Z_6x1;
+  gtsam::Vector6 wrench_zero = gtsam::Vector6::Zero();
 
   auto constrained_model = gtsam::noiseModel::Constrained::All(6);
   auto bp_cost_model(gtsam::noiseModel::Isotropic::Sigma(6, 1e-5));

@@ -108,7 +108,7 @@ int massGraph() {
     objectives.add(
         LinkObjectives(base_link->id(), k)
             .pose(Pose3(Rot3(), Point3(0, 0, 0.4)), Isotropic::Sigma(6, 1e-2))
-            .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-2)));
+            .twist(gtsam::Vector6::Zero(), Isotropic::Sigma(6, 5e-2)));
   }
 
   // Add link and joint boundary conditions to FG.
@@ -262,7 +262,7 @@ int oldGraph() {
     objectives.add(
         LinkObjectives(base_link->id(), k)
             .pose(Pose3(Rot3(), Point3(0, 0, 0.4)), Isotropic::Sigma(6, 1e-2))
-            .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-2)));
+            .twist(gtsam::Vector6::Zero(), Isotropic::Sigma(6, 5e-2)));
   }
 
   // Add link and joint boundary conditions to FG.
@@ -418,7 +418,7 @@ int newGraph() {
     if (i == 0)
       objectives.add(LinkObjectives(i, 0)
                          .pose(link->bMcom(), Isotropic::Sigma(6, 1e-3))
-                         .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 1e-3)));
+                         .twist(gtsam::Vector6::Zero(), Isotropic::Sigma(6, 1e-3)));
     if (i == 3 || i == 6 || i == 9 || i == 12)
       objectives.add(
           LinkObjectives(i, 0).pose(link->bMcom(), Isotropic::Sigma(6, 1e-3)));
@@ -435,7 +435,7 @@ int newGraph() {
     objectives.add(
         LinkObjectives(base_link->id(), k)
             .pose(Pose3(Rot3(), Point3(0, 0, 0.4)), Isotropic::Sigma(6, 1e-2))
-            .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-2)));
+            .twist(gtsam::Vector6::Zero(), Isotropic::Sigma(6, 5e-2)));
   }
 
   // Constrain all Phase keys to have duration of 1 /240.

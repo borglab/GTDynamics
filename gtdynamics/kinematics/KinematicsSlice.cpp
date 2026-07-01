@@ -302,11 +302,15 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
     const Slice& slice, const Robot& robot, const Values& mean) const {
   NonlinearFactorGraph graph;
 
-  // Minimize the joint angles.
+  // Per-joint override from p_.joint_prior_overrides, else prior_q_cost_model.
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
+    auto it = p_.joint_prior_overrides.find(joint->key());
+    const gtsam::SharedNoiseModel cost_model =
+        (it != p_.joint_prior_overrides.end()) ? it->second
+                                               : p_.prior_q_cost_model;
     graph.addPrior<double>(key, (mean.exists(key) ? mean.at<double>(key) : 0.0),
-                           p_.prior_q_cost_model);
+                           cost_model);
   }
 
   return graph;
@@ -317,12 +321,18 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
     const Slice& slice, const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    graph.add(JointLimitFactor(
-        JointAngleKey(joint->id(), slice.k),
-        gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
-        joint->parameters().scalar_limits.value_lower_limit,
-        joint->parameters().scalar_limits.value_upper_limit,
-        0.04));  // joint->parameters().scalar_limits.value_limit_threshold));
+    // Override URDF limits for joints listed in p_.joint_limit_overrides.
+    auto it = p_.joint_limit_overrides.find(joint->key());
+    const auto& limits = joint->parameters().scalar_limits;
+    const double lower =
+        (it != p_.joint_limit_overrides.end()) ? it->second.first
+                                               : limits.value_lower_limit;
+    const double upper =
+        (it != p_.joint_limit_overrides.end()) ? it->second.second
+                                               : limits.value_upper_limit;
+    graph.add(JointLimitFactor(JointAngleKey(joint->id(), slice.k),
+                               gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
+                               lower, upper, 0.04));
   }
   return graph;
 }

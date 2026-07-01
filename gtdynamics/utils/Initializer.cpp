@@ -96,7 +96,7 @@ Values Initializer::InitializePosesAndJoints(
   // Compute forward dynamics to obtain remaining link poses.
   Pose3 wTl_i_processed = AddGaussianNoiseToPose(wTl_i, sampler);
   InsertPose(&fk_input, robot.link(link_name)->id(), wTl_i_processed);
-  InsertTwist(&fk_input, robot.link(link_name)->id(), gtsam::Z_6x1);
+  InsertTwist(&fk_input, robot.link(link_name)->id(), gtsam::Vector6::Zero());
   auto fk_results = robot.forwardKinematics(fk_input, 0, link_name);
 
   for (auto&& link : robot.links()) {
@@ -143,7 +143,7 @@ Values Initializer::InitializeSolutionInterpolation(
                                   link_name + " is fixed.");
     }
     InsertPose(&init_vals, link->id(), t, wTl_t);
-    InsertTwist(&init_vals, link->id(), t, gtsam::Z_6x1);
+    InsertTwist(&init_vals, link->id(), t, gtsam::Vector6::Zero());
     init_vals = robot.forwardKinematics(init_vals, t, link_name);
 
     const Values zero_values =

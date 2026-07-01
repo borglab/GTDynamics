@@ -32,12 +32,12 @@ TEST(SolveConvexIQP, example_2D) {
 
   GaussianFactorGraph graph;
   auto model = noiseModel::Unit::Create(1);
-  graph.add(JacobianFactor(x_key, I_1x1, Vector::Zero(1), model));
-  graph.add(JacobianFactor(y_key, I_1x1, Vector1(1), model));
+  graph.add(JacobianFactor(x_key, gtsam::Matrix1::Identity(), Vector::Zero(1), model));
+  graph.add(JacobianFactor(y_key, gtsam::Matrix1::Identity(), Vector1(1), model));
 
   LinearInequalityConstraints constraints;
-  auto factor1 = std::make_shared<JacobianFactor>(x_key, I_1x1, y_key, -I_1x1, Vector::Zero(1), model);
-  auto factor2 = std::make_shared<JacobianFactor>(x_key, I_1x1, y_key, I_1x1, Vector::Zero(1), model);
+  auto factor1 = std::make_shared<JacobianFactor>(x_key, gtsam::Matrix1::Identity(), y_key, -gtsam::Matrix1::Identity(), Vector::Zero(1), model);
+  auto factor2 = std::make_shared<JacobianFactor>(x_key, gtsam::Matrix1::Identity(), y_key, gtsam::Matrix1::Identity(), Vector::Zero(1), model);
   constraints.emplace_shared<JacobianLinearInequalityConstraint>(factor1);
   constraints.emplace_shared<JacobianLinearInequalityConstraint>(factor2);
 

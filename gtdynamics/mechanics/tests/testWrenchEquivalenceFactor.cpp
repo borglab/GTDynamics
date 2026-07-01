@@ -36,7 +36,7 @@ using gtsam::Vector6, gtsam::Vector3, gtsam::Vector, gtsam::Pose3, gtsam::Rot3,
 namespace example {
 // Noise model.
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix6::Identity());
 const DynamicsSymbol wrench_j_key = WrenchKey(1, 1, 777),
                      wrench_k_key = WrenchKey(2, 1, 777),
                      qKey = JointAngleKey(1, 777);

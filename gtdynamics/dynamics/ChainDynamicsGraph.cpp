@@ -125,7 +125,7 @@ NonlinearFactorGraph ChainDynamicsGraph::dynamicsFactors(
   std::vector<Key> wrench_keys;
 
   constexpr int root = 0;  // TODO(Frank): Hard-coded for A1.
-  const Vector6 wrench_zero = gtsam::Z_6x1;
+  const Vector6 wrench_zero = gtsam::Vector6::Zero();
 
   for (int leg = 0; leg < 4; ++leg) {
     bool foot_in_contact = false;

@@ -107,14 +107,14 @@ double EvaluatePoseError(const Values& gt, const Values& result) {
       Pose2 gt_pose = gt.at<Pose2>(A(k));
       Pose2 est_pose = result.at<Pose2>(A(k));
       Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
-      Matrix3 diff = rel_pose.matrix() - I_3x3;
+      Matrix3 diff = rel_pose.matrix() - gtsam::Matrix3::Identity();
       error1 += pow(diff.norm(), 2);
     }
     {
       Pose2 gt_pose = gt.at<Pose2>(B(k));
       Pose2 est_pose = result.at<Pose2>(B(k));
       Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
-      Matrix3 diff = rel_pose.matrix() - I_3x3;
+      Matrix3 diff = rel_pose.matrix() - gtsam::Matrix3::Identity();
       error2 += pow(diff.norm(), 2);
     }
   }

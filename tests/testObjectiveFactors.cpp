@@ -42,7 +42,7 @@ TEST(ObjectiveFactors, PoseAndTwist) {
   EXPECT_LONGS_EQUAL(1, graph.size());
   graph.add(LinkObjectives(id, k)
                 .pose(Pose3(), kModel6)
-                .twist(gtsam::Z_6x1, kModel6));
+                .twist(gtsam::Vector6::Zero(), kModel6));
   EXPECT_LONGS_EQUAL(3, graph.size());
 }
 
@@ -50,8 +50,8 @@ TEST(ObjectiveFactors, TwistWithDerivatives) {
   NonlinearFactorGraph graph;
   constexpr int id = 5, k = 777;
   graph.add(LinkObjectives(id, k)
-                .twist(gtsam::Z_6x1, kModel6)
-                .twistAccel(gtsam::Z_6x1, kModel6));
+                .twist(gtsam::Vector6::Zero(), kModel6)
+                .twistAccel(gtsam::Vector6::Zero(), kModel6));
   EXPECT_LONGS_EQUAL(2, graph.size());
 }
 

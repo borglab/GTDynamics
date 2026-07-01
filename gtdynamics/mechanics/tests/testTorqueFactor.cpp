@@ -41,7 +41,7 @@ TEST(TorqueFactor, error) {
   auto [joint, links] = make_joint(kMj, screw_axis);
 
   // Create factor.
-  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
+  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
   auto factor = TorqueFactor(cost_model, joint, 777);
 
   // Check keys.

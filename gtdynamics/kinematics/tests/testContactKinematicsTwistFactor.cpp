@@ -36,7 +36,7 @@ TEST(ContactKinematicsTwistFactor, error) {
   auto robot = simple_urdf::getRobot();
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
+      gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix3::Identity());
 
   gtsam::LabeledSymbol twist_key = gtsam::LabeledSymbol('V', 0, 0);
 

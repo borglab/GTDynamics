@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
     prior_factors.addPrior(PoseKey(i, 0), link->bMcom(),
                            gtsam::noiseModel::Constrained::All(6));
     prior_factors.addPrior<gtsam::Vector6>(
-        TwistKey(i, 0), gtsam::Z_6x1, gtsam::noiseModel::Constrained::All(6));
+        TwistKey(i, 0), gtsam::Vector6::Zero(), gtsam::noiseModel::Constrained::All(6));
   }
   graph.add(prior_factors);
 
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
   for (auto joint : robot.joints())
     graph.add(
         MinTorqueFactor(TorqueKey(joint->id(), 0),
-                        gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
+                        gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity())));
 
   // Initialize solution.
   gtsam::Values init_values = initializer.ZeroValues(robot, 0);

@@ -16,8 +16,8 @@ Pose3 IFOptTranslator::VecToPose(const Vector6 &vec, OptionalJacobian<6, 6> H) {
     Vector3 euler_angles(vec(0), vec(1), vec(2));
     Vector3 trans(vec(3), vec(4), vec(5));
     Matrix36 H_angles_vec, H_trans_vec;
-    H_angles_vec << I_3x3, Z_3x3;
-    H_trans_vec << Z_3x3, I_3x3;
+    H_angles_vec << gtsam::Matrix3::Identity(), gtsam::Matrix3::Zero();
+    H_trans_vec << gtsam::Matrix3::Zero(), gtsam::Matrix3::Identity();
     Matrix33 H_rot_angles;
     Rot3 rot = Rot3::RzRyRx(euler_angles, H_rot_angles);
     Matrix63 H_pose_rot, H_pose_trans;

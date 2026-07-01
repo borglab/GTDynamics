@@ -41,7 +41,7 @@ Vector6 CableTensionFactor::computeWrench(
   // force->wrench
   Vector3 wf = -t * dir;
   if (H_t) wf_H_t = -dir;
-  if (H_wTx) wf_H_dir = -t * I_3x3;
+  if (H_wTx) wf_H_dir = -t * gtsam::Matrix3::Identity();
   Vector3 xf = wTx.rotation().unrotate(wf,  // force in the EE frame
                                        H_wTx ? &xf_H_wRx : 0,
                                        (H_t || H_wTx) ? &xf_H_wf : 0);
@@ -50,7 +50,7 @@ Vector6 CableTensionFactor::computeWrench(
                      (H_t || H_wTx) ? &xm_H_xf : 0);
 
   Vector6 F = (Vector6() << xm, xf).finished();
-  if (H_t || H_wTx) H_xf << xm_H_xf, I_3x3;
+  if (H_t || H_wTx) H_xf << xm_H_xf, gtsam::Matrix3::Identity();
   if (H_t) *H_t = H_xf * xf_H_wf * wf_H_t;
   if (H_wTx) {
     *(H_wTx) = H_xf * xf_H_wf * wf_H_dir * dir_H_wPb * wPb_H_wTx;
@@ -77,7 +77,7 @@ Vector6 CableTensionFactor::computeWrenchUsingAdjoint(
   Pose3 bTx = Pose3(wTx.rotation().inverse(), xPb_).inverse();
   Vector6 wF = (Vector6() << 0, 0, 0, -t * dir).finished();
   if (H_t) wF_H_t = (Matrix61() << 0, 0, 0, -dir).finished();
-  if (H_wTx) wF_H_dir = (Matrix63() << Z_3x3, -t * I_3x3).finished();
+  if (H_wTx) wF_H_dir = (Matrix63() << gtsam::Matrix3::Zero(), -t * gtsam::Matrix3::Identity()).finished();
   Vector6 F = bTx.AdjointMap().transpose() * wF;
   // TODO(gerry): find jacobian of adjoint map
   return F;

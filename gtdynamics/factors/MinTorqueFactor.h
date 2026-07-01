@@ -52,7 +52,7 @@ class MinTorqueFactor : public gtsam::NoiseModelFactorN<double> {
     gtsam::Vector error(1);
     error(0) = torque;
 
-    if (H_torque) *H_torque = gtsam::I_1x1;
+    if (H_torque) *H_torque = gtsam::Matrix1::Identity();
 
     return error;
   }

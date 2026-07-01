@@ -31,7 +31,7 @@ namespace example {
 
 // noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
 gtsam::Key torque_key = gtsam::Symbol('t', 1);
 }  // namespace example
 

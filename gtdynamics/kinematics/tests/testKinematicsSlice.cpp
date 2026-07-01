@@ -44,7 +44,7 @@ TEST(Slice, InverseKinematics) {
 
   // Set twists to zero for FK. TODO(frank): separate kinematics from velocity?
   for (auto&& link : robot.links()) {
-    InsertTwist(&values, link->id(), k, gtsam::Z_6x1);
+    InsertTwist(&values, link->id(), k, gtsam::Vector6::Zero());
   }
 
   // Do forward kinematics
@@ -420,6 +420,54 @@ TEST(Slice, BarLabPoseConstraintIK) {
   auto base_link = robot.link("columns");
   EXPECT(assert_equal(base_link->bMcom(),
                       result.at<Pose3>(PoseKey(base_link->id(), k)), tol));
+}
+
+// Higher gantry prior sigmas let the gantry absorb more of the motion to goal.
+TEST(Slice, BarLabGantryPriorSigma) {
+  using gtsam::Pose3;
+  using gtsam::Values;
+
+  const Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"))
+          .fixLink("columns");
+  auto ee_link = robot.link("robot1_link_6");
+  const auto ee_id = ee_link->id();
+  const std::vector<std::string> gantry_joints = {
+      "bridge1_joint_EA_X", "robot1_joint_EA_Y", "robot1_joint_EA_Z"};
+
+  // Reachable goal from a config that uses the gantry, so there is redundancy.
+  Kinematics goal_kinematics;
+  Values fk = goal_kinematics.initialValues(kSlice, robot, 0.0,
+                                            barLabConfig(robot), true);
+  const Pose3 wTcom_goal = fk.at<Pose3>(PoseKey(ee_id, k));
+  PoseGoals pose_goals = {{k, PoseGoal(ee_link, Pose3(), wTcom_goal)}};
+
+  // Solve IK with the given gantry prior sigma; pose goal is a hard constraint.
+  auto solve = [&](double gantry_sigma) {
+    KinematicsParameters params;
+    params.method = OptimizationParameters::Method::AUGMENTED_LAGRANGIAN;
+    for (const auto& name : gantry_joints)
+      params.setJointPriorSigma(robot.joint(name)->key(), gantry_sigma);
+    return Kinematics(params).inverse(kSlice, robot, pose_goals, gtsam::Values(),
+                                      /*pose_goals_as_constraints=*/true);
+  };
+
+  // Total absolute travel of the gantry joints from their zero prior mean.
+  auto gantry_travel = [&](const Values& result) {
+    double travel = 0.0;
+    for (const auto& name : gantry_joints)
+      travel += std::fabs(
+          result.at<double>(JointAngleKey(robot.joint(name)->id(), k)));
+    return travel;
+  };
+
+  const Values tight = solve(0.1);
+  const Values loose = solve(10.0);
+
+  // Both reach the goal pose; the looser gantry priors move the gantry more.
+  EXPECT(assert_equal(wTcom_goal, tight.at<Pose3>(PoseKey(ee_id, k)), 1e-3));
+  EXPECT(assert_equal(wTcom_goal, loose.at<Pose3>(PoseKey(ee_id, k)), 1e-3));
+  EXPECT(gantry_travel(tight) < gantry_travel(loose));
 }
 
 int main() {
