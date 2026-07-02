@@ -11,6 +11,7 @@
  * @author Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/ContactHeightFactor.h>
 #include <gtsam/base/Testable.h>
@@ -36,7 +37,7 @@ static constexpr double kGroundHeight = 4.2;
  **/
 TEST(ContactHeightFactor, Error) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
+      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 
@@ -87,7 +88,7 @@ TEST(ContactHeightFactor, Error) {
  **/
 TEST(ContactHeightFactor, ErrorWithHeight) {
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
+      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 
   gtsam::LabeledSymbol pose_key = gtsam::LabeledSymbol('p', 0, 0);
 

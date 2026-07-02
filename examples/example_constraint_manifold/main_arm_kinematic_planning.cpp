@@ -18,6 +18,7 @@
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Slice.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
 
@@ -124,13 +125,13 @@ class JointLimitFunctor {
   double operator()(const double& q,
                     OptionalJacobian<1, 1> H_q = nullptr) const {
     if (q < low_) {
-      if (H_q) *H_q = -gtsam::Matrix1::Identity();
+      if (H_q) *H_q = -I_1x1;
       return low_ - q;
     } else if (q <= high_) {
-      if (H_q) *H_q = gtsam::Matrix1::Zero();
+      if (H_q) *H_q = Z_1x1;
       return 0.0;
     } else {
-      if (H_q) *H_q = gtsam::Matrix1::Identity();
+      if (H_q) *H_q = I_1x1;
       return q - high_;
     }
   }

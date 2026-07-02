@@ -12,6 +12,7 @@
  * @author: Frank Dellaert, Gerry Chen, Frank Dellaert
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Trajectory.h>
@@ -118,12 +119,12 @@ void Trajectory::addBoundaryConditions(
     // Initial link pose, twists.
     graph->add(LinkObjectives(link->id(), 0)
                    .pose(link->bMcom(), pose_model)
-                   .twist(gtsam::Vector6::Zero(), twist_model));
+                   .twist(gtsam::Z_6x1, twist_model));
 
     // Final link twists, accelerations.
     graph->add(LinkObjectives(link->id(), K)
-                   .twist(gtsam::Vector6::Zero(), twist_model)
-                   .twistAccel(gtsam::Vector6::Zero(), twist_acceleration_model));
+                   .twist(gtsam::Z_6x1, twist_model)
+                   .twistAccel(gtsam::Z_6x1, twist_acceleration_model));
   }
 
   // Add joint boundary conditions to FG.

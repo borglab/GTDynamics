@@ -11,6 +11,7 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/TwistAccelFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -35,7 +36,7 @@ namespace example {
 
 // noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix6::Identity());
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
 
 gtsam::Key qKey = JointAngleKey(1), qVelKey = JointVelKey(1),
            qAccelKey = JointAccelKey(1), twistKey = TwistKey(2),

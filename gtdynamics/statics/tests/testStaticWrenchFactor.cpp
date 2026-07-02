@@ -11,6 +11,8 @@
  * @author Yetong Zhang
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/statics/StaticWrenchFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -38,7 +40,7 @@ const double mass = robot.links()[0]->mass();
 const Vector3 gravity(0, -9.8, 0);
 
 noiseModel::Gaussian::shared_ptr cost_model =
-    noiseModel::Gaussian::Covariance(gtsam::Matrix6::Identity());
+    noiseModel::Gaussian::Covariance(gtsam::I_6x6);
 
 }  // namespace example
 
@@ -60,7 +62,7 @@ TEST(StaticWrenchFactor, GravityCompensation) {
   InsertPose(&x, id, Pose3(Rot3(), Point3(1, 0, 0)));
 
   Vector6 actual_errors = factor.unwhitenedError(x);
-  Vector6 expected_errors = gtsam::Vector6::Zero();
+  Vector6 expected_errors = gtsam::Z_6x1;
   EXPECT(assert_equal(expected_errors, actual_errors, 1e-6));
   // Make sure linearization is correct
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, x, diffDelta, tol);

@@ -11,6 +11,7 @@
  * @author Dan Barladeanu, Frank Dellaert.
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/Chain.h>
 
 namespace gtdynamics {
@@ -108,7 +109,7 @@ gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
       H_expo * (jMi.translation() - w_skew * v) + w * w.transpose() * v;
   gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
                         gtsam::skewSymmetric(kTj.translation()) * H_R;
-  gtsam::Matrix6 H = gtsam::Matrix6::Zero();
+  gtsam::Matrix6 H = gtsam::Z_6x6;
   gtsam::insertSub(H, H_R, 0, 0);
   gtsam::insertSub(H, H_TR, 3, 0);
   gtsam::insertSub(H, H_R, 3, 3);
@@ -138,7 +139,7 @@ gtsam::Vector3 Chain::DynamicalEquality3(
     // angles at all, the second column depends only on the third angle, and the
     // first column depends on the second and third angles.
     // This means that the 3*3 jacobian has an upper triangular structure.
-    Matrix A = gtsam::Matrix3::Zero();
+    Matrix A = gtsam::Z_3x3;
 
     // Calculate the Adjoint and take its derivative in relation to angles
     auto ad_J_angles1 = AdjointMapJacobianQ(angles(1), Pose3(), axes_.col(1));
@@ -159,7 +160,7 @@ gtsam::Vector3 Chain::DynamicalEquality3(
   }
   if (H_torques) {
     // derivative of difference with respect to torques
-    *H_torques = -gtsam::Matrix3::Identity();
+    *H_torques = -gtsam::I_3x3;
   }
 
   return (J.transpose() * wrench - torques);

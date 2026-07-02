@@ -6,6 +6,7 @@
  * @author Gerry Chen
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include "CableAccelerationFactor.h"
 
 #include <gtsam/base/Matrix.h>
@@ -38,8 +39,8 @@ double CableAccelerationFactor::computeLddot(
   Vector3 xAb = VAx.bottomRows<3>();  // acceleration of point b in x's frame
   Vector3 wAb = wTx.rotation().rotate(xAb, H_wTx ? &wAb_H_wRx : nullptr,
                                       H_VAx ? &wAb_H_xAb : nullptr);
-  if (H_wTx) wAb_H_wTx << wAb_H_wRx, gtsam::Matrix3::Zero();
-  if (H_VAx) wAb_H_VAx << gtsam::Matrix3::Zero(), wAb_H_xAb;
+  if (H_wTx) wAb_H_wTx << wAb_H_wRx, gtsam::Z_3x3;
+  if (H_VAx) wAb_H_VAx << gtsam::Z_3x3, wAb_H_xAb;
   // cable direction
   Point3 wPb = wTx.transformFrom(xPb_, H_wTx ? &wPb_H_wTx : nullptr);
   Vector3 dir = normalize(wPb - wPa_, H_wTx ? &dir_H_wPb : nullptr);

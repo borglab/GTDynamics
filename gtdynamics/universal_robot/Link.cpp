@@ -14,6 +14,8 @@
  * @brief Abstract representation of a robot link.
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/statics/Statics.h>
 #include <gtdynamics/universal_robot/Link.h>
@@ -64,7 +66,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
   }
 
   // Calculate resultant wrench.
-  gtsam::Vector6_ error(gtsam::Vector6::Zero());
+  gtsam::Vector6_ error(gtsam::Z_6x1);
   for (const auto& wrench : wrenches) {
     error += wrench;
   }
@@ -75,7 +77,7 @@ gtsam::Vector6_ Link::wrenchConstraint(
 gtsam::Matrix6 Link::inertiaMatrix() const {
   std::vector<gtsam::Matrix> gmm;
   gmm.push_back(inertia_);
-  gmm.push_back(gtsam::Matrix3::Identity() * mass_);
+  gmm.push_back(gtsam::I_3x3 * mass_);
   return gtsam::diag(gmm);
 }
 

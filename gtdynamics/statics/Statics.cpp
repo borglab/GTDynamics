@@ -11,6 +11,8 @@
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/statics/Statics.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
@@ -43,13 +45,13 @@ Vector6 GravityWrench(const gtsam::Vector3 &gravity, double mass,
 
 Vector6 ResultantWrench(const std::vector<gtsam::Vector6> &wrenches,
                         gtsam::OptionalMatrixVecType H) {
-  Vector6 sum = gtsam::Vector6::Zero();
+  Vector6 sum = gtsam::Z_6x1;
   const size_t n = wrenches.size();
   for (size_t i = 0; i < n; i++) {
     sum += wrenches[i];
   }
   if (H) {
-    std::fill(H->begin(), H->begin() + n, gtsam::Matrix6::Identity());
+    std::fill(H->begin(), H->begin() + n, gtsam::I_6x6);
   }
   return sum;
 }
@@ -72,7 +74,7 @@ Vector6 ResultantWrench(const std::vector<Vector6> &wrenches, double mass,
     return external_wrench + gravity_wrench;
   } else {
     if (H) {
-      H->back() = gtsam::Matrix6::Zero();
+      H->back() = gtsam::Z_6x6;
     }
     return external_wrench;
   }

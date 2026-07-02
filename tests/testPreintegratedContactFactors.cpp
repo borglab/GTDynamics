@@ -11,6 +11,7 @@
  * @author Varun Agrawal
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/PreintegratedContactFactors.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -36,8 +37,8 @@ using gtsam::assert_equal;
 TEST(PreintegratedPointContactMeasurements, Constructor) {
   PreintegratedPointContactMeasurements();
   PreintegratedPointContactMeasurements pcm(
-      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), 0.01, gtsam::Matrix3::Identity());
-  EXPECT(assert_equal<Matrix3>(gtsam::Matrix3::Identity() * 1e-4, pcm.preintMeasCov()));
+      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), 0.01, gtsam::I_3x3);
+  EXPECT(assert_equal<Matrix3>(gtsam::I_3x3 * 1e-4, pcm.preintMeasCov()));
 }
 
 /* ************************************************************************* */
@@ -45,17 +46,17 @@ TEST(PreintegratedPointContactMeasurements, Constructor) {
 TEST(PreintegratedPointContactMeasurements, IntegrateMeasurement) {
   double dt = 0.01;
   PreintegratedPointContactMeasurements pcm(
-      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), dt, gtsam::Matrix3::Identity());
+      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), dt, gtsam::I_3x3);
   Rot3 deltaRik = Rot3::Ry(M_PI_4);
   Pose3 contact_k(Rot3(), Vector3(0, 0, 1));
 
   // Regression
   pcm.integrateMeasurement(deltaRik, contact_k, dt);
-  EXPECT(assert_equal<Matrix3>(gtsam::Matrix3::Identity() * 2e-4, pcm.preintMeasCov()));
+  EXPECT(assert_equal<Matrix3>(gtsam::I_3x3 * 2e-4, pcm.preintMeasCov()));
 
   // Regression
   pcm.integrateMeasurement(deltaRik, Pose3(Rot3(), Vector3(0, 0, 1.01)), dt);
-  EXPECT(assert_equal<Matrix3>(gtsam::Matrix3::Identity() * 3e-4, pcm.preintMeasCov()));
+  EXPECT(assert_equal<Matrix3>(gtsam::I_3x3 * 3e-4, pcm.preintMeasCov()));
 }
 
 /* ************************************************************************* */
@@ -63,7 +64,7 @@ TEST(PreintegratedPointContactMeasurements, IntegrateMeasurement) {
 TEST(PreintegratedPointContactFactor, Constructor) {
   double dt = 0.01;
   PreintegratedPointContactMeasurements pcm(
-      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), dt, gtsam::Matrix3::Identity());
+      Pose3(), Pose3(Rot3(), Vector3(0, 0, 1)), dt, gtsam::I_3x3);
   size_t base_id = 0, contact_id = 1;
   PreintegratedPointContactFactor ppcf(
       PoseKey(base_id, 0), PoseKey(contact_id, 0), PoseKey(base_id, 1),
@@ -83,7 +84,7 @@ TEST(PreintegratedPointContactFactor, Error) {
         wTb_j = Pose3(Rot3(), Point3(0.1, 0, 0)),
         wTc_j = Pose3(Rot3::Ry(M_PI_4), Point3(0, 0, 1));
 
-  PreintegratedPointContactMeasurements pcm(wTb_i, wTc_i, 0.01, gtsam::Matrix3::Identity());
+  PreintegratedPointContactMeasurements pcm(wTb_i, wTc_i, 0.01, gtsam::I_3x3);
   PreintegratedPointContactFactor factor(
       PoseKey(base_id, t0), PoseKey(contact_id, t0), PoseKey(base_id, t1),
       PoseKey(contact_id, t1), pcm);
@@ -104,7 +105,7 @@ TEST(PreintegratedPointContactFactor, Jacobians) {
         wTb_j = Pose3(Rot3::Ry(M_PI_4), Point3(0.1, 0, 0)),
         wTc_j = Pose3(Rot3::Ry(M_PI_4), Point3(0, 0, 1));
 
-  PreintegratedPointContactMeasurements pcm(wTb_i, wTc_i, 0.01, gtsam::Matrix3::Identity());
+  PreintegratedPointContactMeasurements pcm(wTb_i, wTc_i, 0.01, gtsam::I_3x3);
   PreintegratedPointContactFactor factor(
       PoseKey(base_id, t0), PoseKey(contact_id, t0), PoseKey(base_id, t1),
       PoseKey(contact_id, t1), pcm);
@@ -124,9 +125,9 @@ TEST(PreintegratedPointContactFactor, Jacobians) {
 TEST(PreintegratedRigidContactMeasurements, Constructor) {
   PreintegratedRigidContactMeasurements();
 
-  PreintegratedRigidContactMeasurements pcm(gtsam::Matrix3::Identity(), gtsam::Matrix3::Identity());
+  PreintegratedRigidContactMeasurements pcm(gtsam::I_3x3, gtsam::I_3x3);
   // Covariance is 0 initially
-  EXPECT(assert_equal<Matrix6>(gtsam::Matrix6::Zero(), pcm.preintMeasCov()));
+  EXPECT(assert_equal<Matrix6>(gtsam::Z_6x6, pcm.preintMeasCov()));
 }
 
 /* ************************************************************************* */
@@ -134,11 +135,11 @@ TEST(PreintegratedRigidContactMeasurements, Constructor) {
 // Measurements object works as expected.
 TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementConstant) {
   double deltaT = 0.01;
-  PreintegratedRigidContactMeasurements pcm(gtsam::Matrix3::Identity(), gtsam::Matrix3::Identity());
+  PreintegratedRigidContactMeasurements pcm(gtsam::I_3x3, gtsam::I_3x3);
 
   // Regression
   pcm.integrateMeasurement(deltaT);
-  EXPECT(assert_equal<Matrix6>(gtsam::Matrix6::Identity() * deltaT, pcm.preintMeasCov()));
+  EXPECT(assert_equal<Matrix6>(gtsam::I_6x6 * deltaT, pcm.preintMeasCov()));
 }
 
 /* ************************************************************************* */
@@ -146,17 +147,17 @@ TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementConstant) {
 // Contact Measurements object works as expected.
 TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementVarying) {
   double dt = 0.01;
-  PreintegratedRigidContactMeasurements pcm(gtsam::Matrix3::Identity(), gtsam::Matrix3::Identity());
+  PreintegratedRigidContactMeasurements pcm(gtsam::I_3x3, gtsam::I_3x3);
 
   Matrix6 expected;
   // Regression
-  pcm.integrateMeasurement(gtsam::Matrix3::Identity() * 0.05, gtsam::Matrix3::Identity() * 0.01, dt);
-  expected << gtsam::Matrix3::Identity() * 0.05, gtsam::Matrix3::Zero(), gtsam::Matrix3::Zero(), gtsam::Matrix3::Identity() * 0.01;
+  pcm.integrateMeasurement(gtsam::I_3x3 * 0.05, gtsam::I_3x3 * 0.01, dt);
+  expected << gtsam::I_3x3 * 0.05, gtsam::Z_3x3, gtsam::Z_3x3, gtsam::I_3x3 * 0.01;
   EXPECT(assert_equal<Matrix6>(expected * dt * dt, pcm.preintMeasCov()));
 
   // Regression 2
-  pcm.integrateMeasurement(gtsam::Matrix3::Identity() * 0.06, gtsam::Matrix3::Identity() * 0.02, dt);
-  expected << gtsam::Matrix3::Identity() * (0.05 + 0.06), gtsam::Matrix3::Zero(), gtsam::Matrix3::Zero(), gtsam::Matrix3::Identity() * (0.01 + 0.02);
+  pcm.integrateMeasurement(gtsam::I_3x3 * 0.06, gtsam::I_3x3 * 0.02, dt);
+  expected << gtsam::I_3x3 * (0.05 + 0.06), gtsam::Z_3x3, gtsam::Z_3x3, gtsam::I_3x3 * (0.01 + 0.02);
   EXPECT(assert_equal<Matrix6>(expected * dt * dt, pcm.preintMeasCov()));
 }
 
@@ -164,7 +165,7 @@ TEST(PreintegratedRigidContactMeasurements, IntegrateMeasurementVarying) {
 // Test constructor for Preintegrated Rigid Contact Factor.
 TEST(PreintegratedRigidContactFactor, Constructor) {
   size_t contact_id = 0;
-  PreintegratedRigidContactMeasurements pcm(gtsam::Matrix3::Identity(), gtsam::Matrix3::Identity());
+  PreintegratedRigidContactMeasurements pcm(gtsam::I_3x3, gtsam::I_3x3);
   PreintegratedRigidContactFactor ppcf(PoseKey(contact_id, 0),
                                        PoseKey(contact_id, 1), pcm);
 }
@@ -179,7 +180,7 @@ TEST(PreintegratedRigidContactFactor, Error) {
   Pose3 wTc_i = Pose3(Rot3(), Point3(0, 0, 1)),
         wTc_j = Pose3(Rot3::Ry(M_PI_4), Point3(0, 0, 1));
 
-  PreintegratedRigidContactMeasurements pcm(gtsam::Matrix3::Identity(), gtsam::Matrix3::Identity());
+  PreintegratedRigidContactMeasurements pcm(gtsam::I_3x3, gtsam::I_3x3);
   // Integrate with constant noise
   pcm.integrateMeasurement(0.1);
 
@@ -198,7 +199,7 @@ TEST(PreintegratedRigidContactFactor, Jacobians) {
   size_t contact_id = 0;
   size_t t0 = 0, t1 = 1;
 
-  PreintegratedRigidContactMeasurements pcm(gtsam::Matrix3::Identity(), gtsam::Matrix3::Identity());
+  PreintegratedRigidContactMeasurements pcm(gtsam::I_3x3, gtsam::I_3x3);
   // Integrate with constant noise
   pcm.integrateMeasurement(1);
 

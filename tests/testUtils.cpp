@@ -11,6 +11,7 @@
  * @author Mandy Xie and Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>
@@ -48,7 +49,7 @@ TEST(utils, calcPhi) {
 // Test calculate covariance matrix for GP
 TEST(utils, calcQ) {
   double t = 0.1;
-  gtsam::Matrix Qc = gtsam::Matrix6::Identity();
+  gtsam::Matrix Qc = gtsam::I_6x6;
   gtsam::Matrix expected_Q =
       (gtsam::Matrix(3 * Qc.rows(), 3 * Qc.rows())
            << 1.0 / 20 * pow(t, 5.0) * Qc,

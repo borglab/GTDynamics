@@ -11,6 +11,7 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/TwistFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -32,7 +33,7 @@ using gtsam::assert_equal;
 
 namespace example {
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix6::Identity());
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_6x6);
 gtsam::Key twist_p_key = TwistKey(1), twist_c_key = TwistKey(2),
            qKey = JointAngleKey(1), qVelKey = JointVelKey(1);
 }  // namespace example

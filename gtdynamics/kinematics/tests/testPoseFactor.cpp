@@ -11,6 +11,8 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -38,7 +40,7 @@ using gtsam::noiseModel::Gaussian;
 
 namespace example {
 // nosie model
-Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::Matrix6::Identity());
+Gaussian::shared_ptr cost_model = Gaussian::Covariance(gtsam::I_6x6);
 gtsam::Key wTp_key = PoseKey(1), wTc_key = PoseKey(2), q_key = JointAngleKey(1);
 }  // namespace example
 
@@ -86,7 +88,7 @@ TEST(PoseFactor, breaking) {
     InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
     InsertPose(&values, 2, Pose3(Rot3(), Point3(3, 0, 0)));
     InsertJointAngle(&values, 1, 0.0);
-    EXPECT(assert_equal(gtsam::Vector6::Zero(), factor->unwhitenedError(values), 1e-6));
+    EXPECT(assert_equal(gtsam::Z_6x1, factor->unwhitenedError(values), 1e-6));
   }
 
   // check prediction at half PI
@@ -95,7 +97,7 @@ TEST(PoseFactor, breaking) {
     InsertPose(&values, 1, Pose3(Rot3(), Point3(1, 0, 0)));
     InsertPose(&values, 2, Pose3(Rot3::Rz(M_PI / 2), Point3(2, 1, 0)));
     InsertJointAngle(&values, 1, M_PI / 2);
-    EXPECT(assert_equal(gtsam::Vector6::Zero(), factor->unwhitenedError(values), 1e-6));
+    EXPECT(assert_equal(gtsam::Z_6x1, factor->unwhitenedError(values), 1e-6));
   }
 }
 
@@ -119,7 +121,7 @@ TEST(PoseFactor, breaking_rr) {
   InsertPose(&values, 1, Pose3());
   InsertPose(&values, 2, j1->relativePoseOf(l2, M_PI / 4));
   InsertJointAngle(&values, 1, M_PI / 4);
-  EXPECT(assert_equal(gtsam::Vector6::Zero(), factor->unwhitenedError(values), 1e-6));
+  EXPECT(assert_equal(gtsam::Z_6x1, factor->unwhitenedError(values), 1e-6));
 }
 
 // Test non-zero cMp rotation case

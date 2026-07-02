@@ -11,6 +11,7 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/mechanics/TorqueFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -41,7 +42,7 @@ TEST(TorqueFactor, error) {
   auto [joint, links] = make_joint(kMj, screw_axis);
 
   // Create factor.
-  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
+  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
   auto factor = TorqueFactor(cost_model, joint, 777);
 
   // Check keys.

@@ -11,6 +11,7 @@
  * @author Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/ContactKinematicsAccelFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -36,7 +37,7 @@ TEST(ContactKinematicsAccelFactor, error) {
   auto robot = simple_urdf::getRobot();
 
   gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-      gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix3::Identity());
+      gtsam::noiseModel::Gaussian::Covariance(gtsam::I_3x3);
 
   gtsam::LabeledSymbol twist_accel_key = gtsam::LabeledSymbol('A', 0, 0);
 

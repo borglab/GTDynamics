@@ -10,6 +10,7 @@
  * @brief Dynamics factors for a single time slice.
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
@@ -30,7 +31,7 @@ NonlinearFactorGraph Dynamics::aFactors<Slice>(
   for (auto&& link : robot.links()) {
     if (link->isFixed()) {
       graph.addPrior<gtsam::Vector6>(TwistAccelKey(link->id(), slice.k),
-                                     gtsam::Vector6::Zero(), p_.ba_cost_model);
+                                     gtsam::Z_6x1, p_.ba_cost_model);
     }
   }
   for (auto&& joint : robot.joints()) {

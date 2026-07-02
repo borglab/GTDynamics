@@ -11,6 +11,7 @@
  * @author Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtsam/base/Testable.h>
@@ -31,7 +32,7 @@ namespace example {
 
 // noise model
 gtsam::noiseModel::Gaussian::shared_ptr cost_model =
-    gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
+    gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 gtsam::Key torque_key = gtsam::Symbol('t', 1);
 }  // namespace example
 

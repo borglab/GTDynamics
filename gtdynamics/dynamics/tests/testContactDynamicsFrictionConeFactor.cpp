@@ -11,6 +11,7 @@
  * @author Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
 #include <gtsam/base/Testable.h>
@@ -39,7 +40,7 @@ using gtsam::assert_equal;
  * Test the evaluateError method with various link contact wrenches and angles.
  **/
 TEST(ContactDynamicsFrictionConeFactor, error) {
-  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
+  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 
   LabeledSymbol pose_key = LabeledSymbol('p', 0, 0);
   LabeledSymbol contact_wrench_key = LabeledSymbol('C', 0, 0);
@@ -116,7 +117,7 @@ TEST(ContactDynamicsFrictionConeFactor, error) {
  * lies within the friction cone.
  **/
 TEST(ContactDynamicsFrictionConeFactor, optimization) {
-  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity());
+  auto cost_model = gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1);
 
   LabeledSymbol pose_key = LabeledSymbol('p', 0, 0);
   LabeledSymbol contact_wrench_key = LabeledSymbol('C', 0, 0);

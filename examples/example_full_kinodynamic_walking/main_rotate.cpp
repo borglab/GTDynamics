@@ -11,6 +11,7 @@
  * @Author: Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -298,7 +299,7 @@ int main(int argc, char** argv) {
     for (auto&& joint : robot.joints())
       objective_factors.add(gtdynamics::MinTorqueFactor(
           TorqueKey(joint->id(), t),
-          gtsam::noiseModel::Gaussian::Covariance(gtsam::Matrix1::Identity())));
+          gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
   }
   graph.add(objective_factors);
 

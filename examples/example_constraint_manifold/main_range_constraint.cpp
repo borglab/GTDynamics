@@ -11,6 +11,7 @@
  * @author Yetong Zhang
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
@@ -159,7 +160,7 @@ double EvaluatePoseError(const Values& gt, const Values& result) {
       Pose2 gt_pose = gt.at<Pose2>(A(k));
       Pose2 est_pose = result.at<Pose2>(A(k));
       Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
-      Matrix3 diff = rel_pose.matrix() - gtsam::Matrix3::Identity();
+      Matrix3 diff = rel_pose.matrix() - gtsam::I_3x3;
       // std::cout << diff << "\n";
       // std::cout << diff.norm() << "\n";
       error1 += pow(diff.norm(), 2);
@@ -168,7 +169,7 @@ double EvaluatePoseError(const Values& gt, const Values& result) {
       Pose2 gt_pose = gt.at<Pose2>(B(k));
       Pose2 est_pose = result.at<Pose2>(B(k));
       Pose2 rel_pose = est_pose.inverse().compose(gt_pose);
-      Matrix3 diff = rel_pose.matrix() - gtsam::Matrix3::Identity();
+      Matrix3 diff = rel_pose.matrix() - gtsam::I_3x3;
       error2 += pow(diff.norm(), 2);
     }
   }

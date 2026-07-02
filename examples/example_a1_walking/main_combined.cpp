@@ -11,6 +11,8 @@
  * @author: Dan Barladeanu
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -77,7 +79,7 @@ int CombinedRun(bool add_mass_to_body) {
   for (auto&& link : robot_massless.links()) {
     if (link->name().find("trunk") == std::string::npos) {
       link->setMass(0.0);
-      link->setInertia(gtsam::Matrix3::Zero());
+      link->setInertia(gtsam::Z_3x3);
     }
   }
 
@@ -144,8 +146,8 @@ int CombinedRun(bool add_mass_to_body) {
   for (int k = 0; k <= K; k++) {
     objectives.add(LinkObjectives(base_link->id(), k)
                        .pose(base_link->bMcom(), Isotropic::Sigma(6, 5e-5))
-                       .twist(gtsam::Vector6::Zero(), Isotropic::Sigma(6, 5e-5))
-                       .twistAccel(gtsam::Vector6::Zero(), Isotropic::Sigma(6, 5e-5)));
+                       .twist(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-5))
+                       .twistAccel(gtsam::Z_6x1, Isotropic::Sigma(6, 5e-5)));
   }
 
   // Add prior on A1 lower joint angles
@@ -210,7 +212,7 @@ int CombinedRun(bool add_mass_to_body) {
     if (i == 0)
       boundary_objectives_CDG.add(LinkObjectives(i, 0)
                                       .pose(link->bMcom(), dynamics_model_6)
-                                      .twist(gtsam::Vector6::Zero(), dynamics_model_6));
+                                      .twist(gtsam::Z_6x1, dynamics_model_6));
     if (i == 3 || i == 6 || i == 9 || i == 12)
       boundary_objectives_CDG.add(
           LinkObjectives(i, 0).pose(link->bMcom(), dynamics_model_6));
