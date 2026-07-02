@@ -11,6 +11,8 @@
  * @author Frank Dellaert, Mandy Xie, Yetong Zhang, and Gerry Chen
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/statics/Statics.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>

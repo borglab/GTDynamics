@@ -11,6 +11,7 @@
  * @author Mandy Xie and Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtsam/base/Testable.h>

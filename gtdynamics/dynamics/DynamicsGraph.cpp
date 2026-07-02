@@ -11,6 +11,8 @@
  * @author Yetong Zhang, Alejandro Escontrela
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Joint.h>
@@ -33,8 +35,6 @@
 using gtsam::Double_;
 using gtsam::ExpressionFactor;
 using gtsam::GaussianFactorGraph;
-using gtsam::I_1x1;
-using gtsam::I_6x6;
 using gtsam::Key;
 using gtsam::NonlinearFactorGraph;
 using gtsam::Pose3;
@@ -42,7 +42,6 @@ using gtsam::PriorFactor;
 using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector6;
-using gtsam::Z_6x1;
 
 namespace gtdynamics {
 
@@ -64,7 +63,7 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
     if (link->isFixed()) {
       // prior on twist acceleration for fixed link
       // A_i = 0
-      graph.add(TwistAccelKey(i, k), I_6x6, Z_6x1, all_constrained);
+      graph.add(TwistAccelKey(i, k), gtsam::I_6x6, gtsam::Z_6x1, all_constrained);
     } else {
       // wrench factor
       // G_i * A_i - F_i_j1 - .. - F_i_jn  = ad(V_i)^T * G_i * V*i + m_i * R_i^T
@@ -87,10 +86,10 @@ GaussianFactorGraph DynamicsGraph::linearDynamicsGraph(
         graph.add(accel_key, G_i, rhs, all_constrained);
       } else if (connected_joints.size() == 1) {
         graph.add(accel_key, G_i, WrenchKey(i, connected_joints[0]->id(), k),
-                  -I_6x6, rhs, all_constrained);
+                  -gtsam::I_6x6, rhs, all_constrained);
       } else if (connected_joints.size() == 2) {
         graph.add(accel_key, G_i, WrenchKey(i, connected_joints[0]->id(), k),
-                  -I_6x6, WrenchKey(i, connected_joints[1]->id(), k), -I_6x6,
+                  -gtsam::I_6x6, WrenchKey(i, connected_joints[1]->id(), k), -gtsam::I_6x6,
                   rhs, all_constrained);
       }
     }
@@ -121,7 +120,7 @@ GaussianFactorGraph DynamicsGraph::linearIDPriors(
     int j = joint->id();
     double accel = JointAccel(joint_accels, j, k);
     gtsam::Vector1 rhs(accel);
-    graph.add(JointAccelKey(j, k), I_1x1, rhs, all_constrained);
+    graph.add(JointAccelKey(j, k), gtsam::I_1x1, rhs, all_constrained);
   }
   return graph;
 }

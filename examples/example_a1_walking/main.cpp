@@ -11,6 +11,8 @@
  * @author: Dan Barladeanu
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -218,7 +220,7 @@ int oldGraph() {
   for (auto&& link : robot.links()) {
     if (link->name().find("trunk") == std::string::npos) {
       link->setMass(0.0);
-      link->setInertia(gtsam::Matrix3::Zero());
+      link->setInertia(gtsam::Z_3x3);
     }
   }
 
@@ -372,7 +374,7 @@ int newGraph() {
   for (auto&& link : robot.links()) {
     if (link->name().find("trunk") == std::string::npos) {
       link->setMass(0.0);
-      link->setInertia(gtsam::Matrix3::Zero());
+      link->setInertia(gtsam::Z_3x3);
     }
   }
 

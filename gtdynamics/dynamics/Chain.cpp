@@ -11,6 +11,7 @@
  * @author Dan Barladeanu, Frank Dellaert.
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/Chain.h>
 
 namespace gtdynamics {

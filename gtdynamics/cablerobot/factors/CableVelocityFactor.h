@@ -74,7 +74,7 @@ class CableVelocityFactor
       gtsam::OptionalMatrixType H_wTx = nullptr,
       gtsam::OptionalMatrixType H_Vx = nullptr) const override {
     double expected_ldot = computeLdot(wTx, Vx, H_wTx, H_Vx);
-    if (H_ldot) *H_ldot = gtsam::I_1x1;
+    if (H_ldot) *H_ldot = gtsam::Matrix1::Identity();
     if (H_wTx) *H_wTx = -(*H_wTx);
     if (H_Vx) *H_Vx = -(*H_Vx);
     return gtsam::Vector1(ldot - expected_ldot);

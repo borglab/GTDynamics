@@ -142,12 +142,12 @@ class PreintegratedPointContactFactor
     // https://arxiv.org/src/1712.05873v2/anc/icra-supplementary-material.pdf
     if (H_wTb_i) {
       gtsam::Matrix36 H;
-      H << gtsam::SO3::Hat(error), gtsam::Z_3x3;
+      H << gtsam::SO3::Hat(error), gtsam::Matrix3::Zero();
       *H_wTb_i = H;
     }
     if (H_wTc_i) {
       gtsam::Matrix36 H;
-      H << gtsam::Z_3x3, -gtsam::I_3x3;
+      H << gtsam::Matrix3::Zero(), -gtsam::Matrix3::Identity();
       *H_wTc_i = H;
     }
     if (H_wTb_j) {
@@ -163,7 +163,7 @@ class PreintegratedPointContactFactor
             "Body rotation and contact rotation are not equal.");
       }
       gtsam::Matrix36 H;
-      H << gtsam::Z_3x3,
+      H << gtsam::Matrix3::Zero(),
           (wTc_i.rotation().inverse() * wTc_j.rotation()).matrix();
       *H_wTc_j = H;
     }
@@ -239,7 +239,7 @@ class PreintegratedRigidContactMeasurements {
                             const gtsam::Matrix3 &linearVelocityCovariance,
                             double dt) {
     gtsam::Matrix6 C;
-    C << angularVelocityCovariance, gtsam::Z_3x3, gtsam::Z_3x3,
+    C << angularVelocityCovariance, gtsam::Matrix3::Zero(), gtsam::Matrix3::Zero(),
         linearVelocityCovariance;
     preintMeasCov_ += (C * dt * dt);
   }
@@ -251,7 +251,7 @@ class PreintegratedRigidContactMeasurements {
    * steps.
    */
   void integrateMeasurement(double deltaT) {
-    preintMeasCov_ << wCov_, gtsam::Z_3x3, gtsam::Z_3x3, vCov_;
+    preintMeasCov_ << wCov_, gtsam::Matrix3::Zero(), gtsam::Matrix3::Zero(), vCov_;
     preintMeasCov_ *= deltaT;
   }
 

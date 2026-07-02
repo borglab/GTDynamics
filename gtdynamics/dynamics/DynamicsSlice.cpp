@@ -10,6 +10,7 @@
  * @brief Dynamics factors for a single time slice.
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>

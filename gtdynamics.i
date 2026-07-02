@@ -374,6 +374,8 @@ class KinematicsParameters : gtdynamics::OptimizationParameters {
                        double bv_cost_model_sigma = 1e-4,
                        double v_cost_model_sigma = 1e-4,
                        double cv_cost_model_sigma = 1e-2);
+  void setJointPriorSigma(gtsam::Key joint_key, double sigma);
+  void setJointLimit(gtsam::Key joint_key, double lower, double upper);
 };
 
 class Kinematics {

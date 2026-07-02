@@ -14,6 +14,8 @@
  * @brief Abstract representation of a robot link.
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/statics/Statics.h>
 #include <gtdynamics/universal_robot/Link.h>

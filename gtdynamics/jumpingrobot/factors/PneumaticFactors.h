@@ -149,7 +149,7 @@ class MassFlowRateFactor
     double expected_mdot =
         computeExpectedMassFlow(pm, ps, mdot, H_pm, H_ps, H_mdot);
     if (H_mdot) {
-      *H_mdot = *H_mdot - gtsam::I_1x1;
+      *H_mdot = *H_mdot - gtsam::Matrix1::Identity();
     }
     return gtsam::Vector1(expected_mdot - mdot);
   }

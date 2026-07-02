@@ -31,8 +31,8 @@ namespace gtdynamics {
  *
  * Example Usage:
  *  LinkObjectives(graph, id, k).pose(Pose3(), noise)
- *                              .twist(Z_6x1, noise)
- *                              .twistAccel(Z_6x1, noise);
+ *                              .twist(gtsam::Vector6::Zero(), noise)
+ *                              .twistAccel(gtsam::Vector6::Zero(), noise);
  */
 class LinkObjectives : public gtsam::NonlinearFactorGraph {
  private:

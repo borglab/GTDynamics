@@ -11,6 +11,8 @@
  * @author: Dan Barladeanu, Frank Dellaert
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/Chain.h>
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
@@ -967,10 +969,10 @@ gtsam::Values OldGraphOneLeg() {
       robot.removeLink(link);
     } else if (link->name().find("trunk") == std::string::npos) {
       link->setMass(0.0);
-      link->setInertia(gtsam::Matrix3::Zero());
+      link->setInertia(gtsam::Z_3x3);
     } else {
       link->setMass(1.0);
-      link->setInertia(gtsam::Matrix3::Identity());
+      link->setInertia(gtsam::I_3x3);
     }
   }
 
@@ -1074,7 +1076,7 @@ gtsam::Values NewGraphOneLeg() {
   // Add trunk wrench constraint to constraints
   constraints.emplace_shared<
       gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
-      trunk_wrench_constraint, gtsam::Vector6::Zero(), wrench_tolerance);
+      trunk_wrench_constraint, gtsam::Z_6x1, wrench_tolerance);
 
   // Get expression for chain on the leg
   gtsam::Vector6_ wrench_end_effector =
@@ -1181,7 +1183,7 @@ gtsam::Values OldGraphFourLegs() {
   for (auto&& link : robot.links()) {
     if (link->name().find("trunk") == std::string::npos) {
       link->setMass(0.0);
-      link->setInertia(gtsam::Matrix3::Zero());
+      link->setInertia(gtsam::Z_3x3);
     }
   }
 

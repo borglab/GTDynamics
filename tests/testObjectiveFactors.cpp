@@ -11,6 +11,7 @@
  * @author Frank Dellaert
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
