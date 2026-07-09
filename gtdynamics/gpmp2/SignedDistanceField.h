@@ -23,6 +23,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -38,7 +39,9 @@ namespace gtdynamics {
  * indexed as data[z](row, col) with row spanning y and col spanning x. A numpy
  * array laid out as sdf[nx, ny, nz] therefore transposes into layer z as
  * sdf[:, :, z].T -- passing sdf[:, :, z] directly swaps the x and y axes, which
- * leaves the distances plausible but silently transposes the gradient.
+ * leaves the distances plausible but silently transposes the gradient. The
+ * constructor taking positions and distances is immune to this, since every
+ * value carries the position it was sampled at.
  */
 class SignedDistanceField {
  public:
@@ -87,6 +90,103 @@ class SignedDistanceField {
         field_z_(field_z),
         cell_size_(cell_size),
         data_(std::vector<gtsam::Matrix>(field_z)) {}
+
+  /**
+   * Constructor from sampled positions and their signed distances. The origin,
+   * cell size and grid extent are inferred from the positions, which must be
+   * exactly the nodes of a uniform grid of equal spacing on all three axes.
+   * Anything else throws rather than yield a warped field. Each distance is
+   * placed by its own position, so the columns may arrive in any order and the
+   * axis convention of the caller's array cannot transpose the field.
+   *
+   * @param positions 3 x N matrix of node positions, in frame s
+   * @param distances N signed distances, one per column of positions
+   * @param tol tolerance for matching a position onto a grid node, in metres
+   */
+  SignedDistanceField(const gtsam::Matrix &positions,
+                      const gtsam::Vector &distances, double tol = 1e-6) {
+    if (positions.rows() != 3) {
+      throw std::invalid_argument(
+          "SignedDistanceField: positions must be a 3 x N matrix.");
+    }
+    if (positions.cols() != distances.size()) {
+      throw std::invalid_argument(
+          "SignedDistanceField: positions and distances must agree in count.");
+    }
+
+    // Recover each axis's nodes, then its uniform spacing.
+    std::vector<double> spacing(3);
+    std::vector<double> low(3);
+    std::vector<size_t> count(3);
+    for (int axis = 0; axis < 3; ++axis) {
+      std::vector<double> values;
+      values.reserve(positions.cols());
+      for (Eigen::Index n = 0; n < positions.cols(); ++n) {
+        values.push_back(positions(axis, n));
+      }
+      std::sort(values.begin(), values.end());
+      std::vector<double> nodes;
+      for (double value : values) {
+        if (nodes.empty() || value - nodes.back() > tol) nodes.push_back(value);
+      }
+      if (nodes.size() < 2) {
+        throw std::invalid_argument(
+            "SignedDistanceField: each axis needs at least two distinct "
+            "positions.");
+      }
+      low[axis] = nodes.front();
+      count[axis] = nodes.size();
+      spacing[axis] = (nodes.back() - nodes.front()) / (nodes.size() - 1);
+      for (size_t i = 0; i < nodes.size(); ++i) {
+        if (std::fabs(nodes[i] - (low[axis] + i * spacing[axis])) > tol) {
+          throw std::invalid_argument(
+              "SignedDistanceField: positions are not uniformly spaced.");
+        }
+      }
+    }
+    if (std::fabs(spacing[0] - spacing[1]) > tol ||
+        std::fabs(spacing[0] - spacing[2]) > tol) {
+      throw std::invalid_argument(
+          "SignedDistanceField: spacing must be equal on all three axes.");
+    }
+    if (static_cast<size_t>(positions.cols()) !=
+        count[0] * count[1] * count[2]) {
+      throw std::invalid_argument(
+          "SignedDistanceField: positions do not fill the grid exactly once.");
+    }
+
+    origin_ = gtsam::Point3(low[0], low[1], low[2]);
+    cell_size_ = spacing[0];
+    field_cols_ = count[0];
+    field_rows_ = count[1];
+    field_z_ = count[2];
+    data_ = std::vector<gtsam::Matrix>(
+        field_z_, gtsam::Matrix::Zero(field_rows_, field_cols_));
+
+    // Scatter each distance to the node its own position names.
+    std::vector<bool> filled(positions.cols(), false);
+    for (Eigen::Index n = 0; n < positions.cols(); ++n) {
+      size_t idx[3];
+      for (int axis = 0; axis < 3; ++axis) {
+        const double fractional = (positions(axis, n) - low[axis]) / cell_size_;
+        const double rounded = std::round(fractional);
+        if (std::fabs(fractional - rounded) * cell_size_ > tol ||
+            rounded < 0.0 || rounded >= static_cast<double>(count[axis])) {
+          throw std::invalid_argument(
+              "SignedDistanceField: a position does not lie on a grid node.");
+        }
+        idx[axis] = static_cast<size_t>(rounded);
+      }
+      const size_t flat =
+          (idx[2] * field_rows_ + idx[1]) * field_cols_ + idx[0];
+      if (filled[flat]) {
+        throw std::invalid_argument(
+            "SignedDistanceField: two positions land on the same grid node.");
+      }
+      filled[flat] = true;
+      data_[idx[2]](idx[1], idx[0]) = distances(n);
+    }
+  }
 
   ~SignedDistanceField() {}
 

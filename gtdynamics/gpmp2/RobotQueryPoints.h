@@ -160,6 +160,19 @@ class RobotQueryPoints {
       }
     }
   }
+
+  /**
+   * World positions of the query points, one per column.
+   * @param q stacked joint angles
+   * @returns a 3 x nrPoints matrix of world positions
+   */
+  gtsam::Matrix worldPoints(const gtsam::Vector &q) const {
+    std::vector<gtsam::Point3> wPs;
+    queryPoints(q, &wPs);
+    gtsam::Matrix points(3, nrPoints());
+    for (size_t i = 0; i < nrPoints(); ++i) points.col(i) = wPs[i];
+    return points;
+  }
 };  // \class RobotQueryPoints
 
 }  // namespace gtdynamics
