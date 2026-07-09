@@ -68,4 +68,49 @@ inline gtsam::Matrix calcPhi(size_t dof, double tau) {
       .finished();
 }
 
+/**
+ * @fn Compute the inverse of the process covariance Q over a time interval.
+ * @param Qc n x n power spectral density matrix.
+ * @param tau time interval between the two states.
+ * @returns the 2n x 2n inverse process covariance matrix.
+ */
+inline gtsam::Matrix calcQ_inv(const gtsam::Matrix &Qc, double tau) {
+  assert(Qc.rows() == Qc.cols());
+  const auto n = Qc.rows();
+  const gtsam::Matrix Qc_inv = Qc.inverse();
+  return (gtsam::Matrix(2 * n, 2 * n) <<                                    //
+          12.0 * std::pow(tau, -3.0) * Qc_inv, -6.0 * std::pow(tau, -2.0) * Qc_inv,  //
+          -6.0 * std::pow(tau, -2.0) * Qc_inv, 4.0 * std::pow(tau, -1.0) * Qc_inv)
+      .finished();
+}
+
+/**
+ * @fn Compute the Lambda matrix used to interpolate at time tau.
+ * @param Qc n x n power spectral density matrix.
+ * @param delta_t time between the two support states.
+ * @param tau time from the first support state to the interpolated state.
+ * @returns the 2n x 2n Lambda matrix.
+ */
+inline gtsam::Matrix calcLambda(const gtsam::Matrix &Qc, double delta_t,
+                                double tau) {
+  assert(Qc.rows() == Qc.cols());
+  return calcPhi(Qc.rows(), tau) -
+         calcQ(Qc, tau) * calcPhi(Qc.rows(), delta_t - tau).transpose() *
+             calcQ_inv(Qc, delta_t) * calcPhi(Qc.rows(), delta_t);
+}
+
+/**
+ * @fn Compute the Psi matrix used to interpolate at time tau.
+ * @param Qc n x n power spectral density matrix.
+ * @param delta_t time between the two support states.
+ * @param tau time from the first support state to the interpolated state.
+ * @returns the 2n x 2n Psi matrix.
+ */
+inline gtsam::Matrix calcPsi(const gtsam::Matrix &Qc, double delta_t,
+                             double tau) {
+  assert(Qc.rows() == Qc.cols());
+  return calcQ(Qc, tau) * calcPhi(Qc.rows(), delta_t - tau).transpose() *
+         calcQ_inv(Qc, delta_t);
+}
+
 }  // namespace gtdynamics

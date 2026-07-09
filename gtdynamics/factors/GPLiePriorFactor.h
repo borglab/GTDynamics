@@ -23,6 +23,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
@@ -72,7 +73,16 @@ class GPLiePrior
                  calcQ(getQc(Qc_model), delta_t)),
              pose_key1, vel_key1, pose_key2, vel_key2),
         dof_(Qc_model->dim()),
-        delta_t_(delta_t) {}
+        delta_t_(delta_t) {
+    // A mismatched Qc dimension silently mis-sizes the error and Jacobians, so
+    // reject it up front. Only checkable when T has a fixed dimension.
+    if (gtsam::traits<T>::dimension != Eigen::Dynamic &&
+        dof_ != static_cast<size_t>(gtsam::traits<T>::dimension)) {
+      throw std::invalid_argument(
+          "GPLiePrior: Qc_model dimension must equal the tangent dimension of "
+          "the Lie group.");
+    }
+  }
 
   ~GPLiePrior() override {}
 
