@@ -59,21 +59,29 @@ class TestSignedDistanceField(GtsamTestCase):
 
     def setUp(self):
         self.center = np.array([0.5, 0.0, 1.25])
-        self.origin = np.array([0.3, -0.2, 1.1])
-        self.counts = (6, 5, 4)
+        # Counts differ per axis to catch a transposed field, and the grid is
+        # centred on the sphere so a probe near its surface stays in range.
+        self.counts = (13, 11, 9)
+        self.origin = self.center - CELL * (np.array(self.counts) - 1) / 2.0
 
     def test_interpolates_the_sphere(self):
         """Trilinear interpolation must recover the analytic distance."""
         sdf = sphere_sdf(self.center, RADIUS, self.origin, CELL, self.counts)
-        self.assertEqual(sdf.xCount(), 6)
-        self.assertEqual(sdf.yCount(), 5)
-        self.assertEqual(sdf.zCount(), 4)
+        self.assertEqual(sdf.xCount(), 13)
+        self.assertEqual(sdf.yCount(), 11)
+        self.assertEqual(sdf.zCount(), 9)
         self.assertAlmostEqual(sdf.cellSize(), CELL, places=9)
         np.testing.assert_allclose(sdf.origin(), self.origin, atol=1e-9)
 
-        probe = self.center + np.array([0.5 * CELL, 0.5 * CELL, 0.5 * CELL])
-        expected = np.linalg.norm(probe - self.center) - RADIUS
-        self.assertAlmostEqual(sdf.getSignedDistance(probe), expected, places=2)
+        probe = self.center + np.array([0.25, 0.0, 0.0])
+        self.assertAlmostEqual(sdf.getSignedDistance(probe), 0.25 - RADIUS,
+                               places=2)
+
+    def test_rejects_a_query_outside_the_grid(self):
+        """A point beyond the grid is out of range, not silently free space."""
+        sdf = sphere_sdf(self.center, RADIUS, self.origin, CELL, self.counts)
+        with self.assertRaises(RuntimeError):
+            sdf.getSignedDistance(self.center + np.array([10.0, 0.0, 0.0]))
 
     def test_column_order_does_not_matter(self):
         """Shuffling the columns must give back an identical field."""
