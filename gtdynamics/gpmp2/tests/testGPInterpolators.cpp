@@ -15,7 +15,6 @@
 #include <gtdynamics/gpmp2/GPLieInterpolator.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
 #include <gtdynamics/gpmp2/GPPose3Interpolator.h>
-#include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/geometry/Rot3.h>
@@ -30,6 +29,8 @@ using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Vector;
+using gtsam::Vector2;
+using gtsam::Vector6;
 using gtsam::noiseModel::Isotropic;
 
 static const double kDeltaT = 0.4;
@@ -70,47 +71,65 @@ TEST(GPLinearInterpolator, constantVelocityIsALine) {
   EXPECT(assert_equal(v1, interp.interpolateVelocity(q1, v1, q2, v1), 1e-9));
 }
 
+// numericalDerivative deduces its perturbation size from traits<X>::dimension,
+// which is Eigen::Dynamic for gtsam::Vector, so the probed arguments are fixed
+// size Vector2 here. They convert to the dynamic Vector the interpolator takes.
 TEST(GPLinearInterpolator, jacobians) {
   auto Qc_model = Isotropic::Sigma(2, 1.0);
   GPLinearInterpolator interp(Qc_model, kDeltaT, kTau);
 
-  const Vector q1 = (Vector(2) << 1.0, -2.0).finished();
-  const Vector v1 = (Vector(2) << 0.3, 0.7).finished();
-  const Vector q2 = (Vector(2) << 2.5, 0.5).finished();
-  const Vector v2 = (Vector(2) << -0.1, 0.2).finished();
+  const Vector2 q1(1.0, -2.0), v1(0.3, 0.7), q2(2.5, 0.5), v2(-0.1, 0.2);
 
   Matrix H1, H2, H3, H4;
   interp.interpolatePose(q1, v1, q2, v2, &H1, &H2, &H3, &H4);
 
-  std::function<Vector(const Vector &, const Vector &, const Vector &,
-                       const Vector &)>
-      pose = [&](const Vector &a, const Vector &b, const Vector &c,
-                 const Vector &d) { return interp.interpolatePose(a, b, c, d); };
-  EXPECT(assert_equal(gtsam::numericalDerivative41(pose, q1, v1, q2, v2), H1,
-                      1e-6));
-  EXPECT(assert_equal(gtsam::numericalDerivative42(pose, q1, v1, q2, v2), H2,
-                      1e-6));
-  EXPECT(assert_equal(gtsam::numericalDerivative43(pose, q1, v1, q2, v2), H3,
-                      1e-6));
-  EXPECT(assert_equal(gtsam::numericalDerivative44(pose, q1, v1, q2, v2), H4,
-                      1e-6));
+  std::function<Vector2(const Vector2 &, const Vector2 &, const Vector2 &,
+                        const Vector2 &)>
+      pose = [&](const Vector2 &a, const Vector2 &b, const Vector2 &c,
+                 const Vector2 &d) {
+        return Vector2(interp.interpolatePose(a, b, c, d));
+      };
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative41<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          pose, q1, v1, q2, v2),
+      H1, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative42<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          pose, q1, v1, q2, v2),
+      H2, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative43<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          pose, q1, v1, q2, v2),
+      H3, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative44<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          pose, q1, v1, q2, v2),
+      H4, 1e-6));
 
   Matrix G1, G2, G3, G4;
   interp.interpolateVelocity(q1, v1, q2, v2, &G1, &G2, &G3, &G4);
-  std::function<Vector(const Vector &, const Vector &, const Vector &,
-                       const Vector &)>
-      vel = [&](const Vector &a, const Vector &b, const Vector &c,
-                const Vector &d) {
-        return interp.interpolateVelocity(a, b, c, d);
+  std::function<Vector2(const Vector2 &, const Vector2 &, const Vector2 &,
+                        const Vector2 &)>
+      vel = [&](const Vector2 &a, const Vector2 &b, const Vector2 &c,
+                const Vector2 &d) {
+        return Vector2(interp.interpolateVelocity(a, b, c, d));
       };
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative41(vel, q1, v1, q2, v2), G1, 1e-6));
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative42(vel, q1, v1, q2, v2), G2, 1e-6));
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative43(vel, q1, v1, q2, v2), G3, 1e-6));
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative44(vel, q1, v1, q2, v2), G4, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative41<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          vel, q1, v1, q2, v2),
+      G1, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative42<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          vel, q1, v1, q2, v2),
+      G2, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative43<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          vel, q1, v1, q2, v2),
+      G3, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative44<Vector2, Vector2, Vector2, Vector2, Vector2>(
+          vel, q1, v1, q2, v2),
+      G4, 1e-6));
 }
 
 /* *************************** Lie interpolator *************************** */
@@ -162,47 +181,64 @@ TEST(GPPose3Interpolator, reproducesEndpoints) {
   EXPECT(assert_equal(v2, at_end.interpolateVelocity(p1, v1, p2, v2), 1e-9));
 }
 
+// As above, the velocity arguments are probed as fixed size Vector6.
 TEST(GPPose3Interpolator, jacobians) {
   auto Qc_model = Isotropic::Sigma(6, 1.0);
   GPPose3Interpolator interp(Qc_model, kDeltaT, kTau);
 
   const Pose3 p1(Rot3::RzRyRx(0.1, 0.2, 0.3), Point3(1.0, 2.0, 3.0));
   const Pose3 p2(Rot3::RzRyRx(-0.2, 0.1, 0.4), Point3(1.4, 1.7, 3.2));
-  const Vector v1 = (Vector(6) << 0.1, -0.2, 0.3, 0.4, 0.5, -0.6).finished();
-  const Vector v2 = (Vector(6) << 0.0, 0.1, -0.1, 0.2, -0.3, 0.4).finished();
+  const Vector6 v1 = (Vector6() << 0.1, -0.2, 0.3, 0.4, 0.5, -0.6).finished();
+  const Vector6 v2 = (Vector6() << 0.0, 0.1, -0.1, 0.2, -0.3, 0.4).finished();
 
   Matrix H1, H2, H3, H4;
   interp.interpolatePose(p1, v1, p2, v2, &H1, &H2, &H3, &H4);
 
-  std::function<Pose3(const Pose3 &, const Vector &, const Pose3 &,
-                      const Vector &)>
-      pose = [&](const Pose3 &a, const Vector &b, const Pose3 &c,
-                 const Vector &d) { return interp.interpolatePose(a, b, c, d); };
-  EXPECT(assert_equal(gtsam::numericalDerivative41(pose, p1, v1, p2, v2), H1,
-                      1e-6));
-  EXPECT(assert_equal(gtsam::numericalDerivative42(pose, p1, v1, p2, v2), H2,
-                      1e-6));
-  EXPECT(assert_equal(gtsam::numericalDerivative43(pose, p1, v1, p2, v2), H3,
-                      1e-6));
-  EXPECT(assert_equal(gtsam::numericalDerivative44(pose, p1, v1, p2, v2), H4,
-                      1e-6));
+  std::function<Pose3(const Pose3 &, const Vector6 &, const Pose3 &,
+                      const Vector6 &)>
+      pose = [&](const Pose3 &a, const Vector6 &b, const Pose3 &c,
+                 const Vector6 &d) { return interp.interpolatePose(a, b, c, d); };
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative41<Pose3, Pose3, Vector6, Pose3, Vector6>(
+          pose, p1, v1, p2, v2),
+      H1, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative42<Pose3, Pose3, Vector6, Pose3, Vector6>(
+          pose, p1, v1, p2, v2),
+      H2, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative43<Pose3, Pose3, Vector6, Pose3, Vector6>(
+          pose, p1, v1, p2, v2),
+      H3, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative44<Pose3, Pose3, Vector6, Pose3, Vector6>(
+          pose, p1, v1, p2, v2),
+      H4, 1e-6));
 
   Matrix G1, G2, G3, G4;
   interp.interpolateVelocity(p1, v1, p2, v2, &G1, &G2, &G3, &G4);
-  std::function<Vector(const Pose3 &, const Vector &, const Pose3 &,
-                       const Vector &)>
-      vel = [&](const Pose3 &a, const Vector &b, const Pose3 &c,
-                const Vector &d) {
-        return interp.interpolateVelocity(a, b, c, d);
+  std::function<Vector6(const Pose3 &, const Vector6 &, const Pose3 &,
+                        const Vector6 &)>
+      vel = [&](const Pose3 &a, const Vector6 &b, const Pose3 &c,
+                const Vector6 &d) {
+        return Vector6(interp.interpolateVelocity(a, b, c, d));
       };
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative41(vel, p1, v1, p2, v2), G1, 1e-6));
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative42(vel, p1, v1, p2, v2), G2, 1e-6));
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative43(vel, p1, v1, p2, v2), G3, 1e-6));
-  EXPECT(
-      assert_equal(gtsam::numericalDerivative44(vel, p1, v1, p2, v2), G4, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative41<Vector6, Pose3, Vector6, Pose3, Vector6>(
+          vel, p1, v1, p2, v2),
+      G1, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative42<Vector6, Pose3, Vector6, Pose3, Vector6>(
+          vel, p1, v1, p2, v2),
+      G2, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative43<Vector6, Pose3, Vector6, Pose3, Vector6>(
+          vel, p1, v1, p2, v2),
+      G3, 1e-6));
+  EXPECT(assert_equal(
+      gtsam::numericalDerivative44<Vector6, Pose3, Vector6, Pose3, Vector6>(
+          vel, p1, v1, p2, v2),
+      G4, 1e-6));
 }
 
 // A Qc of the wrong dimension would mis-slice Lambda and Psi without crashing,

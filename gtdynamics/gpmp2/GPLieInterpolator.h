@@ -75,8 +75,8 @@ class GPLieInterpolator {
           "dimension of the Lie group.");
     }
     Qc_ = getQc(Qc_model);
-    Lambda_ = calcLambda(Qc_, delta_t_, tau_);
-    Psi_ = calcPsi(Qc_, delta_t_, tau_);
+    Lambda_ = calcLambdaAccel(Qc_, delta_t_, tau_);
+    Psi_ = calcPsiAccel(Qc_, delta_t_, tau_);
   }
 
   ~GPLieInterpolator() {}
@@ -84,10 +84,10 @@ class GPLieInterpolator {
   /// Interpolate the pose at tau, with Jacobians w.r.t. the support states.
   T interpolatePose(const T &pose1, const gtsam::Vector &vel1, const T &pose2,
                     const gtsam::Vector &vel2,
-                    gtsam::OptionalMatrixType H1 = nullptr,
-                    gtsam::OptionalMatrixType H2 = nullptr,
-                    gtsam::OptionalMatrixType H3 = nullptr,
-                    gtsam::OptionalMatrixType H4 = nullptr) const {
+                    gtsam::Matrix *H1 = nullptr,
+                    gtsam::Matrix *H2 = nullptr,
+                    gtsam::Matrix *H3 = nullptr,
+                    gtsam::Matrix *H4 = nullptr) const {
     const bool use_H = (H1 || H2 || H3 || H4);
 
     gtsam::Vector r1(2 * dof_);
@@ -133,10 +133,10 @@ class GPLieInterpolator {
   /// Interpolate the velocity at tau, with Jacobians w.r.t. the support states.
   gtsam::Vector interpolateVelocity(
       const T &pose1, const gtsam::Vector &vel1, const T &pose2,
-      const gtsam::Vector &vel2, gtsam::OptionalMatrixType H1 = nullptr,
-      gtsam::OptionalMatrixType H2 = nullptr,
-      gtsam::OptionalMatrixType H3 = nullptr,
-      gtsam::OptionalMatrixType H4 = nullptr) const {
+      const gtsam::Vector &vel2, gtsam::Matrix *H1 = nullptr,
+      gtsam::Matrix *H2 = nullptr,
+      gtsam::Matrix *H3 = nullptr,
+      gtsam::Matrix *H4 = nullptr) const {
     const bool use_H = (H1 || H2 || H3 || H4);
 
     gtsam::Vector r1(2 * dof_);
@@ -169,9 +169,9 @@ class GPLieInterpolator {
   static void updatePoseJacobians(
       const gtsam::Matrix &Hpose, const gtsam::Matrix &Hint1,
       const gtsam::Matrix &Hint2, const gtsam::Matrix &Hint3,
-      const gtsam::Matrix &Hint4, gtsam::OptionalMatrixType H1,
-      gtsam::OptionalMatrixType H2, gtsam::OptionalMatrixType H3,
-      gtsam::OptionalMatrixType H4) {
+      const gtsam::Matrix &Hint4, gtsam::Matrix *H1,
+      gtsam::Matrix *H2, gtsam::Matrix *H3,
+      gtsam::Matrix *H4) {
     if (H1) *H1 = Hpose * Hint1;
     if (H2) *H2 = Hpose * Hint2;
     if (H3) *H3 = Hpose * Hint3;

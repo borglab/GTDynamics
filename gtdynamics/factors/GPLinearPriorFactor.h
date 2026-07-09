@@ -17,6 +17,7 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <cmath>
@@ -36,8 +37,8 @@ namespace gtdynamics {
  * A 4-way GaussianProcess prior factor, linear version.
  * Implemented similarly to that used in the GPMP2 paper. Each state consists of
  * a pose and a velocity, separated by delta_t. The error is
- * calcPhi(dof, delta_t) * x1 - x2, where x1 and x2 stack the pose and velocity
- * of the first and second state respectively.
+ * calcPhiAccel(dof, delta_t) * x1 - x2, where x1 and x2 stack the pose and
+ * velocity of the first and second state respectively.
  */
 class GPLinearPrior
     : public gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
@@ -68,7 +69,7 @@ class GPLinearPrior
                              double delta_t,
                              const gtsam::SharedNoiseModel &Qc_model)
       : Base(gtsam::noiseModel::Gaussian::Covariance(
-                 calcQ(getQc(Qc_model), delta_t)),
+                 calcQAccel(getQc(Qc_model), delta_t)),
              pose_key1, vel_key1, pose_key2, vel_key2),
         dof_(Qc_model->dim()),
         delta_t_(delta_t) {}
@@ -104,7 +105,7 @@ class GPLinearPrior
     if (H3) *H3 = (gtsam::Matrix(2 * dof_, dof_) << -identity, zero).finished();
     if (H4) *H4 = (gtsam::Matrix(2 * dof_, dof_) << zero, -identity).finished();
 
-    return calcPhi(dof_, delta_t_) * x1 - x2;
+    return calcPhiAccel(dof_, delta_t_) * x1 - x2;
   }
 
   /// Return the degrees of freedom of a single state.

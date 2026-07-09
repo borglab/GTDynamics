@@ -21,7 +21,6 @@
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -30,7 +29,6 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/factorTesting.h>
 
-#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <memory>
@@ -40,12 +38,15 @@
 using namespace gtdynamics;
 using gtsam::assert_equal;
 using gtsam::Matrix;
+using gtsam::Matrix13;
+using gtsam::Matrix16;
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Values;
 using gtsam::Vector;
 using gtsam::Vector3;
+using gtsam::Vector9;
 using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
@@ -53,6 +54,10 @@ using gtsam::symbol_shorthand::X;
 static const double kCell = 0.05;
 static const double kRadius = 0.15;
 static const double kEpsilon = 0.10;
+
+// Offset a grid by half a cell to put points of interest at cell centres, since
+// the trilinear gradient is discontinuous on the nodes.
+static const double kHalfCell = 0.5 * kCell;
 
 // Sample the exact signed distance to a sphere onto a grid. The layer for z
 // index k is indexed as (row = y, col = x), matching SignedDistanceField.
@@ -82,24 +87,21 @@ static SignedDistanceField makeSphereSDF(const Point3 &center, double radius,
 // still returns plausible distances but reports the gradient of the wrong axis.
 TEST(SignedDistanceField, sphereDistanceAndGradient) {
   const Point3 center(1.0, 1.0, 1.0);
-  const Point3 origin(0.0, 0.0, 0.0);
-  const size_t n = 41;  // spans 0 .. 2.0 m at 5 cm
+  const Point3 origin(-kHalfCell, -kHalfCell, -kHalfCell);
+  const size_t n = 41;  // spans -0.025 .. 1.975 m at 5 cm
   const SignedDistanceField sdf =
       makeSphereSDF(center, kRadius, origin, kCell, n, n, n);
 
-  // Offset by half a cell, since the interpolant is not differentiable exactly
-  // on a grid point.
-  const double h = 0.5 * kCell;
   struct Probe {
     Vector3 offset;
     Vector3 expected_gradient;
   };
   const std::vector<Probe> probes = {
-      {Vector3(0.5 + h, 0.0, 0.0), Vector3(1.0, 0.0, 0.0)},
-      {Vector3(0.0, 0.5 + h, 0.0), Vector3(0.0, 1.0, 0.0)},
-      {Vector3(0.0, 0.0, 0.5 + h), Vector3(0.0, 0.0, 1.0)},
-      {Vector3(-0.4 - h, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0)},
-      {Vector3(0.0, -0.4 - h, 0.0), Vector3(0.0, -1.0, 0.0)},
+      {Vector3(0.5, 0.0, 0.0), Vector3(1.0, 0.0, 0.0)},
+      {Vector3(0.0, 0.5, 0.0), Vector3(0.0, 1.0, 0.0)},
+      {Vector3(0.0, 0.0, 0.5), Vector3(0.0, 0.0, 1.0)},
+      {Vector3(-0.4, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0)},
+      {Vector3(0.0, -0.4, 0.0), Vector3(0.0, -1.0, 0.0)},
   };
 
   for (auto &&probe : probes) {
@@ -128,15 +130,18 @@ TEST(SignedDistanceField, queryOnFarFace) {
 
 TEST(ObstacleCost, hingeLossAndJacobian) {
   const Point3 center(1.0, 1.0, 1.0);
-  const SignedDistanceField sdf =
-      makeSphereSDF(center, kRadius, Point3(0, 0, 0), kCell, 41, 41, 41);
+  const SignedDistanceField sdf = makeSphereSDF(
+      center, kRadius, Point3(-kHalfCell, -kHalfCell, -kHalfCell), kCell, 41,
+      41, 41);
 
   // Beyond epsilon of the surface there is no cost and no gradient.
   const Point3 far = center + Point3(0.8, 0.0, 0.0);
   Matrix13 H_far;
   EXPECT_DOUBLES_EQUAL(0.0, hingeLossObstacleCost(far, sdf, kEpsilon, H_far),
                        1e-9);
-  EXPECT(assert_equal(Matrix13::Zero(), H_far, 1e-9));
+  // A fixed 1x3 converts to both gtsam::Matrix and gtsam::Vector, so the
+  // assert_equal overloads tie unless the arguments are made Matrix outright.
+  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(H_far), 1e-9));
 
   // Outside the sphere but within epsilon, the cost is epsilon - d.
   const double offset = kRadius + 0.5 * kEpsilon;
@@ -148,48 +153,53 @@ TEST(ObstacleCost, hingeLossAndJacobian) {
   std::function<double(const Point3 &)> f = [&](const Point3 &p) {
     return hingeLossObstacleCost(p, sdf, kEpsilon);
   };
-  EXPECT(assert_equal(gtsam::numericalDerivative11<double, Point3>(f, near),
-                      Matrix(H_near), 1e-5));
+  EXPECT(assert_equal(
+      Matrix(gtsam::numericalDerivative11<double, Point3>(f, near)),
+      Matrix(H_near), 1e-5));
 
   // A point outside the grid is treated as free space, so the field fails open.
   Matrix13 H_out;
   EXPECT_DOUBLES_EQUAL(
       0.0, hingeLossObstacleCost(Point3(-1.0, 0.0, 0.0), sdf, kEpsilon, H_out),
       1e-9);
-  EXPECT(assert_equal(Matrix13::Zero(), H_out, 1e-9));
+  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(H_out), 1e-9));
 }
 
 // The frame attached overload reads the same field through a moving frame, so
 // it must agree with the world frame overload on the transformed point.
 TEST(ObstacleCost, frameAttachedOverload) {
   const Point3 center(1.0, 1.0, 1.0);
-  const SignedDistanceField sdf =
-      makeSphereSDF(center, kRadius, Point3(0, 0, 0), kCell, 41, 41, 41);
+  const SignedDistanceField sdf = makeSphereSDF(
+      center, kRadius, Point3(-kHalfCell, -kHalfCell, -kHalfCell), kCell, 41,
+      41, 41);
 
   const Pose3 wTs(Rot3::RzRyRx(0.2, -0.1, 0.35), Point3(0.4, -0.3, 0.25));
-  const Point3 wP(1.3, 1.05, 0.9);
+  // Place the point in the field's frame and push it out to the world, so it is
+  // known to land inside the grid rather than reading as free space.
+  const Point3 sP = center + Point3(kRadius + 0.5 * kEpsilon, 0.03, -0.04);
+  const Point3 wP = wTs.transformFrom(sP);
 
-  const double expected =
-      hingeLossObstacleCost(wTs.transformTo(wP), sdf, kEpsilon);
+  const double expected = hingeLossObstacleCost(sP, sdf, kEpsilon);
   Matrix16 H_pose;
   Matrix13 H_point;
   const double actual =
       hingeLossObstacleCost(wTs, wP, sdf, kEpsilon, H_pose, H_point);
   EXPECT_DOUBLES_EQUAL(expected, actual, 1e-9);
+  EXPECT(actual > 0.0);  // the point is inside the band, so this is not vacuous
 
   // With the identity pose it degenerates to the world frame overload.
-  EXPECT_DOUBLES_EQUAL(hingeLossObstacleCost(wP, sdf, kEpsilon),
-                       hingeLossObstacleCost(Pose3(), wP, sdf, kEpsilon), 1e-9);
+  EXPECT_DOUBLES_EQUAL(hingeLossObstacleCost(sP, sdf, kEpsilon),
+                       hingeLossObstacleCost(Pose3(), sP, sdf, kEpsilon), 1e-9);
 
   std::function<double(const Pose3 &, const Point3 &)> f =
       [&](const Pose3 &T, const Point3 &p) {
         return hingeLossObstacleCost(T, p, sdf, kEpsilon);
       };
   EXPECT(assert_equal(
-      gtsam::numericalDerivative21<double, Pose3, Point3>(f, wTs, wP),
+      Matrix(gtsam::numericalDerivative21<double, Pose3, Point3>(f, wTs, wP)),
       Matrix(H_pose), 1e-5));
   EXPECT(assert_equal(
-      gtsam::numericalDerivative22<double, Pose3, Point3>(f, wTs, wP),
+      Matrix(gtsam::numericalDerivative22<double, Pose3, Point3>(f, wTs, wP)),
       Matrix(H_point), 1e-5));
 }
 
@@ -218,10 +228,12 @@ static std::vector<PointOnLink> wristPoints() {
 }
 
 static Vector startConfig() {
-  return (Vector(9) << 2.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0).finished();
+  return (Vector(9) << 2.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
+      .finished();
 }
 static Vector goalConfig() {
-  return (Vector(9) << 3.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0).finished();
+  return (Vector(9) << 3.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
+      .finished();
 }
 
 // Only robot1's joints are given to the model, so the bridge2 subtree is never
@@ -236,14 +248,17 @@ TEST(RobotQueryPoints, jacobiansAgainstNumerical) {
   std::vector<Matrix> Js;
   model.queryPoints(q, &wPs, &Js);
 
+  // traits<gtsam::Vector>::dimension is Eigen::Dynamic, which
+  // numericalDerivative cannot perturb, so q is probed as a fixed size Vector9.
   for (size_t i = 0; i < model.nrPoints(); ++i) {
-    std::function<Point3(const Vector &)> f = [&](const Vector &qq) {
+    std::function<Point3(const Vector9 &)> f = [&](const Vector9 &qq) {
       std::vector<Point3> ps;
       model.queryPoints(qq, &ps);
       return ps[i];
     };
-    EXPECT(assert_equal(gtsam::numericalDerivative11<Point3, Vector>(f, q),
-                        Js[i], 1e-5));
+    EXPECT(assert_equal(
+        gtsam::numericalDerivative11<Point3, Vector9>(f, Vector9(q)), Js[i],
+        1e-5));
   }
 }
 
@@ -335,9 +350,9 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
       gtsam::LevenbergMarquardtOptimizer(graph, init, params).optimize();
 
   // The endpoints are held, and every query point at every support state has
-  // been pushed clear of the sphere by at least epsilon. This is checked against
-  // the analytic sphere rather than the sampled field, so a point that escaped
-  // the grid cannot pass by reading as free space.
+  // been pushed clear of the sphere by at least epsilon. Checking this against
+  // the analytic sphere rather than the sampled field means a point that
+  // escaped the grid cannot pass by reading as free space.
   EXPECT(assert_equal(q_start, result.at<Vector>(X(0)), 1e-3));
   EXPECT(assert_equal(q_goal, result.at<Vector>(X(N - 1)), 1e-3));
 
@@ -362,14 +377,15 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
   std::vector<Point3> mid_points;
   model.queryPoints(q1, &mid_points);
   const Point3 center = mid_points[0] + Point3(kRadius + 0.5 * kEpsilon, 0, 0);
-  auto sdf = std::make_shared<const SignedDistanceField>(makeSphereSDF(
-      center, kRadius, center - Point3(1.0, 1.0, 1.0), kCell, 41, 41, 41));
+  const Point3 origin = center - Point3::Constant(1.0 - kHalfCell);
+  auto sdf = std::make_shared<const SignedDistanceField>(
+      makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
 
   const double delta_t = 0.5, cost_sigma = 0.01;
   ObstacleSDFFactor unary(X(0), model, sdf, cost_sigma, kEpsilon);
   ObstacleSDFFactorGP interpolated(X(0), V(0), X(1), V(1), model, sdf,
-                                   cost_sigma, kEpsilon, Isotropic::Sigma(dof, 1.0),
-                                   delta_t, 0.0);
+                                   cost_sigma, kEpsilon,
+                                   Isotropic::Sigma(dof, 1.0), delta_t, 0.0);
 
   EXPECT(assert_equal(unary.evaluateError(q1),
                       interpolated.evaluateError(q1, v1, q2, v2), 1e-9));

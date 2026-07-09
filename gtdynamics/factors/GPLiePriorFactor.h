@@ -18,6 +18,7 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/base/concepts.h>
+#include <gtsam/nonlinear/NoiseModelFactorN.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
 #include <cmath>
@@ -70,7 +71,7 @@ class GPLiePrior
              gtsam::Key vel_key2, double delta_t,
              const gtsam::SharedNoiseModel &Qc_model)
       : Base(gtsam::noiseModel::Gaussian::Covariance(
-                 calcQ(getQc(Qc_model), delta_t)),
+                 calcQAccel(getQc(Qc_model), delta_t)),
              pose_key1, vel_key1, pose_key2, vel_key2),
         dof_(Qc_model->dim()),
         delta_t_(delta_t) {

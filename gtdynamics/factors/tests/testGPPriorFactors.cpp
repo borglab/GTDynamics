@@ -15,7 +15,6 @@
 #include <gtdynamics/factors/GPLiePriorFactor.h>
 #include <gtdynamics/factors/GPLinearPriorFactor.h>
 #include <gtdynamics/factors/GPPose3PriorFactor.h>
-#include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/nonlinear/Values.h>
@@ -25,14 +24,11 @@
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
-using gtsam::Matrix;
 using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Values;
 using gtsam::Vector;
-using gtsam::Vector3;
-using gtsam::Vector6;
 using gtsam::noiseModel::Isotropic;
 
 static const double kDeltaT = 0.4;

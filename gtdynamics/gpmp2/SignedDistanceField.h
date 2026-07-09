@@ -236,8 +236,7 @@ class SignedDistanceField {
   /// Print contents.
   void print(const std::string &s = "") const {
     std::cout << s;
-    std::cout << "field origin:     ";
-    origin_.print();
+    std::cout << "field origin:     " << origin_.transpose() << std::endl;
     std::cout << "field resolution: " << cell_size_ << std::endl;
     std::cout << "field size:       " << field_cols_ << " x " << field_rows_
               << " x " << field_z_ << std::endl;
