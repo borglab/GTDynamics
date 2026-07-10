@@ -208,8 +208,13 @@ class SignedDistanceField {
   /// Insert one z layer of the field, indexed as (row = y, col = x).
   void initFieldData(size_t z_idx, const gtsam::Matrix &field_layer) {
     if (z_idx >= field_z_) {
-      throw std::runtime_error(
-          "[SignedDistanceField] matrix layer out of index");
+      throw std::out_of_range(
+          "SignedDistanceField::initFieldData: z_idx out of range.");
+    }
+    if (static_cast<size_t>(field_layer.rows()) != field_rows_ ||
+        static_cast<size_t>(field_layer.cols()) != field_cols_) {
+      throw std::invalid_argument(
+          "SignedDistanceField::initFieldData: field_layer dimensions must match the field.");
     }
     data_[z_idx] = field_layer;
   }
