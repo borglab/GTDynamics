@@ -1093,6 +1093,31 @@ class ObstacleSDFFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/factors/JointLimitFactorVector.h>
+class JointLimitFactorVector : gtsam::NoiseModelFactor {
+  JointLimitFactorVector(gtsam::Key q_key,
+                         const gtsam::noiseModel::Base *cost_model,
+                         const gtsam::Vector &down_limit,
+                         const gtsam::Vector &up_limit,
+                         const gtsam::Vector &limit_thresh);
+
+  size_t dof() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
+#include <gtdynamics/factors/VelocityLimitFactorVector.h>
+class VelocityLimitFactorVector : gtsam::NoiseModelFactor {
+  VelocityLimitFactorVector(gtsam::Key v_key,
+                            const gtsam::noiseModel::Base *cost_model,
+                            const gtsam::Vector &vel_limit,
+                            const gtsam::Vector &limit_thresh);
+
+  size_t dof() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 #include <gtdynamics/factors/ObstacleSDFFactorGP.h>
 class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
   ObstacleSDFFactorGP(gtsam::Key q_key1, gtsam::Key v_key1, gtsam::Key q_key2,

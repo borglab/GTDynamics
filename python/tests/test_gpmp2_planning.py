@@ -36,6 +36,15 @@ ROBOT1_JOINTS = [
 Q_START = np.array([2.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0])
 Q_GOAL = np.array([3.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0])
 
+# Joint angle and velocity limits of robot1, in the order q indexes them.
+Q_LOWER = np.array(
+    [0.0, 0.0, 0.0, -2.96706, -1.13446, -3.14159, -5.23599, -2.26893, -5.23599])
+Q_UPPER = np.array(
+    [13.0, 7.3, 1.75, 2.96706, 2.44346, 1.22173, 5.23599, 2.26893, 5.23599])
+V_LIMIT = np.array(
+    [2.618, 2.618, 2.618, 2.618, 2.618, 2.618, 6.2832, 6.2832, 7.854])
+LIMIT_THRESH = np.full(9, 1e-3)
+
 
 def grid_positions(origin, cell, counts):
     """Return the 3 x N node positions of a uniform grid."""
@@ -130,14 +139,41 @@ class TestObstaclePlanning(GtsamTestCase):
         points.append(gtd.PointOnLink(link6, np.array([0.0, 0.0, 0.0])))
         points.append(gtd.PointOnLink(link6, np.array([0.0, 0.0, 0.1])))
 
-        # Only robot1's joints are given, so the bridge2 subtree is never
-        # traversed and robot2 is absent from the model entirely.
+        # Only robot1's joints are given, so ignore bridge2 subtree
         self.model = gtd.RobotQueryPoints(self.robot, "columns", joints, points)
 
     def clearance(self, q, center):
         """Distance from the closest query point at q to the sphere centre."""
         points = self.model.worldPoints(q)
         return np.linalg.norm(points - center.reshape(3, 1), axis=0).min()
+
+    def sphere_problem(self, n_states):
+        """Straight line initialisation, and a sphere planted on its midpoint."""
+        line = [
+            Q_START + (k / (n_states - 1)) * (Q_GOAL - Q_START)
+            for k in range(n_states)
+        ]
+        swept = np.hstack([self.model.worldPoints(q) for q in line])
+
+        # The sphere sits on the wrist at the midpoint of the straight line, so
+        # the initialisation starts deep inside it.
+        center = self.model.worldPoints(line[n_states // 2])[:, 0]
+
+        # The grid holds the whole swept path with room to detour, since a
+        # point that leaves it reads as free space.
+        pad = 0.7
+        origin = swept.min(axis=1) - pad
+        extent = (swept.max(axis=1) + pad) - origin
+        counts = np.ceil(extent / CELL).astype(int) + 1
+        sdf = sphere_sdf(center, RADIUS, origin, CELL, counts)
+
+        # The problem is only feasible if the pinned endpoints are already
+        # clear, and only meaningful if the straight line is not.
+        self.assertLess(self.clearance(line[n_states // 2], center),
+                        RADIUS + EPSILON)
+        self.assertGreater(self.clearance(Q_START, center), RADIUS + EPSILON)
+        self.assertGreater(self.clearance(Q_GOAL, center), RADIUS + EPSILON)
+        return line, center, sdf
 
     def test_query_points(self):
         """The model spans nine joints and carries two query points."""
@@ -152,36 +188,12 @@ class TestObstaclePlanning(GtsamTestCase):
         delta_t = total_time / (n_states - 1)
         velocity = (Q_GOAL - Q_START) / total_time
 
-        # Straight line initialisation, and the wrist positions it sweeps.
-        line = [
-            Q_START + (k / (n_states - 1)) * (Q_GOAL - Q_START)
-            for k in range(n_states)
-        ]
-        swept = np.hstack([self.model.worldPoints(q) for q in line])
-
-        # Plant the sphere on the wrist at the midpoint of the straight line,
-        # so the initialisation starts deep inside it.
-        center = self.model.worldPoints(line[n_states // 2])[:, 0]
-
-        # Size the grid to contain the whole swept path with room to detour. A
-        # point that leaves the grid reads as free space.
-        pad = 0.7
-        origin = swept.min(axis=1) - pad
-        extent = (swept.max(axis=1) + pad) - origin
-        counts = np.ceil(extent / CELL).astype(int) + 1
-        sdf = sphere_sdf(center, RADIUS, origin, CELL, counts)
+        line, center, sdf = self.sphere_problem(n_states)
 
         # The field really does describe the sphere we planted.
         outside = center + np.array([0.4, 0.0, 0.0])
         self.assertAlmostEqual(sdf.getSignedDistance(outside), 0.4 - RADIUS,
                                places=2)
-
-        # The problem is only feasible if the pinned endpoints are already
-        # clear, and only meaningful if the straight line is not.
-        self.assertLess(self.clearance(line[n_states // 2], center),
-                        RADIUS + EPSILON)
-        self.assertGreater(self.clearance(Q_START, center), RADIUS + EPSILON)
-        self.assertGreater(self.clearance(Q_GOAL, center), RADIUS + EPSILON)
 
         graph = gtsam.NonlinearFactorGraph()
         qc_model = gtsam.noiseModel.Isotropic.Sigma(dof, 1.0)
@@ -228,6 +240,77 @@ class TestObstaclePlanning(GtsamTestCase):
             points = self.model.worldPoints(result.atVector(X(k)))
             distances = np.linalg.norm(points - center.reshape(3, 1), axis=0)
             self.assertTrue(np.all(distances > RADIUS + EPSILON - 0.02))
+
+    def test_plan_under_limits(self):
+        """The same detour, now respecting joint angle and velocity limits."""
+        dof, n_states = self.model.dof(), 5
+        total_time = 2.0
+        delta_t = total_time / (n_states - 1)
+        velocity = (Q_GOAL - Q_START) / total_time
+
+        line, center, sdf = self.sphere_problem(n_states)
+
+        # A minimum acceleration move of one metre in two seconds, starting and
+        # ending at rest, peaks at 0.75 m/s, so the gantry's velocity limit is
+        # tightened below that to make the velocity factor bind.
+        v_limit = V_LIMIT.copy()
+        v_limit[0] = 0.7
+
+        graph = gtsam.NonlinearFactorGraph()
+        qc_model = gtsam.noiseModel.Isotropic.Sigma(dof, 1.0)
+        endpoint_model = gtsam.noiseModel.Isotropic.Sigma(dof, 1e-4)
+        limit_model = gtsam.noiseModel.Isotropic.Sigma(dof, 1e-3)
+
+        graph.add(gtsam.PriorFactorVector(X(0), Q_START, endpoint_model))
+        graph.add(gtsam.PriorFactorVector(V(0), np.zeros(dof), endpoint_model))
+        graph.add(
+            gtsam.PriorFactorVector(X(n_states - 1), Q_GOAL, endpoint_model))
+        graph.add(
+            gtsam.PriorFactorVector(V(n_states - 1), np.zeros(dof),
+                                    endpoint_model))
+
+        for k in range(n_states):
+            graph.add(
+                gtd.ObstacleSDFFactor(X(k), self.model, sdf, COST_SIGMA,
+                                      EPSILON))
+            graph.add(
+                gtd.JointLimitFactorVector(X(k), limit_model, Q_LOWER, Q_UPPER,
+                                           LIMIT_THRESH))
+            graph.add(
+                gtd.VelocityLimitFactorVector(V(k), limit_model, v_limit,
+                                              LIMIT_THRESH))
+        for k in range(n_states - 1):
+            graph.add(
+                gtd.GPLinearPrior(X(k), V(k), X(k + 1), V(k + 1), delta_t,
+                                  qc_model))
+
+        initial = gtsam.Values()
+        for k in range(n_states):
+            initial.insert(X(k), line[k])
+            initial.insert(V(k), velocity)
+
+        params = gtsam.LevenbergMarquardtParams()
+        params.setMaxIterations(100)
+        result = gtsam.LevenbergMarquardtOptimizer(graph, initial,
+                                                   params).optimize()
+
+        np.testing.assert_allclose(result.atVector(X(0)), Q_START, atol=1e-3)
+        np.testing.assert_allclose(result.atVector(X(n_states - 1)), Q_GOAL,
+                                   atol=1e-3)
+
+        for k in range(n_states):
+            q, v = result.atVector(X(k)), result.atVector(V(k))
+            self.assertTrue(np.all(q > Q_LOWER - 0.02))
+            self.assertTrue(np.all(q < Q_UPPER + 0.02))
+            self.assertTrue(np.all(np.abs(v) < v_limit + 0.02))
+
+            points = self.model.worldPoints(q)
+            distances = np.linalg.norm(points - center.reshape(3, 1), axis=0)
+            self.assertTrue(np.all(distances > RADIUS + EPSILON - 0.02))
+
+        # The gantry velocity limit is below the unconstrained peak, so it had
+        # to bind: without it the midpoint would run at about 0.75 m/s.
+        self.assertGreater(abs(result.atVector(V(n_states // 2))[0]), 0.3)
 
 
 if __name__ == "__main__":
