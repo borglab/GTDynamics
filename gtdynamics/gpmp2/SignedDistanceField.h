@@ -75,11 +75,26 @@ class SignedDistanceField {
   SignedDistanceField(const gtsam::Point3 &origin, double cell_size,
                       const std::vector<gtsam::Matrix> &data)
       : origin_(origin),
-        field_rows_(data.at(0).rows()),
-        field_cols_(data.at(0).cols()),
-        field_z_(data.size()),
-        cell_size_(cell_size),
-        data_(data) {}
+        field_rows_(0),
+        field_cols_(0),
+        field_z_(0),
+        cell_size_(cell_size) {
+    if (data.empty()) {
+      throw std::invalid_argument(
+          "SignedDistanceField: data must contain at least one z layer.");
+    }
+    field_rows_ = static_cast<size_t>(data[0].rows());
+    field_cols_ = static_cast<size_t>(data[0].cols());
+    field_z_ = data.size();
+    for (size_t z = 0; z < field_z_; ++z) {
+      if (static_cast<size_t>(data[z].rows()) != field_rows_ ||
+          static_cast<size_t>(data[z].cols()) != field_cols_) {
+        throw std::invalid_argument(
+            "SignedDistanceField: all z layers must have identical dimensions.");
+      }
+    }
+    data_ = data;
+  }
 
   /// Constructor with no data, to be filled in later by initFieldData.
   SignedDistanceField(const gtsam::Point3 &origin, double cell_size,
