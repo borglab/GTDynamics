@@ -66,6 +66,7 @@ class GPLieInterpolator {
   GPLieInterpolator(const gtsam::SharedNoiseModel &Qc_model, double delta_t,
                     double tau)
       : dof_(Qc_model->dim()), delta_t_(delta_t), tau_(tau) {
+    checkGPInterval(delta_t_, tau_);
     // A mismatched Qc dimension silently mis-slices Lambda and Psi, so reject
     // it up front. Only checkable when T has a fixed dimension.
     if (gtsam::traits<T>::dimension != Eigen::Dynamic &&

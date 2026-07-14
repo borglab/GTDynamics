@@ -41,8 +41,8 @@ struct SelfCollisionPair {
   bool is_sdf;          ///< false: point vs point; true: point vs a link field
   size_t b;             ///< point vs point: the other query point index
   LinkSharedPtr link_b;                              ///< point vs field: link B
-  std::shared_ptr<const SignedDistanceField> sdf_b;  ///< field in link B's frame
-  double epsilon;       ///< standoff between the two sides, added to their radii
+  std::shared_ptr<const SignedDistanceField> sdf_b;  ///< field, in B's frame
+  double epsilon;       ///< standoff between the sides, added to their radii
 
   /// Point vs point pair.
   static SelfCollisionPair PointPair(size_t a, size_t b, double epsilon) {
@@ -65,9 +65,9 @@ using SelfCollisionPairs = std::vector<SelfCollisionPair>;
  * the RobotQueryPoints with the union of every joint involved and a common base
  * so a cross-arm pair couples all their DOFs in one row.
  *
- * The caller registers only meaningful pairs: adjacent links sit at near constant
- * separation and would fire permanently, and two points that can coincide give a
- * non-finite distance gradient. The factor does not auto exclude either.
+ * The caller registers only meaningful pairs: adjacent links sit at a near
+ * constant separation and would fire permanently, and two points that can
+ * coincide give a non-finite distance gradient. The factor excludes neither.
  */
 class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
@@ -78,13 +78,20 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   std::vector<SelfCollisionPair> pairs_;
 
-  /// Reject pairs whose indices, radii or fields are inconsistent.
+  /// Reject pairs whose indices, radii, fields or standoffs are inconsistent.
   void validate() const {
     if (static_cast<size_t>(radii_.size()) != robot_.nrPoints()) {
       throw std::invalid_argument(
           "SelfCollisionFactor: radii must have one entry per query point.");
     }
+    if ((radii_.array() < 0.0).any()) {
+      throw std::invalid_argument("SelfCollisionFactor: radii must be >= 0.");
+    }
     for (const auto &p : pairs_) {
+      if (p.epsilon < 0.0) {
+        throw std::invalid_argument(
+            "SelfCollisionFactor: a pair epsilon must be >= 0.");
+      }
       if (p.a >= robot_.nrPoints()) {
         throw std::invalid_argument(
             "SelfCollisionFactor: pair point index out of range.");

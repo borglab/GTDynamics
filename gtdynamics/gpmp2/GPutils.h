@@ -20,8 +20,24 @@
 
 #include <cassert>
 #include <cmath>
+#include <stdexcept>
 
 namespace gtdynamics {
+
+/// Reject a non-positive support interval.
+inline void checkGPDeltaT(double delta_t) {
+  if (delta_t <= 0.0) {
+    throw std::invalid_argument("GP: delta_t must be > 0.");
+  }
+}
+
+/// Reject a non-positive support interval or an interpolation time outside it.
+inline void checkGPInterval(double delta_t, double tau) {
+  checkGPDeltaT(delta_t);
+  if (tau < 0.0 || tau > delta_t) {
+    throw std::invalid_argument("GP: tau must be in [0, delta_t].");
+  }
+}
 
 /*
  * These implement the white noise on acceleration prior of Barfoot14rss, used

@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -77,7 +78,15 @@ class ObstacleSDFFactorGP
         epsilon_(epsilon),
         robot_(robot),
         sdf_(sdf),
-        GPbase_(Qc_model, delta_t, tau) {}
+        GPbase_(Qc_model, delta_t, tau) {
+    // delta_t and tau are checked by the interpolator constructor.
+    if (!sdf_) {
+      throw std::invalid_argument("ObstacleSDFFactorGP: sdf must not be null.");
+    }
+    if (epsilon_ < 0.0) {
+      throw std::invalid_argument("ObstacleSDFFactorGP: epsilon must be >= 0.");
+    }
+  }
 
   ~ObstacleSDFFactorGP() override {}
 

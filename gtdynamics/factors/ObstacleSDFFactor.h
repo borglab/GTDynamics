@@ -44,6 +44,23 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   RobotQueryPoints robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
 
+  /// Reject a null field, a negative standoff, or bad radii.
+  void validate() const {
+    if (!sdf_) {
+      throw std::invalid_argument("ObstacleSDFFactor: sdf must not be null.");
+    }
+    if (epsilon_ < 0.0) {
+      throw std::invalid_argument("ObstacleSDFFactor: epsilon must be >= 0.");
+    }
+    if (static_cast<size_t>(radii_.size()) != robot_.nrPoints()) {
+      throw std::invalid_argument(
+          "ObstacleSDFFactor: radii must have one entry per query point.");
+    }
+    if ((radii_.array() < 0.0).any()) {
+      throw std::invalid_argument("ObstacleSDFFactor: radii must be >= 0.");
+    }
+  }
+
  public:
   /**
    * Constructor with a single standoff for every query point.
@@ -61,7 +78,9 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
         epsilon_(epsilon),
         radii_(gtsam::Vector::Zero(robot.nrPoints())),
         robot_(robot),
-        sdf_(sdf) {}
+        sdf_(sdf) {
+    validate();
+  }
 
   /**
    * Constructor with a radius per query point, added to the shared epsilon.
@@ -82,10 +101,7 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
         radii_(radii),
         robot_(robot),
         sdf_(sdf) {
-    if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
-      throw std::invalid_argument(
-          "ObstacleSDFFactor: radii must have one entry per query point.");
-    }
+    validate();
   }
 
   ~ObstacleSDFFactor() override {}

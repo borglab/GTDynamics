@@ -60,6 +60,7 @@ class GPLinearInterpolator {
   GPLinearInterpolator(const gtsam::SharedNoiseModel &Qc_model, double delta_t,
                        double tau)
       : dof_(Qc_model->dim()), delta_t_(delta_t), tau_(tau) {
+    checkGPInterval(delta_t_, tau_);
     Qc_ = getQc(Qc_model);
     Lambda_ = calcLambdaAccel(Qc_, delta_t_, tau_);
     Psi_ = calcPsiAccel(Qc_, delta_t_, tau_);

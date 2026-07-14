@@ -75,6 +75,7 @@ class GPLiePrior
              pose_key1, vel_key1, pose_key2, vel_key2),
         dof_(Qc_model->dim()),
         delta_t_(delta_t) {
+    checkGPDeltaT(delta_t_);
     // A mismatched Qc dimension silently mis-sizes the error and Jacobians, so
     // reject it up front. Only checkable when T has a fixed dimension.
     if (gtsam::traits<T>::dimension != Eigen::Dynamic &&

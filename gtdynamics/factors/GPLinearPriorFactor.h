@@ -23,6 +23,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #ifdef GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
@@ -72,7 +73,9 @@ class GPLinearPrior
                  calcQAccel(getQc(Qc_model), delta_t)),
              pose_key1, vel_key1, pose_key2, vel_key2),
         dof_(Qc_model->dim()),
-        delta_t_(delta_t) {}
+        delta_t_(delta_t) {
+    checkGPDeltaT(delta_t_);
+  }
 
   ~GPLinearPrior() override {}
 
