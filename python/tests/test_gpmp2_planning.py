@@ -63,6 +63,32 @@ def sphere_sdf(center, radius, origin, cell, counts):
     return gtd.SignedDistanceField(positions, distances)
 
 
+def spheres_sdf(centers, radius, origin, cell, counts):
+    """Signed distance to the nearest of several spheres, on a uniform grid."""
+    positions = grid_positions(origin, cell, counts)
+    distances = np.min([
+        np.linalg.norm(positions - c.reshape(3, 1), axis=0) - radius
+        for c in centers
+    ], axis=0)
+    return gtd.SignedDistanceField(positions, distances)
+
+
+# All eighteen joints of bar_lab, robot1's nine then robot2's nine. The tree
+# branches at the shared rail, so one model spanning all of them reaches both
+# arms from the same base.
+BOTH_ARM_JOINTS = ROBOT1_JOINTS + [
+    "bridge2_joint_EA_X", "robot2_joint_EA_Y", "robot2_joint_EA_Z",
+    "robot2_joint_1", "robot2_joint_2", "robot2_joint_3", "robot2_joint_4",
+    "robot2_joint_5", "robot2_joint_6"
+]
+
+# The two arms sit on opposite sides of the rail, robot1 near x = 2 and robot2
+# near x = 9, so their workspaces are disjoint and no arm-vs-arm cost is needed.
+_ARM = [0.0, -0.5, -1.0, 0.0, 0.5, 0.0]
+Q_START_18 = np.array([2.0, 2.0, 1.0] + _ARM + [9.0, 3.0, 1.0] + _ARM)
+Q_GOAL_18 = np.array([3.0, 2.0, 1.0] + _ARM + [10.0, 3.0, 1.0] + _ARM)
+
+
 class TestSignedDistanceField(GtsamTestCase):
     """Test the signed distance field built from positions and distances."""
 
@@ -311,6 +337,111 @@ class TestObstaclePlanning(GtsamTestCase):
         # The gantry velocity limit is below the unconstrained peak, so it had
         # to bind: without it the midpoint would run at about 0.75 m/s.
         self.assertGreater(abs(result.atVector(V(n_states // 2))[0]), 0.3)
+
+
+class TestPlanning18Dof(GtsamTestCase):
+    """Plan both arms of bar_lab at once on a single 18-DOF factor graph."""
+
+    def setUp(self):
+        self.robot = gtd.CreateRobotFromFile(
+            str(Path(gtd.URDF_PATH) / "bar_lab.urdf"))
+        joints = [self.robot.joint(name) for name in BOTH_ARM_JOINTS]
+
+        # One query point on each arm's wrist.
+        points = gtd.PointOnLinks()
+        points.append(
+            gtd.PointOnLink(self.robot.link("robot1_link_6"), np.zeros(3)))
+        points.append(
+            gtd.PointOnLink(self.robot.link("robot2_link_6"), np.zeros(3)))
+
+        self.model = gtd.RobotQueryPoints(self.robot, "columns", joints, points)
+        self.dof = self.model.dof()
+
+    def clearances(self, q, centers):
+        """Distance from each wrist to its own sphere centre."""
+        points = self.model.worldPoints(q)
+        return np.array([
+            np.linalg.norm(points[:, i] - centers[i])
+            for i in range(len(centers))
+        ])
+
+    def test_query_points(self):
+        """The model spans eighteen joints and carries two query points."""
+        self.assertEqual(self.model.dof(), 18)
+        self.assertEqual(self.model.nrPoints(), 2)
+        self.assertEqual(self.model.worldPoints(Q_START_18).shape, (3, 2))
+
+    def test_plan_both_arms(self):
+        """Both arms detour their own sphere in a single optimisation."""
+        dof, n_states = self.dof, 5
+        total_time = 2.0
+        delta_t = total_time / (n_states - 1)
+        velocity = (Q_GOAL_18 - Q_START_18) / total_time
+
+        line = [
+            Q_START_18 + (k / (n_states - 1)) * (Q_GOAL_18 - Q_START_18)
+            for k in range(n_states)
+        ]
+        swept = np.hstack([self.model.worldPoints(q) for q in line])
+
+        # One sphere on each arm's wrist at the midpoint of its straight line.
+        mid = self.model.worldPoints(line[n_states // 2])
+        centers = [mid[:, 0], mid[:, 1]]
+
+        pad = 0.7
+        origin = swept.min(axis=1) - pad
+        extent = (swept.max(axis=1) + pad) - origin
+        counts = np.ceil(extent / CELL).astype(int) + 1
+        sdf = spheres_sdf(centers, RADIUS, origin, CELL, counts)
+
+        # Both arms start in collision at the midpoint, both endpoints clear.
+        self.assertTrue(
+            np.all(self.clearances(line[n_states // 2], centers) < RADIUS +
+                   EPSILON))
+        self.assertTrue(
+            np.all(self.clearances(Q_START_18, centers) > RADIUS + EPSILON))
+        self.assertTrue(
+            np.all(self.clearances(Q_GOAL_18, centers) > RADIUS + EPSILON))
+
+        graph = gtsam.NonlinearFactorGraph()
+        qc_model = gtsam.noiseModel.Isotropic.Sigma(dof, 1.0)
+        endpoint_model = gtsam.noiseModel.Isotropic.Sigma(dof, 1e-4)
+
+        graph.add(gtsam.PriorFactorVector(X(0), Q_START_18, endpoint_model))
+        graph.add(gtsam.PriorFactorVector(V(0), np.zeros(dof), endpoint_model))
+        graph.add(
+            gtsam.PriorFactorVector(X(n_states - 1), Q_GOAL_18, endpoint_model))
+        graph.add(
+            gtsam.PriorFactorVector(V(n_states - 1), np.zeros(dof),
+                                    endpoint_model))
+        for k in range(n_states):
+            graph.add(
+                gtd.ObstacleSDFFactor(X(k), self.model, sdf, COST_SIGMA,
+                                      EPSILON))
+        for k in range(n_states - 1):
+            graph.add(
+                gtd.GPLinearPrior(X(k), V(k), X(k + 1), V(k + 1), delta_t,
+                                  qc_model))
+
+        initial = gtsam.Values()
+        for k in range(n_states):
+            initial.insert(X(k), line[k])
+            initial.insert(V(k), velocity)
+
+        params = gtsam.LevenbergMarquardtParams()
+        params.setMaxIterations(100)
+        result = gtsam.LevenbergMarquardtOptimizer(graph, initial,
+                                                   params).optimize()
+
+        np.testing.assert_allclose(result.atVector(X(0)), Q_START_18, atol=1e-3)
+        np.testing.assert_allclose(result.atVector(X(n_states - 1)), Q_GOAL_18,
+                                   atol=1e-3)
+
+        # Each arm's wrist has been pushed clear of its own sphere at every
+        # state, checked against the analytic spheres.
+        for k in range(n_states):
+            clear = self.clearances(result.atVector(X(k)), centers)
+            self.assertTrue(np.all(clear > RADIUS + EPSILON - 0.02))
 
 
 if __name__ == "__main__":
