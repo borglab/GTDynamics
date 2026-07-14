@@ -167,7 +167,6 @@ static gtsam::NonlinearFactorGraph buildPlanGraph(const SteapProblem &prob,
 }
 
 static Values straightLineInit(const SteapProblem &prob) {
-  const size_t dof = prob.model.dof();
   const Vector velocity =
       (goalConfig() - startConfig()) / (kNumStates * kDeltaT);
   Values init;
