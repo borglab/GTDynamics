@@ -207,6 +207,52 @@ class TestObstaclePlanning(GtsamTestCase):
         self.assertEqual(self.model.nrPoints(), 2)
         self.assertEqual(self.model.worldPoints(Q_START).shape, (3, 2))
 
+    def one_point_model(self):
+        """A model with a single wrist query point, for the radius tests."""
+        joints = [self.robot.joint(name) for name in ROBOT1_JOINTS]
+        point = gtd.PointOnLinks()
+        point.append(
+            gtd.PointOnLink(self.robot.link("robot1_link_6"), np.zeros(3)))
+        return gtd.RobotQueryPoints(self.robot, "columns", joints, point)
+
+    def test_radius_tightens_the_constraint(self):
+        """A query point that is clear becomes a collision once given a radius.
+
+        The radius belongs to the robot, not the obstacle: it inflates the
+        query point into a sphere while the obstacle stays fixed in the field.
+        """
+        model = self.one_point_model()
+        wrist = model.worldPoints(Q_START)[:, 0]
+
+        # The sphere sits just past epsilon of the wrist: clear as a point, but
+        # inside once the point is inflated by a 0.1 m radius.
+        center = wrist + np.array([RADIUS + EPSILON + 0.05, 0.0, 0.0])
+        support = np.column_stack([wrist, center])
+        origin = support.min(axis=1) - 0.3
+        counts = np.ceil((support.max(axis=1) + 0.3 - origin) / CELL).astype(
+            int) + 1
+        sdf = sphere_sdf(center, RADIUS, origin, CELL, counts)
+
+        values = gtsam.Values()
+        values.insert(X(0), Q_START)
+        point_factor = gtd.ObstacleSDFFactor(X(0), model, sdf, COST_SIGMA,
+                                             EPSILON)
+        radius_factor = gtd.ObstacleSDFFactor(X(0), model, sdf, COST_SIGMA,
+                                              EPSILON, np.array([0.1]))
+
+        self.assertAlmostEqual(point_factor.error(values), 0.0, places=9)
+        self.assertGreater(radius_factor.error(values), 0.0)
+        np.testing.assert_allclose(radius_factor.radii(), [0.1], atol=1e-9)
+
+    def test_radii_dimension_mismatch(self):
+        """A radii vector of the wrong length is rejected."""
+        sdf = sphere_sdf(np.array([5.0, 5.0, 5.0]), RADIUS,
+                         np.array([4.0, 4.0, 4.0]), CELL, (5, 5, 5))
+        # The model carries two query points, so a length-one radii is invalid.
+        with self.assertRaises(ValueError):
+            gtd.ObstacleSDFFactor(X(0), self.model, sdf, COST_SIGMA, EPSILON,
+                                  np.array([0.1]))
+
     def test_plan_around_sphere(self):
         """The trajectory bows around a sphere planted on its straight line."""
         dof, n_states = self.model.dof(), 5

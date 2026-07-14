@@ -24,15 +24,15 @@
 
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace gtdynamics {
 
 /**
- * Unary factor keeping every query point on the robot at least epsilon away
- * from the obstacles encoded in a world frame signed distance field. The error
- * has one row per query point, each the hinge loss epsilon - d(wP).
+ * Unary factor keeping every query point clear of the obstacles in a world
+ * frame signed distance field, each point standing off by its radius + epsilon.
  */
 class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
@@ -40,12 +40,13 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;
 
   double epsilon_;
+  gtsam::Vector radii_;  ///< per query point radius, zero if unspecified
   RobotQueryPoints robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
 
  public:
   /**
-   * Constructor.
+   * Constructor with a single standoff for every query point.
    * @param q_key key of the stacked joint angle vector
    * @param robot query point model of the robot
    * @param sdf signed distance field of the obstacles, in the world frame
@@ -58,8 +59,34 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
       : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), cost_sigma),
              q_key),
         epsilon_(epsilon),
+        radii_(gtsam::Vector::Zero(robot.nrPoints())),
         robot_(robot),
         sdf_(sdf) {}
+
+  /**
+   * Constructor with a radius per query point, added to the shared epsilon.
+   * @param q_key key of the stacked joint angle vector
+   * @param robot query point model of the robot
+   * @param sdf signed distance field of the obstacles, in the world frame
+   * @param cost_sigma cost function sigma, one per query point
+   * @param epsilon standoff distance added to every radius
+   * @param radii radius of each query point, one per point of the model
+   */
+  ObstacleSDFFactor(gtsam::Key q_key, const RobotQueryPoints &robot,
+                    const std::shared_ptr<const SignedDistanceField> &sdf,
+                    double cost_sigma, double epsilon,
+                    const gtsam::Vector &radii)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), cost_sigma),
+             q_key),
+        epsilon_(epsilon),
+        radii_(radii),
+        robot_(robot),
+        sdf_(sdf) {
+    if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
+      throw std::invalid_argument(
+          "ObstacleSDFFactor: radii must have one entry per query point.");
+    }
+  }
 
   ~ObstacleSDFFactor() override {}
 
@@ -82,19 +109,23 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
     if (H1) *H1 = gtsam::Matrix::Zero(m, robot_.dof());
 
     for (size_t i = 0; i < m; ++i) {
+      const double eps = epsilon_ + radii_(i);
       if (H1) {
         gtsam::Matrix13 Herr_point;
-        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, epsilon_, Herr_point);
+        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, eps, Herr_point);
         H1->row(i) = Herr_point * Jps[i];
       } else {
-        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, epsilon_);
+        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, eps);
       }
     }
     return err;
   }
 
-  /// Return the standoff distance.
+  /// Return the shared standoff distance.
   double epsilon() const { return epsilon_; }
+
+  /// Return the per query point radii.
+  const gtsam::Vector &radii() const { return radii_; }
 
   /// Print contents.
   void print(const std::string &s = "",
