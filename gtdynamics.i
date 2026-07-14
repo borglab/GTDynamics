@@ -1138,6 +1138,35 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/factors/SelfCollisionFactor.h>
+class SelfCollisionPair {
+  size_t a;
+  bool is_sdf;
+  size_t b;
+  double epsilon;
+
+  static gtdynamics::SelfCollisionPair PointPair(size_t a, size_t b,
+                                                 double epsilon);
+  static gtdynamics::SelfCollisionPair PointSDF(
+      size_t a, const gtdynamics::LinkSharedPtr &link_b,
+      const gtdynamics::SignedDistanceField *sdf_b, double epsilon);
+};
+// SelfCollisionPairs defined in specializations.h
+
+class SelfCollisionFactor : gtsam::NoiseModelFactor {
+  SelfCollisionFactor(gtsam::Key q_key, const gtdynamics::RobotQueryPoints &robot,
+                      const gtdynamics::SelfCollisionPairs &pairs,
+                      const gtsam::Vector &radii, double cost_sigma);
+  SelfCollisionFactor(gtsam::Key q_key, const gtdynamics::RobotQueryPoints &robot,
+                      const gtdynamics::SelfCollisionPairs &pairs,
+                      const gtsam::Vector &radii, const gtsam::Vector &sigmas);
+
+  size_t nrPairs() const;
+  gtsam::Vector radii() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 /********************** Utilities  **********************/
 #include <gtdynamics/utils/format.h>
 string GtdFormat(const gtsam::Values &t, const string &s = "");
