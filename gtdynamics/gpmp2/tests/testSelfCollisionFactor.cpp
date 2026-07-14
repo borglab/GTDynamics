@@ -164,15 +164,23 @@ TEST(SelfCollisionFactor, pointPointJacobians) {
 }
 
 // Point vs a link's field, same arm (forearm point vs wrist field). This is the
-// test that both the point and the moving-frame Jacobian terms are present.
+// test that both the point and the moving-frame Jacobian terms are present. The
+// grid and epsilon are sized from the measured distance so the hinge is active.
+// Query point 0 is link_6's CoM, the field origin, so ||wPs[2]-wPs[0]|| is the
+// distance of the forearm point into the field.
 TEST(SelfCollisionFactor, pointSDFJacobians) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
-  auto sdf = sphereSDF(0.2, 1.5);
+  const Vector q = configApart();
+  std::vector<Point3> wPs;
+  model.queryPoints(q, &wPs);
+  const double dist = (wPs[2] - wPs[0]).norm();
+
+  auto sdf = sphereSDF(0.2, dist + 0.3);  // grid contains the forearm point
   const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf, 1.0)};
+      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf,
+                                  dist + 0.1)};  // active: cost ~= 0.3
   SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
 
-  const Vector q = configApart();
   EXPECT(factor.evaluateError(q)(0) > 0.0);  // active branch
 
   Values values;
@@ -188,10 +196,12 @@ TEST(SelfCollisionFactor, mixedPairs) {
   model.queryPoints(q, &wPs);
   const double eps = (wPs[0] - wPs[1]).norm() + 1.0;
 
-  auto sdf = sphereSDF(0.2, 1.5);
+  const double dist = (wPs[2] - wPs[0]).norm();
+  auto sdf = sphereSDF(0.2, dist + 0.3);
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair::PointPair(0, 1, eps),
-      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf, 1.0)};
+      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf,
+                                  dist + 0.1)};
   SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
 
   EXPECT_LONGS_EQUAL(2, factor.evaluateError(q).size());
@@ -278,10 +288,15 @@ TEST(SelfCollisionFactor, radiiPointPoint) {
 // active branch it adds directly to the cost.
 TEST(SelfCollisionFactor, radiiPointSDF) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
-  auto sdf = sphereSDF(0.2, 1.5);
-  const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf, 1.0)};
   const Vector q = configApart();
+  std::vector<Point3> wPs;
+  model.queryPoints(q, &wPs);
+  const double dist = (wPs[2] - wPs[0]).norm();
+
+  auto sdf = sphereSDF(0.2, dist + 0.3);
+  const std::vector<SelfCollisionPair> pairs = {
+      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf,
+                                  dist + 0.1)};
 
   SelfCollisionFactor base(X(0), model, pairs, Vector::Zero(5), 0.1);
   const double e0 = base.evaluateError(q)(0);
