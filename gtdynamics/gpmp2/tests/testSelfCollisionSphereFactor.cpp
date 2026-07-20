@@ -6,14 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testSelfCollisionFactor.cpp
+ * @file  testSelfCollisionSphereFactor.cpp
  * @brief test the self collision hinge primitive and factor on bar_lab.
  * @author Karthik Shaji
  */
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/config.h>
-#include <gtdynamics/factors/SelfCollisionFactor.h>
+#include <gtdynamics/factors/SelfCollisionSphereFactor.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -123,7 +123,7 @@ static Vector configClose() {
 
 // Point-to-point across the two arms. Epsilon is set a metre past the measured
 // wrist distance so the hinge is active and the numerical check exercises it.
-TEST(SelfCollisionFactor, pointPointJacobians) {
+TEST(SelfCollisionSphereFactor, pointPointJacobians) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPs;
@@ -132,7 +132,7 @@ TEST(SelfCollisionFactor, pointPointJacobians) {
 
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, eps)};  // wrist1 vs wrist2
-  SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
+  SelfCollisionSphereFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
 
   EXPECT(factor.evaluateError(q)(0) > 0.0);  // active branch
 
@@ -143,7 +143,7 @@ TEST(SelfCollisionFactor, pointPointJacobians) {
 
 // Several pairs in one factor, one cross-arm and one within robot1's arm, so a
 // single row couples both arms' DOFs and another only robot1's.
-TEST(SelfCollisionFactor, multiplePairs) {
+TEST(SelfCollisionSphereFactor, multiplePairs) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPs;
@@ -152,7 +152,7 @@ TEST(SelfCollisionFactor, multiplePairs) {
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, (wPs[0] - wPs[1]).norm() + 1.0),   // cross-arm
       SelfCollisionPair(2, 0, (wPs[2] - wPs[0]).norm() + 1.0)};  // same arm
-  SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
+  SelfCollisionSphereFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
 
   const Vector err = factor.evaluateError(q);
   EXPECT_LONGS_EQUAL(2, err.size());
@@ -168,7 +168,7 @@ TEST(SelfCollisionFactor, multiplePairs) {
 
 // The two arm bases start within epsilon; the factor drives them apart. Epsilon
 // is 0.3 m past the measured start distance so the pair starts in collision.
-TEST(SelfCollisionFactor, pushesPointsApart) {
+TEST(SelfCollisionSphereFactor, pushesPointsApart) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
 
   const Vector q0 = configClose();
@@ -179,7 +179,7 @@ TEST(SelfCollisionFactor, pushesPointsApart) {
 
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(3, 4, eps)};  // base1 vs base2
-  SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.01);
+  SelfCollisionSphereFactor factor(X(0), model, pairs, Vector::Zero(5), 0.01);
 
   gtsam::NonlinearFactorGraph graph;
   graph.add(factor);
@@ -202,7 +202,7 @@ TEST(SelfCollisionFactor, pushesPointsApart) {
 
 // eps is set 0.05 below the measured distance so the points are clear, then two
 // 0.1 radii push eps + rA + rB past d, turning the pair into a collision.
-TEST(SelfCollisionFactor, radiiPointPoint) {
+TEST(SelfCollisionSphereFactor, radiiPointPoint) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPs;
@@ -213,32 +213,32 @@ TEST(SelfCollisionFactor, radiiPointPoint) {
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, eps)};
 
-  SelfCollisionFactor clear(X(0), model, pairs, Vector::Zero(5), 0.1);
+  SelfCollisionSphereFactor clear(X(0), model, pairs, Vector::Zero(5), 0.1);
   EXPECT_DOUBLES_EQUAL(0.0, clear.evaluateError(q)(0), 1e-9);
 
   Vector radii = Vector::Zero(5);
   radii(0) = 0.1;
   radii(1) = 0.1;
-  SelfCollisionFactor inflated(X(0), model, pairs, radii, 0.1);
+  SelfCollisionSphereFactor inflated(X(0), model, pairs, radii, 0.1);
   EXPECT_DOUBLES_EQUAL(eps + 0.2 - d, inflated.evaluateError(q)(0), 1e-9);
 
   // The same total radius on either point gives the same standoff.
   Vector on_a = Vector::Zero(5), on_b = Vector::Zero(5);
   on_a(0) = 0.2;
   on_b(1) = 0.2;
-  SelfCollisionFactor f_a(X(0), model, pairs, on_a, 0.1);
-  SelfCollisionFactor f_b(X(0), model, pairs, on_b, 0.1);
+  SelfCollisionSphereFactor f_a(X(0), model, pairs, on_a, 0.1);
+  SelfCollisionSphereFactor f_b(X(0), model, pairs, on_b, 0.1);
   EXPECT_DOUBLES_EQUAL(f_a.evaluateError(q)(0), f_b.evaluateError(q)(0), 1e-9);
 
   // A radius on an uninvolved point is ignored.
   Vector other = Vector::Zero(5);
   other(2) = 0.2;
-  SelfCollisionFactor f_other(X(0), model, pairs, other, 0.1);
+  SelfCollisionSphereFactor f_other(X(0), model, pairs, other, 0.1);
   EXPECT_DOUBLES_EQUAL(0.0, f_other.evaluateError(q)(0), 1e-9);
 }
 
 // In the active branch a radius adds directly to the cost, once per sphere.
-TEST(SelfCollisionFactor, radiiAddToTheStandoff) {
+TEST(SelfCollisionSphereFactor, radiiAddToTheStandoff) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPs;
@@ -247,7 +247,7 @@ TEST(SelfCollisionFactor, radiiAddToTheStandoff) {
   const double eps = (wPs[0] - wPs[1]).norm() + 1.0;  // active by construction
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
 
-  SelfCollisionFactor base(X(0), model, pairs, Vector::Zero(5), 0.1);
+  SelfCollisionSphereFactor base(X(0), model, pairs, Vector::Zero(5), 0.1);
   const double e0 = base.evaluateError(q)(0);
   EXPECT(e0 > 0.0);
 
@@ -255,32 +255,32 @@ TEST(SelfCollisionFactor, radiiAddToTheStandoff) {
   Vector radii = Vector::Zero(5);
   radii(0) = 0.1;
   radii(1) = 0.2;
-  SelfCollisionFactor inflated(X(0), model, pairs, radii, 0.1);
+  SelfCollisionSphereFactor inflated(X(0), model, pairs, radii, 0.1);
   EXPECT_DOUBLES_EQUAL(e0 + 0.3, inflated.evaluateError(q)(0), 1e-9);
 
   // A radius on an uninvolved point is ignored.
   Vector other = Vector::Zero(5);
   other(2) = 0.2;
-  SelfCollisionFactor f_other(X(0), model, pairs, other, 0.1);
+  SelfCollisionSphereFactor f_other(X(0), model, pairs, other, 0.1);
   EXPECT_DOUBLES_EQUAL(e0, f_other.evaluateError(q)(0), 1e-9);
 }
 
 /* ************************ input validation *************************** */
 
-TEST(SelfCollisionFactor, rejectsBadInput) {
+TEST(SelfCollisionSphereFactor, rejectsBadInput) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, 1.0)};
 
   // radii length must equal the number of query points.
   CHECK_EXCEPTION(
-      SelfCollisionFactor(X(0), model, pairs, Vector::Zero(3), 0.1),
+      SelfCollisionSphereFactor(X(0), model, pairs, Vector::Zero(3), 0.1),
       std::invalid_argument);
   // a point index out of range.
   const std::vector<SelfCollisionPair> bad = {
       SelfCollisionPair(0, 99, 1.0)};
   CHECK_EXCEPTION(
-      SelfCollisionFactor(X(0), model, bad, Vector::Zero(5), 0.1),
+      SelfCollisionSphereFactor(X(0), model, bad, Vector::Zero(5), 0.1),
       std::invalid_argument);
 }
 

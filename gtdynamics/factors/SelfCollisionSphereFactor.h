@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  SelfCollisionFactor.h
+ * @file  SelfCollisionSphereFactor.h
  * @brief Self collision cost factor over a set of query point pairs.
  * @author Karthik Shaji - Adapted from gpmp2 by Mustafa Mukadam.
  */
@@ -53,9 +53,10 @@ using SelfCollisionPairs = std::vector<SelfCollisionPair>;
  * near constant separation and would fire permanently, and two points that can
  * coincide give a non-finite distance gradient. The factor excludes neither.
  */
-class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
+class SelfCollisionSphereFactor
+    : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
-  using This = SelfCollisionFactor;
+  using This = SelfCollisionSphereFactor;
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;
 
   RobotQueryPoints robot_;
@@ -66,23 +67,24 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   void validate() const {
     if (static_cast<size_t>(radii_.size()) != robot_.nrPoints()) {
       throw std::invalid_argument(
-          "SelfCollisionFactor: radii must have one entry per query point.");
+          "SelfCollisionSphereFactor: radii must have one entry per point.");
     }
     if ((radii_.array() < 0.0).any()) {
-      throw std::invalid_argument("SelfCollisionFactor: radii must be >= 0.");
+      throw std::invalid_argument(
+          "SelfCollisionSphereFactor: radii must be >= 0.");
     }
     for (const auto &p : pairs_) {
       if (p.epsilon < 0.0) {
         throw std::invalid_argument(
-            "SelfCollisionFactor: a pair epsilon must be >= 0.");
+            "SelfCollisionSphereFactor: a pair epsilon must be >= 0.");
       }
       if (p.a >= robot_.nrPoints() || p.b >= robot_.nrPoints()) {
         throw std::invalid_argument(
-            "SelfCollisionFactor: pair point index out of range.");
+            "SelfCollisionSphereFactor: pair point index out of range.");
       }
       if (p.a == p.b) {
         throw std::invalid_argument(
-            "SelfCollisionFactor: a pair must use two distinct points.");
+            "SelfCollisionSphereFactor: a pair must use two distinct points.");
       }
     }
   }
@@ -96,7 +98,7 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * @param radii radius of each query point, one per point of the model
    * @param cost_sigma cost function sigma, shared by every pair
    */
-  SelfCollisionFactor(gtsam::Key q_key, const RobotQueryPoints &robot,
+  SelfCollisionSphereFactor(gtsam::Key q_key, const RobotQueryPoints &robot,
                       const std::vector<SelfCollisionPair> &pairs,
                       const gtsam::Vector &radii, double cost_sigma)
       : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), cost_sigma),
@@ -115,7 +117,7 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * @param radii radius of each query point, one per point of the model
    * @param sigmas cost function sigma of each pair, one per pair
    */
-  SelfCollisionFactor(gtsam::Key q_key, const RobotQueryPoints &robot,
+  SelfCollisionSphereFactor(gtsam::Key q_key, const RobotQueryPoints &robot,
                       const std::vector<SelfCollisionPair> &pairs,
                       const gtsam::Vector &radii, const gtsam::Vector &sigmas)
       : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), q_key),
@@ -124,12 +126,12 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
         pairs_(pairs) {
     if (static_cast<size_t>(sigmas.size()) != pairs.size()) {
       throw std::invalid_argument(
-          "SelfCollisionFactor: sigmas must have one entry per pair.");
+          "SelfCollisionSphereFactor: sigmas must have one entry per pair.");
     }
     validate();
   }
 
-  ~SelfCollisionFactor() override {}
+  ~SelfCollisionSphereFactor() override {}
 
   /// Return a deep copy of this factor.
   gtsam::NonlinearFactor::shared_ptr clone() const override {
@@ -175,10 +177,10 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "SelfCollisionFactor with " << pairs_.size() << " pairs"
-              << std::endl;
+    std::cout << s << "SelfCollisionSphereFactor with " << pairs_.size()
+              << " pairs" << std::endl;
     Base::print("", keyFormatter);
   }
-};  // \class SelfCollisionFactor
+};  // \class SelfCollisionSphereFactor
 
 }  // namespace gtdynamics
