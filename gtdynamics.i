@@ -1138,7 +1138,7 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
-#include <gtdynamics/factors/SelfCollisionFactor.h>
+#include <gtdynamics/factors/SelfCollisionSphereFactor.h>
 class SelfCollisionPair {
   SelfCollisionPair();
   SelfCollisionPair(size_t a, size_t b, double epsilon);
@@ -1149,13 +1149,16 @@ class SelfCollisionPair {
 };
 // SelfCollisionPairs defined in specializations.h
 
-class SelfCollisionFactor : gtsam::NoiseModelFactor {
-  SelfCollisionFactor(gtsam::Key q_key, const gtdynamics::RobotQueryPoints &robot,
-                      const gtdynamics::SelfCollisionPairs &pairs,
-                      const gtsam::Vector &radii, double cost_sigma);
-  SelfCollisionFactor(gtsam::Key q_key, const gtdynamics::RobotQueryPoints &robot,
-                      const gtdynamics::SelfCollisionPairs &pairs,
-                      const gtsam::Vector &radii, const gtsam::Vector &sigmas);
+class SelfCollisionSphereFactor : gtsam::NoiseModelFactor {
+  SelfCollisionSphereFactor(gtsam::Key q_key,
+                            const gtdynamics::RobotQueryPoints &robot,
+                            const gtdynamics::SelfCollisionPairs &pairs,
+                            const gtsam::Vector &radii, double cost_sigma);
+  SelfCollisionSphereFactor(gtsam::Key q_key,
+                            const gtdynamics::RobotQueryPoints &robot,
+                            const gtdynamics::SelfCollisionPairs &pairs,
+                            const gtsam::Vector &radii,
+                            const gtsam::Vector &sigmas);
 
   size_t nrPairs() const;
   gtsam::Vector radii() const;

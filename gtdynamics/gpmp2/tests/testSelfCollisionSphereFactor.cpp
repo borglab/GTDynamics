@@ -284,6 +284,21 @@ TEST(SelfCollisionSphereFactor, rejectsBadInput) {
       std::invalid_argument);
 }
 
+// A pair whose two spheres sit on the same rigid link has a constant separation
+// and no gradient, so it is rejected.
+TEST(SelfCollisionSphereFactor, rejectsSameLinkPair) {
+  const LinkSharedPtr link = kRobot.link("robot1_link_6");
+  const std::vector<PointOnLink> points = {
+      PointOnLink(link, Point3(0.0, 0.0, 0.0)),
+      PointOnLink(link, Point3(0.1, 0.0, 0.0))};  // both on link_6
+  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), points);
+  const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, 0.1)};
+
+  CHECK_EXCEPTION(
+      SelfCollisionSphereFactor(X(0), model, pairs, Vector::Zero(2), 0.1),
+      std::invalid_argument);
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

@@ -6,7 +6,7 @@ See LICENSE for the license information
 
 Self collision on the bar_lab platform: one factor over the full 18-DOF state
 that keeps the two arms clear of each other. Mirrors
-gtdynamics/gpmp2/tests/testSelfCollisionFactor.cpp.
+gtdynamics/gpmp2/tests/testSelfCollisionSphereFactor.cpp.
 Author: Karthik Shaji
 """
 
@@ -58,8 +58,8 @@ class TestSelfCollision(GtsamTestCase):
     def make_factor(self, sigma=0.01):
         pairs = gtd.SelfCollisionPairs()
         pairs.append(gtd.SelfCollisionPair(0, 1, EPSILON))
-        return gtd.SelfCollisionFactor(X(0), self.model, pairs, np.zeros(2),
-                                       sigma)
+        return gtd.SelfCollisionSphereFactor(X(0), self.model, pairs,
+                                             np.zeros(2), sigma)
 
     def separation(self, q):
         pts = self.model.worldPoints(q)
@@ -98,10 +98,10 @@ class TestSelfCollision(GtsamTestCase):
 
         values = gtsam.Values()
         values.insert(X(0), Q_CLOSE)
-        clear = gtd.SelfCollisionFactor(X(0), self.model, pairs, np.zeros(2),
-                                        0.1)
-        inflated = gtd.SelfCollisionFactor(X(0), self.model, pairs,
-                                           np.array([0.1, 0.1]), 0.1)
+        clear = gtd.SelfCollisionSphereFactor(X(0), self.model, pairs,
+                                              np.zeros(2), 0.1)
+        inflated = gtd.SelfCollisionSphereFactor(X(0), self.model, pairs,
+                                                 np.array([0.1, 0.1]), 0.1)
 
         self.assertAlmostEqual(clear.error(values), 0.0, places=9)
         self.assertGreater(inflated.error(values), 0.0)
@@ -111,7 +111,8 @@ class TestSelfCollision(GtsamTestCase):
         pairs = gtd.SelfCollisionPairs()
         pairs.append(gtd.SelfCollisionPair(0, 1, EPSILON))
         with self.assertRaises(ValueError):
-            gtd.SelfCollisionFactor(X(0), self.model, pairs, np.zeros(3), 0.01)
+            gtd.SelfCollisionSphereFactor(X(0), self.model, pairs, np.zeros(3),
+                                          0.01)
 
 
 if __name__ == "__main__":

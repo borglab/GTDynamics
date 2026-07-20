@@ -49,9 +49,8 @@ using SelfCollisionPairs = std::vector<SelfCollisionPair>;
  * build the RobotQueryPoints with the union of every joint involved and a
  * common base, so a cross-arm pair couples all their DOFs in one row.
  *
- * The caller registers only meaningful pairs: points on adjacent links sit at a
- * near constant separation and would fire permanently, and two points that can
- * coincide give a non-finite distance gradient. The factor excludes neither.
+ * Same-link pairs are rejected; the caller must also avoid adjacent-link pairs
+ * (constant separation) and points that can coincide (non-finite gradient).
  */
 class SelfCollisionSphereFactor
     : public gtsam::NoiseModelFactorN<gtsam::Vector> {
@@ -85,6 +84,13 @@ class SelfCollisionSphereFactor
       if (p.a == p.b) {
         throw std::invalid_argument(
             "SelfCollisionSphereFactor: a pair must use two distinct points.");
+      }
+      // Points on one rigid link keep a constant separation, so the hinge has
+      // no gradient; reject such a pair rather than fire it permanently.
+      if (robot_.points()[p.a].link->id() == robot_.points()[p.b].link->id()) {
+        throw std::invalid_argument(
+            "SelfCollisionSphereFactor: a pair must use points on different "
+            "links.");
       }
     }
   }
