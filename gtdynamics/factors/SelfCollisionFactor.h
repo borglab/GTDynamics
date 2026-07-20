@@ -7,7 +7,7 @@
 
 /**
  * @file  SelfCollisionFactor.h
- * @brief Self collision cost factor over a set of collision pairs.
+ * @brief Self collision cost factor over a set of query point pairs.
  * @author Karthik Shaji - Adapted from gpmp2 by Mustafa Mukadam.
  */
 
@@ -15,18 +15,13 @@
 
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
-#include <gtdynamics/gpmp2/SignedDistanceField.h>
-#include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Point3.h>
-#include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <cstdint>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -34,39 +29,28 @@
 
 namespace gtdynamics {
 
-/// One self collision check: a query point vs another query point or a link's
-/// field. One side is always a point. Build via PointPair / PointSDF.
+/// One self collision check between two query points, each inflated to a sphere
+/// by its radius and kept epsilon apart on top of that.
 struct SelfCollisionPair {
-  size_t a;             ///< query point index, the point side
-  bool is_sdf;          ///< false: point vs point; true: point vs a link field
-  size_t b;             ///< point vs point: the other query point index
-  LinkSharedPtr link_b;                              ///< point vs field: link B
-  std::shared_ptr<const SignedDistanceField> sdf_b;  ///< field, in B's frame
-  double epsilon;       ///< standoff between the sides, added to their radii
+  size_t a;        ///< first query point index
+  size_t b;        ///< second query point index
+  double epsilon;  ///< standoff between the two, added to their radii
 
-  /// Point vs point pair.
-  static SelfCollisionPair PointPair(size_t a, size_t b, double epsilon) {
-    return SelfCollisionPair{a, false, b, nullptr, nullptr, epsilon};
-  }
-
-  /// Point vs link field pair.
-  static SelfCollisionPair PointSDF(
-      size_t a, const LinkSharedPtr &link_b,
-      const std::shared_ptr<const SignedDistanceField> &sdf_b, double epsilon) {
-    return SelfCollisionPair{a, true, 0, link_b, sdf_b, epsilon};
-  }
+  SelfCollisionPair() : a(0), b(0), epsilon(0.0) {}
+  SelfCollisionPair(size_t a, size_t b, double epsilon)
+      : a(a), b(b), epsilon(epsilon) {}
 };
 
 using SelfCollisionPairs = std::vector<SelfCollisionPair>;
 
 /**
- * Unary factor keeping the robot clear of itself over a set of collision pairs,
- * one hinge loss row per pair. Both sides of every pair move with q, so build
- * the RobotQueryPoints with the union of every joint involved and a common base
- * so a cross-arm pair couples all their DOFs in one row.
+ * Unary factor keeping the robot clear of itself over a set of query point
+ * pairs, one hinge loss row per pair. Both points of every pair move with q, so
+ * build the RobotQueryPoints with the union of every joint involved and a
+ * common base, so a cross-arm pair couples all their DOFs in one row.
  *
- * The caller registers only meaningful pairs: adjacent links sit at a near
- * constant separation and would fire permanently, and two points that can
+ * The caller registers only meaningful pairs: points on adjacent links sit at a
+ * near constant separation and would fire permanently, and two points that can
  * coincide give a non-finite distance gradient. The factor excludes neither.
  */
 class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
@@ -78,7 +62,7 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   std::vector<SelfCollisionPair> pairs_;
 
-  /// Reject pairs whose indices, radii, fields or standoffs are inconsistent.
+  /// Reject inconsistent indices, radii or standoffs.
   void validate() const {
     if (static_cast<size_t>(radii_.size()) != robot_.nrPoints()) {
       throw std::invalid_argument(
@@ -92,19 +76,13 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
         throw std::invalid_argument(
             "SelfCollisionFactor: a pair epsilon must be >= 0.");
       }
-      if (p.a >= robot_.nrPoints()) {
+      if (p.a >= robot_.nrPoints() || p.b >= robot_.nrPoints()) {
         throw std::invalid_argument(
             "SelfCollisionFactor: pair point index out of range.");
       }
-      if (p.is_sdf) {
-        if (!p.link_b || !p.sdf_b) {
-          throw std::invalid_argument(
-              "SelfCollisionFactor: a point vs field pair needs a link and a "
-              "field.");
-        }
-      } else if (p.b >= robot_.nrPoints()) {
+      if (p.a == p.b) {
         throw std::invalid_argument(
-            "SelfCollisionFactor: pair point index out of range.");
+            "SelfCollisionFactor: a pair must use two distinct points.");
       }
     }
   }
@@ -114,7 +92,7 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * Constructor with a single sigma across every pair.
    * @param q_key key of the stacked joint angle vector
    * @param robot query point model, spanning every joint involved
-   * @param pairs collision pairs to check
+   * @param pairs query point pairs to check
    * @param radii radius of each query point, one per point of the model
    * @param cost_sigma cost function sigma, shared by every pair
    */
@@ -133,7 +111,7 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * Constructor with a sigma per pair.
    * @param q_key key of the stacked joint angle vector
    * @param robot query point model, spanning every joint involved
-   * @param pairs collision pairs to check
+   * @param pairs query point pairs to check
    * @param radii radius of each query point, one per point of the model
    * @param sigmas cost function sigma of each pair, one per pair
    */
@@ -166,73 +144,25 @@ class SelfCollisionFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   gtsam::Vector evaluateError(
       const gtsam::Vector &q,
       gtsam::OptionalMatrixType H1 = nullptr) const override {
-    const size_t dof = robot_.dof();
     const size_t n = pairs_.size();
     gtsam::Vector err(n);
 
-    // One FK pass supplies both the query points and the link poses.
-    std::map<uint8_t, gtsam::Pose3> wTl;
-    std::map<uint8_t, gtsam::Matrix> Jl;
-    robot_.forwardKinematics(q, &wTl, H1 ? &Jl : nullptr);
-
-    // Transform every query point to the world, keeping the pose map for the
-    // field sides (queryPoints would discard it).
-    const auto &pts = robot_.points();
-    std::vector<gtsam::Point3> wPs(robot_.nrPoints());
+    std::vector<gtsam::Point3> wPs;
     std::vector<gtsam::Matrix> Jps;
-    if (H1) Jps.resize(robot_.nrPoints());
-    for (size_t i = 0; i < robot_.nrPoints(); ++i) {
-      const uint8_t id = pts[i].link->id();
-      auto it = wTl.find(id);
-      if (it == wTl.end()) {
-        throw std::runtime_error(
-            "SelfCollisionFactor: query point on a link not reachable from the "
-            "base.");
-      }
-      if (H1) {
-        gtsam::Matrix36 H_pose;
-        wPs[i] = it->second.transformFrom(pts[i].point, H_pose);
-        Jps[i] = H_pose * Jl.at(id);
-      } else {
-        wPs[i] = it->second.transformFrom(pts[i].point);
-      }
-    }
-
-    if (H1) *H1 = gtsam::Matrix::Zero(n, dof);
+    robot_.queryPoints(q, &wPs, H1 ? &Jps : nullptr);
+    if (H1) *H1 = gtsam::Matrix::Zero(n, robot_.dof());
 
     for (size_t r = 0; r < n; ++r) {
       const SelfCollisionPair &p = pairs_[r];
-      if (!p.is_sdf) {
-        // Point vs point: standoff folds in both radii.
-        const double eps = p.epsilon + radii_(p.a) + radii_(p.b);
-        if (H1) {
-          gtsam::Matrix13 H_pA, H_pB;
-          err(r) = hingeLossSelfCollisionCost(wPs[p.a], wPs[p.b], eps, H_pA,
-                                              H_pB);
-          H1->row(r) = H_pA * Jps[p.a] + H_pB * Jps[p.b];
-        } else {
-          err(r) = hingeLossSelfCollisionCost(wPs[p.a], wPs[p.b], eps);
-        }
+      // The standoff folds in both spheres' radii.
+      const double eps = p.epsilon + radii_(p.a) + radii_(p.b);
+      if (H1) {
+        gtsam::Matrix13 H_pA, H_pB;
+        err(r) =
+            hingeLossSelfCollisionCost(wPs[p.a], wPs[p.b], eps, H_pA, H_pB);
+        H1->row(r) = H_pA * Jps[p.a] + H_pB * Jps[p.b];
       } else {
-        // Point vs field: the field encodes link_b's shape, so only the point
-        // side carries a radius.
-        const uint8_t bid = p.link_b->id();
-        auto itB = wTl.find(bid);
-        if (itB == wTl.end()) {
-          throw std::runtime_error(
-              "SelfCollisionFactor: field link not reachable from the base.");
-        }
-        const double eps = p.epsilon + radii_(p.a);
-        if (H1) {
-          gtsam::Matrix16 H_pose;
-          gtsam::Matrix13 H_point;
-          err(r) = hingeLossObstacleCost(itB->second, wPs[p.a], *p.sdf_b, eps,
-                                         H_pose, H_point);
-          // Both the point and link_b's frame move with q.
-          H1->row(r) = H_point * Jps[p.a] + H_pose * Jl.at(bid);
-        } else {
-          err(r) = hingeLossObstacleCost(itB->second, wPs[p.a], *p.sdf_b, eps);
-        }
+        err(r) = hingeLossSelfCollisionCost(wPs[p.a], wPs[p.b], eps);
       }
     }
     return err;

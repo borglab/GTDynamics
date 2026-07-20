@@ -57,7 +57,7 @@ class TestSelfCollision(GtsamTestCase):
 
     def make_factor(self, sigma=0.01):
         pairs = gtd.SelfCollisionPairs()
-        pairs.append(gtd.SelfCollisionPair.PointPair(0, 1, EPSILON))
+        pairs.append(gtd.SelfCollisionPair(0, 1, EPSILON))
         return gtd.SelfCollisionFactor(X(0), self.model, pairs, np.zeros(2),
                                        sigma)
 
@@ -94,7 +94,7 @@ class TestSelfCollision(GtsamTestCase):
         d = self.separation(Q_CLOSE)
         eps = d - 0.05  # bases clear by 0.05 without any radius
         pairs = gtd.SelfCollisionPairs()
-        pairs.append(gtd.SelfCollisionPair.PointPair(0, 1, eps))
+        pairs.append(gtd.SelfCollisionPair(0, 1, eps))
 
         values = gtsam.Values()
         values.insert(X(0), Q_CLOSE)
@@ -109,7 +109,7 @@ class TestSelfCollision(GtsamTestCase):
     def test_rejects_bad_radii(self):
         """A radii vector of the wrong length is rejected."""
         pairs = gtd.SelfCollisionPairs()
-        pairs.append(gtd.SelfCollisionPair.PointPair(0, 1, EPSILON))
+        pairs.append(gtd.SelfCollisionPair(0, 1, EPSILON))
         with self.assertRaises(ValueError):
             gtd.SelfCollisionFactor(X(0), self.model, pairs, np.zeros(3), 0.01)
 

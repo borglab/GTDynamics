@@ -1140,16 +1140,12 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/factors/SelfCollisionFactor.h>
 class SelfCollisionPair {
+  SelfCollisionPair();
+  SelfCollisionPair(size_t a, size_t b, double epsilon);
+
   size_t a;
-  bool is_sdf;
   size_t b;
   double epsilon;
-
-  static gtdynamics::SelfCollisionPair PointPair(size_t a, size_t b,
-                                                 double epsilon);
-  static gtdynamics::SelfCollisionPair PointSDF(
-      size_t a, const gtdynamics::LinkSharedPtr &link_b,
-      const gtdynamics::SignedDistanceField *sdf_b, double epsilon);
 };
 // SelfCollisionPairs defined in specializations.h
 

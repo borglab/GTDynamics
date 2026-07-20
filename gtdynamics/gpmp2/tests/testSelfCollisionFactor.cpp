@@ -16,7 +16,6 @@
 #include <gtdynamics/factors/SelfCollisionFactor.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
-#include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -41,8 +40,6 @@ using gtsam::Vector;
 using gtsam::Vector3;
 using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::X;
-
-static const double kCell = 0.05;
 
 static const Robot kRobot =
     CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"));
@@ -96,7 +93,7 @@ static std::vector<JointSharedPtr> bothArmJoints() {
   return joints;
 }
 
-// Query points: two wrists (cross-arm pairs), robot1's forearm (same-arm SDF
+// Query points: two wrists (cross-arm pairs), robot1's forearm (same-arm
 // pairs), and the two arm bases (reliably close for the push-apart test).
 static std::vector<PointOnLink> queryPoints() {
   return {PointOnLink(kRobot.link("robot1_link_6"), Point3(0, 0, 0)),
@@ -122,25 +119,6 @@ static Vector configClose() {
   return q;
 }
 
-// Sphere signed distance field centered at a frame origin, spanning +/- half m.
-static std::shared_ptr<const SignedDistanceField> sphereSDF(double radius,
-                                                            double half) {
-  const size_t n = static_cast<size_t>(2 * half / kCell) + 1;
-  const Point3 origin(-half, -half, -half);
-  std::vector<Matrix> data(n);
-  for (size_t k = 0; k < n; ++k) {
-    Matrix layer(n, n);
-    for (size_t i = 0; i < n; ++i) {
-      for (size_t j = 0; j < n; ++j) {
-        const Point3 p = origin + Point3(j * kCell, i * kCell, k * kCell);
-        layer(i, j) = p.norm() - radius;
-      }
-    }
-    data[k] = layer;
-  }
-  return std::make_shared<const SignedDistanceField>(origin, kCell, data);
-}
-
 /* ************************ factor Jacobians *************************** */
 
 // Point-to-point across the two arms. Epsilon is set a metre past the measured
@@ -153,7 +131,7 @@ TEST(SelfCollisionFactor, pointPointJacobians) {
   const double eps = (wPs[0] - wPs[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointPair(0, 1, eps)};  // wrist1 vs wrist2
+      SelfCollisionPair(0, 1, eps)};  // wrist1 vs wrist2
   SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
 
   EXPECT(factor.evaluateError(q)(0) > 0.0);  // active branch
@@ -163,48 +141,23 @@ TEST(SelfCollisionFactor, pointPointJacobians) {
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 }
 
-// Point vs a link's field, same arm (forearm point vs wrist field). This is the
-// test that both the point and the moving-frame Jacobian terms are present. The
-// grid and epsilon are sized from the measured distance so the hinge is active.
-// Query point 0 is link_6's CoM, the field origin, so ||wPs[2]-wPs[0]|| is the
-// distance of the forearm point into the field.
-TEST(SelfCollisionFactor, pointSDFJacobians) {
+// Several pairs in one factor, one cross-arm and one within robot1's arm, so a
+// single row couples both arms' DOFs and another only robot1's.
+TEST(SelfCollisionFactor, multiplePairs) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPs;
   model.queryPoints(q, &wPs);
-  const double dist = (wPs[2] - wPs[0]).norm();
 
-  auto sdf = sphereSDF(0.2, dist + 0.3);  // grid contains the forearm point
   const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf,
-                                  dist + 0.1)};  // active: cost ~= 0.3
+      SelfCollisionPair(0, 1, (wPs[0] - wPs[1]).norm() + 1.0),   // cross-arm
+      SelfCollisionPair(2, 0, (wPs[2] - wPs[0]).norm() + 1.0)};  // same arm
   SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
 
-  EXPECT(factor.evaluateError(q)(0) > 0.0);  // active branch
-
-  Values values;
-  values.insert(X(0), q);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
-}
-
-// One factor holding both a point-point and a point-SDF pair.
-TEST(SelfCollisionFactor, mixedPairs) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
-  const Vector q = configApart();
-  std::vector<Point3> wPs;
-  model.queryPoints(q, &wPs);
-  const double eps = (wPs[0] - wPs[1]).norm() + 1.0;
-
-  const double dist = (wPs[2] - wPs[0]).norm();
-  auto sdf = sphereSDF(0.2, dist + 0.3);
-  const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointPair(0, 1, eps),
-      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf,
-                                  dist + 0.1)};
-  SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
-
-  EXPECT_LONGS_EQUAL(2, factor.evaluateError(q).size());
+  const Vector err = factor.evaluateError(q);
+  EXPECT_LONGS_EQUAL(2, err.size());
+  EXPECT(err(0) > 0.0);  // both branches active
+  EXPECT(err(1) > 0.0);
 
   Values values;
   values.insert(X(0), q);
@@ -225,7 +178,7 @@ TEST(SelfCollisionFactor, pushesPointsApart) {
   const double eps = start_dist + 0.3;
 
   const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointPair(3, 4, eps)};  // base1 vs base2
+      SelfCollisionPair(3, 4, eps)};  // base1 vs base2
   SelfCollisionFactor factor(X(0), model, pairs, Vector::Zero(5), 0.01);
 
   gtsam::NonlinearFactorGraph graph;
@@ -258,7 +211,7 @@ TEST(SelfCollisionFactor, radiiPointPoint) {
 
   const double eps = d - 0.05;
   const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointPair(0, 1, eps)};
+      SelfCollisionPair(0, 1, eps)};
 
   SelfCollisionFactor clear(X(0), model, pairs, Vector::Zero(5), 0.1);
   EXPECT_DOUBLES_EQUAL(0.0, clear.evaluateError(q)(0), 1e-9);
@@ -284,32 +237,30 @@ TEST(SelfCollisionFactor, radiiPointPoint) {
   EXPECT_DOUBLES_EQUAL(0.0, f_other.evaluateError(q)(0), 1e-9);
 }
 
-// A point vs field pair carries a radius only on the point side, and in the
-// active branch it adds directly to the cost.
-TEST(SelfCollisionFactor, radiiPointSDF) {
+// In the active branch a radius adds directly to the cost, once per sphere.
+TEST(SelfCollisionFactor, radiiAddToTheStandoff) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPs;
   model.queryPoints(q, &wPs);
-  const double dist = (wPs[2] - wPs[0]).norm();
 
-  auto sdf = sphereSDF(0.2, dist + 0.3);
-  const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointSDF(2, kRobot.link("robot1_link_6"), sdf,
-                                  dist + 0.1)};
+  const double eps = (wPs[0] - wPs[1]).norm() + 1.0;  // active by construction
+  const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
 
   SelfCollisionFactor base(X(0), model, pairs, Vector::Zero(5), 0.1);
   const double e0 = base.evaluateError(q)(0);
-  EXPECT(e0 > 0.0);  // active branch
+  EXPECT(e0 > 0.0);
 
+  // Each sphere's radius adds to the standoff, so the cost rises by their sum.
   Vector radii = Vector::Zero(5);
-  radii(2) = 0.1;
-  SelfCollisionFactor with_radius(X(0), model, pairs, radii, 0.1);
-  EXPECT_DOUBLES_EQUAL(e0 + 0.1, with_radius.evaluateError(q)(0), 1e-9);
+  radii(0) = 0.1;
+  radii(1) = 0.2;
+  SelfCollisionFactor inflated(X(0), model, pairs, radii, 0.1);
+  EXPECT_DOUBLES_EQUAL(e0 + 0.3, inflated.evaluateError(q)(0), 1e-9);
 
-  // A radius on a point that is not the pair's point side is ignored.
+  // A radius on an uninvolved point is ignored.
   Vector other = Vector::Zero(5);
-  other(0) = 0.1;
+  other(2) = 0.2;
   SelfCollisionFactor f_other(X(0), model, pairs, other, 0.1);
   EXPECT_DOUBLES_EQUAL(e0, f_other.evaluateError(q)(0), 1e-9);
 }
@@ -319,7 +270,7 @@ TEST(SelfCollisionFactor, radiiPointSDF) {
 TEST(SelfCollisionFactor, rejectsBadInput) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair::PointPair(0, 1, 1.0)};
+      SelfCollisionPair(0, 1, 1.0)};
 
   // radii length must equal the number of query points.
   CHECK_EXCEPTION(
@@ -327,7 +278,7 @@ TEST(SelfCollisionFactor, rejectsBadInput) {
       std::invalid_argument);
   // a point index out of range.
   const std::vector<SelfCollisionPair> bad = {
-      SelfCollisionPair::PointPair(0, 99, 1.0)};
+      SelfCollisionPair(0, 99, 1.0)};
   CHECK_EXCEPTION(
       SelfCollisionFactor(X(0), model, bad, Vector::Zero(5), 0.1),
       std::invalid_argument);
