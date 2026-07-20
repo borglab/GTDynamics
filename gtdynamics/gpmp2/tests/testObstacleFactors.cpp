@@ -236,6 +236,42 @@ static Vector goalConfig() {
       .finished();
 }
 
+// Two points at the same location on a link with different radii contradict;
+// distinct points that merely overlap are deliberate coverage and allowed.
+TEST(ObstacleSDFFactor, rejectsConflictingRadii) {
+  const LinkSharedPtr link = kRobot.link("robot1_link_6");
+  auto sdf = std::make_shared<const SignedDistanceField>(
+      makeSphereSDF(Point3(5, 5, 5), 0.1, Point3(4, 4, 4), kCell, 5, 5, 5));
+
+  // Same location on the link, conflicting radii: rejected.
+  const std::vector<PointOnLink> duplicate = {
+      PointOnLink(link, Point3(0.0, 0.0, 0.0)),
+      PointOnLink(link, Point3(0.0, 0.0, 0.0))};
+  RobotQueryPoints dup_model(kRobot, "columns", robot1Joints(), duplicate);
+  CHECK_EXCEPTION(
+      ObstacleSDFFactor(X(0), dup_model, sdf, 0.01, 0.1,
+                        (Vector(2) << 0.1, 0.2).finished()),
+      std::invalid_argument);
+
+  // Same location, same radius: redundant but not a contradiction, allowed.
+  ObstacleSDFFactor same(X(0), dup_model, sdf, 0.01, 0.1,
+                         (Vector(2) << 0.1, 0.1).finished());
+  EXPECT(assert_equal(gtsam::Vector((Vector(2) << 0.1, 0.1).finished()),
+                      same.radii(), 1e-9));
+
+  // Distinct, overlapping locations with different radii: allowed coverage.
+  const std::vector<PointOnLink> overlap = {
+      PointOnLink(link, Point3(0.0, 0.0, 0.0)),
+      PointOnLink(link, Point3(0.05, 0.0, 0.0))};
+  RobotQueryPoints overlap_model(kRobot, "columns", robot1Joints(), overlap);
+  ObstacleSDFFactor allowed(X(0), overlap_model, sdf, 0.01, 0.1,
+                            (Vector(2) << 0.1, 0.2).finished());
+  EXPECT_LONGS_EQUAL(2, allowed.evaluateError((Vector(9) << 2.0, 2.0, 1.0, 0.0,
+                                               -0.5, -1.0, 0.0, 0.5, 0.0)
+                                                  .finished())
+                            .size());
+}
+
 // Only robot1's joints are given to the model, so the bridge2 subtree is never
 // traversed and robot2 is absent from the query point model entirely.
 TEST(RobotQueryPoints, jacobiansAgainstNumerical) {

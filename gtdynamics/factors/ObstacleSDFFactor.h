@@ -22,7 +22,10 @@
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <cmath>
+#include <cstdint>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -58,6 +61,27 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
     }
     if ((radii_.array() < 0.0).any()) {
       throw std::invalid_argument("ObstacleSDFFactor: radii must be >= 0.");
+    }
+    // Overlapping spheres on a link are fine, but the same point registered
+    // twice with different radii is a contradiction. Group by link so only
+    // same-link points are compared, not every pair.
+    const auto &pts = robot_.points();
+    std::map<uint8_t, std::vector<size_t>> by_link;
+    for (size_t i = 0; i < pts.size(); ++i) {
+      by_link[pts[i].link->id()].push_back(i);
+    }
+    for (const auto &group : by_link) {
+      const std::vector<size_t> &idx = group.second;
+      for (size_t a = 0; a < idx.size(); ++a) {
+        for (size_t b = a + 1; b < idx.size(); ++b) {
+          if ((pts[idx[a]].point - pts[idx[b]].point).norm() < 1e-9 &&
+              std::fabs(radii_(idx[a]) - radii_(idx[b])) > 1e-9) {
+            throw std::invalid_argument(
+                "ObstacleSDFFactor: two points at the same location have "
+                "conflicting radii.");
+          }
+        }
+      }
     }
   }
 
