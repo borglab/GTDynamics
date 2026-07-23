@@ -44,6 +44,43 @@ struct SelfCollisionPair {
 using SelfCollisionPairs = std::vector<SelfCollisionPair>;
 
 /**
+ * Reject inconsistent indices, radii or standoffs, shared by every self
+ * collision factor. factor_name prefixes the error messages.
+ */
+inline void validateSelfCollisionPairs(const RobotQueryPoints &robot,
+                                       const SelfCollisionPairs &pairs,
+                                       const gtsam::Vector &radii,
+                                       const std::string &factor_name) {
+  if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
+    throw std::invalid_argument(
+        factor_name + ": radii must have one entry per point.");
+  }
+  if ((radii.array() < 0.0).any()) {
+    throw std::invalid_argument(factor_name + ": radii must be >= 0.");
+  }
+  for (const auto &p : pairs) {
+    if (p.epsilon < 0.0) {
+      throw std::invalid_argument(factor_name +
+                                  ": a pair epsilon must be >= 0.");
+    }
+    if (p.a >= robot.nrPoints() || p.b >= robot.nrPoints()) {
+      throw std::invalid_argument(factor_name +
+                                  ": pair point index out of range.");
+    }
+    if (p.a == p.b) {
+      throw std::invalid_argument(factor_name +
+                                  ": a pair must use two distinct points.");
+    }
+    // Points on one rigid link keep a constant separation, so the hinge has
+    // no gradient; reject such a pair rather than fire it permanently.
+    if (robot.points()[p.a].link->id() == robot.points()[p.b].link->id()) {
+      throw std::invalid_argument(
+          factor_name + ": a pair must use points on different links.");
+    }
+  }
+}
+
+/**
  * Unary factor keeping the robot clear of itself over a set of query point
  * pairs, one hinge loss row per pair. Both points of every pair move with q, so
  * build the RobotQueryPoints with the union of every joint involved and a
@@ -64,35 +101,8 @@ class SelfCollisionSphereFactor
 
   /// Reject inconsistent indices, radii or standoffs.
   void validate() const {
-    if (static_cast<size_t>(radii_.size()) != robot_.nrPoints()) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactor: radii must have one entry per point.");
-    }
-    if ((radii_.array() < 0.0).any()) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactor: radii must be >= 0.");
-    }
-    for (const auto &p : pairs_) {
-      if (p.epsilon < 0.0) {
-        throw std::invalid_argument(
-            "SelfCollisionSphereFactor: a pair epsilon must be >= 0.");
-      }
-      if (p.a >= robot_.nrPoints() || p.b >= robot_.nrPoints()) {
-        throw std::invalid_argument(
-            "SelfCollisionSphereFactor: pair point index out of range.");
-      }
-      if (p.a == p.b) {
-        throw std::invalid_argument(
-            "SelfCollisionSphereFactor: a pair must use two distinct points.");
-      }
-      // Points on one rigid link keep a constant separation, so the hinge has
-      // no gradient; reject such a pair rather than fire it permanently.
-      if (robot_.points()[p.a].link->id() == robot_.points()[p.b].link->id()) {
-        throw std::invalid_argument(
-            "SelfCollisionSphereFactor: a pair must use points on different "
-            "links.");
-      }
-    }
+    validateSelfCollisionPairs(robot_, pairs_, radii_,
+                               "SelfCollisionSphereFactor");
   }
 
  public:

@@ -1166,6 +1166,30 @@ class SelfCollisionSphereFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/factors/SelfCollisionSphereFactorGP.h>
+class SelfCollisionSphereFactorGP : gtsam::NoiseModelFactor {
+  SelfCollisionSphereFactorGP(gtsam::Key q_key1, gtsam::Key v_key1,
+                              gtsam::Key q_key2, gtsam::Key v_key2,
+                              const gtdynamics::RobotQueryPoints &robot,
+                              const gtdynamics::SelfCollisionPairs &pairs,
+                              const gtsam::Vector &radii, double cost_sigma,
+                              const gtsam::noiseModel::Base *Qc_model,
+                              double delta_t, double tau);
+  SelfCollisionSphereFactorGP(gtsam::Key q_key1, gtsam::Key v_key1,
+                              gtsam::Key q_key2, gtsam::Key v_key2,
+                              const gtdynamics::RobotQueryPoints &robot,
+                              const gtdynamics::SelfCollisionPairs &pairs,
+                              const gtsam::Vector &radii,
+                              const gtsam::Vector &sigmas,
+                              const gtsam::noiseModel::Base *Qc_model,
+                              double delta_t, double tau);
+
+  size_t nrPairs() const;
+  gtsam::Vector radii() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 /********************** Utilities  **********************/
 #include <gtdynamics/utils/format.h>
 string GtdFormat(const gtsam::Values &t, const string &s = "");
