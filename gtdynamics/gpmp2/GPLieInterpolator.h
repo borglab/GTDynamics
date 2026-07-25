@@ -35,7 +35,8 @@ namespace gtdynamics {
 /**
  * Gaussian process interpolator on any Lie group T. Given the two support
  * states (pose1, vel1) and (pose2, vel2) separated by deltaT, interpolates the
- * pose and velocity at time tau after the first support state.
+ * pose and velocity at time tau after the first support state. Only the cached
+ * scalar coefficients of Lambda and Psi are stored, since Qc cancels.
  */
 template <typename T>
 class GPLieInterpolator {
@@ -46,11 +47,9 @@ class GPLieInterpolator {
 
   size_t dof_;
   double deltaT_;  ///< time between the two support states
-  double tau_;      ///< time from the first support state
+  double tau_;     ///< time from the first support state
 
-  gtsam::Matrix Qc_;
-  gtsam::Matrix Lambda_;
-  gtsam::Matrix Psi_;
+  gtsam::Matrix2 lambda_, psi_;  ///< scalar block coefficients
 
  public:
   /// Default constructor, only for serialization.
@@ -58,26 +57,23 @@ class GPLieInterpolator {
 
   /**
    * Constructor.
-   * @param QcModel Gaussian noise model whose covariance is Qc. Its dimension
-   * must equal the tangent dimension of T, e.g. 6 for Pose3.
+   * @param QcModel Gaussian noise model, only its dimension is used. It must
+   * equal the tangent dimension of T, e.g. 6 for Pose3.
    * @param deltaT time between the two support states
    * @param tau time from the first support state to the interpolated state
    */
   GPLieInterpolator(const gtsam::SharedNoiseModel &QcModel, double deltaT,
                     double tau)
       : dof_(QcModel->dim()), deltaT_(deltaT), tau_(tau) {
-    checkGPInterval(deltaT_, tau_);
-    // A mismatched Qc dimension silently mis-slices Lambda and Psi, so reject
-    // it up front. Only checkable when T has a fixed dimension.
+    // A mismatched Qc dimension would silently mis-size the Jacobians, so
+    // reject it up front. Only checkable when T has a fixed dimension.
     if (gtsam::traits<T>::dimension != Eigen::Dynamic &&
         dof_ != static_cast<size_t>(gtsam::traits<T>::dimension)) {
       throw std::invalid_argument(
           "GPLieInterpolator: QcModel dimension must equal the tangent "
           "dimension of the Lie group.");
     }
-    Qc_ = getQc(QcModel);
-    Lambda_ = calcLambdaAccel(Qc_, deltaT_, tau_);
-    Psi_ = calcPsiAccel(Qc_, deltaT_, tau_);
+    calcInterpCoefficientsAccel(deltaT_, tau_, &lambda_, &psi_);
   }
 
   ~GPLieInterpolator() {}
@@ -91,9 +87,6 @@ class GPLieInterpolator {
                     gtsam::Matrix *H4 = nullptr) const {
     const bool computeJacobians = (H1 || H2 || H3 || H4);
 
-    gtsam::Vector r1(2 * dof_);
-    r1 << gtsam::Vector::Zero(dof_), vel1;
-
     // Relative increment between the two support poses, in the tangent space.
     gtsam::Matrix Hinv, Hcomp11, Hcomp12, Hlogmap;
     gtsam::Vector r;
@@ -106,11 +99,9 @@ class GPLieInterpolator {
       r = gtsam::traits<T>::Logmap(
           gtsam::traits<T>::Compose(gtsam::traits<T>::Inverse(pose1), pose2));
     }
-    gtsam::Vector r2(2 * dof_);
-    r2 << r, vel2;
 
-    const gtsam::Vector xi = Lambda_.block(0, 0, dof_, 2 * dof_) * r1 +
-                             Psi_.block(0, 0, dof_, 2 * dof_) * r2;
+    const gtsam::Vector xi =
+        lambda_(0, 1) * vel1 + psi_(0, 0) * r + psi_(0, 1) * vel2;
 
     if (!computeJacobians) {
       return gtsam::traits<T>::Compose(pose1, gtsam::traits<T>::Expmap(xi));
@@ -122,11 +113,10 @@ class GPLieInterpolator {
     const gtsam::Matrix Hexpr1 = Hcomp22 * Hexp;
 
     if (H1)
-      *H1 = Hcomp21 +
-            Hexpr1 * Psi_.block(0, 0, dof_, dof_) * Hlogmap * Hcomp11 * Hinv;
-    if (H2) *H2 = Hexpr1 * Lambda_.block(0, dof_, dof_, dof_);
-    if (H3) *H3 = Hexpr1 * Psi_.block(0, 0, dof_, dof_) * Hlogmap * Hcomp12;
-    if (H4) *H4 = Hexpr1 * Psi_.block(0, dof_, dof_, dof_);
+      *H1 = Hcomp21 + psi_(0, 0) * Hexpr1 * Hlogmap * Hcomp11 * Hinv;
+    if (H2) *H2 = lambda_(0, 1) * Hexpr1;
+    if (H3) *H3 = psi_(0, 0) * Hexpr1 * Hlogmap * Hcomp12;
+    if (H4) *H4 = psi_(0, 1) * Hexpr1;
 
     return pose;
   }
@@ -140,9 +130,6 @@ class GPLieInterpolator {
       gtsam::Matrix *H4 = nullptr) const {
     const bool computeJacobians = (H1 || H2 || H3 || H4);
 
-    gtsam::Vector r1(2 * dof_);
-    r1 << gtsam::Vector::Zero(dof_), vel1;
-
     gtsam::Matrix Hinv, Hcomp11, Hcomp12, Hlogmap;
     gtsam::Vector r;
     if (computeJacobians) {
@@ -154,16 +141,13 @@ class GPLieInterpolator {
       r = gtsam::traits<T>::Logmap(
           gtsam::traits<T>::Compose(gtsam::traits<T>::Inverse(pose1), pose2));
     }
-    gtsam::Vector r2(2 * dof_);
-    r2 << r, vel2;
 
-    if (H1) *H1 = Psi_.block(dof_, 0, dof_, dof_) * Hlogmap * Hcomp11 * Hinv;
-    if (H2) *H2 = Lambda_.block(dof_, dof_, dof_, dof_);
-    if (H3) *H3 = Psi_.block(dof_, 0, dof_, dof_) * Hlogmap * Hcomp12;
-    if (H4) *H4 = Psi_.block(dof_, dof_, dof_, dof_);
+    if (H1) *H1 = psi_(1, 0) * Hlogmap * Hcomp11 * Hinv;
+    if (H2) *H2 = lambda_(1, 1) * gtsam::Matrix::Identity(dof_, dof_);
+    if (H3) *H3 = psi_(1, 0) * Hlogmap * Hcomp12;
+    if (H4) *H4 = psi_(1, 1) * gtsam::Matrix::Identity(dof_, dof_);
 
-    return Lambda_.block(dof_, 0, dof_, 2 * dof_) * r1 +
-           Psi_.block(dof_, 0, dof_, 2 * dof_) * r2;
+    return lambda_(1, 1) * vel1 + psi_(1, 0) * r + psi_(1, 1) * vel2;
   }
 
   /// Chain the Jacobian of a cost at the interpolated pose back to the states.
@@ -186,9 +170,8 @@ class GPLieInterpolator {
   bool equals(const This &expected, double tol = 1e-9) const {
     return std::fabs(this->deltaT_ - expected.deltaT_) < tol &&
            std::fabs(this->tau_ - expected.tau_) < tol &&
-           gtsam::equal_with_abs_tol(this->Qc_, expected.Qc_, tol) &&
-           gtsam::equal_with_abs_tol(this->Lambda_, expected.Lambda_, tol) &&
-           gtsam::equal_with_abs_tol(this->Psi_, expected.Psi_, tol);
+           gtsam::equal_with_abs_tol(this->lambda_, expected.lambda_, tol) &&
+           gtsam::equal_with_abs_tol(this->psi_, expected.psi_, tol);
   }
 
   /// Print contents.
@@ -208,9 +191,8 @@ class GPLieInterpolator {
     ar &BOOST_SERIALIZATION_NVP(dof_);
     ar &BOOST_SERIALIZATION_NVP(deltaT_);
     ar &BOOST_SERIALIZATION_NVP(tau_);
-    ar &make_nvp("Qc", make_array(Qc_.data(), Qc_.size()));
-    ar &make_nvp("Lambda", make_array(Lambda_.data(), Lambda_.size()));
-    ar &make_nvp("Psi", make_array(Psi_.data(), Psi_.size()));
+    ar &make_nvp("lambda", make_array(lambda_.data(), lambda_.size()));
+    ar &make_nvp("psi", make_array(psi_.data(), psi_.size()));
   }
 #endif
 };  // \class GPLieInterpolator

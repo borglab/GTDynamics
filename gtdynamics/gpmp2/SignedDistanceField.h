@@ -77,6 +77,19 @@ class SignedDistanceField {
                       size_t fieldRows, size_t fieldCols, size_t fieldZ);
 
   /**
+   * Fast constructor from a flat array, for production voxel maps. values
+   * holds one distance per node with x (col) fastest, then y (row), then z:
+   * index = (z * rows + row) * cols + col.
+   * @param origin the (x, y, z) position of cell (0, 0, 0), in frame s
+   * @param cellSize the side length of a grid cell
+   * @param fieldRows / fieldCols / fieldZ the grid extent
+   * @param values flat distances, one per grid node
+   */
+  SignedDistanceField(const gtsam::Point3 &origin, double cellSize,
+                      size_t fieldRows, size_t fieldCols, size_t fieldZ,
+                      const gtsam::Vector &values);
+
+  /**
    * Constructor from sampled positions and their signed distances. The origin,
    * cell size and grid extent are inferred from the positions, which must be
    * exactly the nodes of a uniform grid of equal spacing on all three axes.

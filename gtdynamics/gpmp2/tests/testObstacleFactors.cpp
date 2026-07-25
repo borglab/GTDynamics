@@ -156,6 +156,34 @@ TEST(SignedDistanceField, rejectsInvalidConstruction) {
                        1e-9);
 }
 
+// The flat data fast path must build the same field as the layered form, with
+// x (col) fastest, then y (row), then z.
+TEST(SignedDistanceField, flatDataMatchesLayered) {
+  const Point3 origin(0.0, 0.0, 0.0);
+  const size_t rows = 3, cols = 4, layers = 2;
+
+  Vector values(rows * cols * layers);
+  for (size_t i = 0; i < rows * cols * layers; ++i) values(i) = 0.01 * i;
+
+  std::vector<Matrix> data(layers);
+  size_t n = 0;
+  for (size_t z = 0; z < layers; ++z) {
+    Matrix layer(rows, cols);
+    for (size_t r = 0; r < rows; ++r) {
+      for (size_t c = 0; c < cols; ++c) layer(r, c) = values(n++);
+    }
+    data[z] = layer;
+  }
+
+  const SignedDistanceField flat(origin, kCell, rows, cols, layers, values);
+  const SignedDistanceField layered(origin, kCell, data);
+  EXPECT(assert_equal(layered, flat, 1e-12));
+
+  CHECK_EXCEPTION(
+      SignedDistanceField(origin, kCell, rows, cols, layers, Vector::Ones(5)),
+      std::invalid_argument);
+}
+
 /* ***************************** obstacle cost *************************** */
 
 TEST(ObstacleCost, hingeLossAndJacobian) {

@@ -88,13 +88,39 @@ inline gtsam::Matrix calcQAccel(const gtsam::Matrix &Qc, double tau) {
 inline gtsam::Matrix calcQinvAccel(const gtsam::Matrix &Qc, double tau) {
   assert(Qc.rows() == Qc.cols());
   const auto n = Qc.rows();
-  const gtsam::Matrix QcInv = Qc.inverse();
+  // Qc is a covariance, so solve by Cholesky rather than invert explicitly.
+  const gtsam::Matrix QcInv = Qc.llt().solve(gtsam::Matrix::Identity(n, n));
   return (gtsam::Matrix(2 * n, 2 * n) <<          //
           12.0 * std::pow(tau, -3.0) * QcInv,    //
           -6.0 * std::pow(tau, -2.0) * QcInv,    //
           -6.0 * std::pow(tau, -2.0) * QcInv,    //
           4.0 * std::pow(tau, -1.0) * QcInv)
       .finished();
+}
+
+/**
+ * @fn Scalar block coefficients of the interpolation matrices Lambda and Psi.
+ * Qc cancels out of both, leaving cubic Hermite polynomials of tau, so
+ * Lambda = lambda kron I and Psi = psi kron I for any Qc.
+ *
+ * Converting from Hermite (given) to Bezier (target): P0 = p1,
+ * P1 = p1 + deltaT/3 v1, P2 = p2 - deltaT/3 v2, P3 = p2.
+ *
+ * @param deltaT time between the two support states.
+ * @param tau time from the first support state to the interpolated state.
+ * @param lambda filled with the 2 x 2 coefficients of Lambda.
+ * @param psi filled with the 2 x 2 coefficients of Psi.
+ */
+inline void calcInterpCoefficientsAccel(double deltaT, double tau,
+                                        gtsam::Matrix2 *lambda,
+                                        gtsam::Matrix2 *psi) {
+  checkGPInterval(deltaT, tau);
+  const double s = tau / deltaT;
+  const double s2 = s * s, s3 = s2 * s;
+  (*lambda) << 1.0 - 3.0 * s2 + 2.0 * s3, deltaT * (s - 2.0 * s2 + s3),
+      (6.0 * s2 - 6.0 * s) / deltaT, 1.0 - 4.0 * s + 3.0 * s2;
+  (*psi) << 3.0 * s2 - 2.0 * s3, deltaT * (s3 - s2),
+      (6.0 * s - 6.0 * s2) / deltaT, 3.0 * s2 - 2.0 * s;
 }
 
 /**

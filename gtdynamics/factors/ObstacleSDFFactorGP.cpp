@@ -27,11 +27,7 @@ gtsam::Vector ObstacleSDFFactorGP::evaluateError(
   const bool computeJacobians = (H1 || H2 || H3 || H4);
   const size_t nrPts = robot_->nrPoints();
 
-  gtsam::Matrix Hq1, Hv1, Hq2, Hv2;
-  const gtsam::Vector q =
-      computeJacobians ? interpolator_.interpolatePose(q1, v1, q2, v2, &Hq1,
-                                                       &Hv1, &Hq2, &Hv2)
-                       : interpolator_.interpolatePose(q1, v1, q2, v2);
+  const gtsam::Vector q = interpolator_.interpolatePose(q1, v1, q2, v2);
 
   std::vector<gtsam::Point3> wPts;
   std::vector<gtsam::Matrix> ptJacobians;
@@ -50,8 +46,7 @@ gtsam::Vector ObstacleSDFFactorGP::evaluateError(
   }
 
   if (computeJacobians) {
-    GPLinearInterpolator::updatePoseJacobians(errJacobian, Hq1, Hv1, Hq2, Hv2,
-                                              H1, H2, H3, H4);
+    interpolator_.updatePoseJacobians(errJacobian, H1, H2, H3, H4);
   }
   return err;
 }

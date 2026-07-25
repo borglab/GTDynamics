@@ -1041,6 +1041,9 @@ class SignedDistanceField {
                       const gtsam::Vector &distances);
   SignedDistanceField(const gtsam::Matrix &positions,
                       const gtsam::Vector &distances, double tol);
+  SignedDistanceField(const gtsam::Point3 &origin, double cellSize,
+                      size_t fieldRows, size_t fieldCols, size_t fieldZ,
+                      const gtsam::Vector &values);
 
   double getSignedDistance(const gtsam::Point3 &point) const;
 

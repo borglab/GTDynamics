@@ -33,7 +33,8 @@ namespace gtdynamics {
 /**
  * Gaussian process interpolator, linear version. Given the two support states
  * (pose1, vel1) and (pose2, vel2) separated by deltaT, interpolates the pose
- * and velocity at time tau after the first support state.
+ * and velocity at time tau after the first support state. Only the cached
+ * scalar coefficients of Lambda and Psi are stored, since Qc cancels.
  */
 class GPLinearInterpolator {
  private:
@@ -41,11 +42,9 @@ class GPLinearInterpolator {
 
   size_t dof_;
   double deltaT_;  ///< time between the two support states
-  double tau_;      ///< time from the first support state
+  double tau_;     ///< time from the first support state
 
-  gtsam::Matrix Qc_;
-  gtsam::Matrix Lambda_;
-  gtsam::Matrix Psi_;
+  gtsam::Matrix2 lambda_, psi_;  ///< scalar block coefficients
 
  public:
   /// Default constructor, only for serialization.
@@ -53,17 +52,14 @@ class GPLinearInterpolator {
 
   /**
    * Constructor.
-   * @param QcModel Gaussian noise model whose covariance is Qc
+   * @param QcModel Gaussian noise model, only its dimension is used
    * @param deltaT time between the two support states
    * @param tau time from the first support state to the interpolated state
    */
   GPLinearInterpolator(const gtsam::SharedNoiseModel &QcModel, double deltaT,
                        double tau)
       : dof_(QcModel->dim()), deltaT_(deltaT), tau_(tau) {
-    checkGPInterval(deltaT_, tau_);
-    Qc_ = getQc(QcModel);
-    Lambda_ = calcLambdaAccel(Qc_, deltaT_, tau_);
-    Psi_ = calcPsiAccel(Qc_, deltaT_, tau_);
+    calcInterpCoefficientsAccel(deltaT_, tau_, &lambda_, &psi_);
   }
 
   ~GPLinearInterpolator() {}
@@ -76,18 +72,12 @@ class GPLinearInterpolator {
       gtsam::Matrix *H2 = nullptr,
       gtsam::Matrix *H3 = nullptr,
       gtsam::Matrix *H4 = nullptr) const {
-    gtsam::Vector x1(2 * dof_), x2(2 * dof_);
-    x1 << pose1, vel1;
-    x2 << pose2, vel2;
-
-    if (H1) *H1 = Lambda_.block(0, 0, dof_, dof_);
-    if (H2) *H2 = Lambda_.block(0, dof_, dof_, dof_);
-    if (H3) *H3 = Psi_.block(0, 0, dof_, dof_);
-    if (H4) *H4 = Psi_.block(0, dof_, dof_, dof_);
-
-    // Only the upper block of the interpolated state is needed.
-    return Lambda_.block(0, 0, dof_, 2 * dof_) * x1 +
-           Psi_.block(0, 0, dof_, 2 * dof_) * x2;
+    if (H1) *H1 = lambda_(0, 0) * gtsam::Matrix::Identity(dof_, dof_);
+    if (H2) *H2 = lambda_(0, 1) * gtsam::Matrix::Identity(dof_, dof_);
+    if (H3) *H3 = psi_(0, 0) * gtsam::Matrix::Identity(dof_, dof_);
+    if (H4) *H4 = psi_(0, 1) * gtsam::Matrix::Identity(dof_, dof_);
+    return lambda_(0, 0) * pose1 + lambda_(0, 1) * vel1 + psi_(0, 0) * pose2 +
+           psi_(0, 1) * vel2;
   }
 
   /// Interpolate the velocity at tau, with Jacobians w.r.t. the support states.
@@ -98,31 +88,22 @@ class GPLinearInterpolator {
       gtsam::Matrix *H2 = nullptr,
       gtsam::Matrix *H3 = nullptr,
       gtsam::Matrix *H4 = nullptr) const {
-    gtsam::Vector x1(2 * dof_), x2(2 * dof_);
-    x1 << pose1, vel1;
-    x2 << pose2, vel2;
-
-    if (H1) *H1 = Lambda_.block(dof_, 0, dof_, dof_);
-    if (H2) *H2 = Lambda_.block(dof_, dof_, dof_, dof_);
-    if (H3) *H3 = Psi_.block(dof_, 0, dof_, dof_);
-    if (H4) *H4 = Psi_.block(dof_, dof_, dof_, dof_);
-
-    // Only the lower block of the interpolated state is needed.
-    return Lambda_.block(dof_, 0, dof_, 2 * dof_) * x1 +
-           Psi_.block(dof_, 0, dof_, 2 * dof_) * x2;
+    if (H1) *H1 = lambda_(1, 0) * gtsam::Matrix::Identity(dof_, dof_);
+    if (H2) *H2 = lambda_(1, 1) * gtsam::Matrix::Identity(dof_, dof_);
+    if (H3) *H3 = psi_(1, 0) * gtsam::Matrix::Identity(dof_, dof_);
+    if (H4) *H4 = psi_(1, 1) * gtsam::Matrix::Identity(dof_, dof_);
+    return lambda_(1, 0) * pose1 + lambda_(1, 1) * vel1 + psi_(1, 0) * pose2 +
+           psi_(1, 1) * vel2;
   }
 
   /// Chain the Jacobian of a cost at the interpolated pose back to the states.
-  static void updatePoseJacobians(
-      const gtsam::Matrix &Hpose, const gtsam::Matrix &Hint1,
-      const gtsam::Matrix &Hint2, const gtsam::Matrix &Hint3,
-      const gtsam::Matrix &Hint4, gtsam::Matrix *H1,
-      gtsam::Matrix *H2, gtsam::Matrix *H3,
-      gtsam::Matrix *H4) {
-    if (H1) *H1 = Hpose * Hint1;
-    if (H2) *H2 = Hpose * Hint2;
-    if (H3) *H3 = Hpose * Hint3;
-    if (H4) *H4 = Hpose * Hint4;
+  void updatePoseJacobians(const gtsam::Matrix &Hpose, gtsam::Matrix *H1,
+                           gtsam::Matrix *H2, gtsam::Matrix *H3,
+                           gtsam::Matrix *H4) const {
+    if (H1) *H1 = lambda_(0, 0) * Hpose;
+    if (H2) *H2 = lambda_(0, 1) * Hpose;
+    if (H3) *H3 = psi_(0, 0) * Hpose;
+    if (H4) *H4 = psi_(0, 1) * Hpose;
   }
 
   /// Return the degrees of freedom of a single state.
@@ -132,9 +113,8 @@ class GPLinearInterpolator {
   bool equals(const This &expected, double tol = 1e-9) const {
     return std::fabs(this->deltaT_ - expected.deltaT_) < tol &&
            std::fabs(this->tau_ - expected.tau_) < tol &&
-           gtsam::equal_with_abs_tol(this->Qc_, expected.Qc_, tol) &&
-           gtsam::equal_with_abs_tol(this->Lambda_, expected.Lambda_, tol) &&
-           gtsam::equal_with_abs_tol(this->Psi_, expected.Psi_, tol);
+           gtsam::equal_with_abs_tol(this->lambda_, expected.lambda_, tol) &&
+           gtsam::equal_with_abs_tol(this->psi_, expected.psi_, tol);
   }
 
   /// Print contents.
@@ -154,9 +134,8 @@ class GPLinearInterpolator {
     ar &BOOST_SERIALIZATION_NVP(dof_);
     ar &BOOST_SERIALIZATION_NVP(deltaT_);
     ar &BOOST_SERIALIZATION_NVP(tau_);
-    ar &make_nvp("Qc", make_array(Qc_.data(), Qc_.size()));
-    ar &make_nvp("Lambda", make_array(Lambda_.data(), Lambda_.size()));
-    ar &make_nvp("Psi", make_array(Psi_.data(), Psi_.size()));
+    ar &make_nvp("lambda", make_array(lambda_.data(), lambda_.size()));
+    ar &make_nvp("psi", make_array(psi_.data(), psi_.size()));
   }
 #endif
 };  // \class GPLinearInterpolator

@@ -76,6 +76,27 @@ SignedDistanceField::SignedDistanceField(const gtsam::Point3 &origin,
 }
 
 /* ************************************************************************* */
+SignedDistanceField::SignedDistanceField(const gtsam::Point3 &origin,
+                                         double cellSize, size_t fieldRows,
+                                         size_t fieldCols, size_t fieldZ,
+                                         const gtsam::Vector &values)
+    : SignedDistanceField(origin, cellSize, fieldRows, fieldCols, fieldZ) {
+  if (static_cast<size_t>(values.size()) !=
+      fieldRows_ * fieldCols_ * fieldZ_) {
+    throw std::invalid_argument(
+        "SignedDistanceField: values must hold one distance per grid node.");
+  }
+  // Each contiguous run of cols values is one row: a row major layer map.
+  using RowMajorMatrix =
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+  const size_t layerSize = fieldRows_ * fieldCols_;
+  for (size_t z = 0; z < fieldZ_; ++z) {
+    data_[z] = Eigen::Map<const RowMajorMatrix>(values.data() + z * layerSize,
+                                                fieldRows_, fieldCols_);
+  }
+}
+
+/* ************************************************************************* */
 SignedDistanceField::SignedDistanceField(const gtsam::Matrix &positions,
                                          const gtsam::Vector &distances,
                                          double tol) {
