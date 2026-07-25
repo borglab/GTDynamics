@@ -55,14 +55,14 @@ TEST(SelfCollisionCost, hingeAndJacobian) {
   EXPECT_DOUBLES_EQUAL(eps - 0.3, hingeLossSelfCollisionCost(pA, pB, eps),
                        1e-9);
   // Beyond epsilon: no cost, zero Jacobians.
-  Matrix13 H_far;
+  Matrix13 Hfar;
   EXPECT_DOUBLES_EQUAL(
-      0.0, hingeLossSelfCollisionCost(pA, Point3(3.0, 0.5, 0.2), eps, H_far),
+      0.0, hingeLossSelfCollisionCost(pA, Point3(3.0, 0.5, 0.2), eps, Hfar),
       1e-9);
-  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(H_far), 1e-9));
+  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(Hfar), 1e-9));
 
-  Matrix13 H_pA, H_pB;
-  hingeLossSelfCollisionCost(pA, pB, eps, H_pA, H_pB);
+  Matrix13 HptA, HptB;
+  hingeLossSelfCollisionCost(pA, pB, eps, HptA, HptB);
   std::function<double(const Point3 &)> fa = [&](const Point3 &p) {
     return hingeLossSelfCollisionCost(p, pB, eps);
   };
@@ -71,10 +71,10 @@ TEST(SelfCollisionCost, hingeAndJacobian) {
   };
   EXPECT(assert_equal(
       Matrix(gtsam::numericalDerivative11<double, Point3>(fa, pA)),
-      Matrix(H_pA), 1e-5));
+      Matrix(HptA), 1e-5));
   EXPECT(assert_equal(
       Matrix(gtsam::numericalDerivative11<double, Point3>(fb, pB)),
-      Matrix(H_pB), 1e-5));
+      Matrix(HptB), 1e-5));
 }
 
 /* ************************ bar_lab 18-DOF model ************************ */
@@ -126,9 +126,9 @@ static Vector configClose() {
 TEST(SelfCollisionSphereFactor, pointPointJacobians) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
-  std::vector<Point3> wPs;
-  model.queryPoints(q, &wPs);
-  const double eps = (wPs[0] - wPs[1]).norm() + 1.0;
+  std::vector<Point3> wPts;
+  model.queryPoints(q, &wPts);
+  const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, eps)};  // wrist1 vs wrist2
@@ -146,12 +146,12 @@ TEST(SelfCollisionSphereFactor, pointPointJacobians) {
 TEST(SelfCollisionSphereFactor, multiplePairs) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
-  std::vector<Point3> wPs;
-  model.queryPoints(q, &wPs);
+  std::vector<Point3> wPts;
+  model.queryPoints(q, &wPts);
 
   const std::vector<SelfCollisionPair> pairs = {
-      SelfCollisionPair(0, 1, (wPs[0] - wPs[1]).norm() + 1.0),   // cross-arm
-      SelfCollisionPair(2, 0, (wPs[2] - wPs[0]).norm() + 1.0)};  // same arm
+      SelfCollisionPair(0, 1, (wPts[0] - wPts[1]).norm() + 1.0),   // cross-arm
+      SelfCollisionPair(2, 0, (wPts[2] - wPts[0]).norm() + 1.0)};  // same arm
   SelfCollisionSphereFactor factor(X(0), model, pairs, Vector::Zero(5), 0.1);
 
   const Vector err = factor.evaluateError(q);
@@ -172,10 +172,10 @@ TEST(SelfCollisionSphereFactor, pushesPointsApart) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
 
   const Vector q0 = configClose();
-  std::vector<Point3> ps0;
-  model.queryPoints(q0, &ps0);
-  const double start_dist = (ps0[3] - ps0[4]).norm();
-  const double eps = start_dist + 0.3;
+  std::vector<Point3> startPts;
+  model.queryPoints(q0, &startPts);
+  const double startDistance = (startPts[3] - startPts[4]).norm();
+  const double eps = startDistance + 0.3;
 
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(3, 4, eps)};  // base1 vs base2
@@ -191,25 +191,25 @@ TEST(SelfCollisionSphereFactor, pushesPointsApart) {
   const Values result =
       gtsam::LevenbergMarquardtOptimizer(graph, init).optimize();
 
-  std::vector<Point3> ps;
-  model.queryPoints(result.at<Vector>(X(0)), &ps);
+  std::vector<Point3> pts;
+  model.queryPoints(result.at<Vector>(X(0)), &pts);
   // The weak prior pulls back slightly, so equilibrium sits just under eps.
-  EXPECT((ps[3] - ps[4]).norm() > eps - 0.05);
-  EXPECT((ps[3] - ps[4]).norm() > start_dist + 0.15);  // clearly separated
+  EXPECT((pts[3] - pts[4]).norm() > eps - 0.05);
+  EXPECT((pts[3] - pts[4]).norm() > startDistance + 0.15);  // clearly separated
 }
 
 /* ************************ per-point radii *************************** */
 
 // eps is set 0.05 below the measured distance so the points are clear, then two
-// 0.1 radii push eps + rA + rB past d, turning the pair into a collision.
+// 0.1 radii push eps + rA + rB past dist, turning the pair into a collision.
 TEST(SelfCollisionSphereFactor, radiiPointPoint) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
-  std::vector<Point3> wPs;
-  model.queryPoints(q, &wPs);
-  const double d = (wPs[0] - wPs[1]).norm();
+  std::vector<Point3> wPts;
+  model.queryPoints(q, &wPts);
+  const double dist = (wPts[0] - wPts[1]).norm();
 
-  const double eps = d - 0.05;
+  const double eps = dist - 0.05;
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, eps)};
 
@@ -220,49 +220,51 @@ TEST(SelfCollisionSphereFactor, radiiPointPoint) {
   radii(0) = 0.1;
   radii(1) = 0.1;
   SelfCollisionSphereFactor inflated(X(0), model, pairs, radii, 0.1);
-  EXPECT_DOUBLES_EQUAL(eps + 0.2 - d, inflated.evaluateError(q)(0), 1e-9);
+  EXPECT_DOUBLES_EQUAL(eps + 0.2 - dist, inflated.evaluateError(q)(0), 1e-9);
 
   // The same total radius on either point gives the same standoff.
-  Vector on_a = Vector::Zero(5), on_b = Vector::Zero(5);
-  on_a(0) = 0.2;
-  on_b(1) = 0.2;
-  SelfCollisionSphereFactor f_a(X(0), model, pairs, on_a, 0.1);
-  SelfCollisionSphereFactor f_b(X(0), model, pairs, on_b, 0.1);
-  EXPECT_DOUBLES_EQUAL(f_a.evaluateError(q)(0), f_b.evaluateError(q)(0), 1e-9);
+  Vector radiiOnA = Vector::Zero(5), radiiOnB = Vector::Zero(5);
+  radiiOnA(0) = 0.2;
+  radiiOnB(1) = 0.2;
+  SelfCollisionSphereFactor factorA(X(0), model, pairs, radiiOnA, 0.1);
+  SelfCollisionSphereFactor factorB(X(0), model, pairs, radiiOnB, 0.1);
+  EXPECT_DOUBLES_EQUAL(factorA.evaluateError(q)(0), factorB.evaluateError(q)(0),
+                       1e-9);
 
   // A radius on an uninvolved point is ignored.
   Vector other = Vector::Zero(5);
   other(2) = 0.2;
-  SelfCollisionSphereFactor f_other(X(0), model, pairs, other, 0.1);
-  EXPECT_DOUBLES_EQUAL(0.0, f_other.evaluateError(q)(0), 1e-9);
+  SelfCollisionSphereFactor factorOther(X(0), model, pairs, other, 0.1);
+  EXPECT_DOUBLES_EQUAL(0.0, factorOther.evaluateError(q)(0), 1e-9);
 }
 
 // In the active branch a radius adds directly to the cost, once per sphere.
 TEST(SelfCollisionSphereFactor, radiiAddToTheStandoff) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
-  std::vector<Point3> wPs;
-  model.queryPoints(q, &wPs);
+  std::vector<Point3> wPts;
+  model.queryPoints(q, &wPts);
 
-  const double eps = (wPs[0] - wPs[1]).norm() + 1.0;  // active by construction
+  // Active by construction: eps sits a metre past the measured distance.
+  const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
 
   SelfCollisionSphereFactor base(X(0), model, pairs, Vector::Zero(5), 0.1);
-  const double e0 = base.evaluateError(q)(0);
-  EXPECT(e0 > 0.0);
+  const double err0 = base.evaluateError(q)(0);
+  EXPECT(err0 > 0.0);
 
   // Each sphere's radius adds to the standoff, so the cost rises by their sum.
   Vector radii = Vector::Zero(5);
   radii(0) = 0.1;
   radii(1) = 0.2;
   SelfCollisionSphereFactor inflated(X(0), model, pairs, radii, 0.1);
-  EXPECT_DOUBLES_EQUAL(e0 + 0.3, inflated.evaluateError(q)(0), 1e-9);
+  EXPECT_DOUBLES_EQUAL(err0 + 0.3, inflated.evaluateError(q)(0), 1e-9);
 
   // A radius on an uninvolved point is ignored.
   Vector other = Vector::Zero(5);
   other(2) = 0.2;
-  SelfCollisionSphereFactor f_other(X(0), model, pairs, other, 0.1);
-  EXPECT_DOUBLES_EQUAL(e0, f_other.evaluateError(q)(0), 1e-9);
+  SelfCollisionSphereFactor factorOther(X(0), model, pairs, other, 0.1);
+  EXPECT_DOUBLES_EQUAL(err0, factorOther.evaluateError(q)(0), 1e-9);
 }
 
 /* ************************ input validation *************************** */

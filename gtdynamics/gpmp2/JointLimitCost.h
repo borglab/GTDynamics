@@ -17,20 +17,20 @@ namespace gtdynamics {
 
 /// Hinge loss cost keeping p within its limits, zero until thresh away from
 /// either, so thresh is the standoff kept from each limit.
-inline double hingeLossJointLimitCost(double p, double down_limit,
-                                      double up_limit, double thresh,
-                                      double *H_p = nullptr) {
-  if (p < down_limit + thresh) {
-    if (H_p) *H_p = -1.0;
-    return down_limit + thresh - p;
+inline double hingeLossJointLimitCost(double p, double downLimit,
+                                      double upLimit, double thresh,
+                                      double *Hp = nullptr) {
+  if (p < downLimit + thresh) {
+    if (Hp) *Hp = -1.0;
+    return downLimit + thresh - p;
 
-  } else if (p <= up_limit - thresh) {
-    if (H_p) *H_p = 0.0;
+  } else if (p <= upLimit - thresh) {
+    if (Hp) *Hp = 0.0;
     return 0.0;
 
   } else {
-    if (H_p) *H_p = 1.0;
-    return p - up_limit + thresh;
+    if (Hp) *Hp = 1.0;
+    return p - upLimit + thresh;
   }
 }
 

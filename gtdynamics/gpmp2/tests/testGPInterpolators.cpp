@@ -41,26 +41,26 @@ static const double kTau = 0.15;
 // Lambda and Psi must reproduce the support states exactly at the endpoints:
 // Psi(0) = 0 and Lambda(0) = I, while Psi(dt) = I and Lambda(dt) = 0.
 TEST(GPLinearInterpolator, reproducesEndpoints) {
-  auto Qc_model = Isotropic::Sigma(2, 1.0);
+  auto QcModel = Isotropic::Sigma(2, 1.0);
   const Vector q1 = (Vector(2) << 1.0, -2.0).finished();
   const Vector v1 = (Vector(2) << 0.3, 0.7).finished();
   const Vector q2 = (Vector(2) << 2.5, 0.5).finished();
   const Vector v2 = (Vector(2) << -0.1, 0.2).finished();
 
-  GPLinearInterpolator at_start(Qc_model, kDeltaT, 0.0);
-  EXPECT(assert_equal(q1, at_start.interpolatePose(q1, v1, q2, v2), 1e-9));
-  EXPECT(assert_equal(v1, at_start.interpolateVelocity(q1, v1, q2, v2), 1e-9));
+  GPLinearInterpolator atStart(QcModel, kDeltaT, 0.0);
+  EXPECT(assert_equal(q1, atStart.interpolatePose(q1, v1, q2, v2), 1e-9));
+  EXPECT(assert_equal(v1, atStart.interpolateVelocity(q1, v1, q2, v2), 1e-9));
 
-  GPLinearInterpolator at_end(Qc_model, kDeltaT, kDeltaT);
-  EXPECT(assert_equal(q2, at_end.interpolatePose(q1, v1, q2, v2), 1e-9));
-  EXPECT(assert_equal(v2, at_end.interpolateVelocity(q1, v1, q2, v2), 1e-9));
+  GPLinearInterpolator atEnd(QcModel, kDeltaT, kDeltaT);
+  EXPECT(assert_equal(q2, atEnd.interpolatePose(q1, v1, q2, v2), 1e-9));
+  EXPECT(assert_equal(v2, atEnd.interpolateVelocity(q1, v1, q2, v2), 1e-9));
 }
 
 // A minimum acceleration trajectory through a constant velocity pair is the
 // straight line itself, so the interpolated state is exactly q1 + tau * v1.
 TEST(GPLinearInterpolator, constantVelocityIsALine) {
-  auto Qc_model = Isotropic::Sigma(2, 1.0);
-  GPLinearInterpolator interp(Qc_model, kDeltaT, kTau);
+  auto QcModel = Isotropic::Sigma(2, 1.0);
+  GPLinearInterpolator interp(QcModel, kDeltaT, kTau);
 
   const Vector q1 = (Vector(2) << 1.0, -2.0).finished();
   const Vector v1 = (Vector(2) << 0.3, 0.7).finished();
@@ -75,8 +75,8 @@ TEST(GPLinearInterpolator, constantVelocityIsALine) {
 // which is Eigen::Dynamic for gtsam::Vector, so the probed arguments are fixed
 // size Vector2 here. They convert to the dynamic Vector the interpolator takes.
 TEST(GPLinearInterpolator, jacobians) {
-  auto Qc_model = Isotropic::Sigma(2, 1.0);
-  GPLinearInterpolator interp(Qc_model, kDeltaT, kTau);
+  auto QcModel = Isotropic::Sigma(2, 1.0);
+  GPLinearInterpolator interp(QcModel, kDeltaT, kTau);
 
   const Vector2 q1(1.0, -2.0), v1(0.3, 0.7), q2(2.5, 0.5), v2(-0.1, 0.2);
 
@@ -135,26 +135,26 @@ TEST(GPLinearInterpolator, jacobians) {
 /* *************************** Lie interpolator *************************** */
 
 TEST(GPLieInterpolator, rot3ReproducesEndpoints) {
-  auto Qc_model = Isotropic::Sigma(3, 1.0);
+  auto QcModel = Isotropic::Sigma(3, 1.0);
   const Rot3 R1 = Rot3::RzRyRx(0.1, -0.2, 0.3);
   const Rot3 R2 = Rot3::RzRyRx(-0.3, 0.15, 0.05);
   const Vector v1 = (Vector(3) << 0.4, -0.1, 0.6).finished();
   const Vector v2 = (Vector(3) << 0.2, 0.3, -0.5).finished();
 
-  GPLieInterpolator<Rot3> at_start(Qc_model, kDeltaT, 0.0);
-  EXPECT(assert_equal(R1, at_start.interpolatePose(R1, v1, R2, v2), 1e-9));
-  EXPECT(assert_equal(v1, at_start.interpolateVelocity(R1, v1, R2, v2), 1e-9));
+  GPLieInterpolator<Rot3> atStart(QcModel, kDeltaT, 0.0);
+  EXPECT(assert_equal(R1, atStart.interpolatePose(R1, v1, R2, v2), 1e-9));
+  EXPECT(assert_equal(v1, atStart.interpolateVelocity(R1, v1, R2, v2), 1e-9));
 
-  GPLieInterpolator<Rot3> at_end(Qc_model, kDeltaT, kDeltaT);
-  EXPECT(assert_equal(R2, at_end.interpolatePose(R1, v1, R2, v2), 1e-9));
-  EXPECT(assert_equal(v2, at_end.interpolateVelocity(R1, v1, R2, v2), 1e-9));
+  GPLieInterpolator<Rot3> atEnd(QcModel, kDeltaT, kDeltaT);
+  EXPECT(assert_equal(R2, atEnd.interpolatePose(R1, v1, R2, v2), 1e-9));
+  EXPECT(assert_equal(v2, atEnd.interpolateVelocity(R1, v1, R2, v2), 1e-9));
 }
 
 // Under a constant body twist the interpolated pose must be the exact geodesic
 // point p1 * Expmap(tau * v1). This pins the lift, interpolate, retract path.
 TEST(GPPose3Interpolator, constantTwistIsAGeodesic) {
-  auto Qc_model = Isotropic::Sigma(6, 1.0);
-  GPPose3Interpolator interp(Qc_model, kDeltaT, kTau);
+  auto QcModel = Isotropic::Sigma(6, 1.0);
+  GPPose3Interpolator interp(QcModel, kDeltaT, kTau);
 
   const Pose3 p1(Rot3::RzRyRx(0.1, 0.2, 0.3), Point3(1.0, 2.0, 3.0));
   const Vector v1 = (Vector(6) << 0.1, -0.2, 0.3, 0.4, 0.5, -0.6).finished();
@@ -166,25 +166,25 @@ TEST(GPPose3Interpolator, constantTwistIsAGeodesic) {
 }
 
 TEST(GPPose3Interpolator, reproducesEndpoints) {
-  auto Qc_model = Isotropic::Sigma(6, 1.0);
+  auto QcModel = Isotropic::Sigma(6, 1.0);
   const Pose3 p1(Rot3::RzRyRx(0.1, 0.2, 0.3), Point3(1.0, 2.0, 3.0));
   const Pose3 p2(Rot3::RzRyRx(-0.2, 0.1, 0.4), Point3(1.4, 1.7, 3.2));
   const Vector v1 = (Vector(6) << 0.1, -0.2, 0.3, 0.4, 0.5, -0.6).finished();
   const Vector v2 = (Vector(6) << 0.0, 0.1, -0.1, 0.2, -0.3, 0.4).finished();
 
-  GPPose3Interpolator at_start(Qc_model, kDeltaT, 0.0);
-  EXPECT(assert_equal(p1, at_start.interpolatePose(p1, v1, p2, v2), 1e-9));
-  EXPECT(assert_equal(v1, at_start.interpolateVelocity(p1, v1, p2, v2), 1e-9));
+  GPPose3Interpolator atStart(QcModel, kDeltaT, 0.0);
+  EXPECT(assert_equal(p1, atStart.interpolatePose(p1, v1, p2, v2), 1e-9));
+  EXPECT(assert_equal(v1, atStart.interpolateVelocity(p1, v1, p2, v2), 1e-9));
 
-  GPPose3Interpolator at_end(Qc_model, kDeltaT, kDeltaT);
-  EXPECT(assert_equal(p2, at_end.interpolatePose(p1, v1, p2, v2), 1e-9));
-  EXPECT(assert_equal(v2, at_end.interpolateVelocity(p1, v1, p2, v2), 1e-9));
+  GPPose3Interpolator atEnd(QcModel, kDeltaT, kDeltaT);
+  EXPECT(assert_equal(p2, atEnd.interpolatePose(p1, v1, p2, v2), 1e-9));
+  EXPECT(assert_equal(v2, atEnd.interpolateVelocity(p1, v1, p2, v2), 1e-9));
 }
 
 // As above, the velocity arguments are probed as fixed size Vector6.
 TEST(GPPose3Interpolator, jacobians) {
-  auto Qc_model = Isotropic::Sigma(6, 1.0);
-  GPPose3Interpolator interp(Qc_model, kDeltaT, kTau);
+  auto QcModel = Isotropic::Sigma(6, 1.0);
+  GPPose3Interpolator interp(QcModel, kDeltaT, kTau);
 
   const Pose3 p1(Rot3::RzRyRx(0.1, 0.2, 0.3), Point3(1.0, 2.0, 3.0));
   const Pose3 p2(Rot3::RzRyRx(-0.2, 0.1, 0.4), Point3(1.4, 1.7, 3.2));

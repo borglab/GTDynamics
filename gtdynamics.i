@@ -1057,10 +1057,10 @@ class SignedDistanceField {
 
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 class RobotQueryPoints {
-  RobotQueryPoints(const gtdynamics::Robot &robot, string base_link_name,
+  RobotQueryPoints(const gtdynamics::Robot &robot, string baseLinkName,
                    const std::vector<gtdynamics::Joint *> &joints,
                    const gtdynamics::PointOnLinks &points);
-  RobotQueryPoints(const gtdynamics::Robot &robot, string base_link_name,
+  RobotQueryPoints(const gtdynamics::Robot &robot, string baseLinkName,
                    const std::vector<gtdynamics::Joint *> &joints,
                    const gtdynamics::PointOnLinks &points,
                    const gtsam::Pose3 &wTbase);
@@ -1072,9 +1072,9 @@ class RobotQueryPoints {
 
 #include <gtdynamics/factors/GPLinearPriorFactor.h>
 class GPLinearPrior : gtsam::NoiseModelFactor {
-  GPLinearPrior(gtsam::Key pose_key1, gtsam::Key vel_key1, gtsam::Key pose_key2,
-                gtsam::Key vel_key2, double delta_t,
-                const gtsam::noiseModel::Base *Qc_model);
+  GPLinearPrior(gtsam::Key poseKey1, gtsam::Key velKey1, gtsam::Key poseKey2,
+                gtsam::Key velKey2, double deltaT,
+                const gtsam::noiseModel::Base *QcModel);
 
   size_t dof() const;
   double deltaT() const;
@@ -1084,12 +1084,12 @@ class GPLinearPrior : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/factors/ObstacleSDFFactor.h>
 class ObstacleSDFFactor : gtsam::NoiseModelFactor {
-  ObstacleSDFFactor(gtsam::Key q_key, const gtdynamics::RobotQueryPoints &robot,
+  ObstacleSDFFactor(gtsam::Key qKey, const gtdynamics::RobotQueryPoints &robot,
                     const gtdynamics::SignedDistanceField *sdf,
-                    double cost_sigma, double epsilon);
-  ObstacleSDFFactor(gtsam::Key q_key, const gtdynamics::RobotQueryPoints &robot,
+                    double costSigma, double epsilon);
+  ObstacleSDFFactor(gtsam::Key qKey, const gtdynamics::RobotQueryPoints &robot,
                     const gtdynamics::SignedDistanceField *sdf,
-                    double cost_sigma, double epsilon,
+                    double costSigma, double epsilon,
                     const gtsam::Vector &radii);
 
   double epsilon() const;
@@ -1100,11 +1100,11 @@ class ObstacleSDFFactor : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/factors/JointLimitFactorVector.h>
 class JointLimitFactorVector : gtsam::NoiseModelFactor {
-  JointLimitFactorVector(gtsam::Key q_key,
-                         const gtsam::noiseModel::Base *cost_model,
-                         const gtsam::Vector &down_limit,
-                         const gtsam::Vector &up_limit,
-                         const gtsam::Vector &limit_thresh);
+  JointLimitFactorVector(gtsam::Key qKey,
+                         const gtsam::noiseModel::Base *costModel,
+                         const gtsam::Vector &downLimit,
+                         const gtsam::Vector &upLimit,
+                         const gtsam::Vector &limitThreshold);
 
   size_t dof() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
@@ -1113,10 +1113,10 @@ class JointLimitFactorVector : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/factors/VelocityLimitFactorVector.h>
 class VelocityLimitFactorVector : gtsam::NoiseModelFactor {
-  VelocityLimitFactorVector(gtsam::Key v_key,
-                            const gtsam::noiseModel::Base *cost_model,
-                            const gtsam::Vector &vel_limit,
-                            const gtsam::Vector &limit_thresh);
+  VelocityLimitFactorVector(gtsam::Key vKey,
+                            const gtsam::noiseModel::Base *costModel,
+                            const gtsam::Vector &velLimit,
+                            const gtsam::Vector &limitThreshold);
 
   size_t dof() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
@@ -1125,12 +1125,12 @@ class VelocityLimitFactorVector : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/factors/ObstacleSDFFactorGP.h>
 class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
-  ObstacleSDFFactorGP(gtsam::Key q_key1, gtsam::Key v_key1, gtsam::Key q_key2,
-                      gtsam::Key v_key2,
+  ObstacleSDFFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
+                      gtsam::Key vKey2,
                       const gtdynamics::RobotQueryPoints &robot,
                       const gtdynamics::SignedDistanceField *sdf,
-                      double cost_sigma, double epsilon,
-                      const gtsam::noiseModel::Base *Qc_model, double delta_t,
+                      double costSigma, double epsilon,
+                      const gtsam::noiseModel::Base *QcModel, double deltaT,
                       double tau);
 
   double epsilon() const;
@@ -1150,11 +1150,11 @@ class SelfCollisionPair {
 // SelfCollisionPairs defined in specializations.h
 
 class SelfCollisionSphereFactor : gtsam::NoiseModelFactor {
-  SelfCollisionSphereFactor(gtsam::Key q_key,
+  SelfCollisionSphereFactor(gtsam::Key qKey,
                             const gtdynamics::RobotQueryPoints &robot,
                             const gtdynamics::SelfCollisionPairs &pairs,
-                            const gtsam::Vector &radii, double cost_sigma);
-  SelfCollisionSphereFactor(gtsam::Key q_key,
+                            const gtsam::Vector &radii, double costSigma);
+  SelfCollisionSphereFactor(gtsam::Key qKey,
                             const gtdynamics::RobotQueryPoints &robot,
                             const gtdynamics::SelfCollisionPairs &pairs,
                             const gtsam::Vector &radii,
@@ -1168,21 +1168,21 @@ class SelfCollisionSphereFactor : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/factors/SelfCollisionSphereFactorGP.h>
 class SelfCollisionSphereFactorGP : gtsam::NoiseModelFactor {
-  SelfCollisionSphereFactorGP(gtsam::Key q_key1, gtsam::Key v_key1,
-                              gtsam::Key q_key2, gtsam::Key v_key2,
+  SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
+                              gtsam::Key qKey2, gtsam::Key vKey2,
                               const gtdynamics::RobotQueryPoints &robot,
                               const gtdynamics::SelfCollisionPairs &pairs,
-                              const gtsam::Vector &radii, double cost_sigma,
-                              const gtsam::noiseModel::Base *Qc_model,
-                              double delta_t, double tau);
-  SelfCollisionSphereFactorGP(gtsam::Key q_key1, gtsam::Key v_key1,
-                              gtsam::Key q_key2, gtsam::Key v_key2,
+                              const gtsam::Vector &radii, double costSigma,
+                              const gtsam::noiseModel::Base *QcModel,
+                              double deltaT, double tau);
+  SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
+                              gtsam::Key qKey2, gtsam::Key vKey2,
                               const gtdynamics::RobotQueryPoints &robot,
                               const gtdynamics::SelfCollisionPairs &pairs,
                               const gtsam::Vector &radii,
                               const gtsam::Vector &sigmas,
-                              const gtsam::noiseModel::Base *Qc_model,
-                              double delta_t, double tau);
+                              const gtsam::noiseModel::Base *QcModel,
+                              double deltaT, double tau);
 
   size_t nrPairs() const;
   gtsam::Vector radii() const;

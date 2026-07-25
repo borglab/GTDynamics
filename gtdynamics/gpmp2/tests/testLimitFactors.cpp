@@ -53,19 +53,19 @@ TEST(JointLimitFactorVector, errorAndJacobians) {
 
   Matrix H;
   factor.evaluateError(outside, &H);
-  Matrix expected_H = Matrix::Zero(3, 3);
-  expected_H(0, 0) = -1.0;
-  expected_H(2, 2) = 1.0;
-  EXPECT(assert_equal(expected_H, H, 1e-9));
+  Matrix expectedH = Matrix::Zero(3, 3);
+  expectedH(0, 0) = -1.0;
+  expectedH(2, 2) = 1.0;
+  EXPECT(assert_equal(expectedH, H, 1e-9));
 
   // The hinge is not differentiable at a knee, so probe away from one.
   Values values;
   values.insert(kKey, outside);
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 
-  Values inside_values;
-  inside_values.insert(kKey, inside);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, inside_values, 1e-7, 1e-5);
+  Values insideValues;
+  insideValues.insert(kKey, inside);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, insideValues, 1e-7, 1e-5);
 }
 
 TEST(JointLimitFactorVector, rejectsBadDimensions) {
@@ -112,18 +112,18 @@ TEST(VelocityLimitFactorVector, errorAndJacobians) {
 
   Matrix H;
   factor.evaluateError(outside, &H);
-  Matrix expected_H = Matrix::Zero(3, 3);
-  expected_H(0, 0) = -1.0;
-  expected_H(2, 2) = 1.0;
-  EXPECT(assert_equal(expected_H, H, 1e-9));
+  Matrix expectedH = Matrix::Zero(3, 3);
+  expectedH(0, 0) = -1.0;
+  expectedH(2, 2) = 1.0;
+  EXPECT(assert_equal(expectedH, H, 1e-9));
 
   Values values;
   values.insert(kKey, outside);
   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 
-  Values inside_values;
-  inside_values.insert(kKey, inside);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, inside_values, 1e-7, 1e-5);
+  Values insideValues;
+  insideValues.insert(kKey, inside);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, insideValues, 1e-7, 1e-5);
 }
 
 TEST(VelocityLimitFactorVector, rejectsBadDimensions) {

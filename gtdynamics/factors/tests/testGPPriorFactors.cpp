@@ -38,8 +38,8 @@ static const gtsam::Key kP1 = 0, kV1 = 1, kP2 = 2, kV2 = 3;
 // pair, where q2 = q1 + dt * v1 and v2 == v1, lies exactly on the prior.
 TEST(GPLinearPrior, errorOnConstantVelocity) {
   const size_t dof = 3;
-  auto Qc_model = Isotropic::Sigma(dof, 1.0);
-  GPLinearPrior factor(kP1, kV1, kP2, kV2, kDeltaT, Qc_model);
+  auto QcModel = Isotropic::Sigma(dof, 1.0);
+  GPLinearPrior factor(kP1, kV1, kP2, kV2, kDeltaT, QcModel);
 
   const Vector q1 = (Vector(3) << 1.0, -2.0, 0.5).finished();
   const Vector v1 = (Vector(3) << 0.3, 0.7, -0.2).finished();
@@ -53,8 +53,8 @@ TEST(GPLinearPrior, errorOnConstantVelocity) {
 // Away from a constant velocity pair the error is the shortfall in each block.
 TEST(GPLinearPrior, errorAndJacobians) {
   const size_t dof = 2;
-  auto Qc_model = Isotropic::Sigma(dof, 0.5);
-  GPLinearPrior factor(kP1, kV1, kP2, kV2, kDeltaT, Qc_model);
+  auto QcModel = Isotropic::Sigma(dof, 0.5);
+  GPLinearPrior factor(kP1, kV1, kP2, kV2, kDeltaT, QcModel);
 
   const Vector q1 = (Vector(2) << 1.0, 2.0).finished();
   const Vector v1 = (Vector(2) << 0.1, -0.4).finished();
@@ -78,8 +78,8 @@ TEST(GPLinearPrior, errorAndJacobians) {
 // sign convention differs from GPLinearPrior, whose error is Phi * x1 - x2.
 TEST(GPLiePrior, rot3ErrorOnConstantTwist) {
   const size_t dof = 3;
-  auto Qc_model = Isotropic::Sigma(dof, 1.0);
-  GPLiePrior<Rot3> factor(kP1, kV1, kP2, kV2, kDeltaT, Qc_model);
+  auto QcModel = Isotropic::Sigma(dof, 1.0);
+  GPLiePrior<Rot3> factor(kP1, kV1, kP2, kV2, kDeltaT, QcModel);
 
   const Rot3 R1 = Rot3::RzRyRx(0.1, -0.2, 0.3);
   const Vector v1 = (Vector(3) << 0.4, -0.1, 0.6).finished();
@@ -93,8 +93,8 @@ TEST(GPLiePrior, rot3ErrorOnConstantTwist) {
 // Rot3 exercises the template on a group whose Expmap is not the identity map.
 TEST(GPLiePrior, rot3ErrorAndJacobians) {
   const size_t dof = 3;
-  auto Qc_model = Isotropic::Sigma(dof, 1.0);
-  GPLiePrior<Rot3> factor(kP1, kV1, kP2, kV2, kDeltaT, Qc_model);
+  auto QcModel = Isotropic::Sigma(dof, 1.0);
+  GPLiePrior<Rot3> factor(kP1, kV1, kP2, kV2, kDeltaT, QcModel);
 
   const Rot3 R1 = Rot3::RzRyRx(0.1, -0.2, 0.3);
   const Rot3 R2 = Rot3::RzRyRx(-0.3, 0.15, 0.05);
@@ -115,8 +115,8 @@ TEST(GPLiePrior, rot3ErrorAndJacobians) {
 
 // GPPose3Prior is the Pose3 instantiation of GPLiePrior, the 3D case we use.
 TEST(GPPose3Prior, errorOnConstantTwist) {
-  auto Qc_model = Isotropic::Sigma(6, 1.0);
-  GPPose3Prior factor(kP1, kV1, kP2, kV2, kDeltaT, Qc_model);
+  auto QcModel = Isotropic::Sigma(6, 1.0);
+  GPPose3Prior factor(kP1, kV1, kP2, kV2, kDeltaT, QcModel);
 
   const Pose3 p1(Rot3::RzRyRx(0.1, 0.2, 0.3), Point3(1.0, 2.0, 3.0));
   const Vector v1 = (Vector(6) << 0.1, -0.2, 0.3, 0.4, 0.5, -0.6).finished();
@@ -128,8 +128,8 @@ TEST(GPPose3Prior, errorOnConstantTwist) {
 }
 
 TEST(GPPose3Prior, errorAndJacobians) {
-  auto Qc_model = Isotropic::Sigma(6, 1.0);
-  GPPose3Prior factor(kP1, kV1, kP2, kV2, kDeltaT, Qc_model);
+  auto QcModel = Isotropic::Sigma(6, 1.0);
+  GPPose3Prior factor(kP1, kV1, kP2, kV2, kDeltaT, QcModel);
 
   const Pose3 p1(Rot3::RzRyRx(0.1, 0.2, 0.3), Point3(1.0, 2.0, 3.0));
   const Pose3 p2(Rot3::RzRyRx(-0.2, 0.1, 0.4), Point3(1.4, 1.7, 3.2));
@@ -151,12 +151,12 @@ TEST(GPPose3Prior, errorAndJacobians) {
 // A Qc whose dimension disagrees with the group would silently mis-size the
 // error, so the constructor rejects it. Pose3 demands a 6 dimensional Qc.
 TEST(GPPose3Prior, rejectsWrongQcDimension) {
-  auto Qc_3d = Isotropic::Sigma(3, 1.0);
-  CHECK_EXCEPTION(GPPose3Prior(kP1, kV1, kP2, kV2, kDeltaT, Qc_3d),
+  auto Qc3d = Isotropic::Sigma(3, 1.0);
+  CHECK_EXCEPTION(GPPose3Prior(kP1, kV1, kP2, kV2, kDeltaT, Qc3d),
                   std::invalid_argument);
 
-  auto Qc_6d = Isotropic::Sigma(6, 1.0);
-  CHECK_EXCEPTION(GPLiePrior<Rot3>(kP1, kV1, kP2, kV2, kDeltaT, Qc_6d),
+  auto Qc6d = Isotropic::Sigma(6, 1.0);
+  CHECK_EXCEPTION(GPLiePrior<Rot3>(kP1, kV1, kP2, kV2, kDeltaT, Qc6d),
                   std::invalid_argument);
 }
 

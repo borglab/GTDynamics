@@ -43,32 +43,32 @@ namespace gtdynamics {
 class RobotQueryPoints {
  private:
   Robot robot_;
-  std::string base_link_name_;
+  std::string baseLinkName_;
   gtsam::Pose3 wTbase_;
   std::vector<JointSharedPtr> joints_;
   std::vector<PointOnLink> points_;
-  std::map<uint8_t, size_t> joint_column_;
+  std::map<uint8_t, size_t> jointColumn_;
 
  public:
   /**
    * Constructor.
    * @param robot the robot model
-   * @param base_link_name the link the kinematic tree is rooted at
+   * @param baseLinkName the link the kinematic tree is rooted at
    * @param joints the joints spanned by q, in the order q indexes them
    * @param points the query points, each in its link's CoM frame
    * @param wTbase pose of the base link in the world frame
    */
-  RobotQueryPoints(const Robot &robot, const std::string &base_link_name,
+  RobotQueryPoints(const Robot &robot, const std::string &baseLinkName,
                    const std::vector<JointSharedPtr> &joints,
                    const std::vector<PointOnLink> &points,
                    const gtsam::Pose3 &wTbase = gtsam::Pose3())
       : robot_(robot),
-        base_link_name_(base_link_name),
+        baseLinkName_(baseLinkName),
         wTbase_(wTbase),
         joints_(joints),
         points_(points) {
     for (size_t i = 0; i < joints_.size(); ++i) {
-      joint_column_[joints_[i]->id()] = i;
+      jointColumn_[joints_[i]->id()] = i;
     }
   }
 
@@ -85,18 +85,21 @@ class RobotQueryPoints {
    * Forward kinematics over the tree rooted at the base link.
    * @param q stacked joint angles, ordered as the constructor's joints
    * @param wTl filled with the world pose of every reachable link, by link id
-   * @param Jl if non-null, filled with d(wTl)/dq, a 6 x dof matrix per link
+   * @param linkJacobians if non-null, filled with d(wTl)/dq, a 6 x dof matrix
+   *                      per link
    */
-  void forwardKinematics(const gtsam::Vector &q,
-                         std::map<uint8_t, gtsam::Pose3> *wTl,
-                         std::map<uint8_t, gtsam::Matrix> *Jl = nullptr) const {
+  void forwardKinematics(
+      const gtsam::Vector &q, std::map<uint8_t, gtsam::Pose3> *wTl,
+      std::map<uint8_t, gtsam::Matrix> *linkJacobians = nullptr) const {
     if (static_cast<size_t>(q.size()) != dof()) {
       throw std::invalid_argument(
           "RobotQueryPoints: q size must equal the number of joints.");
     }
-    const LinkSharedPtr base = robot_.link(base_link_name_);
+    const LinkSharedPtr base = robot_.link(baseLinkName_);
     (*wTl)[base->id()] = wTbase_;
-    if (Jl) (*Jl)[base->id()] = gtsam::Matrix::Zero(6, dof());
+    if (linkJacobians) {
+      (*linkJacobians)[base->id()] = gtsam::Matrix::Zero(6, dof());
+    }
 
     std::set<uint8_t> visited{base->id()};
     std::queue<LinkSharedPtr> frontier;
@@ -106,23 +109,24 @@ class RobotQueryPoints {
       const LinkSharedPtr link = frontier.front();
       frontier.pop();
       for (auto &&joint : link->joints()) {
-        auto it = joint_column_.find(joint->id());
-        if (it == joint_column_.end()) continue;  // subtree excluded from q
+        auto it = jointColumn_.find(joint->id());
+        if (it == jointColumn_.end()) continue;  // subtree excluded from q
         const LinkSharedPtr other = joint->otherLink(link);
         if (visited.count(other->id())) continue;
         visited.insert(other->id());
 
         const size_t col = it->second;
-        const gtsam::Pose3 &wTp = wTl->at(link->id());
-        if (Jl) {
-          gtsam::Matrix6 H_wTp;
-          gtsam::Vector6 H_qj;
-          (*wTl)[other->id()] = joint->poseOf(other, wTp, q(col), H_wTp, H_qj);
-          gtsam::Matrix J = H_wTp * Jl->at(link->id());
-          J.col(col) += H_qj;
-          (*Jl)[other->id()] = J;
+        const gtsam::Pose3 &wTparent = wTl->at(link->id());
+        if (linkJacobians) {
+          gtsam::Matrix6 HparentPose;
+          gtsam::Vector6 HjointAngle;
+          (*wTl)[other->id()] =
+              joint->poseOf(other, wTparent, q(col), HparentPose, HjointAngle);
+          gtsam::Matrix jacobian = HparentPose * linkJacobians->at(link->id());
+          jacobian.col(col) += HjointAngle;
+          (*linkJacobians)[other->id()] = jacobian;
         } else {
-          (*wTl)[other->id()] = joint->poseOf(other, wTp, q(col));
+          (*wTl)[other->id()] = joint->poseOf(other, wTparent, q(col));
         }
         frontier.push(other);
       }
@@ -132,17 +136,18 @@ class RobotQueryPoints {
   /**
    * World positions of the query points.
    * @param q stacked joint angles
-   * @param wPs filled with the world position of each query point
-   * @param J if non-null, filled with d(wP)/dq, a 3 x dof matrix per point
+   * @param wPts filled with the world position of each query point
+   * @param ptJacobians if non-null, filled with d(wPt)/dq, a 3 x dof matrix
+   *                    per point
    */
-  void queryPoints(const gtsam::Vector &q, std::vector<gtsam::Point3> *wPs,
-                   std::vector<gtsam::Matrix> *J = nullptr) const {
+  void queryPoints(const gtsam::Vector &q, std::vector<gtsam::Point3> *wPts,
+                   std::vector<gtsam::Matrix> *ptJacobians = nullptr) const {
     std::map<uint8_t, gtsam::Pose3> poses;
-    std::map<uint8_t, gtsam::Matrix> link_jacobians;
-    forwardKinematics(q, &poses, J ? &link_jacobians : nullptr);
+    std::map<uint8_t, gtsam::Matrix> linkJacobians;
+    forwardKinematics(q, &poses, ptJacobians ? &linkJacobians : nullptr);
 
-    wPs->resize(nrPoints());
-    if (J) J->resize(nrPoints());
+    wPts->resize(nrPoints());
+    if (ptJacobians) ptJacobians->resize(nrPoints());
     for (size_t i = 0; i < nrPoints(); ++i) {
       const uint8_t id = points_[i].link->id();
       auto it = poses.find(id);
@@ -151,12 +156,12 @@ class RobotQueryPoints {
             "RobotQueryPoints: query point on a link not reachable from the "
             "base through the given joints.");
       }
-      if (J) {
-        gtsam::Matrix36 H_pose;
-        (*wPs)[i] = it->second.transformFrom(points_[i].point, H_pose);
-        (*J)[i] = H_pose * link_jacobians.at(id);
+      if (ptJacobians) {
+        gtsam::Matrix36 Hpose;
+        (*wPts)[i] = it->second.transformFrom(points_[i].point, Hpose);
+        (*ptJacobians)[i] = Hpose * linkJacobians.at(id);
       } else {
-        (*wPs)[i] = it->second.transformFrom(points_[i].point);
+        (*wPts)[i] = it->second.transformFrom(points_[i].point);
       }
     }
   }
@@ -167,11 +172,11 @@ class RobotQueryPoints {
    * @returns a 3 x nrPoints matrix of world positions
    */
   gtsam::Matrix worldPoints(const gtsam::Vector &q) const {
-    std::vector<gtsam::Point3> wPs;
-    queryPoints(q, &wPs);
-    gtsam::Matrix points(3, nrPoints());
-    for (size_t i = 0; i < nrPoints(); ++i) points.col(i) = wPs[i];
-    return points;
+    std::vector<gtsam::Point3> wPts;
+    queryPoints(q, &wPts);
+    gtsam::Matrix pts(3, nrPoints());
+    for (size_t i = 0; i < nrPoints(); ++i) pts.col(i) = wPts[i];
+    return pts;
   }
 };  // \class RobotQueryPoints
 

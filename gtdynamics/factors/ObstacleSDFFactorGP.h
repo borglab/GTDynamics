@@ -36,8 +36,8 @@ namespace gtdynamics {
  * Obstacle avoidance cost evaluated at a state interpolated between two support
  * states, so that collisions can be checked between the states of a trajectory
  * without adding variables for them. The interpolation is only the posterior
- * mean of the Gaussian process prior if a GPLinearPrior with the same Qc_model
- * and delta_t connects the same two support states in the graph.
+ * mean of the Gaussian process prior if a GPLinearPrior with the same QcModel
+ * and deltaT connects the same two support states in the graph.
  */
 class ObstacleSDFFactorGP
     : public gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
@@ -50,36 +50,36 @@ class ObstacleSDFFactorGP
   double epsilon_;
   RobotQueryPoints robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
-  GPLinearInterpolator GPbase_;
+  GPLinearInterpolator interpolator_;
 
  public:
   /**
    * Constructor.
-   * @param q_key1 key of the joint angles of the first support state
-   * @param v_key1 key of the joint velocities of the first support state
-   * @param q_key2 key of the joint angles of the second support state
-   * @param v_key2 key of the joint velocities of the second support state
+   * @param qKey1 key of the joint angles of the first support state
+   * @param vKey1 key of the joint velocities of the first support state
+   * @param qKey2 key of the joint angles of the second support state
+   * @param vKey2 key of the joint velocities of the second support state
    * @param robot query point model of the robot
    * @param sdf signed distance field of the obstacles, in the world frame
-   * @param cost_sigma cost function sigma, one per query point
+   * @param costSigma cost function sigma, one per query point
    * @param epsilon standoff distance kept from every obstacle
-   * @param Qc_model Gaussian noise model whose covariance is Qc
-   * @param delta_t time between the two support states
+   * @param QcModel Gaussian noise model whose covariance is Qc
+   * @param deltaT time between the two support states
    * @param tau time from the first support state to the interpolated state
    */
-  ObstacleSDFFactorGP(gtsam::Key q_key1, gtsam::Key v_key1, gtsam::Key q_key2,
-                      gtsam::Key v_key2, const RobotQueryPoints &robot,
+  ObstacleSDFFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
+                      gtsam::Key vKey2, const RobotQueryPoints &robot,
                       const std::shared_ptr<const SignedDistanceField> &sdf,
-                      double cost_sigma, double epsilon,
-                      const gtsam::SharedNoiseModel &Qc_model, double delta_t,
+                      double costSigma, double epsilon,
+                      const gtsam::SharedNoiseModel &QcModel, double deltaT,
                       double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), cost_sigma),
-             q_key1, v_key1, q_key2, v_key2),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), costSigma),
+             qKey1, vKey1, qKey2, vKey2),
         epsilon_(epsilon),
         robot_(robot),
         sdf_(sdf),
-        GPbase_(Qc_model, delta_t, tau) {
-    // delta_t and tau are checked by the interpolator constructor.
+        interpolator_(QcModel, deltaT, tau) {
+    // deltaT and tau are checked by the interpolator constructor.
     if (!sdf_) {
       throw std::invalid_argument("ObstacleSDFFactorGP: sdf must not be null.");
     }
@@ -103,34 +103,34 @@ class ObstacleSDFFactorGP
       gtsam::OptionalMatrixType H2 = nullptr,
       gtsam::OptionalMatrixType H3 = nullptr,
       gtsam::OptionalMatrixType H4 = nullptr) const override {
-    const bool use_H = (H1 || H2 || H3 || H4);
-    const size_t m = robot_.nrPoints();
+    const bool computeJacobians = (H1 || H2 || H3 || H4);
+    const size_t nrPts = robot_.nrPoints();
 
-    gtsam::Matrix Jq_q1, Jq_v1, Jq_q2, Jq_v2;
+    gtsam::Matrix Hq1, Hv1, Hq2, Hv2;
     const gtsam::Vector q =
-        use_H ? GPbase_.interpolatePose(q1, v1, q2, v2, &Jq_q1, &Jq_v1, &Jq_q2,
-                                        &Jq_v2)
-              : GPbase_.interpolatePose(q1, v1, q2, v2);
+        computeJacobians ? interpolator_.interpolatePose(q1, v1, q2, v2, &Hq1,
+                                                         &Hv1, &Hq2, &Hv2)
+                         : interpolator_.interpolatePose(q1, v1, q2, v2);
 
-    std::vector<gtsam::Point3> wPs;
-    std::vector<gtsam::Matrix> Jps;
-    robot_.queryPoints(q, &wPs, use_H ? &Jps : nullptr);
+    std::vector<gtsam::Point3> wPts;
+    std::vector<gtsam::Matrix> ptJacobians;
+    robot_.queryPoints(q, &wPts, computeJacobians ? &ptJacobians : nullptr);
 
-    gtsam::Vector err(m);
-    gtsam::Matrix Jerr_q = gtsam::Matrix::Zero(m, robot_.dof());
-    for (size_t i = 0; i < m; ++i) {
-      if (use_H) {
-        gtsam::Matrix13 Herr_point;
-        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, epsilon_, Herr_point);
-        Jerr_q.row(i) = Herr_point * Jps[i];
+    gtsam::Vector err(nrPts);
+    gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPts, robot_.dof());
+    for (size_t i = 0; i < nrPts; ++i) {
+      if (computeJacobians) {
+        gtsam::Matrix13 Hpt;
+        err(i) = hingeLossObstacleCost(wPts[i], *sdf_, epsilon_, Hpt);
+        errJacobian.row(i) = Hpt * ptJacobians[i];
       } else {
-        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, epsilon_);
+        err(i) = hingeLossObstacleCost(wPts[i], *sdf_, epsilon_);
       }
     }
 
-    if (use_H) {
-      GPLinearInterpolator::updatePoseJacobians(Jerr_q, Jq_q1, Jq_v1, Jq_q2,
-                                                Jq_v2, H1, H2, H3, H4);
+    if (computeJacobians) {
+      GPLinearInterpolator::updatePoseJacobians(errJacobian, Hq1, Hv1, Hq2,
+                                                Hv2, H1, H2, H3, H4);
     }
     return err;
   }

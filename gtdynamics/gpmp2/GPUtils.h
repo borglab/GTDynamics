@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  GPutils.h
+ * @file  GPUtils.h
  * @brief Gaussian process utilities for the white noise on acceleration prior.
  * @author Karthik Shaji - Adapted from gpmp2 by Xinyan Yan and Jing Dong.
  */
@@ -25,17 +25,17 @@
 namespace gtdynamics {
 
 /// Reject a non-positive support interval.
-inline void checkGPDeltaT(double delta_t) {
-  if (delta_t <= 0.0) {
-    throw std::invalid_argument("GP: delta_t must be > 0.");
+inline void checkGPDeltaT(double deltaT) {
+  if (deltaT <= 0.0) {
+    throw std::invalid_argument("GP: deltaT must be > 0.");
   }
 }
 
 /// Reject a non-positive support interval or an interpolation time outside it.
-inline void checkGPInterval(double delta_t, double tau) {
-  checkGPDeltaT(delta_t);
-  if (tau < 0.0 || tau > delta_t) {
-    throw std::invalid_argument("GP: tau must be in [0, delta_t].");
+inline void checkGPInterval(double deltaT, double tau) {
+  checkGPDeltaT(deltaT);
+  if (tau < 0.0 || tau > deltaT) {
+    throw std::invalid_argument("GP: tau must be in [0, deltaT].");
   }
 }
 
@@ -88,44 +88,44 @@ inline gtsam::Matrix calcQAccel(const gtsam::Matrix &Qc, double tau) {
 inline gtsam::Matrix calcQinvAccel(const gtsam::Matrix &Qc, double tau) {
   assert(Qc.rows() == Qc.cols());
   const auto n = Qc.rows();
-  const gtsam::Matrix Qc_inv = Qc.inverse();
+  const gtsam::Matrix QcInv = Qc.inverse();
   return (gtsam::Matrix(2 * n, 2 * n) <<          //
-          12.0 * std::pow(tau, -3.0) * Qc_inv,    //
-          -6.0 * std::pow(tau, -2.0) * Qc_inv,    //
-          -6.0 * std::pow(tau, -2.0) * Qc_inv,    //
-          4.0 * std::pow(tau, -1.0) * Qc_inv)
+          12.0 * std::pow(tau, -3.0) * QcInv,    //
+          -6.0 * std::pow(tau, -2.0) * QcInv,    //
+          -6.0 * std::pow(tau, -2.0) * QcInv,    //
+          4.0 * std::pow(tau, -1.0) * QcInv)
       .finished();
 }
 
 /**
  * @fn Compute the Lambda matrix used to interpolate at time tau.
  * @param Qc n x n power spectral density matrix.
- * @param delta_t time between the two support states.
+ * @param deltaT time between the two support states.
  * @param tau time from the first support state to the interpolated state.
  * @returns the 2n x 2n Lambda matrix.
  */
-inline gtsam::Matrix calcLambdaAccel(const gtsam::Matrix &Qc, double delta_t,
+inline gtsam::Matrix calcLambdaAccel(const gtsam::Matrix &Qc, double deltaT,
                                      double tau) {
   assert(Qc.rows() == Qc.cols());
   const size_t dof = static_cast<size_t>(Qc.rows());
   return calcPhiAccel(dof, tau) -
-         calcQAccel(Qc, tau) * calcPhiAccel(dof, delta_t - tau).transpose() *
-             calcQinvAccel(Qc, delta_t) * calcPhiAccel(dof, delta_t);
+         calcQAccel(Qc, tau) * calcPhiAccel(dof, deltaT - tau).transpose() *
+             calcQinvAccel(Qc, deltaT) * calcPhiAccel(dof, deltaT);
 }
 
 /**
  * @fn Compute the Psi matrix used to interpolate at time tau.
  * @param Qc n x n power spectral density matrix.
- * @param delta_t time between the two support states.
+ * @param deltaT time between the two support states.
  * @param tau time from the first support state to the interpolated state.
  * @returns the 2n x 2n Psi matrix.
  */
-inline gtsam::Matrix calcPsiAccel(const gtsam::Matrix &Qc, double delta_t,
+inline gtsam::Matrix calcPsiAccel(const gtsam::Matrix &Qc, double deltaT,
                                   double tau) {
   assert(Qc.rows() == Qc.cols());
   const size_t dof = static_cast<size_t>(Qc.rows());
-  return calcQAccel(Qc, tau) * calcPhiAccel(dof, delta_t - tau).transpose() *
-         calcQinvAccel(Qc, delta_t);
+  return calcQAccel(Qc, tau) * calcPhiAccel(dof, deltaT - tau).transpose() *
+         calcQinvAccel(Qc, deltaT);
 }
 
 }  // namespace gtdynamics

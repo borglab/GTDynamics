@@ -74,7 +74,7 @@ static Vector supportConfig2() {
   q << 3.0, 3.0, 1.0, kArm, 8.0, 3.0, 1.0, kArm;
   return q;
 }
-// Constant velocity consistent with the two support states over delta_t = 0.5.
+// Constant velocity consistent with the two support states over deltaT = 0.5.
 static Vector supportVelocity() {
   Vector v = Vector::Zero(18);
   v(0) = 2.0;
@@ -86,36 +86,37 @@ static Vector supportVelocity() {
 
 // At tau = 0 the interpolation reproduces the first support state exactly, so
 // the interpolated factor must agree with the unary factor at q1; likewise at
-// tau = delta_t with q2.
+// tau = deltaT with q2.
 TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), wristPoints());
   const size_t dof = model.dof();
 
   const Vector q1 = supportConfig1(), q2 = supportConfig2();
   const Vector v1 = supportVelocity(), v2 = supportVelocity();
-  const double delta_t = 0.5, cost_sigma = 0.1;
+  const double deltaT = 0.5, costSigma = 0.1;
 
-  std::vector<Point3> wPs;
-  model.queryPoints(q1, &wPs);
-  const double eps = (wPs[0] - wPs[1]).norm() + 1.0;  // active by construction
+  std::vector<Point3> wPts;
+  model.queryPoints(q1, &wPts);
+  // Active by construction: eps sits a metre past the measured distance.
+  const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
   const Vector radii = Vector::Zero(2);
-  SelfCollisionSphereFactor unary(X(0), model, pairs, radii, cost_sigma);
+  SelfCollisionSphereFactor unary(X(0), model, pairs, radii, costSigma);
 
-  SelfCollisionSphereFactorGP at_start(X(0), V(0), X(1), V(1), model, pairs,
-                                       radii, cost_sigma,
-                                       Isotropic::Sigma(dof, 1.0), delta_t,
+  SelfCollisionSphereFactorGP atStart(X(0), V(0), X(1), V(1), model, pairs,
+                                       radii, costSigma,
+                                       Isotropic::Sigma(dof, 1.0), deltaT,
                                        0.0);
   EXPECT(assert_equal(unary.evaluateError(q1),
-                      at_start.evaluateError(q1, v1, q2, v2), 1e-9));
+                      atStart.evaluateError(q1, v1, q2, v2), 1e-9));
 
-  SelfCollisionSphereFactorGP at_end(X(0), V(0), X(1), V(1), model, pairs,
-                                     radii, cost_sigma,
-                                     Isotropic::Sigma(dof, 1.0), delta_t,
-                                     delta_t);
+  SelfCollisionSphereFactorGP atEnd(X(0), V(0), X(1), V(1), model, pairs,
+                                     radii, costSigma,
+                                     Isotropic::Sigma(dof, 1.0), deltaT,
+                                     deltaT);
   EXPECT(assert_equal(unary.evaluateError(q2),
-                      at_end.evaluateError(q1, v1, q2, v2), 1e-9));
+                      atEnd.evaluateError(q1, v1, q2, v2), 1e-9));
 }
 
 /* ************************ interpolated Jacobians ********************** */
@@ -129,19 +130,19 @@ TEST(SelfCollisionSphereFactorGP, interpolatedJacobians) {
 
   const Vector q1 = supportConfig1(), q2 = supportConfig2();
   const Vector v1 = supportVelocity(), v2 = supportVelocity();
-  const double delta_t = 0.5, tau = 0.3 * delta_t;
+  const double deltaT = 0.5, tau = 0.3 * deltaT;
 
   // Standoff a metre past the wrist distance at the interpolated state, so the
   // active branch is the one the numerical check exercises.
-  GPLinearInterpolator interp(Isotropic::Sigma(dof, 1.0), delta_t, tau);
-  std::vector<Point3> wPs;
-  model.queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPs);
-  const double eps = (wPs[0] - wPs[1]).norm() + 1.0;
+  GPLinearInterpolator interp(Isotropic::Sigma(dof, 1.0), deltaT, tau);
+  std::vector<Point3> wPts;
+  model.queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPts);
+  const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
   SelfCollisionSphereFactorGP factor(X(0), V(0), X(1), V(1), model, pairs,
                                      Vector::Zero(2), 0.1,
-                                     Isotropic::Sigma(dof, 1.0), delta_t, tau);
+                                     Isotropic::Sigma(dof, 1.0), deltaT, tau);
 
   EXPECT(factor.evaluateError(q1, v1, q2, v2)(0) > 0.0);  // active branch
 
@@ -163,26 +164,27 @@ TEST(SelfCollisionSphereFactorGP, radiiAddToTheStandoff) {
 
   const Vector q1 = supportConfig1(), q2 = supportConfig2();
   const Vector v1 = supportVelocity(), v2 = supportVelocity();
-  const double delta_t = 0.5, tau = 0.3 * delta_t;
+  const double deltaT = 0.5, tau = 0.3 * deltaT;
 
-  GPLinearInterpolator interp(Isotropic::Sigma(dof, 1.0), delta_t, tau);
-  std::vector<Point3> wPs;
-  model.queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPs);
-  const double eps = (wPs[0] - wPs[1]).norm() + 1.0;  // active by construction
+  GPLinearInterpolator interp(Isotropic::Sigma(dof, 1.0), deltaT, tau);
+  std::vector<Point3> wPts;
+  model.queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPts);
+  // Active by construction: eps sits a metre past the measured distance.
+  const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
   SelfCollisionSphereFactorGP base(X(0), V(0), X(1), V(1), model, pairs,
                                    Vector::Zero(2), 0.1,
-                                   Isotropic::Sigma(dof, 1.0), delta_t, tau);
-  const double e0 = base.evaluateError(q1, v1, q2, v2)(0);
-  EXPECT(e0 > 0.0);
+                                   Isotropic::Sigma(dof, 1.0), deltaT, tau);
+  const double err0 = base.evaluateError(q1, v1, q2, v2)(0);
+  EXPECT(err0 > 0.0);
 
   Vector radii(2);
   radii << 0.1, 0.2;
   SelfCollisionSphereFactorGP inflated(X(0), V(0), X(1), V(1), model, pairs,
                                        radii, 0.1, Isotropic::Sigma(dof, 1.0),
-                                       delta_t, tau);
-  EXPECT_DOUBLES_EQUAL(e0 + 0.3, inflated.evaluateError(q1, v1, q2, v2)(0),
+                                       deltaT, tau);
+  EXPECT_DOUBLES_EQUAL(err0 + 0.3, inflated.evaluateError(q1, v1, q2, v2)(0),
                        1e-9);
 }
 
@@ -191,26 +193,26 @@ TEST(SelfCollisionSphereFactorGP, radiiAddToTheStandoff) {
 TEST(SelfCollisionSphereFactorGP, rejectsBadInput) {
   RobotQueryPoints model(kRobot, "columns", bothArmJoints(), wristPoints());
   const size_t dof = model.dof();
-  const auto Qc_model = Isotropic::Sigma(dof, 1.0);
-  const double delta_t = 0.5, tau = 0.1;
+  const auto QcModel = Isotropic::Sigma(dof, 1.0);
+  const double deltaT = 0.5, tau = 0.1;
 
   // radii length must equal the number of query points.
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, 1.0)};
   CHECK_EXCEPTION(
       SelfCollisionSphereFactorGP(X(0), V(0), X(1), V(1), model, pairs,
-                                  Vector::Zero(3), 0.1, Qc_model, delta_t, tau),
+                                  Vector::Zero(3), 0.1, QcModel, deltaT, tau),
       std::invalid_argument);
   // a point index out of range.
   const std::vector<SelfCollisionPair> bad = {SelfCollisionPair(0, 99, 1.0)};
   CHECK_EXCEPTION(
       SelfCollisionSphereFactorGP(X(0), V(0), X(1), V(1), model, bad,
-                                  Vector::Zero(2), 0.1, Qc_model, delta_t, tau),
+                                  Vector::Zero(2), 0.1, QcModel, deltaT, tau),
       std::invalid_argument);
   // sigmas must have one entry per pair.
   CHECK_EXCEPTION(
       SelfCollisionSphereFactorGP(X(0), V(0), X(1), V(1), model, pairs,
-                                  Vector::Zero(2), Vector::Ones(3), Qc_model,
-                                  delta_t, tau),
+                                  Vector::Zero(2), Vector::Ones(3), QcModel,
+                                  deltaT, tau),
       std::invalid_argument);
 }
 

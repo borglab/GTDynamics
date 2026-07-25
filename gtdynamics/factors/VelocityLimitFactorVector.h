@@ -41,7 +41,7 @@ class VelocityLimitFactorVector
   using This = VelocityLimitFactorVector;
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;
 
-  gtsam::Vector vel_limit_, limit_thresh_;
+  gtsam::Vector velLimit_, limitThreshold_;
 
  public:
   /// Default constructor, only for serialization.
@@ -49,28 +49,28 @@ class VelocityLimitFactorVector
 
   /**
    * Constructor.
-   * @param v_key key of the stacked joint velocity vector
-   * @param cost_model cost function covariance, one row per joint
-   * @param vel_limit magnitude of each joint's velocity limit
-   * @param limit_thresh standoff kept from each joint's limits
+   * @param vKey key of the stacked joint velocity vector
+   * @param costModel cost function covariance, one row per joint
+   * @param velLimit magnitude of each joint's velocity limit
+   * @param limitThreshold standoff kept from each joint's limits
    */
-  VelocityLimitFactorVector(gtsam::Key v_key,
-                            const gtsam::SharedNoiseModel &cost_model,
-                            const gtsam::Vector &vel_limit,
-                            const gtsam::Vector &limit_thresh)
-      : Base(cost_model, v_key),
-        vel_limit_(vel_limit),
-        limit_thresh_(limit_thresh) {
-    const size_t dof = cost_model->dim();
-    if (static_cast<size_t>(vel_limit.size()) != dof ||
-        static_cast<size_t>(limit_thresh.size()) != dof) {
+  VelocityLimitFactorVector(gtsam::Key vKey,
+                            const gtsam::SharedNoiseModel &costModel,
+                            const gtsam::Vector &velLimit,
+                            const gtsam::Vector &limitThreshold)
+      : Base(costModel, vKey),
+        velLimit_(velLimit),
+        limitThreshold_(limitThreshold) {
+    const size_t dof = costModel->dim();
+    if (static_cast<size_t>(velLimit.size()) != dof ||
+        static_cast<size_t>(limitThreshold.size()) != dof) {
       throw std::invalid_argument(
           "VelocityLimitFactorVector: limit vectors must match the noise model "
           "dimension.");
     }
     for (size_t i = 0; i < dof; ++i) {
       // Both hinges would be active everywhere, leaving the factor no zero.
-      if (limit_thresh_(i) > vel_limit_(i)) {
+      if (limitThreshold_(i) > velLimit_(i)) {
         throw std::invalid_argument(
             "VelocityLimitFactorVector: a joint's limit and threshold leave no "
             "feasible interval.");
@@ -100,31 +100,31 @@ class VelocityLimitFactorVector
     gtsam::Vector err(dof);
     for (size_t i = 0; i < dof; ++i) {
       if (H1) {
-        double H_v;
-        err(i) = hingeLossJointLimitCost(v(i), -vel_limit_(i), vel_limit_(i),
-                                         limit_thresh_(i), &H_v);
-        (*H1)(i, i) = H_v;
+        double Hv;
+        err(i) = hingeLossJointLimitCost(v(i), -velLimit_(i), velLimit_(i),
+                                         limitThreshold_(i), &Hv);
+        (*H1)(i, i) = Hv;
       } else {
-        err(i) = hingeLossJointLimitCost(v(i), -vel_limit_(i), vel_limit_(i),
-                                         limit_thresh_(i));
+        err(i) = hingeLossJointLimitCost(v(i), -velLimit_(i), velLimit_(i),
+                                         limitThreshold_(i));
       }
     }
     return err;
   }
 
   /// Return the degrees of freedom.
-  size_t dof() const { return vel_limit_.size(); }
+  size_t dof() const { return velLimit_.size(); }
 
-  const gtsam::Vector &velLimit() const { return vel_limit_; }
-  const gtsam::Vector &limitThreshold() const { return limit_thresh_; }
+  const gtsam::Vector &velLimit() const { return velLimit_; }
+  const gtsam::Vector &limitThreshold() const { return limitThreshold_; }
 
   /// Equality up to a tolerance.
   bool equals(const gtsam::NonlinearFactor &expected,
               double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != nullptr && Base::equals(*e, tol) &&
-           gtsam::equal_with_abs_tol(vel_limit_, e->vel_limit_, tol) &&
-           gtsam::equal_with_abs_tol(limit_thresh_, e->limit_thresh_, tol);
+           gtsam::equal_with_abs_tol(velLimit_, e->velLimit_, tol) &&
+           gtsam::equal_with_abs_tol(limitThreshold_, e->limitThreshold_, tol);
   }
 
   /// Print contents.
@@ -133,7 +133,8 @@ class VelocityLimitFactorVector
                  gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "VelocityLimitFactorVector(" << dof() << ")" << std::endl;
     Base::print("", keyFormatter);
-    std::cout << "limit threshold: " << limit_thresh_.transpose() << std::endl;
+    std::cout << "limit threshold: " << limitThreshold_.transpose()
+              << std::endl;
   }
 
  private:

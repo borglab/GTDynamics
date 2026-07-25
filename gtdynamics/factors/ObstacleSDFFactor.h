@@ -66,16 +66,16 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
     // twice with different radii is a contradiction. Group by link so only
     // same-link points are compared, not every pair.
     const auto &pts = robot_.points();
-    std::map<uint8_t, std::vector<size_t>> by_link;
+    std::map<uint8_t, std::vector<size_t>> ptsByLink;
     for (size_t i = 0; i < pts.size(); ++i) {
-      by_link[pts[i].link->id()].push_back(i);
+      ptsByLink[pts[i].link->id()].push_back(i);
     }
-    for (const auto &group : by_link) {
-      const std::vector<size_t> &idx = group.second;
-      for (size_t a = 0; a < idx.size(); ++a) {
-        for (size_t b = a + 1; b < idx.size(); ++b) {
-          if ((pts[idx[a]].point - pts[idx[b]].point).norm() < 1e-9 &&
-              std::fabs(radii_(idx[a]) - radii_(idx[b])) > 1e-9) {
+    for (const auto &group : ptsByLink) {
+      const std::vector<size_t> &indices = group.second;
+      for (size_t a = 0; a < indices.size(); ++a) {
+        for (size_t b = a + 1; b < indices.size(); ++b) {
+          if ((pts[indices[a]].point - pts[indices[b]].point).norm() < 1e-9 &&
+              std::fabs(radii_(indices[a]) - radii_(indices[b])) > 1e-9) {
             throw std::invalid_argument(
                 "ObstacleSDFFactor: two points at the same location have "
                 "conflicting radii.");
@@ -88,17 +88,17 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  public:
   /**
    * Constructor with a single standoff for every query point.
-   * @param q_key key of the stacked joint angle vector
+   * @param qKey key of the stacked joint angle vector
    * @param robot query point model of the robot
    * @param sdf signed distance field of the obstacles, in the world frame
-   * @param cost_sigma cost function sigma, one per query point
+   * @param costSigma cost function sigma, one per query point
    * @param epsilon standoff distance kept from every obstacle
    */
-  ObstacleSDFFactor(gtsam::Key q_key, const RobotQueryPoints &robot,
+  ObstacleSDFFactor(gtsam::Key qKey, const RobotQueryPoints &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
-                    double cost_sigma, double epsilon)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), cost_sigma),
-             q_key),
+                    double costSigma, double epsilon)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), costSigma),
+             qKey),
         epsilon_(epsilon),
         radii_(gtsam::Vector::Zero(robot.nrPoints())),
         robot_(robot),
@@ -108,19 +108,19 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
 
   /**
    * Constructor with a radius per query point, added to the shared epsilon.
-   * @param q_key key of the stacked joint angle vector
+   * @param qKey key of the stacked joint angle vector
    * @param robot query point model of the robot
    * @param sdf signed distance field of the obstacles, in the world frame
-   * @param cost_sigma cost function sigma, one per query point
+   * @param costSigma cost function sigma, one per query point
    * @param epsilon standoff distance added to every radius
    * @param radii radius of each query point, one per point of the model
    */
-  ObstacleSDFFactor(gtsam::Key q_key, const RobotQueryPoints &robot,
+  ObstacleSDFFactor(gtsam::Key qKey, const RobotQueryPoints &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
-                    double cost_sigma, double epsilon,
+                    double costSigma, double epsilon,
                     const gtsam::Vector &radii)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), cost_sigma),
-             q_key),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), costSigma),
+             qKey),
         epsilon_(epsilon),
         radii_(radii),
         robot_(robot),
@@ -140,22 +140,22 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   gtsam::Vector evaluateError(
       const gtsam::Vector &q,
       gtsam::OptionalMatrixType H1 = nullptr) const override {
-    const size_t m = robot_.nrPoints();
-    gtsam::Vector err(m);
+    const size_t nrPts = robot_.nrPoints();
+    gtsam::Vector err(nrPts);
 
-    std::vector<gtsam::Point3> wPs;
-    std::vector<gtsam::Matrix> Jps;
-    robot_.queryPoints(q, &wPs, H1 ? &Jps : nullptr);
-    if (H1) *H1 = gtsam::Matrix::Zero(m, robot_.dof());
+    std::vector<gtsam::Point3> wPts;
+    std::vector<gtsam::Matrix> ptJacobians;
+    robot_.queryPoints(q, &wPts, H1 ? &ptJacobians : nullptr);
+    if (H1) *H1 = gtsam::Matrix::Zero(nrPts, robot_.dof());
 
-    for (size_t i = 0; i < m; ++i) {
+    for (size_t i = 0; i < nrPts; ++i) {
       const double eps = epsilon_ + radii_(i);
       if (H1) {
-        gtsam::Matrix13 Herr_point;
-        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, eps, Herr_point);
-        H1->row(i) = Herr_point * Jps[i];
+        gtsam::Matrix13 Hpt;
+        err(i) = hingeLossObstacleCost(wPts[i], *sdf_, eps, Hpt);
+        H1->row(i) = Hpt * ptJacobians[i];
       } else {
-        err(i) = hingeLossObstacleCost(wPs[i], *sdf_, eps);
+        err(i) = hingeLossObstacleCost(wPts[i], *sdf_, eps);
       }
     }
     return err;

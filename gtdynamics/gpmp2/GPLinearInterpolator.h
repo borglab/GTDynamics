@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/gpmp2/GPutils.h>
+#include <gtdynamics/gpmp2/GPUtils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/Vector.h>
@@ -32,7 +32,7 @@ namespace gtdynamics {
 
 /**
  * Gaussian process interpolator, linear version. Given the two support states
- * (pose1, vel1) and (pose2, vel2) separated by delta_t, interpolates the pose
+ * (pose1, vel1) and (pose2, vel2) separated by deltaT, interpolates the pose
  * and velocity at time tau after the first support state.
  */
 class GPLinearInterpolator {
@@ -40,7 +40,7 @@ class GPLinearInterpolator {
   using This = GPLinearInterpolator;
 
   size_t dof_;
-  double delta_t_;  ///< time between the two support states
+  double deltaT_;  ///< time between the two support states
   double tau_;      ///< time from the first support state
 
   gtsam::Matrix Qc_;
@@ -53,17 +53,17 @@ class GPLinearInterpolator {
 
   /**
    * Constructor.
-   * @param Qc_model Gaussian noise model whose covariance is Qc
-   * @param delta_t time between the two support states
+   * @param QcModel Gaussian noise model whose covariance is Qc
+   * @param deltaT time between the two support states
    * @param tau time from the first support state to the interpolated state
    */
-  GPLinearInterpolator(const gtsam::SharedNoiseModel &Qc_model, double delta_t,
+  GPLinearInterpolator(const gtsam::SharedNoiseModel &QcModel, double deltaT,
                        double tau)
-      : dof_(Qc_model->dim()), delta_t_(delta_t), tau_(tau) {
-    checkGPInterval(delta_t_, tau_);
-    Qc_ = getQc(Qc_model);
-    Lambda_ = calcLambdaAccel(Qc_, delta_t_, tau_);
-    Psi_ = calcPsiAccel(Qc_, delta_t_, tau_);
+      : dof_(QcModel->dim()), deltaT_(deltaT), tau_(tau) {
+    checkGPInterval(deltaT_, tau_);
+    Qc_ = getQc(QcModel);
+    Lambda_ = calcLambdaAccel(Qc_, deltaT_, tau_);
+    Psi_ = calcPsiAccel(Qc_, deltaT_, tau_);
   }
 
   ~GPLinearInterpolator() {}
@@ -130,7 +130,7 @@ class GPLinearInterpolator {
 
   /// Equality up to a tolerance.
   bool equals(const This &expected, double tol = 1e-9) const {
-    return std::fabs(this->delta_t_ - expected.delta_t_) < tol &&
+    return std::fabs(this->deltaT_ - expected.deltaT_) < tol &&
            std::fabs(this->tau_ - expected.tau_) < tol &&
            gtsam::equal_with_abs_tol(this->Qc_, expected.Qc_, tol) &&
            gtsam::equal_with_abs_tol(this->Lambda_, expected.Lambda_, tol) &&
@@ -140,7 +140,7 @@ class GPLinearInterpolator {
   /// Print contents.
   void print(const std::string &s = "") const {
     std::cout << s << "GPLinearInterpolator(" << dof_ << ")" << std::endl;
-    std::cout << "delta_t = " << delta_t_ << ", tau = " << tau_ << std::endl;
+    std::cout << "deltaT = " << deltaT_ << ", tau = " << tau_ << std::endl;
   }
 
  private:
@@ -152,7 +152,7 @@ class GPLinearInterpolator {
     using boost::serialization::make_array;
     using boost::serialization::make_nvp;
     ar &BOOST_SERIALIZATION_NVP(dof_);
-    ar &BOOST_SERIALIZATION_NVP(delta_t_);
+    ar &BOOST_SERIALIZATION_NVP(deltaT_);
     ar &BOOST_SERIALIZATION_NVP(tau_);
     ar &make_nvp("Qc", make_array(Qc_.data(), Qc_.size()));
     ar &make_nvp("Lambda", make_array(Lambda_.data(), Lambda_.size()));

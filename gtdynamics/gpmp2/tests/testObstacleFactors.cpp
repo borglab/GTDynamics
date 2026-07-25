@@ -94,7 +94,7 @@ TEST(SignedDistanceField, sphereDistanceAndGradient) {
 
   struct Probe {
     Vector3 offset;
-    Vector3 expected_gradient;
+    Vector3 expectedGradient;
   };
   const std::vector<Probe> probes = {
       {Vector3(0.5, 0.0, 0.0), Vector3(1.0, 0.0, 0.0)},
@@ -109,7 +109,7 @@ TEST(SignedDistanceField, sphereDistanceAndGradient) {
     Vector3 gradient;
     const double d = sdf.getSignedDistance(p, gradient);
     EXPECT_DOUBLES_EQUAL(probe.offset.norm() - kRadius, d, 1e-2);
-    EXPECT(assert_equal(probe.expected_gradient, gradient, 1e-2));
+    EXPECT(assert_equal(probe.expectedGradient, gradient, 1e-2));
   }
 }
 
@@ -136,18 +136,18 @@ TEST(ObstacleCost, hingeLossAndJacobian) {
 
   // Beyond epsilon of the surface there is no cost and no gradient.
   const Point3 far = center + Point3(0.8, 0.0, 0.0);
-  Matrix13 H_far;
-  EXPECT_DOUBLES_EQUAL(0.0, hingeLossObstacleCost(far, sdf, kEpsilon, H_far),
+  Matrix13 Hfar;
+  EXPECT_DOUBLES_EQUAL(0.0, hingeLossObstacleCost(far, sdf, kEpsilon, Hfar),
                        1e-9);
   // A fixed 1x3 converts to both gtsam::Matrix and gtsam::Vector, so the
   // assert_equal overloads tie unless the arguments are made Matrix outright.
-  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(H_far), 1e-9));
+  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(Hfar), 1e-9));
 
   // Outside the sphere but within epsilon, the cost is epsilon - d.
   const double offset = kRadius + 0.5 * kEpsilon;
   const Point3 near = center + Point3(offset, 0.0, 0.0);
-  Matrix13 H_near;
-  const double cost = hingeLossObstacleCost(near, sdf, kEpsilon, H_near);
+  Matrix13 Hnear;
+  const double cost = hingeLossObstacleCost(near, sdf, kEpsilon, Hnear);
   EXPECT_DOUBLES_EQUAL(kEpsilon - 0.5 * kEpsilon, cost, 1e-2);
 
   std::function<double(const Point3 &)> f = [&](const Point3 &p) {
@@ -155,14 +155,14 @@ TEST(ObstacleCost, hingeLossAndJacobian) {
   };
   EXPECT(assert_equal(
       Matrix(gtsam::numericalDerivative11<double, Point3>(f, near)),
-      Matrix(H_near), 1e-5));
+      Matrix(Hnear), 1e-5));
 
   // A point outside the grid is treated as free space, so the field fails open.
-  Matrix13 H_out;
+  Matrix13 Hout;
   EXPECT_DOUBLES_EQUAL(
-      0.0, hingeLossObstacleCost(Point3(-1.0, 0.0, 0.0), sdf, kEpsilon, H_out),
+      0.0, hingeLossObstacleCost(Point3(-1.0, 0.0, 0.0), sdf, kEpsilon, Hout),
       1e-9);
-  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(H_out), 1e-9));
+  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(Hout), 1e-9));
 }
 
 // The frame attached overload reads the same field through a moving frame, so
@@ -180,10 +180,10 @@ TEST(ObstacleCost, frameAttachedOverload) {
   const Point3 wP = wTs.transformFrom(sP);
 
   const double expected = hingeLossObstacleCost(sP, sdf, kEpsilon);
-  Matrix16 H_pose;
-  Matrix13 H_point;
+  Matrix16 Hpose;
+  Matrix13 Hpt;
   const double actual =
-      hingeLossObstacleCost(wTs, wP, sdf, kEpsilon, H_pose, H_point);
+      hingeLossObstacleCost(wTs, wP, sdf, kEpsilon, Hpose, Hpt);
   EXPECT_DOUBLES_EQUAL(expected, actual, 1e-9);
   EXPECT(actual > 0.0);  // the point is inside the band, so this is not vacuous
 
@@ -197,10 +197,10 @@ TEST(ObstacleCost, frameAttachedOverload) {
       };
   EXPECT(assert_equal(
       Matrix(gtsam::numericalDerivative21<double, Pose3, Point3>(f, wTs, wP)),
-      Matrix(H_pose), 1e-5));
+      Matrix(Hpose), 1e-5));
   EXPECT(assert_equal(
       Matrix(gtsam::numericalDerivative22<double, Pose3, Point3>(f, wTs, wP)),
-      Matrix(H_point), 1e-5));
+      Matrix(Hpt), 1e-5));
 }
 
 /* ******************** bar_lab robot query points *********************** */
@@ -247,14 +247,14 @@ TEST(ObstacleSDFFactor, rejectsConflictingRadii) {
   const std::vector<PointOnLink> duplicate = {
       PointOnLink(link, Point3(0.0, 0.0, 0.0)),
       PointOnLink(link, Point3(0.0, 0.0, 0.0))};
-  RobotQueryPoints dup_model(kRobot, "columns", robot1Joints(), duplicate);
+  RobotQueryPoints dupModel(kRobot, "columns", robot1Joints(), duplicate);
   CHECK_EXCEPTION(
-      ObstacleSDFFactor(X(0), dup_model, sdf, 0.01, 0.1,
+      ObstacleSDFFactor(X(0), dupModel, sdf, 0.01, 0.1,
                         (Vector(2) << 0.1, 0.2).finished()),
       std::invalid_argument);
 
   // Same location, same radius: redundant but not a contradiction, allowed.
-  ObstacleSDFFactor same(X(0), dup_model, sdf, 0.01, 0.1,
+  ObstacleSDFFactor same(X(0), dupModel, sdf, 0.01, 0.1,
                          (Vector(2) << 0.1, 0.1).finished());
   EXPECT(assert_equal(gtsam::Vector((Vector(2) << 0.1, 0.1).finished()),
                       same.radii(), 1e-9));
@@ -263,8 +263,8 @@ TEST(ObstacleSDFFactor, rejectsConflictingRadii) {
   const std::vector<PointOnLink> overlap = {
       PointOnLink(link, Point3(0.0, 0.0, 0.0)),
       PointOnLink(link, Point3(0.05, 0.0, 0.0))};
-  RobotQueryPoints overlap_model(kRobot, "columns", robot1Joints(), overlap);
-  ObstacleSDFFactor allowed(X(0), overlap_model, sdf, 0.01, 0.1,
+  RobotQueryPoints overlapModel(kRobot, "columns", robot1Joints(), overlap);
+  ObstacleSDFFactor allowed(X(0), overlapModel, sdf, 0.01, 0.1,
                             (Vector(2) << 0.1, 0.2).finished());
   EXPECT_LONGS_EQUAL(2, allowed.evaluateError((Vector(9) << 2.0, 2.0, 1.0, 0.0,
                                                -0.5, -1.0, 0.0, 0.5, 0.0)
@@ -280,9 +280,9 @@ TEST(RobotQueryPoints, jacobiansAgainstNumerical) {
   EXPECT_LONGS_EQUAL(2, model.nrPoints());
 
   const Vector q = startConfig();
-  std::vector<Point3> wPs;
+  std::vector<Point3> wPts;
   std::vector<Matrix> Js;
-  model.queryPoints(q, &wPs, &Js);
+  model.queryPoints(q, &wPts, &Js);
 
   // traits<gtsam::Vector>::dimension is Eigen::Dynamic, which
   // numericalDerivative cannot perturb, so q is probed as a fixed size Vector9.
@@ -307,16 +307,16 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
   RobotQueryPoints model(kRobot, "columns", robot1Joints(), wristPoints());
   const size_t dof = model.dof(), m = model.nrPoints();
   const size_t N = 5;  // support states
-  const double total_time = 2.0, delta_t = total_time / (N - 1);
+  const double totalTime = 2.0, deltaT = totalTime / (N - 1);
 
-  const Vector q_start = startConfig(), q_goal = goalConfig();
-  const Vector v_avg = (q_goal - q_start) / total_time;
+  const Vector qStart = startConfig(), qGoal = goalConfig();
+  const Vector vAvg = (qGoal - qStart) / totalTime;
 
   // Straight line initialisation, and the wrist positions it sweeps through.
   std::vector<Vector> line(N);
   std::vector<Point3> swept;
   for (size_t k = 0; k < N; ++k) {
-    line[k] = q_start + (static_cast<double>(k) / (N - 1)) * (q_goal - q_start);
+    line[k] = qStart + (static_cast<double>(k) / (N - 1)) * (qGoal - qStart);
     std::vector<Point3> ps;
     model.queryPoints(line[k], &ps);
     swept.insert(swept.end(), ps.begin(), ps.end());
@@ -324,9 +324,9 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
 
   // Plant the sphere on the wrist CoM at the midpoint of the straight line, so
   // the initialisation is deep inside it.
-  std::vector<Point3> mid_points;
-  model.queryPoints(line[N / 2], &mid_points);
-  const Point3 center = mid_points[0];
+  std::vector<Point3> midPts;
+  model.queryPoints(line[N / 2], &midPts);
+  const Point3 center = midPts[0];
 
   // Size the grid to contain the whole swept path with room to detour. The
   // padding matters: a point that leaves the grid reads as free space.
@@ -344,40 +344,40 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
   auto sdf = std::make_shared<const SignedDistanceField>(
       makeSphereSDF(center, kRadius, origin, kCell, nx, ny, nz));
 
-  const double cost_sigma = 0.01;
-  ObstacleSDFFactor probe(X(0), model, sdf, cost_sigma, kEpsilon);
+  const double costSigma = 0.01;
+  ObstacleSDFFactor probe(X(0), model, sdf, costSigma, kEpsilon);
 
   // The problem is only feasible if the pinned endpoints are already clear, and
   // only meaningful if the straight line is not. Assert both before planning.
   EXPECT(probe.evaluateError(line[N / 2]).maxCoeff() > 0.5 * kEpsilon);
-  EXPECT_DOUBLES_EQUAL(0.0, probe.evaluateError(q_start).maxCoeff(), 1e-9);
-  EXPECT_DOUBLES_EQUAL(0.0, probe.evaluateError(q_goal).maxCoeff(), 1e-9);
+  EXPECT_DOUBLES_EQUAL(0.0, probe.evaluateError(qStart).maxCoeff(), 1e-9);
+  EXPECT_DOUBLES_EQUAL(0.0, probe.evaluateError(qGoal).maxCoeff(), 1e-9);
 
   gtsam::NonlinearFactorGraph graph;
-  auto Qc_model = Isotropic::Sigma(dof, 1.0);
-  auto endpoint_model = Isotropic::Sigma(dof, 1e-4);
+  auto QcModel = Isotropic::Sigma(dof, 1.0);
+  auto endpointModel = Isotropic::Sigma(dof, 1e-4);
 
-  graph.addPrior<Vector>(X(0), q_start, endpoint_model);
-  graph.addPrior<Vector>(V(0), Vector::Zero(dof), endpoint_model);
-  graph.addPrior<Vector>(X(N - 1), q_goal, endpoint_model);
-  graph.addPrior<Vector>(V(N - 1), Vector::Zero(dof), endpoint_model);
+  graph.addPrior<Vector>(X(0), qStart, endpointModel);
+  graph.addPrior<Vector>(V(0), Vector::Zero(dof), endpointModel);
+  graph.addPrior<Vector>(X(N - 1), qGoal, endpointModel);
+  graph.addPrior<Vector>(V(N - 1), Vector::Zero(dof), endpointModel);
 
   for (size_t k = 0; k < N; ++k) {
-    graph.emplace_shared<ObstacleSDFFactor>(X(k), model, sdf, cost_sigma,
+    graph.emplace_shared<ObstacleSDFFactor>(X(k), model, sdf, costSigma,
                                             kEpsilon);
   }
   // The interpolated obstacle cost is only a Gaussian process posterior mean
-  // because this prior, with the same Qc_model and delta_t, joins the same
+  // because this prior, with the same QcModel and deltaT, joins the same
   // support states.
   for (size_t k = 0; k < N - 1; ++k) {
-    graph.emplace_shared<GPLinearPrior>(X(k), V(k), X(k + 1), V(k + 1), delta_t,
-                                        Qc_model);
+    graph.emplace_shared<GPLinearPrior>(X(k), V(k), X(k + 1), V(k + 1), deltaT,
+                                        QcModel);
   }
 
   Values init;
   for (size_t k = 0; k < N; ++k) {
     init.insert(X(k), line[k]);
-    init.insert(V(k), Vector(v_avg));
+    init.insert(V(k), Vector(vAvg));
   }
 
   gtsam::LevenbergMarquardtParams params;
@@ -389,8 +389,8 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
   // been pushed clear of the sphere by at least epsilon. Checking this against
   // the analytic sphere rather than the sampled field means a point that
   // escaped the grid cannot pass by reading as free space.
-  EXPECT(assert_equal(q_start, result.at<Vector>(X(0)), 1e-3));
-  EXPECT(assert_equal(q_goal, result.at<Vector>(X(N - 1)), 1e-3));
+  EXPECT(assert_equal(qStart, result.at<Vector>(X(0)), 1e-3));
+  EXPECT(assert_equal(qGoal, result.at<Vector>(X(N - 1)), 1e-3));
 
   for (size_t k = 0; k < N; ++k) {
     std::vector<Point3> ps;
@@ -410,18 +410,18 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
   const Vector q1 = startConfig(), q2 = goalConfig();
   const Vector v1 = Vector::Zero(dof), v2 = Vector::Zero(dof);
 
-  std::vector<Point3> mid_points;
-  model.queryPoints(q1, &mid_points);
-  const Point3 center = mid_points[0] + Point3(kRadius + 0.5 * kEpsilon, 0, 0);
+  std::vector<Point3> midPts;
+  model.queryPoints(q1, &midPts);
+  const Point3 center = midPts[0] + Point3(kRadius + 0.5 * kEpsilon, 0, 0);
   const Point3 origin = center - Point3::Constant(1.0 - kHalfCell);
   auto sdf = std::make_shared<const SignedDistanceField>(
       makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
 
-  const double delta_t = 0.5, cost_sigma = 0.01;
-  ObstacleSDFFactor unary(X(0), model, sdf, cost_sigma, kEpsilon);
+  const double deltaT = 0.5, costSigma = 0.01;
+  ObstacleSDFFactor unary(X(0), model, sdf, costSigma, kEpsilon);
   ObstacleSDFFactorGP interpolated(X(0), V(0), X(1), V(1), model, sdf,
-                                   cost_sigma, kEpsilon,
-                                   Isotropic::Sigma(dof, 1.0), delta_t, 0.0);
+                                   costSigma, kEpsilon,
+                                   Isotropic::Sigma(dof, 1.0), deltaT, 0.0);
 
   EXPECT(assert_equal(unary.evaluateError(q1),
                       interpolated.evaluateError(q1, v1, q2, v2), 1e-9));
@@ -431,10 +431,10 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
   values.insert(V(0), v1);
   values.insert(X(1), q2);
   values.insert(V(1), v2);
-  ObstacleSDFFactorGP at_tau(X(0), V(0), X(1), V(1), model, sdf, cost_sigma,
-                             kEpsilon, Isotropic::Sigma(dof, 1.0), delta_t,
-                             0.2 * delta_t);
-  EXPECT_CORRECT_FACTOR_JACOBIANS(at_tau, values, 1e-7, 1e-5);
+  ObstacleSDFFactorGP atTau(X(0), V(0), X(1), V(1), model, sdf, costSigma,
+                             kEpsilon, Isotropic::Sigma(dof, 1.0), deltaT,
+                             0.2 * deltaT);
+  EXPECT_CORRECT_FACTOR_JACOBIANS(atTau, values, 1e-7, 1e-5);
 }
 
 int main() {

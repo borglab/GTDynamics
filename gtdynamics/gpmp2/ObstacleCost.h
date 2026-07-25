@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/gpmp2/SDFexception.h>
+#include <gtdynamics/gpmp2/SDFException.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/OptionalJacobian.h>
@@ -35,28 +35,28 @@ namespace gtdynamics {
  * @param point query point, in the frame of the field
  * @param sdf signed distance field
  * @param epsilon standoff distance at which the cost becomes non-zero
- * @param H_point optional Jacobian of the cost with respect to the point
+ * @param Hpt optional Jacobian of the cost with respect to the point
  * @return the hinge loss cost
  */
 inline double hingeLossObstacleCost(
     const gtsam::Point3 &point, const SignedDistanceField &sdf, double epsilon,
-    gtsam::OptionalJacobian<1, 3> H_point = {}) {
-  gtsam::Vector3 field_gradient;
-  double dist_signed;
+    gtsam::OptionalJacobian<1, 3> Hpt = {}) {
+  gtsam::Vector3 fieldGradient;
+  double signedDist;
   try {
-    dist_signed = sdf.getSignedDistance(point, field_gradient);
+    signedDist = sdf.getSignedDistance(point, fieldGradient);
   } catch (const SDFQueryOutOfRange &) {
-    if (H_point) *H_point = gtsam::Matrix13::Zero();
+    if (Hpt) *Hpt = gtsam::Matrix13::Zero();
     return 0.0;
   }
 
-  if (dist_signed > epsilon) {
-    if (H_point) *H_point = gtsam::Matrix13::Zero();
+  if (signedDist > epsilon) {
+    if (Hpt) *Hpt = gtsam::Matrix13::Zero();
     return 0.0;
   }
   // Inside the obstacle, or outside it but closer than epsilon.
-  if (H_point) *H_point = -field_gradient.transpose();
-  return epsilon - dist_signed;
+  if (Hpt) *Hpt = -fieldGradient.transpose();
+  return epsilon - signedDist;
 }
 
 /**
@@ -70,24 +70,24 @@ inline double hingeLossObstacleCost(
  * @param point query point, in the world frame
  * @param sdf signed distance field, expressed in frame s
  * @param epsilon standoff distance at which the cost becomes non-zero
- * @param H_pose optional Jacobian of the cost with respect to wTs
- * @param H_point optional Jacobian of the cost with respect to the point
+ * @param Hpose optional Jacobian of the cost with respect to wTs
+ * @param Hpt optional Jacobian of the cost with respect to the point
  * @return the hinge loss cost
  */
 inline double hingeLossObstacleCost(
     const gtsam::Pose3 &wTs, const gtsam::Point3 &point,
     const SignedDistanceField &sdf, double epsilon,
-    gtsam::OptionalJacobian<1, 6> H_pose = {},
-    gtsam::OptionalJacobian<1, 3> H_point = {}) {
-  gtsam::Matrix36 Hlocal_pose;
-  gtsam::Matrix3 Hlocal_point;
-  const gtsam::Point3 sP = wTs.transformTo(point, Hlocal_pose, Hlocal_point);
+    gtsam::OptionalJacobian<1, 6> Hpose = {},
+    gtsam::OptionalJacobian<1, 3> Hpt = {}) {
+  gtsam::Matrix36 HlocalPose;
+  gtsam::Matrix3 HlocalPt;
+  const gtsam::Point3 sP = wTs.transformTo(point, HlocalPose, HlocalPt);
 
-  gtsam::Matrix13 Herr_local;
-  const double cost = hingeLossObstacleCost(sP, sdf, epsilon, Herr_local);
+  gtsam::Matrix13 HerrLocal;
+  const double cost = hingeLossObstacleCost(sP, sdf, epsilon, HerrLocal);
 
-  if (H_pose) *H_pose = Herr_local * Hlocal_pose;
-  if (H_point) *H_point = Herr_local * Hlocal_point;
+  if (Hpose) *Hpose = HerrLocal * HlocalPose;
+  if (Hpt) *Hpt = HerrLocal * HlocalPt;
   return cost;
 }
 
@@ -103,25 +103,25 @@ inline double hingeLossObstacleCost(
  * @param pA first query point, in the world frame
  * @param pB second query point, in the world frame
  * @param epsilon standoff distance at which the cost becomes non-zero
- * @param H_pA optional Jacobian of the cost with respect to pA
- * @param H_pB optional Jacobian of the cost with respect to pB
+ * @param HptA optional Jacobian of the cost with respect to pA
+ * @param HptB optional Jacobian of the cost with respect to pB
  * @return the hinge loss cost
  */
 inline double hingeLossSelfCollisionCost(
     const gtsam::Point3 &pA, const gtsam::Point3 &pB, double epsilon,
-    gtsam::OptionalJacobian<1, 3> H_pA = {},
-    gtsam::OptionalJacobian<1, 3> H_pB = {}) {
-  gtsam::Matrix13 H_A, H_B;
-  const double dist = gtsam::distance3(pA, pB, H_A, H_B);
+    gtsam::OptionalJacobian<1, 3> HptA = {},
+    gtsam::OptionalJacobian<1, 3> HptB = {}) {
+  gtsam::Matrix13 HA, HB;
+  const double dist = gtsam::distance3(pA, pB, HA, HB);
 
   if (dist > epsilon) {
-    if (H_pA) *H_pA = gtsam::Matrix13::Zero();
-    if (H_pB) *H_pB = gtsam::Matrix13::Zero();
+    if (HptA) *HptA = gtsam::Matrix13::Zero();
+    if (HptB) *HptB = gtsam::Matrix13::Zero();
     return 0.0;
   }
   // Closer than epsilon: cost falls as the points separate.
-  if (H_pA) *H_pA = -H_A;
-  if (H_pB) *H_pB = -H_B;
+  if (HptA) *HptA = -HA;
+  if (HptB) *HptB = -HB;
   return epsilon - dist;
 }
 

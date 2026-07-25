@@ -54,7 +54,7 @@ inline gtsam::Matrix3 calcPhi(double tau) {
 }
 
 /// get Qc covariance matrix from noise model
-gtsam::Matrix getQc(const gtsam::SharedNoiseModel Qc_model);
+gtsam::Matrix getQc(const gtsam::SharedNoiseModel QcModel);
 
 /**
  * Calculate Gaussian Process covaraince

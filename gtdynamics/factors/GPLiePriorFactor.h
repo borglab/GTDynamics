@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/gpmp2/GPutils.h>
+#include <gtdynamics/gpmp2/GPUtils.h>
 #include <gtsam/base/Lie.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -38,9 +38,9 @@ namespace gtdynamics {
 /**
  * A 4-way GaussianProcess prior factor on any Lie group T.
  * Implemented similarly to that used in the GPMP2 paper. Each state consists of
- * a pose in T and a velocity in the tangent space, separated by delta_t. With
+ * a pose in T and a velocity in the tangent space, separated by deltaT. With
  * r = Logmap(Inverse(pose1) * pose2), the error is
- * [r - delta_t * vel1; vel2 - vel1].
+ * [r - deltaT * vel1; vel2 - vel1].
  */
 template <typename T>
 class GPLiePrior
@@ -52,7 +52,7 @@ class GPLiePrior
   using Base = gtsam::NoiseModelFactorN<T, gtsam::Vector, T, gtsam::Vector>;
 
   size_t dof_;
-  double delta_t_;
+  double deltaT_;
 
  public:
   /// Default constructor, only for serialization.
@@ -60,28 +60,28 @@ class GPLiePrior
 
   /**
    * Constructor from the keys of the two states.
-   * @param pose_key1 key for the pose of the first state
-   * @param vel_key1 key for the velocity of the first state
-   * @param pose_key2 key for the pose of the second state
-   * @param vel_key2 key for the velocity of the second state
-   * @param delta_t time between the two states
-   * @param Qc_model Gaussian noise model whose covariance is Qc
+   * @param poseKey1 key for the pose of the first state
+   * @param velKey1 key for the velocity of the first state
+   * @param poseKey2 key for the pose of the second state
+   * @param velKey2 key for the velocity of the second state
+   * @param deltaT time between the two states
+   * @param QcModel Gaussian noise model whose covariance is Qc
    */
-  GPLiePrior(gtsam::Key pose_key1, gtsam::Key vel_key1, gtsam::Key pose_key2,
-             gtsam::Key vel_key2, double delta_t,
-             const gtsam::SharedNoiseModel &Qc_model)
+  GPLiePrior(gtsam::Key poseKey1, gtsam::Key velKey1, gtsam::Key poseKey2,
+             gtsam::Key velKey2, double deltaT,
+             const gtsam::SharedNoiseModel &QcModel)
       : Base(gtsam::noiseModel::Gaussian::Covariance(
-                 calcQAccel(getQc(Qc_model), delta_t)),
-             pose_key1, vel_key1, pose_key2, vel_key2),
-        dof_(Qc_model->dim()),
-        delta_t_(delta_t) {
-    checkGPDeltaT(delta_t_);
+                 calcQAccel(getQc(QcModel), deltaT)),
+             poseKey1, velKey1, poseKey2, velKey2),
+        dof_(QcModel->dim()),
+        deltaT_(deltaT) {
+    checkGPDeltaT(deltaT_);
     // A mismatched Qc dimension silently mis-sizes the error and Jacobians, so
     // reject it up front. Only checkable when T has a fixed dimension.
     if (gtsam::traits<T>::dimension != Eigen::Dynamic &&
         dof_ != static_cast<size_t>(gtsam::traits<T>::dimension)) {
       throw std::invalid_argument(
-          "GPLiePrior: Qc_model dimension must equal the tangent dimension of "
+          "GPLiePrior: QcModel dimension must equal the tangent dimension of "
           "the Lie group.");
     }
   }
@@ -121,14 +121,14 @@ class GPLiePrior
       *H1 = (gtsam::Matrix(2 * dof_, dof_) << Hlogmap * Hcomp1 * Hinv, zero)
                 .finished();
     if (H2)
-      *H2 = (gtsam::Matrix(2 * dof_, dof_) << -delta_t_ * identity, -identity)
+      *H2 = (gtsam::Matrix(2 * dof_, dof_) << -deltaT_ * identity, -identity)
                 .finished();
     if (H3)
       *H3 =
           (gtsam::Matrix(2 * dof_, dof_) << Hlogmap * Hcomp2, zero).finished();
     if (H4) *H4 = (gtsam::Matrix(2 * dof_, dof_) << zero, identity).finished();
 
-    return (gtsam::Vector(2 * dof_) << (r - vel1 * delta_t_), (vel2 - vel1))
+    return (gtsam::Vector(2 * dof_) << (r - vel1 * deltaT_), (vel2 - vel1))
         .finished();
   }
 
@@ -136,14 +136,14 @@ class GPLiePrior
   size_t dof() const { return dof_; }
 
   /// Return the time between the two states.
-  double deltaT() const { return delta_t_; }
+  double deltaT() const { return deltaT_; }
 
   /// Equality up to a tolerance.
   bool equals(const gtsam::NonlinearFactor &expected,
               double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != nullptr && Base::equals(*e, tol) &&
-           std::fabs(this->delta_t_ - e->delta_t_) < tol;
+           std::fabs(this->deltaT_ - e->deltaT_) < tol;
   }
 
   /// Print contents.
@@ -164,7 +164,7 @@ class GPLiePrior
     ar &boost::serialization::make_nvp(
         "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
     ar &BOOST_SERIALIZATION_NVP(dof_);
-    ar &BOOST_SERIALIZATION_NVP(delta_t_);
+    ar &BOOST_SERIALIZATION_NVP(deltaT_);
   }
 #endif
 };  // \class GPLiePrior

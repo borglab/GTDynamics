@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/gpmp2/GPutils.h>
+#include <gtdynamics/gpmp2/GPUtils.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/Vector.h>
@@ -37,8 +37,8 @@ namespace gtdynamics {
 /**
  * A 4-way GaussianProcess prior factor, linear version.
  * Implemented similarly to that used in the GPMP2 paper. Each state consists of
- * a pose and a velocity, separated by delta_t. The error is
- * calcPhiAccel(dof, delta_t) * x1 - x2, where x1 and x2 stack the pose and
+ * a pose and a velocity, separated by deltaT. The error is
+ * calcPhiAccel(dof, deltaT) * x1 - x2, where x1 and x2 stack the pose and
  * velocity of the first and second state respectively.
  */
 class GPLinearPrior
@@ -50,7 +50,7 @@ class GPLinearPrior
                                         gtsam::Vector, gtsam::Vector>;
 
   size_t dof_;
-  double delta_t_;
+  double deltaT_;
 
  public:
   /// Default constructor, only for serialization.
@@ -58,23 +58,23 @@ class GPLinearPrior
 
   /**
    * Constructor from the keys of the two states.
-   * @param pose_key1 key for the pose of the first state
-   * @param vel_key1 key for the velocity of the first state
-   * @param pose_key2 key for the pose of the second state
-   * @param vel_key2 key for the velocity of the second state
-   * @param delta_t time between the two states
-   * @param Qc_model Gaussian noise model whose covariance is Qc
+   * @param poseKey1 key for the pose of the first state
+   * @param velKey1 key for the velocity of the first state
+   * @param poseKey2 key for the pose of the second state
+   * @param velKey2 key for the velocity of the second state
+   * @param deltaT time between the two states
+   * @param QcModel Gaussian noise model whose covariance is Qc
    */
-  GPLinearPrior(gtsam::Key pose_key1, gtsam::Key vel_key1,
-                             gtsam::Key pose_key2, gtsam::Key vel_key2,
-                             double delta_t,
-                             const gtsam::SharedNoiseModel &Qc_model)
+  GPLinearPrior(gtsam::Key poseKey1, gtsam::Key velKey1,
+                             gtsam::Key poseKey2, gtsam::Key velKey2,
+                             double deltaT,
+                             const gtsam::SharedNoiseModel &QcModel)
       : Base(gtsam::noiseModel::Gaussian::Covariance(
-                 calcQAccel(getQc(Qc_model), delta_t)),
-             pose_key1, vel_key1, pose_key2, vel_key2),
-        dof_(Qc_model->dim()),
-        delta_t_(delta_t) {
-    checkGPDeltaT(delta_t_);
+                 calcQAccel(getQc(QcModel), deltaT)),
+             poseKey1, velKey1, poseKey2, velKey2),
+        dof_(QcModel->dim()),
+        deltaT_(deltaT) {
+    checkGPDeltaT(deltaT_);
   }
 
   ~GPLinearPrior() override {}
@@ -103,26 +103,26 @@ class GPLinearPrior
 
     if (H1) *H1 = (gtsam::Matrix(2 * dof_, dof_) << identity, zero).finished();
     if (H2)
-      *H2 = (gtsam::Matrix(2 * dof_, dof_) << delta_t_ * identity, identity)
+      *H2 = (gtsam::Matrix(2 * dof_, dof_) << deltaT_ * identity, identity)
                 .finished();
     if (H3) *H3 = (gtsam::Matrix(2 * dof_, dof_) << -identity, zero).finished();
     if (H4) *H4 = (gtsam::Matrix(2 * dof_, dof_) << zero, -identity).finished();
 
-    return calcPhiAccel(dof_, delta_t_) * x1 - x2;
+    return calcPhiAccel(dof_, deltaT_) * x1 - x2;
   }
 
   /// Return the degrees of freedom of a single state.
   size_t dof() const { return dof_; }
 
   /// Return the time between the two states.
-  double deltaT() const { return delta_t_; }
+  double deltaT() const { return deltaT_; }
 
   /// Equality up to a tolerance.
   bool equals(const gtsam::NonlinearFactor &expected,
               double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != nullptr && Base::equals(*e, tol) &&
-           std::fabs(this->delta_t_ - e->delta_t_) < tol;
+           std::fabs(this->deltaT_ - e->deltaT_) < tol;
   }
 
   /// Print contents.
@@ -143,7 +143,7 @@ class GPLinearPrior
     ar &boost::serialization::make_nvp(
         "NoiseModelFactorN", boost::serialization::base_object<Base>(*this));
     ar &BOOST_SERIALIZATION_NVP(dof_);
-    ar &BOOST_SERIALIZATION_NVP(delta_t_);
+    ar &BOOST_SERIALIZATION_NVP(deltaT_);
   }
 #endif
 };  // \class GPLinearPrior

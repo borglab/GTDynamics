@@ -37,7 +37,7 @@ namespace gtdynamics {
  * trajectory without adding variables for them. The pairs follow the same
  * semantics and restrictions as SelfCollisionSphereFactor. The interpolation is
  * only the posterior mean of the Gaussian process prior if a GPLinearPrior with
- * the same Qc_model and delta_t connects the same two support states in the
+ * the same QcModel and deltaT connects the same two support states in the
  * graph.
  */
 class SelfCollisionSphereFactorGP
@@ -51,7 +51,7 @@ class SelfCollisionSphereFactorGP
   RobotQueryPoints robot_;
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   std::vector<SelfCollisionPair> pairs_;
-  GPLinearInterpolator GPbase_;
+  GPLinearInterpolator interpolator_;
 
   /// Reject inconsistent indices, radii or standoffs.
   void validate() const {
@@ -62,63 +62,63 @@ class SelfCollisionSphereFactorGP
  public:
   /**
    * Constructor with a single sigma across every pair.
-   * @param q_key1 key of the joint angles of the first support state
-   * @param v_key1 key of the joint velocities of the first support state
-   * @param q_key2 key of the joint angles of the second support state
-   * @param v_key2 key of the joint velocities of the second support state
+   * @param qKey1 key of the joint angles of the first support state
+   * @param vKey1 key of the joint velocities of the first support state
+   * @param qKey2 key of the joint angles of the second support state
+   * @param vKey2 key of the joint velocities of the second support state
    * @param robot query point model, spanning every joint involved
    * @param pairs query point pairs to check
    * @param radii radius of each query point, one per point of the model
-   * @param cost_sigma cost function sigma, shared by every pair
-   * @param Qc_model Gaussian noise model whose covariance is Qc
-   * @param delta_t time between the two support states
+   * @param costSigma cost function sigma, shared by every pair
+   * @param QcModel Gaussian noise model whose covariance is Qc
+   * @param deltaT time between the two support states
    * @param tau time from the first support state to the interpolated state
    */
-  SelfCollisionSphereFactorGP(gtsam::Key q_key1, gtsam::Key v_key1,
-                              gtsam::Key q_key2, gtsam::Key v_key2,
+  SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
+                              gtsam::Key qKey2, gtsam::Key vKey2,
                               const RobotQueryPoints &robot,
                               const std::vector<SelfCollisionPair> &pairs,
-                              const gtsam::Vector &radii, double cost_sigma,
-                              const gtsam::SharedNoiseModel &Qc_model,
-                              double delta_t, double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), cost_sigma),
-             q_key1, v_key1, q_key2, v_key2),
+                              const gtsam::Vector &radii, double costSigma,
+                              const gtsam::SharedNoiseModel &QcModel,
+                              double deltaT, double tau)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma),
+             qKey1, vKey1, qKey2, vKey2),
         robot_(robot),
         radii_(radii),
         pairs_(pairs),
-        GPbase_(Qc_model, delta_t, tau) {
-    // delta_t and tau are checked by the interpolator constructor.
+        interpolator_(QcModel, deltaT, tau) {
+    // deltaT and tau are checked by the interpolator constructor.
     validate();
   }
 
   /**
    * Constructor with a sigma per pair.
-   * @param q_key1 key of the joint angles of the first support state
-   * @param v_key1 key of the joint velocities of the first support state
-   * @param q_key2 key of the joint angles of the second support state
-   * @param v_key2 key of the joint velocities of the second support state
+   * @param qKey1 key of the joint angles of the first support state
+   * @param vKey1 key of the joint velocities of the first support state
+   * @param qKey2 key of the joint angles of the second support state
+   * @param vKey2 key of the joint velocities of the second support state
    * @param robot query point model, spanning every joint involved
    * @param pairs query point pairs to check
    * @param radii radius of each query point, one per point of the model
    * @param sigmas cost function sigma of each pair, one per pair
-   * @param Qc_model Gaussian noise model whose covariance is Qc
-   * @param delta_t time between the two support states
+   * @param QcModel Gaussian noise model whose covariance is Qc
+   * @param deltaT time between the two support states
    * @param tau time from the first support state to the interpolated state
    */
-  SelfCollisionSphereFactorGP(gtsam::Key q_key1, gtsam::Key v_key1,
-                              gtsam::Key q_key2, gtsam::Key v_key2,
+  SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
+                              gtsam::Key qKey2, gtsam::Key vKey2,
                               const RobotQueryPoints &robot,
                               const std::vector<SelfCollisionPair> &pairs,
                               const gtsam::Vector &radii,
                               const gtsam::Vector &sigmas,
-                              const gtsam::SharedNoiseModel &Qc_model,
-                              double delta_t, double tau)
-      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), q_key1, v_key1,
-             q_key2, v_key2),
+                              const gtsam::SharedNoiseModel &QcModel,
+                              double deltaT, double tau)
+      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey1, vKey1,
+             qKey2, vKey2),
         robot_(robot),
         radii_(radii),
         pairs_(pairs),
-        GPbase_(Qc_model, delta_t, tau) {
+        interpolator_(QcModel, deltaT, tau) {
     if (static_cast<size_t>(sigmas.size()) != pairs.size()) {
       throw std::invalid_argument(
           "SelfCollisionSphereFactorGP: sigmas must have one entry per pair.");
@@ -145,38 +145,39 @@ class SelfCollisionSphereFactorGP
       gtsam::OptionalMatrixType H2 = nullptr,
       gtsam::OptionalMatrixType H3 = nullptr,
       gtsam::OptionalMatrixType H4 = nullptr) const override {
-    const bool use_H = (H1 || H2 || H3 || H4);
-    const size_t n = pairs_.size();
+    const bool computeJacobians = (H1 || H2 || H3 || H4);
+    const size_t nrPairs = pairs_.size();
 
-    gtsam::Matrix Jq_q1, Jq_v1, Jq_q2, Jq_v2;
+    gtsam::Matrix Hq1, Hv1, Hq2, Hv2;
     const gtsam::Vector q =
-        use_H ? GPbase_.interpolatePose(q1, v1, q2, v2, &Jq_q1, &Jq_v1, &Jq_q2,
-                                        &Jq_v2)
-              : GPbase_.interpolatePose(q1, v1, q2, v2);
+        computeJacobians ? interpolator_.interpolatePose(q1, v1, q2, v2, &Hq1,
+                                                         &Hv1, &Hq2, &Hv2)
+                         : interpolator_.interpolatePose(q1, v1, q2, v2);
 
-    std::vector<gtsam::Point3> wPs;
-    std::vector<gtsam::Matrix> Jps;
-    robot_.queryPoints(q, &wPs, use_H ? &Jps : nullptr);
+    std::vector<gtsam::Point3> wPts;
+    std::vector<gtsam::Matrix> ptJacobians;
+    robot_.queryPoints(q, &wPts, computeJacobians ? &ptJacobians : nullptr);
 
-    gtsam::Vector err(n);
-    gtsam::Matrix Jerr_q = gtsam::Matrix::Zero(n, robot_.dof());
-    for (size_t r = 0; r < n; ++r) {
-      const SelfCollisionPair &p = pairs_[r];
+    gtsam::Vector err(nrPairs);
+    gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPairs, robot_.dof());
+    for (size_t r = 0; r < nrPairs; ++r) {
+      const SelfCollisionPair &pair = pairs_[r];
       // The standoff folds in both spheres' radii.
-      const double eps = p.epsilon + radii_(p.a) + radii_(p.b);
-      if (use_H) {
-        gtsam::Matrix13 H_pA, H_pB;
-        err(r) =
-            hingeLossSelfCollisionCost(wPs[p.a], wPs[p.b], eps, H_pA, H_pB);
-        Jerr_q.row(r) = H_pA * Jps[p.a] + H_pB * Jps[p.b];
+      const double eps = pair.epsilon + radii_(pair.a) + radii_(pair.b);
+      if (computeJacobians) {
+        gtsam::Matrix13 HptA, HptB;
+        err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps,
+                                            HptA, HptB);
+        errJacobian.row(r) =
+            HptA * ptJacobians[pair.a] + HptB * ptJacobians[pair.b];
       } else {
-        err(r) = hingeLossSelfCollisionCost(wPs[p.a], wPs[p.b], eps);
+        err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps);
       }
     }
 
-    if (use_H) {
-      GPLinearInterpolator::updatePoseJacobians(Jerr_q, Jq_q1, Jq_v1, Jq_q2,
-                                                Jq_v2, H1, H2, H3, H4);
+    if (computeJacobians) {
+      GPLinearInterpolator::updatePoseJacobians(errJacobian, Hq1, Hv1, Hq2,
+                                                Hv2, H1, H2, H3, H4);
     }
     return err;
   }

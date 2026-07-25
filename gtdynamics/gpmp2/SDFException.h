@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  SDFexception.h
+ * @file  SDFException.h
  * @brief Custom exceptions for signed distance fields.
  * @author Karthik Shaji - Adapted from gpmp2 by Jing Dong.
  */

@@ -18,7 +18,7 @@
 
 namespace gtdynamics {
 
-/// Gaussian process interpolator on Pose3. Requires a 6-dimensional Qc_model,
+/// Gaussian process interpolator on Pose3. Requires a 6-dimensional QcModel,
 /// which the GPLieInterpolator constructor enforces.
 using GPPose3Interpolator = GPLieInterpolator<gtsam::Pose3>;
 

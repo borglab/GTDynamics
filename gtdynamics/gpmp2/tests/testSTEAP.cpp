@@ -106,13 +106,13 @@ struct SteapProblem {
 
 static SteapProblem makeProblem() {
   RobotQueryPoints model(kRobot, "columns", robot1Joints(), wristPoints());
-  const Vector q_start = startConfig(), q_goal = goalConfig();
+  const Vector qStart = startConfig(), qGoal = goalConfig();
 
   std::vector<Vector> line(kNumStates);
   std::vector<Point3> swept;
   for (size_t k = 0; k < kNumStates; ++k) {
-    line[k] = q_start +
-              (static_cast<double>(k) / (kNumStates - 1)) * (q_goal - q_start);
+    line[k] = qStart +
+              (static_cast<double>(k) / (kNumStates - 1)) * (qGoal - qStart);
     std::vector<Point3> ps;
     model.queryPoints(line[k], &ps);
     swept.insert(swept.end(), ps.begin(), ps.end());
@@ -143,15 +143,15 @@ static SteapProblem makeProblem() {
 // fix factor. The position of the goal pose factor is returned so it can later
 // be swapped for a measurement, as STEAP does at the end of execution.
 static gtsam::NonlinearFactorGraph buildPlanGraph(const SteapProblem &prob,
-                                                  size_t *goal_factor_pos) {
+                                                  size_t *goalFactorPos) {
   const size_t dof = prob.model.dof();
   gtsam::NonlinearFactorGraph graph;
-  auto qc_model = Isotropic::Sigma(dof, 1.0);
+  auto QcModel = Isotropic::Sigma(dof, 1.0);
   auto fix = Isotropic::Sigma(dof, 1e-4);
 
   graph.addPrior<Vector>(X(0), startConfig(), fix);
   graph.addPrior<Vector>(V(0), Vector::Zero(dof), fix);
-  *goal_factor_pos = graph.size();
+  *goalFactorPos = graph.size();
   graph.addPrior<Vector>(X(kNumStates - 1), goalConfig(), fix);
   graph.addPrior<Vector>(V(kNumStates - 1), Vector::Zero(dof), fix);
 
@@ -161,7 +161,7 @@ static gtsam::NonlinearFactorGraph buildPlanGraph(const SteapProblem &prob,
   }
   for (size_t k = 0; k < kNumStates - 1; ++k) {
     graph.emplace_shared<GPLinearPrior>(X(k), V(k), X(k + 1), V(k + 1), kDeltaT,
-                                        qc_model);
+                                        QcModel);
   }
   return graph;
 }
@@ -199,8 +199,8 @@ static Values iterate(gtsam::ISAM2 &isam, int iterations = 10) {
 // the grid cannot pass by reading as free space.
 TEST(STEAP, initialPlanIsCollisionFree) {
   const SteapProblem prob = makeProblem();
-  size_t goal_pos;
-  const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goal_pos);
+  size_t goalPos;
+  const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goalPos);
 
   gtsam::ISAM2 isam(steapParams());
   isam.update(graph, straightLineInit(prob));
@@ -227,8 +227,8 @@ TEST(STEAP, initialPlanIsCollisionFree) {
 TEST(STEAP, measurementFactorUpdatesTrajectory) {
   const SteapProblem prob = makeProblem();
   const size_t dof = prob.model.dof();
-  size_t goal_pos;
-  const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goal_pos);
+  size_t goalPos;
+  const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goalPos);
 
   gtsam::ISAM2 isam(steapParams());
   isam.update(graph, straightLineInit(prob));
@@ -262,13 +262,13 @@ TEST(STEAP, measurementFactorUpdatesTrajectory) {
 TEST(STEAP, goalFactorSwappedForMeasurement) {
   const SteapProblem prob = makeProblem();
   const size_t dof = prob.model.dof();
-  size_t goal_pos;
-  const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goal_pos);
+  size_t goalPos;
+  const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goalPos);
 
   gtsam::ISAM2 isam(steapParams());
   const gtsam::ISAM2Result first = isam.update(graph, straightLineInit(prob));
   iterate(isam);
-  const gtsam::FactorIndex goal_index = first.newFactorsIndices.at(goal_pos);
+  const gtsam::FactorIndex goalIndex = first.newFactorsIndices.at(goalPos);
 
   // The robot arrived a little short of the planned goal.
   Vector arrived = goalConfig();
@@ -278,7 +278,7 @@ TEST(STEAP, goalFactorSwappedForMeasurement) {
   measurement.addPrior<Vector>(X(kNumStates - 1), arrived,
                                Isotropic::Sigma(dof, 1e-4));
   gtsam::FactorIndices remove;
-  remove.push_back(goal_index);
+  remove.push_back(goalIndex);
   isam.update(measurement, Values(), remove);
   const Values updated = iterate(isam);
 

@@ -40,7 +40,7 @@ class JointLimitFactorVector : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   using This = JointLimitFactorVector;
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;
 
-  gtsam::Vector down_limit_, up_limit_, limit_thresh_;
+  gtsam::Vector downLimit_, upLimit_, limitThreshold_;
 
  public:
   /// Default constructor, only for serialization.
@@ -48,32 +48,33 @@ class JointLimitFactorVector : public gtsam::NoiseModelFactorN<gtsam::Vector> {
 
   /**
    * Constructor.
-   * @param q_key key of the stacked joint angle vector
-   * @param cost_model cost function covariance, one row per joint
-   * @param down_limit lower limit of each joint
-   * @param up_limit upper limit of each joint
-   * @param limit_thresh standoff kept from each joint's limits
+   * @param qKey key of the stacked joint angle vector
+   * @param costModel cost function covariance, one row per joint
+   * @param downLimit lower limit of each joint
+   * @param upLimit upper limit of each joint
+   * @param limitThreshold standoff kept from each joint's limits
    */
-  JointLimitFactorVector(gtsam::Key q_key,
-                         const gtsam::SharedNoiseModel &cost_model,
-                         const gtsam::Vector &down_limit,
-                         const gtsam::Vector &up_limit,
-                         const gtsam::Vector &limit_thresh)
-      : Base(cost_model, q_key),
-        down_limit_(down_limit),
-        up_limit_(up_limit),
-        limit_thresh_(limit_thresh) {
-    const size_t dof = cost_model->dim();
-    if (static_cast<size_t>(down_limit.size()) != dof ||
-        static_cast<size_t>(up_limit.size()) != dof ||
-        static_cast<size_t>(limit_thresh.size()) != dof) {
+  JointLimitFactorVector(gtsam::Key qKey,
+                         const gtsam::SharedNoiseModel &costModel,
+                         const gtsam::Vector &downLimit,
+                         const gtsam::Vector &upLimit,
+                         const gtsam::Vector &limitThreshold)
+      : Base(costModel, qKey),
+        downLimit_(downLimit),
+        upLimit_(upLimit),
+        limitThreshold_(limitThreshold) {
+    const size_t dof = costModel->dim();
+    if (static_cast<size_t>(downLimit.size()) != dof ||
+        static_cast<size_t>(upLimit.size()) != dof ||
+        static_cast<size_t>(limitThreshold.size()) != dof) {
       throw std::invalid_argument(
           "JointLimitFactorVector: limit vectors must match the noise model "
           "dimension.");
     }
     for (size_t i = 0; i < dof; ++i) {
       // Both hinges would be active everywhere, leaving the factor no zero.
-      if (down_limit_(i) + limit_thresh_(i) > up_limit_(i) - limit_thresh_(i)) {
+      if (downLimit_(i) + limitThreshold_(i) >
+          upLimit_(i) - limitThreshold_(i)) {
         throw std::invalid_argument(
             "JointLimitFactorVector: a joint's limits and threshold leave no "
             "feasible interval.");
@@ -103,33 +104,33 @@ class JointLimitFactorVector : public gtsam::NoiseModelFactorN<gtsam::Vector> {
     gtsam::Vector err(dof);
     for (size_t i = 0; i < dof; ++i) {
       if (H1) {
-        double H_q;
-        err(i) = hingeLossJointLimitCost(q(i), down_limit_(i), up_limit_(i),
-                                         limit_thresh_(i), &H_q);
-        (*H1)(i, i) = H_q;
+        double Hq;
+        err(i) = hingeLossJointLimitCost(q(i), downLimit_(i), upLimit_(i),
+                                         limitThreshold_(i), &Hq);
+        (*H1)(i, i) = Hq;
       } else {
-        err(i) = hingeLossJointLimitCost(q(i), down_limit_(i), up_limit_(i),
-                                         limit_thresh_(i));
+        err(i) = hingeLossJointLimitCost(q(i), downLimit_(i), upLimit_(i),
+                                         limitThreshold_(i));
       }
     }
     return err;
   }
 
   /// Return the degrees of freedom.
-  size_t dof() const { return down_limit_.size(); }
+  size_t dof() const { return downLimit_.size(); }
 
-  const gtsam::Vector &downLimit() const { return down_limit_; }
-  const gtsam::Vector &upLimit() const { return up_limit_; }
-  const gtsam::Vector &limitThreshold() const { return limit_thresh_; }
+  const gtsam::Vector &downLimit() const { return downLimit_; }
+  const gtsam::Vector &upLimit() const { return upLimit_; }
+  const gtsam::Vector &limitThreshold() const { return limitThreshold_; }
 
   /// Equality up to a tolerance.
   bool equals(const gtsam::NonlinearFactor &expected,
               double tol = 1e-9) const override {
     const This *e = dynamic_cast<const This *>(&expected);
     return e != nullptr && Base::equals(*e, tol) &&
-           gtsam::equal_with_abs_tol(down_limit_, e->down_limit_, tol) &&
-           gtsam::equal_with_abs_tol(up_limit_, e->up_limit_, tol) &&
-           gtsam::equal_with_abs_tol(limit_thresh_, e->limit_thresh_, tol);
+           gtsam::equal_with_abs_tol(downLimit_, e->downLimit_, tol) &&
+           gtsam::equal_with_abs_tol(upLimit_, e->upLimit_, tol) &&
+           gtsam::equal_with_abs_tol(limitThreshold_, e->limitThreshold_, tol);
   }
 
   /// Print contents.
@@ -138,7 +139,8 @@ class JointLimitFactorVector : public gtsam::NoiseModelFactorN<gtsam::Vector> {
                  gtsam::DefaultKeyFormatter) const override {
     std::cout << s << "JointLimitFactorVector(" << dof() << ")" << std::endl;
     Base::print("", keyFormatter);
-    std::cout << "limit threshold: " << limit_thresh_.transpose() << std::endl;
+    std::cout << "limit threshold: " << limitThreshold_.transpose()
+              << std::endl;
   }
 
  private:

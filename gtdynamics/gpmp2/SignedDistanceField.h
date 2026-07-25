@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/gpmp2/SDFexception.h>
+#include <gtdynamics/gpmp2/SDFException.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/Vector.h>
@@ -57,38 +57,38 @@ class SignedDistanceField {
   using This = SignedDistanceField;
 
   gtsam::Point3 origin_;
-  size_t field_rows_, field_cols_, field_z_;
-  double cell_size_;
+  size_t fieldRows_, fieldCols_, fieldZ_;
+  double cellSize_;
   std::vector<gtsam::Matrix> data_;
 
  public:
   /// Default constructor, only for serialization.
-  SignedDistanceField() : field_rows_(0), field_cols_(0), field_z_(0),
-                          cell_size_(0.0) {}
+  SignedDistanceField() : fieldRows_(0), fieldCols_(0), fieldZ_(0),
+                          cellSize_(0.0) {}
 
   /**
    * Constructor with all data.
    * @param origin the (x, y, z) position of cell (0, 0, 0), in frame s
-   * @param cell_size the side length of a grid cell
+   * @param cellSize the side length of a grid cell
    * @param data one matrix per z layer, each indexed as (row = y, col = x)
    */
-  SignedDistanceField(const gtsam::Point3 &origin, double cell_size,
+  SignedDistanceField(const gtsam::Point3 &origin, double cellSize,
                       const std::vector<gtsam::Matrix> &data)
       : origin_(origin),
-        field_rows_(0),
-        field_cols_(0),
-        field_z_(0),
-        cell_size_(cell_size) {
+        fieldRows_(0),
+        fieldCols_(0),
+        fieldZ_(0),
+        cellSize_(cellSize) {
     if (data.empty()) {
       throw std::invalid_argument(
           "SignedDistanceField: data must contain at least one z layer.");
     }
-    field_rows_ = static_cast<size_t>(data[0].rows());
-    field_cols_ = static_cast<size_t>(data[0].cols());
-    field_z_ = data.size();
-    for (size_t z = 0; z < field_z_; ++z) {
-      if (static_cast<size_t>(data[z].rows()) != field_rows_ ||
-          static_cast<size_t>(data[z].cols()) != field_cols_) {
+    fieldRows_ = static_cast<size_t>(data[0].rows());
+    fieldCols_ = static_cast<size_t>(data[0].cols());
+    fieldZ_ = data.size();
+    for (size_t z = 0; z < fieldZ_; ++z) {
+      if (static_cast<size_t>(data[z].rows()) != fieldRows_ ||
+          static_cast<size_t>(data[z].cols()) != fieldCols_) {
         throw std::invalid_argument(
             "SignedDistanceField: all z layers must have identical dimensions.");
       }
@@ -97,14 +97,14 @@ class SignedDistanceField {
   }
 
   /// Constructor with no data, to be filled in later by initFieldData.
-  SignedDistanceField(const gtsam::Point3 &origin, double cell_size,
-                      size_t field_rows, size_t field_cols, size_t field_z)
+  SignedDistanceField(const gtsam::Point3 &origin, double cellSize,
+                      size_t fieldRows, size_t fieldCols, size_t fieldZ)
       : origin_(origin),
-        field_rows_(field_rows),
-        field_cols_(field_cols),
-        field_z_(field_z),
-        cell_size_(cell_size),
-        data_(std::vector<gtsam::Matrix>(field_z)) {}
+        fieldRows_(fieldRows),
+        fieldCols_(fieldCols),
+        fieldZ_(fieldZ),
+        cellSize_(cellSize),
+        data_(std::vector<gtsam::Matrix>(fieldZ)) {}
 
   /**
    * Constructor from sampled positions and their signed distances. The origin,
@@ -171,21 +171,21 @@ class SignedDistanceField {
     }
 
     origin_ = gtsam::Point3(low[0], low[1], low[2]);
-    cell_size_ = spacing[0];
-    field_cols_ = count[0];
-    field_rows_ = count[1];
-    field_z_ = count[2];
+    cellSize_ = spacing[0];
+    fieldCols_ = count[0];
+    fieldRows_ = count[1];
+    fieldZ_ = count[2];
     data_ = std::vector<gtsam::Matrix>(
-        field_z_, gtsam::Matrix::Zero(field_rows_, field_cols_));
+        fieldZ_, gtsam::Matrix::Zero(fieldRows_, fieldCols_));
 
     // Scatter each distance to the node its own position names.
     std::vector<bool> filled(positions.cols(), false);
     for (Eigen::Index n = 0; n < positions.cols(); ++n) {
       size_t idx[3];
       for (int axis = 0; axis < 3; ++axis) {
-        const double fractional = (positions(axis, n) - low[axis]) / cell_size_;
+        const double fractional = (positions(axis, n) - low[axis]) / cellSize_;
         const double rounded = std::round(fractional);
-        if (std::fabs(fractional - rounded) * cell_size_ > tol ||
+        if (std::fabs(fractional - rounded) * cellSize_ > tol ||
             rounded < 0.0 || rounded >= static_cast<double>(count[axis])) {
           throw std::invalid_argument(
               "SignedDistanceField: a position does not lie on a grid node.");
@@ -193,7 +193,7 @@ class SignedDistanceField {
         idx[axis] = static_cast<size_t>(rounded);
       }
       const size_t flat =
-          (idx[2] * field_rows_ + idx[1]) * field_cols_ + idx[0];
+          (idx[2] * fieldRows_ + idx[1]) * fieldCols_ + idx[0];
       if (filled[flat]) {
         throw std::invalid_argument(
             "SignedDistanceField: two positions land on the same grid node.");
@@ -206,17 +206,17 @@ class SignedDistanceField {
   ~SignedDistanceField() {}
 
   /// Insert one z layer of the field, indexed as (row = y, col = x).
-  void initFieldData(size_t z_idx, const gtsam::Matrix &field_layer) {
-    if (z_idx >= field_z_) {
+  void initFieldData(size_t zIndex, const gtsam::Matrix &fieldLayer) {
+    if (zIndex >= fieldZ_) {
       throw std::out_of_range(
-          "SignedDistanceField::initFieldData: z_idx out of range.");
+          "SignedDistanceField::initFieldData: zIndex out of range.");
     }
-    if (static_cast<size_t>(field_layer.rows()) != field_rows_ ||
-        static_cast<size_t>(field_layer.cols()) != field_cols_) {
+    if (static_cast<size_t>(fieldLayer.rows()) != fieldRows_ ||
+        static_cast<size_t>(fieldLayer.cols()) != fieldCols_) {
       throw std::invalid_argument(
-          "SignedDistanceField::initFieldData: field_layer dimensions must match the field.");
+          "SignedDistanceField::initFieldData: fieldLayer dimensions must match the field.");
     }
-    data_[z_idx] = field_layer;
+    data_[zIndex] = fieldLayer;
   }
 
   /// Return the signed distance at a point expressed in frame s.
@@ -228,31 +228,31 @@ class SignedDistanceField {
   double getSignedDistance(const gtsam::Point3 &point,
                            gtsam::Vector3 &g) const {
     const FloatIndex pidx = convertPoint3toCell(point);
-    const gtsam::Vector3 g_idx = gradient(pidx);
+    const gtsam::Vector3 gridIndex = gradient(pidx);
     // The gradient comes back in (row, col, z) order, so swap to (x, y, z).
-    g = gtsam::Vector3(g_idx(1), g_idx(0), g_idx(2)) / cell_size_;
+    g = gtsam::Vector3(gridIndex(1), gridIndex(0), gridIndex(2)) / cellSize_;
     return signedDistance(pidx);
   }
 
   /// Convert a point in frame s to a fractional grid index.
   FloatIndex convertPoint3toCell(const gtsam::Point3 &point) const {
     if (point.x() < origin_.x() ||
-        point.x() > (origin_.x() + (field_cols_ - 1.0) * cell_size_) ||
+        point.x() > (origin_.x() + (fieldCols_ - 1.0) * cellSize_) ||
         point.y() < origin_.y() ||
-        point.y() > (origin_.y() + (field_rows_ - 1.0) * cell_size_) ||
+        point.y() > (origin_.y() + (fieldRows_ - 1.0) * cellSize_) ||
         point.z() < origin_.z() ||
-        point.z() > (origin_.z() + (field_z_ - 1.0) * cell_size_)) {
+        point.z() > (origin_.z() + (fieldZ_ - 1.0) * cellSize_)) {
       throw SDFQueryOutOfRange();
     }
-    return FloatIndex((point.y() - origin_.y()) / cell_size_,
-                      (point.x() - origin_.x()) / cell_size_,
-                      (point.z() - origin_.z()) / cell_size_);
+    return FloatIndex((point.y() - origin_.y()) / cellSize_,
+                      (point.x() - origin_.x()) / cellSize_,
+                      (point.z() - origin_.z()) / cellSize_);
   }
 
   /// Convert a fractional grid index to a point in frame s.
   gtsam::Point3 convertCelltoPoint3(const FloatIndex &cell) const {
-    return origin_ + gtsam::Point3(cell.col * cell_size_, cell.row * cell_size_,
-                                   cell.z * cell_size_);
+    return origin_ + gtsam::Point3(cell.col * cellSize_, cell.row * cellSize_,
+                                   cell.z * cellSize_);
   }
 
   /// Trilinear interpolation of the signed distance at a fractional index.
@@ -263,9 +263,9 @@ class SignedDistanceField {
     const size_t lri = static_cast<size_t>(lr), lci = static_cast<size_t>(lc),
                  lzi = static_cast<size_t>(lz);
     // Clamp so a query exactly on the far face does not read past the grid.
-    const size_t hri = std::min(lri + 1, field_rows_ - 1),
-                 hci = std::min(lci + 1, field_cols_ - 1),
-                 hzi = std::min(lzi + 1, field_z_ - 1);
+    const size_t hri = std::min(lri + 1, fieldRows_ - 1),
+                 hci = std::min(lci + 1, fieldCols_ - 1),
+                 hzi = std::min(lzi + 1, fieldZ_ - 1);
     return (hr - idx.row) * (hc - idx.col) * (hz - idx.z) *
                signedDistance(lri, lci, lzi) +
            (idx.row - lr) * (hc - idx.col) * (hz - idx.z) *
@@ -293,9 +293,9 @@ class SignedDistanceField {
     const size_t lri = static_cast<size_t>(lr), lci = static_cast<size_t>(lc),
                  lzi = static_cast<size_t>(lz);
     // Clamp so a query exactly on the far face does not read past the grid.
-    const size_t hri = std::min(lri + 1, field_rows_ - 1),
-                 hci = std::min(lci + 1, field_cols_ - 1),
-                 hzi = std::min(lzi + 1, field_z_ - 1);
+    const size_t hri = std::min(lri + 1, fieldRows_ - 1),
+                 hci = std::min(lci + 1, fieldCols_ - 1),
+                 hzi = std::min(lzi + 1, fieldZ_ - 1);
     return gtsam::Vector3(
         (hc - idx.col) * (hz - idx.z) *
                 (signedDistance(hri, lci, lzi) - signedDistance(lri, lci, lzi)) +
@@ -331,21 +331,21 @@ class SignedDistanceField {
   }
 
   const gtsam::Point3 &origin() const { return origin_; }
-  size_t xCount() const { return field_cols_; }
-  size_t yCount() const { return field_rows_; }
-  size_t zCount() const { return field_z_; }
-  double cellSize() const { return cell_size_; }
+  size_t xCount() const { return fieldCols_; }
+  size_t yCount() const { return fieldRows_; }
+  size_t zCount() const { return fieldZ_; }
+  double cellSize() const { return cellSize_; }
   const std::vector<gtsam::Matrix> &rawData() const { return data_; }
 
   /// Equality up to a tolerance.
   bool equals(const This &expected, double tol = 1e-9) const {
-    if (field_rows_ != expected.field_rows_ ||
-        field_cols_ != expected.field_cols_ || field_z_ != expected.field_z_ ||
-        std::fabs(cell_size_ - expected.cell_size_) > tol ||
+    if (fieldRows_ != expected.fieldRows_ ||
+        fieldCols_ != expected.fieldCols_ || fieldZ_ != expected.fieldZ_ ||
+        std::fabs(cellSize_ - expected.cellSize_) > tol ||
         !gtsam::traits<gtsam::Point3>::Equals(origin_, expected.origin_, tol)) {
       return false;
     }
-    for (size_t z = 0; z < field_z_; ++z) {
+    for (size_t z = 0; z < fieldZ_; ++z) {
       if (!gtsam::equal_with_abs_tol(data_[z], expected.data_[z], tol)) {
         return false;
       }
@@ -357,9 +357,9 @@ class SignedDistanceField {
   void print(const std::string &s = "") const {
     std::cout << s;
     std::cout << "field origin:     " << origin_.transpose() << std::endl;
-    std::cout << "field resolution: " << cell_size_ << std::endl;
-    std::cout << "field size:       " << field_cols_ << " x " << field_rows_
-              << " x " << field_z_ << std::endl;
+    std::cout << "field resolution: " << cellSize_ << std::endl;
+    std::cout << "field size:       " << fieldCols_ << " x " << fieldRows_
+              << " x " << fieldZ_ << std::endl;
   }
 };  // \class SignedDistanceField
 
