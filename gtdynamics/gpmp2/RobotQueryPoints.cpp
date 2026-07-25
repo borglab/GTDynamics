@@ -32,8 +32,24 @@ RobotQueryPoints::RobotQueryPoints(const Robot &robot,
       wTbase_(wTbase),
       joints_(joints),
       points_(points) {
+  robot_.link(baseLinkName_);  // throws on an unknown base link
   for (size_t i = 0; i < joints_.size(); ++i) {
-    jointColumn_[joints_[i]->id()] = i;
+    if (!joints_[i]) {
+      throw std::invalid_argument(
+          "RobotQueryPoints: joints must not be null.");
+    }
+    // A repeated joint would leave its earlier column of q unused.
+    if (!jointColumn_.emplace(joints_[i]->id(), i).second) {
+      throw std::invalid_argument(
+          "RobotQueryPoints: joint " + joints_[i]->name() +
+          " appears twice in the joint list.");
+    }
+  }
+  for (const auto &point : points_) {
+    if (!point.link) {
+      throw std::invalid_argument(
+          "RobotQueryPoints: a query point's link must not be null.");
+    }
   }
 }
 

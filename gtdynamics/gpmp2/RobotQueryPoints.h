@@ -54,6 +54,8 @@ class RobotQueryPoints {
    * @param joints the joints spanned by q, in the order q indexes them
    * @param points the query points, each in its link's CoM frame
    * @param wTbase pose of the base link in the world frame
+   * @throw std::invalid_argument on a null or repeated joint or a null point
+   *        link, std::runtime_error on an unknown base link
    */
   RobotQueryPoints(const Robot &robot, const std::string &baseLinkName,
                    const std::vector<JointSharedPtr> &joints,

@@ -262,6 +262,30 @@ static std::vector<PointOnLink> wristPoints() {
           PointOnLink(link, Point3(0.0, 0.0, 0.1))};
 }
 
+// Bad kinematic inputs are rejected at construction, not left to crash or
+// leave unused columns of q at query time.
+TEST(RobotQueryPoints, rejectsBadKinematicInputs) {
+  CHECK_EXCEPTION(
+      RobotQueryPoints(kRobot, "no_such_link", robot1Joints(), wristPoints()),
+      std::runtime_error);
+
+  std::vector<JointSharedPtr> withNull = robot1Joints();
+  withNull.push_back(nullptr);
+  CHECK_EXCEPTION(RobotQueryPoints(kRobot, "columns", withNull, wristPoints()),
+                  std::invalid_argument);
+
+  std::vector<JointSharedPtr> repeated = robot1Joints();
+  repeated.push_back(repeated.front());
+  CHECK_EXCEPTION(RobotQueryPoints(kRobot, "columns", repeated, wristPoints()),
+                  std::invalid_argument);
+
+  std::vector<PointOnLink> nullLink = wristPoints();
+  nullLink.push_back(PointOnLink(LinkSharedPtr(), Point3(0.0, 0.0, 0.0)));
+  CHECK_EXCEPTION(
+      RobotQueryPoints(kRobot, "columns", robot1Joints(), nullLink),
+      std::invalid_argument);
+}
+
 static Vector startConfig() {
   return (Vector(9) << 2.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
       .finished();
