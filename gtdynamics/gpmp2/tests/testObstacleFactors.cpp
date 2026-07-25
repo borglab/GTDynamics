@@ -157,12 +157,17 @@ TEST(ObstacleCost, hingeLossAndJacobian) {
       Matrix(gtsam::numericalDerivative11<double, Point3>(f, near)),
       Matrix(Hnear), 1e-5));
 
-  // A point outside the grid is treated as free space, so the field fails open.
+  // Outside the grid the cost fails closed, growing with a gradient back in.
+  const Point3 outside(-3.0, 0.3, 0.4);
   Matrix13 Hout;
-  EXPECT_DOUBLES_EQUAL(
-      0.0, hingeLossObstacleCost(Point3(-1.0, 0.0, 0.0), sdf, kEpsilon, Hout),
-      1e-9);
-  EXPECT(assert_equal(Matrix(Matrix13::Zero()), Matrix(Hout), 1e-9));
+  const double outCost = hingeLossObstacleCost(outside, sdf, kEpsilon, Hout);
+  EXPECT(outCost > 0.0);
+  EXPECT(Hout(0, 0) < 0.0);  // moving +x, back toward the grid, lowers cost
+  EXPECT(hingeLossObstacleCost(Point3(-4.0, 0.3, 0.4), sdf, kEpsilon) >
+         outCost);
+  EXPECT(assert_equal(
+      Matrix(gtsam::numericalDerivative11<double, Point3>(f, outside)),
+      Matrix(Hout), 1e-5));
 }
 
 // The frame attached overload reads the same field through a moving frame, so

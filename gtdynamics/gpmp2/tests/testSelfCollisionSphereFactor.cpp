@@ -75,6 +75,14 @@ TEST(SelfCollisionCost, hingeAndJacobian) {
   EXPECT(assert_equal(
       Matrix(gtsam::numericalDerivative11<double, Point3>(fb, pB)),
       Matrix(HptB), 1e-5));
+
+  // Coincident points: full standoff cost, finite fixed-direction Jacobian.
+  Matrix13 HcA, HcB;
+  EXPECT_DOUBLES_EQUAL(eps, hingeLossSelfCollisionCost(pA, pA, eps, HcA, HcB),
+                       1e-9);
+  EXPECT(HcA.allFinite());
+  EXPECT(HcB.allFinite());
+  EXPECT(assert_equal(Matrix(-HcB), Matrix(HcA), 1e-9));
 }
 
 /* ************************ bar_lab 18-DOF model ************************ */
