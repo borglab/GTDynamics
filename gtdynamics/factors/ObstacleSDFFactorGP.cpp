@@ -25,7 +25,7 @@ gtsam::Vector ObstacleSDFFactorGP::evaluateError(
     gtsam::OptionalMatrixType H2, gtsam::OptionalMatrixType H3,
     gtsam::OptionalMatrixType H4) const {
   const bool computeJacobians = (H1 || H2 || H3 || H4);
-  const size_t nrPts = robot_.nrPoints();
+  const size_t nrPts = robot_->nrPoints();
 
   gtsam::Matrix Hq1, Hv1, Hq2, Hv2;
   const gtsam::Vector q =
@@ -35,10 +35,10 @@ gtsam::Vector ObstacleSDFFactorGP::evaluateError(
 
   std::vector<gtsam::Point3> wPts;
   std::vector<gtsam::Matrix> ptJacobians;
-  robot_.queryPoints(q, &wPts, computeJacobians ? &ptJacobians : nullptr);
+  robot_->queryPoints(q, &wPts, computeJacobians ? &ptJacobians : nullptr);
 
   gtsam::Vector err(nrPts);
-  gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPts, robot_.dof());
+  gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPts, robot_->dof());
   for (size_t i = 0; i < nrPts; ++i) {
     if (computeJacobians) {
       gtsam::Matrix13 Hpt;

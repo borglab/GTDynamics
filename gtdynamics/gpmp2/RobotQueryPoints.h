@@ -33,8 +33,6 @@ namespace gtdynamics {
  */
 class RobotQueryPoints {
  private:
-  Robot robot_;
-  std::string baseLinkName_;
   gtsam::Pose3 wTbase_;
   std::vector<JointSharedPtr> joints_;
   PointOnLinks points_;

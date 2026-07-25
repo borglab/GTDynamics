@@ -34,10 +34,10 @@ gtsam::Vector SelfCollisionSphereFactorGP::evaluateError(
 
   std::vector<gtsam::Point3> wPts;
   std::vector<gtsam::Matrix> ptJacobians;
-  robot_.queryPoints(q, &wPts, computeJacobians ? &ptJacobians : nullptr);
+  robot_->queryPoints(q, &wPts, computeJacobians ? &ptJacobians : nullptr);
 
   gtsam::Vector err(nrPairs);
-  gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPairs, robot_.dof());
+  gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPairs, robot_->dof());
   for (size_t r = 0; r < nrPairs; ++r) {
     const SelfCollisionPair &pair = pairs_[r];
     // The standoff folds in both spheres' radii.

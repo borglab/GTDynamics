@@ -68,13 +68,17 @@ class SelfCollisionSphereFactor
   using This = SelfCollisionSphereFactor;
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;
 
-  RobotQueryPoints robot_;
+  std::shared_ptr<const RobotQueryPoints> robot_;
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   SelfCollisionPairs pairs_;
 
-  /// Reject inconsistent indices, radii or standoffs.
+  /// Reject a null model and inconsistent indices, radii or standoffs.
   void validate() const {
-    validateSelfCollisionPairs(robot_, pairs_, radii_,
+    if (!robot_) {
+      throw std::invalid_argument(
+          "SelfCollisionSphereFactor: robot must not be null.");
+    }
+    validateSelfCollisionPairs(*robot_, pairs_, radii_,
                                "SelfCollisionSphereFactor");
   }
 
@@ -87,7 +91,8 @@ class SelfCollisionSphereFactor
    * @param radii radius of each query point, one per point of the model
    * @param costSigma cost function sigma, shared by every pair
    */
-  SelfCollisionSphereFactor(gtsam::Key qKey, const RobotQueryPoints &robot,
+  SelfCollisionSphereFactor(gtsam::Key qKey,
+                      const std::shared_ptr<const RobotQueryPoints> &robot,
                       const SelfCollisionPairs &pairs,
                       const gtsam::Vector &radii, double costSigma)
       : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma),
@@ -106,7 +111,8 @@ class SelfCollisionSphereFactor
    * @param radii radius of each query point, one per point of the model
    * @param sigmas cost function sigma of each pair, one per pair
    */
-  SelfCollisionSphereFactor(gtsam::Key qKey, const RobotQueryPoints &robot,
+  SelfCollisionSphereFactor(gtsam::Key qKey,
+                      const std::shared_ptr<const RobotQueryPoints> &robot,
                       const SelfCollisionPairs &pairs,
                       const gtsam::Vector &radii, const gtsam::Vector &sigmas)
       : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey),

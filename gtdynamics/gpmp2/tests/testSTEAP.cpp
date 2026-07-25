@@ -98,14 +98,15 @@ static SignedDistanceField makeSphereSDF(const Point3 &center, double radius,
 // Holds the whole planning problem: the query point model, the obstacle field,
 // the straight line initialisation, and the sphere centre.
 struct SteapProblem {
-  RobotQueryPoints model;
+  std::shared_ptr<const RobotQueryPoints> model;
   std::shared_ptr<const SignedDistanceField> sdf;
   std::vector<Vector> line;
   Point3 center;
 };
 
 static SteapProblem makeProblem() {
-  RobotQueryPoints model(kRobot, "columns", robot1Joints(), wristPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), wristPoints());
   const Vector qStart = startConfig(), qGoal = goalConfig();
 
   std::vector<Vector> line(kNumStates);
@@ -114,12 +115,12 @@ static SteapProblem makeProblem() {
     line[k] = qStart +
               (static_cast<double>(k) / (kNumStates - 1)) * (qGoal - qStart);
     std::vector<Point3> ps;
-    model.queryPoints(line[k], &ps);
+    model->queryPoints(line[k], &ps);
     swept.insert(swept.end(), ps.begin(), ps.end());
   }
 
   std::vector<Point3> mid;
-  model.queryPoints(line[kNumStates / 2], &mid);
+  model->queryPoints(line[kNumStates / 2], &mid);
   const Point3 center = mid[0];
 
   const double pad = 0.7;
@@ -144,7 +145,7 @@ static SteapProblem makeProblem() {
 // be swapped for a measurement, as STEAP does at the end of execution.
 static gtsam::NonlinearFactorGraph buildPlanGraph(const SteapProblem &prob,
                                                   size_t *goalFactorPos) {
-  const size_t dof = prob.model.dof();
+  const size_t dof = prob.model->dof();
   gtsam::NonlinearFactorGraph graph;
   auto QcModel = Isotropic::Sigma(dof, 1.0);
   auto fix = Isotropic::Sigma(dof, 1e-4);
@@ -211,7 +212,7 @@ TEST(STEAP, initialPlanIsCollisionFree) {
 
   for (size_t k = 0; k < kNumStates; ++k) {
     std::vector<Point3> ps;
-    prob.model.queryPoints(result.at<Vector>(X(k)), &ps);
+    prob.model->queryPoints(result.at<Vector>(X(k)), &ps);
     for (auto &&p : ps) {
       EXPECT((p - prob.center).norm() > kRadius + kEpsilon - 0.02);
     }
@@ -226,7 +227,7 @@ TEST(STEAP, initialPlanIsCollisionFree) {
 // their fix factors. This is the estimation half of STEAP responding to data.
 TEST(STEAP, measurementFactorUpdatesTrajectory) {
   const SteapProblem prob = makeProblem();
-  const size_t dof = prob.model.dof();
+  const size_t dof = prob.model->dof();
   size_t goalPos;
   const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goalPos);
 
@@ -261,7 +262,7 @@ TEST(STEAP, measurementFactorUpdatesTrajectory) {
 // wherever the robot actually ended up.
 TEST(STEAP, goalFactorSwappedForMeasurement) {
   const SteapProblem prob = makeProblem();
-  const size_t dof = prob.model.dof();
+  const size_t dof = prob.model->dof();
   size_t goalPos;
   const gtsam::NonlinearFactorGraph graph = buildPlanGraph(prob, &goalPos);
 

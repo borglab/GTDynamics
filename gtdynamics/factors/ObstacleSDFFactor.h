@@ -44,11 +44,20 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
 
   double epsilon_;
   gtsam::Vector radii_;  ///< per query point radius, zero if unspecified
-  RobotQueryPoints robot_;
+  std::shared_ptr<const RobotQueryPoints> robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
 
   /// Reject a null field, a negative standoff, or bad radii.
   void validate() const;
+
+  /// nrPoints of a model that must not be null, for the initializer list.
+  static size_t checkedNrPoints(
+      const std::shared_ptr<const RobotQueryPoints> &robot) {
+    if (!robot) {
+      throw std::invalid_argument("ObstacleSDFFactor: robot must not be null.");
+    }
+    return robot->nrPoints();
+  }
 
  public:
   /**
@@ -59,13 +68,15 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * @param costSigma cost function sigma, one per query point
    * @param epsilon standoff distance kept from every obstacle
    */
-  ObstacleSDFFactor(gtsam::Key qKey, const RobotQueryPoints &robot,
+  ObstacleSDFFactor(gtsam::Key qKey,
+                    const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
+                                                 costSigma),
              qKey),
         epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(robot.nrPoints())),
+        radii_(gtsam::Vector::Zero(robot->nrPoints())),
         robot_(robot),
         sdf_(sdf) {
     validate();
@@ -80,11 +91,13 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * @param epsilon standoff distance added to every radius
    * @param radii radius of each query point, one per point of the model
    */
-  ObstacleSDFFactor(gtsam::Key qKey, const RobotQueryPoints &robot,
+  ObstacleSDFFactor(gtsam::Key qKey,
+                    const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon,
                     const gtsam::Vector &radii)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
+                                                 costSigma),
              qKey),
         epsilon_(epsilon),
         radii_(radii),
@@ -116,7 +129,7 @@ class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "ObstacleSDFFactor with " << robot_.nrPoints()
+    std::cout << s << "ObstacleSDFFactor with " << robot_->nrPoints()
               << " query points" << std::endl;
     Base::print("", keyFormatter);
   }

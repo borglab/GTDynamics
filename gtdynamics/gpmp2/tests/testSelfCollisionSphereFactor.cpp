@@ -132,10 +132,11 @@ static Vector configClose() {
 // Point-to-point across the two arms. Epsilon is set a metre past the measured
 // wrist distance so the hinge is active and the numerical check exercises it.
 TEST(SelfCollisionSphereFactor, pointPointJacobians) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPts;
-  model.queryPoints(q, &wPts);
+  model->queryPoints(q, &wPts);
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {
@@ -152,10 +153,11 @@ TEST(SelfCollisionSphereFactor, pointPointJacobians) {
 // Several pairs in one factor, one cross-arm and one within robot1's arm, so a
 // single row couples both arms' DOFs and another only robot1's.
 TEST(SelfCollisionSphereFactor, multiplePairs) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPts;
-  model.queryPoints(q, &wPts);
+  model->queryPoints(q, &wPts);
 
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, (wPts[0] - wPts[1]).norm() + 1.0),   // cross-arm
@@ -177,11 +179,12 @@ TEST(SelfCollisionSphereFactor, multiplePairs) {
 // The two arm bases start within epsilon; the factor drives them apart. Epsilon
 // is 0.3 m past the measured start distance so the pair starts in collision.
 TEST(SelfCollisionSphereFactor, pushesPointsApart) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), queryPoints());
 
   const Vector q0 = configClose();
   std::vector<Point3> startPts;
-  model.queryPoints(q0, &startPts);
+  model->queryPoints(q0, &startPts);
   const double startDistance = (startPts[3] - startPts[4]).norm();
   const double eps = startDistance + 0.3;
 
@@ -200,7 +203,7 @@ TEST(SelfCollisionSphereFactor, pushesPointsApart) {
       gtsam::LevenbergMarquardtOptimizer(graph, init).optimize();
 
   std::vector<Point3> pts;
-  model.queryPoints(result.at<Vector>(X(0)), &pts);
+  model->queryPoints(result.at<Vector>(X(0)), &pts);
   // The weak prior pulls back slightly, so equilibrium sits just under eps.
   EXPECT((pts[3] - pts[4]).norm() > eps - 0.05);
   EXPECT((pts[3] - pts[4]).norm() > startDistance + 0.15);  // clearly separated
@@ -211,10 +214,11 @@ TEST(SelfCollisionSphereFactor, pushesPointsApart) {
 // eps is set 0.05 below the measured distance so the points are clear, then two
 // 0.1 radii push eps + rA + rB past dist, turning the pair into a collision.
 TEST(SelfCollisionSphereFactor, radiiPointPoint) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPts;
-  model.queryPoints(q, &wPts);
+  model->queryPoints(q, &wPts);
   const double dist = (wPts[0] - wPts[1]).norm();
 
   const double eps = dist - 0.05;
@@ -248,10 +252,11 @@ TEST(SelfCollisionSphereFactor, radiiPointPoint) {
 
 // In the active branch a radius adds directly to the cost, once per sphere.
 TEST(SelfCollisionSphereFactor, radiiAddToTheStandoff) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), queryPoints());
   const Vector q = configApart();
   std::vector<Point3> wPts;
-  model.queryPoints(q, &wPts);
+  model->queryPoints(q, &wPts);
 
   // Active by construction: eps sits a metre past the measured distance.
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
@@ -278,10 +283,15 @@ TEST(SelfCollisionSphereFactor, radiiAddToTheStandoff) {
 /* ************************ input validation *************************** */
 
 TEST(SelfCollisionSphereFactor, rejectsBadInput) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), queryPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), queryPoints());
   const std::vector<SelfCollisionPair> pairs = {
       SelfCollisionPair(0, 1, 1.0)};
 
+  // the model must not be null.
+  CHECK_EXCEPTION(
+      SelfCollisionSphereFactor(X(0), nullptr, pairs, Vector::Zero(5), 0.1),
+      std::invalid_argument);
   // radii length must equal the number of query points.
   CHECK_EXCEPTION(
       SelfCollisionSphereFactor(X(0), model, pairs, Vector::Zero(3), 0.1),
@@ -301,7 +311,8 @@ TEST(SelfCollisionSphereFactor, rejectsSameLinkPair) {
   const std::vector<PointOnLink> points = {
       PointOnLink(link, Point3(0.0, 0.0, 0.0)),
       PointOnLink(link, Point3(0.1, 0.0, 0.0))};  // both on link_6
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), points);
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), points);
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, 0.1)};
 
   CHECK_EXCEPTION(

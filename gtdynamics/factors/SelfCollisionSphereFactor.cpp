@@ -62,8 +62,8 @@ gtsam::Vector SelfCollisionSphereFactor::evaluateError(
 
   std::vector<gtsam::Point3> wPts;
   std::vector<gtsam::Matrix> ptJacobians;
-  robot_.queryPoints(q, &wPts, H1 ? &ptJacobians : nullptr);
-  if (H1) *H1 = gtsam::Matrix::Zero(nrPairs, robot_.dof());
+  robot_->queryPoints(q, &wPts, H1 ? &ptJacobians : nullptr);
+  if (H1) *H1 = gtsam::Matrix::Zero(nrPairs, robot_->dof());
 
   for (size_t r = 0; r < nrPairs; ++r) {
     const SelfCollisionPair &pair = pairs_[r];

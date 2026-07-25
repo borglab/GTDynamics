@@ -88,15 +88,16 @@ static Vector supportVelocity() {
 // the interpolated factor must agree with the unary factor at q1; likewise at
 // tau = deltaT with q2.
 TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), wristPoints());
-  const size_t dof = model.dof();
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), wristPoints());
+  const size_t dof = model->dof();
 
   const Vector q1 = supportConfig1(), q2 = supportConfig2();
   const Vector v1 = supportVelocity(), v2 = supportVelocity();
   const double deltaT = 0.5, costSigma = 0.1;
 
   std::vector<Point3> wPts;
-  model.queryPoints(q1, &wPts);
+  model->queryPoints(q1, &wPts);
   // Active by construction: eps sits a metre past the measured distance.
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
@@ -125,8 +126,9 @@ TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
 // analytic Jacobians w.r.t. all four support state variables must match the
 // numerical ones.
 TEST(SelfCollisionSphereFactorGP, interpolatedJacobians) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), wristPoints());
-  const size_t dof = model.dof();
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), wristPoints());
+  const size_t dof = model->dof();
 
   const Vector q1 = supportConfig1(), q2 = supportConfig2();
   const Vector v1 = supportVelocity(), v2 = supportVelocity();
@@ -136,7 +138,7 @@ TEST(SelfCollisionSphereFactorGP, interpolatedJacobians) {
   // active branch is the one the numerical check exercises.
   GPLinearInterpolator interp(Isotropic::Sigma(dof, 1.0), deltaT, tau);
   std::vector<Point3> wPts;
-  model.queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPts);
+  model->queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPts);
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
@@ -159,8 +161,9 @@ TEST(SelfCollisionSphereFactorGP, interpolatedJacobians) {
 // The radii fold into the standoff at the interpolated state exactly as they
 // do in the unary factor: each sphere's radius adds to the active-branch cost.
 TEST(SelfCollisionSphereFactorGP, radiiAddToTheStandoff) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), wristPoints());
-  const size_t dof = model.dof();
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), wristPoints());
+  const size_t dof = model->dof();
 
   const Vector q1 = supportConfig1(), q2 = supportConfig2();
   const Vector v1 = supportVelocity(), v2 = supportVelocity();
@@ -168,7 +171,7 @@ TEST(SelfCollisionSphereFactorGP, radiiAddToTheStandoff) {
 
   GPLinearInterpolator interp(Isotropic::Sigma(dof, 1.0), deltaT, tau);
   std::vector<Point3> wPts;
-  model.queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPts);
+  model->queryPoints(interp.interpolatePose(q1, v1, q2, v2), &wPts);
   // Active by construction: eps sits a metre past the measured distance.
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
@@ -191,8 +194,9 @@ TEST(SelfCollisionSphereFactorGP, radiiAddToTheStandoff) {
 /* ************************ input validation **************************** */
 
 TEST(SelfCollisionSphereFactorGP, rejectsBadInput) {
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), wristPoints());
-  const size_t dof = model.dof();
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), wristPoints());
+  const size_t dof = model->dof();
   const auto QcModel = Isotropic::Sigma(dof, 1.0);
   const double deltaT = 0.5, tau = 0.1;
 
@@ -223,13 +227,14 @@ TEST(SelfCollisionSphereFactorGP, rejectsSameLinkPair) {
   const std::vector<PointOnLink> points = {
       PointOnLink(link, Point3(0.0, 0.0, 0.0)),
       PointOnLink(link, Point3(0.1, 0.0, 0.0))};  // both on link_6
-  RobotQueryPoints model(kRobot, "columns", bothArmJoints(), points);
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", bothArmJoints(), points);
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, 0.1)};
 
   CHECK_EXCEPTION(
       SelfCollisionSphereFactorGP(X(0), V(0), X(1), V(1), model, pairs,
                                   Vector::Zero(2), 0.1,
-                                  Isotropic::Sigma(model.dof(), 1.0), 0.5, 0.1),
+                                  Isotropic::Sigma(model->dof(), 1.0), 0.5, 0.1),
       std::invalid_argument);
 }
 

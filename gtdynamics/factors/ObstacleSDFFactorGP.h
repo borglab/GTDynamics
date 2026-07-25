@@ -48,9 +48,19 @@ class ObstacleSDFFactorGP
                                         gtsam::Vector, gtsam::Vector>;
 
   double epsilon_;
-  RobotQueryPoints robot_;
+  std::shared_ptr<const RobotQueryPoints> robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
   GPLinearInterpolator interpolator_;
+
+  /// nrPoints of a model that must not be null, for the initializer list.
+  static size_t checkedNrPoints(
+      const std::shared_ptr<const RobotQueryPoints> &robot) {
+    if (!robot) {
+      throw std::invalid_argument(
+          "ObstacleSDFFactorGP: robot must not be null.");
+    }
+    return robot->nrPoints();
+  }
 
  public:
   /**
@@ -68,12 +78,14 @@ class ObstacleSDFFactorGP
    * @param tau time from the first support state to the interpolated state
    */
   ObstacleSDFFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
-                      gtsam::Key vKey2, const RobotQueryPoints &robot,
+                      gtsam::Key vKey2,
+                      const std::shared_ptr<const RobotQueryPoints> &robot,
                       const std::shared_ptr<const SignedDistanceField> &sdf,
                       double costSigma, double epsilon,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
                       double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(robot.nrPoints(), costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
+                                                 costSigma),
              qKey1, vKey1, qKey2, vKey2),
         epsilon_(epsilon),
         robot_(robot),
@@ -111,7 +123,7 @@ class ObstacleSDFFactorGP
   void print(const std::string &s = "",
              const gtsam::KeyFormatter &keyFormatter =
                  gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "ObstacleSDFFactorGP with " << robot_.nrPoints()
+    std::cout << s << "ObstacleSDFFactorGP with " << robot_->nrPoints()
               << " query points" << std::endl;
     Base::print("", keyFormatter);
   }

@@ -48,14 +48,18 @@ class SelfCollisionSphereFactorGP
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
                                         gtsam::Vector, gtsam::Vector>;
 
-  RobotQueryPoints robot_;
+  std::shared_ptr<const RobotQueryPoints> robot_;
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   SelfCollisionPairs pairs_;
   GPLinearInterpolator interpolator_;
 
-  /// Reject inconsistent indices, radii or standoffs.
+  /// Reject a null model and inconsistent indices, radii or standoffs.
   void validate() const {
-    validateSelfCollisionPairs(robot_, pairs_, radii_,
+    if (!robot_) {
+      throw std::invalid_argument(
+          "SelfCollisionSphereFactorGP: robot must not be null.");
+    }
+    validateSelfCollisionPairs(*robot_, pairs_, radii_,
                                "SelfCollisionSphereFactorGP");
   }
 
@@ -76,7 +80,7 @@ class SelfCollisionSphereFactorGP
    */
   SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
                               gtsam::Key qKey2, gtsam::Key vKey2,
-                              const RobotQueryPoints &robot,
+                              const std::shared_ptr<const RobotQueryPoints> &robot,
                               const SelfCollisionPairs &pairs,
                               const gtsam::Vector &radii, double costSigma,
                               const gtsam::SharedNoiseModel &QcModel,
@@ -107,7 +111,7 @@ class SelfCollisionSphereFactorGP
    */
   SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
                               gtsam::Key qKey2, gtsam::Key vKey2,
-                              const RobotQueryPoints &robot,
+                              const std::shared_ptr<const RobotQueryPoints> &robot,
                               const SelfCollisionPairs &pairs,
                               const gtsam::Vector &radii,
                               const gtsam::Vector &sigmas,

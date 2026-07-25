@@ -29,7 +29,7 @@ void ObstacleSDFFactor::validate() const {
   if (epsilon_ < 0.0) {
     throw std::invalid_argument("ObstacleSDFFactor: epsilon must be >= 0.");
   }
-  if (static_cast<size_t>(radii_.size()) != robot_.nrPoints()) {
+  if (static_cast<size_t>(radii_.size()) != robot_->nrPoints()) {
     throw std::invalid_argument(
         "ObstacleSDFFactor: radii must have one entry per query point.");
   }
@@ -39,7 +39,7 @@ void ObstacleSDFFactor::validate() const {
   // Overlapping spheres on a link are fine, but the same point registered
   // twice with different radii is a contradiction. Group by link so only
   // same-link points are compared, not every pair.
-  const auto &pts = robot_.points();
+  const auto &pts = robot_->points();
   std::map<uint8_t, std::vector<size_t>> ptsByLink;
   for (size_t i = 0; i < pts.size(); ++i) {
     ptsByLink[pts[i].link->id()].push_back(i);
@@ -62,13 +62,13 @@ void ObstacleSDFFactor::validate() const {
 /* ************************************************************************* */
 gtsam::Vector ObstacleSDFFactor::evaluateError(
     const gtsam::Vector &q, gtsam::OptionalMatrixType H1) const {
-  const size_t nrPts = robot_.nrPoints();
+  const size_t nrPts = robot_->nrPoints();
   gtsam::Vector err(nrPts);
 
   std::vector<gtsam::Point3> wPts;
   std::vector<gtsam::Matrix> ptJacobians;
-  robot_.queryPoints(q, &wPts, H1 ? &ptJacobians : nullptr);
-  if (H1) *H1 = gtsam::Matrix::Zero(nrPts, robot_.dof());
+  robot_->queryPoints(q, &wPts, H1 ? &ptJacobians : nullptr);
+  if (H1) *H1 = gtsam::Matrix::Zero(nrPts, robot_->dof());
 
   for (size_t i = 0; i < nrPts; ++i) {
     const double eps = epsilon_ + radii_(i);

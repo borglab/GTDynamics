@@ -26,11 +26,7 @@ RobotQueryPoints::RobotQueryPoints(const Robot &robot,
                                    const std::vector<JointSharedPtr> &joints,
                                    const PointOnLinks &points,
                                    const gtsam::Pose3 &wTbase)
-    : robot_(robot),
-      baseLinkName_(baseLinkName),
-      wTbase_(wTbase),
-      joints_(joints),
-      points_(points) {
+    : wTbase_(wTbase), joints_(joints), points_(points) {
   std::map<uint8_t, size_t> jointColumn;
   for (size_t i = 0; i < joints_.size(); ++i) {
     if (!joints_[i]) {
@@ -46,7 +42,7 @@ RobotQueryPoints::RobotQueryPoints(const Robot &robot,
   }
 
   // Traverse the tree once, recording each step in topological order.
-  const LinkSharedPtr base = robot_.link(baseLinkName_);
+  const LinkSharedPtr base = robot.link(baseLinkName);
   std::map<uint8_t, size_t> linkSlot{{base->id(), 0}};
   std::queue<LinkSharedPtr> frontier;
   frontier.push(base);

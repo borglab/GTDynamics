@@ -320,7 +320,8 @@ TEST(ObstacleSDFFactor, rejectsConflictingRadii) {
   const std::vector<PointOnLink> duplicate = {
       PointOnLink(link, Point3(0.0, 0.0, 0.0)),
       PointOnLink(link, Point3(0.0, 0.0, 0.0))};
-  RobotQueryPoints dupModel(kRobot, "columns", robot1Joints(), duplicate);
+  const auto dupModel = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), duplicate);
   CHECK_EXCEPTION(
       ObstacleSDFFactor(X(0), dupModel, sdf, 0.01, 0.1,
                         (Vector(2) << 0.1, 0.2).finished()),
@@ -336,7 +337,8 @@ TEST(ObstacleSDFFactor, rejectsConflictingRadii) {
   const std::vector<PointOnLink> overlap = {
       PointOnLink(link, Point3(0.0, 0.0, 0.0)),
       PointOnLink(link, Point3(0.05, 0.0, 0.0))};
-  RobotQueryPoints overlapModel(kRobot, "columns", robot1Joints(), overlap);
+  const auto overlapModel = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), overlap);
   ObstacleSDFFactor allowed(X(0), overlapModel, sdf, 0.01, 0.1,
                             (Vector(2) << 0.1, 0.2).finished());
   EXPECT_LONGS_EQUAL(2, allowed.evaluateError((Vector(9) << 2.0, 2.0, 1.0, 0.0,
@@ -348,21 +350,22 @@ TEST(ObstacleSDFFactor, rejectsConflictingRadii) {
 // Only robot1's joints are given to the model, so the bridge2 subtree is never
 // traversed and robot2 is absent from the query point model entirely.
 TEST(RobotQueryPoints, jacobiansAgainstNumerical) {
-  RobotQueryPoints model(kRobot, "columns", robot1Joints(), wristPoints());
-  EXPECT_LONGS_EQUAL(9, model.dof());
-  EXPECT_LONGS_EQUAL(2, model.nrPoints());
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), wristPoints());
+  EXPECT_LONGS_EQUAL(9, model->dof());
+  EXPECT_LONGS_EQUAL(2, model->nrPoints());
 
   const Vector q = startConfig();
   std::vector<Point3> wPts;
   std::vector<Matrix> Js;
-  model.queryPoints(q, &wPts, &Js);
+  model->queryPoints(q, &wPts, &Js);
 
   // traits<gtsam::Vector>::dimension is Eigen::Dynamic, which
   // numericalDerivative cannot perturb, so q is probed as a fixed size Vector9.
-  for (size_t i = 0; i < model.nrPoints(); ++i) {
+  for (size_t i = 0; i < model->nrPoints(); ++i) {
     std::function<Point3(const Vector9 &)> f = [&](const Vector9 &qq) {
       std::vector<Point3> ps;
-      model.queryPoints(qq, &ps);
+      model->queryPoints(qq, &ps);
       return ps[i];
     };
     EXPECT(assert_equal(
@@ -377,8 +380,9 @@ TEST(RobotQueryPoints, jacobiansAgainstNumerical) {
 // with a spherical obstacle planted exactly on the straight line path of the
 // wrist. The endpoints are pinned, so the trajectory has to bow around it.
 TEST(ObstacleSDFFactor, planAroundSphere) {
-  RobotQueryPoints model(kRobot, "columns", robot1Joints(), wristPoints());
-  const size_t dof = model.dof(), m = model.nrPoints();
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), wristPoints());
+  const size_t dof = model->dof(), m = model->nrPoints();
   const size_t N = 5;  // support states
   const double totalTime = 2.0, deltaT = totalTime / (N - 1);
 
@@ -391,14 +395,14 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
   for (size_t k = 0; k < N; ++k) {
     line[k] = qStart + (static_cast<double>(k) / (N - 1)) * (qGoal - qStart);
     std::vector<Point3> ps;
-    model.queryPoints(line[k], &ps);
+    model->queryPoints(line[k], &ps);
     swept.insert(swept.end(), ps.begin(), ps.end());
   }
 
   // Plant the sphere on the wrist CoM at the midpoint of the straight line, so
   // the initialisation is deep inside it.
   std::vector<Point3> midPts;
-  model.queryPoints(line[N / 2], &midPts);
+  model->queryPoints(line[N / 2], &midPts);
   const Point3 center = midPts[0];
 
   // Size the grid to contain the whole swept path with room to detour. The
@@ -467,7 +471,7 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
 
   for (size_t k = 0; k < N; ++k) {
     std::vector<Point3> ps;
-    model.queryPoints(result.at<Vector>(X(k)), &ps);
+    model->queryPoints(result.at<Vector>(X(k)), &ps);
     for (size_t i = 0; i < m; ++i) {
       EXPECT((ps[i] - center).norm() > kRadius + kEpsilon - 0.02);
     }
@@ -477,14 +481,15 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
 // The interpolated obstacle factor must agree with the unary factor when tau is
 // zero, where the interpolation reproduces the first support state exactly.
 TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
-  RobotQueryPoints model(kRobot, "columns", robot1Joints(), wristPoints());
-  const size_t dof = model.dof();
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), wristPoints());
+  const size_t dof = model->dof();
 
   const Vector q1 = startConfig(), q2 = goalConfig();
   const Vector v1 = Vector::Zero(dof), v2 = Vector::Zero(dof);
 
   std::vector<Point3> midPts;
-  model.queryPoints(q1, &midPts);
+  model->queryPoints(q1, &midPts);
   const Point3 center = midPts[0] + Point3(kRadius + 0.5 * kEpsilon, 0, 0);
   const Point3 origin = center - Point3::Constant(1.0 - kHalfCell);
   auto sdf = std::make_shared<const SignedDistanceField>(
