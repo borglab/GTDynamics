@@ -71,15 +71,10 @@ class SignedDistanceField {
   SignedDistanceField(const gtsam::Point3 &origin, double cellSize,
                       const std::vector<gtsam::Matrix> &data);
 
-  /// Constructor with no data, to be filled in later by initFieldData.
+  /// Constructor with no data, to be filled in layer by layer through
+  /// initFieldData; every layer reads as zero distance until it is set.
   SignedDistanceField(const gtsam::Point3 &origin, double cellSize,
-                      size_t fieldRows, size_t fieldCols, size_t fieldZ)
-      : origin_(origin),
-        fieldRows_(fieldRows),
-        fieldCols_(fieldCols),
-        fieldZ_(fieldZ),
-        cellSize_(cellSize),
-        data_(std::vector<gtsam::Matrix>(fieldZ)) {}
+                      size_t fieldRows, size_t fieldCols, size_t fieldZ);
 
   /**
    * Constructor from sampled positions and their signed distances. The origin,

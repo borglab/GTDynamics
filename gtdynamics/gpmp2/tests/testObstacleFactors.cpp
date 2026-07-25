@@ -126,6 +126,36 @@ TEST(SignedDistanceField, queryOnFarFace) {
                   SDFQueryOutOfRange);
 }
 
+// Invalid construction is rejected up front, not left to divide by zero or
+// underflow an index at query time.
+TEST(SignedDistanceField, rejectsInvalidConstruction) {
+  const Point3 origin(0.0, 0.0, 0.0);
+  const std::vector<Matrix> good(2, Matrix::Zero(3, 3));
+  CHECK_EXCEPTION(SignedDistanceField(origin, 0.0, good),
+                  std::invalid_argument);
+  CHECK_EXCEPTION(SignedDistanceField(origin, -0.1, good),
+                  std::invalid_argument);
+  const std::vector<Matrix> none;
+  CHECK_EXCEPTION(SignedDistanceField(origin, 0.1, none),
+                  std::invalid_argument);
+  const std::vector<Matrix> hollow(2, Matrix::Zero(0, 0));
+  CHECK_EXCEPTION(SignedDistanceField(origin, 0.1, hollow),
+                  std::invalid_argument);
+  CHECK_EXCEPTION(SignedDistanceField(origin, 0.1, 0, 3, 3),
+                  std::invalid_argument);
+  CHECK_EXCEPTION(SignedDistanceField(origin, 0.0, 3, 3, 3),
+                  std::invalid_argument);
+
+  // A default constructed field cannot be queried.
+  const SignedDistanceField empty;
+  CHECK_EXCEPTION(empty.getSignedDistance(origin), std::runtime_error);
+
+  // Reserve constructed layers read as zero distance until they are set.
+  const SignedDistanceField reserved(origin, 0.1, 3, 3, 3);
+  EXPECT_DOUBLES_EQUAL(0.0, reserved.getSignedDistance(Point3(0.1, 0.1, 0.1)),
+                       1e-9);
+}
+
 /* ***************************** obstacle cost *************************** */
 
 TEST(ObstacleCost, hingeLossAndJacobian) {
