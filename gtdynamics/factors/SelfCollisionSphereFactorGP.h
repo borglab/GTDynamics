@@ -50,7 +50,7 @@ class SelfCollisionSphereFactorGP
 
   RobotQueryPoints robot_;
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
-  std::vector<SelfCollisionPair> pairs_;
+  SelfCollisionPairs pairs_;
   GPLinearInterpolator interpolator_;
 
   /// Reject inconsistent indices, radii or standoffs.
@@ -77,7 +77,7 @@ class SelfCollisionSphereFactorGP
   SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
                               gtsam::Key qKey2, gtsam::Key vKey2,
                               const RobotQueryPoints &robot,
-                              const std::vector<SelfCollisionPair> &pairs,
+                              const SelfCollisionPairs &pairs,
                               const gtsam::Vector &radii, double costSigma,
                               const gtsam::SharedNoiseModel &QcModel,
                               double deltaT, double tau)
@@ -108,7 +108,7 @@ class SelfCollisionSphereFactorGP
   SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
                               gtsam::Key qKey2, gtsam::Key vKey2,
                               const RobotQueryPoints &robot,
-                              const std::vector<SelfCollisionPair> &pairs,
+                              const SelfCollisionPairs &pairs,
                               const gtsam::Vector &radii,
                               const gtsam::Vector &sigmas,
                               const gtsam::SharedNoiseModel &QcModel,

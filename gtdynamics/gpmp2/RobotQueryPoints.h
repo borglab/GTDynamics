@@ -43,7 +43,7 @@ class RobotQueryPoints {
   std::string baseLinkName_;
   gtsam::Pose3 wTbase_;
   std::vector<JointSharedPtr> joints_;
-  std::vector<PointOnLink> points_;
+  PointOnLinks points_;
   std::map<uint8_t, size_t> jointColumn_;
 
  public:
@@ -57,7 +57,7 @@ class RobotQueryPoints {
    */
   RobotQueryPoints(const Robot &robot, const std::string &baseLinkName,
                    const std::vector<JointSharedPtr> &joints,
-                   const std::vector<PointOnLink> &points,
+                   const PointOnLinks &points,
                    const gtsam::Pose3 &wTbase = gtsam::Pose3());
 
   /// Return the number of joints spanned by q.
@@ -67,7 +67,7 @@ class RobotQueryPoints {
   size_t nrPoints() const { return points_.size(); }
 
   /// Return the query points, each in its link's CoM frame.
-  const std::vector<PointOnLink> &points() const { return points_; }
+  const PointOnLinks &points() const { return points_; }
 
   /**
    * Forward kinematics over the tree rooted at the base link.

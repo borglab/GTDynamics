@@ -1057,10 +1057,12 @@ class SignedDistanceField {
 
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 class RobotQueryPoints {
-  RobotQueryPoints(const gtdynamics::Robot &robot, string baseLinkName,
+  RobotQueryPoints(const gtdynamics::Robot &robot,
+                   const string &baseLinkName,
                    const std::vector<gtdynamics::Joint *> &joints,
                    const gtdynamics::PointOnLinks &points);
-  RobotQueryPoints(const gtdynamics::Robot &robot, string baseLinkName,
+  RobotQueryPoints(const gtdynamics::Robot &robot,
+                   const string &baseLinkName,
                    const std::vector<gtdynamics::Joint *> &joints,
                    const gtdynamics::PointOnLinks &points,
                    const gtsam::Pose3 &wTbase);
