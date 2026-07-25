@@ -321,8 +321,9 @@ TEST(RobotQueryPoints, rejectsBadKinematicInputs) {
       std::invalid_argument);
 
   // The gantry joints alone never reach the wrist the points sit on.
-  const std::vector<JointSharedPtr> gantryOnly(robot1Joints().begin(),
-                                               robot1Joints().begin() + 3);
+  const std::vector<JointSharedPtr> allJoints = robot1Joints();
+  const std::vector<JointSharedPtr> gantryOnly(allJoints.begin(),
+                                               allJoints.begin() + 3);
   CHECK_EXCEPTION(
       RobotQueryPoints(kRobot, "columns", gantryOnly, wristPoints()),
       std::invalid_argument);
