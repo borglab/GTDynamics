@@ -15,7 +15,6 @@
 
 #include <map>
 #include <queue>
-#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -32,69 +31,96 @@ RobotQueryPoints::RobotQueryPoints(const Robot &robot,
       wTbase_(wTbase),
       joints_(joints),
       points_(points) {
-  robot_.link(baseLinkName_);  // throws on an unknown base link
+  std::map<uint8_t, size_t> jointColumn;
   for (size_t i = 0; i < joints_.size(); ++i) {
     if (!joints_[i]) {
       throw std::invalid_argument(
           "RobotQueryPoints: joints must not be null.");
     }
     // A repeated joint would leave its earlier column of q unused.
-    if (!jointColumn_.emplace(joints_[i]->id(), i).second) {
+    if (!jointColumn.emplace(joints_[i]->id(), i).second) {
       throw std::invalid_argument(
           "RobotQueryPoints: joint " + joints_[i]->name() +
           " appears twice in the joint list.");
     }
   }
+
+  // Traverse the tree once, recording each step in topological order.
+  const LinkSharedPtr base = robot_.link(baseLinkName_);
+  std::map<uint8_t, size_t> linkSlot{{base->id(), 0}};
+  std::queue<LinkSharedPtr> frontier;
+  frontier.push(base);
+  while (!frontier.empty()) {
+    const LinkSharedPtr link = frontier.front();
+    frontier.pop();
+    for (auto &&joint : link->joints()) {
+      auto it = jointColumn.find(joint->id());
+      if (it == jointColumn.end()) continue;  // subtree excluded from q
+      const LinkSharedPtr other = joint->otherLink(link);
+      if (linkSlot.count(other->id())) continue;
+      const size_t childSlot = linkSlot.size();
+      linkSlot[other->id()] = childSlot;
+      steps_.push_back(
+          {joint, other, linkSlot.at(link->id()), childSlot, it->second});
+      frontier.push(other);
+    }
+  }
+
+  // Every listed joint must be traversed, or its column of q would be unused.
+  if (steps_.size() != joints_.size()) {
+    for (const auto &joint : joints_) {
+      bool used = false;
+      for (const auto &step : steps_) used = used || step.joint == joint;
+      if (!used) {
+        throw std::invalid_argument(
+            "RobotQueryPoints: joint " + joint->name() +
+            " does not connect to the base through the listed joints.");
+      }
+    }
+  }
+
+  pointSlots_.reserve(points_.size());
   for (const auto &point : points_) {
     if (!point.link) {
       throw std::invalid_argument(
           "RobotQueryPoints: a query point's link must not be null.");
     }
+    auto it = linkSlot.find(point.link->id());
+    if (it == linkSlot.end()) {
+      throw std::invalid_argument(
+          "RobotQueryPoints: query point on link " + point.link->name() +
+          " which the joints do not reach from the base.");
+    }
+    pointSlots_.push_back(it->second);
   }
+
+  // Size the workspaces once; the base Jacobian block stays zero forever.
+  poses_.resize(linkSlot.size());
+  linkJacobians_ = gtsam::Matrix::Zero(6 * linkSlot.size(), dof());
 }
 
 /* ************************************************************************* */
-void RobotQueryPoints::forwardKinematics(
-    const gtsam::Vector &q, std::map<uint8_t, gtsam::Pose3> *wTl,
-    std::map<uint8_t, gtsam::Matrix> *linkJacobians) const {
+void RobotQueryPoints::computeForwardKinematics(const gtsam::Vector &q,
+                                                bool withJacobians) const {
   if (static_cast<size_t>(q.size()) != dof()) {
     throw std::invalid_argument(
         "RobotQueryPoints: q size must equal the number of joints.");
   }
-  const LinkSharedPtr base = robot_.link(baseLinkName_);
-  (*wTl)[base->id()] = wTbase_;
-  if (linkJacobians) {
-    (*linkJacobians)[base->id()] = gtsam::Matrix::Zero(6, dof());
-  }
-
-  std::set<uint8_t> visited{base->id()};
-  std::queue<LinkSharedPtr> frontier;
-  frontier.push(base);
-
-  while (!frontier.empty()) {
-    const LinkSharedPtr link = frontier.front();
-    frontier.pop();
-    for (auto &&joint : link->joints()) {
-      auto it = jointColumn_.find(joint->id());
-      if (it == jointColumn_.end()) continue;  // subtree excluded from q
-      const LinkSharedPtr other = joint->otherLink(link);
-      if (visited.count(other->id())) continue;
-      visited.insert(other->id());
-
-      const size_t col = it->second;
-      const gtsam::Pose3 &wTparent = wTl->at(link->id());
-      if (linkJacobians) {
-        gtsam::Matrix6 HparentPose;
-        gtsam::Vector6 HjointAngle;
-        (*wTl)[other->id()] =
-            joint->poseOf(other, wTparent, q(col), HparentPose, HjointAngle);
-        gtsam::Matrix jacobian = HparentPose * linkJacobians->at(link->id());
-        jacobian.col(col) += HjointAngle;
-        (*linkJacobians)[other->id()] = jacobian;
-      } else {
-        (*wTl)[other->id()] = joint->poseOf(other, wTparent, q(col));
-      }
-      frontier.push(other);
+  poses_[0] = wTbase_;
+  for (const auto &step : steps_) {
+    const gtsam::Pose3 &wTparent = poses_[step.parentSlot];
+    if (withJacobians) {
+      gtsam::Matrix6 HparentPose;
+      gtsam::Vector6 HjointAngle;
+      poses_[step.childSlot] = step.joint->poseOf(
+          step.childLink, wTparent, q(step.qCol), HparentPose, HjointAngle);
+      auto child = linkJacobians_.middleRows(6 * step.childSlot, 6);
+      child.noalias() =
+          HparentPose * linkJacobians_.middleRows(6 * step.parentSlot, 6);
+      child.col(step.qCol) += HjointAngle;
+    } else {
+      poses_[step.childSlot] =
+          step.joint->poseOf(step.childLink, wTparent, q(step.qCol));
     }
   }
 }
@@ -103,26 +129,19 @@ void RobotQueryPoints::forwardKinematics(
 void RobotQueryPoints::queryPoints(
     const gtsam::Vector &q, std::vector<gtsam::Point3> *wPts,
     std::vector<gtsam::Matrix> *ptJacobians) const {
-  std::map<uint8_t, gtsam::Pose3> poses;
-  std::map<uint8_t, gtsam::Matrix> linkJacobians;
-  forwardKinematics(q, &poses, ptJacobians ? &linkJacobians : nullptr);
+  computeForwardKinematics(q, ptJacobians != nullptr);
 
   wPts->resize(nrPoints());
   if (ptJacobians) ptJacobians->resize(nrPoints());
   for (size_t i = 0; i < nrPoints(); ++i) {
-    const uint8_t id = points_[i].link->id();
-    auto it = poses.find(id);
-    if (it == poses.end()) {
-      throw std::runtime_error(
-          "RobotQueryPoints: query point on a link not reachable from the "
-          "base through the given joints.");
-    }
+    const gtsam::Pose3 &wTl = poses_[pointSlots_[i]];
     if (ptJacobians) {
       gtsam::Matrix36 Hpose;
-      (*wPts)[i] = it->second.transformFrom(points_[i].point, Hpose);
-      (*ptJacobians)[i] = Hpose * linkJacobians.at(id);
+      (*wPts)[i] = wTl.transformFrom(points_[i].point, Hpose);
+      (*ptJacobians)[i] =
+          Hpose * linkJacobians_.middleRows(6 * pointSlots_[i], 6);
     } else {
-      (*wPts)[i] = it->second.transformFrom(points_[i].point);
+      (*wPts)[i] = wTl.transformFrom(points_[i].point);
     }
   }
 }

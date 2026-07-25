@@ -20,7 +20,6 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -28,14 +27,9 @@ namespace gtdynamics {
 
 /**
  * Maps a stacked joint angle vector q to the world positions of a fixed set of
- * query points on the robot, together with their Jacobians with respect to q.
- * This is the sphere free counterpart of gpmp2's robot model: a query point
- * carries no radius, since the standoff distance lives in the obstacle cost.
- *
- * The joints given to the constructor define the ordering of q. Any joint of
- * the robot left out of that list is not traversed, so the subtree beyond it is
- * absent from the model; a query point on such a link raises an exception.
- * Loops are not supported, only trees.
+ * query points on the robot, with Jacobians with respect to q. The joints
+ * given to the constructor define the ordering of q; the kinematic tree is
+ * traversed once at construction. Trees only, no loops.
  */
 class RobotQueryPoints {
  private:
@@ -44,7 +38,23 @@ class RobotQueryPoints {
   gtsam::Pose3 wTbase_;
   std::vector<JointSharedPtr> joints_;
   PointOnLinks points_;
-  std::map<uint8_t, size_t> jointColumn_;
+
+  /// Place the link at childSlot by applying q(qCol) to the parentSlot link.
+  struct TraversalStep {
+    JointSharedPtr joint;
+    LinkSharedPtr childLink;
+    size_t parentSlot, childSlot, qCol;
+  };
+  std::vector<TraversalStep> steps_;  ///< the tree, in topological order
+  std::vector<size_t> pointSlots_;    ///< slot of each query point's link
+
+  /// Workspaces reused across evaluations; not thread safe.
+  mutable std::vector<gtsam::Pose3> poses_;  ///< one pose per slot
+  mutable gtsam::Matrix linkJacobians_;      ///< a 6 x dof block per slot
+
+  /// Run the traversal, filling poses_ and optionally linkJacobians_.
+  void computeForwardKinematics(const gtsam::Vector &q,
+                                bool withJacobians) const;
 
  public:
   /**
@@ -54,8 +64,8 @@ class RobotQueryPoints {
    * @param joints the joints spanned by q, in the order q indexes them
    * @param points the query points, each in its link's CoM frame
    * @param wTbase pose of the base link in the world frame
-   * @throw std::invalid_argument on a null or repeated joint or a null point
-   *        link, std::runtime_error on an unknown base link
+   * @throw std::invalid_argument on a null, repeated or unreachable joint, or
+   *        a point whose link is null or not reached by the joints
    */
   RobotQueryPoints(const Robot &robot, const std::string &baseLinkName,
                    const std::vector<JointSharedPtr> &joints,
@@ -72,22 +82,10 @@ class RobotQueryPoints {
   const PointOnLinks &points() const { return points_; }
 
   /**
-   * Forward kinematics over the tree rooted at the base link.
-   * @param q stacked joint angles, ordered as the constructor's joints
-   * @param wTl filled with the world pose of every reachable link, by link id
-   * @param linkJacobians if non-null, filled with d(wTl)/dq, a 6 x dof matrix
-   *                      per link
-   */
-  void forwardKinematics(
-      const gtsam::Vector &q, std::map<uint8_t, gtsam::Pose3> *wTl,
-      std::map<uint8_t, gtsam::Matrix> *linkJacobians = nullptr) const;
-
-  /**
    * World positions of the query points.
    * @param q stacked joint angles
    * @param wPts filled with the world position of each query point
-   * @param ptJacobians if non-null, filled with d(wPt)/dq, a 3 x dof matrix
-   *                    per point
+   * @param ptJacobians if non-null, filled with a 3 x dof matrix per point
    */
   void queryPoints(const gtsam::Vector &q, std::vector<gtsam::Point3> *wPts,
                    std::vector<gtsam::Matrix> *ptJacobians = nullptr) const;

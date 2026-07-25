@@ -284,6 +284,20 @@ TEST(RobotQueryPoints, rejectsBadKinematicInputs) {
   CHECK_EXCEPTION(
       RobotQueryPoints(kRobot, "columns", robot1Joints(), nullLink),
       std::invalid_argument);
+
+  // Dropping the first gantry joint disconnects the rest from the base.
+  std::vector<JointSharedPtr> disconnected = robot1Joints();
+  disconnected.erase(disconnected.begin());
+  CHECK_EXCEPTION(
+      RobotQueryPoints(kRobot, "columns", disconnected, wristPoints()),
+      std::invalid_argument);
+
+  // The gantry joints alone never reach the wrist the points sit on.
+  const std::vector<JointSharedPtr> gantryOnly(robot1Joints().begin(),
+                                               robot1Joints().begin() + 3);
+  CHECK_EXCEPTION(
+      RobotQueryPoints(kRobot, "columns", gantryOnly, wristPoints()),
+      std::invalid_argument);
 }
 
 static Vector startConfig() {
