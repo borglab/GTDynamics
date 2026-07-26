@@ -33,10 +33,14 @@ gtsam::Vector radians(const gtsam::Vector &degree) {
   return radian;
 }
 
-gtsam::Matrix getQc(const gtsam::SharedNoiseModel Qc_model) {
-  gtsam::noiseModel::Gaussian *Gassian_model =
-      dynamic_cast<gtsam::noiseModel::Gaussian *>(Qc_model.get());
-  return (Gassian_model->R().transpose() * Gassian_model->R()).inverse();
+gtsam::Matrix getQc(const gtsam::SharedNoiseModel QcModel) {
+  gtsam::noiseModel::Gaussian *gaussianModel =
+      dynamic_cast<gtsam::noiseModel::Gaussian *>(QcModel.get());
+  // A non-Gaussian model, such as a robust one, casts to null.
+  if (!gaussianModel) {
+    throw std::invalid_argument("getQc: QcModel must be a Gaussian model.");
+  }
+  return (gaussianModel->R().transpose() * gaussianModel->R()).inverse();
 }
 
 gtsam::Vector q_trajectory(int i, int total_step,

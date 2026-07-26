@@ -1033,6 +1033,44 @@ class Trajectory {
   void writeToFile(const gtdynamics::Robot &robot, const string &name, const gtsam::Values &results) const;
 };
 
+/********************** gpmp2  **********************/
+#include <gtdynamics/factors/GPLinearPriorFactor.h>
+class GPLinearPrior : gtsam::NoiseModelFactor {
+  GPLinearPrior(gtsam::Key poseKey1, gtsam::Key velKey1, gtsam::Key poseKey2,
+                gtsam::Key velKey2, double deltaT,
+                const gtsam::noiseModel::Base *QcModel);
+
+  size_t dof() const;
+  double deltaT() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
+#include <gtdynamics/factors/JointLimitFactorVector.h>
+class JointLimitFactorVector : gtsam::NoiseModelFactor {
+  JointLimitFactorVector(gtsam::Key qKey,
+                         const gtsam::noiseModel::Base *costModel,
+                         const gtsam::Vector &downLimit,
+                         const gtsam::Vector &upLimit,
+                         const gtsam::Vector &limitThreshold);
+
+  size_t dof() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
+#include <gtdynamics/factors/VelocityLimitFactorVector.h>
+class VelocityLimitFactorVector : gtsam::NoiseModelFactor {
+  VelocityLimitFactorVector(gtsam::Key vKey,
+                            const gtsam::noiseModel::Base *costModel,
+                            const gtsam::Vector &velLimit,
+                            const gtsam::Vector &limitThreshold);
+
+  size_t dof() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 /********************** Utilities  **********************/
 #include <gtdynamics/utils/format.h>
 string GtdFormat(const gtsam::Values &t, const string &s = "");
