@@ -40,7 +40,7 @@ namespace gtdynamics {
  * the same QcModel and deltaT connects the same two support states in the
  * graph.
  */
-class SelfCollisionSphereFactorGP
+class GTSAM_EXPORT SelfCollisionSphereFactorGP
     : public gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
                                       gtsam::Vector, gtsam::Vector> {
  private:

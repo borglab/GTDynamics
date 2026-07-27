@@ -47,10 +47,10 @@ using SelfCollisionPairs = std::vector<SelfCollisionPair>;
  * Reject inconsistent indices, radii or standoffs, shared by every self
  * collision factor. factorName prefixes the error messages.
  */
-void validateSelfCollisionPairs(const RobotQueryPoints &robot,
-                                const SelfCollisionPairs &pairs,
-                                const gtsam::Vector &radii,
-                                const std::string &factorName);
+GTSAM_EXPORT void validateSelfCollisionPairs(const RobotQueryPoints &robot,
+                                             const SelfCollisionPairs &pairs,
+                                             const gtsam::Vector &radii,
+                                             const std::string &factorName);
 
 /**
  * Unary factor keeping the robot clear of itself over a set of query point
@@ -62,7 +62,7 @@ void validateSelfCollisionPairs(const RobotQueryPoints &robot,
  * (constant separation). Coincident points fall back to a fixed separation
  * direction rather than a non-finite gradient.
  */
-class SelfCollisionSphereFactor
+class GTSAM_EXPORT SelfCollisionSphereFactor
     : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
   using This = SelfCollisionSphereFactor;

@@ -36,9 +36,9 @@ namespace gtdynamics {
  * @param HptB optional Jacobian of the cost with respect to pB
  * @return the hinge loss cost
  */
-double hingeLossSelfCollisionCost(const gtsam::Point3 &pA,
-                                  const gtsam::Point3 &pB, double epsilon,
-                                  gtsam::OptionalJacobian<1, 3> HptA = {},
-                                  gtsam::OptionalJacobian<1, 3> HptB = {});
+GTSAM_EXPORT double hingeLossSelfCollisionCost(
+    const gtsam::Point3 &pA, const gtsam::Point3 &pB, double epsilon,
+    gtsam::OptionalJacobian<1, 3> HptA = {},
+    gtsam::OptionalJacobian<1, 3> HptB = {});
 
 }  // namespace gtdynamics
