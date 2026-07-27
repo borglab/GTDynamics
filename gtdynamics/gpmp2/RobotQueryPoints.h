@@ -30,6 +30,7 @@ namespace gtdynamics {
  * query points on the robot, with Jacobians with respect to q. The joints
  * given to the constructor define the ordering of q; the kinematic tree is
  * traversed once at construction. Trees only, no loops.
+ * Immutable after construction, so one instance can be evaluated concurrently.
  */
 class GTSAM_EXPORT RobotQueryPoints {
  private:
@@ -45,14 +46,12 @@ class GTSAM_EXPORT RobotQueryPoints {
   };
   std::vector<TraversalStep> steps_;  ///< the tree, in topological order
   std::vector<size_t> pointSlots_;    ///< slot of each query point's link
+  size_t nrLinks_;                    ///< number of slots (base + reached links)
 
-  /// Workspaces reused across evaluations; not thread safe.
-  mutable std::vector<gtsam::Pose3> poses_;  ///< one pose per slot
-  mutable gtsam::Matrix linkJacobians_;      ///< a 6 x dof block per slot
-
-  /// Run the traversal, filling poses_ and optionally linkJacobians_.
+  /// Run the traversal, filling *poses and, if non-null, *linkJacobians.
   void computeForwardKinematics(const gtsam::Vector &q,
-                                bool withJacobians) const;
+                                std::vector<gtsam::Pose3> *poses,
+                                gtsam::Matrix *linkJacobians) const;
 
  public:
   /**

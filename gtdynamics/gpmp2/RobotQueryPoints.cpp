@@ -90,32 +90,32 @@ RobotQueryPoints::RobotQueryPoints(const Robot &robot,
     pointSlots_.push_back(it->second);
   }
 
-  // Size the workspaces once; the base Jacobian block stays zero forever.
-  poses_.resize(linkSlot.size());
-  linkJacobians_ = gtsam::Matrix::Zero(6 * linkSlot.size(), dof());
+  // Size of the pose/Jacobian workspace each evaluation allocates locally.
+  nrLinks_ = linkSlot.size();
 }
 
 /* ************************************************************************* */
-void RobotQueryPoints::computeForwardKinematics(const gtsam::Vector &q,
-                                                bool withJacobians) const {
+void RobotQueryPoints::computeForwardKinematics(
+    const gtsam::Vector &q, std::vector<gtsam::Pose3> *poses,
+    gtsam::Matrix *linkJacobians) const {
   if (static_cast<size_t>(q.size()) != dof()) {
     throw std::invalid_argument(
         "RobotQueryPoints: q size must equal the number of joints.");
   }
-  poses_[0] = wTbase_;
+  (*poses)[0] = wTbase_;
   for (const auto &step : steps_) {
-    const gtsam::Pose3 &wTparent = poses_[step.parentSlot];
-    if (withJacobians) {
+    const gtsam::Pose3 &wTparent = (*poses)[step.parentSlot];
+    if (linkJacobians) {
       gtsam::Matrix6 HparentPose;
       gtsam::Vector6 HjointAngle;
-      poses_[step.childSlot] = step.joint->poseOf(
+      (*poses)[step.childSlot] = step.joint->poseOf(
           step.childLink, wTparent, q(step.qCol), HparentPose, HjointAngle);
-      auto child = linkJacobians_.middleRows(6 * step.childSlot, 6);
+      auto child = linkJacobians->middleRows(6 * step.childSlot, 6);
       child.noalias() =
-          HparentPose * linkJacobians_.middleRows(6 * step.parentSlot, 6);
+          HparentPose * linkJacobians->middleRows(6 * step.parentSlot, 6);
       child.col(step.qCol) += HjointAngle;
     } else {
-      poses_[step.childSlot] =
+      (*poses)[step.childSlot] =
           step.joint->poseOf(step.childLink, wTparent, q(step.qCol));
     }
   }
@@ -125,17 +125,20 @@ void RobotQueryPoints::computeForwardKinematics(const gtsam::Vector &q,
 void RobotQueryPoints::queryPoints(
     const gtsam::Vector &q, std::vector<gtsam::Point3> *wPts,
     std::vector<gtsam::Matrix> *ptJacobians) const {
-  computeForwardKinematics(q, ptJacobians != nullptr);
+  std::vector<gtsam::Pose3> poses(nrLinks_);
+  gtsam::Matrix linkJacobians;
+  if (ptJacobians) linkJacobians = gtsam::Matrix::Zero(6 * nrLinks_, dof());
+  computeForwardKinematics(q, &poses, ptJacobians ? &linkJacobians : nullptr);
 
   wPts->resize(nrPoints());
   if (ptJacobians) ptJacobians->resize(nrPoints());
   for (size_t i = 0; i < nrPoints(); ++i) {
-    const gtsam::Pose3 &wTl = poses_[pointSlots_[i]];
+    const gtsam::Pose3 &wTl = poses[pointSlots_[i]];
     if (ptJacobians) {
       gtsam::Matrix36 Hpose;
       (*wPts)[i] = wTl.transformFrom(points_[i].point, Hpose);
       (*ptJacobians)[i] =
-          Hpose * linkJacobians_.middleRows(6 * pointSlots_[i], 6);
+          Hpose * linkJacobians.middleRows(6 * pointSlots_[i], 6);
     } else {
       (*wPts)[i] = wTl.transformFrom(points_[i].point);
     }
