@@ -1071,6 +1071,78 @@ class VelocityLimitFactorVector : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/gpmp2/SignedDistanceField.h>
+class SignedDistanceField {
+  SignedDistanceField();
+  SignedDistanceField(const gtsam::Matrix &positions,
+                      const gtsam::Vector &distances);
+  SignedDistanceField(const gtsam::Matrix &positions,
+                      const gtsam::Vector &distances, double tol);
+  SignedDistanceField(const gtsam::Point3 &origin, double cellSize,
+                      size_t fieldRows, size_t fieldCols, size_t fieldZ,
+                      const gtsam::Vector &values);
+
+  double getSignedDistance(const gtsam::Point3 &point) const;
+
+  gtsam::Point3 origin() const;
+  size_t xCount() const;
+  size_t yCount() const;
+  size_t zCount() const;
+  double cellSize() const;
+
+  bool equals(const gtdynamics::SignedDistanceField &expected,
+              double tol) const;
+  void print(const string &s = "") const;
+};
+
+#include <gtdynamics/gpmp2/RobotQueryPoints.h>
+class RobotQueryPoints {
+  RobotQueryPoints(const gtdynamics::Robot &robot,
+                   const string &baseLinkName,
+                   const std::vector<gtdynamics::Joint *> &joints,
+                   const gtdynamics::PointOnLinks &points);
+  RobotQueryPoints(const gtdynamics::Robot &robot,
+                   const string &baseLinkName,
+                   const std::vector<gtdynamics::Joint *> &joints,
+                   const gtdynamics::PointOnLinks &points,
+                   const gtsam::Pose3 &wTbase);
+
+  size_t dof() const;
+  size_t nrPoints() const;
+  gtsam::Matrix worldPoints(const gtsam::Vector &q) const;
+};
+
+#include <gtdynamics/factors/ObstacleSDFFactor.h>
+class ObstacleSDFFactor : gtsam::NoiseModelFactor {
+  ObstacleSDFFactor(gtsam::Key qKey, const gtdynamics::RobotQueryPoints *robot,
+                    const gtdynamics::SignedDistanceField *sdf,
+                    double costSigma, double epsilon);
+  ObstacleSDFFactor(gtsam::Key qKey, const gtdynamics::RobotQueryPoints *robot,
+                    const gtdynamics::SignedDistanceField *sdf,
+                    double costSigma, double epsilon,
+                    const gtsam::Vector &radii);
+
+  double epsilon() const;
+  gtsam::Vector radii() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
+#include <gtdynamics/factors/ObstacleSDFFactorGP.h>
+class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
+  ObstacleSDFFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
+                      gtsam::Key vKey2,
+                      const gtdynamics::RobotQueryPoints *robot,
+                      const gtdynamics::SignedDistanceField *sdf,
+                      double costSigma, double epsilon,
+                      const gtsam::noiseModel::Base *QcModel, double deltaT,
+                      double tau);
+
+  double epsilon() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 /********************** Utilities  **********************/
 #include <gtdynamics/utils/format.h>
 string GtdFormat(const gtsam::Values &t, const string &s = "");
