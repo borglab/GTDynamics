@@ -39,7 +39,7 @@ namespace gtdynamics {
  * constructor taking positions and distances is immune to this, since every
  * value carries the position it was sampled at.
  */
-class SignedDistanceField {
+class GTSAM_EXPORT SignedDistanceField {
  public:
   /// Fractional grid index of a point, in (row, col, z) = (y, x, z) order.
   struct FloatIndex {

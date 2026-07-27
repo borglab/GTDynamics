@@ -41,7 +41,7 @@ namespace gtdynamics {
  * The signed distance field has positive values outside obstacles, negative values 
  * inside obstacles, and can be further offset by a standoff distance (epsilon).
  */
-class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
+class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
   using This = ObstacleSDFFactor;
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;

@@ -31,7 +31,7 @@ namespace gtdynamics {
  * given to the constructor define the ordering of q; the kinematic tree is
  * traversed once at construction. Trees only, no loops.
  */
-class RobotQueryPoints {
+class GTSAM_EXPORT RobotQueryPoints {
  private:
   gtsam::Pose3 wTbase_;
   std::vector<JointSharedPtr> joints_;
