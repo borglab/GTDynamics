@@ -38,9 +38,10 @@ namespace gtdynamics {
  * @param Hpt optional Jacobian of the cost with respect to the point
  * @return the hinge loss cost
  */
-double hingeLossObstacleCost(const gtsam::Point3 &point,
-                             const SignedDistanceField &sdf, double epsilon,
-                             gtsam::OptionalJacobian<1, 3> Hpt = {});
+GTSAM_EXPORT double hingeLossObstacleCost(const gtsam::Point3 &point,
+                                          const SignedDistanceField &sdf,
+                                          double epsilon,
+                                          gtsam::OptionalJacobian<1, 3> Hpt = {});
 
 /**
  * Hinge loss obstacle cost for a field rigidly attached to a moving frame s.
@@ -58,10 +59,11 @@ double hingeLossObstacleCost(const gtsam::Point3 &point,
  * @param Hpt optional Jacobian of the cost with respect to the point
  * @return the hinge loss cost
  */
-double hingeLossObstacleCost(const gtsam::Pose3 &wTs,
-                             const gtsam::Point3 &point,
-                             const SignedDistanceField &sdf, double epsilon,
-                             gtsam::OptionalJacobian<1, 6> Hpose = {},
-                             gtsam::OptionalJacobian<1, 3> Hpt = {});
+GTSAM_EXPORT double hingeLossObstacleCost(const gtsam::Pose3 &wTs,
+                                          const gtsam::Point3 &point,
+                                          const SignedDistanceField &sdf,
+                                          double epsilon,
+                                          gtsam::OptionalJacobian<1, 6> Hpose = {},
+                                          gtsam::OptionalJacobian<1, 3> Hpt = {});
 
 }  // namespace gtdynamics

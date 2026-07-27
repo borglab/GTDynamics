@@ -39,7 +39,7 @@ namespace gtdynamics {
  * mean of the Gaussian process prior if a GPLinearPrior with the same QcModel
  * and deltaT connects the same two support states in the graph.
  */
-class ObstacleSDFFactorGP
+class GTSAM_EXPORT ObstacleSDFFactorGP
     : public gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
                                       gtsam::Vector, gtsam::Vector> {
  private:
