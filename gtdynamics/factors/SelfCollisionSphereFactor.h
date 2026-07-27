@@ -53,6 +53,17 @@ GTSAM_EXPORT void validateSelfCollisionPairs(const RobotQueryPoints &robot,
                                              const std::string &factorName);
 
 /**
+ * Restrict robot to just the points pairs references, and remap pairs/radii
+ * from robot's point indices into the restricted model's own compact ones.
+ * Shared by every self collision factor so evaluation only ever queries the
+ * points a factor actually checks, not every point of a larger shared model.
+ * Mutates *pairs and *radii in place; robot itself is left untouched.
+ */
+GTSAM_EXPORT std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
+    const std::shared_ptr<const RobotQueryPoints> &robot,
+    SelfCollisionPairs *pairs, gtsam::Vector *radii);
+
+/**
  * Unary factor keeping the robot clear of itself over a set of query point
  * pairs, one hinge loss row per pair. Both points of every pair move with q, so
  * build the RobotQueryPoints with the union of every joint involved and a
@@ -72,14 +83,17 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   SelfCollisionPairs pairs_;
 
-  /// Reject a null model and inconsistent indices, radii or standoffs.
-  void validate() const {
-    if (!robot_) {
+  /// Reject a null model or inconsistent indices/radii/standoffs (checked
+  /// against robot's own point indices), then restrict robot_ to just the
+  /// points pairs_ references and remap pairs_/radii_ to match.
+  void validateAndRestrict(const std::shared_ptr<const RobotQueryPoints> &robot) {
+    if (!robot) {
       throw std::invalid_argument(
           "SelfCollisionSphereFactor: robot must not be null.");
     }
-    validateSelfCollisionPairs(*robot_, pairs_, radii_,
+    validateSelfCollisionPairs(*robot, pairs_, radii_,
                                "SelfCollisionSphereFactor");
+    robot_ = restrictToReferencedPoints(robot, &pairs_, &radii_);
   }
 
  public:
@@ -97,10 +111,9 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
                       const gtsam::Vector &radii, double costSigma)
       : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma),
              qKey),
-        robot_(robot),
         radii_(radii),
         pairs_(pairs) {
-    validate();
+    validateAndRestrict(robot);
   }
 
   /**
@@ -116,14 +129,13 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
                       const SelfCollisionPairs &pairs,
                       const gtsam::Vector &radii, const gtsam::Vector &sigmas)
       : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey),
-        robot_(robot),
         radii_(radii),
         pairs_(pairs) {
     if (static_cast<size_t>(sigmas.size()) != pairs.size()) {
       throw std::invalid_argument(
           "SelfCollisionSphereFactor: sigmas must have one entry per pair.");
     }
-    validate();
+    validateAndRestrict(robot);
   }
 
   ~SelfCollisionSphereFactor() override {}

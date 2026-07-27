@@ -13,6 +13,8 @@
 
 #include <gtdynamics/factors/SelfCollisionSphereFactor.h>
 
+#include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -52,6 +54,36 @@ void validateSelfCollisionPairs(const RobotQueryPoints &robot,
           factorName + ": a pair must use points on different links.");
     }
   }
+}
+
+/* ************************************************************************* */
+std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
+    const std::shared_ptr<const RobotQueryPoints> &robot,
+    SelfCollisionPairs *pairs, gtsam::Vector *radii) {
+  // Unique original point indices pairs references, in first-occurrence
+  // order, so evaluation never queries a point no pair uses.
+  std::vector<size_t> uniqueIndices;
+  std::map<size_t, size_t> compactOf;
+  for (const auto &pair : *pairs) {
+    for (size_t idx : {pair.a, pair.b}) {
+      if (compactOf.emplace(idx, uniqueIndices.size()).second) {
+        uniqueIndices.push_back(idx);
+      }
+    }
+  }
+
+  gtsam::Vector compactRadii(uniqueIndices.size());
+  for (size_t i = 0; i < uniqueIndices.size(); ++i) {
+    compactRadii(i) = (*radii)(uniqueIndices[i]);
+  }
+  *radii = compactRadii;
+
+  for (auto &pair : *pairs) {
+    pair.a = compactOf.at(pair.a);
+    pair.b = compactOf.at(pair.b);
+  }
+
+  return std::make_shared<const RobotQueryPoints>(robot, uniqueIndices);
 }
 
 /* ************************************************************************* */
