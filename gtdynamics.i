@@ -1143,6 +1143,58 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/factors/SelfCollisionSphereFactor.h>
+class SelfCollisionPair {
+  SelfCollisionPair();
+  SelfCollisionPair(size_t a, size_t b, double epsilon);
+
+  size_t a;
+  size_t b;
+  double epsilon;
+};
+// SelfCollisionPairs defined in specializations.h
+
+class SelfCollisionSphereFactor : gtsam::NoiseModelFactor {
+  SelfCollisionSphereFactor(gtsam::Key qKey,
+                            const gtdynamics::RobotQueryPoints *robot,
+                            const gtdynamics::SelfCollisionPairs &pairs,
+                            const gtsam::Vector &radii, double costSigma);
+  SelfCollisionSphereFactor(gtsam::Key qKey,
+                            const gtdynamics::RobotQueryPoints *robot,
+                            const gtdynamics::SelfCollisionPairs &pairs,
+                            const gtsam::Vector &radii,
+                            const gtsam::Vector &sigmas);
+
+  size_t nrPairs() const;
+  gtsam::Vector radii() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
+#include <gtdynamics/factors/SelfCollisionSphereFactorGP.h>
+class SelfCollisionSphereFactorGP : gtsam::NoiseModelFactor {
+  SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
+                              gtsam::Key qKey2, gtsam::Key vKey2,
+                              const gtdynamics::RobotQueryPoints *robot,
+                              const gtdynamics::SelfCollisionPairs &pairs,
+                              const gtsam::Vector &radii, double costSigma,
+                              const gtsam::noiseModel::Base *QcModel,
+                              double deltaT, double tau);
+  SelfCollisionSphereFactorGP(gtsam::Key qKey1, gtsam::Key vKey1,
+                              gtsam::Key qKey2, gtsam::Key vKey2,
+                              const gtdynamics::RobotQueryPoints *robot,
+                              const gtdynamics::SelfCollisionPairs &pairs,
+                              const gtsam::Vector &radii,
+                              const gtsam::Vector &sigmas,
+                              const gtsam::noiseModel::Base *QcModel,
+                              double deltaT, double tau);
+
+  size_t nrPairs() const;
+  gtsam::Vector radii() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 /********************** Utilities  **********************/
 #include <gtdynamics/utils/format.h>
 string GtdFormat(const gtsam::Values &t, const string &s = "");

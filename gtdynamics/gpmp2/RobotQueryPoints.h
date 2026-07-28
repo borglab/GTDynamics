@@ -20,6 +20,7 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -35,8 +36,8 @@ namespace gtdynamics {
 class GTSAM_EXPORT RobotQueryPoints {
  private:
   gtsam::Pose3 wTbase_;
-  std::vector<JointSharedPtr> joints_;
   PointOnLinks points_;
+  size_t dof_;  ///< number of joints spanned by q
 
   /// Place the link at childSlot by applying q(qCol) to the parentSlot link.
   struct TraversalStep {
@@ -69,8 +70,22 @@ class GTSAM_EXPORT RobotQueryPoints {
                    const PointOnLinks &points,
                    const gtsam::Pose3 &wTbase = gtsam::Pose3());
 
+  /**
+   * Construct a model restricted to a subset of another model's query points,
+   * for factors that only reference a few of a larger model's points (e.g.
+   * sparse self collision pairs). Replays only the traversal steps needed to
+   * reach the requested points, instead of the whole tree.
+   * @param model the model to draw a subset of points from
+   * @param pointIndices indices into model->points(), in the order this
+   *        model's own query points (and queryPoints/worldPoints output) will
+   *        be returned
+   * @throw std::invalid_argument if model is null or an index is out of range
+   */
+  RobotQueryPoints(const std::shared_ptr<const RobotQueryPoints> &model,
+                   const std::vector<size_t> &pointIndices);
+
   /// Return the number of joints spanned by q.
-  size_t dof() const { return joints_.size(); }
+  size_t dof() const { return dof_; }
 
   /// Return the number of query points.
   size_t nrPoints() const { return points_.size(); }
