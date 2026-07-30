@@ -22,10 +22,11 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-void validateSelfCollisionPairs(const RobotQueryPoints &robot,
-                                const SelfCollisionPairs &pairs,
-                                const gtsam::Vector &radii,
-                                const std::string &factorName) {
+/// Reject inconsistent pairs or radii. factorName prefixes the errors.
+static void validateSelfCollisionPairs(const RobotQueryPoints &robot,
+                                       const SelfCollisionPairs &pairs,
+                                       const gtsam::Vector &radii,
+                                       const std::string &factorName) {
   validateQueryPointRadii(robot, radii, factorName);
   for (const auto &pair : pairs) {
     if (pair.epsilon < 0.0) {
@@ -51,7 +52,9 @@ void validateSelfCollisionPairs(const RobotQueryPoints &robot,
 }
 
 /* ************************************************************************* */
-std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
+/// Restrict robot to the points pairs references, remapping *pairs and *radii
+/// into the restricted model's own compact indices.
+static std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
     const std::shared_ptr<const RobotQueryPoints> &robot,
     SelfCollisionPairs *pairs, gtsam::Vector *radii) {
   // Unique original point indices pairs references, in first-occurrence
@@ -78,6 +81,22 @@ std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
   }
 
   return std::make_shared<const RobotQueryPoints>(robot, uniqueIndices);
+}
+
+/* ************************************************************************* */
+std::shared_ptr<const RobotQueryPoints> validateAndRestrictSelfCollision(
+    const std::shared_ptr<const RobotQueryPoints> &robot,
+    SelfCollisionPairs *pairs, gtsam::Vector *radii,
+    const std::string &factorName, const gtsam::Vector *sigmas) {
+  if (!robot) {
+    throw std::invalid_argument(factorName + ": robot must not be null.");
+  }
+  if (sigmas && static_cast<size_t>(sigmas->size()) != pairs->size()) {
+    throw std::invalid_argument(
+        factorName + ": sigmas must have one entry per pair.");
+  }
+  validateSelfCollisionPairs(*robot, *pairs, *radii, factorName);
+  return restrictToReferencedPoints(robot, pairs, radii);
 }
 
 /* ************************************************************************* */

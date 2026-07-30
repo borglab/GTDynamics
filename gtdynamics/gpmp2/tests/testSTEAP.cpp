@@ -19,6 +19,8 @@
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
+
+#include "makeSphereSDF.h"
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/ISAM2.h>
@@ -75,24 +77,6 @@ static Vector startConfig() {
 static Vector goalConfig() {
   return (Vector(9) << 3.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
       .finished();
-}
-
-// Sample the exact signed distance to a sphere onto a grid, layer (row=y,col=x).
-static SignedDistanceField makeSphereSDF(const Point3 &center, double radius,
-                                         const Point3 &origin, double cell,
-                                         size_t nx, size_t ny, size_t nz) {
-  std::vector<Matrix> data(nz);
-  for (size_t k = 0; k < nz; ++k) {
-    Matrix layer(ny, nx);
-    for (size_t i = 0; i < ny; ++i) {
-      for (size_t j = 0; j < nx; ++j) {
-        const Point3 p = origin + Point3(j * cell, i * cell, k * cell);
-        layer(i, j) = (p - center).norm() - radius;
-      }
-    }
-    data[k] = layer;
-  }
-  return SignedDistanceField(origin, cell, data);
 }
 
 // Holds the whole planning problem: the query point model, the obstacle field,

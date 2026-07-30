@@ -21,6 +21,8 @@
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
+
+#include "makeSphereSDF.h"
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -58,26 +60,6 @@ static const double kEpsilon = 0.10;
 // Offset a grid by half a cell to put points of interest at cell centres, since
 // the trilinear gradient is discontinuous on the nodes.
 static const double kHalfCell = 0.5 * kCell;
-
-// Sample the exact signed distance to a sphere onto a grid. The layer for z
-// index k is indexed as (row = y, col = x), matching SignedDistanceField.
-static SignedDistanceField makeSphereSDF(const Point3 &center, double radius,
-                                         const Point3 &origin, double cell,
-                                         size_t nx, size_t ny, size_t nz) {
-  std::vector<Matrix> data(nz);
-  for (size_t k = 0; k < nz; ++k) {
-    Matrix layer(ny, nx);
-    for (size_t i = 0; i < ny; ++i) {
-      for (size_t j = 0; j < nx; ++j) {
-        const Point3 p =
-            origin + Point3(j * cell, i * cell, k * cell);
-        layer(i, j) = (p - center).norm() - radius;
-      }
-    }
-    data[k] = layer;
-  }
-  return SignedDistanceField(origin, cell, data);
-}
 
 /* ********************** signed distance field ************************** */
 

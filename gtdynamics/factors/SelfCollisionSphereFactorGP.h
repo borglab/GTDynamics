@@ -53,18 +53,6 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
   SelfCollisionPairs pairs_;
   GPLinearInterpolator interpolator_;
 
-  /// Reject a null model or inconsistent indices/radii/standoffs, then
-  /// restrict robot_ to the points pairs_ references and remap pairs_/radii_.
-  void validateAndRestrict(const std::shared_ptr<const RobotQueryPoints> &robot) {
-    if (!robot) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactorGP: robot must not be null.");
-    }
-    validateSelfCollisionPairs(*robot, pairs_, radii_,
-                               "SelfCollisionSphereFactorGP");
-    robot_ = restrictToReferencedPoints(robot, &pairs_, &radii_);
-  }
-
  public:
   /**
    * Constructor with a single sigma across every pair.
@@ -93,7 +81,8 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
         pairs_(pairs),
         interpolator_(QcModel, deltaT, tau) {
     // deltaT and tau are checked by the interpolator constructor.
-    validateAndRestrict(robot);
+    robot_ = validateAndRestrictSelfCollision(robot, &pairs_, &radii_,
+                                              "SelfCollisionSphereFactorGP");
   }
 
   /**
@@ -123,11 +112,9 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
         radii_(radii),
         pairs_(pairs),
         interpolator_(QcModel, deltaT, tau) {
-    if (static_cast<size_t>(sigmas.size()) != pairs.size()) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactorGP: sigmas must have one entry per pair.");
-    }
-    validateAndRestrict(robot);
+    // deltaT and tau are checked by the interpolator constructor.
+    robot_ = validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP", &sigmas);
   }
 
   ~SelfCollisionSphereFactorGP() override {}
