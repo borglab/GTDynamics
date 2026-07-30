@@ -90,7 +90,7 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                                                  costSigma),
              qKey1, vKey1, qKey2, vKey2),
         epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(robot->nrPoints())),
+        radii_(gtsam::Vector::Zero(checkedNrPoints(robot))),
         robot_(robot),
         sdf_(sdf),
         interpolator_(QcModel, deltaT, tau) {
