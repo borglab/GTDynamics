@@ -87,7 +87,7 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
                                                  costSigma),
              qKey),
         epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(robot->nrPoints())),
+        radii_(gtsam::Vector::Zero(checkedNrPoints(robot))),
         robot_(robot),
         sdf_(sdf) {
     validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
