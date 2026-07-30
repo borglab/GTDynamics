@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gtdynamics/factors/ObstacleSDFFactor.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
@@ -48,6 +49,7 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                                         gtsam::Vector, gtsam::Vector>;
 
   double epsilon_;
+  gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   std::shared_ptr<const RobotQueryPoints> robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
   GPLinearInterpolator interpolator_;
@@ -72,7 +74,8 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
    * @param robot query point model of the robot
    * @param sdf signed distance field of the obstacles, in the world frame
    * @param costSigma cost function sigma, one per query point
-   * @param epsilon standoff distance kept from every obstacle
+   * @param epsilon standoff distance added to every radius
+   * @param radii radius of each query point, one per point of the model
    * @param QcModel Gaussian noise model whose covariance is Qc
    * @param deltaT time between the two support states
    * @param tau time from the first support state to the interpolated state
@@ -82,22 +85,20 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                       const std::shared_ptr<const RobotQueryPoints> &robot,
                       const std::shared_ptr<const SignedDistanceField> &sdf,
                       double costSigma, double epsilon,
+                      const gtsam::Vector &radii,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
                       double tau)
       : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
                                                  costSigma),
              qKey1, vKey1, qKey2, vKey2),
         epsilon_(epsilon),
+        radii_(radii),
         robot_(robot),
         sdf_(sdf),
         interpolator_(QcModel, deltaT, tau) {
     // deltaT and tau are checked by the interpolator constructor.
-    if (!sdf_) {
-      throw std::invalid_argument("ObstacleSDFFactorGP: sdf must not be null.");
-    }
-    if (epsilon_ < 0.0) {
-      throw std::invalid_argument("ObstacleSDFFactorGP: epsilon must be >= 0.");
-    }
+    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                  "ObstacleSDFFactorGP");
   }
 
   ~ObstacleSDFFactorGP() override {}
@@ -118,6 +119,9 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
 
   /// Return the standoff distance.
   double epsilon() const { return epsilon_; }
+
+  /// Return the per query point radii.
+  const gtsam::Vector &radii() const { return radii_; }
 
   /// Print contents.
   void print(const std::string &s = "",

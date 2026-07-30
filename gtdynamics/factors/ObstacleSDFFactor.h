@@ -34,6 +34,16 @@
 namespace gtdynamics {
 
 /**
+ * Reject a null field, a negative standoff, or robot query point radii that
+ * are mis-sized, negative, or conflict at coincident points. Shared by every
+ * obstacle factor. factorName prefixes the error messages.
+ */
+GTSAM_EXPORT void validateObstacleSDFFactorArgs(
+    const RobotQueryPoints &robot,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
+    const gtsam::Vector &radii, const std::string &factorName);
+
+/**
  * Unary factor that acts to prevent collision of a robot with obstacles, by
  * keeping every query point clear of a given signed distance field. 
  * The connected variable is q (stacked set of joint angles), as ordered in the 
@@ -50,9 +60,6 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
   gtsam::Vector radii_;  ///< per query point radius, zero if unspecified
   std::shared_ptr<const RobotQueryPoints> robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
-
-  /// Reject a null field, a negative standoff, or bad radii.
-  void validate() const;
 
   /// nrPoints of a model that must not be null, for the initializer list.
   static size_t checkedNrPoints(
@@ -83,7 +90,8 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
         radii_(gtsam::Vector::Zero(robot->nrPoints())),
         robot_(robot),
         sdf_(sdf) {
-    validate();
+    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                  "ObstacleSDFFactor");
   }
 
   /**
@@ -107,7 +115,8 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
         radii_(radii),
         robot_(robot),
         sdf_(sdf) {
-    validate();
+    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                  "ObstacleSDFFactor");
   }
 
   ~ObstacleSDFFactor() override {}

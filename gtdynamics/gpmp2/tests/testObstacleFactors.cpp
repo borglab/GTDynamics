@@ -525,9 +525,12 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
       makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
 
   const double deltaT = 0.5, costSigma = 0.01;
-  ObstacleSDFFactor unary(X(0), model, sdf, costSigma, kEpsilon);
+  // Nonzero radii so the agreement also covers the radius folded into the
+  // standoff, not just the shared epsilon.
+  const Vector radii = Vector::Constant(model->nrPoints(), 0.03);
+  ObstacleSDFFactor unary(X(0), model, sdf, costSigma, kEpsilon, radii);
   ObstacleSDFFactorGP interpolated(X(0), V(0), X(1), V(1), model, sdf,
-                                   costSigma, kEpsilon,
+                                   costSigma, kEpsilon, radii,
                                    Isotropic::Sigma(dof, 1.0), deltaT, 0.0);
 
   EXPECT(assert_equal(unary.evaluateError(q1),
@@ -539,8 +542,8 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
   values.insert(X(1), q2);
   values.insert(V(1), v2);
   ObstacleSDFFactorGP atTau(X(0), V(0), X(1), V(1), model, sdf, costSigma,
-                             kEpsilon, Isotropic::Sigma(dof, 1.0), deltaT,
-                             0.2 * deltaT);
+                             kEpsilon, radii, Isotropic::Sigma(dof, 1.0),
+                             deltaT, 0.2 * deltaT);
   EXPECT_CORRECT_FACTOR_JACOBIANS(atTau, values, 1e-7, 1e-5);
 }
 

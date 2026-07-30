@@ -36,12 +36,13 @@ gtsam::Vector ObstacleSDFFactorGP::evaluateError(
   gtsam::Vector err(nrPts);
   gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPts, robot_->dof());
   for (size_t i = 0; i < nrPts; ++i) {
+    const double eps = epsilon_ + radii_(i);
     if (computeJacobians) {
       gtsam::Matrix13 Hpt;
-      err(i) = hingeLossObstacleCost(wPts[i], *sdf_, epsilon_, Hpt);
+      err(i) = hingeLossObstacleCost(wPts[i], *sdf_, eps, Hpt);
       errJacobian.row(i) = Hpt * ptJacobians[i];
     } else {
-      err(i) = hingeLossObstacleCost(wPts[i], *sdf_, epsilon_);
+      err(i) = hingeLossObstacleCost(wPts[i], *sdf_, eps);
     }
   }
 

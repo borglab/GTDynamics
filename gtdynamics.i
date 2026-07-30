@@ -1135,10 +1135,12 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
                       const gtdynamics::RobotQueryPoints *robot,
                       const gtdynamics::SignedDistanceField *sdf,
                       double costSigma, double epsilon,
+                      const gtsam::Vector &radii,
                       const gtsam::noiseModel::Base *QcModel, double deltaT,
                       double tau);
 
   double epsilon() const;
+  gtsam::Vector radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };

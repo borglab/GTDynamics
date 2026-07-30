@@ -22,24 +22,27 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-void ObstacleSDFFactor::validate() const {
-  if (!sdf_) {
-    throw std::invalid_argument("ObstacleSDFFactor: sdf must not be null.");
+void validateObstacleSDFFactorArgs(
+    const RobotQueryPoints &robot,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
+    const gtsam::Vector &radii, const std::string &factorName) {
+  if (!sdf) {
+    throw std::invalid_argument(factorName + ": sdf must not be null.");
   }
-  if (epsilon_ < 0.0) {
-    throw std::invalid_argument("ObstacleSDFFactor: epsilon must be >= 0.");
+  if (epsilon < 0.0) {
+    throw std::invalid_argument(factorName + ": epsilon must be >= 0.");
   }
-  if (static_cast<size_t>(radii_.size()) != robot_->nrPoints()) {
+  if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
     throw std::invalid_argument(
-        "ObstacleSDFFactor: radii must have one entry per query point.");
+        factorName + ": radii must have one entry per query point.");
   }
-  if ((radii_.array() < 0.0).any()) {
-    throw std::invalid_argument("ObstacleSDFFactor: radii must be >= 0.");
+  if ((radii.array() < 0.0).any()) {
+    throw std::invalid_argument(factorName + ": radii must be >= 0.");
   }
   // Overlapping spheres on a link are fine, but the same point registered
   // twice with different radii is a contradiction. Group by link so only
   // same-link points are compared, not every pair.
-  const auto &pts = robot_->points();
+  const auto &pts = robot.points();
   std::map<uint8_t, std::vector<size_t>> ptsByLink;
   for (size_t i = 0; i < pts.size(); ++i) {
     ptsByLink[pts[i].link->id()].push_back(i);
@@ -49,9 +52,9 @@ void ObstacleSDFFactor::validate() const {
     for (size_t a = 0; a < indices.size(); ++a) {
       for (size_t b = a + 1; b < indices.size(); ++b) {
         if ((pts[indices[a]].point - pts[indices[b]].point).norm() < 1e-9 &&
-            std::fabs(radii_(indices[a]) - radii_(indices[b])) > 1e-9) {
+            std::fabs(radii(indices[a]) - radii(indices[b])) > 1e-9) {
           throw std::invalid_argument(
-              "ObstacleSDFFactor: two points at the same location have "
+              factorName + ": two points at the same location have "
               "conflicting radii.");
         }
       }
