@@ -22,10 +22,7 @@
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <cmath>
-#include <cstdint>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -61,15 +58,6 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
   std::shared_ptr<const RobotQueryPoints> robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
 
-  /// nrPoints of a model that must not be null, for the initializer list.
-  static size_t checkedNrPoints(
-      const std::shared_ptr<const RobotQueryPoints> &robot) {
-    if (!robot) {
-      throw std::invalid_argument("ObstacleSDFFactor: robot must not be null.");
-    }
-    return robot->nrPoints();
-  }
-
  public:
   /**
    * Constructor with a single standoff for every query point.
@@ -83,11 +71,11 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
                     const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
-                                                 costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(
+                 checkedNrPoints(robot, "ObstacleSDFFactor"), costSigma),
              qKey),
         epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(checkedNrPoints(robot))),
+        radii_(gtsam::Vector::Zero(robot->nrPoints())),
         robot_(robot),
         sdf_(sdf) {
     validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
@@ -108,8 +96,8 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon,
                     const gtsam::Vector &radii)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
-                                                 costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(
+                 checkedNrPoints(robot, "ObstacleSDFFactor"), costSigma),
              qKey),
         epsilon_(epsilon),
         radii_(radii),

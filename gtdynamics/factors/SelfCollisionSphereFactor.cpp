@@ -26,13 +26,7 @@ void validateSelfCollisionPairs(const RobotQueryPoints &robot,
                                 const SelfCollisionPairs &pairs,
                                 const gtsam::Vector &radii,
                                 const std::string &factorName) {
-  if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
-    throw std::invalid_argument(
-        factorName + ": radii must have one entry per point.");
-  }
-  if ((radii.array() < 0.0).any()) {
-    throw std::invalid_argument(factorName + ": radii must be >= 0.");
-  }
+  validateQueryPointRadii(robot, radii, factorName);
   for (const auto &pair : pairs) {
     if (pair.epsilon < 0.0) {
       throw std::invalid_argument(factorName +

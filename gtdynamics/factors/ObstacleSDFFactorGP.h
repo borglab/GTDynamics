@@ -54,16 +54,6 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
   std::shared_ptr<const SignedDistanceField> sdf_;
   GPLinearInterpolator interpolator_;
 
-  /// nrPoints of a model that must not be null, for the initializer list.
-  static size_t checkedNrPoints(
-      const std::shared_ptr<const RobotQueryPoints> &robot) {
-    if (!robot) {
-      throw std::invalid_argument(
-          "ObstacleSDFFactorGP: robot must not be null.");
-    }
-    return robot->nrPoints();
-  }
-
  public:
   /**
    * Constructor with a single standoff for every query point.
@@ -86,11 +76,11 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                       double costSigma, double epsilon,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
                       double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
-                                                 costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(
+                 checkedNrPoints(robot, "ObstacleSDFFactorGP"), costSigma),
              qKey1, vKey1, qKey2, vKey2),
         epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(checkedNrPoints(robot))),
+        radii_(gtsam::Vector::Zero(robot->nrPoints())),
         robot_(robot),
         sdf_(sdf),
         interpolator_(QcModel, deltaT, tau) {
@@ -122,8 +112,8 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                       const gtsam::Vector &radii,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
                       double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
-                                                 costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(
+                 checkedNrPoints(robot, "ObstacleSDFFactorGP"), costSigma),
              qKey1, vKey1, qKey2, vKey2),
         epsilon_(epsilon),
         radii_(radii),
