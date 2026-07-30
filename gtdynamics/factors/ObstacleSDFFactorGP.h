@@ -66,7 +66,41 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
 
  public:
   /**
-   * Constructor.
+   * Constructor with a single standoff for every query point.
+   * @param qKey1 key of the joint angles of the first support state
+   * @param vKey1 key of the joint velocities of the first support state
+   * @param qKey2 key of the joint angles of the second support state
+   * @param vKey2 key of the joint velocities of the second support state
+   * @param robot query point model of the robot
+   * @param sdf signed distance field of the obstacles, in the world frame
+   * @param costSigma cost function sigma, one per query point
+   * @param epsilon standoff distance kept from every obstacle
+   * @param QcModel Gaussian noise model whose covariance is Qc
+   * @param deltaT time between the two support states
+   * @param tau time from the first support state to the interpolated state
+   */
+  ObstacleSDFFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
+                      gtsam::Key vKey2,
+                      const std::shared_ptr<const RobotQueryPoints> &robot,
+                      const std::shared_ptr<const SignedDistanceField> &sdf,
+                      double costSigma, double epsilon,
+                      const gtsam::SharedNoiseModel &QcModel, double deltaT,
+                      double tau)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
+                                                 costSigma),
+             qKey1, vKey1, qKey2, vKey2),
+        epsilon_(epsilon),
+        radii_(gtsam::Vector::Zero(robot->nrPoints())),
+        robot_(robot),
+        sdf_(sdf),
+        interpolator_(QcModel, deltaT, tau) {
+    // deltaT and tau are checked by the interpolator constructor.
+    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                  "ObstacleSDFFactorGP");
+  }
+
+  /**
+   * Constructor with a radius per query point, added to the shared epsilon.
    * @param qKey1 key of the joint angles of the first support state
    * @param vKey1 key of the joint velocities of the first support state
    * @param qKey2 key of the joint angles of the second support state
