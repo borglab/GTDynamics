@@ -35,25 +35,7 @@ void validateObstacleSDFFactorArgs(
 /* ************************************************************************* */
 gtsam::Vector ObstacleSDFFactor::evaluateError(
     const gtsam::Vector &q, gtsam::OptionalMatrixType H1) const {
-  const size_t nrPts = robot_->nrPoints();
-  gtsam::Vector err(nrPts);
-
-  std::vector<gtsam::Point3> wPts;
-  std::vector<gtsam::Matrix> ptJacobians;
-  robot_->queryPoints(q, &wPts, H1 ? &ptJacobians : nullptr);
-  if (H1) *H1 = gtsam::Matrix::Zero(nrPts, robot_->dof());
-
-  for (size_t i = 0; i < nrPts; ++i) {
-    const double eps = epsilon_ + radii_(i);
-    if (H1) {
-      gtsam::Matrix13 Hpt;
-      err(i) = hingeLossObstacleCost(wPts[i], *sdf_, eps, Hpt);
-      H1->row(i) = Hpt * ptJacobians[i];
-    } else {
-      err(i) = hingeLossObstacleCost(wPts[i], *sdf_, eps);
-    }
-  }
-  return err;
+  return obstacleSDFError(q, *robot_, *sdf_, epsilon_, radii_, H1);
 }
 
 }  // namespace gtdynamics
