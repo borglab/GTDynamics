@@ -29,20 +29,6 @@
 
 namespace gtdynamics {
 
-/// One self collision check between two query points, each inflated to a sphere
-/// by its radius and kept epsilon apart on top of that.
-struct SelfCollisionPair {
-  size_t a;        ///< first query point index
-  size_t b;        ///< second query point index
-  double epsilon;  ///< standoff between the two, added to their radii
-
-  SelfCollisionPair() : a(0), b(0), epsilon(0.0) {}
-  SelfCollisionPair(size_t a, size_t b, double epsilon)
-      : a(a), b(b), epsilon(epsilon) {}
-};
-
-using SelfCollisionPairs = std::vector<SelfCollisionPair>;
-
 /**
  * Reject a null model, inconsistent pairs/radii, or, if sigmas is given, a
  * sigma count not matching the pairs. Then return the model restricted to just

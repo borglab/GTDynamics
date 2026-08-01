@@ -41,4 +41,34 @@ double hingeLossSelfCollisionCost(const gtsam::Point3 &pA,
   return epsilon - dist;
 }
 
+/* ************************************************************************* */
+gtsam::Vector selfCollisionError(const gtsam::Vector &q,
+                                 const RobotQueryPoints &robot,
+                                 const SelfCollisionPairs &pairs,
+                                 const gtsam::Vector &radii,
+                                 gtsam::Matrix *Hq) {
+  const size_t nrPairs = pairs.size();
+
+  std::vector<gtsam::Point3> wPts;
+  std::vector<gtsam::Matrix> ptJacobians;
+  robot.queryPoints(q, &wPts, Hq ? &ptJacobians : nullptr);
+  if (Hq) *Hq = gtsam::Matrix::Zero(nrPairs, robot.dof());
+
+  gtsam::Vector err(nrPairs);
+  for (size_t r = 0; r < nrPairs; ++r) {
+    const SelfCollisionPair &pair = pairs[r];
+    // The standoff folds in both spheres' radii.
+    const double eps = pair.epsilon + radii(pair.a) + radii(pair.b);
+    if (Hq) {
+      gtsam::Matrix13 HptA, HptB;
+      err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps,
+                                          HptA, HptB);
+      Hq->row(r) = HptA * ptJacobians[pair.a] + HptB * ptJacobians[pair.b];
+    } else {
+      err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps);
+    }
+  }
+  return err;
+}
+
 }  // namespace gtdynamics

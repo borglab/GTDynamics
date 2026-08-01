@@ -14,7 +14,6 @@
 #include <gtdynamics/factors/ObstacleSDFFactor.h>
 
 #include <stdexcept>
-#include <vector>
 
 namespace gtdynamics {
 

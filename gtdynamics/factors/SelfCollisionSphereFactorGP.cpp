@@ -13,8 +13,6 @@
 
 #include <gtdynamics/factors/SelfCollisionSphereFactorGP.h>
 
-#include <vector>
-
 namespace gtdynamics {
 
 /* ************************************************************************* */
@@ -24,33 +22,15 @@ gtsam::Vector SelfCollisionSphereFactorGP::evaluateError(
     gtsam::OptionalMatrixType H2, gtsam::OptionalMatrixType H3,
     gtsam::OptionalMatrixType H4) const {
   const bool computeJacobians = (H1 || H2 || H3 || H4);
-  const size_t nrPairs = pairs_.size();
 
   const gtsam::Vector q = interpolator_.interpolatePose(q1, v1, q2, v2);
 
-  std::vector<gtsam::Point3> wPts;
-  std::vector<gtsam::Matrix> ptJacobians;
-  robot_->queryPoints(q, &wPts, computeJacobians ? &ptJacobians : nullptr);
-
-  gtsam::Vector err(nrPairs);
-  gtsam::Matrix errJacobian = gtsam::Matrix::Zero(nrPairs, robot_->dof());
-  for (size_t r = 0; r < nrPairs; ++r) {
-    const SelfCollisionPair &pair = pairs_[r];
-    // The standoff folds in both spheres' radii.
-    const double eps = pair.epsilon + radii_(pair.a) + radii_(pair.b);
-    if (computeJacobians) {
-      gtsam::Matrix13 HptA, HptB;
-      err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps,
-                                          HptA, HptB);
-      errJacobian.row(r) =
-          HptA * ptJacobians[pair.a] + HptB * ptJacobians[pair.b];
-    } else {
-      err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps);
-    }
-  }
+  gtsam::Matrix Hq;
+  const gtsam::Vector err = selfCollisionError(
+      q, *robot_, pairs_, radii_, computeJacobians ? &Hq : nullptr);
 
   if (computeJacobians) {
-    interpolator_.updatePoseJacobians(errJacobian, H1, H2, H3, H4);
+    interpolator_.updatePoseJacobians(Hq, H1, H2, H3, H4);
   }
   return err;
 }

@@ -102,28 +102,7 @@ std::shared_ptr<const RobotQueryPoints> validateAndRestrictSelfCollision(
 /* ************************************************************************* */
 gtsam::Vector SelfCollisionSphereFactor::evaluateError(
     const gtsam::Vector &q, gtsam::OptionalMatrixType H1) const {
-  const size_t nrPairs = pairs_.size();
-  gtsam::Vector err(nrPairs);
-
-  std::vector<gtsam::Point3> wPts;
-  std::vector<gtsam::Matrix> ptJacobians;
-  robot_->queryPoints(q, &wPts, H1 ? &ptJacobians : nullptr);
-  if (H1) *H1 = gtsam::Matrix::Zero(nrPairs, robot_->dof());
-
-  for (size_t r = 0; r < nrPairs; ++r) {
-    const SelfCollisionPair &pair = pairs_[r];
-    // The standoff folds in both spheres' radii.
-    const double eps = pair.epsilon + radii_(pair.a) + radii_(pair.b);
-    if (H1) {
-      gtsam::Matrix13 HptA, HptB;
-      err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps,
-                                          HptA, HptB);
-      H1->row(r) = HptA * ptJacobians[pair.a] + HptB * ptJacobians[pair.b];
-    } else {
-      err(r) = hingeLossSelfCollisionCost(wPts[pair.a], wPts[pair.b], eps);
-    }
-  }
-  return err;
+  return selfCollisionError(q, *robot_, pairs_, radii_, H1);
 }
 
 }  // namespace gtdynamics
