@@ -25,9 +25,7 @@
 
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace gtdynamics {
 
@@ -74,16 +72,7 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
                               const SelfCollisionPairs &pairs,
                               const gtsam::Vector &radii, double costSigma,
                               const gtsam::SharedNoiseModel &QcModel,
-                              double deltaT, double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma),
-             qKey1, vKey1, qKey2, vKey2),
-        radii_(radii),
-        pairs_(pairs),
-        interpolator_(QcModel, deltaT, tau) {
-    // deltaT and tau are checked by the interpolator constructor.
-    robot_ = validateAndRestrictSelfCollision(robot, &pairs_, &radii_,
-                                              "SelfCollisionSphereFactorGP");
-  }
+                              double deltaT, double tau);
 
   /**
    * Constructor with a sigma per pair.
@@ -106,16 +95,7 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
                               const gtsam::Vector &radii,
                               const gtsam::Vector &sigmas,
                               const gtsam::SharedNoiseModel &QcModel,
-                              double deltaT, double tau)
-      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey1, vKey1,
-             qKey2, vKey2),
-        radii_(radii),
-        pairs_(pairs),
-        interpolator_(QcModel, deltaT, tau) {
-    // deltaT and tau are checked by the interpolator constructor.
-    robot_ = validateAndRestrictSelfCollision(
-        robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP", &sigmas);
-  }
+                              double deltaT, double tau);
 
   ~SelfCollisionSphereFactorGP() override {}
 

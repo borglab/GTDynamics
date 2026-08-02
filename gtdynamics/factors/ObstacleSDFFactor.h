@@ -24,21 +24,9 @@
 
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace gtdynamics {
-
-/**
- * Reject a null field, a negative standoff, or robot query point radii that
- * are mis-sized, negative, or conflict at coincident points. Shared by every
- * obstacle factor. factorName prefixes the error messages.
- */
-GTSAM_EXPORT void validateObstacleSDFFactorArgs(
-    const RobotQueryPoints &robot,
-    const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
-    const gtsam::Vector &radii, const std::string &factorName);
 
 /**
  * Unary factor that acts to prevent collision of a robot with obstacles, by
@@ -70,17 +58,7 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
   ObstacleSDFFactor(gtsam::Key qKey,
                     const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
-                    double costSigma, double epsilon)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(
-                 checkedNrPoints(robot, "ObstacleSDFFactor"), costSigma),
-             qKey),
-        epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(robot->nrPoints())),
-        robot_(robot),
-        sdf_(sdf) {
-    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
-                                  "ObstacleSDFFactor");
-  }
+                    double costSigma, double epsilon);
 
   /**
    * Constructor with a radius per query point, added to the shared epsilon.
@@ -95,17 +73,7 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
                     const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon,
-                    const gtsam::Vector &radii)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(
-                 checkedNrPoints(robot, "ObstacleSDFFactor"), costSigma),
-             qKey),
-        epsilon_(epsilon),
-        radii_(radii),
-        robot_(robot),
-        sdf_(sdf) {
-    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
-                                  "ObstacleSDFFactor");
-  }
+                    const gtsam::Vector &radii);
 
   ~ObstacleSDFFactor() override {}
 

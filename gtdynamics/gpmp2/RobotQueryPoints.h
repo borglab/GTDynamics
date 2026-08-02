@@ -110,15 +110,4 @@ class GTSAM_EXPORT RobotQueryPoints {
   gtsam::Matrix worldPoints(const gtsam::Vector &q) const;
 };  // \class RobotQueryPoints
 
-/// nrPoints of a model that must not be null, for factor initializer lists.
-GTSAM_EXPORT size_t checkedNrPoints(
-    const std::shared_ptr<const RobotQueryPoints> &robot,
-    const std::string &factorName);
-
-/// Reject radii that are mis-sized, negative, or conflict at coincident
-/// same-link points. factorName prefixes the error messages.
-GTSAM_EXPORT void validateQueryPointRadii(const RobotQueryPoints &robot,
-                                          const gtsam::Vector &radii,
-                                          const std::string &factorName);
-
 }  // namespace gtdynamics

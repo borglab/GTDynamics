@@ -12,23 +12,33 @@
  */
 
 #include <gtdynamics/factors/ObstacleSDFFactor.h>
-
-#include <stdexcept>
+#include <gtdynamics/gpmp2/collisionValidation.h>
 
 namespace gtdynamics {
 
 /* ************************************************************************* */
-void validateObstacleSDFFactorArgs(
-    const RobotQueryPoints &robot,
-    const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
-    const gtsam::Vector &radii, const std::string &factorName) {
-  if (!sdf) {
-    throw std::invalid_argument(factorName + ": sdf must not be null.");
-  }
-  if (epsilon < 0.0) {
-    throw std::invalid_argument(factorName + ": epsilon must be >= 0.");
-  }
-  validateQueryPointRadii(robot, radii, factorName);
+ObstacleSDFFactor::ObstacleSDFFactor(
+    gtsam::Key qKey, const std::shared_ptr<const RobotQueryPoints> &robot,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double costSigma,
+    double epsilon)
+    : ObstacleSDFFactor(qKey, robot, sdf, costSigma, epsilon,
+                        gtsam::Vector::Zero(
+                            checkedNrPoints(robot, "ObstacleSDFFactor"))) {}
+
+/* ************************************************************************* */
+ObstacleSDFFactor::ObstacleSDFFactor(
+    gtsam::Key qKey, const std::shared_ptr<const RobotQueryPoints> &robot,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double costSigma,
+    double epsilon, const gtsam::Vector &radii)
+    : Base(gtsam::noiseModel::Isotropic::Sigma(
+               checkedNrPoints(robot, "ObstacleSDFFactor"), costSigma),
+           qKey),
+      epsilon_(epsilon),
+      radii_(radii),
+      robot_(robot),
+      sdf_(sdf) {
+  validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                "ObstacleSDFFactor");
 }
 
 /* ************************************************************************* */

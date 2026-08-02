@@ -13,8 +13,42 @@
  */
 
 #include <gtdynamics/factors/ObstacleSDFFactorGP.h>
+#include <gtdynamics/gpmp2/collisionValidation.h>
 
 namespace gtdynamics {
+
+/* ************************************************************************* */
+ObstacleSDFFactorGP::ObstacleSDFFactorGP(
+    gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2, gtsam::Key vKey2,
+    const std::shared_ptr<const RobotQueryPoints> &robot,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double costSigma,
+    double epsilon, const gtsam::SharedNoiseModel &QcModel, double deltaT,
+    double tau)
+    : ObstacleSDFFactorGP(qKey1, vKey1, qKey2, vKey2, robot, sdf, costSigma,
+                          epsilon,
+                          gtsam::Vector::Zero(
+                              checkedNrPoints(robot, "ObstacleSDFFactorGP")),
+                          QcModel, deltaT, tau) {}
+
+/* ************************************************************************* */
+ObstacleSDFFactorGP::ObstacleSDFFactorGP(
+    gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2, gtsam::Key vKey2,
+    const std::shared_ptr<const RobotQueryPoints> &robot,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double costSigma,
+    double epsilon, const gtsam::Vector &radii,
+    const gtsam::SharedNoiseModel &QcModel, double deltaT, double tau)
+    : Base(gtsam::noiseModel::Isotropic::Sigma(
+               checkedNrPoints(robot, "ObstacleSDFFactorGP"), costSigma),
+           qKey1, vKey1, qKey2, vKey2),
+      epsilon_(epsilon),
+      radii_(radii),
+      robot_(robot),
+      sdf_(sdf),
+      interpolator_(QcModel, deltaT, tau) {
+  // deltaT and tau are checked by the interpolator constructor.
+  validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                "ObstacleSDFFactorGP");
+}
 
 /* ************************************************************************* */
 gtsam::Vector ObstacleSDFFactorGP::evaluateError(

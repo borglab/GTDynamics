@@ -23,23 +23,9 @@
 
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace gtdynamics {
-
-/**
- * Reject a null model, inconsistent pairs/radii, or, if sigmas is given, a
- * sigma count not matching the pairs. Then return the model restricted to just
- * the points pairs references, remapping *pairs and *radii in place. Shared by
- * every self collision factor. factorName prefixes the error messages.
- */
-GTSAM_EXPORT std::shared_ptr<const RobotQueryPoints>
-validateAndRestrictSelfCollision(
-    const std::shared_ptr<const RobotQueryPoints> &robot,
-    SelfCollisionPairs *pairs, gtsam::Vector *radii,
-    const std::string &factorName, const gtsam::Vector *sigmas = nullptr);
 
 /**
  * Unary factor keeping the robot clear of itself over a set of query point
@@ -73,14 +59,7 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   SelfCollisionSphereFactor(gtsam::Key qKey,
                       const std::shared_ptr<const RobotQueryPoints> &robot,
                       const SelfCollisionPairs &pairs,
-                      const gtsam::Vector &radii, double costSigma)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma),
-             qKey),
-        radii_(radii),
-        pairs_(pairs) {
-    robot_ = validateAndRestrictSelfCollision(robot, &pairs_, &radii_,
-                                              "SelfCollisionSphereFactor");
-  }
+                      const gtsam::Vector &radii, double costSigma);
 
   /**
    * Constructor with a sigma per pair.
@@ -93,13 +72,7 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   SelfCollisionSphereFactor(gtsam::Key qKey,
                       const std::shared_ptr<const RobotQueryPoints> &robot,
                       const SelfCollisionPairs &pairs,
-                      const gtsam::Vector &radii, const gtsam::Vector &sigmas)
-      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey),
-        radii_(radii),
-        pairs_(pairs) {
-    robot_ = validateAndRestrictSelfCollision(
-        robot, &pairs_, &radii_, "SelfCollisionSphereFactor", &sigmas);
-  }
+                      const gtsam::Vector &radii, const gtsam::Vector &sigmas);
 
   ~SelfCollisionSphereFactor() override {}
 

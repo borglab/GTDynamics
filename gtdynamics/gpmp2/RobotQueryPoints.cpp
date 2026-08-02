@@ -13,8 +13,6 @@
 
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 
-#include <cmath>
-#include <cstdint>
 #include <limits>
 #include <map>
 #include <queue>
@@ -216,49 +214,6 @@ gtsam::Matrix RobotQueryPoints::worldPoints(const gtsam::Vector &q) const {
   gtsam::Matrix pts(3, nrPoints());
   for (size_t i = 0; i < nrPoints(); ++i) pts.col(i) = wPts[i];
   return pts;
-}
-
-/* ************************************************************************* */
-size_t checkedNrPoints(const std::shared_ptr<const RobotQueryPoints> &robot,
-                       const std::string &factorName) {
-  if (!robot) {
-    throw std::invalid_argument(factorName + ": robot must not be null.");
-  }
-  return robot->nrPoints();
-}
-
-/* ************************************************************************* */
-void validateQueryPointRadii(const RobotQueryPoints &robot,
-                             const gtsam::Vector &radii,
-                             const std::string &factorName) {
-  if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
-    throw std::invalid_argument(
-        factorName + ": radii must have one entry per query point.");
-  }
-  if ((radii.array() < 0.0).any()) {
-    throw std::invalid_argument(factorName + ": radii must be >= 0.");
-  }
-  // Overlapping spheres on a link are fine, but the same point registered
-  // twice with different radii is a contradiction. Group by link so only
-  // same-link points are compared, not every pair.
-  const auto &pts = robot.points();
-  std::map<uint8_t, std::vector<size_t>> ptsByLink;
-  for (size_t i = 0; i < pts.size(); ++i) {
-    ptsByLink[pts[i].link->id()].push_back(i);
-  }
-  for (const auto &group : ptsByLink) {
-    const std::vector<size_t> &indices = group.second;
-    for (size_t a = 0; a < indices.size(); ++a) {
-      for (size_t b = a + 1; b < indices.size(); ++b) {
-        if ((pts[indices[a]].point - pts[indices[b]].point).norm() < 1e-9 &&
-            std::fabs(radii(indices[a]) - radii(indices[b])) > 1e-9) {
-          throw std::invalid_argument(
-              factorName + ": two points at the same location have "
-              "conflicting radii.");
-        }
-      }
-    }
-  }
 }
 
 }  // namespace gtdynamics

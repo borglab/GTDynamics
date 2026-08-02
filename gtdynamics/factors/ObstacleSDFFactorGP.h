@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <gtdynamics/factors/ObstacleSDFFactor.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
@@ -27,9 +26,7 @@
 
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace gtdynamics {
 
@@ -75,19 +72,7 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                       const std::shared_ptr<const SignedDistanceField> &sdf,
                       double costSigma, double epsilon,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
-                      double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(
-                 checkedNrPoints(robot, "ObstacleSDFFactorGP"), costSigma),
-             qKey1, vKey1, qKey2, vKey2),
-        epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(robot->nrPoints())),
-        robot_(robot),
-        sdf_(sdf),
-        interpolator_(QcModel, deltaT, tau) {
-    // deltaT and tau are checked by the interpolator constructor.
-    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
-                                  "ObstacleSDFFactorGP");
-  }
+                      double tau);
 
   /**
    * Constructor with a radius per query point, added to the shared epsilon.
@@ -111,19 +96,7 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                       double costSigma, double epsilon,
                       const gtsam::Vector &radii,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
-                      double tau)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(
-                 checkedNrPoints(robot, "ObstacleSDFFactorGP"), costSigma),
-             qKey1, vKey1, qKey2, vKey2),
-        epsilon_(epsilon),
-        radii_(radii),
-        robot_(robot),
-        sdf_(sdf),
-        interpolator_(QcModel, deltaT, tau) {
-    // deltaT and tau are checked by the interpolator constructor.
-    validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
-                                  "ObstacleSDFFactorGP");
-  }
+                      double tau);
 
   ~ObstacleSDFFactorGP() override {}
 
