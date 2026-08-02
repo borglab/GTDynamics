@@ -19,6 +19,7 @@
 #include <gtsam/base/Vector.h>
 
 #include <cmath>
+#include <functional>
 #include <iostream>
 #include <string>
 
@@ -104,6 +105,24 @@ class GPLinearInterpolator {
     if (H2) *H2 = lambda_(0, 1) * Hpose;
     if (H3) *H3 = psi_(0, 0) * Hpose;
     if (H4) *H4 = psi_(0, 1) * Hpose;
+  }
+
+  /// Evaluate errorAt at the interpolated pose and chain its Jacobian with
+  /// respect to that pose back to the four support state Jacobians.
+  gtsam::Vector errorAtInterpolatedPose(
+      const gtsam::Vector &pose1, const gtsam::Vector &vel1,
+      const gtsam::Vector &pose2, const gtsam::Vector &vel2,
+      const std::function<gtsam::Vector(const gtsam::Vector &q,
+                                        gtsam::Matrix *Hq)> &errorAt,
+      gtsam::Matrix *H1, gtsam::Matrix *H2, gtsam::Matrix *H3,
+      gtsam::Matrix *H4) const {
+    const bool computeJacobians = (H1 || H2 || H3 || H4);
+    gtsam::Matrix Hq;
+    const gtsam::Vector err =
+        errorAt(interpolatePose(pose1, vel1, pose2, vel2),
+                computeJacobians ? &Hq : nullptr);
+    if (computeJacobians) updatePoseJacobians(Hq, H1, H2, H3, H4);
+    return err;
   }
 
   /// Return the degrees of freedom of a single state.

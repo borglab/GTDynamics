@@ -29,6 +29,7 @@
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
+using gtsam::Matrix;
 using gtsam::Point3;
 using gtsam::Values;
 using gtsam::Vector;
@@ -84,9 +85,8 @@ static Vector supportVelocity() {
 
 /* ************************ endpoint agreement ************************** */
 
-// At tau = 0 the interpolation reproduces the first support state exactly, so
-// the interpolated factor must agree with the unary factor at q1; likewise at
-// tau = deltaT with q2.
+// At tau = 0 and tau = deltaT the GP factor must reproduce the unary error
+// and Jacobian at q1 and q2 respectively.
 TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", bothArmJoints(), wristPoints());
@@ -102,22 +102,40 @@ TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
-  const Vector radii = Vector::Zero(2);
+  // Nonzero radii so the agreement also covers the radii in the standoff.
+  const Vector radii = (Vector(2) << 0.05, 0.08).finished();
   SelfCollisionSphereFactor unary(X(0), model, pairs, radii, costSigma);
 
+  // q1 passes through with unit weight at tau = 0, so H1 is the unary
+  // Jacobian and the other support states get zero.
   SelfCollisionSphereFactorGP atStart(X(0), V(0), X(1), V(1), model, pairs,
                                        radii, costSigma,
                                        Isotropic::Sigma(dof, 1.0), deltaT,
                                        0.0);
-  EXPECT(assert_equal(unary.evaluateError(q1),
-                      atStart.evaluateError(q1, v1, q2, v2), 1e-9));
+  Matrix Hu, H1, H2, H3, H4;
+  EXPECT(assert_equal(unary.evaluateError(q1, &Hu),
+                      atStart.evaluateError(q1, v1, q2, v2, &H1, &H2, &H3,
+                                            &H4),
+                      1e-9));
+  EXPECT(assert_equal(Hu, H1, 1e-9));
+  const Matrix zero = Matrix::Zero(Hu.rows(), Hu.cols());
+  EXPECT(assert_equal(zero, H2, 1e-9));
+  EXPECT(assert_equal(zero, H3, 1e-9));
+  EXPECT(assert_equal(zero, H4, 1e-9));
 
+  // Likewise q2 at tau = deltaT, whose Jacobian lands in H3.
   SelfCollisionSphereFactorGP atEnd(X(0), V(0), X(1), V(1), model, pairs,
                                      radii, costSigma,
                                      Isotropic::Sigma(dof, 1.0), deltaT,
                                      deltaT);
-  EXPECT(assert_equal(unary.evaluateError(q2),
-                      atEnd.evaluateError(q1, v1, q2, v2), 1e-9));
+  Matrix HuEnd, E1, E2, E3, E4;
+  EXPECT(assert_equal(unary.evaluateError(q2, &HuEnd),
+                      atEnd.evaluateError(q1, v1, q2, v2, &E1, &E2, &E3, &E4),
+                      1e-9));
+  EXPECT(assert_equal(HuEnd, E3, 1e-9));
+  EXPECT(assert_equal(zero, E1, 1e-9));
+  EXPECT(assert_equal(zero, E2, 1e-9));
+  EXPECT(assert_equal(zero, E4, 1e-9));
 }
 
 /* ************************ interpolated Jacobians ********************** */

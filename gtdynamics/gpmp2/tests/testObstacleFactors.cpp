@@ -489,8 +489,7 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
   }
 }
 
-// The interpolated obstacle factor must agree with the unary factor when tau is
-// zero, where the interpolation reproduces the first support state exactly.
+// At tau = 0 the GP factor must reproduce the unary error and Jacobian at q1.
 TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", robot1Joints(), wristPoints());
@@ -515,8 +514,18 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
                                    costSigma, kEpsilon, radii,
                                    Isotropic::Sigma(dof, 1.0), deltaT, 0.0);
 
-  EXPECT(assert_equal(unary.evaluateError(q1),
-                      interpolated.evaluateError(q1, v1, q2, v2), 1e-9));
+  // q1 passes through with unit weight, so H1 is the unary Jacobian and the
+  // other support states get zero.
+  Matrix Hu, H1, H2, H3, H4;
+  EXPECT(assert_equal(unary.evaluateError(q1, &Hu),
+                      interpolated.evaluateError(q1, v1, q2, v2, &H1, &H2, &H3,
+                                                 &H4),
+                      1e-9));
+  EXPECT(assert_equal(Hu, H1, 1e-9));
+  const Matrix zero = Matrix::Zero(Hu.rows(), Hu.cols());
+  EXPECT(assert_equal(zero, H2, 1e-9));
+  EXPECT(assert_equal(zero, H3, 1e-9));
+  EXPECT(assert_equal(zero, H4, 1e-9));
 
   Values values;
   values.insert(X(0), q1);

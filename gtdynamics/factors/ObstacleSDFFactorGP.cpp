@@ -56,18 +56,12 @@ gtsam::Vector ObstacleSDFFactorGP::evaluateError(
     const gtsam::Vector &v2, gtsam::OptionalMatrixType H1,
     gtsam::OptionalMatrixType H2, gtsam::OptionalMatrixType H3,
     gtsam::OptionalMatrixType H4) const {
-  const bool computeJacobians = (H1 || H2 || H3 || H4);
-
-  const gtsam::Vector q = interpolator_.interpolatePose(q1, v1, q2, v2);
-
-  gtsam::Matrix Hq;
-  const gtsam::Vector err = obstacleSDFError(
-      q, *robot_, *sdf_, epsilon_, radii_, computeJacobians ? &Hq : nullptr);
-
-  if (computeJacobians) {
-    interpolator_.updatePoseJacobians(Hq, H1, H2, H3, H4);
-  }
-  return err;
+  return interpolator_.errorAtInterpolatedPose(
+      q1, v1, q2, v2,
+      [this](const gtsam::Vector &q, gtsam::Matrix *Hq) {
+        return obstacleSDFError(q, *robot_, *sdf_, epsilon_, radii_, Hq);
+      },
+      H1, H2, H3, H4);
 }
 
 }  // namespace gtdynamics
