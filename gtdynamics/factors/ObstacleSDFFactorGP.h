@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
@@ -37,7 +38,7 @@ namespace gtdynamics {
  * mean of the Gaussian process prior if a GPLinearPrior with the same QcModel
  * and deltaT connects the same two support states in the graph.
  */
-class GTSAM_EXPORT ObstacleSDFFactorGP
+class ObstacleSDFFactorGP
     : public gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
                                       gtsam::Vector, gtsam::Vector> {
  private:
@@ -72,7 +73,12 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                       const std::shared_ptr<const SignedDistanceField> &sdf,
                       double costSigma, double epsilon,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
-                      double tau);
+                      double tau)
+      : ObstacleSDFFactorGP(qKey1, vKey1, qKey2, vKey2, robot, sdf, costSigma,
+                            epsilon,
+                            gtsam::Vector::Zero(internal::checkedNrPoints(
+                                robot, "ObstacleSDFFactorGP")),
+                            QcModel, deltaT, tau) {}
 
   /**
    * Constructor with a radius per query point, added to the shared epsilon.
@@ -96,7 +102,20 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
                       double costSigma, double epsilon,
                       const gtsam::Vector &radii,
                       const gtsam::SharedNoiseModel &QcModel, double deltaT,
-                      double tau);
+                      double tau)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(
+                 internal::checkedNrPoints(robot, "ObstacleSDFFactorGP"),
+                 costSigma),
+             qKey1, vKey1, qKey2, vKey2),
+        epsilon_(epsilon),
+        radii_(radii),
+        robot_(robot),
+        sdf_(sdf),
+        interpolator_(QcModel, deltaT, tau) {
+    // deltaT and tau are checked by the interpolator constructor.
+    internal::validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                            "ObstacleSDFFactorGP");
+  }
 
   ~ObstacleSDFFactorGP() override {}
 
@@ -112,7 +131,14 @@ class GTSAM_EXPORT ObstacleSDFFactorGP
       const gtsam::Vector &v2, gtsam::OptionalMatrixType H1 = nullptr,
       gtsam::OptionalMatrixType H2 = nullptr,
       gtsam::OptionalMatrixType H3 = nullptr,
-      gtsam::OptionalMatrixType H4 = nullptr) const override;
+      gtsam::OptionalMatrixType H4 = nullptr) const override {
+    return interpolator_.errorAtInterpolatedPose(
+        q1, v1, q2, v2,
+        [this](const gtsam::Vector &q, gtsam::Matrix *Hq) {
+          return obstacleSDFError(q, *robot_, *sdf_, epsilon_, radii_, Hq);
+        },
+        H1, H2, H3, H4);
+  }
 
   /// Return the standoff distance.
   double epsilon() const { return epsilon_; }

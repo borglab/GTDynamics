@@ -63,19 +63,17 @@ double hingeLossObstacleCost(const gtsam::Point3 &point,
 }
 
 /* ************************************************************************* */
-double internal::hingeLossObstacleCost(const gtsam::Pose3 &wTs,
-                                       const gtsam::Point3 &point,
-                                       const SignedDistanceField &sdf,
-                                       double epsilon,
-                                       gtsam::OptionalJacobian<1, 6> Hpose,
-                                       gtsam::OptionalJacobian<1, 3> Hpt) {
+double hingeLossObstacleCost(const gtsam::Pose3 &wTs,
+                             const gtsam::Point3 &point,
+                             const SignedDistanceField &sdf, double epsilon,
+                             gtsam::OptionalJacobian<1, 6> Hpose,
+                             gtsam::OptionalJacobian<1, 3> Hpt) {
   gtsam::Matrix36 HlocalPose;
   gtsam::Matrix3 HlocalPt;
   const gtsam::Point3 sP = wTs.transformTo(point, HlocalPose, HlocalPt);
 
   gtsam::Matrix13 HerrLocal;
-  const double cost =
-      gtdynamics::hingeLossObstacleCost(sP, sdf, epsilon, HerrLocal);
+  const double cost = hingeLossObstacleCost(sP, sdf, epsilon, HerrLocal);
 
   if (Hpose) *Hpose = HerrLocal * HlocalPose;
   if (Hpt) *Hpt = HerrLocal * HlocalPt;

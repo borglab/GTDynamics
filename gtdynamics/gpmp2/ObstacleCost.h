@@ -44,26 +44,13 @@ GTSAM_EXPORT double hingeLossObstacleCost(const gtsam::Point3 &point,
                                           double epsilon,
                                           gtsam::OptionalJacobian<1, 3> Hpt = {});
 
-/// Hinge loss of every query point of robot at configuration q, using
-/// epsilon + radii(i) as each point's standoff. If Hq is non-null, it is
-/// filled with the nrPoints x dof Jacobian with respect to q.
-GTSAM_EXPORT gtsam::Vector obstacleSDFError(const gtsam::Vector &q,
-                                            const RobotQueryPoints &robot,
-                                            const SignedDistanceField &sdf,
-                                            double epsilon,
-                                            const gtsam::Vector &radii,
-                                            gtsam::Matrix *Hq = nullptr);
-
-namespace internal {
-
 /**
  * Hinge loss obstacle cost for a field rigidly attached to a moving frame s.
  * The query point is given in the world frame and transformed into s before the
  * field is read, so the same field serves as a world obstacle field (with sTw
  * the identity), as the collision geometry of a moving obstacle, or as the
  * collision geometry of a robot link for self collision. Out of grid queries
- * fail closed, as in the frame s overload. Internal: no library caller yet,
- * kept for moving-obstacle factors.
+ * fail closed, as in the frame s overload.
  *
  * @param wTs pose of the field's frame s in the world frame
  * @param point query point, in the world frame
@@ -80,6 +67,14 @@ GTSAM_EXPORT double hingeLossObstacleCost(const gtsam::Pose3 &wTs,
                                           gtsam::OptionalJacobian<1, 6> Hpose = {},
                                           gtsam::OptionalJacobian<1, 3> Hpt = {});
 
-}  // namespace internal
+/// Hinge loss of every query point of robot at configuration q, using
+/// epsilon + radii(i) as each point's standoff. If Hq is non-null, it is
+/// filled with the nrPoints x dof Jacobian with respect to q.
+GTSAM_EXPORT gtsam::Vector obstacleSDFError(const gtsam::Vector &q,
+                                            const RobotQueryPoints &robot,
+                                            const SignedDistanceField &sdf,
+                                            double epsilon,
+                                            const gtsam::Vector &radii,
+                                            gtsam::Matrix *Hq = nullptr);
 
 }  // namespace gtdynamics

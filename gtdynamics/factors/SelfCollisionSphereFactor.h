@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
 #include <gtsam/base/Matrix.h>
@@ -37,7 +38,7 @@ namespace gtdynamics {
  * (constant separation). Coincident points fall back to a fixed separation
  * direction rather than a non-finite gradient.
  */
-class GTSAM_EXPORT SelfCollisionSphereFactor
+class SelfCollisionSphereFactor
     : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
   using This = SelfCollisionSphereFactor;
@@ -59,7 +60,14 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   SelfCollisionSphereFactor(gtsam::Key qKey,
                       const std::shared_ptr<const RobotQueryPoints> &robot,
                       const SelfCollisionPairs &pairs,
-                      const gtsam::Vector &radii, double costSigma);
+                      const gtsam::Vector &radii, double costSigma)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma),
+             qKey),
+        radii_(radii),
+        pairs_(pairs) {
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactor");
+  }
 
   /**
    * Constructor with a sigma per pair.
@@ -72,7 +80,13 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   SelfCollisionSphereFactor(gtsam::Key qKey,
                       const std::shared_ptr<const RobotQueryPoints> &robot,
                       const SelfCollisionPairs &pairs,
-                      const gtsam::Vector &radii, const gtsam::Vector &sigmas);
+                      const gtsam::Vector &radii, const gtsam::Vector &sigmas)
+      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey),
+        radii_(radii),
+        pairs_(pairs) {
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactor", &sigmas);
+  }
 
   ~SelfCollisionSphereFactor() override {}
 
@@ -88,7 +102,9 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   /// Evaluate the hinge loss of every pair, and its Jacobian.
   gtsam::Vector evaluateError(
       const gtsam::Vector &q,
-      gtsam::OptionalMatrixType H1 = nullptr) const override;
+      gtsam::OptionalMatrixType H1 = nullptr) const override {
+    return selfCollisionError(q, *robot_, pairs_, radii_, H1);
+  }
 
   /// Return the per query point radii.
   const gtsam::Vector &radii() const { return radii_; }

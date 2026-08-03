@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
@@ -37,7 +38,7 @@ namespace gtdynamics {
  * the same QcModel and deltaT connects the same two support states in the
  * graph.
  */
-class GTSAM_EXPORT SelfCollisionSphereFactorGP
+class SelfCollisionSphereFactorGP
     : public gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
                                       gtsam::Vector, gtsam::Vector> {
  private:
@@ -71,7 +72,16 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
                               const SelfCollisionPairs &pairs,
                               const gtsam::Vector &radii, double costSigma,
                               const gtsam::SharedNoiseModel &QcModel,
-                              double deltaT, double tau);
+                              double deltaT, double tau)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma),
+             qKey1, vKey1, qKey2, vKey2),
+        radii_(radii),
+        pairs_(pairs),
+        interpolator_(QcModel, deltaT, tau) {
+    // deltaT and tau are checked by the interpolator constructor.
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP");
+  }
 
   /**
    * Constructor with a sigma per pair.
@@ -94,7 +104,16 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
                               const gtsam::Vector &radii,
                               const gtsam::Vector &sigmas,
                               const gtsam::SharedNoiseModel &QcModel,
-                              double deltaT, double tau);
+                              double deltaT, double tau)
+      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey1, vKey1, qKey2,
+             vKey2),
+        radii_(radii),
+        pairs_(pairs),
+        interpolator_(QcModel, deltaT, tau) {
+    // deltaT and tau are checked by the interpolator constructor.
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP", &sigmas);
+  }
 
   ~SelfCollisionSphereFactorGP() override {}
 
@@ -114,7 +133,14 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
       const gtsam::Vector &v2, gtsam::OptionalMatrixType H1 = nullptr,
       gtsam::OptionalMatrixType H2 = nullptr,
       gtsam::OptionalMatrixType H3 = nullptr,
-      gtsam::OptionalMatrixType H4 = nullptr) const override;
+      gtsam::OptionalMatrixType H4 = nullptr) const override {
+    return interpolator_.errorAtInterpolatedPose(
+        q1, v1, q2, v2,
+        [this](const gtsam::Vector &q, gtsam::Matrix *Hq) {
+          return selfCollisionError(q, *robot_, pairs_, radii_, Hq);
+        },
+        H1, H2, H3, H4);
+  }
 
   /// Return the per query point radii.
   const gtsam::Vector &radii() const { return radii_; }

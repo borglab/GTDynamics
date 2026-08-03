@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
@@ -36,7 +37,7 @@ namespace gtdynamics {
  * The signed distance field has positive values outside obstacles, negative values 
  * inside obstacles, and can be further offset by a standoff distance (epsilon).
  */
-class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
+class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
   using This = ObstacleSDFFactor;
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;
@@ -58,7 +59,10 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
   ObstacleSDFFactor(gtsam::Key qKey,
                     const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
-                    double costSigma, double epsilon);
+                    double costSigma, double epsilon)
+      : ObstacleSDFFactor(qKey, robot, sdf, costSigma, epsilon,
+                          gtsam::Vector::Zero(internal::checkedNrPoints(
+                              robot, "ObstacleSDFFactor"))) {}
 
   /**
    * Constructor with a radius per query point, added to the shared epsilon.
@@ -73,7 +77,18 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
                     const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon,
-                    const gtsam::Vector &radii);
+                    const gtsam::Vector &radii)
+      : Base(gtsam::noiseModel::Isotropic::Sigma(
+                 internal::checkedNrPoints(robot, "ObstacleSDFFactor"),
+                 costSigma),
+             qKey),
+        epsilon_(epsilon),
+        radii_(radii),
+        robot_(robot),
+        sdf_(sdf) {
+    internal::validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                            "ObstacleSDFFactor");
+  }
 
   ~ObstacleSDFFactor() override {}
 
@@ -86,7 +101,9 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
   /// Evaluate the hinge loss at every query point, and its Jacobian.
   gtsam::Vector evaluateError(
       const gtsam::Vector &q,
-      gtsam::OptionalMatrixType H1 = nullptr) const override;
+      gtsam::OptionalMatrixType H1 = nullptr) const override {
+    return obstacleSDFError(q, *robot_, *sdf_, epsilon_, radii_, H1);
+  }
 
   /// Return the shared standoff distance.
   double epsilon() const { return epsilon_; }

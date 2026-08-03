@@ -56,6 +56,13 @@ foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   add_subdirectory(${SOURCE_SUBDIR})
 endforeach()
 
+# Internal (unsupported implementation API) headers, installed as gtsam does
+# with its internal headers so the header-only factors compile downstream.
+file(GLOB internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/factors/internal/*.h")
+list(APPEND headers ${internal_headers})
+install(FILES ${internal_headers}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/factors/internal)
+
 ## Generate and install config file
 configure_file(config.h.in config.h)
 list(APPEND sources "${PROJECT_BINARY_DIR}/${PROJECT_NAME}/config.h")
