@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/gpmp2/ObstacleCost.h>
+#include <gtdynamics/gpmp2/detail/framedObstacleCost.h>
 
 #include <algorithm>
 #include <vector>

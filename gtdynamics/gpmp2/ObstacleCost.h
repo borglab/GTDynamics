@@ -20,7 +20,6 @@
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Point3.h>
-#include <gtsam/geometry/Pose3.h>
 
 namespace gtdynamics {
 
@@ -42,29 +41,6 @@ namespace gtdynamics {
 GTSAM_EXPORT double hingeLossObstacleCost(const gtsam::Point3 &point,
                                           const SignedDistanceField &sdf,
                                           double epsilon,
-                                          gtsam::OptionalJacobian<1, 3> Hpt = {});
-
-/**
- * Hinge loss obstacle cost for a field rigidly attached to a moving frame s.
- * The query point is given in the world frame and transformed into s before the
- * field is read, so the same field serves as a world obstacle field (with sTw
- * the identity), as the collision geometry of a moving obstacle, or as the
- * collision geometry of a robot link for self collision. Out of grid queries
- * fail closed, as in the frame s overload.
- *
- * @param wTs pose of the field's frame s in the world frame
- * @param point query point, in the world frame
- * @param sdf signed distance field, expressed in frame s
- * @param epsilon standoff distance at which the cost becomes non-zero
- * @param Hpose optional Jacobian of the cost with respect to wTs
- * @param Hpt optional Jacobian of the cost with respect to the point
- * @return the hinge loss cost
- */
-GTSAM_EXPORT double hingeLossObstacleCost(const gtsam::Pose3 &wTs,
-                                          const gtsam::Point3 &point,
-                                          const SignedDistanceField &sdf,
-                                          double epsilon,
-                                          gtsam::OptionalJacobian<1, 6> Hpose = {},
                                           gtsam::OptionalJacobian<1, 3> Hpt = {});
 
 /// Hinge loss of every query point of robot at configuration q, using

@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/factors/SelfCollisionSphereFactorGP.h>
-#include <gtdynamics/gpmp2/collisionValidation.h>
+#include <gtdynamics/gpmp2/detail/collisionValidation.h>
 
 namespace gtdynamics {
 

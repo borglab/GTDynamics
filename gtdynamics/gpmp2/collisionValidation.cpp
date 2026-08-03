@@ -11,7 +11,7 @@
  * @author Karthik Shaji
  */
 
-#include <gtdynamics/gpmp2/collisionValidation.h>
+#include <gtdynamics/gpmp2/detail/collisionValidation.h>
 
 #include <cmath>
 #include <cstdint>

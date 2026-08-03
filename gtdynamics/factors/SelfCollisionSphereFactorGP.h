@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <gtdynamics/factors/SelfCollisionSphereFactor.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>

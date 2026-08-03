@@ -18,10 +18,12 @@
 #include <gtdynamics/factors/ObstacleSDFFactor.h>
 #include <gtdynamics/factors/ObstacleSDFFactorGP.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
+#include <gtdynamics/gpmp2/detail/framedObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
 
+#include "barLabFixtures.h"
 #include "makeSphereSDF.h"
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -52,10 +54,6 @@ using gtsam::Vector9;
 using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
-
-static const double kCell = 0.05;
-static const double kRadius = 0.15;
-static const double kEpsilon = 0.10;
 
 // Offset a grid by half a cell to put points of interest at cell centres, since
 // the trilinear gradient is discontinuous on the nodes.
@@ -250,27 +248,7 @@ TEST(ObstacleCost, frameAttachedOverload) {
 
 /* ******************** bar_lab robot query points *********************** */
 
-static const Robot kRobot =
-    CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"));
-
-// The nine movable joints of robot1, in the order q indexes them: the three
-// gantry prismatic joints, then the six arm revolute joints.
-static std::vector<JointSharedPtr> robot1Joints() {
-  const std::vector<std::string> names = {
-      "bridge1_joint_EA_X", "robot1_joint_EA_Y", "robot1_joint_EA_Z",
-      "robot1_joint_1",     "robot1_joint_2",    "robot1_joint_3",
-      "robot1_joint_4",     "robot1_joint_5",    "robot1_joint_6"};
-  std::vector<JointSharedPtr> joints;
-  for (auto &&name : names) joints.push_back(kRobot.joint(name));
-  return joints;
-}
-
-// Two query points on the wrist: the link CoM and a point out along the tool.
-static std::vector<PointOnLink> wristPoints() {
-  const LinkSharedPtr link = kRobot.link("robot1_link_6");
-  return {PointOnLink(link, Point3(0.0, 0.0, 0.0)),
-          PointOnLink(link, Point3(0.0, 0.0, 0.1))};
-}
+static const Robot &kRobot = barLabRobot();
 
 // Bad kinematic inputs are rejected at construction, not left to crash or
 // leave unused columns of q at query time.
@@ -309,15 +287,6 @@ TEST(RobotQueryPoints, rejectsBadKinematicInputs) {
   CHECK_EXCEPTION(
       RobotQueryPoints(kRobot, "columns", gantryOnly, wristPoints()),
       std::invalid_argument);
-}
-
-static Vector startConfig() {
-  return (Vector(9) << 2.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
-      .finished();
-}
-static Vector goalConfig() {
-  return (Vector(9) << 3.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
-      .finished();
 }
 
 // Two points at the same location on a link with different radii contradict;
