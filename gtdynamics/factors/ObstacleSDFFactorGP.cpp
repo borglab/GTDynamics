@@ -13,7 +13,7 @@
  */
 
 #include <gtdynamics/factors/ObstacleSDFFactorGP.h>
-#include <gtdynamics/gpmp2/detail/collisionValidation.h>
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 
 namespace gtdynamics {
 
@@ -27,7 +27,7 @@ ObstacleSDFFactorGP::ObstacleSDFFactorGP(
     : ObstacleSDFFactorGP(qKey1, vKey1, qKey2, vKey2, robot, sdf, costSigma,
                           epsilon,
                           gtsam::Vector::Zero(
-                              checkedNrPoints(robot, "ObstacleSDFFactorGP")),
+                              internal::checkedNrPoints(robot, "ObstacleSDFFactorGP")),
                           QcModel, deltaT, tau) {}
 
 /* ************************************************************************* */
@@ -38,7 +38,7 @@ ObstacleSDFFactorGP::ObstacleSDFFactorGP(
     double epsilon, const gtsam::Vector &radii,
     const gtsam::SharedNoiseModel &QcModel, double deltaT, double tau)
     : Base(gtsam::noiseModel::Isotropic::Sigma(
-               checkedNrPoints(robot, "ObstacleSDFFactorGP"), costSigma),
+               internal::checkedNrPoints(robot, "ObstacleSDFFactorGP"), costSigma),
            qKey1, vKey1, qKey2, vKey2),
       epsilon_(epsilon),
       radii_(radii),
@@ -46,8 +46,8 @@ ObstacleSDFFactorGP::ObstacleSDFFactorGP(
       sdf_(sdf),
       interpolator_(QcModel, deltaT, tau) {
   // deltaT and tau are checked by the interpolator constructor.
-  validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
-                                "ObstacleSDFFactorGP");
+  internal::validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                          "ObstacleSDFFactorGP");
 }
 
 /* ************************************************************************* */

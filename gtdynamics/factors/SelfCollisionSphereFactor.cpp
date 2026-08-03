@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/factors/SelfCollisionSphereFactor.h>
-#include <gtdynamics/gpmp2/detail/collisionValidation.h>
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 
 namespace gtdynamics {
 
@@ -24,8 +24,8 @@ SelfCollisionSphereFactor::SelfCollisionSphereFactor(
     : Base(gtsam::noiseModel::Isotropic::Sigma(pairs.size(), costSigma), qKey),
       radii_(radii),
       pairs_(pairs) {
-  robot_ = validateAndRestrictSelfCollision(robot, &pairs_, &radii_,
-                                            "SelfCollisionSphereFactor");
+  robot_ = internal::validateAndRestrictSelfCollision(
+      robot, &pairs_, &radii_, "SelfCollisionSphereFactor");
 }
 
 /* ************************************************************************* */
@@ -36,7 +36,7 @@ SelfCollisionSphereFactor::SelfCollisionSphereFactor(
     : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey),
       radii_(radii),
       pairs_(pairs) {
-  robot_ = validateAndRestrictSelfCollision(
+  robot_ = internal::validateAndRestrictSelfCollision(
       robot, &pairs_, &radii_, "SelfCollisionSphereFactor", &sigmas);
 }
 

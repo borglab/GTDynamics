@@ -18,7 +18,6 @@
 #include <gtdynamics/factors/ObstacleSDFFactor.h>
 #include <gtdynamics/factors/ObstacleSDFFactorGP.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
-#include <gtdynamics/gpmp2/detail/framedObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -226,17 +225,18 @@ TEST(ObstacleCost, frameAttachedOverload) {
   Matrix16 Hpose;
   Matrix13 Hpt;
   const double actual =
-      hingeLossObstacleCost(wTs, wP, sdf, kEpsilon, Hpose, Hpt);
+      internal::hingeLossObstacleCost(wTs, wP, sdf, kEpsilon, Hpose, Hpt);
   EXPECT_DOUBLES_EQUAL(expected, actual, 1e-9);
   EXPECT(actual > 0.0);  // the point is inside the band, so this is not vacuous
 
   // With the identity pose it degenerates to the world frame overload.
-  EXPECT_DOUBLES_EQUAL(hingeLossObstacleCost(sP, sdf, kEpsilon),
-                       hingeLossObstacleCost(Pose3(), sP, sdf, kEpsilon), 1e-9);
+  EXPECT_DOUBLES_EQUAL(
+      hingeLossObstacleCost(sP, sdf, kEpsilon),
+      internal::hingeLossObstacleCost(Pose3(), sP, sdf, kEpsilon), 1e-9);
 
   std::function<double(const Pose3 &, const Point3 &)> f =
       [&](const Pose3 &T, const Point3 &p) {
-        return hingeLossObstacleCost(T, p, sdf, kEpsilon);
+        return internal::hingeLossObstacleCost(T, p, sdf, kEpsilon);
       };
   EXPECT(assert_equal(
       Matrix(gtsam::numericalDerivative21<double, Pose3, Point3>(f, wTs, wP)),

@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/factors/SelfCollisionSphereFactorGP.h>
-#include <gtdynamics/gpmp2/detail/collisionValidation.h>
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 
 namespace gtdynamics {
 
@@ -29,8 +29,8 @@ SelfCollisionSphereFactorGP::SelfCollisionSphereFactorGP(
       pairs_(pairs),
       interpolator_(QcModel, deltaT, tau) {
   // deltaT and tau are checked by the interpolator constructor.
-  robot_ = validateAndRestrictSelfCollision(robot, &pairs_, &radii_,
-                                            "SelfCollisionSphereFactorGP");
+  robot_ = internal::validateAndRestrictSelfCollision(
+      robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP");
 }
 
 /* ************************************************************************* */
@@ -46,7 +46,7 @@ SelfCollisionSphereFactorGP::SelfCollisionSphereFactorGP(
       pairs_(pairs),
       interpolator_(QcModel, deltaT, tau) {
   // deltaT and tau are checked by the interpolator constructor.
-  robot_ = validateAndRestrictSelfCollision(
+  robot_ = internal::validateAndRestrictSelfCollision(
       robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP", &sigmas);
 }
 

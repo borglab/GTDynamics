@@ -6,34 +6,45 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  collisionValidation.cpp
+ * @file  CollisionFactorUtils.h
  * @brief Constructor argument validation shared by the collision factors.
+ *        Internal, unsupported implementation API.
  * @author Karthik Shaji
  */
 
-#include <gtdynamics/gpmp2/detail/collisionValidation.h>
+#pragma once
+
+#include <gtdynamics/gpmp2/RobotQueryPoints.h>
+#include <gtdynamics/gpmp2/SelfCollisionCost.h>
+#include <gtdynamics/gpmp2/SignedDistanceField.h>
+#include <gtsam/base/Vector.h>
 
 #include <cmath>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace gtdynamics {
+namespace internal {
 
-/* ************************************************************************* */
-size_t checkedNrPoints(const std::shared_ptr<const RobotQueryPoints> &robot,
-                       const std::string &factorName) {
+/// nrPoints of a model that must not be null, for factor initializer lists.
+inline size_t checkedNrPoints(
+    const std::shared_ptr<const RobotQueryPoints> &robot,
+    const std::string &factorName) {
   if (!robot) {
     throw std::invalid_argument(factorName + ": robot must not be null.");
   }
   return robot->nrPoints();
 }
 
-/* ************************************************************************* */
-void validateQueryPointRadii(const RobotQueryPoints &robot,
-                             const gtsam::Vector &radii,
-                             const std::string &factorName) {
+/// Reject radii that are mis-sized, negative, or conflict at coincident
+/// same-link points. factorName prefixes the error messages.
+inline void validateQueryPointRadii(const RobotQueryPoints &robot,
+                                    const gtsam::Vector &radii,
+                                    const std::string &factorName) {
   if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
     throw std::invalid_argument(
         factorName + ": radii must have one entry per query point.");
@@ -64,10 +75,8 @@ void validateQueryPointRadii(const RobotQueryPoints &robot,
   }
 }
 
-/* ************************************************************************* */
-/// Reject a null field, a negative standoff, or bad radii. factorName
-/// prefixes the error messages.
-void validateObstacleSDFFactorArgs(
+/// Reject a null field, a negative standoff, or bad radii.
+inline void validateObstacleSDFFactorArgs(
     const RobotQueryPoints &robot,
     const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
     const gtsam::Vector &radii, const std::string &factorName) {
@@ -80,9 +89,8 @@ void validateObstacleSDFFactorArgs(
   validateQueryPointRadii(robot, radii, factorName);
 }
 
-/* ************************************************************************* */
 /// Reject inconsistent pairs or radii. factorName prefixes the errors.
-static void validateSelfCollisionPairs(const RobotQueryPoints &robot,
+inline void validateSelfCollisionPairs(const RobotQueryPoints &robot,
                                        const SelfCollisionPairs &pairs,
                                        const gtsam::Vector &radii,
                                        const std::string &factorName) {
@@ -110,10 +118,9 @@ static void validateSelfCollisionPairs(const RobotQueryPoints &robot,
   }
 }
 
-/* ************************************************************************* */
 /// Restrict robot to the points pairs references, remapping *pairs and *radii
 /// into the restricted model's own compact indices.
-static std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
+inline std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
     const std::shared_ptr<const RobotQueryPoints> &robot,
     SelfCollisionPairs *pairs, gtsam::Vector *radii) {
   // Unique original point indices pairs references, in first-occurrence
@@ -142,11 +149,13 @@ static std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
   return std::make_shared<const RobotQueryPoints>(robot, uniqueIndices);
 }
 
-/* ************************************************************************* */
-std::shared_ptr<const RobotQueryPoints> validateAndRestrictSelfCollision(
+/// Reject a null model, inconsistent pairs/radii, or, if sigmas is given, a
+/// sigma count not matching the pairs. Then return the model restricted to
+/// just the points pairs references, remapping *pairs and *radii in place.
+inline std::shared_ptr<const RobotQueryPoints> validateAndRestrictSelfCollision(
     const std::shared_ptr<const RobotQueryPoints> &robot,
     SelfCollisionPairs *pairs, gtsam::Vector *radii,
-    const std::string &factorName, const gtsam::Vector *sigmas) {
+    const std::string &factorName, const gtsam::Vector *sigmas = nullptr) {
   if (!robot) {
     throw std::invalid_argument(factorName + ": robot must not be null.");
   }
@@ -158,4 +167,5 @@ std::shared_ptr<const RobotQueryPoints> validateAndRestrictSelfCollision(
   return restrictToReferencedPoints(robot, pairs, radii);
 }
 
+}  // namespace internal
 }  // namespace gtdynamics

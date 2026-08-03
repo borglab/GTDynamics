@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/factors/ObstacleSDFFactor.h>
-#include <gtdynamics/gpmp2/detail/collisionValidation.h>
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 
 namespace gtdynamics {
 
@@ -23,7 +23,7 @@ ObstacleSDFFactor::ObstacleSDFFactor(
     double epsilon)
     : ObstacleSDFFactor(qKey, robot, sdf, costSigma, epsilon,
                         gtsam::Vector::Zero(
-                            checkedNrPoints(robot, "ObstacleSDFFactor"))) {}
+                            internal::checkedNrPoints(robot, "ObstacleSDFFactor"))) {}
 
 /* ************************************************************************* */
 ObstacleSDFFactor::ObstacleSDFFactor(
@@ -31,14 +31,14 @@ ObstacleSDFFactor::ObstacleSDFFactor(
     const std::shared_ptr<const SignedDistanceField> &sdf, double costSigma,
     double epsilon, const gtsam::Vector &radii)
     : Base(gtsam::noiseModel::Isotropic::Sigma(
-               checkedNrPoints(robot, "ObstacleSDFFactor"), costSigma),
+               internal::checkedNrPoints(robot, "ObstacleSDFFactor"), costSigma),
            qKey),
       epsilon_(epsilon),
       radii_(radii),
       robot_(robot),
       sdf_(sdf) {
-  validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
-                                "ObstacleSDFFactor");
+  internal::validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                          "ObstacleSDFFactor");
 }
 
 /* ************************************************************************* */
