@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
@@ -22,14 +23,9 @@
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
-#include <cmath>
-#include <cstdint>
 #include <iostream>
-#include <map>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace gtdynamics {
 
@@ -41,7 +37,7 @@ namespace gtdynamics {
  * The signed distance field has positive values outside obstacles, negative values 
  * inside obstacles, and can be further offset by a standoff distance (epsilon).
  */
-class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
+class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
   using This = ObstacleSDFFactor;
   using Base = gtsam::NoiseModelFactorN<gtsam::Vector>;
@@ -50,18 +46,6 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
   gtsam::Vector radii_;  ///< per query point radius, zero if unspecified
   std::shared_ptr<const RobotQueryPoints> robot_;
   std::shared_ptr<const SignedDistanceField> sdf_;
-
-  /// Reject a null field, a negative standoff, or bad radii.
-  void validate() const;
-
-  /// nrPoints of a model that must not be null, for the initializer list.
-  static size_t checkedNrPoints(
-      const std::shared_ptr<const RobotQueryPoints> &robot) {
-    if (!robot) {
-      throw std::invalid_argument("ObstacleSDFFactor: robot must not be null.");
-    }
-    return robot->nrPoints();
-  }
 
  public:
   /**
@@ -76,15 +60,9 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
                     const std::shared_ptr<const RobotQueryPoints> &robot,
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
-                                                 costSigma),
-             qKey),
-        epsilon_(epsilon),
-        radii_(gtsam::Vector::Zero(robot->nrPoints())),
-        robot_(robot),
-        sdf_(sdf) {
-    validate();
-  }
+      : ObstacleSDFFactor(qKey, robot, sdf, costSigma, epsilon,
+                          gtsam::Vector::Zero(internal::checkedNrPoints(
+                              robot, "ObstacleSDFFactor"))) {}
 
   /**
    * Constructor with a radius per query point, added to the shared epsilon.
@@ -100,14 +78,16 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
                     const std::shared_ptr<const SignedDistanceField> &sdf,
                     double costSigma, double epsilon,
                     const gtsam::Vector &radii)
-      : Base(gtsam::noiseModel::Isotropic::Sigma(checkedNrPoints(robot),
-                                                 costSigma),
+      : Base(gtsam::noiseModel::Isotropic::Sigma(
+                 internal::checkedNrPoints(robot, "ObstacleSDFFactor"),
+                 costSigma),
              qKey),
         epsilon_(epsilon),
         radii_(radii),
         robot_(robot),
         sdf_(sdf) {
-    validate();
+    internal::validateObstacleSDFFactorArgs(*robot_, sdf_, epsilon_, radii_,
+                                            "ObstacleSDFFactor");
   }
 
   ~ObstacleSDFFactor() override {}
@@ -121,7 +101,9 @@ class GTSAM_EXPORT ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Ve
   /// Evaluate the hinge loss at every query point, and its Jacobian.
   gtsam::Vector evaluateError(
       const gtsam::Vector &q,
-      gtsam::OptionalMatrixType H1 = nullptr) const override;
+      gtsam::OptionalMatrixType H1 = nullptr) const override {
+    return obstacleSDFError(q, *robot_, *sdf_, epsilon_, radii_, H1);
+  }
 
   /// Return the shared standoff distance.
   double epsilon() const { return epsilon_; }

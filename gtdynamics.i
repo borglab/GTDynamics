@@ -1137,13 +1137,22 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
                       double costSigma, double epsilon,
                       const gtsam::noiseModel::Base *QcModel, double deltaT,
                       double tau);
+  ObstacleSDFFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
+                      gtsam::Key vKey2,
+                      const gtdynamics::RobotQueryPoints *robot,
+                      const gtdynamics::SignedDistanceField *sdf,
+                      double costSigma, double epsilon,
+                      const gtsam::Vector &radii,
+                      const gtsam::noiseModel::Base *QcModel, double deltaT,
+                      double tau);
 
   double epsilon() const;
+  gtsam::Vector radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
 
-#include <gtdynamics/factors/SelfCollisionSphereFactor.h>
+#include <gtdynamics/gpmp2/SelfCollisionCost.h>
 class SelfCollisionPair {
   SelfCollisionPair();
   SelfCollisionPair(size_t a, size_t b, double epsilon);
@@ -1154,6 +1163,7 @@ class SelfCollisionPair {
 };
 // SelfCollisionPairs defined in specializations.h
 
+#include <gtdynamics/factors/SelfCollisionSphereFactor.h>
 class SelfCollisionSphereFactor : gtsam::NoiseModelFactor {
   SelfCollisionSphereFactor(gtsam::Key qKey,
                             const gtdynamics::RobotQueryPoints *robot,

@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/factors/SelfCollisionSphereFactor.h>
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
@@ -25,9 +25,7 @@
 
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace gtdynamics {
 
@@ -40,7 +38,7 @@ namespace gtdynamics {
  * the same QcModel and deltaT connects the same two support states in the
  * graph.
  */
-class GTSAM_EXPORT SelfCollisionSphereFactorGP
+class SelfCollisionSphereFactorGP
     : public gtsam::NoiseModelFactorN<gtsam::Vector, gtsam::Vector,
                                       gtsam::Vector, gtsam::Vector> {
  private:
@@ -52,18 +50,6 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   SelfCollisionPairs pairs_;
   GPLinearInterpolator interpolator_;
-
-  /// Reject a null model or inconsistent indices/radii/standoffs, then
-  /// restrict robot_ to the points pairs_ references and remap pairs_/radii_.
-  void validateAndRestrict(const std::shared_ptr<const RobotQueryPoints> &robot) {
-    if (!robot) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactorGP: robot must not be null.");
-    }
-    validateSelfCollisionPairs(*robot, pairs_, radii_,
-                               "SelfCollisionSphereFactorGP");
-    robot_ = restrictToReferencedPoints(robot, &pairs_, &radii_);
-  }
 
  public:
   /**
@@ -93,7 +79,8 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
         pairs_(pairs),
         interpolator_(QcModel, deltaT, tau) {
     // deltaT and tau are checked by the interpolator constructor.
-    validateAndRestrict(robot);
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP");
   }
 
   /**
@@ -118,16 +105,14 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
                               const gtsam::Vector &sigmas,
                               const gtsam::SharedNoiseModel &QcModel,
                               double deltaT, double tau)
-      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey1, vKey1,
-             qKey2, vKey2),
+      : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey1, vKey1, qKey2,
+             vKey2),
         radii_(radii),
         pairs_(pairs),
         interpolator_(QcModel, deltaT, tau) {
-    if (static_cast<size_t>(sigmas.size()) != pairs.size()) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactorGP: sigmas must have one entry per pair.");
-    }
-    validateAndRestrict(robot);
+    // deltaT and tau are checked by the interpolator constructor.
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactorGP", &sigmas);
   }
 
   ~SelfCollisionSphereFactorGP() override {}
@@ -148,7 +133,14 @@ class GTSAM_EXPORT SelfCollisionSphereFactorGP
       const gtsam::Vector &v2, gtsam::OptionalMatrixType H1 = nullptr,
       gtsam::OptionalMatrixType H2 = nullptr,
       gtsam::OptionalMatrixType H3 = nullptr,
-      gtsam::OptionalMatrixType H4 = nullptr) const override;
+      gtsam::OptionalMatrixType H4 = nullptr) const override {
+    return interpolator_.errorAtInterpolatedPose(
+        q1, v1, q2, v2,
+        [this](const gtsam::Vector &q, gtsam::Matrix *Hq) {
+          return selfCollisionError(q, *robot_, pairs_, radii_, Hq);
+        },
+        H1, H2, H3, H4);
+  }
 
   /// Return the per query point radii.
   const gtsam::Vector &radii() const { return radii_; }

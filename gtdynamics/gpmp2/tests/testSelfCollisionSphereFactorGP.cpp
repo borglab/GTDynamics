@@ -27,8 +27,11 @@
 #include <string>
 #include <vector>
 
+#include "barLabFixtures.h"
+
 using namespace gtdynamics;
 using gtsam::assert_equal;
+using gtsam::Matrix;
 using gtsam::Point3;
 using gtsam::Values;
 using gtsam::Vector;
@@ -36,64 +39,19 @@ using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
 
-static const Robot kRobot =
-    CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"));
-
-// All eighteen joints, robot1's nine then robot2's nine.
-static std::vector<JointSharedPtr> bothArmJoints() {
-  const std::vector<std::string> names = {
-      "bridge1_joint_EA_X", "robot1_joint_EA_Y", "robot1_joint_EA_Z",
-      "robot1_joint_1",     "robot1_joint_2",    "robot1_joint_3",
-      "robot1_joint_4",     "robot1_joint_5",    "robot1_joint_6",
-      "bridge2_joint_EA_X", "robot2_joint_EA_Y", "robot2_joint_EA_Z",
-      "robot2_joint_1",     "robot2_joint_2",    "robot2_joint_3",
-      "robot2_joint_4",     "robot2_joint_5",    "robot2_joint_6"};
-  std::vector<JointSharedPtr> joints;
-  for (auto &&name : names) joints.push_back(kRobot.joint(name));
-  return joints;
-}
-
-// Query points: the two wrists, for a cross-arm pair.
-static std::vector<PointOnLink> wristPoints() {
-  return {PointOnLink(kRobot.link("robot1_link_6"), Point3(0, 0, 0)),
-          PointOnLink(kRobot.link("robot2_link_6"), Point3(0, 0, 0))};
-}
-
-static const Vector kArm =
-    (Vector(6) << 0.2, -0.5, -1.0, 0.3, 0.5, 0.2).finished();
-
-// Bridges far apart on the rail.
-static Vector supportConfig1() {
-  Vector q(18);
-  q << 2.0, 3.0, 1.0, kArm, 9.0, 3.0, 1.0, kArm;
-  return q;
-}
-// The bridges have moved toward each other.
-static Vector supportConfig2() {
-  Vector q(18);
-  q << 3.0, 3.0, 1.0, kArm, 8.0, 3.0, 1.0, kArm;
-  return q;
-}
-// Constant velocity consistent with the two support states over deltaT = 0.5.
-static Vector supportVelocity() {
-  Vector v = Vector::Zero(18);
-  v(0) = 2.0;
-  v(9) = -2.0;
-  return v;
-}
+static const Robot &kRobot = barLabRobot();
 
 /* ************************ endpoint agreement ************************** */
 
-// At tau = 0 the interpolation reproduces the first support state exactly, so
-// the interpolated factor must agree with the unary factor at q1; likewise at
-// tau = deltaT with q2.
+// At tau = 0 and tau = deltaT the GP factor must reproduce the unary error
+// and Jacobian at q1 and q2 respectively.
 TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
   const auto model = std::make_shared<const RobotQueryPoints>(
-      kRobot, "columns", bothArmJoints(), wristPoints());
+      kRobot, "columns", bothArmJoints(), crossArmWristPoints());
   const size_t dof = model->dof();
 
-  const Vector q1 = supportConfig1(), q2 = supportConfig2();
-  const Vector v1 = supportVelocity(), v2 = supportVelocity();
+  const Vector q1 = bothArmsApart(), q2 = bothArmsStepCloser();
+  const Vector v1 = bothArmsVelocity(), v2 = bothArmsVelocity();
   const double deltaT = 0.5, costSigma = 0.1;
 
   std::vector<Point3> wPts;
@@ -102,22 +60,40 @@ TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
 
   const std::vector<SelfCollisionPair> pairs = {SelfCollisionPair(0, 1, eps)};
-  const Vector radii = Vector::Zero(2);
+  // Nonzero radii so the agreement also covers the radii in the standoff.
+  const Vector radii = (Vector(2) << 0.05, 0.08).finished();
   SelfCollisionSphereFactor unary(X(0), model, pairs, radii, costSigma);
 
+  // q1 passes through with unit weight at tau = 0, so H1 is the unary
+  // Jacobian and the other support states get zero.
   SelfCollisionSphereFactorGP atStart(X(0), V(0), X(1), V(1), model, pairs,
                                        radii, costSigma,
                                        Isotropic::Sigma(dof, 1.0), deltaT,
                                        0.0);
-  EXPECT(assert_equal(unary.evaluateError(q1),
-                      atStart.evaluateError(q1, v1, q2, v2), 1e-9));
+  Matrix Hu, H1, H2, H3, H4;
+  EXPECT(assert_equal(unary.evaluateError(q1, &Hu),
+                      atStart.evaluateError(q1, v1, q2, v2, &H1, &H2, &H3,
+                                            &H4),
+                      1e-9));
+  EXPECT(assert_equal(Hu, H1, 1e-9));
+  const Matrix zero = Matrix::Zero(Hu.rows(), Hu.cols());
+  EXPECT(assert_equal(zero, H2, 1e-9));
+  EXPECT(assert_equal(zero, H3, 1e-9));
+  EXPECT(assert_equal(zero, H4, 1e-9));
 
+  // Likewise q2 at tau = deltaT, whose Jacobian lands in H3.
   SelfCollisionSphereFactorGP atEnd(X(0), V(0), X(1), V(1), model, pairs,
                                      radii, costSigma,
                                      Isotropic::Sigma(dof, 1.0), deltaT,
                                      deltaT);
-  EXPECT(assert_equal(unary.evaluateError(q2),
-                      atEnd.evaluateError(q1, v1, q2, v2), 1e-9));
+  Matrix HuEnd, E1, E2, E3, E4;
+  EXPECT(assert_equal(unary.evaluateError(q2, &HuEnd),
+                      atEnd.evaluateError(q1, v1, q2, v2, &E1, &E2, &E3, &E4),
+                      1e-9));
+  EXPECT(assert_equal(HuEnd, E3, 1e-9));
+  EXPECT(assert_equal(zero, E1, 1e-9));
+  EXPECT(assert_equal(zero, E2, 1e-9));
+  EXPECT(assert_equal(zero, E4, 1e-9));
 }
 
 /* ************************ interpolated Jacobians ********************** */
@@ -127,11 +103,11 @@ TEST(SelfCollisionSphereFactorGP, agreesWithUnaryFactorAtEndpoints) {
 // numerical ones.
 TEST(SelfCollisionSphereFactorGP, interpolatedJacobians) {
   const auto model = std::make_shared<const RobotQueryPoints>(
-      kRobot, "columns", bothArmJoints(), wristPoints());
+      kRobot, "columns", bothArmJoints(), crossArmWristPoints());
   const size_t dof = model->dof();
 
-  const Vector q1 = supportConfig1(), q2 = supportConfig2();
-  const Vector v1 = supportVelocity(), v2 = supportVelocity();
+  const Vector q1 = bothArmsApart(), q2 = bothArmsStepCloser();
+  const Vector v1 = bothArmsVelocity(), v2 = bothArmsVelocity();
   const double deltaT = 0.5, tau = 0.3 * deltaT;
 
   // Standoff a metre past the wrist distance at the interpolated state, so the
@@ -162,11 +138,11 @@ TEST(SelfCollisionSphereFactorGP, interpolatedJacobians) {
 // do in the unary factor: each sphere's radius adds to the active-branch cost.
 TEST(SelfCollisionSphereFactorGP, radiiAddToTheStandoff) {
   const auto model = std::make_shared<const RobotQueryPoints>(
-      kRobot, "columns", bothArmJoints(), wristPoints());
+      kRobot, "columns", bothArmJoints(), crossArmWristPoints());
   const size_t dof = model->dof();
 
-  const Vector q1 = supportConfig1(), q2 = supportConfig2();
-  const Vector v1 = supportVelocity(), v2 = supportVelocity();
+  const Vector q1 = bothArmsApart(), q2 = bothArmsStepCloser();
+  const Vector v1 = bothArmsVelocity(), v2 = bothArmsVelocity();
   const double deltaT = 0.5, tau = 0.3 * deltaT;
 
   GPLinearInterpolator interp(Isotropic::Sigma(dof, 1.0), deltaT, tau);
@@ -195,7 +171,7 @@ TEST(SelfCollisionSphereFactorGP, radiiAddToTheStandoff) {
 
 TEST(SelfCollisionSphereFactorGP, rejectsBadInput) {
   const auto model = std::make_shared<const RobotQueryPoints>(
-      kRobot, "columns", bothArmJoints(), wristPoints());
+      kRobot, "columns", bothArmJoints(), crossArmWristPoints());
   const size_t dof = model->dof();
   const auto QcModel = Isotropic::Sigma(dof, 1.0);
   const double deltaT = 0.5, tau = 0.1;

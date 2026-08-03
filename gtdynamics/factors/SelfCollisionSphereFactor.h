@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
 #include <gtsam/base/Matrix.h>
@@ -23,45 +24,9 @@
 
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace gtdynamics {
-
-/// One self collision check between two query points, each inflated to a sphere
-/// by its radius and kept epsilon apart on top of that.
-struct SelfCollisionPair {
-  size_t a;        ///< first query point index
-  size_t b;        ///< second query point index
-  double epsilon;  ///< standoff between the two, added to their radii
-
-  SelfCollisionPair() : a(0), b(0), epsilon(0.0) {}
-  SelfCollisionPair(size_t a, size_t b, double epsilon)
-      : a(a), b(b), epsilon(epsilon) {}
-};
-
-using SelfCollisionPairs = std::vector<SelfCollisionPair>;
-
-/**
- * Reject inconsistent indices, radii or standoffs, shared by every self
- * collision factor. factorName prefixes the error messages.
- */
-GTSAM_EXPORT void validateSelfCollisionPairs(const RobotQueryPoints &robot,
-                                             const SelfCollisionPairs &pairs,
-                                             const gtsam::Vector &radii,
-                                             const std::string &factorName);
-
-/**
- * Restrict robot to just the points pairs references, and remap pairs/radii
- * from robot's point indices into the restricted model's own compact ones.
- * Shared by every self collision factor so evaluation only ever queries the
- * points a factor actually checks, not every point of a larger shared model.
- * Mutates *pairs and *radii in place; robot itself is left untouched.
- */
-GTSAM_EXPORT std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
-    const std::shared_ptr<const RobotQueryPoints> &robot,
-    SelfCollisionPairs *pairs, gtsam::Vector *radii);
 
 /**
  * Unary factor keeping the robot clear of itself over a set of query point
@@ -73,7 +38,7 @@ GTSAM_EXPORT std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
  * (constant separation). Coincident points fall back to a fixed separation
  * direction rather than a non-finite gradient.
  */
-class GTSAM_EXPORT SelfCollisionSphereFactor
+class SelfCollisionSphereFactor
     : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
   using This = SelfCollisionSphereFactor;
@@ -82,19 +47,6 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   std::shared_ptr<const RobotQueryPoints> robot_;
   gtsam::Vector radii_;  ///< one radius per query point, zero if unspecified
   SelfCollisionPairs pairs_;
-
-  /// Reject a null model or inconsistent indices/radii/standoffs (checked
-  /// against robot's own point indices), then restrict robot_ to just the
-  /// points pairs_ references and remap pairs_/radii_ to match.
-  void validateAndRestrict(const std::shared_ptr<const RobotQueryPoints> &robot) {
-    if (!robot) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactor: robot must not be null.");
-    }
-    validateSelfCollisionPairs(*robot, pairs_, radii_,
-                               "SelfCollisionSphereFactor");
-    robot_ = restrictToReferencedPoints(robot, &pairs_, &radii_);
-  }
 
  public:
   /**
@@ -113,7 +65,8 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
              qKey),
         radii_(radii),
         pairs_(pairs) {
-    validateAndRestrict(robot);
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactor");
   }
 
   /**
@@ -131,11 +84,8 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
       : Base(gtsam::noiseModel::Diagonal::Sigmas(sigmas), qKey),
         radii_(radii),
         pairs_(pairs) {
-    if (static_cast<size_t>(sigmas.size()) != pairs.size()) {
-      throw std::invalid_argument(
-          "SelfCollisionSphereFactor: sigmas must have one entry per pair.");
-    }
-    validateAndRestrict(robot);
+    robot_ = internal::validateAndRestrictSelfCollision(
+        robot, &pairs_, &radii_, "SelfCollisionSphereFactor", &sigmas);
   }
 
   ~SelfCollisionSphereFactor() override {}
@@ -152,7 +102,9 @@ class GTSAM_EXPORT SelfCollisionSphereFactor
   /// Evaluate the hinge loss of every pair, and its Jacobian.
   gtsam::Vector evaluateError(
       const gtsam::Vector &q,
-      gtsam::OptionalMatrixType H1 = nullptr) const override;
+      gtsam::OptionalMatrixType H1 = nullptr) const override {
+    return selfCollisionError(q, *robot_, pairs_, radii_, H1);
+  }
 
   /// Return the per query point radii.
   const gtsam::Vector &radii() const { return radii_; }

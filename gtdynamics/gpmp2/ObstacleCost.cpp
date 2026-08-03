@@ -14,6 +14,7 @@
 #include <gtdynamics/gpmp2/ObstacleCost.h>
 
 #include <algorithm>
+#include <vector>
 
 namespace gtdynamics {
 
@@ -77,6 +78,32 @@ double hingeLossObstacleCost(const gtsam::Pose3 &wTs,
   if (Hpose) *Hpose = HerrLocal * HlocalPose;
   if (Hpt) *Hpt = HerrLocal * HlocalPt;
   return cost;
+}
+
+/* ************************************************************************* */
+gtsam::Vector obstacleSDFError(const gtsam::Vector &q,
+                               const RobotQueryPoints &robot,
+                               const SignedDistanceField &sdf, double epsilon,
+                               const gtsam::Vector &radii, gtsam::Matrix *Hq) {
+  const size_t nrPts = robot.nrPoints();
+
+  std::vector<gtsam::Point3> wPts;
+  std::vector<gtsam::Matrix> ptJacobians;
+  robot.queryPoints(q, &wPts, Hq ? &ptJacobians : nullptr);
+  if (Hq) *Hq = gtsam::Matrix::Zero(nrPts, robot.dof());
+
+  gtsam::Vector err(nrPts);
+  for (size_t i = 0; i < nrPts; ++i) {
+    const double eps = epsilon + radii(i);
+    if (Hq) {
+      gtsam::Matrix13 Hpt;
+      err(i) = hingeLossObstacleCost(wPts[i], sdf, eps, Hpt);
+      Hq->row(i) = Hpt * ptJacobians[i];
+    } else {
+      err(i) = hingeLossObstacleCost(wPts[i], sdf, eps);
+    }
+  }
+  return err;
 }
 
 }  // namespace gtdynamics

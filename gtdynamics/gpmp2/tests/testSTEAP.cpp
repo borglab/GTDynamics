@@ -19,6 +19,9 @@
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
+
+#include "barLabFixtures.h"
+#include "makeSphereSDF.h"
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/ISAM2.h>
@@ -41,59 +44,11 @@ using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
 
-static const double kCell = 0.05;
-static const double kRadius = 0.15;
-static const double kEpsilon = 0.10;
 static const double kCostSigma = 0.01;
 static const size_t kNumStates = 5;
 static const double kDeltaT = 0.5;
 
-static const Robot kRobot =
-    CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"));
-
-// The nine movable joints of robot1, gantry prismatic then arm revolute.
-static std::vector<JointSharedPtr> robot1Joints() {
-  const std::vector<std::string> names = {
-      "bridge1_joint_EA_X", "robot1_joint_EA_Y", "robot1_joint_EA_Z",
-      "robot1_joint_1",     "robot1_joint_2",    "robot1_joint_3",
-      "robot1_joint_4",     "robot1_joint_5",    "robot1_joint_6"};
-  std::vector<JointSharedPtr> joints;
-  for (auto &&name : names) joints.push_back(kRobot.joint(name));
-  return joints;
-}
-
-static std::vector<PointOnLink> wristPoints() {
-  const LinkSharedPtr link = kRobot.link("robot1_link_6");
-  return {PointOnLink(link, Point3(0.0, 0.0, 0.0)),
-          PointOnLink(link, Point3(0.0, 0.0, 0.1))};
-}
-
-static Vector startConfig() {
-  return (Vector(9) << 2.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
-      .finished();
-}
-static Vector goalConfig() {
-  return (Vector(9) << 3.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
-      .finished();
-}
-
-// Sample the exact signed distance to a sphere onto a grid, layer (row=y,col=x).
-static SignedDistanceField makeSphereSDF(const Point3 &center, double radius,
-                                         const Point3 &origin, double cell,
-                                         size_t nx, size_t ny, size_t nz) {
-  std::vector<Matrix> data(nz);
-  for (size_t k = 0; k < nz; ++k) {
-    Matrix layer(ny, nx);
-    for (size_t i = 0; i < ny; ++i) {
-      for (size_t j = 0; j < nx; ++j) {
-        const Point3 p = origin + Point3(j * cell, i * cell, k * cell);
-        layer(i, j) = (p - center).norm() - radius;
-      }
-    }
-    data[k] = layer;
-  }
-  return SignedDistanceField(origin, cell, data);
-}
+static const Robot &kRobot = barLabRobot();
 
 // Holds the whole planning problem: the query point model, the obstacle field,
 // the straight line initialisation, and the sphere centre.

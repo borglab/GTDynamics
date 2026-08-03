@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SDFException.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtsam/base/Matrix.h>
@@ -65,5 +66,15 @@ GTSAM_EXPORT double hingeLossObstacleCost(const gtsam::Pose3 &wTs,
                                           double epsilon,
                                           gtsam::OptionalJacobian<1, 6> Hpose = {},
                                           gtsam::OptionalJacobian<1, 3> Hpt = {});
+
+/// Hinge loss of every query point of robot at configuration q, using
+/// epsilon + radii(i) as each point's standoff. If Hq is non-null, it is
+/// filled with the nrPoints x dof Jacobian with respect to q.
+GTSAM_EXPORT gtsam::Vector obstacleSDFError(const gtsam::Vector &q,
+                                            const RobotQueryPoints &robot,
+                                            const SignedDistanceField &sdf,
+                                            double epsilon,
+                                            const gtsam::Vector &radii,
+                                            gtsam::Matrix *Hq = nullptr);
 
 }  // namespace gtdynamics

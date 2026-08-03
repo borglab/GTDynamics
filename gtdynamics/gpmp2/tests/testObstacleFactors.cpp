@@ -21,6 +21,9 @@
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtdynamics/universal_robot/sdf.h>
+
+#include "barLabFixtures.h"
+#include "makeSphereSDF.h"
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Symbol.h>
@@ -51,33 +54,9 @@ using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
 
-static const double kCell = 0.05;
-static const double kRadius = 0.15;
-static const double kEpsilon = 0.10;
-
 // Offset a grid by half a cell to put points of interest at cell centres, since
 // the trilinear gradient is discontinuous on the nodes.
 static const double kHalfCell = 0.5 * kCell;
-
-// Sample the exact signed distance to a sphere onto a grid. The layer for z
-// index k is indexed as (row = y, col = x), matching SignedDistanceField.
-static SignedDistanceField makeSphereSDF(const Point3 &center, double radius,
-                                         const Point3 &origin, double cell,
-                                         size_t nx, size_t ny, size_t nz) {
-  std::vector<Matrix> data(nz);
-  for (size_t k = 0; k < nz; ++k) {
-    Matrix layer(ny, nx);
-    for (size_t i = 0; i < ny; ++i) {
-      for (size_t j = 0; j < nx; ++j) {
-        const Point3 p =
-            origin + Point3(j * cell, i * cell, k * cell);
-        layer(i, j) = (p - center).norm() - radius;
-      }
-    }
-    data[k] = layer;
-  }
-  return SignedDistanceField(origin, cell, data);
-}
 
 /* ********************** signed distance field ************************** */
 
@@ -268,27 +247,7 @@ TEST(ObstacleCost, frameAttachedOverload) {
 
 /* ******************** bar_lab robot query points *********************** */
 
-static const Robot kRobot =
-    CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"));
-
-// The nine movable joints of robot1, in the order q indexes them: the three
-// gantry prismatic joints, then the six arm revolute joints.
-static std::vector<JointSharedPtr> robot1Joints() {
-  const std::vector<std::string> names = {
-      "bridge1_joint_EA_X", "robot1_joint_EA_Y", "robot1_joint_EA_Z",
-      "robot1_joint_1",     "robot1_joint_2",    "robot1_joint_3",
-      "robot1_joint_4",     "robot1_joint_5",    "robot1_joint_6"};
-  std::vector<JointSharedPtr> joints;
-  for (auto &&name : names) joints.push_back(kRobot.joint(name));
-  return joints;
-}
-
-// Two query points on the wrist: the link CoM and a point out along the tool.
-static std::vector<PointOnLink> wristPoints() {
-  const LinkSharedPtr link = kRobot.link("robot1_link_6");
-  return {PointOnLink(link, Point3(0.0, 0.0, 0.0)),
-          PointOnLink(link, Point3(0.0, 0.0, 0.1))};
-}
+static const Robot &kRobot = barLabRobot();
 
 // Bad kinematic inputs are rejected at construction, not left to crash or
 // leave unused columns of q at query time.
@@ -327,15 +286,6 @@ TEST(RobotQueryPoints, rejectsBadKinematicInputs) {
   CHECK_EXCEPTION(
       RobotQueryPoints(kRobot, "columns", gantryOnly, wristPoints()),
       std::invalid_argument);
-}
-
-static Vector startConfig() {
-  return (Vector(9) << 2.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
-      .finished();
-}
-static Vector goalConfig() {
-  return (Vector(9) << 3.0, 2.0, 1.0, 0.0, -0.5, -1.0, 0.0, 0.5, 0.0)
-      .finished();
 }
 
 // Two points at the same location on a link with different radii contradict;
@@ -507,8 +457,7 @@ TEST(ObstacleSDFFactor, planAroundSphere) {
   }
 }
 
-// The interpolated obstacle factor must agree with the unary factor when tau is
-// zero, where the interpolation reproduces the first support state exactly.
+// At tau = 0 the GP factor must reproduce the unary error and Jacobian at q1.
 TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", robot1Joints(), wristPoints());
@@ -525,13 +474,26 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
       makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
 
   const double deltaT = 0.5, costSigma = 0.01;
-  ObstacleSDFFactor unary(X(0), model, sdf, costSigma, kEpsilon);
+  // Nonzero radii so the agreement also covers the radius folded into the
+  // standoff, not just the shared epsilon.
+  const Vector radii = Vector::Constant(model->nrPoints(), 0.03);
+  ObstacleSDFFactor unary(X(0), model, sdf, costSigma, kEpsilon, radii);
   ObstacleSDFFactorGP interpolated(X(0), V(0), X(1), V(1), model, sdf,
-                                   costSigma, kEpsilon,
+                                   costSigma, kEpsilon, radii,
                                    Isotropic::Sigma(dof, 1.0), deltaT, 0.0);
 
-  EXPECT(assert_equal(unary.evaluateError(q1),
-                      interpolated.evaluateError(q1, v1, q2, v2), 1e-9));
+  // q1 passes through with unit weight, so H1 is the unary Jacobian and the
+  // other support states get zero.
+  Matrix Hu, H1, H2, H3, H4;
+  EXPECT(assert_equal(unary.evaluateError(q1, &Hu),
+                      interpolated.evaluateError(q1, v1, q2, v2, &H1, &H2, &H3,
+                                                 &H4),
+                      1e-9));
+  EXPECT(assert_equal(Hu, H1, 1e-9));
+  const Matrix zero = Matrix::Zero(Hu.rows(), Hu.cols());
+  EXPECT(assert_equal(zero, H2, 1e-9));
+  EXPECT(assert_equal(zero, H3, 1e-9));
+  EXPECT(assert_equal(zero, H4, 1e-9));
 
   Values values;
   values.insert(X(0), q1);
@@ -539,8 +501,8 @@ TEST(ObstacleSDFFactorGP, agreesWithUnaryFactorAtTauZero) {
   values.insert(X(1), q2);
   values.insert(V(1), v2);
   ObstacleSDFFactorGP atTau(X(0), V(0), X(1), V(1), model, sdf, costSigma,
-                             kEpsilon, Isotropic::Sigma(dof, 1.0), deltaT,
-                             0.2 * deltaT);
+                             kEpsilon, radii, Isotropic::Sigma(dof, 1.0),
+                             deltaT, 0.2 * deltaT);
   EXPECT_CORRECT_FACTOR_JACOBIANS(atTau, values, 1e-7, 1e-5);
 }
 

@@ -30,6 +30,8 @@
 #include <string>
 #include <vector>
 
+#include "barLabFixtures.h"
+
 using namespace gtdynamics;
 using gtsam::assert_equal;
 using gtsam::Matrix;
@@ -41,8 +43,7 @@ using gtsam::Vector3;
 using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::X;
 
-static const Robot kRobot =
-    CreateRobotFromFile(kUrdfPath + std::string("bar_lab.urdf"));
+static const Robot &kRobot = barLabRobot();
 
 /* ************************ point-to-point primitive ******************** */
 
@@ -87,44 +88,14 @@ TEST(SelfCollisionCost, hingeAndJacobian) {
 
 /* ************************ bar_lab 18-DOF model ************************ */
 
-// All eighteen joints, robot1's nine then robot2's nine.
-static std::vector<JointSharedPtr> bothArmJoints() {
-  const std::vector<std::string> names = {
-      "bridge1_joint_EA_X", "robot1_joint_EA_Y", "robot1_joint_EA_Z",
-      "robot1_joint_1",     "robot1_joint_2",    "robot1_joint_3",
-      "robot1_joint_4",     "robot1_joint_5",    "robot1_joint_6",
-      "bridge2_joint_EA_X", "robot2_joint_EA_Y", "robot2_joint_EA_Z",
-      "robot2_joint_1",     "robot2_joint_2",    "robot2_joint_3",
-      "robot2_joint_4",     "robot2_joint_5",    "robot2_joint_6"};
-  std::vector<JointSharedPtr> joints;
-  for (auto &&name : names) joints.push_back(kRobot.joint(name));
-  return joints;
-}
-
 // Query points: two wrists (cross-arm pairs), robot1's forearm (same-arm
 // pairs), and the two arm bases (reliably close for the push-apart test).
 static std::vector<PointOnLink> queryPoints() {
-  return {PointOnLink(kRobot.link("robot1_link_6"), Point3(0, 0, 0)),
-          PointOnLink(kRobot.link("robot2_link_6"), Point3(0, 0, 0)),
-          PointOnLink(kRobot.link("robot1_link_4"), Point3(0, 0, 0)),
-          PointOnLink(kRobot.link("robot1_base"), Point3(0, 0, 0)),
-          PointOnLink(kRobot.link("robot2_base"), Point3(0, 0, 0))};
-}
-
-static const Vector kArm =
-    (Vector(6) << 0.2, -0.5, -1.0, 0.3, 0.5, 0.2).finished();
-
-// Bridges far apart on the rail.
-static Vector configApart() {
-  Vector q(18);
-  q << 2.0, 3.0, 1.0, kArm, 9.0, 3.0, 1.0, kArm;
-  return q;
-}
-// Bridges 0.2 m apart, so the two arm bases nearly coincide.
-static Vector configClose() {
-  Vector q(18);
-  q << 5.0, 3.0, 1.0, kArm, 5.2, 3.0, 1.0, kArm;
-  return q;
+  std::vector<PointOnLink> pts = crossArmWristPoints();
+  pts.push_back(PointOnLink(kRobot.link("robot1_link_4"), Point3(0, 0, 0)));
+  pts.push_back(PointOnLink(kRobot.link("robot1_base"), Point3(0, 0, 0)));
+  pts.push_back(PointOnLink(kRobot.link("robot2_base"), Point3(0, 0, 0)));
+  return pts;
 }
 
 /* ************************ factor Jacobians *************************** */
@@ -134,7 +105,7 @@ static Vector configClose() {
 TEST(SelfCollisionSphereFactor, pointPointJacobians) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", bothArmJoints(), queryPoints());
-  const Vector q = configApart();
+  const Vector q = bothArmsApart();
   std::vector<Point3> wPts;
   model->queryPoints(q, &wPts);
   const double eps = (wPts[0] - wPts[1]).norm() + 1.0;
@@ -155,7 +126,7 @@ TEST(SelfCollisionSphereFactor, pointPointJacobians) {
 TEST(SelfCollisionSphereFactor, multiplePairs) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", bothArmJoints(), queryPoints());
-  const Vector q = configApart();
+  const Vector q = bothArmsApart();
   std::vector<Point3> wPts;
   model->queryPoints(q, &wPts);
 
@@ -182,7 +153,7 @@ TEST(SelfCollisionSphereFactor, pushesPointsApart) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", bothArmJoints(), queryPoints());
 
-  const Vector q0 = configClose();
+  const Vector q0 = bothArmsClose();
   std::vector<Point3> startPts;
   model->queryPoints(q0, &startPts);
   const double startDistance = (startPts[3] - startPts[4]).norm();
@@ -216,7 +187,7 @@ TEST(SelfCollisionSphereFactor, pushesPointsApart) {
 TEST(SelfCollisionSphereFactor, radiiPointPoint) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", bothArmJoints(), queryPoints());
-  const Vector q = configApart();
+  const Vector q = bothArmsApart();
   std::vector<Point3> wPts;
   model->queryPoints(q, &wPts);
   const double dist = (wPts[0] - wPts[1]).norm();
@@ -254,7 +225,7 @@ TEST(SelfCollisionSphereFactor, radiiPointPoint) {
 TEST(SelfCollisionSphereFactor, radiiAddToTheStandoff) {
   const auto model = std::make_shared<const RobotQueryPoints>(
       kRobot, "columns", bothArmJoints(), queryPoints());
-  const Vector q = configApart();
+  const Vector q = bothArmsApart();
   std::vector<Point3> wPts;
   model->queryPoints(q, &wPts);
 
