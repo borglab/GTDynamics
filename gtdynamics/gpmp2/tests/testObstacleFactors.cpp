@@ -312,7 +312,7 @@ TEST(RobotQueryPoints, queryPosesAgainstNumerical) {
       return poses[i];
     };
     EXPECT(assert_equal(
-        Matrix(gtsam::numericalDerivative11<Pose3, Vector>(f, q)),
+        Matrix(gtsam::numericalDerivative11<Pose3, Vector, 9>(f, q)),
         poseJacobians[i], 1e-5));
   }
 }

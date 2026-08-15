@@ -180,7 +180,7 @@ TEST(NNCableSpline, sampleJacobiansAgainstNumerical) {
       return pts[m];
     };
     EXPECT(assert_equal(
-        Matrix(gtsam::numericalDerivative11<Point3, Vector>(f, q)),
+        Matrix(gtsam::numericalDerivative11<Point3, Vector, 9>(f, q)),
         ptJacobians[m], 1e-5));
   }
 }

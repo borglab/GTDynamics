@@ -70,15 +70,15 @@ TEST(MLP, jacobianAgainstNumerical) {
   MLP relu(smallWeights(), smallBiases(), MLP::Activation::kRelu);
   MLP tanhNet(smallWeights(), smallBiases(), MLP::Activation::kTanh);
 
-  auto check = [](const MLP &net, const Vector &x) {
+  auto check = [&](const MLP &net, const Vector &x) {
     Matrix H;
     net.forward(x, &H);
     std::function<Vector(const Vector &)> f = [&](const Vector &v) {
       return net.forward(v);
     };
-    EXPECT(assert_equal(Matrix(gtsam::numericalDerivative11<Vector, Vector>(
-                            f, x)),
-                        H, 1e-6));
+    EXPECT(assert_equal(
+        Matrix(gtsam::numericalDerivative11<Vector, Vector, 2>(f, x)), H,
+        1e-6));
   };
 
   check(relu, Vector2(1.0, 1.0));    // z0 = (3.1, -0.7), away from kinks
@@ -147,7 +147,8 @@ TEST(MLP, loadRoundTrip) {
   EXPECT(loaded.metadata().at("cheb_nodes") == "16");
   EXPECT(loaded.metadata().at("endpoint_links") == "link_3 link_6");
 
-  for (const Vector &x : {Vector2(0.3, -0.8), Vector2(-1.1, 0.6)}) {
+  for (const Vector &x :
+       std::vector<Vector>{Vector2(0.3, -0.8), Vector2(-1.1, 0.6)}) {
     Matrix Hloaded, Htwin;
     EXPECT(assert_equal(twin.forward(x, &Htwin),
                         loaded.forward(x, &Hloaded), 1e-12));
