@@ -1152,6 +1152,48 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/dynamics/MLP.h>
+class MLP {
+  MLP(const string &filename);
+
+  size_t inputDim() const;
+  size_t outputDim() const;
+  size_t nrLayers() const;
+  gtsam::Vector forward(const gtsam::Vector &x) const;
+};
+
+#include <gtdynamics/gpmp2/NNCableSpline.h>
+class NNCableSpline {
+  NNCableSpline(const gtdynamics::Robot &robot, const string &baseLinkName,
+                const std::vector<gtdynamics::Joint *> &joints,
+                const gtdynamics::PointOnLink &attachment0,
+                const gtdynamics::PointOnLink &attachment1,
+                const gtdynamics::Link *referenceLink,
+                const gtdynamics::MLP *mlp,
+                const std::vector<size_t> &inputIndices, size_t numChebNodes,
+                size_t numSamples);
+
+  size_t dof() const;
+  size_t numSamples() const;
+  size_t numChebNodes() const;
+  gtsam::Matrix worldPoints(const gtsam::Vector &q) const;
+};
+
+#include <gtdynamics/factors/NNCableFactor.h>
+class NNCableFactor : gtsam::NoiseModelFactor {
+  NNCableFactor(gtsam::Key qKey, const gtdynamics::NNCableSpline *cable,
+                const gtdynamics::SignedDistanceField *sdf, double costSigma,
+                double epsilon, double cableRadius);
+  NNCableFactor(gtsam::Key qKey, const gtdynamics::NNCableSpline *cable,
+                const gtdynamics::SignedDistanceField *sdf, double costSigma,
+                double epsilon, const gtsam::Vector &radii);
+
+  double epsilon() const;
+  gtsam::Vector radii() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
 class SelfCollisionPair {
   SelfCollisionPair();

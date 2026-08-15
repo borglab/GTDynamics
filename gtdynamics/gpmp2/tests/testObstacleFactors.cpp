@@ -288,6 +288,35 @@ TEST(RobotQueryPoints, rejectsBadKinematicInputs) {
       std::invalid_argument);
 }
 
+// queryPoses must agree with queryPoints on the transformed points, and its
+// 6 x dof Jacobians must match the numerical ones.
+TEST(RobotQueryPoints, queryPosesAgainstNumerical) {
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), wristPoints());
+  const Vector q = startConfig();
+
+  std::vector<Pose3> wTls;
+  std::vector<Matrix> poseJacobians;
+  model->queryPoses(q, &wTls, &poseJacobians);
+
+  std::vector<Point3> wPts;
+  model->queryPoints(q, &wPts);
+  for (size_t i = 0; i < model->nrPoints(); ++i) {
+    EXPECT(assert_equal(
+        wPts[i], Point3(wTls[i].transformFrom(model->points()[i].point)),
+        1e-9));
+
+    std::function<Pose3(const Vector &)> f = [&](const Vector &v) {
+      std::vector<Pose3> poses;
+      model->queryPoses(v, &poses);
+      return poses[i];
+    };
+    EXPECT(assert_equal(
+        Matrix(gtsam::numericalDerivative11<Pose3, Vector>(f, q)),
+        poseJacobians[i], 1e-5));
+  }
+}
+
 // Two points at the same location on a link with different radii contradict;
 // distinct points that merely overlap are deliberate coverage and allowed.
 TEST(ObstacleSDFFactor, rejectsConflictingRadii) {

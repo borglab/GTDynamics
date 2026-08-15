@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gtdynamics/gpmp2/NNCableSpline.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
@@ -147,6 +148,38 @@ inline std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
   }
 
   return std::make_shared<const RobotQueryPoints>(robot, uniqueIndices);
+}
+
+/// numSamples of a cable model that must not be null, for factor
+/// initializer lists.
+inline size_t checkedNumSamples(
+    const std::shared_ptr<const NNCableSpline> &cable,
+    const std::string &factorName) {
+  if (!cable) {
+    throw std::invalid_argument(factorName + ": cable must not be null.");
+  }
+  return cable->numSamples();
+}
+
+/// Reject a null field, a negative standoff, or radii that are mis-sized or
+/// negative. factorName prefixes the error messages.
+inline void validateNNCableFactorArgs(
+    const NNCableSpline &cable,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
+    const gtsam::Vector &radii, const std::string &factorName) {
+  if (!sdf) {
+    throw std::invalid_argument(factorName + ": sdf must not be null.");
+  }
+  if (epsilon < 0.0) {
+    throw std::invalid_argument(factorName + ": epsilon must be >= 0.");
+  }
+  if (static_cast<size_t>(radii.size()) != cable.numSamples()) {
+    throw std::invalid_argument(
+        factorName + ": radii must have one entry per cable sample.");
+  }
+  if ((radii.array() < 0.0).any()) {
+    throw std::invalid_argument(factorName + ": radii must be >= 0.");
+  }
 }
 
 /// Reject a null model, inconsistent pairs/radii, or, if sigmas is given, a

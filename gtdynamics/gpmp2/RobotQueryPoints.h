@@ -108,6 +108,17 @@ class GTSAM_EXPORT RobotQueryPoints {
    * @returns a 3 x nrPoints matrix of world positions
    */
   gtsam::Matrix worldPoints(const gtsam::Vector &q) const;
+
+  /**
+   * World poses of the query points' links, with Jacobians.
+   * @param q stacked joint angles
+   * @param wTls filled with the world pose of each query point's link
+   * @param poseJacobians if non-null, filled with a 6 x dof matrix per point,
+   *        in the gtsam Pose3 tangent convention (body-frame twist, rows 0-2
+   *        rotation, rows 3-5 translation)
+   */
+  void queryPoses(const gtsam::Vector &q, std::vector<gtsam::Pose3> *wTls,
+                  std::vector<gtsam::Matrix> *poseJacobians = nullptr) const;
 };  // \class RobotQueryPoints
 
 }  // namespace gtdynamics
