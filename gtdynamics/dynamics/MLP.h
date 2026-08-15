@@ -37,11 +37,6 @@ class GTSAM_EXPORT MLP {
   Activation activation_;
   double leakySlope_ = 0.01;
 
-  /// Optional affine normalization, applied iff the file provided it.
-  bool normalizeInput_ = false, denormalizeOutput_ = false;
-  gtsam::Vector inputScale_, inputShift_;  ///< x' = scale .* x + shift
-  gtsam::Vector outputStd_, outputMean_;   ///< y = std .* y' + mean
-
   std::map<std::string, std::string> metadata_;  ///< unrecognized header lines
 
   /// Reject empty or dimension-inconsistent layers.

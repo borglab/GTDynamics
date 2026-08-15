@@ -72,15 +72,6 @@ MLP::MLP(const std::vector<gtsam::Matrix> &weights,
 }
 
 /* ************************************************************************* */
-/// Parse a whitespace-separated list of doubles into a vector.
-static gtsam::Vector parseVector(const std::string &text) {
-  std::istringstream stream(text);
-  std::vector<double> values;
-  double value;
-  while (stream >> value) values.push_back(value);
-  return Eigen::Map<const gtsam::Vector>(values.data(), values.size());
-}
-
 /// n doubles from stream, or throw naming what was being read.
 static gtsam::Vector readValues(std::istream &stream, size_t n,
                                 const std::string &what) {
@@ -104,7 +95,6 @@ MLP::MLP(const std::string &filename) {
   size_t inputDim = 0, outputDim = 0, nrLayers = 0;
   std::vector<size_t> hiddenDims;
   bool sawActivation = false;
-  gtsam::Vector inputLower, inputUpper;
   std::string line;
   while (std::getline(file, line)) {
     std::istringstream tokens(line);
@@ -133,14 +123,6 @@ MLP::MLP(const std::string &filename) {
       sawActivation = true;
     } else if (key == "leaky_slope") {
       std::istringstream(rest) >> leakySlope_;
-    } else if (key == "input_lower") {
-      inputLower = parseVector(rest);
-    } else if (key == "input_upper") {
-      inputUpper = parseVector(rest);
-    } else if (key == "output_mean") {
-      outputMean_ = parseVector(rest);
-    } else if (key == "output_std") {
-      outputStd_ = parseVector(rest);
     } else {
       // Trim both ends so CRLF endings do not pollute the stored value.
       const size_t start = rest.find_first_not_of(" \t\r");
@@ -156,24 +138,6 @@ MLP::MLP(const std::string &filename) {
   if (!sawActivation) {
     throw std::runtime_error("MLP: missing activation header in " + filename +
                              ".");
-  }
-
-  // Inputs mapped to [-1, 1] over the given bounds, as in training.
-  if (inputLower.size() > 0 || inputUpper.size() > 0) {
-    if (inputLower.size() != inputUpper.size()) {
-      throw std::runtime_error(
-          "MLP: input_lower and input_upper sizes differ.");
-    }
-    const gtsam::Vector range = inputUpper - inputLower;
-    inputScale_ = 2.0 * range.cwiseInverse();
-    inputShift_ = -(inputUpper + inputLower).cwiseQuotient(range);
-    normalizeInput_ = true;
-  }
-  if (outputMean_.size() > 0 || outputStd_.size() > 0) {
-    if (outputMean_.size() != outputStd_.size()) {
-      throw std::runtime_error("MLP: output_mean and output_std sizes differ.");
-    }
-    denormalizeOutput_ = true;
   }
 
   // Layer phase: "layerK_weight OUT IN" then values, "layerK_bias N" then
@@ -220,16 +184,6 @@ MLP::MLP(const std::string &filename) {
           "MLP: hidden_dims header does not match the layers.");
     }
   }
-  if (normalizeInput_ &&
-      static_cast<size_t>(inputScale_.size()) != this->inputDim()) {
-    throw std::runtime_error(
-        "MLP: input bounds must have one entry per input.");
-  }
-  if (denormalizeOutput_ &&
-      static_cast<size_t>(outputStd_.size()) != this->outputDim()) {
-    throw std::runtime_error(
-        "MLP: output_mean/std must have one entry per output.");
-  }
 }
 
 /* ************************************************************************* */
@@ -242,11 +196,6 @@ gtsam::Vector MLP::forward(const gtsam::Vector &x, gtsam::Matrix *H) const {
   gtsam::Matrix J;
   if (H) J = gtsam::Matrix::Identity(inputDim(), inputDim());
 
-  if (normalizeInput_) {
-    h = inputScale_.cwiseProduct(h) + inputShift_;
-    if (H) J = inputScale_.asDiagonal() * J;
-  }
-
   const size_t nrLayers = weights_.size();
   for (size_t k = 0; k < nrLayers; ++k) {
     h = weights_[k] * h + biases_[k];
@@ -258,11 +207,6 @@ gtsam::Vector MLP::forward(const gtsam::Vector &x, gtsam::Matrix *H) const {
       }
       if (H) J = derivative.asDiagonal() * J;
     }
-  }
-
-  if (denormalizeOutput_) {
-    h = outputStd_.cwiseProduct(h) + outputMean_;
-    if (H) J = outputStd_.asDiagonal() * J;
   }
 
   if (H) *H = J;

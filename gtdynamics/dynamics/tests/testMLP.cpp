@@ -164,10 +164,10 @@ TEST(MLP, loadRoundTrip) {
   std::filesystem::remove(bad);
 }
 
-// Normalization headers must map inputs to [-1, 1] over the bounds and
-// de-standardize the outputs, in value and in Jacobian.
-TEST(MLP, optionalNormalization) {
-  const std::string path = tempFile("gtd_testMLP_normalized.txt");
+// Normalization headers from older model files are tolerated as metadata
+// and never applied: the network runs on raw values.
+TEST(MLP, normalizationHeadersIgnored) {
+  const std::string path = tempFile("gtd_testMLP_rawvalues.txt");
   std::string text = threeLayerFileText();
   text.insert(text.find("layers 3"),
               "input_lower -1.0 0.0\n"
@@ -177,20 +177,9 @@ TEST(MLP, optionalNormalization) {
   std::ofstream(path) << text;
 
   MLP loaded(path);
-  const MLP twin = threeLayerTwin();
   const Vector x = Vector2(0.5, 1.7);
-  // x' maps (-1,3) -> (-1,1) and (0,2) -> (-1,1).
-  const Vector xNorm = Vector2((0.5 - 1.0) / 2.0, (1.7 - 1.0) / 1.0);
-  EXPECT(assert_equal(Vector(0.5 * twin.forward(xNorm).array() + 1.5),
-                      loaded.forward(x), 1e-12));
-
-  Matrix H;
-  loaded.forward(x, &H);
-  std::function<Vector(const Vector &)> f = [&](const Vector &v) {
-    return loaded.forward(v);
-  };
-  EXPECT(assert_equal(
-      Matrix(gtsam::numericalDerivative11<Vector, Vector>(f, x)), H, 1e-6));
+  EXPECT(assert_equal(threeLayerTwin().forward(x), loaded.forward(x), 1e-12));
+  EXPECT(loaded.metadata().at("output_std") == "0.5");
 
   std::filesystem::remove(path);
 }
