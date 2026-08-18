@@ -170,25 +170,11 @@ gtsam::Vector nnCableSDFError(const gtsam::Vector &q,
                               const NNCableSpline &cable,
                               const SignedDistanceField &sdf, double epsilon,
                               const gtsam::Vector &radii, gtsam::Matrix *Hq) {
-  const size_t nrSamples = cable.numSamples();
-
   std::vector<gtsam::Point3> wPts;
   std::vector<gtsam::Matrix> ptJacobians;
   cable.samplePoints(q, &wPts, Hq ? &ptJacobians : nullptr);
-  if (Hq) *Hq = gtsam::Matrix::Zero(nrSamples, cable.dof());
-
-  gtsam::Vector err(nrSamples);
-  for (size_t m = 0; m < nrSamples; ++m) {
-    const double eps = epsilon + radii(m);
-    if (Hq) {
-      gtsam::Matrix13 Hpt;
-      err(m) = hingeLossObstacleCost(wPts[m], sdf, eps, Hpt);
-      Hq->row(m) = Hpt * ptJacobians[m];
-    } else {
-      err(m) = hingeLossObstacleCost(wPts[m], sdf, eps);
-    }
-  }
-  return err;
+  return internal::hingeLossOverPoints(wPts, ptJacobians, sdf, epsilon, radii,
+                                       Hq);
 }
 
 }  // namespace gtdynamics
