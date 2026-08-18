@@ -96,6 +96,18 @@ static std::shared_ptr<const NNCableSpline> makeCable(
       numSamples);
 }
 
+// A sphere centred just off the middle cable sample at q, its grid offset by
+// half a cell so samples avoid the trilinear gradient's node discontinuities.
+static std::shared_ptr<const SignedDistanceField> midCableSphereSDF(
+    const NNCableSpline &cable, const Vector &q) {
+  const Matrix pts = cable.worldPoints(q);
+  const Point3 center = Point3(pts.col(cable.numSamples() / 2)) +
+                        Point3(0.3 * kCell, 0.2 * kCell, 0.0);
+  const Point3 origin = center - Point3::Constant(1.0 - kHalfCell);
+  return std::make_shared<const SignedDistanceField>(
+      makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
+}
+
 /* ************************ spline reconstruction ************************ */
 
 // With zero residuals every sample lies on the chord, whose endpoints are
@@ -196,15 +208,7 @@ TEST(NNCableFactor, jacobianWhenActive) {
   const size_t N = 8, M = 9;
   const auto cable = makeCable(smoothMLP(N), N, M);
   const Vector q = startConfig();
-
-  // Sphere centred just off the middle cable sample, grid offset by half a
-  // cell so samples avoid the trilinear gradient's node discontinuities.
-  const Matrix pts = cable->worldPoints(q);
-  const Point3 center = Point3(pts.col(M / 2)) + Point3(0.3 * kCell,
-                                                        0.2 * kCell, 0.0);
-  const Point3 origin = center - Point3::Constant(1.0 - kHalfCell);
-  auto sdf = std::make_shared<const SignedDistanceField>(
-      makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
+  const auto sdf = midCableSphereSDF(*cable, q);
 
   NNCableFactor factor(X(0), cable, sdf, 0.01, kEpsilon, 0.02);
   const Vector err = factor.evaluateError(q);
@@ -223,11 +227,7 @@ TEST(NNCableFactor, activeAndInactiveSamples) {
   const Vector q = startConfig();
   const Matrix pts = cable->worldPoints(q);
 
-  const Point3 center = Point3(pts.col(M / 2)) + Point3(0.3 * kCell,
-                                                        0.2 * kCell, 0.0);
-  const Point3 origin = center - Point3::Constant(1.0 - kHalfCell);
-  auto sdf = std::make_shared<const SignedDistanceField>(
-      makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
+  const auto sdf = midCableSphereSDF(*cable, q);
   NNCableFactor factor(X(0), cable, sdf, 0.01, kEpsilon, 0.02);
   const Vector err = factor.evaluateError(q);
   EXPECT(err(M / 2) > 0.0);
@@ -262,12 +262,7 @@ TEST(NNCableFactorGP, agreesWithUnaryFactorAtTauZero) {
   q2(0) += 1.0;  // the bridge has moved along the rail
   const Vector v1 = Vector::Zero(9), v2 = Vector::Zero(9);
 
-  const Matrix pts = cable->worldPoints(q1);
-  const Point3 center = Point3(pts.col(M / 2)) + Point3(0.3 * kCell,
-                                                        0.2 * kCell, 0.0);
-  const Point3 origin = center - Point3::Constant(1.0 - kHalfCell);
-  auto sdf = std::make_shared<const SignedDistanceField>(
-      makeSphereSDF(center, kRadius, origin, kCell, 41, 41, 41));
+  const auto sdf = midCableSphereSDF(*cable, q1);
 
   const double deltaT = 0.5, costSigma = 0.01;
   NNCableFactor unary(X(0), cable, sdf, costSigma, kEpsilon, 0.02);
