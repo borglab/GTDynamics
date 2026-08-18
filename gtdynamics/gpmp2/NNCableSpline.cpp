@@ -80,11 +80,9 @@ NNCableSpline::NNCableSpline(
   // The evaluation is linear in the nodal residuals, so these barycentric
   // weights are also the exact spline Jacobian; the endpoint columns multiply
   // the identically-zero endpoint residuals and are dropped.
-  sampleParams_ = gtsam::Vector(numSamples);
   interiorWeights_ = gtsam::Matrix(numSamples, numChebNodes_ - 2);
   for (size_t m = 0; m < numSamples; ++m) {
     const double s = static_cast<double>(m) / (numSamples - 1);
-    sampleParams_(m) = s;
     const gtsam::Matrix weights =
         gtsam::Chebyshev2::CalculateWeights(numChebNodes_, s, 0.0, 1.0);
     interiorWeights_.row(m) = weights.row(0).segment(1, numChebNodes_ - 2);
@@ -139,7 +137,7 @@ void NNCableSpline::samplePoints(const gtsam::Vector &q,
   wPts->resize(numSamples());
   if (computeJacobians) ptJacobians->resize(numSamples());
   for (size_t m = 0; m < numSamples(); ++m) {
-    const double s = sampleParams_(m);
+    const double s = static_cast<double>(m) / (numSamples() - 1);
     const gtsam::Vector3 v =
         interiorResiduals.transpose() * interiorWeights_.row(m).transpose();
     (*wPts)[m] = (1.0 - s) * p[0] + s * p[1] + R * v;

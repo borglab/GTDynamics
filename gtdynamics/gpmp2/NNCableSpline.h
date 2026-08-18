@@ -41,8 +41,8 @@ class GTSAM_EXPORT NNCableSpline {
   std::shared_ptr<const MLP> mlp_;
   std::vector<size_t> inputIndices_;  ///< entries of q the network reads
   size_t numChebNodes_;               ///< N, endpoints included
-  gtsam::Vector sampleParams_;        ///< s_m, uniform on [0, 1]
   gtsam::Matrix interiorWeights_;     ///< numSamples x (N-2) Chebyshev weights
+                                      ///< at s_m = m / (numSamples - 1)
 
   /// The FK query points, with the reference link checked against null.
   static PointOnLinks checkedPoints(const PointOnLink &attachment0,
@@ -83,7 +83,7 @@ class GTSAM_EXPORT NNCableSpline {
   size_t dof() const { return fk_.dof(); }
 
   /// Return the number of samples along the cable.
-  size_t numSamples() const { return sampleParams_.size(); }
+  size_t numSamples() const { return interiorWeights_.rows(); }
 
   /// Return the number N of Chebyshev-Lobatto nodes, endpoints included.
   size_t numChebNodes() const { return numChebNodes_; }
