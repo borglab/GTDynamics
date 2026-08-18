@@ -160,9 +160,7 @@ void NNCableSpline::samplePoints(const gtsam::Vector &q,
 gtsam::Matrix NNCableSpline::worldPoints(const gtsam::Vector &q) const {
   std::vector<gtsam::Point3> wPts;
   samplePoints(q, &wPts);
-  gtsam::Matrix pts(3, numSamples());
-  for (size_t m = 0; m < numSamples(); ++m) pts.col(m) = wPts[m];
-  return pts;
+  return internal::pointsToMatrix(wPts);
 }
 
 /* ************************************************************************* */

@@ -26,6 +26,17 @@
 
 namespace gtdynamics {
 
+namespace internal {
+
+/// The points as columns of a 3 x n matrix.
+inline gtsam::Matrix pointsToMatrix(const std::vector<gtsam::Point3> &pts) {
+  gtsam::Matrix matrix(3, pts.size());
+  for (size_t i = 0; i < pts.size(); ++i) matrix.col(i) = pts[i];
+  return matrix;
+}
+
+}  // namespace internal
+
 /**
  * Maps a stacked joint angle vector q to the world positions of a fixed set of
  * query points on the robot, with Jacobians with respect to q. The joints

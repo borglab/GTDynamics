@@ -211,9 +211,7 @@ void RobotQueryPoints::queryPoints(
 gtsam::Matrix RobotQueryPoints::worldPoints(const gtsam::Vector &q) const {
   std::vector<gtsam::Point3> wPts;
   queryPoints(q, &wPts);
-  gtsam::Matrix pts(3, nrPoints());
-  for (size_t i = 0; i < nrPoints(); ++i) pts.col(i) = wPts[i];
-  return pts;
+  return internal::pointsToMatrix(wPts);
 }
 
 /* ************************************************************************* */
