@@ -1194,6 +1194,27 @@ class NNCableFactor : gtsam::NoiseModelFactor {
                                        gtdynamics::GTDKeyFormatter);
 };
 
+#include <gtdynamics/factors/NNCableFactorGP.h>
+class NNCableFactorGP : gtsam::NoiseModelFactor {
+  NNCableFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
+                  gtsam::Key vKey2, const gtdynamics::NNCableSpline *cable,
+                  const gtdynamics::SignedDistanceField *sdf, double costSigma,
+                  double epsilon, double cableRadius,
+                  const gtsam::noiseModel::Base *QcModel, double deltaT,
+                  double tau);
+  NNCableFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
+                  gtsam::Key vKey2, const gtdynamics::NNCableSpline *cable,
+                  const gtdynamics::SignedDistanceField *sdf, double costSigma,
+                  double epsilon, const gtsam::Vector &radii,
+                  const gtsam::noiseModel::Base *QcModel, double deltaT,
+                  double tau);
+
+  double epsilon() const;
+  gtsam::Vector radii() const;
+  void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
+                                       gtdynamics::GTDKeyFormatter);
+};
+
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
 class SelfCollisionPair {
   SelfCollisionPair();

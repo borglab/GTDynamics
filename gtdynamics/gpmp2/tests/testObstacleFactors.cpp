@@ -54,10 +54,6 @@ using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
 
-// Offset a grid by half a cell to put points of interest at cell centres, since
-// the trilinear gradient is discontinuous on the nodes.
-static const double kHalfCell = 0.5 * kCell;
-
 /* ********************** signed distance field ************************** */
 
 // Trilinear interpolation of an exact sphere field must recover the distance,
