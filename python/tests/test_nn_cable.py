@@ -57,7 +57,9 @@ def write_zero_weight_file(path, bias):
     lines += ["0"] * 20
     lines += ["layer0_bias 4"] + ["0"] * 4
     lines += [f"layer1_weight {n_out} 4"] + ["0"] * (n_out * 4)
-    lines += [f"layer1_bias {n_out}"] + [repr(value) for value in bias]
+    # repr of a *Python* float round-trips exactly; numpy 2 scalar reprs
+    # ("np.float64(0.0)") would not parse.
+    lines += [f"layer1_bias {n_out}"] + [repr(float(value)) for value in bias]
     with open(path, "w", encoding="ascii") as handle:
         handle.write("\n".join(lines) + "\n")
 
