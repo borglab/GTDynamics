@@ -64,10 +64,11 @@ TEST(MLP, forwardKnownValues) {
 
 /* ************************* Jacobian ************************************ */
 
-// The analytic Jacobian must match the numerical one; relu is checked away
-// from its kinks, tanh at several points.
+// The analytic Jacobian must match the numerical one; piecewise activations
+// are checked away from their kinks.
 TEST(MLP, jacobianAgainstNumerical) {
   MLP relu(smallWeights(), smallBiases(), MLP::Activation::kRelu);
+  MLP leaky(smallWeights(), smallBiases(), MLP::Activation::kLeakyRelu, 0.02);
   MLP tanhNet(smallWeights(), smallBiases(), MLP::Activation::kTanh);
 
   auto check = [&](const MLP &net, const Vector &x) {
@@ -83,6 +84,7 @@ TEST(MLP, jacobianAgainstNumerical) {
 
   check(relu, Vector2(1.0, 1.0));    // z0 = (3.1, -0.7), away from kinks
   check(relu, Vector2(-2.0, 0.3));   // mixed signs, still away from kinks
+  check(leaky, Vector2(1.0, -1.0));
   check(tanhNet, Vector2(0.4, -0.7));
   check(tanhNet, Vector2(-1.2, 2.0));
 }

@@ -13,7 +13,6 @@
 
 #include <gtdynamics/dynamics/MLP.h>
 
-#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -21,26 +20,6 @@
 #include <vector>
 
 namespace gtdynamics {
-
-/* ************************************************************************* */
-/// Activation value and derivative at z.
-static double activate(MLP::Activation activation, double leakySlope, double z,
-                       double *derivative) {
-  switch (activation) {
-    case MLP::Activation::kRelu:
-      *derivative = z > 0.0 ? 1.0 : 0.0;
-      return z > 0.0 ? z : 0.0;
-    case MLP::Activation::kLeakyRelu:
-      *derivative = z > 0.0 ? 1.0 : leakySlope;
-      return z > 0.0 ? z : leakySlope * z;
-    case MLP::Activation::kTanh:
-    default: {
-      const double t = std::tanh(z);
-      *derivative = 1.0 - t * t;
-      return t;
-    }
-  }
-}
 
 /* ************************************************************************* */
 void MLP::validate() const {
@@ -205,11 +184,27 @@ gtsam::Vector MLP::forward(const gtsam::Vector &x, gtsam::Matrix *H) const {
     h = weights_[k] * h + biases_[k];
     if (H) J = weights_[k] * J;
     if (k + 1 < nrLayers) {
-      gtsam::Vector derivative(h.size());
-      for (Eigen::Index i = 0; i < h.size(); ++i) {
-        h(i) = activate(activation_, leakySlope_, h(i), &derivative(i));
+      gtsam::Vector derivative;
+      switch (activation_) {
+        case Activation::kRelu:
+          if (H) derivative = (h.array() > 0.0).cast<double>();
+          h = h.cwiseMax(0.0);
+          break;
+        case Activation::kLeakyRelu:
+          if (H) {
+            derivative =
+                (h.array() > 0.0).select(1.0, leakySlope_).matrix();
+          }
+          h = (h.array() > 0.0)
+                  .select(h.array(), leakySlope_ * h.array())
+                  .matrix();
+          break;
+        case Activation::kTanh:
+          h = h.array().tanh().matrix();
+          if (H) derivative = 1.0 - h.array().square();
+          break;
       }
-      if (H) J = derivative.asDiagonal() * J;
+      if (H) J.array().colwise() *= derivative.array();
     }
   }
 
