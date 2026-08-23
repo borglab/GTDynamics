@@ -124,13 +124,8 @@ void NNCableSpline::samplePoints(const gtsam::Vector &q,
                                        Eigen::RowMajor>>
       interiorResiduals(y.data(), nrInterior, 3);
 
-  gtsam::Matrix JmlpFull, Jw;
+  gtsam::Matrix Jw;
   if (computeJacobians) {
-    // Scatter the network Jacobian columns into the full q dimension.
-    JmlpFull = gtsam::Matrix::Zero(3 * nrInterior, dof());
-    for (size_t j = 0; j < inputIndices_.size(); ++j) {
-      JmlpFull.col(inputIndices_[j]) = Jmlp.col(j);
-    }
     Jw = poseJacobians[2].topRows(3);  // body-frame angular Jacobian
   }
 
@@ -145,10 +140,19 @@ void NNCableSpline::samplePoints(const gtsam::Vector &q,
       gtsam::Matrix J = (1.0 - s) * Jp[0] + s * Jp[1];
       // The rotation moves as R * Exp(w), so d(R v)/dq = -R [v]x Jw.
       J.noalias() -= R * gtsam::skewSymmetric(v) * Jw;
+
+      gtsam::Matrix weightedJmlp =
+          gtsam::Matrix::Zero(3, inputIndices_.size());
       for (size_t j = 0; j < nrInterior; ++j) {
-        J.noalias() +=
-            interiorWeights_(m, j) * (R * JmlpFull.middleRows(3 * j, 3));
+        weightedJmlp.noalias() +=
+            interiorWeights_(m, j) * Jmlp.middleRows(3 * j, 3);
       }
+
+      const gtsam::Matrix rotatedJmlp = R * weightedJmlp;
+      for (size_t j = 0; j < inputIndices_.size(); ++j) {
+        J.col(inputIndices_[j]) += rotatedJmlp.col(j);
+      }
+
       (*ptJacobians)[m] = J;
     }
   }
