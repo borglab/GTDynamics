@@ -98,11 +98,11 @@ class TestNNCable(GtsamTestCase):
                                            np.array([0.1, 0.0, 0.05]))
         self.attachment1 = gtd.PointOnLink(self.robot.link("robot1_link_6"),
                                            np.array([0.0, 0.0, 0.1]))
-        self.cable = gtd.NNCableSpline(self.robot, "columns", self.joints,
-                                       self.attachment0, self.attachment1,
-                                       self.robot.link("robot1_link_1"),
-                                       self.mlp, INPUT_INDICES, CHEB_NODES,
-                                       NUM_SAMPLES)
+        self.spline = gtd.NNCableSpline(self.mlp, CHEB_NODES, NUM_SAMPLES)
+        self.cable = gtd.RobotNNCableModel(
+            self.robot, "columns", self.joints, self.attachment0,
+            self.attachment1, self.robot.link("robot1_link_1"), self.spline,
+            INPUT_INDICES)
 
     def test_mlp(self):
         """The loaded network has the declared shape and runs on raw inputs."""

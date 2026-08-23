@@ -1164,27 +1164,35 @@ class MLP {
 
 #include <gtdynamics/gpmp2/NNCableSpline.h>
 class NNCableSpline {
-  NNCableSpline(const gtdynamics::Robot &robot, const string &baseLinkName,
+  NNCableSpline(const gtdynamics::MLP *mlp, size_t numChebNodes,
+                size_t numSamples);
+
+  size_t numSamples() const;
+  size_t numChebNodes() const;
+  size_t inputDim() const;
+};
+
+#include <gtdynamics/gpmp2/RobotNNCableModel.h>
+class RobotNNCableModel {
+  RobotNNCableModel(const gtdynamics::Robot &robot, const string &baseLinkName,
                 const std::vector<gtdynamics::Joint *> &joints,
                 const gtdynamics::PointOnLink &attachment0,
                 const gtdynamics::PointOnLink &attachment1,
                 const gtdynamics::Link *referenceLink,
-                const gtdynamics::MLP *mlp,
-                const std::vector<size_t> &inputIndices, size_t numChebNodes,
-                size_t numSamples);
+                const gtdynamics::NNCableSpline *spline,
+                const std::vector<size_t> &inputIndices);
 
   size_t dof() const;
   size_t numSamples() const;
-  size_t numChebNodes() const;
   gtsam::Matrix worldPoints(const gtsam::Vector &q) const;
 };
 
 #include <gtdynamics/factors/NNCableFactor.h>
 class NNCableFactor : gtsam::NoiseModelFactor {
-  NNCableFactor(gtsam::Key qKey, const gtdynamics::NNCableSpline *cable,
+  NNCableFactor(gtsam::Key qKey, const gtdynamics::RobotNNCableModel *cable,
                 const gtdynamics::SignedDistanceField *sdf, double costSigma,
                 double epsilon, double cableRadius);
-  NNCableFactor(gtsam::Key qKey, const gtdynamics::NNCableSpline *cable,
+  NNCableFactor(gtsam::Key qKey, const gtdynamics::RobotNNCableModel *cable,
                 const gtdynamics::SignedDistanceField *sdf, double costSigma,
                 double epsilon, const gtsam::Vector &radii);
 
@@ -1197,13 +1205,15 @@ class NNCableFactor : gtsam::NoiseModelFactor {
 #include <gtdynamics/factors/NNCableFactorGP.h>
 class NNCableFactorGP : gtsam::NoiseModelFactor {
   NNCableFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
-                  gtsam::Key vKey2, const gtdynamics::NNCableSpline *cable,
+                  gtsam::Key vKey2,
+                  const gtdynamics::RobotNNCableModel *cable,
                   const gtdynamics::SignedDistanceField *sdf, double costSigma,
                   double epsilon, double cableRadius,
                   const gtsam::noiseModel::Base *QcModel, double deltaT,
                   double tau);
   NNCableFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
-                  gtsam::Key vKey2, const gtdynamics::NNCableSpline *cable,
+                  gtsam::Key vKey2,
+                  const gtdynamics::RobotNNCableModel *cable,
                   const gtdynamics::SignedDistanceField *sdf, double costSigma,
                   double epsilon, const gtsam::Vector &radii,
                   const gtsam::noiseModel::Base *QcModel, double deltaT,

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gtdynamics/gpmp2/NNCableSpline.h>
+#include <gtdynamics/gpmp2/RobotNNCableModel.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
@@ -175,14 +175,14 @@ inline std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
 /// numSamples of a cable model that must not be null, for factor
 /// initializer lists.
 inline size_t checkedNumSamples(
-    const std::shared_ptr<const NNCableSpline> &cable,
+    const std::shared_ptr<const RobotNNCableModel> &cable,
     const std::string &factorName) {
   return checkedNotNull(cable, factorName, "cable")->numSamples();
 }
 
 /// Reject a null field, a negative standoff, or bad radii.
 inline void validateNNCableFactorArgs(
-    const NNCableSpline &cable,
+    const RobotNNCableModel &cable,
     const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
     const gtsam::Vector &radii, const std::string &factorName) {
   validateSdfStandoff(sdf, epsilon, factorName);

@@ -18,6 +18,7 @@
 #include <gtdynamics/factors/NNCableFactorGP.h>
 #include <gtdynamics/gpmp2/NNCableSpline.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
+#include <gtdynamics/gpmp2/RobotNNCableModel.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/basis/Chebyshev2.h>
@@ -87,19 +88,20 @@ static std::shared_ptr<const MLP> smoothMLP(size_t numChebNodes) {
                                      MLP::Activation::kTanh);
 }
 
-static std::shared_ptr<const NNCableSpline> makeCable(
+static std::shared_ptr<const RobotNNCableModel> makeCable(
     const std::shared_ptr<const MLP> &mlp, size_t numChebNodes,
     size_t numSamples) {
-  return std::make_shared<const NNCableSpline>(
+  const auto spline = std::make_shared<const NNCableSpline>(
+      mlp, numChebNodes, numSamples);
+  return std::make_shared<const RobotNNCableModel>(
       kRobot, "columns", robot1Joints(), attachment0(), attachment1(),
-      kRobot.link("robot1_link_1"), mlp, kInputIndices, numChebNodes,
-      numSamples);
+      kRobot.link("robot1_link_1"), spline, kInputIndices);
 }
 
 // A sphere centred just off the middle cable sample at q, its grid offset by
 // half a cell so samples avoid the trilinear gradient's node discontinuities.
 static std::shared_ptr<const SignedDistanceField> midCableSphereSDF(
-    const NNCableSpline &cable, const Vector &q) {
+    const RobotNNCableModel &cable, const Vector &q) {
   const Matrix pts = cable.worldPoints(q);
   const Point3 center = Point3(pts.col(cable.numSamples() / 2)) +
                         Point3(0.3 * kCell, 0.2 * kCell, 0.0);
@@ -302,26 +304,27 @@ TEST(NNCableFactorGP, agreesWithUnaryFactorAtTauZero) {
 TEST(NNCableSpline, rejectsBadInputs) {
   const size_t N = 6, M = 5;
   const auto mlp = biasOnlyMLP(N, Vector::Zero(3 * (N - 2)));
+  const auto spline = std::make_shared<const NNCableSpline>(mlp, N, M);
 
   CHECK_EXCEPTION(makeCable(nullptr, N, M), std::invalid_argument);
   CHECK_EXCEPTION(
-      NNCableSpline(kRobot, "columns", robot1Joints(), attachment0(),
-                    attachment1(), LinkSharedPtr(), mlp, kInputIndices, N, M),
+      RobotNNCableModel(kRobot, "columns", robot1Joints(), attachment0(),
+                        attachment1(), LinkSharedPtr(), spline, kInputIndices),
       std::invalid_argument);
   CHECK_EXCEPTION(
-      NNCableSpline(kRobot, "columns", robot1Joints(), attachment0(),
-                    attachment1(), kRobot.link("robot1_link_1"), mlp,
-                    {4, 5, 6, 7, 9}, N, M),  // 9 is out of range of q
+      RobotNNCableModel(kRobot, "columns", robot1Joints(), attachment0(),
+                        attachment1(), kRobot.link("robot1_link_1"), spline,
+                        {4, 5, 6, 7, 9}),  // 9 is out of range of q
       std::invalid_argument);
   CHECK_EXCEPTION(
-      NNCableSpline(kRobot, "columns", robot1Joints(), attachment0(),
-                    attachment1(), kRobot.link("robot1_link_1"), mlp,
-                    {4, 5, 6, 7, 7}, N, M),  // duplicated index
+      RobotNNCableModel(kRobot, "columns", robot1Joints(), attachment0(),
+                        attachment1(), kRobot.link("robot1_link_1"), spline,
+                        {4, 5, 6, 7, 7}),  // duplicated index
       std::invalid_argument);
   CHECK_EXCEPTION(
-      NNCableSpline(kRobot, "columns", robot1Joints(), attachment0(),
-                    attachment1(), kRobot.link("robot1_link_1"), mlp,
-                    {4, 5, 6, 7}, N, M),  // one index too few
+      RobotNNCableModel(kRobot, "columns", robot1Joints(), attachment0(),
+                        attachment1(), kRobot.link("robot1_link_1"), spline,
+                        {4, 5, 6, 7}),  // one index too few
       std::invalid_argument);
   CHECK_EXCEPTION(makeCable(mlp, 8, M), std::invalid_argument);  // 3(N-2) off
   CHECK_EXCEPTION(makeCable(mlp, N, 1), std::invalid_argument);

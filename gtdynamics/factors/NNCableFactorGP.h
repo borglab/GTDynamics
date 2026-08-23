@@ -16,7 +16,7 @@
 
 #include <gtdynamics/factors/internal/CollisionFactorUtils.h>
 #include <gtdynamics/gpmp2/GPLinearInterpolator.h>
-#include <gtdynamics/gpmp2/NNCableSpline.h>
+#include <gtdynamics/gpmp2/RobotNNCableModel.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -47,7 +47,7 @@ class NNCableFactorGP
 
   double epsilon_;
   gtsam::Vector radii_;  ///< per sample standoff radius, e.g. the cable radius
-  std::shared_ptr<const NNCableSpline> cable_;
+  std::shared_ptr<const RobotNNCableModel> cable_;
   std::shared_ptr<const SignedDistanceField> sdf_;
   GPLinearInterpolator interpolator_;
 
@@ -69,7 +69,7 @@ class NNCableFactorGP
    */
   NNCableFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
                   gtsam::Key vKey2,
-                  const std::shared_ptr<const NNCableSpline> &cable,
+                  const std::shared_ptr<const RobotNNCableModel> &cable,
                   const std::shared_ptr<const SignedDistanceField> &sdf,
                   double costSigma, double epsilon, double cableRadius,
                   const gtsam::SharedNoiseModel &QcModel, double deltaT,
@@ -99,7 +99,7 @@ class NNCableFactorGP
    */
   NNCableFactorGP(gtsam::Key qKey1, gtsam::Key vKey1, gtsam::Key qKey2,
                   gtsam::Key vKey2,
-                  const std::shared_ptr<const NNCableSpline> &cable,
+                  const std::shared_ptr<const RobotNNCableModel> &cable,
                   const std::shared_ptr<const SignedDistanceField> &sdf,
                   double costSigma, double epsilon, const gtsam::Vector &radii,
                   const gtsam::SharedNoiseModel &QcModel, double deltaT,

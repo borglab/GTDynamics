@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/factors/internal/CollisionFactorUtils.h>
-#include <gtdynamics/gpmp2/NNCableSpline.h>
+#include <gtdynamics/gpmp2/RobotNNCableModel.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
@@ -31,7 +31,7 @@ namespace gtdynamics {
  * Unary factor that keeps a neural-network-predicted cable clear of a signed
  * distance field, by applying a hinge loss at points sampled along the
  * predicted cable curve. The connected variable is q (stacked joint angles),
- * as ordered in the NNCableSpline model.
+ * as ordered in the RobotNNCableModel adapter.
  */
 class NNCableFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
  private:
@@ -40,7 +40,7 @@ class NNCableFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
 
   double epsilon_;
   gtsam::Vector radii_;  ///< per sample standoff radius, e.g. the cable radius
-  std::shared_ptr<const NNCableSpline> cable_;
+  std::shared_ptr<const RobotNNCableModel> cable_;
   std::shared_ptr<const SignedDistanceField> sdf_;
 
  public:
@@ -54,7 +54,7 @@ class NNCableFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * @param cableRadius radius of the cable, added to epsilon at every sample
    */
   NNCableFactor(gtsam::Key qKey,
-                const std::shared_ptr<const NNCableSpline> &cable,
+                const std::shared_ptr<const RobotNNCableModel> &cable,
                 const std::shared_ptr<const SignedDistanceField> &sdf,
                 double costSigma, double epsilon, double cableRadius = 0.0)
       : NNCableFactor(qKey, cable, sdf, costSigma, epsilon,
@@ -72,7 +72,7 @@ class NNCableFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {
    * @param radii standoff radius of each sample, one per sample
    */
   NNCableFactor(gtsam::Key qKey,
-                const std::shared_ptr<const NNCableSpline> &cable,
+                const std::shared_ptr<const RobotNNCableModel> &cable,
                 const std::shared_ptr<const SignedDistanceField> &sdf,
                 double costSigma, double epsilon, const gtsam::Vector &radii)
       : Base(gtsam::noiseModel::Isotropic::Sigma(
