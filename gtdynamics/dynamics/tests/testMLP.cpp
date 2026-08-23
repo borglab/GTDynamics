@@ -210,6 +210,15 @@ TEST(MLP, rejectsInconsistentDims) {
   CHECK_EXCEPTION(net.forward(Vector::Zero(3)), std::invalid_argument);
 }
 
+TEST(MLP, rejectsZeroSizedLayers) {
+  CHECK_EXCEPTION(
+      MLP({Matrix::Zero(0, 5)}, {Vector::Zero(0)}, MLP::Activation::kRelu),
+      std::invalid_argument);
+  CHECK_EXCEPTION(
+      MLP({Matrix::Zero(12, 0)}, {Vector::Zero(12)}, MLP::Activation::kRelu),
+      std::invalid_argument);
+}
+
 /* ************************* real model ********************************** */
 
 // Loads the trained cable model when GTD_CABLE_MODEL_FILE points at it, so

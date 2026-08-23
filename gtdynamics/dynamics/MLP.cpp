@@ -49,6 +49,10 @@ void MLP::validate() const {
         "MLP: weights and biases must be non-empty and the same length.");
   }
   for (size_t k = 0; k < weights_.size(); ++k) {
+    if (weights_[k].rows() == 0 || weights_[k].cols() == 0) {
+      throw std::invalid_argument(
+          "MLP: weight matrices must have positive dimensions.");
+    }
     if (biases_[k].size() != weights_[k].rows()) {
       throw std::invalid_argument(
           "MLP: a bias size does not match its weight's rows.");
