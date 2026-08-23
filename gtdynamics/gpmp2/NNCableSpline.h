@@ -41,18 +41,18 @@ class GTSAM_EXPORT NNCableSpline {
 
   /**
    * Evaluate world cable samples. Each optional primitive Jacobian has columns
-   * [p0(3), p1(3), reference rotation(3), input(inputDim)]. The rotation uses
+   * [wP0(3), wP1(3), wRr(3), input(inputDim)]. The rotation uses
    * a right/body-frame perturbation.
    */
   void samplePoints(
-      const gtsam::Point3 &p0, const gtsam::Point3 &p1,
-      const gtsam::Rot3 &wRreference, const gtsam::Vector &input,
+      const gtsam::Point3 &wP0, const gtsam::Point3 &wP1,
+      const gtsam::Rot3 &wRr, const gtsam::Vector &input,
       std::vector<gtsam::Point3> *wPts,
       std::vector<gtsam::Matrix> *primitiveJacobians = nullptr) const;
 
-  gtsam::Matrix worldPoints(const gtsam::Point3 &p0,
-                            const gtsam::Point3 &p1,
-                            const gtsam::Rot3 &wRreference,
+  gtsam::Matrix worldPoints(const gtsam::Point3 &wP0,
+                            const gtsam::Point3 &wP1,
+                            const gtsam::Rot3 &wRr,
                             const gtsam::Vector &input) const;
 };  // \class NNCableSpline
 

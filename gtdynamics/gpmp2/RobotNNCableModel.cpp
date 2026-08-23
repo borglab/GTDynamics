@@ -67,15 +67,15 @@ void RobotNNCableModel::samplePoints(
   std::vector<gtsam::Matrix> poseJacobians;
   fk_.queryPoses(q, &wTls, computeJacobians ? &poseJacobians : nullptr);
 
-  gtsam::Point3 p[2];
-  gtsam::Matrix Jp[2];
+  gtsam::Point3 wP[2];
+  gtsam::Matrix JwP[2];
   for (int i = 0; i < 2; ++i) {
     if (computeJacobians) {
       gtsam::Matrix36 Hpose;
-      p[i] = wTls[i].transformFrom(fk_.points()[i].point, Hpose);
-      Jp[i] = Hpose * poseJacobians[i];
+      wP[i] = wTls[i].transformFrom(fk_.points()[i].point, Hpose);
+      JwP[i] = Hpose * poseJacobians[i];
     } else {
-      p[i] = wTls[i].transformFrom(fk_.points()[i].point);
+      wP[i] = wTls[i].transformFrom(fk_.points()[i].point);
     }
   }
 
@@ -84,17 +84,17 @@ void RobotNNCableModel::samplePoints(
     input(j) = q(inputIndices_[j]);
   }
   std::vector<gtsam::Matrix> primitiveJacobians;
-  spline_->samplePoints(p[0], p[1], wTls[2].rotation(), input, wPts,
+  spline_->samplePoints(wP[0], wP[1], wTls[2].rotation(), input, wPts,
                         computeJacobians ? &primitiveJacobians : nullptr);
 
   if (computeJacobians) {
     ptJacobians->resize(numSamples());
-    const gtsam::Matrix Jrotation = poseJacobians[2].topRows(3);
+    const gtsam::Matrix JwRr = poseJacobians[2].topRows(3);
     for (size_t m = 0; m < numSamples(); ++m) {
       const gtsam::Matrix &H = primitiveJacobians[m];
-      gtsam::Matrix J = H.middleCols<3>(0) * Jp[0] +
-                        H.middleCols<3>(3) * Jp[1] +
-                        H.middleCols<3>(6) * Jrotation;
+      gtsam::Matrix J = H.middleCols<3>(0) * JwP[0] +
+                        H.middleCols<3>(3) * JwP[1] +
+                        H.middleCols<3>(6) * JwRr;
       for (size_t j = 0; j < inputIndices_.size(); ++j) {
         J.col(inputIndices_[j]) += H.col(9 + j);
       }

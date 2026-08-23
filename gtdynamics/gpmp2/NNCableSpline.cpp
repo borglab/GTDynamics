@@ -50,8 +50,8 @@ NNCableSpline::NNCableSpline(const std::shared_ptr<const MLP> &mlp,
 
 /* ************************************************************************* */
 void NNCableSpline::samplePoints(
-    const gtsam::Point3 &p0, const gtsam::Point3 &p1,
-    const gtsam::Rot3 &wRreference, const gtsam::Vector &input,
+    const gtsam::Point3 &wP0, const gtsam::Point3 &wP1,
+    const gtsam::Rot3 &wRr, const gtsam::Vector &input,
     std::vector<gtsam::Point3> *wPts,
     std::vector<gtsam::Matrix> *primitiveJacobians) const {
   if (static_cast<size_t>(input.size()) != inputDim()) {
@@ -65,7 +65,7 @@ void NNCableSpline::samplePoints(
   const Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, 3,
                                        Eigen::RowMajor>>
       interiorResiduals(y.data(), nrInterior, 3);
-  const gtsam::Matrix3 R = wRreference.matrix();
+  const gtsam::Matrix3 wRrMatrix = wRr.matrix();
 
   wPts->resize(numSamples());
   if (computeJacobians) primitiveJacobians->resize(numSamples());
@@ -73,30 +73,36 @@ void NNCableSpline::samplePoints(
     const double s = static_cast<double>(m) / (numSamples() - 1);
     const gtsam::Vector3 v =
         interiorResiduals.transpose() * interiorWeights_.row(m).transpose();
-    (*wPts)[m] = (1.0 - s) * p0 + s * p1 + R * v;
+    // Defining spline equation:
+    //   wP(s_m) = (1 - s_m) wP0 + s_m wP1 + wRr v_m(input).
+    // The first two terms form the straight endpoint chord; the last is the
+    // learned Chebyshev residual in the moving reference frame. The Jacobian
+    // below differentiates both endpoints, the reference rotation, and the
+    // neural-network input, respectively.
+    (*wPts)[m] = (1.0 - s) * wP0 + s * wP1 + wRrMatrix * v;
     if (computeJacobians) {
       gtsam::Matrix &H = (*primitiveJacobians)[m];
       H = gtsam::Matrix::Zero(3, 9 + inputDim());
       H.middleCols<3>(0) = (1.0 - s) * gtsam::Matrix3::Identity();
       H.middleCols<3>(3) = s * gtsam::Matrix3::Identity();
-      H.middleCols<3>(6) = -R * gtsam::skewSymmetric(v);
+      H.middleCols<3>(6) = -wRrMatrix * gtsam::skewSymmetric(v);
 
       gtsam::Matrix weightedJmlp = gtsam::Matrix::Zero(3, inputDim());
       for (size_t j = 0; j < nrInterior; ++j) {
         weightedJmlp.noalias() +=
             interiorWeights_(m, j) * Jmlp.middleRows(3 * j, 3);
       }
-      H.rightCols(inputDim()).noalias() = R * weightedJmlp;
+      H.rightCols(inputDim()).noalias() = wRrMatrix * weightedJmlp;
     }
   }
 }
 
 /* ************************************************************************* */
 gtsam::Matrix NNCableSpline::worldPoints(
-    const gtsam::Point3 &p0, const gtsam::Point3 &p1,
-    const gtsam::Rot3 &wRreference, const gtsam::Vector &input) const {
+    const gtsam::Point3 &wP0, const gtsam::Point3 &wP1,
+    const gtsam::Rot3 &wRr, const gtsam::Vector &input) const {
   std::vector<gtsam::Point3> wPts;
-  samplePoints(p0, p1, wRreference, input, &wPts);
+  samplePoints(wP0, wP1, wRr, input, &wPts);
   return internal::pointsToMatrix(wPts);
 }
 
