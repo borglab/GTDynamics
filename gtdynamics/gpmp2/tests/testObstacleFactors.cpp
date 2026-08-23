@@ -378,6 +378,20 @@ TEST(RobotQueryPoints, jacobiansAgainstNumerical) {
   }
 }
 
+TEST(ObstacleCost, emptyQueryPointsPreserveJacobianWidth) {
+  const RobotQueryPoints model(kRobot, "columns", robot1Joints(), {});
+  const SignedDistanceField sdf =
+      makeSphereSDF(Point3(5, 5, 5), 0.1, Point3(4, 4, 4), kCell, 5, 5, 5);
+
+  Matrix H;
+  const Vector error =
+      obstacleSDFError(startConfig(), model, sdf, 0.1, Vector(0), &H);
+
+  EXPECT_LONGS_EQUAL(0, error.size());
+  EXPECT_LONGS_EQUAL(0, H.rows());
+  EXPECT_LONGS_EQUAL(model.dof(), H.cols());
+}
+
 /* ******************** trajectory around a sphere *********************** */
 
 // Plan a trajectory for robot1 that slides one metre along the gantry rail,

@@ -108,6 +108,11 @@ gtsam::Vector obstacleSDFError(const gtsam::Vector &q,
                                const RobotQueryPoints &robot,
                                const SignedDistanceField &sdf, double epsilon,
                                const gtsam::Vector &radii, gtsam::Matrix *Hq) {
+  if (robot.nrPoints() == 0) {
+    if (Hq) *Hq = gtsam::Matrix::Zero(0, robot.dof());
+    return gtsam::Vector(0);
+  }
+
   std::vector<gtsam::Point3> wPts;
   std::vector<gtsam::Matrix> ptJacobians;
   robot.queryPoints(q, &wPts, Hq ? &ptJacobians : nullptr);
