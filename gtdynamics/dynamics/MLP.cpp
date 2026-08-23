@@ -14,9 +14,11 @@
 #include <gtdynamics/dynamics/MLP.h>
 
 #include <fstream>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gtdynamics {
@@ -68,15 +70,18 @@ static gtsam::Vector readValues(std::istream &stream, size_t n,
 }
 
 /* ************************************************************************* */
-MLP::MLP(const std::string &filename) {
-  std::ifstream file(filename);
-  if (!file) {
-    throw std::runtime_error("MLP: cannot open " + filename + ".");
-  }
-
-  // Header phase: "key value..." lines up to and including "layers K".
+struct MLPFileHeader {
   size_t inputDim = 0, outputDim = 0, nrLayers = 0;
   std::vector<size_t> hiddenDims;
+  MLP::Activation activation = MLP::Activation::kRelu;
+  double leakySlope = 0.01;
+  std::map<std::string, std::string> metadata;
+};
+
+/// Read "key value..." lines up to and including "layers K".
+static MLPFileHeader readHeader(std::istream &file,
+                                const std::string &filename) {
+  MLPFileHeader header;
   bool sawActivation = false;
   std::string line;
   while (std::getline(file, line)) {
@@ -86,35 +91,36 @@ MLP::MLP(const std::string &filename) {
     std::string rest;
     std::getline(tokens, rest);
     if (key == "layers") {
-      std::istringstream(rest) >> nrLayers;
+      std::istringstream(rest) >> header.nrLayers;
       break;
     } else if (key == "input_dim") {
-      std::istringstream(rest) >> inputDim;
+      std::istringstream(rest) >> header.inputDim;
     } else if (key == "output_dim") {
-      std::istringstream(rest) >> outputDim;
+      std::istringstream(rest) >> header.outputDim;
     } else if (key == "hidden_dims") {
       std::istringstream dims(rest);
       size_t dim;
-      while (dims >> dim) hiddenDims.push_back(dim);
+      while (dims >> dim) header.hiddenDims.push_back(dim);
     } else if (key == "activation") {
       std::string name;
       std::istringstream(rest) >> name;
-      if (name == "relu") activation_ = Activation::kRelu;
-      else if (name == "tanh") activation_ = Activation::kTanh;
-      else if (name == "leaky_relu") activation_ = Activation::kLeakyRelu;
+      if (name == "relu") header.activation = MLP::Activation::kRelu;
+      else if (name == "tanh") header.activation = MLP::Activation::kTanh;
+      else if (name == "leaky_relu")
+        header.activation = MLP::Activation::kLeakyRelu;
       else throw std::runtime_error("MLP: unknown activation " + name + ".");
       sawActivation = true;
     } else if (key == "leaky_slope") {
-      std::istringstream(rest) >> leakySlope_;
+      std::istringstream(rest) >> header.leakySlope;
     } else {
       // Trim both ends so CRLF endings do not pollute the stored value.
       const size_t start = rest.find_first_not_of(" \t\r");
       const size_t end = rest.find_last_not_of(" \t\r");
-      metadata_[key] =
+      header.metadata[key] =
           start == std::string::npos ? "" : rest.substr(start, end - start + 1);
     }
   }
-  if (nrLayers == 0) {
+  if (header.nrLayers == 0) {
     throw std::runtime_error("MLP: missing or zero layers header in " +
                              filename + ".");
   }
@@ -122,9 +128,19 @@ MLP::MLP(const std::string &filename) {
     throw std::runtime_error("MLP: missing activation header in " + filename +
                              ".");
   }
+  return header;
+}
 
-  // Layer phase: "layerK_weight OUT IN" then values, "layerK_bias N" then
-  // values, whitespace-agnostic.
+/* ************************************************************************* */
+struct MLPLayers {
+  std::vector<gtsam::Matrix> weights;
+  std::vector<gtsam::Vector> biases;
+};
+
+/// Read the whitespace-agnostic weight and bias blocks.
+static MLPLayers readLayers(std::istream &file, size_t nrLayers,
+                            const std::string &filename) {
+  MLPLayers layers;
   for (size_t k = 0; k < nrLayers; ++k) {
     std::string label;
     size_t rows, cols;
@@ -135,7 +151,7 @@ MLP::MLP(const std::string &filename) {
     }
     // Values are row-major, matching PyTorch Linear.weight [out, in].
     const gtsam::Vector flat = readValues(file, rows * cols, label);
-    weights_.push_back(Eigen::Map<const Eigen::Matrix<
+    layers.weights.push_back(Eigen::Map<const Eigen::Matrix<
         double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         flat.data(), rows, cols));
 
@@ -145,28 +161,52 @@ MLP::MLP(const std::string &filename) {
       throw std::runtime_error("MLP: expected layer" + std::to_string(k) +
                                "_bias block in " + filename + ".");
     }
-    biases_.push_back(readValues(file, biasSize, label));
+    layers.biases.push_back(readValues(file, biasSize, label));
   }
+  return layers;
+}
+
+/* ************************************************************************* */
+/// Check dimensions declared in the header against the parsed layers.
+static void validateHeaderDimensions(
+    const MLPFileHeader &header, const std::vector<gtsam::Matrix> &weights) {
+  if (header.inputDim != 0 && header.inputDim != weights.front().cols()) {
+    throw std::runtime_error("MLP: input_dim header does not match layer 0.");
+  }
+  if (header.outputDim != 0 && header.outputDim != weights.back().rows()) {
+    throw std::runtime_error(
+        "MLP: output_dim header does not match the last layer.");
+  }
+  for (size_t k = 0; k < header.hiddenDims.size(); ++k) {
+    if (k + 1 >= weights.size() ||
+        header.hiddenDims[k] != static_cast<size_t>(weights[k].rows())) {
+      throw std::runtime_error(
+          "MLP: hidden_dims header does not match the layers.");
+    }
+  }
+}
+
+/* ************************************************************************* */
+MLP::MLP(const std::string &filename) {
+  std::ifstream file(filename);
+  if (!file) {
+    throw std::runtime_error("MLP: cannot open " + filename + ".");
+  }
+
+  const MLPFileHeader header = readHeader(file, filename);
+  MLPLayers layers = readLayers(file, header.nrLayers, filename);
+  weights_ = std::move(layers.weights);
+  biases_ = std::move(layers.biases);
+  activation_ = header.activation;
+  leakySlope_ = header.leakySlope;
+  metadata_ = header.metadata;
 
   try {
     validate();
   } catch (const std::invalid_argument &e) {
     throw std::runtime_error(std::string(e.what()) + " (" + filename + ")");
   }
-  if (inputDim != 0 && inputDim != this->inputDim()) {
-    throw std::runtime_error("MLP: input_dim header does not match layer 0.");
-  }
-  if (outputDim != 0 && outputDim != this->outputDim()) {
-    throw std::runtime_error(
-        "MLP: output_dim header does not match the last layer.");
-  }
-  for (size_t k = 0; k < hiddenDims.size(); ++k) {
-    if (k + 1 >= weights_.size() ||
-        hiddenDims[k] != static_cast<size_t>(weights_[k].rows())) {
-      throw std::runtime_error(
-          "MLP: hidden_dims header does not match the layers.");
-    }
-  }
+  validateHeaderDimensions(header, weights_);
 }
 
 /* ************************************************************************* */
