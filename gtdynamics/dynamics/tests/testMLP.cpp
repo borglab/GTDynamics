@@ -29,6 +29,9 @@ using gtsam::Matrix;
 using gtsam::Vector;
 using gtsam::Vector2;
 
+/* ************************************************************************* */
+namespace forward {
+
 // A fixed 2 -> 2 -> 1 network, small enough to check by hand.
 static std::vector<Matrix> smallWeights() {
   Matrix W0(2, 2), W1(1, 2);
@@ -39,8 +42,6 @@ static std::vector<Matrix> smallWeights() {
 static std::vector<Vector> smallBiases() {
   return {Vector2(0.1, -0.2), Vector::Constant(1, 0.05)};
 }
-
-/* ************************* forward pass ******************************** */
 
 // Hand arithmetic for each activation, at an input where both hidden
 // pre-activations are negative so relu and leaky relu differ.
@@ -61,8 +62,6 @@ TEST(MLP, forwardKnownValues) {
   EXPECT_LONGS_EQUAL(1, relu.outputDim());
   EXPECT_LONGS_EQUAL(2, relu.nrLayers());
 }
-
-/* ************************* Jacobian ************************************ */
 
 // The analytic Jacobian must match the numerical one; piecewise activations
 // are checked away from their kinks.
@@ -89,7 +88,11 @@ TEST(MLP, jacobianAgainstNumerical) {
   check(tanhNet, Vector2(-1.2, 2.0));
 }
 
-/* ************************* file loader ********************************* */
+}  // namespace forward
+/* ************************************************************************* */
+
+/* ************************************************************************* */
+namespace file_loader {
 
 static std::string tempFile(const std::string &name) {
   return (std::filesystem::temp_directory_path() / name).string();
@@ -187,12 +190,16 @@ TEST(MLP, normalizationHeadersIgnored) {
   std::filesystem::remove(path);
 }
 
-/* ************************* validation ********************************** */
+}  // namespace file_loader
+/* ************************************************************************* */
+
+/* ************************************************************************* */
+namespace validation {
 
 // Dimension-inconsistent layer stacks are rejected at construction.
 TEST(MLP, rejectsInconsistentDims) {
-  auto W = smallWeights();
-  auto b = smallBiases();
+  auto W = forward::smallWeights();
+  auto b = forward::smallBiases();
 
   CHECK_EXCEPTION(MLP({}, {}, MLP::Activation::kRelu), std::invalid_argument);
   CHECK_EXCEPTION(MLP(W, {b[0]}, MLP::Activation::kRelu),
@@ -221,7 +228,11 @@ TEST(MLP, rejectsZeroSizedLayers) {
       std::invalid_argument);
 }
 
-/* ************************* real model ********************************** */
+}  // namespace validation
+/* ************************************************************************* */
+
+/* ************************************************************************* */
+namespace real_model {
 
 // Loads the trained cable model when GTD_CABLE_MODEL_FILE points at it, so
 // the real-file path is exercised without committing the weights.
@@ -235,6 +246,9 @@ TEST(MLP, loadRealModelIfPresent) {
   const Vector y = model.forward(Vector::Zero(5));
   EXPECT(y.allFinite());
 }
+
+}  // namespace real_model
+/* ************************************************************************* */
 
 int main() {
   TestResult tr;
