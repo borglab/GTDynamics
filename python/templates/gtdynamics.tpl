@@ -25,12 +25,16 @@ namespace py = pybind11;
 
 {submodules}
 
-{module_def} {{
+{declaration_module_def} {{
+{wrapped_declarations}
+}}
+
+{binding_module_def} {{
     m_.doc() = "pybind11 wrapper of {module_name}";
 
 {submodules_init}
 
-    {wrapped_namespace}
+{wrapped_bindings}
 // Specializations for STL classes
 #include "python/gtdynamics/specializations/{module_name}.h"
 
