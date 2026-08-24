@@ -233,7 +233,11 @@ gtsam::Vector MLP::forward(const gtsam::Vector &x, gtsam::Matrix *H) const {
         case Activation::kLeakyRelu:
           if (H) {
             derivative =
-                (h.array() > 0.0).select(1.0, leakySlope_).matrix();
+                (h.array() > 0.0)
+                    .select(gtsam::Vector::Ones(h.size()).array(),
+                            gtsam::Vector::Constant(h.size(), leakySlope_)
+                                .array())
+                    .matrix();
           }
           h = (h.array() > 0.0)
                   .select(h.array(), leakySlope_ * h.array())
