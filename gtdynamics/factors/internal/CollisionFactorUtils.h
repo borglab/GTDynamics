@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gtdynamics/gpmp2/RobotNNCableModel.h>
 #include <gtdynamics/gpmp2/RobotQueryPoints.h>
 #include <gtdynamics/gpmp2/SelfCollisionCost.h>
 #include <gtdynamics/gpmp2/SignedDistanceField.h>
@@ -30,14 +31,47 @@
 namespace gtdynamics {
 namespace internal {
 
+/// Reject a null model and return it, for factor initializer lists.
+template <typename T>
+inline const std::shared_ptr<T> &checkedNotNull(const std::shared_ptr<T> &model,
+                                                const std::string &factorName,
+                                                const std::string &what) {
+  if (!model) {
+    throw std::invalid_argument(factorName + ": " + what +
+                                " must not be null.");
+  }
+  return model;
+}
+
 /// nrPoints of a model that must not be null, for factor initializer lists.
 inline size_t checkedNrPoints(
     const std::shared_ptr<const RobotQueryPoints> &robot,
     const std::string &factorName) {
-  if (!robot) {
-    throw std::invalid_argument(factorName + ": robot must not be null.");
+  return checkedNotNull(robot, factorName, "robot")->nrPoints();
+}
+
+/// Reject radii that are mis-sized (one entry per `what`) or negative.
+inline void validateRadii(const gtsam::Vector &radii, size_t expectedSize,
+                          const std::string &what,
+                          const std::string &factorName) {
+  if (static_cast<size_t>(radii.size()) != expectedSize) {
+    throw std::invalid_argument(factorName +
+                                ": radii must have one entry per " + what +
+                                ".");
   }
-  return robot->nrPoints();
+  if ((radii.array() < 0.0).any()) {
+    throw std::invalid_argument(factorName + ": radii must be >= 0.");
+  }
+}
+
+/// Reject a null field or a negative standoff.
+inline void validateSdfStandoff(
+    const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
+    const std::string &factorName) {
+  checkedNotNull(sdf, factorName, "sdf");
+  if (epsilon < 0.0) {
+    throw std::invalid_argument(factorName + ": epsilon must be >= 0.");
+  }
 }
 
 /// Reject radii that are mis-sized, negative, or conflict at coincident
@@ -45,13 +79,7 @@ inline size_t checkedNrPoints(
 inline void validateQueryPointRadii(const RobotQueryPoints &robot,
                                     const gtsam::Vector &radii,
                                     const std::string &factorName) {
-  if (static_cast<size_t>(radii.size()) != robot.nrPoints()) {
-    throw std::invalid_argument(
-        factorName + ": radii must have one entry per query point.");
-  }
-  if ((radii.array() < 0.0).any()) {
-    throw std::invalid_argument(factorName + ": radii must be >= 0.");
-  }
+  validateRadii(radii, robot.nrPoints(), "query point", factorName);
   // Overlapping spheres on a link are fine, but the same point registered
   // twice with different radii is a contradiction. Group by link so only
   // same-link points are compared, not every pair.
@@ -80,12 +108,7 @@ inline void validateObstacleSDFFactorArgs(
     const RobotQueryPoints &robot,
     const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
     const gtsam::Vector &radii, const std::string &factorName) {
-  if (!sdf) {
-    throw std::invalid_argument(factorName + ": sdf must not be null.");
-  }
-  if (epsilon < 0.0) {
-    throw std::invalid_argument(factorName + ": epsilon must be >= 0.");
-  }
+  validateSdfStandoff(sdf, epsilon, factorName);
   validateQueryPointRadii(robot, radii, factorName);
 }
 
@@ -149,6 +172,23 @@ inline std::shared_ptr<const RobotQueryPoints> restrictToReferencedPoints(
   return std::make_shared<const RobotQueryPoints>(robot, uniqueIndices);
 }
 
+/// numSamples of a cable model that must not be null, for factor
+/// initializer lists.
+inline size_t checkedNumSamples(
+    const std::shared_ptr<const RobotNNCableModel> &cable,
+    const std::string &factorName) {
+  return checkedNotNull(cable, factorName, "cable")->numSamples();
+}
+
+/// Reject a null field, a negative standoff, or bad radii.
+inline void validateNNCableFactorArgs(
+    const RobotNNCableModel &cable,
+    const std::shared_ptr<const SignedDistanceField> &sdf, double epsilon,
+    const gtsam::Vector &radii, const std::string &factorName) {
+  validateSdfStandoff(sdf, epsilon, factorName);
+  validateRadii(radii, cable.numSamples(), "cable sample", factorName);
+}
+
 /// Reject a null model, inconsistent pairs/radii, or, if sigmas is given, a
 /// sigma count not matching the pairs. Then return the model restricted to
 /// just the points pairs references, remapping *pairs and *radii in place.
@@ -156,9 +196,7 @@ inline std::shared_ptr<const RobotQueryPoints> validateAndRestrictSelfCollision(
     const std::shared_ptr<const RobotQueryPoints> &robot,
     SelfCollisionPairs *pairs, gtsam::Vector *radii,
     const std::string &factorName, const gtsam::Vector *sigmas = nullptr) {
-  if (!robot) {
-    throw std::invalid_argument(factorName + ": robot must not be null.");
-  }
+  checkedNotNull(robot, factorName, "robot");
   if (sigmas && static_cast<size_t>(sigmas->size()) != pairs->size()) {
     throw std::invalid_argument(
         factorName + ": sigmas must have one entry per pair.");

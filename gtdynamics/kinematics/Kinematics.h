@@ -88,7 +88,7 @@ struct PoseGoal {
   const LinkSharedPtr& link() const { return ee_link; }
 
   /// Return the CoM pose in world (wTcom) needed to achieve the goal pose.
-  const gtsam::Pose3 wTcom() const {
+  gtsam::Pose3 wTcom() const {
     return wTgoal.compose(comTgoal.inverse());
   }
 

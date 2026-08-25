@@ -22,6 +22,8 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 
+#include <vector>
+
 namespace gtdynamics {
 
 /**
@@ -76,5 +78,17 @@ GTSAM_EXPORT gtsam::Vector obstacleSDFError(const gtsam::Vector &q,
                                             double epsilon,
                                             const gtsam::Vector &radii,
                                             gtsam::Matrix *Hq = nullptr);
+
+namespace internal {
+
+/// Hinge loss of each point against sdf, with standoff epsilon + radii(i).
+/// If Hq is non-null, row i is filled with Hpt_i * ptJacobians[i].
+gtsam::Vector hingeLossOverPoints(const std::vector<gtsam::Point3> &wPts,
+                                  const std::vector<gtsam::Matrix> &ptJacobians,
+                                  const SignedDistanceField &sdf,
+                                  double epsilon, const gtsam::Vector &radii,
+                                  gtsam::Matrix *Hq);
+
+}  // namespace internal
 
 }  // namespace gtdynamics

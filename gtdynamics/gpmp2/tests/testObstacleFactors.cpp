@@ -54,10 +54,6 @@ using gtsam::noiseModel::Isotropic;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
 
-// Offset a grid by half a cell to put points of interest at cell centres, since
-// the trilinear gradient is discontinuous on the nodes.
-static const double kHalfCell = 0.5 * kCell;
-
 /* ********************** signed distance field ************************** */
 
 // Trilinear interpolation of an exact sphere field must recover the distance,
@@ -288,6 +284,35 @@ TEST(RobotQueryPoints, rejectsBadKinematicInputs) {
       std::invalid_argument);
 }
 
+// queryPoses must agree with queryPoints on the transformed points, and its
+// 6 x dof Jacobians must match the numerical ones.
+TEST(RobotQueryPoints, queryPosesAgainstNumerical) {
+  const auto model = std::make_shared<const RobotQueryPoints>(
+      kRobot, "columns", robot1Joints(), wristPoints());
+  const Vector q = startConfig();
+
+  std::vector<Pose3> wTls;
+  std::vector<Matrix> poseJacobians;
+  model->queryPoses(q, &wTls, &poseJacobians);
+
+  std::vector<Point3> wPts;
+  model->queryPoints(q, &wPts);
+  for (size_t i = 0; i < model->nrPoints(); ++i) {
+    EXPECT(assert_equal(
+        wPts[i], Point3(wTls[i].transformFrom(model->points()[i].point)),
+        1e-9));
+
+    std::function<Pose3(const Vector &)> f = [&](const Vector &v) {
+      std::vector<Pose3> poses;
+      model->queryPoses(v, &poses);
+      return poses[i];
+    };
+    EXPECT(assert_equal(
+        Matrix(gtsam::numericalDerivative11<Pose3, Vector, 9>(f, q)),
+        poseJacobians[i], 1e-5));
+  }
+}
+
 // Two points at the same location on a link with different radii contradict;
 // distinct points that merely overlap are deliberate coverage and allowed.
 TEST(ObstacleSDFFactor, rejectsConflictingRadii) {
@@ -351,6 +376,20 @@ TEST(RobotQueryPoints, jacobiansAgainstNumerical) {
         gtsam::numericalDerivative11<Point3, Vector9>(f, Vector9(q)), Js[i],
         1e-5));
   }
+}
+
+TEST(ObstacleCost, emptyQueryPointsPreserveJacobianWidth) {
+  const RobotQueryPoints model(kRobot, "columns", robot1Joints(), {});
+  const SignedDistanceField sdf =
+      makeSphereSDF(Point3(5, 5, 5), 0.1, Point3(4, 4, 4), kCell, 5, 5, 5);
+
+  Matrix H;
+  const Vector error =
+      obstacleSDFError(startConfig(), model, sdf, 0.1, Vector(0), &H);
+
+  EXPECT_LONGS_EQUAL(0, error.size());
+  EXPECT_LONGS_EQUAL(0, H.rows());
+  EXPECT_LONGS_EQUAL(model.dof(), H.cols());
 }
 
 /* ******************** trajectory around a sphere *********************** */

@@ -30,6 +30,9 @@ inline constexpr double kCell = 0.05;
 inline constexpr double kRadius = 0.15;
 inline constexpr double kEpsilon = 0.10;
 
+/// Half-cell grid offset: the trilinear gradient is discontinuous on nodes.
+inline constexpr double kHalfCell = 0.5 * kCell;
+
 /// The bar_lab workspace, loaded once per test binary.
 inline const Robot &barLabRobot() {
   static const Robot robot =

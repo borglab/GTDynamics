@@ -211,9 +211,26 @@ void RobotQueryPoints::queryPoints(
 gtsam::Matrix RobotQueryPoints::worldPoints(const gtsam::Vector &q) const {
   std::vector<gtsam::Point3> wPts;
   queryPoints(q, &wPts);
-  gtsam::Matrix pts(3, nrPoints());
-  for (size_t i = 0; i < nrPoints(); ++i) pts.col(i) = wPts[i];
-  return pts;
+  return internal::pointsToMatrix(wPts);
+}
+
+/* ************************************************************************* */
+void RobotQueryPoints::queryPoses(
+    const gtsam::Vector &q, std::vector<gtsam::Pose3> *wTls,
+    std::vector<gtsam::Matrix> *poseJacobians) const {
+  std::vector<gtsam::Pose3> poses(nrLinks_);
+  gtsam::Matrix linkJacobians;
+  if (poseJacobians) linkJacobians = gtsam::Matrix::Zero(6 * nrLinks_, dof());
+  computeForwardKinematics(q, &poses, poseJacobians ? &linkJacobians : nullptr);
+
+  wTls->resize(nrPoints());
+  if (poseJacobians) poseJacobians->resize(nrPoints());
+  for (size_t i = 0; i < nrPoints(); ++i) {
+    (*wTls)[i] = poses[pointSlots_[i]];
+    if (poseJacobians) {
+      (*poseJacobians)[i] = linkJacobians.middleRows(6 * pointSlots_[i], 6);
+    }
+  }
 }
 
 }  // namespace gtdynamics
