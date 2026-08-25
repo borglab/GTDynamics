@@ -251,15 +251,17 @@ class Robot {
 
   std::vector<gtdynamics::Joint*> joints() const;
 
+  @pybind_lambda
   void removeLink(gtdynamics::Link* link);
 
+  @pybind_lambda
   void removeJoint(gtdynamics::Joint* joint);
 
-  gtdynamics::Link* link(string name) const;
+  gtdynamics::Link* link(const string& name) const;
 
-  gtdynamics::Joint* joint(string name) const;
+  gtdynamics::Joint* joint(const string& name) const;
 
-  gtdynamics::Robot fixLink(const string& name);
+  gtdynamics::Robot fixLink(const string& name) const;
 
   int numLinks() const;
 
@@ -268,14 +270,8 @@ class Robot {
   void print(const string &s = "") const;
 
   gtsam::Values forwardKinematics(
-      const gtsam::Values &known_values) const;
-
-  gtsam::Values forwardKinematics(
-      const gtsam::Values &known_values, size_t t) const;
-
-  gtsam::Values forwardKinematics(
-      const gtsam::Values &known_values, size_t t,
-      const std::optional<string> &prior_link_name) const;
+      const gtsam::Values &known_values, size_t t = 0,
+      const std::optional<string> &prior_link_name = {}) const;
 
   // enabling serialization functionality
   void serialize() const;
@@ -336,8 +332,9 @@ class ContactGoal {
               const gtsam::Point3 &goal_point);
   gtdynamics::PointOnLink point_on_link;
   gtsam::Point3 goal_point;
+  @pybind_lambda
   gtdynamics::Link *link() const;
-  gtsam::Point3 &contactInCoM() const;
+  const gtsam::Point3 &contactInCoM() const;
   bool satisfied(const gtsam::Values &values, size_t k = 0,
                  double tol = 1e-9) const;
   void print(const string &s = "");
@@ -348,6 +345,7 @@ class PoseGoal {
            const gtsam::Pose3 &comTgoal, const gtsam::Pose3 &wTgoal);
   gtsam::Pose3 comTgoal;
   gtsam::Pose3 wTgoal;
+  @pybind_lambda
   gtdynamics::Link *link() const;
   gtsam::Pose3 wTcom() const;
   bool satisfied(const gtsam::Values &values, size_t k = 0,
@@ -383,15 +381,17 @@ class Kinematics {
                  gtdynamics::KinematicsParameters());
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
-                        const gtdynamics::ContactGoals &contact_goals);
-  gtsam::Values inverse(const gtdynamics::Interval interval,
+                        const gtdynamics::ContactGoals &contact_goals,
+                        bool contact_goals_as_constraints = true) const;
+  gtsam::Values inverse(const gtdynamics::Interval &interval,
                         const gtdynamics::Robot &robot,
-                        const gtdynamics::ContactGoals &contact_goals);
+                        const gtdynamics::ContactGoals &contact_goals,
+                        bool contact_goals_as_constraints = true) const;
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
                         const gtdynamics::PoseGoals &pose_goals,
                         const gtsam::Values &joint_priors = gtsam::Values(),
-                        bool pose_goals_as_constraints = false);
+                        bool pose_goals_as_constraints = false) const;
   gtsam::Values
   interpolate(const gtdynamics::Interval &interval,
               const gtdynamics::Robot &robot,
@@ -503,18 +503,18 @@ class DynamicsGraph {
 
   gtsam::GaussianFactorGraph linearDynamicsGraph(
       const gtdynamics::Robot &robot, const int k,
-      const gtsam::Values &known_values);
+      const gtsam::Values &known_values) const;
 
-  gtsam::GaussianFactorGraph linearFDPriors(
+  static gtsam::GaussianFactorGraph linearFDPriors(
       const gtdynamics::Robot &robot, const int k,
       const gtsam::Values &known_values);
 
-  gtsam::GaussianFactorGraph linearIDPriors(
+  static gtsam::GaussianFactorGraph linearIDPriors(
       const gtdynamics::Robot &robot, const int k,
       const gtsam::Values &known_values);
 
   gtsam::Values linearSolveFD(const gtdynamics::Robot &robot, const int k,
-                              const gtsam::Values &known_values);
+                              const gtsam::Values &known_values) const;
 
   gtsam::Values linearSolveID(const gtdynamics::Robot &robot, const int k,
                               const gtsam::Values &known_values);
@@ -559,32 +559,32 @@ class DynamicsGraph {
       const gtsam::Values &known_values) const;
 
   gtsam::NonlinearFactorGraph trajectoryFG(
-      const gtdynamics::Robot &robot, const int num_steps, const double dt) const;
-
-  gtsam::NonlinearFactorGraph trajectoryFG(
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
-      const gtdynamics::CollocationScheme collocation,
-      const std::optional<gtdynamics::PointOnLinks> &contact_points,
-      const std::optional<double> &mu,
+      const gtdynamics::CollocationScheme collocation =
+          gtdynamics::CollocationScheme::Trapezoidal,
+      const std::optional<gtdynamics::PointOnLinks> &contact_points = {},
+      const std::optional<double> &mu = {},
       double ground_plane_height = 0.0) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
       const gtdynamics::Robot &robot,
       const std::vector<int> &phase_steps,
-      const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs) const;
-
-  gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
-      const gtdynamics::Robot &robot,
-      const std::vector<int> &phase_steps,
       const std::vector<gtsam::NonlinearFactorGraph> &transition_graphs,
-      const gtdynamics::CollocationScheme collocation) const;
+      const gtdynamics::CollocationScheme collocation =
+          gtdynamics::CollocationScheme::Trapezoidal,
+      const std::optional<std::vector<gtdynamics::PointOnLinks>>
+          &phase_contact_points = {},
+      const std::optional<double> &mu = {},
+      double ground_plane_height = 0.0) const;
 
+  @pybind_lambda
   static void addCollocationFactorDouble(
       gtsam::NonlinearFactorGraph @graph, const gtsam::Key x0_key,
       const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
       const double dt, gtsam::noiseModel::Base* cost_model,
       const gtdynamics::CollocationScheme collocation);
 
+  @pybind_lambda
   static void addMultiPhaseCollocationFactorDouble(
       gtsam::NonlinearFactorGraph @graph, const gtsam::Key x0_key,
       const gtsam::Key x1_key, const gtsam::Key v0_key, const gtsam::Key v1_key,
@@ -714,12 +714,12 @@ class ChainDynamicsGraph : gtdynamics::DynamicsGraph {
 class LinkObjectives : gtsam::NonlinearFactorGraph {
   LinkObjectives(int i, int k = 0);
 
-  LinkObjectives &pose(
+  gtdynamics::LinkObjectives &pose(
       gtsam::Pose3 pose, const gtsam::SharedNoiseModel &pose_model = nullptr);
-  LinkObjectives &twist(
+  gtdynamics::LinkObjectives &twist(
       gtsam::Vector6 twist,
       const gtsam::SharedNoiseModel &twist_model = nullptr);
-  LinkObjectives &twistAccel(
+  gtdynamics::LinkObjectives &twistAccel(
       gtsam::Vector6 twistAccel,
       const gtsam::SharedNoiseModel &twistAccel_model = nullptr);
 };
@@ -727,11 +727,11 @@ class LinkObjectives : gtsam::NonlinearFactorGraph {
 class JointObjectives : gtsam::NonlinearFactorGraph {
   JointObjectives(int j, int k = 0);
 
-  JointObjectives &angle(
+  gtdynamics::JointObjectives &angle(
       double angle, const gtsam::SharedNoiseModel &angle_model = nullptr);
-  JointObjectives &velocity(
+  gtdynamics::JointObjectives &velocity(
       double velocity, const gtsam::SharedNoiseModel &velocity_model = nullptr);
-  JointObjectives &acceleration(
+  gtdynamics::JointObjectives &acceleration(
       double acceleration,
       const gtsam::SharedNoiseModel &acceleration_model = nullptr);
 };
