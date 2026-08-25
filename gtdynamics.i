@@ -87,6 +87,7 @@ class MinTorqueFactor : gtsam::NoiseModelFactor {
 /// TODO(yetong): remove the wrapper for WrenchFactor once equality constraints
 /// are wrapped (Issue #319).
 #include <gtdynamics/dynamics/WrenchFactor.h>
+@pybind_lambda
 gtsam::NoiseModelFactor* WrenchFactor(
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
     const std::vector<gtsam::Key> wrench_keys, int t = 0,
