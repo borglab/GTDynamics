@@ -161,7 +161,7 @@ class Link  {
 
   static gtdynamics::Link fix(
       const gtdynamics::Link &link,
-      const std::optional<gtsam::Pose3> fixed_pose = {});
+      const std::optional<gtsam::Pose3> fixed_pose = std::nullopt);
   static gtdynamics::Link unfix(const gtdynamics::Link& link);
 };
 
@@ -272,7 +272,7 @@ class Robot {
 
   gtsam::Values forwardKinematics(
       const gtsam::Values &known_values, size_t t = 0,
-      const std::optional<string> &prior_link_name = {}) const;
+      const std::optional<string> &prior_link_name = std::nullopt) const;
 
   // enabling serialization functionality
   void serialize() const;
@@ -563,8 +563,8 @@ class DynamicsGraph {
       const gtdynamics::Robot &robot, const int num_steps, const double dt,
       const gtdynamics::CollocationScheme collocation =
           gtdynamics::CollocationScheme::Trapezoidal,
-      const std::optional<gtdynamics::PointOnLinks> &contact_points = {},
-      const std::optional<double> &mu = {},
+      const std::optional<gtdynamics::PointOnLinks> &contact_points = std::nullopt,
+      const std::optional<double> &mu = std::nullopt,
       double ground_plane_height = 0.0) const;
 
   gtsam::NonlinearFactorGraph multiPhaseTrajectoryFG(
@@ -574,8 +574,8 @@ class DynamicsGraph {
       const gtdynamics::CollocationScheme collocation =
           gtdynamics::CollocationScheme::Trapezoidal,
       const std::optional<std::vector<gtdynamics::PointOnLinks>>
-          &phase_contact_points = {},
-      const std::optional<double> &mu = {},
+          &phase_contact_points = std::nullopt,
+      const std::optional<double> &mu = std::nullopt,
       double ground_plane_height = 0.0) const;
 
   @pybind_lambda
@@ -780,12 +780,12 @@ class Initializer {
   gtsam::Values ZeroValues(
       const gtdynamics::Robot& robot, const int t,
       double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = {}) const;
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt) const;
 
   gtsam::Values ZeroValuesTrajectory(
       const gtdynamics::Robot& robot, const int num_steps,
       const int num_phases = -1, double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = {});
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt);
 };
 
 #include <gtdynamics/utils/ChainInitializer.h>
@@ -795,7 +795,7 @@ class ChainInitializer : gtdynamics::Initializer {
   gtsam::Values ZeroValues(
       const gtdynamics::Robot& robot, const int t,
       double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = {}) const;
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt) const;
 };
 
 /********************** symbols **********************/
@@ -948,7 +948,7 @@ class Phase {
   void print(const string &s = "");
   gtsam::Matrix jointMatrix(const gtdynamics::Robot &robot,
                             const gtsam::Values &results, size_t k = 0,
-                            std::optional<double> dt = {}) const;
+                            std::optional<double> dt = std::nullopt) const;
 };
 
 #include <gtdynamics/utils/WalkCycle.h>
