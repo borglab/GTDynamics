@@ -19,16 +19,16 @@ const gtsam::KeyFormatter GTDKeyFormatter;
 #include <gtdynamics/factors/JointMeasurementFactor.h>
 class JointMeasurementFactor : gtsam::NoiseModelFactor {
   JointMeasurementFactor(gtsam::Key wTp_key, gtsam::Key wTc_key,
-                         const gtsam::noiseModel::Base *cost_model,
-                         const gtdynamics::Joint *joint,
+                         const gtsam::noiseModel::Base::shared_ptr &model,
+                         const gtdynamics::JointConstSharedPtr joint,
                          double joint_coordinate);
   JointMeasurementFactor(const gtsam::noiseModel::Base::shared_ptr &model,
-                         const gtdynamics::Joint *joint,
+                         const gtdynamics::JointConstSharedPtr joint,
                          double joint_coordinate, size_t k);
 
-  double measured() const;
+  double measured();
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
-                                       gtdynamics::GTDKeyFormatter);
+                                       gtdynamics::GTDKeyFormatter) const;
 };
 
 #include <gtdynamics/kinematics/PoseFactor.h>
@@ -39,19 +39,17 @@ class ForwardKinematicsFactor : gtsam::NoiseModelFactor {
                           const string &start_link_name,
                           const string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::noiseModel::Base* model, size_t k = 0);
+                          const gtsam::SharedNoiseModel &model, size_t k = 0);
 
   ForwardKinematicsFactor(const gtdynamics::Robot &robot,
                           const string &start_link_name,
                           const string &end_link_name,
                           const gtsam::Values &joint_angles,
-                          const gtsam::noiseModel::Base* model, size_t k = 0);
+                          const gtsam::SharedNoiseModel &model, size_t k = 0);
 
   void print(const string &s="",
              const gtsam::KeyFormatter &keyFormatter=gtdynamics::GTDKeyFormatter);
-  const gtsam::Pose3 measured() const;
-
-  gtsam::Vector evaluateError(const gtsam::Pose3& p1, const gtsam::Pose3& p2) const;
+  const gtsam::Pose3 &measured() const;
 };
 
 #include <gtdynamics/factors/ContactEqualityFactor.h>
@@ -137,31 +135,32 @@ class ContactHeightFactor : gtsam::NoiseModelFactor {
 #include <gtdynamics/universal_robot/Link.h>
 class Link  {
   Link();
-  Link(int id, const string &name, const double mass,
-       const gtsam::Matrix &inertia, const gtsam::Pose3 &bMcom,
+  Link(uint8_t id, const string &name, const double mass,
+       const gtsam::Matrix3 &inertia, const gtsam::Pose3 &bMcom,
        const gtsam::Pose3 &bMlink, bool is_fixed = false);
 
-  gtdynamics::Link *shared();
-  int id() const;
-  void addJoint(gtdynamics::Joint *joint_ptr);
-  const gtsam::Pose3 bMcom() const;
+  gtdynamics::LinkSharedPtr shared();
+  uint8_t id() const;
+  void addJoint(const gtdynamics::JointSharedPtr &joint);
+  const gtsam::Pose3 &bMcom() const;
   const gtsam::Pose3 bMlink() const;
   const gtsam::Pose3 &getFixedPose() const;
   bool isFixed() const;
-  const std::vector<Joint *> &joints() const;
+  const std::vector<gtdynamics::JointSharedPtr> &joints() const;
   size_t numJoints() const;
-  string name() const;
+  const string &name() const;
   double mass() const;
   void setMass(const double mass);
-  const gtsam::Pose3 &centerOfMass();
-  const gtsam::Matrix &inertia();
+  const gtsam::Pose3 &centerOfMass() const;
+  const gtsam::Matrix3 &inertia() const;
   void setInertia(const gtsam::Matrix3 &inertia);
-  gtsam::Matrix6 inertiaMatrix();
+  gtsam::Matrix6 inertiaMatrix() const;
 
   void print(const std::string &s = "") const;
 
-  static gtdynamics::Link fix(const gtdynamics::Link& link);
-  static gtdynamics::Link fix(const gtdynamics::Link& link, gtsam::Pose3 &fixed_pose);
+  static gtdynamics::Link fix(
+      const gtdynamics::Link &link,
+      const std::optional<gtsam::Pose3> fixed_pose = {});
   static gtdynamics::Link unfix(const gtdynamics::Link& link);
 };
 
@@ -191,50 +190,51 @@ virtual class Joint {
   const gtsam::Pose3 &pMj() const;
   const gtsam::Pose3 &jMc() const;
   const gtsam::Pose3 &pMc() const;
-  string name() const;
-  gtdynamics::Type type() const;
-  const gtsam::Vector &pScrewAxis() const;
-  const gtsam::Vector &cScrewAxis() const;
-  gtsam::Vector screwAxis(const gtdynamics::Link *link) const;
+  const string &name() const;
+  gtdynamics::Joint::Type type() const;
+  const gtsam::Vector6 &pScrewAxis() const;
+  const gtsam::Vector6 &cScrewAxis() const;
+  gtsam::Vector6 screwAxis(const gtdynamics::LinkSharedPtr &link) const;
   gtsam::Key key() const;
-  string name() const;
-  gtdynamics::Link *otherLink(const gtdynamics::Link *link);
-  std::vector<gtdynamics::Link *> links() const;
-  gtdynamics::Link *parent() const;
-  gtdynamics::Link *child() const;
+  gtdynamics::LinkSharedPtr otherLink(
+      const gtdynamics::LinkSharedPtr &link) const;
+  std::vector<gtdynamics::LinkSharedPtr> links() const;
+  gtdynamics::LinkSharedPtr parent() const;
+  gtdynamics::LinkSharedPtr child() const;
 };
 
 virtual class RevoluteJoint : gtdynamics::Joint {
   RevoluteJoint(
-      int id, const string &name, const gtsam::Pose3 &wTj,
-      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
-      const gtsam::Vector &axis,
+      uint8_t id, const string &name, const gtsam::Pose3 &bTj,
+      const gtdynamics::LinkSharedPtr &parent_link,
+      const gtdynamics::LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
       const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 
 virtual class PrismaticJoint : gtdynamics::Joint {
   PrismaticJoint(
-      int id, const string &name, const gtsam::Pose3 &wTj,
-      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
-      const gtsam::Vector &axis,
+      uint8_t id, const string &name, const gtsam::Pose3 &bTj,
+      const gtdynamics::LinkSharedPtr &parent_link,
+      const gtdynamics::LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
       const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 
 virtual class HelicalJoint : gtdynamics::Joint {
   HelicalJoint(
-      int id, const string &name, const gtsam::Pose3 &wTj,
-      const gtdynamics::Link *parent_link, const gtdynamics::Link *child_link,
-      const gtsam::Vector &axis, double thread_pitch,
+      uint8_t id, const string &name, const gtsam::Pose3 &bTj,
+      const gtdynamics::LinkSharedPtr &parent_link,
+      const gtdynamics::LinkSharedPtr &child_link, const gtsam::Vector3 &axis,
+      double thread_pitch,
       const gtdynamics::JointParams &parameters = gtdynamics::JointParams());
   void print(const string &s = "") const;
 };
 
 virtual class FixedJoint : gtdynamics::Joint {
-  FixedJoint(int id, const string &name, const gtsam::Pose3 &wTj,
-             const gtdynamics::Link *parent_link,
-             const gtdynamics::Link *child_link);
+  FixedJoint(uint8_t id, const string &name, const gtsam::Pose3 &bTj,
+             const gtdynamics::LinkSharedPtr &parent_link,
+             const gtdynamics::LinkSharedPtr &child_link);
   void print(const string &s = "") const;
 };
 
