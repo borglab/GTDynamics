@@ -747,7 +747,7 @@ class PointGoalFactor : gtsam::NoiseModelFactor {
                   gtsam::Point3 point_com,             //
                   gtsam::Point3 goal_point);
 
-  gtsam::Point3 goalPoint();
+  const gtsam::Point3 &goalPoint() const;
 };
 
 gtsam::NonlinearFactorGraph PointGoalFactors(
@@ -761,7 +761,7 @@ class PoseGoalFactor : gtsam::NoiseModelFactor {
                  gtsam::SharedNoiseModel cost_model,  //
                  gtsam::Pose3 wTcom_goal);
 
-  gtsam::Pose3 goalPose();
+  const gtsam::Pose3 &goalPose() const;
 };
 
 std::vector<gtsam::Point3> StanceTrajectory(const gtsam::Point3 &stance_point,
@@ -778,21 +778,13 @@ class Initializer {
 
   gtsam::Values ZeroValues(
       const gtdynamics::Robot& robot, const int t,
-      double gaussian_noise = 0.0);
-
-  gtsam::Values ZeroValues(
-      const gtdynamics::Robot& robot, const int t,
       double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points);
-
-  gtsam::Values ZeroValuesTrajectory(
-      const gtdynamics::Robot& robot, const int num_steps,
-      const int num_phases = -1, double gaussian_noise = 0.0);
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = {}) const;
 
   gtsam::Values ZeroValuesTrajectory(
       const gtdynamics::Robot& robot, const int num_steps,
       const int num_phases = -1, double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points);
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = {});
 };
 
 #include <gtdynamics/utils/ChainInitializer.h>
@@ -801,12 +793,8 @@ class ChainInitializer : gtdynamics::Initializer {
 
   gtsam::Values ZeroValues(
       const gtdynamics::Robot& robot, const int t,
-      double gaussian_noise = 0.0) const;
-
-  gtsam::Values ZeroValues(
-      const gtdynamics::Robot& robot, const int t,
       double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points) const;
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = {}) const;
 };
 
 /********************** symbols **********************/
@@ -817,15 +805,18 @@ class DynamicsSymbol {
   DynamicsSymbol(const gtsam::Key& key);
   DynamicsSymbol(const gtdynamics::DynamicsSymbol& key);
 
-  static DynamicsSymbol LinkJointSymbol(const string& s,
-                                        uint8_t link_idx,
-                                        uint8_t joint_idx,
-                                        std::uint64_t t);
-  static DynamicsSymbol JointSymbol(const string& s,
-                                    uint8_t joint_idx, std::uint64_t t);
-  static DynamicsSymbol LinkSymbol(const string& s, uint8_t link_idx,
-                                   std::uint64_t t);
-  static DynamicsSymbol SimpleSymbol(const string& s, std::uint64_t t);
+  static gtdynamics::DynamicsSymbol LinkJointSymbol(const string& s,
+                                                    uint8_t link_idx,
+                                                    uint8_t joint_idx,
+                                                    std::uint64_t t);
+  static gtdynamics::DynamicsSymbol JointSymbol(const string& s,
+                                                uint8_t joint_idx,
+                                                std::uint64_t t);
+  static gtdynamics::DynamicsSymbol LinkSymbol(const string& s,
+                                               uint8_t link_idx,
+                                               std::uint64_t t);
+  static gtdynamics::DynamicsSymbol SimpleSymbol(const string& s,
+                                                 std::uint64_t t);
 
   string label() const;
   uint8_t linkIdx() const;
@@ -834,7 +825,7 @@ class DynamicsSymbol {
   gtsam::Key key() const;
 
   void print(const string &s = "");
-  bool equals(const gtdynamics::DynamicsSymbol& expected, double tol);
+  bool equals(const gtdynamics::DynamicsSymbol& expected, double tol = 0.0) const;
 };
 
 gtsam::Key JointAngleKey(int j, int t=0);
@@ -952,11 +943,11 @@ class Interval {
 class Phase {
   Phase(size_t k_start, size_t k_end,
         const std::shared_ptr<gtdynamics::ConstraintSpec> &constraints);
-  int numTimeSteps() const;
+  size_t numTimeSteps() const;
   void print(const string &s = "");
   gtsam::Matrix jointMatrix(const gtdynamics::Robot &robot,
                             const gtsam::Values &results, size_t k = 0,
-                            double dt) const;
+                            std::optional<double> dt = {}) const;
 };
 
 #include <gtdynamics/utils/WalkCycle.h>
@@ -968,7 +959,7 @@ class WalkCycle {
   const gtdynamics::PointOnLinks& contactPoints() const;
   std::vector<gtdynamics::PointOnLinks> allPhasesContactPoints() const;
   std::vector<gtdynamics::PointOnLinks> transitionContactPoints() const;
-  const gtdynamics::Phase& phase(size_t p);
+  const gtdynamics::Phase& phase(size_t p) const;
   const std::vector<gtdynamics::Phase>& phases() const;
   size_t numPhases() const;
   size_t numTimeSteps() const;
@@ -1004,12 +995,13 @@ class Trajectory {
   gtsam::Values multiPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::Initializer &initializer,
                                         double gaussian_noise, double dt) const;
   std::vector<int> finalTimeSteps() const;
-  const Phase &phase(size_t p) const;
-  size_t getStartTimeStep(size_t p) const;
-  size_t getEndTimeStep(size_t p) const;
+  const gtdynamics::Phase &phase(size_t p) const;
+  int getStartTimeStep(size_t p) const;
+  int getEndTimeStep(size_t p) const;
+  @pybind_lambda
   gtsam::NoiseModelFactor pointGoalFactor(const gtdynamics::Robot &robot,
                                   const string &link_name,
-                                  const gtdynamics::PointOnLink &cp, size_t k,
+                                  const gtdynamics::PointOnLink &cp, int k,
                                   const gtsam::SharedNoiseModel &cost_model,
                                   const gtsam::Point3 &goal_point) const;
   gtsam::NonlinearFactorGraph
@@ -1084,7 +1076,7 @@ class SignedDistanceField {
 
   double getSignedDistance(const gtsam::Point3 &point) const;
 
-  gtsam::Point3 origin() const;
+  const gtsam::Point3 &origin() const;
   size_t xCount() const;
   size_t yCount() const;
   size_t zCount() const;
@@ -1123,7 +1115,7 @@ class ObstacleSDFFactor : gtsam::NoiseModelFactor {
                     const gtsam::Vector &radii);
 
   double epsilon() const;
-  gtsam::Vector radii() const;
+  const gtsam::Vector &radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
@@ -1147,7 +1139,7 @@ class ObstacleSDFFactorGP : gtsam::NoiseModelFactor {
                       double tau);
 
   double epsilon() const;
-  gtsam::Vector radii() const;
+  const gtsam::Vector &radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
@@ -1159,6 +1151,7 @@ class MLP {
   size_t inputDim() const;
   size_t outputDim() const;
   size_t nrLayers() const;
+  @pybind_lambda
   gtsam::Vector forward(const gtsam::Vector &x) const;
 };
 
@@ -1197,7 +1190,7 @@ class NNCableFactor : gtsam::NoiseModelFactor {
                 double epsilon, const gtsam::Vector &radii);
 
   double epsilon() const;
-  gtsam::Vector radii() const;
+  const gtsam::Vector &radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
@@ -1220,7 +1213,7 @@ class NNCableFactorGP : gtsam::NoiseModelFactor {
                   double tau);
 
   double epsilon() const;
-  gtsam::Vector radii() const;
+  const gtsam::Vector &radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
@@ -1249,7 +1242,7 @@ class SelfCollisionSphereFactor : gtsam::NoiseModelFactor {
                             const gtsam::Vector &sigmas);
 
   size_t nrPairs() const;
-  gtsam::Vector radii() const;
+  const gtsam::Vector &radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
@@ -1273,7 +1266,7 @@ class SelfCollisionSphereFactorGP : gtsam::NoiseModelFactor {
                               double deltaT, double tau);
 
   size_t nrPairs() const;
-  gtsam::Vector radii() const;
+  const gtsam::Vector &radii() const;
   void print(const string &s = "", const gtsam::KeyFormatter &keyFormatter =
                                        gtdynamics::GTDKeyFormatter);
 };
