@@ -22,8 +22,8 @@ classifiers = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=2.0.0",
-    "gtsam>=4.2",
+    "numpy>=1.11.0",
+    "gtsam>=4.3a0",
 ]
 
 [dependency-groups]
