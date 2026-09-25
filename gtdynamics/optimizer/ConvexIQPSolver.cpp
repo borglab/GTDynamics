@@ -17,7 +17,7 @@
 namespace gtdynamics {
 
 using gtsam::GaussianFactorGraph;
-using gtsam::IndeterminantLinearSystemException;
+using gtsam::IndeterminateSystemException;
 using gtsam::Key;
 using gtsam::Matrix;
 using gtsam::Vector;
@@ -46,7 +46,7 @@ SolveEQP(const GaussianFactorGraph &cost,
   try {
     VectorValues solution = graph.optimize();
     return {solution, true};
-  } catch (const IndeterminantLinearSystemException &) {
+  } catch (const IndeterminateSystemException &) {
     return {VectorValues(), false};
   }
 }

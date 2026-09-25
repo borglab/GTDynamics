@@ -21,7 +21,7 @@ using std::cout, std::setprecision, std::setw, std::endl;
 
 namespace gtdynamics {
 
-using gtsam::IndeterminantLinearSystemException;
+using gtsam::IndeterminateSystemException;
 using gtsam::JacobianFactor;
 using gtsam::Key;
 using gtsam::Matrix;
@@ -150,7 +150,7 @@ SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
     // new_system.error(VectorValues::Zero(delta)) << "\n"; std::cout <<
     // "delta1_norm: " << delta1.norm() << "\n";
     solve_successful = true;
-  } catch (const IndeterminantLinearSystemException &) {
+  } catch (const IndeterminateSystemException &) {
     return;
   }
   VectorValues zero_delta = VectorValues::Zero(delta);
@@ -230,7 +230,7 @@ void SQPTrial::resolveLinearUsingMeritSystem(const SQPState &state,
   try {
     delta = SolveLinear(damped_system, params.lm_params);
     solve_successful = true;
-  } catch (const IndeterminantLinearSystemException &) {
+  } catch (const IndeterminateSystemException &) {
     solve_successful = false;
     return;
   }
