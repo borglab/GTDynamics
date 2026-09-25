@@ -16,7 +16,7 @@
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/NonlinearEquality.h>
+#include <gtsam/constrained/NonlinearEquality.h>
 
 namespace gtdynamics {
 using gtsam::assert_equal;
