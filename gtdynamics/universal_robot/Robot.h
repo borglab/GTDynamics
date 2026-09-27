@@ -14,11 +14,13 @@
 #pragma once
 
 #include <gtdynamics/config.h>
+#include <gtdynamics/universal_robot/ForwardKinematics.h>
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/Link.h>
 #include <gtdynamics/universal_robot/RobotTypes.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -40,12 +42,6 @@ using LinkVector = std::vector<std::reference_wrapper<Link>>;
 using JointVector = std::vector<std::reference_wrapper<Joint>>;
 
 using LinkJointPair = std::pair<LinkMap, JointMap>;
-// map from link name to link pose
-using LinkPoses = std::map<std::string, gtsam::Pose3>;
-// map from link name to link twist
-using LinkTwists = std::map<std::string, gtsam::Vector6>;
-// type for storing forward kinematics results
-using FKResults = std::pair<LinkPoses, LinkTwists>;
 
 /**
  * Robot is used to create a representation of a robot's
@@ -58,6 +54,13 @@ class Robot {
   // For quicker/easier access to links and joints.
   LinkMap name_to_link_;
   JointMap name_to_joint_;
+
+  /** Forward kinematics traversals, computed lazily for each root link the
+   * first time it is used. Shared between copies of the robot, which share
+   * the same links and joints, and replaced when the robot topology changes.
+   */
+  std::shared_ptr<FKTraversalCache> fk_cache_ =
+      std::make_shared<FKTraversalCache>();
 
  public:
   /** Default Constructor */
@@ -91,7 +94,7 @@ class Robot {
    * contain entries for all links in the robot; if a link name is missing,
    * the implementation will throw (e.g., due to use of std::map::at()).
    */
-  void renameLinks(const std::map<std::string, std::string>& name_map);
+  void renameLinks(const std::map<std::string, std::string> &name_map);
 
   /**
    * @brief Rename the joints.
@@ -104,7 +107,7 @@ class Robot {
    * @param name_map Map from old joint name to new joint name, containing
    *                 entries for all joints in the robot.
    */
-  void renameJoints(const std::map<std::string, std::string>& name_map);
+  void renameJoints(const std::map<std::string, std::string> &name_map);
 
   /**
    * @brief Reassign the link IDs.
@@ -118,7 +121,7 @@ class Robot {
    * @param ordered_link_names List of all link names in the desired new
    *        ID order (0-indexed).
    */
-  void reassignLinks(const std::vector<std::string>& ordered_link_names);
+  void reassignLinks(const std::vector<std::string> &ordered_link_names);
 
   /**
    * @brief Reassign the joint IDs.
@@ -128,7 +131,7 @@ class Robot {
    *        each appearing exactly once. The index of each name in the vector
    *        determines the joint's new ID (0-indexed).
    */
-  void reassignJoints(const std::vector<std::string>& ordered_joint_names);
+  void reassignJoints(const std::vector<std::string> &ordered_joint_names);
 
   /**
    * @brief Return links ordered by their IDs.
@@ -205,7 +208,8 @@ class Robot {
   }
 
   /**
-   * Calculate forward kinematics by performing BFS in the link-joint graph
+   * Calculate forward kinematics by traversing the link-joint graph in BFS
+   * order, which is computed on the first call for each root link and cached
    * (will throw an error when invalid joint angle specification detected).
    *
    * If the root link pose and twist are not provided in `known_values`,
@@ -229,6 +233,9 @@ class Robot {
       const gtsam::Values &values,
       const std::optional<std::string> &prior_link_name) const;
 
+  /// Discard the cached forward kinematics traversals.
+  void resetFKCache();
+
   /// @name Advanced Interface
   /// @{
 
@@ -239,6 +246,7 @@ class Robot {
   void serialize(ARCHIVE &ar, const unsigned int /*version*/) {
     ar &BOOST_SERIALIZATION_NVP(name_to_link_);
     ar &BOOST_SERIALIZATION_NVP(name_to_joint_);
+    if (ARCHIVE::is_loading::value) resetFKCache();
   }
 #endif
 
