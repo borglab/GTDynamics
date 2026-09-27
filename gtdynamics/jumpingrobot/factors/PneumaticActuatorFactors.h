@@ -457,7 +457,7 @@ class ClippingActuatorFactor
         H_p->setConstant(1, 1, derivative_y);
       }
       if (H_f) {
-        *H_f = -gtsam::I_1x1;
+        *H_f = -gtsam::Matrix1::Identity();
       }
       return gtsam::Vector1(f_expected - f);
     }
@@ -527,7 +527,7 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactorN<double, double> {
       gtsam::OptionalMatrixType H_l = nullptr) const override {
     double expected_v = computeVolume(l, H_l);
     if (H_v) {
-      *H_v = -gtsam::I_1x1;
+      *H_v = -gtsam::Matrix1::Identity();
     }
     return gtsam::Vector1(expected_v - v);
   }

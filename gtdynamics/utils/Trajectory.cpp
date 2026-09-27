@@ -12,6 +12,7 @@
  * @author: Frank Dellaert, Gerry Chen, Frank Dellaert
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Trajectory.h>
@@ -27,7 +28,6 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using gtsam::SharedNoiseModel;
 using gtsam::Values;
-using gtsam::Z_6x1;
 using std::map;
 using std::string;
 using std::to_string;
@@ -119,12 +119,12 @@ void Trajectory::addBoundaryConditions(
     // Initial link pose, twists.
     graph->add(LinkObjectives(link->id(), 0)
                    .pose(link->bMcom(), pose_model)
-                   .twist(Z_6x1, twist_model));
+                   .twist(gtsam::Z_6x1, twist_model));
 
     // Final link twists, accelerations.
     graph->add(LinkObjectives(link->id(), K)
-                   .twist(Z_6x1, twist_model)
-                   .twistAccel(Z_6x1, twist_acceleration_model));
+                   .twist(gtsam::Z_6x1, twist_model)
+                   .twistAccel(gtsam::Z_6x1, twist_acceleration_model));
   }
 
   // Add joint boundary conditions to FG.

@@ -11,6 +11,7 @@
  * @authors Yetong Zhang, Alejandro Escontrela
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>

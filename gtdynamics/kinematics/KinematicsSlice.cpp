@@ -16,6 +16,7 @@
 #include <gtdynamics/kinematics/JointLimitFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/kinematics/PointGoalFactor.h>
+#include <gtdynamics/kinematics/endEffGoalFactor.h>
 #include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtdynamics/kinematics/TwistFactor.h>
 #include <gtdynamics/utils/Slice.h>
@@ -270,13 +271,30 @@ NonlinearFactorGraph Kinematics::poseGoalObjectives<Slice>(
   if (it != pose_goals.end()) {
     const auto& pose_goal = it->second;
     auto pose_key = PoseKey(pose_goal.link()->id(), slice.k);
-    const gtsam::Pose3& desired_pose = pose_goal.wTcom();
-    // TODO(toni): use pose prior from unstable gtsam slam or create new
-    // factors, to add pose from link7
-    graph.addPrior<gtsam::Pose3>(pose_key, desired_pose, p_.p_cost_model);
+    const gtsam::Pose3& wTcom_goal = pose_goal.wTcom();
+    graph.addPrior<gtsam::Pose3>(pose_key, wTcom_goal, p_.p_cost_model);
   }
 
   return graph;
+}
+
+template <>
+gtsam::NonlinearEqualityConstraints Kinematics::poseGoalConstraints<Slice>(
+    const Slice& slice, const PoseGoals& pose_goals) const {
+  gtsam::NonlinearEqualityConstraints constraints;
+
+  gtsam::Vector6 tolerance = p_.p_cost_model->sigmas();
+  auto it = pose_goals.find(slice.k);
+  if (it != pose_goals.end()) {
+    const auto& pose_goal = it->second;
+    const gtsam::Key pose_key = PoseKey(pose_goal.link()->id(), slice.k);
+    auto constraint_expr = poseGoalConstraint(pose_key, pose_goal.wTcom());
+    constraints
+        .emplace_shared<gtsam::ExpressionEqualityConstraint<gtsam::Vector6>>(
+            constraint_expr, gtsam::Vector6::Zero(), tolerance);
+  }
+
+  return constraints;
 }
 
 template <>
@@ -284,11 +302,15 @@ NonlinearFactorGraph Kinematics::jointAngleObjectives<Slice>(
     const Slice& slice, const Robot& robot, const Values& mean) const {
   NonlinearFactorGraph graph;
 
-  // Minimize the joint angles.
+  // Per-joint override from p_.joint_prior_overrides, else prior_q_cost_model.
   for (auto&& joint : robot.joints()) {
     const gtsam::Key key = JointAngleKey(joint->id(), slice.k);
+    auto it = p_.joint_prior_overrides.find(joint->key());
+    const gtsam::SharedNoiseModel cost_model =
+        (it != p_.joint_prior_overrides.end()) ? it->second
+                                               : p_.prior_q_cost_model;
     graph.addPrior<double>(key, (mean.exists(key) ? mean.at<double>(key) : 0.0),
-                           p_.prior_q_cost_model);
+                           cost_model);
   }
 
   return graph;
@@ -299,12 +321,18 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
     const Slice& slice, const Robot& robot) const {
   NonlinearFactorGraph graph;
   for (auto&& joint : robot.joints()) {
-    graph.add(JointLimitFactor(
-        JointAngleKey(joint->id(), slice.k),
-        gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
-        joint->parameters().scalar_limits.value_lower_limit,
-        joint->parameters().scalar_limits.value_upper_limit,
-        0.04));  // joint->parameters().scalar_limits.value_limit_threshold));
+    // Override URDF limits for joints listed in p_.joint_limit_overrides.
+    auto it = p_.joint_limit_overrides.find(joint->key());
+    const auto& limits = joint->parameters().scalar_limits;
+    const double lower =
+        (it != p_.joint_limit_overrides.end()) ? it->second.first
+                                               : limits.value_lower_limit;
+    const double upper =
+        (it != p_.joint_limit_overrides.end()) ? it->second.second
+                                               : limits.value_upper_limit;
+    graph.add(JointLimitFactor(JointAngleKey(joint->id(), slice.k),
+                               gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
+                               lower, upper, 0.04));
   }
   return graph;
 }
@@ -382,20 +410,27 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
 template <>
 gtsam::Values Kinematics::inverse<Slice>(
     const Slice& slice, const Robot& robot, const PoseGoals& pose_goals,
-    const gtsam::Values& joint_priors) const {
+    const gtsam::Values& joint_priors, bool pose_goals_as_constraints) const {
   auto graph = this->graph(slice, robot);
 
   // Add prior on joint angles to prefer solution close to our initial estimates
   graph.add(this->jointAngleObjectives(slice, robot, joint_priors));
-
-  // Add priors on link poses with desired poses from argument
-  graph.add(this->poseGoalObjectives(slice, pose_goals));
 
   // Add joint angle limits factors
   graph.add(this->jointAngleLimits(slice, robot));
 
   // Robot kinematics constraints
   auto constraints = this->constraints(slice, robot);
+
+  // Pose goals: either as hard equality constraints or as soft priors.
+  if (pose_goals_as_constraints) {
+    auto goal_constraints = this->poseGoalConstraints(slice, pose_goals);
+    for (const auto& constraint : goal_constraints) {
+      constraints.push_back(constraint);
+    }
+  } else {
+    graph.add(this->poseGoalObjectives(slice, pose_goals));
+  }
 
   auto initial_values =
       this->initialValues(slice, robot, 0.1, joint_priors, true);

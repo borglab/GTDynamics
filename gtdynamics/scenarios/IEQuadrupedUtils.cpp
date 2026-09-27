@@ -444,7 +444,7 @@ BasisKeyFunction IEVision60Robot::getBasisKeyFunction() const {
       [express_redundancy, ad_basis_using_torques, contact_indices,
        leaving_indices](const KeyVector &keys) -> KeyVector {
     if (keys.size() == 1) {
-      return keys;
+      return {keys.front()};
     }
     size_t k = DynamicsSymbol(*keys.begin()).time();
     KeyVector basis_keys;

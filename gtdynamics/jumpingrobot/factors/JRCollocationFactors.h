@@ -29,8 +29,8 @@ namespace gtdynamics {
 double multDouble1(const double& d1, const double& d2,
                    gtsam::OptionalJacobian<1, 1> H1,
                    gtsam::OptionalJacobian<1, 1> H2) {
-  if (H1) *H1 = gtsam::I_1x1 * d2;
-  if (H2) *H2 = gtsam::I_1x1 * d1;
+  if (H1) *H1 = gtsam::Matrix1::Identity() * d2;
+  if (H2) *H2 = gtsam::Matrix1::Identity() * d1;
   return d1 * d2;
 }
 

@@ -15,6 +15,9 @@ file(TO_NATIVE_PATH "${PROJECT_BINARY_DIR}/python" GTD_PYTHON_BINARY_DIR)
 
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/pyproject.toml.in
                ${GTD_PYTHON_BINARY_DIR}/pyproject.toml)
+# Newer hatchling requires the readme to live inside the project directory.
+configure_file(${PROJECT_SOURCE_DIR}/README.md
+               ${GTD_PYTHON_BINARY_DIR}/README.md COPYONLY)
 configure_file(${GTDYNAMICS_PYTHON_PATH}/templates/${PROJECT_NAME}.tpl
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 file(COPY ${GTDYNAMICS_PYTHON_PATH}/${PROJECT_NAME}

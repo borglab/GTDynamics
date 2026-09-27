@@ -11,6 +11,8 @@
  * @author Yetong Zhang
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/mechanics/WrenchPlanarFactor.h>
 #include <gtsam/base/Testable.h>

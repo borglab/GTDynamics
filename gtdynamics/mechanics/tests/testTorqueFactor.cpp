@@ -11,6 +11,7 @@
  * @author Frank Dellaert and Mandy Xie
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/mechanics/TorqueFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>

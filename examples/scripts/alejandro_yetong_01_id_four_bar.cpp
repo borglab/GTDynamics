@@ -11,6 +11,8 @@
  * @author Alejandro Escontrela and Yetong Zhang
  */
 
+#include <gtsam/base/VectorConstants.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>

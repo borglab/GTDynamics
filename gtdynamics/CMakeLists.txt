@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors constraints optimizer constrained_optimizer kinematics mechanics statics dynamics cmopt cmcopt scenarios)
+set(SOURCE_SUBDIRS universal_robot utils factors constraints optimizer constrained_optimizer kinematics mechanics statics dynamics cmopt cmcopt scenarios gpmp2)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -55,6 +55,13 @@ foreach(SOURCE_SUBDIR ${SOURCE_SUBDIRS})
   message(STATUS "Building ${SOURCE_SUBDIR}")
   add_subdirectory(${SOURCE_SUBDIR})
 endforeach()
+
+# Internal (unsupported implementation API) headers, installed as gtsam does
+# with its internal headers so the header-only factors compile downstream.
+file(GLOB internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/factors/internal/*.h")
+list(APPEND headers ${internal_headers})
+install(FILES ${internal_headers}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/factors/internal)
 
 ## Generate and install config file
 configure_file(config.h.in config.h)

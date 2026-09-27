@@ -102,7 +102,7 @@ class DynamicsSymbol {
   inline uint8_t jointIdx() const { return joint_idx_; }
 
   /// Retrieve key index.
-  inline uint64_t time() const { return t_; }
+  inline size_t time() const { return t_; }
 
   /// Print.
   void print(const std::string& s = "") const;

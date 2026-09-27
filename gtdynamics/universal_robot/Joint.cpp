@@ -14,6 +14,7 @@
  * @brief Abstract representation of a robot joint.
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/kinematics/JointLimitFactor.h>
 #include <gtdynamics/universal_robot/Joint.h>
 #include <gtdynamics/universal_robot/Link.h>

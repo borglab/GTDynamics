@@ -11,6 +11,7 @@
  * @author Yetong Zhang
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/universal_robot/RobotModels.h>

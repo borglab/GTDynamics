@@ -18,6 +18,7 @@
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/utils/Slice.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/slam/BetweenFactor.h>
 

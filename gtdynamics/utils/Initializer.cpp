@@ -11,6 +11,7 @@
  * @authors Alejandro Escontrela, Yetong Zhang, Varun Agrawal
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>

@@ -11,6 +11,7 @@
  * @author Alejandro Escontrela
  */
 
+#include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
 #include <gtsam/base/Testable.h>

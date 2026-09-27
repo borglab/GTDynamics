@@ -12,6 +12,7 @@
  */
 
 #include <gtdynamics/optimizer/ConvexIQPSolver.h>
+#include <Eigen/QR>
 
 namespace gtdynamics {
 

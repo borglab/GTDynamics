@@ -13,7 +13,12 @@
 #pragma once
 
 #include <gtdynamics/optimizer/Optimizer.h>
+#include <gtsam/inference/Key.h>
 #include <gtsam/linear/NoiseModel.h>
+
+#include <map>
+#include <string>
+#include <utility>
 
 namespace gtdynamics {
 
@@ -22,12 +27,19 @@ struct KinematicsParameters : public OptimizationParameters {
   using Isotropic = gtsam::noiseModel::Isotropic;
   gtsam::SharedNoiseModel p_cost_model,  // pose factor
       g_cost_model,                      // goal point
-      prior_q_cost_model,                // joint angle prior factor
+      prior_q_cost_model,                // joint angle prior factor (default)
       bp_cost_model,                     // fixed-link pose prior factor
       cp_cost_model,                     // contact-height factor
       bv_cost_model,                     // fixed-link twist prior factor
       v_cost_model,                      // twist factor
       cv_cost_model;                     // contact-twist factor
+
+  /// Per-joint joint-angle prior models keyed by joint key; overrides
+  /// prior_q_cost_model for listed joints (used by kinematics IK only).
+  std::map<gtsam::Key, gtsam::SharedNoiseModel> joint_prior_overrides;
+
+  /// Per-joint {lower, upper} limit overrides by joint key (IK only).
+  std::map<gtsam::Key, std::pair<double, double>> joint_limit_overrides;
 
   KinematicsParameters()
       : KinematicsParameters(1e-4, 1e-2, 0.5, 1e-4, 1e-2, 1e-4, 1e-4, 1e-2) {}
@@ -68,6 +80,16 @@ struct KinematicsParameters : public OptimizationParameters {
                              Isotropic::Sigma(6, bv_cost_model_sigma),
                              Isotropic::Sigma(6, v_cost_model_sigma),
                              Isotropic::Sigma(3, cv_cost_model_sigma)) {}
+
+  /// Override the joint-angle prior sigma for one joint by key.
+  void setJointPriorSigma(gtsam::Key joint_key, double sigma) {
+    joint_prior_overrides[joint_key] = Isotropic::Sigma(1, sigma);
+  }
+
+  /// Override the joint-angle limits for one joint by key.
+  void setJointLimit(gtsam::Key joint_key, double lower, double upper) {
+    joint_limit_overrides[joint_key] = {lower, upper};
+  }
 };
 
 }  // namespace gtdynamics

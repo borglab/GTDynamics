@@ -11,6 +11,7 @@
  * @author Dan Barladeanu
  */
 
+#include <gtsam/base/VectorConstants.h>
 #include "gtdynamics/dynamics/ChainDynamicsGraph.h"
 
 #include <gtdynamics/kinematics/Kinematics.h>
@@ -192,7 +193,7 @@ gtsam::NonlinearFactorGraph ChainDynamicsGraph::qFactors(
         chain_joints_[i], base_key, end_effector_key, t);
 
     gtsam::ExpressionEqualityConstraint<gtsam::Vector6> chain_constraint(
-        chain_expression, gtsam::Vector6::Zero(), tolerance);
+        chain_expression, gtsam::Z_6x1, tolerance);
 
     graph.add(chain_constraint.penaltyFactor(1.0));
   }
