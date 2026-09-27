@@ -1,4 +1,4 @@
-#include "gtdynamics/cmopt/TspaceBasis.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
@@ -103,25 +103,25 @@ int main(int argc, char **argv) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<HalfSphereRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
   IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
 
-  LevenbergMarquardtParams lm_params;
-  auto soft_result = OptimizeIE_Soft(problem, lm_params, 100);
+  LevenbergMarquardtParams lmParams;
+  auto soft_result = OptimizeIE_Soft(problem, lmParams, 100);
 
   auto barrier_params = std::make_shared<PenaltyParameters>();
   barrier_params->num_iterations = 15;
   auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
 
-  GDParams gd_params;
+  GradientDescentParams gd_params;
   auto gd_result = OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
 
   IELMParams ie_params;
-  ie_params.lm_params.minModelFidelity = 0.5;
+  ie_params.lmParams.minModelFidelity = 0.5;
   auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
 
   soft_result.first.printLatex(std::cout);
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 
   //   const auto &details = lm_optimizer.details();
   //   for (const auto &iter_details : details) {
-  //     IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+  //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
   //                                   IEHalfSphere::PrintValues,
   //                                   IEHalfSphere::PrintDelta);
   //   }
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
 
   // // Run GD optimization
   // {
-  //   GDParams params;
+  //   GradientDescentParams params;
   //   params.maxIterations = 30;
   //   IEGDOptimizer gd_optimizer(params);
   //   auto gd_result = gd_optimizer.optimize(graph, e_constraints,
@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
 
   //   const auto &details = gd_optimizer.details();
   //   for (const auto &iter_details : details) {
-  //     IEOptimizer::PrintIterDetails(iter_details, num_steps, false,
+  //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
   //                                   IEHalfSphere::PrintValues,
   //                                   IEHalfSphere::PrintDelta);
   //   }

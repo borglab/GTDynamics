@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CM-OPT Retraction Choices in GTDynamics</title>
+  <style type="text/css">
+    :root {
+      color-scheme: light;
+      --ink: #202124;
+      --muted: #5f6368;
+      --line: #d8dee4;
+      --panel: #f6f8fa;
+      --code: #0f172a;
+      --accent: #0b6bcb;
+      --accent-2: #7a5c00;
+      --good: #166534;
+      --warn: #9a3412;
+      --bg: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 42px 0 72px;
+    }
+
+    .masthead {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 22px;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 44px 0 14px;
+      font-size: 1.65rem;
+      line-height: 1.2;
+      letter-spacing: 0;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 1.18rem;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code,
+    pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    code {
+      background: var(--panel);
+      border: 1px solid #e8ebef;
+      border-radius: 4px;
+      padding: 0.08rem 0.25rem;
+      color: var(--code);
+      white-space: nowrap;
+    }
+
+    pre {
+      margin: 14px 0 18px;
+      padding: 16px;
+      overflow-x: auto;
+      background: #0b1020;
+      color: #eef2ff;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    pre code {
+      background: transparent;
+      border: 0;
+      color: inherit;
+      padding: 0;
+      white-space: pre;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0 28px;
+      font-size: 0.95rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel);
+      font-weight: 700;
+    }
+
+    ul,
+    ol {
+      margin: 0 0 16px 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .lede {
+      max-width: 850px;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .note,
+    .warning {
+      border-left: 4px solid var(--accent);
+      background: var(--panel);
+      padding: 12px 14px;
+      margin: 16px 0 22px;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .warning {
+      border-left-color: var(--warn);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 18px 0 26px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .tag {
+      display: inline-block;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-right: 4px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0 24px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--panel);
+      min-height: 108px;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .choice-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        width: min(100% - 28px, 1120px);
+        padding-top: 28px;
+      }
+
+      .grid,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="masthead">
+    <h1>CM-OPT Retraction Choices in GTDynamics</h1>
+    <p class="lede">
+      This note explains how CM-OPT chooses a retraction in GTDynamics, what each
+      of the four implemented retraction policies solves, and where the mechanics
+      live in the code. It is written for the equality-constrained CM-OPT path in
+      <code>gtdynamics/cmopt</code>.
+    </p>
+  </div>
+
+  <div class="section">
+    <h2>Where Retraction Fits in CM-OPT</h2>
+    <p>
+      CM-OPT rewrites an equality-constrained problem
+      <code>min f(X) subject to h(X) = 0</code> as an unconstrained optimization
+      over constraint-connected components. Each component becomes one
+      <code>ConstraintManifold</code> value. Ordinary cost factors are rewritten
+      as factors over those manifold values, and GTSAM's nonlinear optimizers can
+      then update the transformed problem.
+    </p>
+    <p>
+      The retraction policy is not selected inside the outer nonlinear optimizer.
+      It is selected when each <code>ConstraintManifold</code> is constructed:
+      <code>ConstraintManifold::Params::retractor_creator</code> creates the
+      concrete <code>Retractor</code>. The default parameter object chooses
+      <code>UoptRetractorCreator</code>.
+    </p>
+
+    <div class="flow">
+      <div class="step">
+        <strong>1. Reduced step</strong>
+        Optimizer computes <code>xi</code> in the component tangent coordinates.
+      </div>
+      <div class="step">
+        <strong>2. Lift</strong>
+        <code>TspaceBasis</code> maps <code>xi</code> to ambient
+        <code>VectorValues</code>.
+      </div>
+      <div class="step">
+        <strong>3. Base retract</strong>
+        Each original variable applies its own GTSAM retraction.
+      </div>
+      <div class="step">
+        <strong>4. Restore constraints</strong>
+        The chosen <code>Retractor</code> solves a small constraint-restoration
+        problem.
+      </div>
+      <div class="step">
+        <strong>5. Rebuild manifold</strong>
+        A new <code>ConstraintManifold</code> is created at the updated values.
+      </div>
+    </div>
+
+    <h3>Primary Code Path</h3>
+    <table summary="Primary CM-OPT retraction code path">
+      <thead>
+        <tr>
+          <th>Mechanic</th>
+          <th>Code location</th>
+          <th>What to look for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Select basis and retractor</td>
+          <td><a href="ConstraintManifold.h#L70"><code>ConstraintManifold.h:70</code></a></td>
+          <td><code>ConstraintManifold::Params</code> contains <code>basis_creator</code> and <code>retractor_creator</code>.</td>
+        </tr>
+        <tr>
+          <td>Default retractor</td>
+          <td><a href="ConstraintManifold.h#L76"><code>ConstraintManifold.h:76</code></a></td>
+          <td>The default is <code>UoptRetractorCreator</code>.</td>
+        </tr>
+        <tr>
+          <td>Create concrete retractor</td>
+          <td><a href="ConstraintManifold.h#L113"><code>ConstraintManifold.h:113</code></a></td>
+          <td>The factory is called with the component's equality constraints.</td>
+        </tr>
+        <tr>
+          <td>Initialize feasible values</td>
+          <td><a href="ConstraintManifold.cpp#L23"><code>ConstraintManifold.cpp:23</code></a></td>
+          <td>If <code>retract_init</code> is true, construction calls <code>retractConstraints</code>.</td>
+        </tr>
+        <tr>
+          <td>Retract during optimization</td>
+          <td><a href="ConstraintManifold.cpp#L45"><code>ConstraintManifold.cpp:45</code></a></td>
+          <td><code>xi</code> is lifted, then <code>retractor_-&gt;retract(values_, delta)</code> is called.</td>
+        </tr>
+        <tr>
+          <td>Common base retraction</td>
+          <td><a href="Retractor.h#L98"><code>Retractor.h:98</code></a></td>
+          <td><code>values.retract(delta)</code> applies each base variable's own manifold retraction.</td>
+        </tr>
+        <tr>
+          <td>Common constraint restoration hook</td>
+          <td><a href="Retractor.h#L117"><code>Retractor.h:117</code></a></td>
+          <td>The base-retracted trial point is passed to <code>retractConstraints</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>The Four Retraction Choices</h2>
+    <table summary="Comparison of the four CM-OPT retraction choices">
+      <thead>
+        <tr>
+          <th>Choice</th>
+          <th>What it solves</th>
+          <th>Best fit</th>
+          <th>Main code</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>UoptRetractor</code></td>
+          <td>Unconstrained LM on the equality-constraint penalty graph.</td>
+          <td>Simple default, approximate projection, small problems where all constrained variables may move.</td>
+          <td><a href="Retractor.cpp#L56"><code>Retractor.cpp:56</code></a></td>
+        </tr>
+        <tr>
+          <td><code>ProjRetractor</code></td>
+          <td>Metric-projection style solve using priors around the base-retracted trial point, followed by optional cleanup.</td>
+          <td>Small problems where the closest feasible point to the proposed step matters.</td>
+          <td><a href="Retractor.cpp#L88"><code>Retractor.cpp:88</code></a></td>
+        </tr>
+        <tr>
+          <td><code>BasisRetractor</code></td>
+          <td>Fix selected basis variables at their trial values and solve constraints for the remaining variables.</td>
+          <td>Sparse or structured problems with known independent coordinates.</td>
+          <td><a href="Retractor.cpp#L154"><code>Retractor.cpp:154</code></a></td>
+        </tr>
+        <tr>
+          <td><code>DynamicsRetractor</code></td>
+          <td>Hierarchical kinodynamic solve: positions, then velocities, then acceleration/dynamics variables.</td>
+          <td>Mechanics problems with q/v/acceleration structure and level-wise dependencies.</td>
+          <td><a href="Retractor.cpp#L364"><code>Retractor.cpp:364</code></a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>1. UoptRetractor: Unconstrained Penalty Projection</h2>
+    <div class="choice-title">
+      <span class="tag">default</span>
+      <span class="tag">all variables free</span>
+      <span class="tag">approximate projection</span>
+    </div>
+    <p>
+      <code>UoptRetractor</code> is the default CM-OPT retraction. It takes the
+      base-retracted trial values and runs LM on the equality constraint penalty
+      graph. There are no priors tying the result to the trial point, so all
+      variables in the connected component may move as long as the constraint
+      residual is reduced.
+    </p>
+    <p>
+      The constructor creates a reusable <code>MutableLMOptimizer</code> from
+      <code>constraints-&gt;penaltyGraph()</code>. Each retraction resets the
+      optimizer values to the current trial point and calls <code>optimize()</code>.
+    </p>
+
+    <h3>Mechanics</h3>
+    <ol>
+      <li><code>Retractor::retract</code> first computes <code>values.retract(delta)</code>.</li>
+      <li><code>UoptRetractor::retractConstraints</code> sets those values into the mutable LM optimizer.</li>
+      <li>The optimizer minimizes only the penalty graph generated from the equality constraints.</li>
+      <li>The returned values replace the component values for the next manifold state.</li>
+    </ol>
+
+    <h3>Code Locations</h3>
+    <ul>
+      <li><a href="Retractor.h#L152"><code>Retractor.h:152</code></a>: class declaration.</li>
+      <li><a href="Retractor.cpp#L50"><code>Retractor.cpp:50</code></a>: constructor stores the penalty graph in <code>MutableLMOptimizer</code>.</li>
+      <li><a href="Retractor.cpp#L56"><code>Retractor.cpp:56</code></a>: <code>retractConstraints(const Values&amp;)</code>.</li>
+      <li><a href="Retractor.cpp#L64"><code>Retractor.cpp:64</code></a>: rvalue overload.</li>
+      <li><a href="Retractor.h#L325"><code>Retractor.h:325</code></a>: <code>UoptRetractorCreator</code>.</li>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.cpp#L487"><code>ConstrainedOptBenchmark.cpp:487</code></a>: benchmark default uses this retractor.</li>
+    </ul>
+
+    <h3>Choosing It</h3>
+    <p>
+      Choose this for the simplest CM-OPT setup, especially with the orthonormal
+      null-space basis. It is also a reasonable first choice for a small
+      constrained mechanics problem when you care more about getting back near
+      feasibility than preserving a specific independent coordinate exactly.
+    </p>
+    <p>
+      Do not choose it when the proposed step has a specific physical meaning
+      that must be retained, for example "this joint coordinate is the independent
+      generalized coordinate." Because there are no anchoring priors, the solve
+      can redistribute motion across the component.
+    </p>
+
+    <pre><code>auto params = std::make_shared&lt;RetractParams&gt;();
+params-&gt;lm_params.setMaxIterations(10);
+params-&gt;check_feasible = true;
+
+moptParams.cc_params-&gt;retractor_creator =
+    std::make_shared&lt;UoptRetractorCreator&gt;(params);</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>2. ProjRetractor: Metric-Projection Style Retraction</h2>
+    <div class="choice-title">
+      <span class="tag">closest feasible trial</span>
+      <span class="tag">uses priors</span>
+      <span class="tag">small-problem friendly</span>
+    </div>
+    <p>
+      <code>ProjRetractor</code> is the code path closest to the metric projection
+      described in CM-OPT. It starts from the product-manifold trial point,
+      appends Gaussian priors centered at that trial point, and solves a graph
+      containing both equality-constraint penalties and those priors. The priors
+      define the projection metric: smaller <code>sigma</code> means stronger
+      pressure to stay near the trial point.
+    </p>
+    <p>
+      After the solve with priors, the implementation usually runs a second LM
+      solve without priors. That cleanup step improves final feasibility. If
+      <code>use_basis_keys</code> is enabled and the prior solve is already below
+      <code>feasible_threshold</code>, the implementation returns early.
+    </p>
+
+    <h3>Mechanics</h3>
+    <ol>
+      <li>Copy the component merit graph from the equality constraint penalty graph.</li>
+      <li>Compute <code>values_retract_base = retractBaseVariables(values, delta)</code>.</li>
+      <li>Add <code>GeneralPriorFactor</code> priors around <code>values_retract_base</code>.</li>
+      <li>Run LM on constraints plus priors, initialized at <code>values_retract_base</code>.</li>
+      <li>Run a cleanup LM solve on constraints only, unless the basis-key fast return condition applies.</li>
+    </ol>
+
+    <h3>Code Locations</h3>
+    <ul>
+      <li><a href="Retractor.h#L178"><code>Retractor.h:178</code></a>: class declaration.</li>
+      <li><a href="Retractor.cpp#L72"><code>Retractor.cpp:72</code></a>: constructor stores the constraint penalty graph.</li>
+      <li><a href="Retractor.cpp#L82"><code>Retractor.cpp:82</code></a>: <code>retractConstraints</code> used for initialization; it runs constraints-only LM.</li>
+      <li><a href="Retractor.cpp#L88"><code>Retractor.cpp:88</code></a>: overridden <code>retract</code> with priors.</li>
+      <li><a href="Retractor.cpp#L92"><code>Retractor.cpp:92</code></a>: add priors either on basis keys or all keys.</li>
+      <li><a href="Retractor.cpp#L108"><code>Retractor.cpp:108</code></a>: cleanup solve without priors.</li>
+      <li><a href="Retractor.h#L344"><code>Retractor.h:344</code></a>: <code>ProjRetractorCreator</code>.</li>
+    </ul>
+
+    <div class="warning">
+      <strong>Current factory caveat.</strong>
+      <code>ProjRetractor</code> can accept optional basis keys in its constructor,
+      but <code>ProjRetractorCreator</code> currently creates it without passing
+      basis keys. Do not set <code>params-&gt;use_basis_keys = true</code> through
+      the current creator unless you also extend the creator or instantiate the
+      retractor directly with basis keys.
+    </div>
+
+    <h3>Choosing It</h3>
+    <p>
+      Choose this for a small constrained problem when "retraction" should mean
+      "find the feasible point closest to the base-retracted trial." That is often
+      the most literal mechanical interpretation if the trial point is meaningful
+      and the metric is acceptable. The cost is that it builds an augmented graph
+      per call and runs one or two LM solves.
+    </p>
+
+    <pre><code>auto params = std::make_shared&lt;RetractParams&gt;();
+params-&gt;sigma = 1.0;
+params-&gt;lm_params.setMaxIterations(20);
+params-&gt;check_feasible = true;
+
+moptParams.cc_params-&gt;retractor_creator =
+    std::make_shared&lt;ProjRetractorCreator&gt;(params);</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>3. BasisRetractor: Fix Independent Variables and Recover the Rest</h2>
+    <div class="choice-title">
+      <span class="tag">basis variables fixed</span>
+      <span class="tag">sparse structure</span>
+      <span class="tag">SV default</span>
+    </div>
+    <p>
+      <code>BasisRetractor</code> implements the basis-variable retraction. The
+      independent coordinates are selected as concrete base variables. Retraction
+      applies the proposed update to those basis variables, treats them as fixed,
+      and solves the equality constraints for all remaining variables.
+    </p>
+    <p>
+      This is tightly paired with <code>EliminationBasis</code>. The same
+      <code>BasisKeyFunc</code> should select variables whose total tangent
+      dimension equals the component manifold dimension. If the selected basis
+      variables do not span the manifold dimension, <code>EliminationBasis</code>
+      throws during construction.
+    </p>
+
+    <h3>Mechanics</h3>
+    <ol>
+      <li>The constructor receives <code>basis_keys</code> and builds a graph where factors touching those keys are wrapped as <code>ConstVarFactor</code>.</li>
+      <li>On every retraction, each wrapped factor receives the trial values for the fixed basis variables.</li>
+      <li>The optimizer receives only the non-basis variables present in its graph.</li>
+      <li>If the reduced graph is already below <code>feasible_threshold</code>, the fast path returns without LM.</li>
+      <li>Otherwise LM solves for the non-basis variables, and the fixed basis variables are inserted back into the result.</li>
+    </ol>
+
+    <h3>Code Locations</h3>
+    <ul>
+      <li><a href="Retractor.h#L213"><code>Retractor.h:213</code></a>: class declaration.</li>
+      <li><a href="Retractor.cpp#L117"><code>Retractor.cpp:117</code></a>: constructor builds the fixed-variable graph.</li>
+      <li><a href="Retractor.cpp#L154"><code>Retractor.cpp:154</code></a>: <code>retractConstraints</code>.</li>
+      <li><a href="Retractor.cpp#L176"><code>Retractor.cpp:176</code></a>: fast path for already feasible reduced values.</li>
+      <li><a href="Retractor.cpp#L199"><code>Retractor.cpp:199</code></a>: LM solve for non-basis variables.</li>
+      <li><a href="Retractor.cpp#L203"><code>Retractor.cpp:203</code></a>: optional recompute fallback.</li>
+      <li><a href="Retractor.h#L364"><code>Retractor.h:364</code></a>: <code>BasisRetractorCreator</code>.</li>
+      <li><a href="TspaceBasis.cpp#L437"><code>TspaceBasis.cpp:437</code></a>: <code>EliminationBasis</code> verifies basis-key dimensions and constructs the symbolic ordering.</li>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.cpp#L499"><code>ConstrainedOptBenchmark.cpp:499</code></a>: benchmark SV default uses this path.</li>
+    </ul>
+
+    <h3>Choosing It</h3>
+    <p>
+      Choose this when your mechanics model has natural independent generalized
+      coordinates and dependent variables that should be recovered from
+      constraints. This is usually the right choice for larger sparse mechanics
+      problems because the symbolic structure can be reused and the retraction
+      solve touches only dependent variables.
+    </p>
+    <p>
+      The main responsibility is selecting good basis keys. For example, in the
+      connected-pose test, fixing <code>x3</code> means the retractor preserves
+      the trial value of <code>x3</code> and solves <code>x1</code> and
+      <code>x2</code> to satisfy the between constraints.
+    </p>
+
+    <pre><code>BasisKeyFunc basisKeyFunc = [](const KeyVector&amp; keys) {
+  return KeyVector{/* independent coordinate keys */};
+};
+
+auto moptParams =
+    ConstrainedOptBenchmark::DefaultMoptParamsSV(basisKeyFunc);
+
+moptParams.cc_params-&gt;retractor_creator-&gt;params()
+    -&gt;lm_params.setMaxIterations(10);</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>4. DynamicsRetractor: Hierarchical Kinodynamic Retraction</h2>
+    <div class="choice-title">
+      <span class="tag">q/v/a staging</span>
+      <span class="tag">kinodynamics</span>
+      <span class="tag">specialized</span>
+    </div>
+    <p>
+      <code>DynamicsRetractor</code> is a mechanics-specific specialization. It
+      assumes variables can be classified into position-level, velocity-level,
+      and acceleration/dynamics-level groups from their <code>DynamicsSymbol</code>
+      labels. It then solves the retraction in stages: first positions, then
+      velocities with positions fixed, then acceleration and dynamics variables
+      with positions and velocities fixed.
+    </p>
+    <p>
+      Each stage has two optimizers: one with priors around selected basis keys
+      and one without priors for cleanup. The flow mirrors the idea that lower
+      mechanical levels should be settled before higher-level dynamic quantities
+      are recovered.
+    </p>
+
+    <h3>Mechanics</h3>
+    <ol>
+      <li>Classify keys with <code>isQLevel</code> and <code>isVLevel</code>; other keys go to acceleration/dynamics.</li>
+      <li>Split factors by the highest level of any key they touch.</li>
+      <li>Wrap velocity factors so q-level values are fixed.</li>
+      <li>Wrap acceleration/dynamics factors so q and v values are fixed.</li>
+      <li>For q, v, and acceleration/dynamics stages: update priors, solve with priors, then solve without priors.</li>
+      <li>Insert each stage's result into <code>known_values</code> before solving the next stage.</li>
+    </ol>
+
+    <h3>Code Locations</h3>
+    <ul>
+      <li><a href="Retractor.h#L254"><code>Retractor.h:254</code></a>: class declaration.</li>
+      <li><a href="Retractor.cpp#L234"><code>Retractor.cpp:234</code></a>: q-level and v-level key classification helpers.</li>
+      <li><a href="Retractor.cpp#L285"><code>Retractor.cpp:285</code></a>: constructor classifies keys, splits factors, and builds stage optimizers.</li>
+      <li><a href="Retractor.cpp#L338"><code>Retractor.cpp:338</code></a>: wrap higher-level graphs with fixed lower-level variables.</li>
+      <li><a href="Retractor.cpp#L357"><code>Retractor.cpp:357</code></a>: update stage priors from current trial values.</li>
+      <li><a href="Retractor.cpp#L364"><code>Retractor.cpp:364</code></a>: staged <code>retractConstraints</code>.</li>
+      <li><a href="Retractor.h#L397"><code>Retractor.h:397</code></a>: <code>DynamicsRetractorCreator</code>.</li>
+    </ul>
+
+    <div class="note">
+      <strong>Implementation detail.</strong>
+      In the current constructor, <code>basis_q_keys_ = q_keys</code> is assigned
+      after optional basis-key classification. That means q-level basis selection
+      is effectively all q keys in the current implementation, even when
+      <code>use_basis_keys</code> is true.
+    </div>
+
+    <h3>Choosing It</h3>
+    <p>
+      Choose this when the constrained component is a kinodynamic mechanics
+      component and the q/v/acceleration ordering is meaningful. It is not the
+      generic projection choice for arbitrary constraints; it encodes a modeling
+      assumption about how the physics variables should be recovered.
+    </p>
+
+    <pre><code>auto params = std::make_shared&lt;RetractParams&gt;();
+params-&gt;use_basis_keys = true;
+params-&gt;sigma = 1.0;
+params-&gt;check_feasible = true;
+
+moptParams.cc_params-&gt;retractor_creator =
+    std::make_shared&lt;DynamicsRetractorCreator&gt;(params, basisKeyFunc);</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>Basis Choice and Retraction Choice Are Related</h2>
+    <p>
+      CM-OPT has two separate but coupled choices: the tangent-space basis and
+      the retractor. The basis maps the optimizer's reduced step into ambient
+      base-variable tangent vectors; the retractor decides how to restore
+      feasibility after applying that ambient update.
+    </p>
+
+    <table summary="Relationship between tangent basis choices and retraction choices">
+      <thead>
+        <tr>
+          <th>Basis</th>
+          <th>Mechanics</th>
+          <th>Typical retractor pairing</th>
+          <th>Code</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>OrthonormalBasis</code></td>
+          <td>Linearize constraints, compute a null-space basis, and lift <code>xi</code> through that dense or sparse null space.</td>
+          <td><code>UoptRetractor</code> or <code>ProjRetractor</code>.</td>
+          <td><a href="TspaceBasis.cpp#L95"><code>TspaceBasis.cpp:95</code></a>, <a href="TspaceBasis.cpp#L225"><code>TspaceBasis.cpp:225</code></a></td>
+        </tr>
+        <tr>
+          <td><code>EliminationBasis</code></td>
+          <td>Select explicit basis keys, eliminate non-basis variables, and cache recovery Jacobians.</td>
+          <td><code>BasisRetractor</code>.</td>
+          <td><a href="TspaceBasis.cpp#L437"><code>TspaceBasis.cpp:437</code></a>, <a href="TspaceBasis.cpp#L608"><code>TspaceBasis.cpp:608</code></a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      The benchmark defaults make this relationship explicit:
+      <code>DefaultMoptParams()</code> uses <code>OrthonormalBasisCreator</code>
+      and <code>UoptRetractorCreator</code>, while
+      <code>DefaultMoptParamsSV()</code> uses <code>EliminationBasisCreator</code>
+      and <code>BasisRetractorCreator</code>.
+    </p>
+  </div>
+
+  <div class="section">
+    <h2>CM(F) and CM(I) Are Accuracy Settings, Not New Retractors</h2>
+    <p>
+      In the benchmark runner, CM(F) and CM(I) do not inherently select different
+      retractor classes. The retractor still comes from the example's
+      <code>moptFactory</code>. The difference is the inner retractor LM budget
+      and optional final cleanup.
+    </p>
+    <ul>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.h#L63"><code>ConstrainedOptBenchmark.h:63</code></a>: default CM(F) retractor iterations are 10.</li>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.h#L65"><code>ConstrainedOptBenchmark.h:65</code></a>: default CM(I) retractor iterations are 1.</li>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.h#L67"><code>ConstrainedOptBenchmark.h:67</code></a>: CM(I) defaults to final retraction.</li>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.cpp#L441"><code>ConstrainedOptBenchmark.cpp:441</code></a>: runner applies the feasible/infeasible iteration budget.</li>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.cpp#L445"><code>ConstrainedOptBenchmark.cpp:445</code></a>: runner enables <code>retract_final</code> for CM(I) when requested.</li>
+      <li><a href="ManifoldOptimizer.cpp#L274"><code>ManifoldOptimizer.cpp:274</code></a>: final base-value recovery optionally calls <code>feasibleValues()</code>.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Practical Decision Guide</h2>
+    <table summary="Practical decision guide for choosing a CM-OPT retractor">
+      <thead>
+        <tr>
+          <th>Situation</th>
+          <th>Choose</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>You want the default and can allow all constrained variables to move during feasibility restoration.</td>
+          <td><code>UoptRetractor</code></td>
+          <td>Lowest setup burden. It only needs the equality constraints and LM parameters.</td>
+        </tr>
+        <tr>
+          <td>You are solving a small constrained problem and want the feasible point closest to the trial step.</td>
+          <td><code>ProjRetractor</code></td>
+          <td>The priors around the trial point express the projection metric directly.</td>
+        </tr>
+        <tr>
+          <td>You know the independent mechanical coordinates and want them preserved by retraction.</td>
+          <td><code>BasisRetractor</code></td>
+          <td>It fixes those variables and recovers the dependent variables through the constraints.</td>
+        </tr>
+        <tr>
+          <td>Your component has position, velocity, and acceleration/dynamics layers with natural staged recovery.</td>
+          <td><code>DynamicsRetractor</code></td>
+          <td>It encodes the q, v, acceleration/dynamics hierarchy explicitly.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Recommendation for a small mechanics example.</strong>
+      Start with <code>ProjRetractor</code> if your question is geometric:
+      "which feasible point is closest to this proposed motion?" Start with
+      <code>BasisRetractor</code> if your question is coordinate-mechanical:
+      "these generalized coordinates are independent; recover everything else."
+      Use <code>DynamicsRetractor</code> only when the q/v/acceleration hierarchy
+      is part of the model.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Parameter Map</h2>
+    <p>
+      The shared options live in <a href="Retractor.h#L50"><code>Retractor.h:50</code></a>
+      as <code>RetractParams</code>.
+    </p>
+    <table summary="RetractParams parameter effects by retractor">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Used by</th>
+          <th>Effect</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>lm_params</code></td>
+          <td>All four</td>
+          <td>Controls inner LM iterations, linear solver, damping limits, and verbosity.</td>
+        </tr>
+        <tr>
+          <td><code>check_feasible</code>, <code>feasible_threshold</code></td>
+          <td>All via <code>checkFeasible</code>; threshold also affects fast paths</td>
+          <td>Reports failed feasibility checks and controls early return conditions.</td>
+        </tr>
+        <tr>
+          <td><code>sigma</code></td>
+          <td><code>ProjRetractor</code>, <code>DynamicsRetractor</code></td>
+          <td>Standard deviation for priors around the trial point. Smaller values hold closer to the trial.</td>
+        </tr>
+        <tr>
+          <td><code>use_basis_keys</code></td>
+          <td><code>BasisRetractor</code>, <code>DynamicsRetractor</code>, partial support in <code>ProjRetractor</code></td>
+          <td>Indicates that a selected basis-key set should define independent coordinates or priors.</td>
+        </tr>
+        <tr>
+          <td><code>recompute</code></td>
+          <td><code>BasisRetractor</code></td>
+          <td>If the reduced solve is still infeasible, optionally inserts basis variables and reruns full LM.</td>
+        </tr>
+        <tr>
+          <td><code>apply_base_retraction</code></td>
+          <td>Present in params, not active in current generic retractor flow</td>
+          <td>The relevant conditional in <code>ProjRetractor</code> is currently commented out; the code initializes from the base-retracted values.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>End-to-End Places to Read</h2>
+    <ul>
+      <li><a href="README.md#retraction"><code>gtdynamics/cmopt/README.md</code></a>: CM-OPT documentation and paper equation mapping.</li>
+      <li><a href="ConstraintManifold.cpp#L45"><code>ConstraintManifold.cpp:45</code></a>: exact point where reduced updates become retractions.</li>
+      <li><a href="Retractor.cpp#L50"><code>Retractor.cpp:50</code></a>: all four retractor implementations in one file.</li>
+      <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.cpp#L487"><code>ConstrainedOptBenchmark.cpp:487</code></a>: benchmark defaults for dense and SV CM-OPT.</li>
+      <li><a href="../../tests/testRetractor.cpp#L33"><code>tests/testRetractor.cpp:33</code></a>: small connected-pose retractor behavior test.</li>
+      <li><a href="../../tests/testConstraintManifold.cpp#L450"><code>tests/testConstraintManifold.cpp:450</code></a>: basis-variable update test in a dynamics-style component.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

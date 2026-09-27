@@ -64,7 +64,7 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
    * @param dim Variable dimension.
    * @return Identity multi-variable Jacobian.
    */
-  static MultiJacobian Identity(const Key& key, const size_t& dim);
+  static MultiJacobian identity(const Key& key, const size_t& dim);
 
   /**
    * Vertically stack two multi-variable Jacobians.
@@ -72,7 +72,7 @@ class MultiJacobian : public std::unordered_map<Key, Matrix> {
    * @param jac2 Second Jacobian block.
    * @return Vertically stacked Jacobian.
    */
-  static MultiJacobian VerticalStack(const MultiJacobian& jac1,
+  static MultiJacobian verticalStack(const MultiJacobian& jac1,
                                      const MultiJacobian& jac2);
 
   /**
@@ -142,7 +142,7 @@ typedef std::unordered_map<Key, MultiJacobian> MultiJacobians;
  * @param multi_jac2 Inner Jacobian map.
  * @return Composed Jacobian map.
  */
-MultiJacobians JacobiansMultiply(const MultiJacobians& multi_jac1,
+MultiJacobians multiplyJacobians(const MultiJacobians& multi_jac1,
                                  const MultiJacobians& multi_jac2);
 
 /** Given a bayes net, compute the jacobians of all variables w.r.t. basis
@@ -152,7 +152,7 @@ MultiJacobians JacobiansMultiply(const MultiJacobians& multi_jac1,
  * @param var_dim dimension of variables
  * @param jacobians output, jacobians of all variables
  */
-void ComputeBayesNetJacobian(const GaussianBayesNet& bn,
+void computeBayesNetJacobian(const GaussianBayesNet& bn,
                              const KeyVector& basis_keys,
                              const std::map<Key, size_t>& var_dim,
                              MultiJacobians& jacobians);

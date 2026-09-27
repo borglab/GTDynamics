@@ -154,7 +154,7 @@ class CartPoleWithFrictionRetractor : public IERetractor {
   IEConstraintManifold retract(
       const IEConstraintManifold *manifold, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
-      IERetractInfo *retract_info = nullptr) const override;
+      IERetractionInfo *retract_info = nullptr) const override;
 
   /** Fallback penalty-based retraction for boundary corner cases. */
   IEConstraintManifold retract1(const IEConstraintManifold *manifold,
@@ -176,7 +176,7 @@ class CPBarrierRetractor : public IERetractor {
   IEConstraintManifold retract(
       const IEConstraintManifold *manifold, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
-      IERetractInfo *retract_info = nullptr) const override;
+      IERetractionInfo *retract_info = nullptr) const override;
 };
 
 }  // namespace gtdynamics

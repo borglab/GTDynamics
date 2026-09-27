@@ -258,8 +258,8 @@ Values IECartPoleWithLimits::getInitValuesInterp(size_t num_steps) const {
   return init_values;
 }
 
-BasisKeyFunc IECartPoleWithLimits::getBasisKeyFunc() const {
-  BasisKeyFunc basis_key_func = [=](const KeyVector& keys) -> KeyVector {
+BasisKeyFunction IECartPoleWithLimits::getBasisKeyFunction() const {
+  BasisKeyFunction basisKeyFunction = [=](const KeyVector& keys) -> KeyVector {
     KeyVector basis_keys;
     size_t k = DynamicsSymbol(*keys.begin()).time();
     if (k == 0) {
@@ -287,7 +287,7 @@ BasisKeyFunc IECartPoleWithLimits::getBasisKeyFunc() const {
     }
     return basis_keys;
   };
-  return basis_key_func;
+  return basisKeyFunction;
 }
 
 
@@ -296,7 +296,7 @@ BasisKeyFunc IECartPoleWithLimits::getBasisKeyFunc() const {
 IEConstraintManifold CartPoleWithLimitsRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo* retract_info) const {
+    IERetractionInfo* retract_info) const {
   Values new_values = manifold->values().retract(delta);
 
   // delta.print("==============================delta============================\n",

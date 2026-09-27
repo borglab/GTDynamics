@@ -179,7 +179,7 @@ class Vision60Robot {
   const OptimizerSetting &opt() const { return graph_builder.opt(); }
 
   /// Return function that select basis keys for constraint manifolds.
-  BasisKeyFunc getBasisKeyFunc() const {
+  BasisKeyFunction getBasisKeyFunction() const {
     if (express_redundancy) {
       return &findBasisKeysRedundancy;
     } else {

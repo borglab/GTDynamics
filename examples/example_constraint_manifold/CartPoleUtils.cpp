@@ -249,9 +249,9 @@ OptimizerSetting CartPole::getOptSetting() const {
 }
 
 /* ************************************************************************* */
-BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
+BasisKeyFunction CartPole::getBasisKeyFunction(bool unactuated_as_constraint) const {
   if (unactuated_as_constraint) {
-    BasisKeyFunc basis_key_func =
+    BasisKeyFunction basisKeyFunction =
         [=](const KeyVector& keys) -> KeyVector {
       KeyVector basis_keys;
       for (const Key& key : keys) {
@@ -268,9 +268,9 @@ BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
       }
       return basis_keys;
     };
-    return basis_key_func;
+    return basisKeyFunction;
   } else {
-    BasisKeyFunc basis_key_func =
+    BasisKeyFunction basisKeyFunction =
         [](const KeyVector& keys) -> KeyVector {
       KeyVector basis_keys;
       for (const Key& key : keys) {
@@ -287,7 +287,7 @@ BasisKeyFunc CartPole::getBasisKeyFunc(bool unactuated_as_constraint) const {
       }
       return basis_keys;
     };
-    return basis_key_func;
+    return basisKeyFunction;
   }
 }
 

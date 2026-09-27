@@ -8,7 +8,7 @@
 /* Constrained optimization benchmark implementations. */
 
 #include <gtdynamics/cmopt/Retractor.h>
-#include <gtdynamics/cmopt/TspaceBasis.h>
+#include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 
@@ -433,7 +433,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
 
         auto moptParams = moptFactory_(method);
         auto* retractLm =
-            &moptParams.cc_params->retractor_creator->params()->lm_params;
+            &moptParams.constraintManifoldParams->retractorCreator->params()->lmParams;
         if (options_.verboseRetractor) {
           retractLm->setVerbosityLM("SUMMARY");
         }
@@ -443,7 +443,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
                                         : options_.cmIRetractorMaxIterations);
 
         if (!feasible && options_.cmIRetractFinal) {
-          moptParams.retract_final = true;
+          moptParams.retractFinalValues = true;
         }
 
         result = OptimizeCmOpt(problem, latexOs, moptParams, lmParams,
@@ -486,28 +486,28 @@ Values ConstrainedOptBenchmark::OptimizeSoftConstraints(
 
 ManifoldOptimizerParameters ConstrainedOptBenchmark::DefaultMoptParams() {
   ManifoldOptimizerParameters moptParams;
-  auto retractorParams = std::make_shared<RetractParams>();
-  moptParams.cc_params->retractor_creator =
-      std::make_shared<UoptRetractorCreator>(retractorParams);
-  auto basisParams = std::make_shared<TspaceBasisParams>();
-  basisParams->always_construct_basis = false;
-  moptParams.cc_params->basis_creator =
+  auto retractorParams = std::make_shared<RetractionParams>();
+  moptParams.constraintManifoldParams->retractorCreator =
+      std::make_shared<UnconstrainedOptimizationRetractorCreator>(retractorParams);
+  auto basisParams = std::make_shared<TangentSpaceBasisParams>();
+  basisParams->alwaysConstructBasis = false;
+  moptParams.constraintManifoldParams->basisCreator =
       std::make_shared<OrthonormalBasisCreator>(basisParams);
   return moptParams;
 }
 
 ManifoldOptimizerParameters ConstrainedOptBenchmark::DefaultMoptParamsSV(
-    const BasisKeyFunc& basisKeyFunc) {
+    const BasisKeyFunction& basisKeyFunction) {
   ManifoldOptimizerParameters moptParams;
-  auto retractorParams = std::make_shared<RetractParams>();
-  retractorParams->use_basis_keys = true;
-  moptParams.cc_params->retractor_creator =
-      std::make_shared<BasisRetractorCreator>(basisKeyFunc, retractorParams);
-  auto basisParams = std::make_shared<TspaceBasisParams>();
-  basisParams->use_basis_keys = true;
-  basisParams->always_construct_basis = false;
-  moptParams.cc_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(basisKeyFunc, basisParams);
+  auto retractorParams = std::make_shared<RetractionParams>();
+  retractorParams->useBasisKeys = true;
+  moptParams.constraintManifoldParams->retractorCreator =
+      std::make_shared<BasisRetractorCreator>(basisKeyFunction, retractorParams);
+  auto basisParams = std::make_shared<TangentSpaceBasisParams>();
+  basisParams->useBasisKeys = true;
+  basisParams->alwaysConstructBasis = false;
+  moptParams.constraintManifoldParams->basisCreator =
+      std::make_shared<EliminationBasisCreator>(basisKeyFunction, basisParams);
   return moptParams;
 }
 
@@ -515,12 +515,12 @@ Values ConstrainedOptBenchmark::OptimizeCmOpt(
     const EConsOptProblem& problem, std::ostream& latexOs,
     ManifoldOptimizerParameters moptParams, LevenbergMarquardtParams lmParams,
     const std::string& expName, double constraintUnitScale) {
-  NonlinearMOptimizer optimizer(moptParams, lmParams);
-  auto moptProblem = optimizer.initializeMoptProblem(
+  NonlinearManifoldOptimizer optimizer(moptParams, lmParams);
+  auto moptProblem = optimizer.initializeManifoldOptimizationProblem(
       problem.costs(), problem.constraints(), problem.initValues());
 
   auto optimizationStart = std::chrono::system_clock::now();
-  auto result = optimizer.optimizeMOpt(moptProblem);
+  auto result = optimizer.optimizeManifoldProblem(moptProblem);
   auto optimizationEnd = std::chrono::system_clock::now();
   const auto optimizationTimeMs =
       std::chrono::duration_cast<std::chrono::milliseconds>(optimizationEnd -

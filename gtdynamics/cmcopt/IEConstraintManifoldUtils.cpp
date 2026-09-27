@@ -24,16 +24,16 @@ KeyVector IEManifoldValues::keys() const {
 /* ************************************************************************* */
 IEManifoldValues IEManifoldValues::moveToBoundaries(
     const IndexSetMap &approach_indices_map) const {
-  IEManifoldValues new_manifolds;
+  IEManifoldValues newManifolds;
   for (const auto &[key, manifold] : *this) {
     if (approach_indices_map.find(key) == approach_indices_map.end()) {
-      new_manifolds.insert({key, manifold});
+      newManifolds.insert({key, manifold});
     } else {
-      new_manifolds.insert(
+      newManifolds.insert(
           {key, manifold.moveToBoundary(approach_indices_map.at(key))});
     }
   }
-  return new_manifolds;
+  return newManifolds;
 }
 
 } // namespace gtdynamics

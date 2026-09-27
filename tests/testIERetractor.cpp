@@ -26,9 +26,9 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   e_constraints->add(cp.eConstraints(k));
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->ecm_params = std::make_shared<ConstraintManifold::Params>();
-  params->retractor_creator = std::make_shared<BarrierRetractorCreator>();
-  params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
+  params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
+  params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
   Values values;
   double q = M_PI_2, v = 0, a = 0;
@@ -71,10 +71,10 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
 
 //   auto params = std::make_shared<IEConstraintManifold::Params>();
-//   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
-//   params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
-//   params->e_basis_creator =
-//       std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
+//   params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
+//   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
+//   params->equalityBasisCreator =
+//       std::make_shared<TangentSpaceBasisCreator>(params->equalityManifoldParams->basis_params);
 
 //   Values values;
 //   double q = M_PI_2, v = 0, a = 0;
@@ -159,10 +159,10 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
 
 //   auto params = std::make_shared<IEConstraintManifold::Params>();
-//   params->ecm_params = std::make_shared<ConstraintManifold::Params>();
-//   params->retractor_creator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
-//   params->e_basis_creator =
-//       std::make_shared<TspaceBasisCreator>(params->ecm_params->basis_params);
+//   params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
+//   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
+//   params->equalityBasisCreator =
+//       std::make_shared<TangentSpaceBasisCreator>(params->equalityManifoldParams->basis_params);
 
 //   Values values;
 //   double q = M_PI_2, v = 0, a = 0;

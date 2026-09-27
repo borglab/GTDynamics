@@ -107,10 +107,10 @@ void dynamic_planning(size_t numSteps,
   runner.setOuterLmBaseParams(lmParams);
   runner.setMoptFactory([&](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(
-        cartpole.getBasisKeyFunc(true));
-    auto retractorParams = moptParams.cc_params->retractor_creator->params();
-    retractorParams->check_feasible = true;
-    retractorParams->lm_params.linearSolverType =
+        cartpole.getBasisKeyFunction(true));
+    auto retractorParams = moptParams.constraintManifoldParams->retractorCreator->params();
+    retractorParams->checkFeasible = true;
+    retractorParams->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     return moptParams;
   });

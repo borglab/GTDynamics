@@ -30,40 +30,40 @@ class IEConstraintManifold;
 
 struct IERetractorParams {
   using shared_ptr = std::shared_ptr<IERetractorParams>;
-  LevenbergMarquardtParams lm_params = LevenbergMarquardtParams();
-  double prior_sigma = 1.0;
-  bool use_varying_sigma = false;
-  bool scale_varying_sigma = false;
-  std::shared_ptr<VectorValues> metric_sigmas = NULL;
-  bool init_values_as_x = true; //
-  bool check_feasible = true;
-  double feasible_threshold = 1e-3;
-  bool ensure_feasible = false;
-  PenaltyOptimizerParams::shared_ptr penalty_params =
+  LevenbergMarquardtParams lmParams = LevenbergMarquardtParams();
+  double priorSigma = 1.0;
+  bool useVaryingSigma = false;
+  bool scaleVaryingSigma = false;
+  std::shared_ptr<VectorValues> metricSigmas = NULL;
+  bool initValuesAsX = true; //
+  bool checkFeasible = true;
+  double feasibleThreshold = 1e-3;
+  bool ensureFeasible = false;
+  PenaltyOptimizerParams::shared_ptr penaltyParams =
       std::make_shared<PenaltyOptimizerParams>();
 
   IERetractorParams() = default;
 
   /** Constructor using the same sigma. */
-  IERetractorParams(const LevenbergMarquardtParams &_lm_params,
-                    const double &_prior_sigma)
-      : lm_params(_lm_params), prior_sigma(_prior_sigma),
-        use_varying_sigma(false), metric_sigmas(NULL) {
-    penalty_params->lmParams = lm_params;
+  IERetractorParams(const LevenbergMarquardtParams &_lmParams,
+                    const double &_priorSigma)
+      : lmParams(_lmParams), priorSigma(_priorSigma),
+        useVaryingSigma(false), metricSigmas(NULL) {
+    penaltyParams->lmParams = lmParams;
   }
 
   /** Constructor using varying sigmas. */
-  IERetractorParams(const LevenbergMarquardtParams &_lm_params,
+  IERetractorParams(const LevenbergMarquardtParams &_lmParams,
                     const std::shared_ptr<VectorValues> &_metric_sigmas)
-      : lm_params(_lm_params), prior_sigma(0.0), use_varying_sigma(true),
-        metric_sigmas(_metric_sigmas) {
-    penalty_params->lmParams = lm_params;
+      : lmParams(_lmParams), priorSigma(0.0), useVaryingSigma(true),
+        metricSigmas(_metric_sigmas) {
+    penaltyParams->lmParams = lmParams;
   }
 
-  static IERetractorParams::shared_ptr VarySigmas(
-      const LevenbergMarquardtParams &_lm_param = LevenbergMarquardtParams()) {
+  static IERetractorParams::shared_ptr createVaryingSigmas(
+      const LevenbergMarquardtParams &_lmParam = LevenbergMarquardtParams()) {
     return std::make_shared<IERetractorParams>(
-        _lm_param, std::make_shared<VectorValues>());
+        _lmParam, std::make_shared<VectorValues>());
   }
 
   /// Add the quadratic prior term that pulls the retraction solution toward
@@ -71,20 +71,20 @@ struct IERetractorParams {
   template <typename CONTAINER>
   void addPriors(const Values &values, const CONTAINER &keys,
                  NonlinearFactorGraph &graph) const {
-    if (use_varying_sigma) {
-      if (scale_varying_sigma) {
-        AddGeneralPriors(values, keys, *metric_sigmas, graph, prior_sigma);
+    if (useVaryingSigma) {
+      if (scaleVaryingSigma) {
+        AddGeneralPriors(values, keys, *metricSigmas, graph, priorSigma);
       } else {
-        AddGeneralPriors(values, keys, *metric_sigmas, graph);
+        AddGeneralPriors(values, keys, *metricSigmas, graph);
       }
     } else {
-      AddGeneralPriors(values, keys, prior_sigma, graph);
+      AddGeneralPriors(values, keys, priorSigma, graph);
     }
   }
 };
 
-struct IERetractInfo {
-  size_t num_lm_iters = 0;
+struct IERetractionInfo {
+  size_t numLMIterations = 0;
 };
 
 /// Base class for the feasibility-restoring map R_x(delta) used after each
@@ -109,13 +109,13 @@ public:
   virtual IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const = 0;
+          IERetractionInfo *retract_info = nullptr) const = 0;
 
   /// Zero-step retraction that lands directly on the requested boundary face.
   virtual IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
                  const IndexSet &blocking_indices,
-                 IERetractInfo *retract_info = nullptr) const;
+                 IERetractionInfo *retract_info = nullptr) const;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
@@ -143,14 +143,14 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override;
+          IERetractionInfo *retract_info = nullptr) const override;
 
   /// Solve the special case delta = 0 while forcing the requested inequalities
   /// to become active.
   IEConstraintManifold
   moveToBoundary(const IEConstraintManifold *manifold,
                  const IndexSet &blocking_indices,
-                 IERetractInfo *retract_info = nullptr) const override;
+                 IERetractionInfo *retract_info = nullptr) const override;
 };
 
 /**
@@ -183,7 +183,7 @@ public:
   IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const override;
+          IERetractionInfo *retract_info = nullptr) const override;
 };
 
 /* ************************************************************************* */

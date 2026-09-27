@@ -40,36 +40,36 @@ double dt = 0.05;
 /* ************************************************************************* */
 IERetractorParams::shared_ptr GetNominalRetractorParams() {
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  retractor_params->lm_params.setlambdaUpperBound(1e10);
-  retractor_params->lm_params.setAbsoluteErrorTol(1e-10);
-  retractor_params->check_feasible = true;
-  retractor_params->ensure_feasible = true;
-  retractor_params->prior_sigma = 1e2;
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  retractor_params->lmParams.setlambdaUpperBound(1e10);
+  retractor_params->lmParams.setAbsoluteErrorTol(1e-10);
+  retractor_params->checkFeasible = true;
+  retractor_params->ensureFeasible = true;
+  retractor_params->priorSigma = 1e2;
   auto retract_penalty_params = std::make_shared<PenaltyParameters>();
   retract_penalty_params->initial_mu = 1.0;
   retract_penalty_params->mu_increase_rate = 10.0;
   retract_penalty_params->num_iterations = 3;
-  retractor_params->penalty_params = retract_penalty_params;
+  retractor_params->penaltyParams = retract_penalty_params;
   return retractor_params;
 }
 
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsManual() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<CPBarrierRetractor>(cp));
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   return iecm_params;
 }
 
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsSP() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<BarrierRetractorCreator>(GetNominalRetractorParams());
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   return iecm_params;
 }
 
@@ -77,11 +77,11 @@ IEConstraintManifold::Params::shared_ptr GetIECMParamsSP() {
 IEConstraintManifold::Params::shared_ptr GetIECMParamsCR() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   auto retractor_params_cr = GetNominalRetractorParams();
-  retractor_params_cr->use_varying_sigma = true;
-  retractor_params_cr->metric_sigmas = std::make_shared<VectorValues>();
-  iecm_params->retractor_creator =
+  retractor_params_cr->useVaryingSigma = true;
+  retractor_params_cr->metricSigmas = std::make_shared<VectorValues>();
+  iecm_params->retractorCreator =
       std::make_shared<BarrierRetractorCreator>(retractor_params_cr);
-  iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
+  iecm_params->equalityBasisCreator = OrthonormalBasisCreator::createSparse();
   return iecm_params;
 }
 
@@ -189,13 +189,13 @@ std::vector<NonlinearFactorGraph> GetCostTerms() {
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails> SecondPhaseOptimization(
+std::pair<IEResultSummary, IELMOptimizationDetails> SecondPhaseOptimization(
     const Values values, std::string exp_name) {
   auto problem = CreateProblem();
   problem.values_ = values;
 
   IELMParams ie_params;
-  ie_params.boundary_approach_rate_threshold = 1e10;
+  ie_params.boundaryApproachRateThreshold = 1e10;
   return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
                              false);
 }
@@ -205,24 +205,24 @@ int main(int argc, char **argv) {
 
   // Parameters
   IELMParams ie_params;
-  ie_params.boundary_approach_rate_threshold = 1e10;
-  // ie_params.lm_params.setVerbosityLM("SUMMARY");
+  ie_params.boundaryApproachRateThreshold = 1e10;
+  // ie_params.lmParams.setVerbosityLM("SUMMARY");
 
   // soft constraints
   std::cout << "optimize soft...\n";
-  LevenbergMarquardtParams lm_params;
-  // lm_params.setVerbosityLM("SUMMARY");
+  LevenbergMarquardtParams lmParams;
+  // lmParams.setVerbosityLM("SUMMARY");
   auto soft_result =
-      OptimizeIE_Soft(problem, lm_params, 1e2, eval_proj_cost_progress);
+      OptimizeIE_Soft(problem, lmParams, 1e2, eval_proj_cost_progress);
 
   // penalty method
   std::cout << "optimize penalty...\n";
-  auto penalty_params = std::make_shared<PenaltyParameters>();
-  penalty_params->initial_mu = 1e2;
-  penalty_params->mu_increase_rate = 4;
-  penalty_params->num_iterations = 8;
+  auto penaltyParams = std::make_shared<PenaltyParameters>();
+  penaltyParams->initial_mu = 1e2;
+  penaltyParams->mu_increase_rate = 4;
+  penaltyParams->num_iterations = 8;
   auto penalty_result =
-      OptimizeIE_Penalty(problem, penalty_params, eval_proj_cost_progress);
+      OptimizeIE_Penalty(problem, penaltyParams, eval_proj_cost_progress);
 
   // augmented Lagrangian
   std::cout << "optimize augmented Lagrangian...\n";
@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
 
   // // IEGD method
   // std::cout << "optimize CMOpt(IE-GD)...\n";
-  // GDParams gd_params;
+  // GradientDescentParams gd_params;
   // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
   // GetIECMParamsSP());
 

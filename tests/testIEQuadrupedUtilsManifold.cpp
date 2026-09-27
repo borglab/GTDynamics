@@ -392,22 +392,22 @@ TEST(IEVision60Robot_ground_air_boundary, constraints_and_values) {
 TEST(IEVision60Robot_4c, manifold) {
   using namespace vision60_4c_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->equalityManifoldParams->basisCreator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
+  iecm_params->equalityManifoldParams->retractorCreator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  // retractor_params->lm_params.setVerbosityLM("SUMMARY");
-  // retractor_params->lm_params.minModelFidelity = 0.5;
-  retractor_params->check_feasible = true;
-  retractor_params->feasible_threshold = 1e-3;
-  retractor_params->prior_sigma = 0.1;
-  iecm_params->retractor_creator =
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
+  // retractor_params->lmParams.minModelFidelity = 0.5;
+  retractor_params->checkFeasible = true;
+  retractor_params->feasibleThreshold = 1e-3;
+  retractor_params->priorSigma = 0.1;
+  iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
 
   IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
                                 values);
@@ -498,24 +498,24 @@ TEST(IEVision60Robot_4c, manifold) {
 TEST(IEVision60Robot_back_on_ground, manifold) {
   using namespace vision60_back_on_ground_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->equalityManifoldParams->basisCreator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
+  iecm_params->equalityManifoldParams->retractorCreator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  // retractor_params->lm_params.setVerbosityLM("SUMMARY");
-  // retractor_params->lm_params.minModelFidelity = 0.5;
-  retractor_params->check_feasible = true;
-  retractor_params->feasible_threshold = 1e-3;
-  retractor_params->prior_sigma = 0.1;
-  iecm_params->retractor_creator =
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
+  // retractor_params->lmParams.minModelFidelity = 0.5;
+  retractor_params->checkFeasible = true;
+  retractor_params->feasibleThreshold = 1e-3;
+  retractor_params->priorSigma = 0.1;
+  iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
 
-  // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
+  // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
   IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
@@ -607,24 +607,24 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
 TEST(IEVision60Robot_in_air, manifold) {
   using namespace vision60_in_air_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->equalityManifoldParams->basisCreator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
+  iecm_params->equalityManifoldParams->retractorCreator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  // retractor_params->lm_params.setVerbosityLM("SUMMARY");
-  // retractor_params->lm_params.minModelFidelity = 0.5;
-  retractor_params->check_feasible = true;
-  retractor_params->feasible_threshold = 1e-3;
-  retractor_params->prior_sigma = 0.1;
-  iecm_params->retractor_creator =
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
+  // retractor_params->lmParams.minModelFidelity = 0.5;
+  retractor_params->checkFeasible = true;
+  retractor_params->feasibleThreshold = 1e-3;
+  retractor_params->priorSigma = 0.1;
+  iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
 
-  // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
+  // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
   IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
@@ -720,24 +720,24 @@ TEST(IEVision60Robot_in_air, manifold) {
 TEST(IEVision60Robot_ground_air_boundary, manifold) {
   using namespace vision60_ground_air_boundary_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
-  iecm_params->ecm_params->retractor_creator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunc());
+  iecm_params->equalityManifoldParams->basisCreator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
+  iecm_params->equalityManifoldParams->retractorCreator =
+      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  // retractor_params->lm_params.setVerbosityLM("SUMMARY");
-  // retractor_params->lm_params.minModelFidelity = 0.5;
-  retractor_params->check_feasible = true;
-  retractor_params->feasible_threshold = 1e-3;
-  retractor_params->prior_sigma = 0.1;
-  iecm_params->retractor_creator =
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
+  // retractor_params->lmParams.minModelFidelity = 0.5;
+  retractor_params->checkFeasible = true;
+  retractor_params->feasibleThreshold = 1e-3;
+  retractor_params->priorSigma = 0.1;
+  iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
 
-  // KeyVector basis_keys = iecm_params->ecm_params->basis_key_func(e_cc);
+  // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
   IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,

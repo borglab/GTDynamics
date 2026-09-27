@@ -44,13 +44,13 @@ Values LMManifoldOptimizer::optimize(
     const NonlinearFactorGraph &costs,
     const NonlinearEqualityConstraints &constraints,
     const Values &init_values) const {
-  auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
+  auto mopt_problem = initializeManifoldOptimizationProblem(costs, constraints, init_values);
   return optimize(costs, mopt_problem);
 }
 
 /* ************************************************************************* */
 Values LMManifoldOptimizer::optimize(
-    const NonlinearFactorGraph &graph, const ManifoldOptProblem &mopt_problem) const {
+    const NonlinearFactorGraph &graph, const ManifoldOptimizationProblem &mopt_problem) const {
   // Construct initial state
   LMState state(graph, mopt_problem, params_.lambdaInitial,
                 params_.lambdaFactor, 0);
@@ -64,14 +64,14 @@ Values LMManifoldOptimizer::optimize(
   // Iterative loop
   if (params_.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
     std::cout << "Initial error: " << state.error << "\n";
-    LMTrial::PrintTitle();
+    LMTrial::printTitle();
   }
 
   LMState prev_state;
   do {
     prev_state = state;
-    LMIterDetails iter_details = iterate(graph, mopt_problem.graph_, state);
-    state = LMState::FromLastIteration(iter_details, graph, params_);
+    LMIterationDetails iter_details = iterate(graph, mopt_problem.graph, state);
+    state = LMState::fromLastIteration(iter_details, graph, params_);
     details_->push_back(iter_details);
   } while (state.iterations < params_.maxIterations &&
            !checkConvergence(prev_state, state) &&
@@ -81,15 +81,15 @@ Values LMManifoldOptimizer::optimize(
 }
 
 /* ************************************************************************* */
-LMIterDetails
+LMIterationDetails
 LMManifoldOptimizer::iterate(const NonlinearFactorGraph &graph,
                              const NonlinearFactorGraph &manifold_graph,
                              const LMState &state) const {
-  LMIterDetails iter_details(state);
+  LMIterationDetails iter_details(state);
 
   // Set lambda for first trial.
   double lambda = state.lambda;
-  double lambda_factor = state.lambda_factor;
+  double lambdaFactor = state.lambdaFactor;
 
   // Perform trials until any of follwing conditions is met
   // * 1) trial is successful
@@ -104,22 +104,22 @@ LMManifoldOptimizer::iterate(const NonlinearFactorGraph &graph,
     iter_details.trials.emplace_back(trial);
 
     // Check condition 1.
-    if (trial.step_is_successful) {
+    if (trial.stepIsSuccessful) {
       break;
     }
 
     // Check condition 2.
-    if (trial.linear_update.solve_successful) {
+    if (trial.linearUpdate.solveSuccessful) {
       double abs_change_tol = std::max(params_.absoluteErrorTol,
                                        params_.relativeErrorTol * state.error);
-      if (trial.linear_update.cost_change < abs_change_tol &&
-          trial.nonlinear_update.cost_change < abs_change_tol) {
+      if (trial.linearUpdate.costChange < abs_change_tol &&
+          trial.nonlinearUpdate.costChange < abs_change_tol) {
         break;
       }
     }
 
     // Set lambda for next trial.
-    trial.setNextLambda(lambda, lambda_factor, params_);
+    trial.setNextLambda(lambda, lambdaFactor, params_);
 
     // Check condition 3.
     if (!checkLambdaWithinLimits(lambda)) {

@@ -35,7 +35,7 @@ Pointers:
 
 - [IEOptimizer](IEOptimizer.h#L31)
 - [IEOptimizer::optimize](IEOptimizer.h#L43)
-- [IEOptimizer::IdentifyUnconstrainedValues](IEOptimizer.h#L78)
+- [IEOptimizer::identifyUnconstrainedValues](IEOptimizer.h#L78)
 
 The public `optimize(...)` entry point builds inequality/equality manifolds from the constraints, keeps unconstrained variables separate, and then hands the transformed problem to either the LM or GD variant.
 
@@ -53,11 +53,11 @@ This is the local component version of the CMC state space in thesis Eq. (4.2), 
 
 Pointers:
 
-- [IdentifyConnectedComponents](IEOptimizer.cpp#L87)
-- [IEOptimizer::IdentifyManifolds](IEOptimizer.cpp#L127)
+- [identifyConnectedComponents](IEOptimizer.cpp#L87)
+- [IEOptimizer::identifyManifolds](IEOptimizer.cpp#L127)
 - [IEConstraintManifold](IEConstraintManifold.h#L25)
 
-`IEOptimizer::IdentifyManifolds` builds one [IEConstraintManifold](IEConstraintManifold.h#L25) per connected component. That object is the central mathematical container for the local manifold-with-boundary.
+`IEOptimizer::identifyManifolds` builds one [IEConstraintManifold](IEConstraintManifold.h#L25) per connected component. That object is the central mathematical container for the local manifold-with-boundary.
 
 ## 3) IEConstraintManifold: Equality Basis + Active Set + Cone
 
@@ -78,8 +78,8 @@ Pointers:
 
 - [IEConstraintManifold](IEConstraintManifold.h#L25)
 - [IEConstraintManifold::activeIndices](IEConstraintManifold.h#L98)
-- [IEConstraintManifold::IdentifyActiveConstraints](IEConstraintManifold.cpp#L181)
-- [IEConstraintManifold::ConstructTangentCone](IEConstraintManifold.cpp#L205)
+- [IEConstraintManifold::identifyActiveConstraints](IEConstraintManifold.cpp#L181)
+- [IEConstraintManifold::constructTangentCone](IEConstraintManifold.cpp#L205)
 - [TangentCone](TangentCone.h#L25)
 
 Implementation detail:
@@ -103,7 +103,7 @@ In code, active inequalities are either:
 
 Pointers:
 
-- [IEConstraintManifold::IdentifyActiveConstraints](IEConstraintManifold.cpp#L181)
+- [IEConstraintManifold::identifyActiveConstraints](IEConstraintManifold.cpp#L181)
 - [IEConstraintManifold constructor](IEConstraintManifold.h#L55)
 - [IEConstraintManifold::createWithNewValues](IEConstraintManifold.h#L87)
 
@@ -123,9 +123,9 @@ where $B_x$ is the equality tangent basis and $Dg_{\mathcal{A}}(x)$ is the Jacob
 
 Pointers:
 
-- [IEConstraintManifold::ConstructTangentCone](IEConstraintManifold.cpp#L205)
-- [IEConstraintManifold::linearActiveManIConstraints](IEConstraintManifold.cpp#L235)
-- [IEConstraintManifold::linearActiveBaseIConstraints](IEConstraintManifold.cpp#L263)
+- [IEConstraintManifold::constructTangentCone](IEConstraintManifold.cpp#L205)
+- [IEConstraintManifold::linearActiveManifoldInequalityConstraints](IEConstraintManifold.cpp#L235)
+- [IEConstraintManifold::linearActiveBaseInequalityConstraints](IEConstraintManifold.cpp#L263)
 
 This is exactly where the code turns active nonlinear inequalities into linearized cone constraints in either manifold coordinates or base-variable coordinates.
 
@@ -144,9 +144,9 @@ Pointers:
 
 - [TangentCone::project](TangentCone.cpp#L23)
 - [IEConstraintManifold::projectTangentCone](IEConstraintManifold.cpp#L79)
-- [IEOptimizer::ProjectTangentCone](IEOptimizer.cpp#L185)
+- [IEOptimizer::projectTangentCone](IEOptimizer.cpp#L185)
 
-`TangentCone::project` solves the convex IQP. `IEConstraintManifold::projectTangentCone` maps the cone-local blocking set back to original inequality indices. `IEOptimizer::ProjectTangentCone` applies that componentwise across the whole problem.
+`TangentCone::project` solves the convex IQP. `IEConstraintManifold::projectTangentCone` maps the cone-local blocking set back to original inequality indices. `IEOptimizer::projectTangentCone` applies that componentwise across the whole problem.
 
 Thesis reference: Eq. (4.31) projects a descent direction into the cone for one CMC. Eq. (4.42) applies the same projection componentwise across multiple CMCs. The code generalizes this projection to any trial vector, not only a gradient vector.
 
@@ -159,7 +159,7 @@ Mathematically, these are the active inequalities whose directional derivative w
 Pointers:
 
 - [IEConstraintManifold::blockingIndices](IEConstraintManifold.cpp#L121)
-- [IELMState::grad_blocking_indices_map](IELMOptimizerState.h#L46)
+- [IELMState::gradientBlockingIndicesMap](IELMOptimizerState.h#L46)
 - [IELMState::computeGradient](IELMOptimizerState.cpp#L116)
 
 Those blocking sets are later passed into the retraction, where they are enforced as equalities.
@@ -183,14 +183,14 @@ Pointers:
 - [IELMState](IELMOptimizerState.h#L35)
 - [IELMState::linearizeIConstraints](IELMOptimizerState.cpp#L100)
 - [IELMTrial::LinearUpdate](IELMOptimizerState.cpp#L493)
-- [IELMTrial::LinearUpdate::InitEstimate](IELMOptimizerState.cpp#L555)
-- [IELMTrial::LinearUpdate::CheckSolutionValid](IELMOptimizerState.cpp#L600)
+- [IELMTrial::LinearUpdate::initialEstimate](IELMOptimizerState.cpp#L555)
+- [IELMTrial::LinearUpdate::checkSolutionValid](IELMOptimizerState.cpp#L600)
 
 How the code matches the math:
 
 - `linearizeIConstraints()` builds the linearized inequality constraints at the current state.
 - `LinearUpdate(...)` builds the damped LM system.
-- `InitEstimate(...)` seeds the IQP with blocking constraints coming from the negative gradient.
+- `initialEstimate(...)` seeds the IQP with blocking constraints coming from the negative gradient.
 - `SolveConvexIQP(...)` is then used to refine the constrained step.
 
 Thesis reference: Eq. (4.44) is the CMC Levenberg-Marquardt quadratic subproblem, constrained by the cone coordinates for each CMC.
@@ -229,9 +229,9 @@ Mathematically, this is a discrete mode change between different active sets.
 
 Pointers:
 
-- [IEOptimizer::IsSameMode](IEOptimizer.cpp#L245)
-- [IEOptimizer::IdentifyChangeIndices](IEOptimizer.h#L115)
-- [IEOptimizer::IdentifyApproachingIndices](IEOptimizer.cpp#L284)
+- [IEOptimizer::isSameMode](IEOptimizer.cpp#L245)
+- [IEOptimizer::identifyChangeIndices](IEOptimizer.h#L115)
+- [IEOptimizer::identifyApproachingIndices](IEOptimizer.cpp#L284)
 - [IELMOptimizer::checkModeChange](IELMOptimizer.cpp#L133)
 - [IEConstraintManifold::moveToBoundary](IEConstraintManifold.cpp#L146)
 - [IEManifoldValues::moveToBoundaries](IEConstraintManifoldUtils.cpp#L25)
@@ -256,7 +256,7 @@ Pointers:
 - [IELMOptimizer::optimizeManifolds](IELMOptimizer.cpp#L31)
 - [IELMOptimizer::iterate](IELMOptimizer.cpp#L73)
 - [IELMOptimizer::checkModeChange](IELMOptimizer.cpp#L133)
-- [IELMState::FromLastIteration](IELMOptimizerState.cpp#L36)
+- [IELMState::fromLastIteration](IELMOptimizerState.cpp#L36)
 - [IELMOptimizer::checkConvergence](IELMOptimizer.cpp#L217)
 
 Thesis reference: this is the implementation counterpart of Algorithm 3, with the linear subproblem from Eq. (4.44), retraction from Eq. (4.46), and model fidelity from Eq. (3.53).
@@ -292,7 +292,7 @@ Some CMC-Opt runs use varying metric sigmas when building the retraction priors.
 Pointers:
 
 - [IERetractorParams](IERetractor.h#L31)
-- [IERetractorParams::VarySigmas](IERetractor.h#L63)
+- [IERetractorParams::createVaryingSigmas](IERetractor.h#L63)
 - [IELMState::computeMetricSigmas](IELMOptimizerState.cpp#L148)
 
 Thesis reference: metric retractions are written generically in Eq. (5.12), with the cost-aware metric idea in Eqs. (5.18), (5.20), and (5.21). For CMCs, the projected gradient under the induced metric is Eq. (5.4).

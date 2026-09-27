@@ -96,8 +96,8 @@ int main(int argc, char** argv) {
   auto problem = ConstrainedOptProblem::EqConstrainedOptProblem(graph, constraints);
 
   /// Solve the constraint problem with Penalty Method optimizer.
-  auto penalty_params = std::make_shared<gtsam::PenaltyOptimizerParams>();
-  gtsam::PenaltyOptimizer penalty_optimizer(problem, init_values, penalty_params);
+  auto penaltyParams = std::make_shared<gtsam::PenaltyOptimizerParams>();
+  gtsam::PenaltyOptimizer penalty_optimizer(problem, init_values, penaltyParams);
   Values penalty_results = penalty_optimizer.optimize();
 
   /// Solve the constraint problem with Augmented Lagrangian optimizer.
