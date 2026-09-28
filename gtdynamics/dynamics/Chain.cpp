@@ -110,9 +110,9 @@ gtsam::Matrix6 AdjointMapJacobianQ(double q, const gtsam::Pose3 &jMi,
   gtsam::Matrix3 H_TR = gtsam::skewSymmetric(H_T) * kTj.rotation().matrix() +
                         gtsam::skewSymmetric(kTj.translation()) * H_R;
   gtsam::Matrix6 H = gtsam::Z_6x6;
-  gtsam::insertSub(H, H_R, 0, 0);
-  gtsam::insertSub(H, H_TR, 3, 0);
-  gtsam::insertSub(H, H_R, 3, 3);
+  H.block<3, 3>(0, 0) = H_R;
+  H.block<3, 3>(3, 0) = H_TR;
+  H.block<3, 3>(3, 3) = H_R;
   return H;
 }
 

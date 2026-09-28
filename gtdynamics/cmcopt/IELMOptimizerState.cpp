@@ -509,7 +509,7 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
     try {
       delta = SolveLinear(damped_system, params.lm_params);
       solve_successful = true;
-    } catch (const IndeterminantLinearSystemException &) {
+    } catch (const IndeterminateSystemException &) {
       solve_successful = false;
     }
     num_solves = 1;
@@ -570,7 +570,7 @@ IELMTrial::LinearUpdate::InitEstimate(const GaussianFactorGraph &quadratic_cost,
     VectorValues delta;
     try {
       delta = SolveLinear(graph, params);
-    } catch (const IndeterminantLinearSystemException &) {
+    } catch (const IndeterminateSystemException &) {
       return {delta, blocking_indices, num_solves, false};
     }
 
