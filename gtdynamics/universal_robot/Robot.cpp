@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <queue>
 #include <sstream>
 #include <stdexcept>
 
@@ -58,6 +57,7 @@ void Robot::removeLink(const LinkSharedPtr &link) {
 
   // remove link from name_to_link_
   name_to_link_.erase(link->name());
+  resetFKCache();
 }
 
 void Robot::removeJoint(const JointSharedPtr &joint) {
@@ -67,6 +67,7 @@ void Robot::removeJoint(const JointSharedPtr &joint) {
   }
   // Remove the joint from name_to_joint_
   name_to_joint_.erase(joint->name());
+  resetFKCache();
 }
 
 LinkSharedPtr Robot::link(const std::string &name) const {
@@ -184,40 +185,8 @@ static void InsertFixedLinks(const std::vector<LinkSharedPtr> &links, size_t t,
   }
 }
 
-// Add zero default values for joint angles and joint velocities.
-// if they do not yet exist
-static void InsertZeroDefaults(size_t j, size_t t, gtsam::Values *values) {
-  for (const auto key : {JointAngleKey(j, t), JointVelKey(j, t)}) {
-    if (!values->exists(key)) {
-      values->insertDouble(key, 0.0);
-    }
-  }
-}
-
-// Insert a pose/twist into values, but if they already are present, just check
-// if they are consistent. Throw exception otherwise.
-// Returns true if values were inserted.
-static bool InsertWithCheck(size_t i, size_t t,
-                            const std::pair<Pose3, Vector6> &poseTwist,
-                            gtsam::Values *values) {
-  Pose3 pose;
-  Vector6 twist;
-  std::tie(pose, twist) = poseTwist;
-  auto pose_key = PoseKey(i, t);
-  auto twist_key = TwistKey(i, t);
-  const bool exists = values->exists(pose_key);
-  if (!exists) {
-    values->insert(pose_key, pose);
-    values->insert<Vector6>(twist_key, twist);
-  } else {
-    // If already insert, check for consistency.
-    if (!(pose.equals(values->at<Pose3>(pose_key), 1e-4) &&
-          (twist - values->at<Vector6>(twist_key)).norm() < 1e-4)) {
-      throw std::runtime_error(
-          "Inconsistent joint angles detected in forward kinematics");
-    }
-  }
-  return !exists;
+void Robot::resetFKCache() {
+  fk_cache_ = std::make_shared<FKTraversalCache>();
 }
 
 gtsam::Values Robot::forwardKinematics(
@@ -236,52 +205,69 @@ gtsam::Values Robot::forwardKinematics(
     InsertTwist(&values, root_link->id(), t, gtsam::Vector6::Zero());
   }
 
-  // BFS to update all poses downstream in the graph.
-  std::queue<LinkSharedPtr> q;
-  q.push(root_link);
-  int loop_count = 0;
-  while (!q.empty()) {
-    // Pop link from the queue and retrieve the pose and twist.
-    const auto link1 = q.front();
-    const Pose3 T_w1 = Pose(values, link1->id(), t);
-    const Vector6 V_1 = Twist(values, link1->id(), t);
-    q.pop();
+  // Use the traversal cached for this root, which is computed on first use
+  // or if it is stale, e.g. because joints were attached to links after the
+  // robot was constructed.
+  const auto traversal = fk_cache_->get(root_link);
+  const auto &links = traversal->links;
 
-    // Loop through all joints to find the pose and twist of child links.
-    for (auto &&joint : link1->joints()) {
-      InsertZeroDefaults(joint->id(), t, &values);
-      const auto poseTwist = joint->otherPoseTwist(
-          link1, T_w1, V_1, JointAngle(values, joint->id(), t),
-          JointVel(values, joint->id(), t));
-      const auto link2 = joint->otherLink(link1);
-      if (InsertWithCheck(link2->id(), t, poseTwist, &values)) {
-        q.push(link2);
+  // Links with known poses are checked, but not expanded further. In graphs
+  // with kinematic loops this changes which spanning tree BFS finds, so fall
+  // back to discovering the traversal on the fly.
+  if (!traversal->loop_edges.empty()) {
+    for (size_t i = 1; i < links.size(); ++i) {
+      if (values.exists(PoseKey(links[i]->id(), t))) {
+        BreadthFirstKinematics(root_link, t, &values);
+        return values;
       }
     }
-    if (loop_count++ > 100000) {
-      throw std::runtime_error("infinite loop in bfs");
+  }
+
+  std::vector<Pose3> poses(links.size());
+  std::vector<Vector6> twists(links.size());
+  std::vector<bool> expanded(links.size(), false);
+  poses[0] = Pose(values, root_link->id(), t);
+  twists[0] = Twist(values, root_link->id(), t);
+  expanded[0] = true;
+
+  // Walk the spanning tree, parents before children.
+  std::pair<Pose3, Vector6> poseTwist;
+  for (const FKEdge &edge : traversal->tree_edges) {
+    if (!expanded[edge.from]) continue;
+    if (Propagate(edge.joint, links[edge.from], poses[edge.from],
+                  twists[edge.from], t, &values, &poseTwist)) {
+      std::tie(poses[edge.to], twists[edge.to]) = poseTwist;
+      expanded[edge.to] = true;
+    }
+  }
+
+  // Check that loop closing joints are consistent, from both sides.
+  for (const FKEdge &edge : traversal->loop_edges) {
+    for (const size_t i : {edge.from, edge.to}) {
+      if (!expanded[i]) continue;
+      Propagate(edge.joint, links[i], poses[i], twists[i], t, &values,
+                &poseTwist);
     }
   }
   return values;
 }
 
-
-void Robot::renameLinks(const std::map<std::string, std::string>& name_map) {
+void Robot::renameLinks(const std::map<std::string, std::string> &name_map) {
   LinkMap new_links;
-  for (const auto& it : name_to_link_) {
-    const std::string& old_name = it.first;
-    const std::string& new_name = name_map.at(old_name);
+  for (const auto &it : name_to_link_) {
+    const std::string &old_name = it.first;
+    const std::string &new_name = name_map.at(old_name);
     it.second->rename(new_name);
     new_links.insert({new_name, it.second});
   }
   name_to_link_ = new_links;
 }
 
-void Robot::renameJoints(const std::map<std::string, std::string>& name_map) {
+void Robot::renameJoints(const std::map<std::string, std::string> &name_map) {
   JointMap new_joints;
-  for (const auto& it : name_to_joint_) {
-    const std::string& old_name = it.first;
-    const std::string& new_name = name_map.at(old_name);
+  for (const auto &it : name_to_joint_) {
+    const std::string &old_name = it.first;
+    const std::string &new_name = name_map.at(old_name);
     it.second->rename(new_name);
     new_joints.insert({new_name, it.second});
   }
@@ -303,7 +289,7 @@ void Robot::reassignJoints(
 
 std::vector<LinkSharedPtr> Robot::orderedLinks() const {
   std::map<uint8_t, LinkSharedPtr> ordered_links;
-  for (const auto& it: name_to_link_) {
+  for (const auto &it : name_to_link_) {
     ordered_links.insert({it.second->id(), it.second});
   }
   return getValues<uint8_t, LinkSharedPtr>(ordered_links);
@@ -311,7 +297,7 @@ std::vector<LinkSharedPtr> Robot::orderedLinks() const {
 
 std::vector<JointSharedPtr> Robot::orderedJoints() const {
   std::map<uint8_t, JointSharedPtr> ordered_joints;
-  for (const auto& it: name_to_joint_) {
+  for (const auto &it : name_to_joint_) {
     ordered_joints.insert({it.second->id(), it.second});
   }
   return getValues<uint8_t, JointSharedPtr>(ordered_joints);
