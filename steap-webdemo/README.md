@@ -4,6 +4,11 @@ A local teaching app alongside `webdemo`: drag two six-DOF tool frames, build a
 GTDynamics kinematic factor graph, watch native GTSAM iterations reshape the
 trajectory, and replay the current estimate with MuJoCo in your browser.
 
+![Franka demo: endpoint editing, graph construction, GTSAM iteration replay, and MuJoCo playback with live replanning](docs/demo.gif)
+
+The short demo shows a goal edit, a graph with 12 kinematic states, the recorded
+optimizer iterations, and arm playback followed by a live goal update.
+
 The C++ process owns the graph and optimization. The browser uses MuJoCo WASM
 and Three.js for simulation and rendering; it does not substitute a JavaScript
 IK solver. Each browser connection has its own native process and graph.

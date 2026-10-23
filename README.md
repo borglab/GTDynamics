@@ -162,6 +162,8 @@ We recommend going through the examples to get a better understanding of how to 
   frames, build kinematic slice factor graphs, watch native C++/GTSAM optimization
   iterations, and replay or interactively replan the trajectory in MuJoCo.
 
+[![Franka demo: edit the goal, build a factor graph, inspect GTSAM iterations, and play or replan the motion in MuJoCo](steap-webdemo/docs/demo.gif)](steap-webdemo/README.md)
+
 ## Constrained Optimization (GTSAM-backed)
 
 GTDynamics now routes some constrained optimization methods through GTSAM's constrained optimizers.
