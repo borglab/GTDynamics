@@ -78,14 +78,16 @@ does not need to be forwarded.
    coalesced; stale solver replies cannot overwrite the newest targets.
 
 Below **Optimizer playback**, the **Joint trajectories** panel plots all seven
-joint angles (rad) and velocities (rad/s) against trajectory time (s). Both
-plots update with live optimization, the recorded iteration slider, and iteration
-replay. Dots mark optimized states; curves use the same cubic Hermite position
-and velocity interpolation as arm playback. Axes cover the recorded solve so
-scrubbing iterations does not rescale the plots. Click joint names to hide or
-show their curves, and hover or use the inspection-time slider to read exact
-values. **Follow arm time** moves the plot cursor with playback; these values
-are from the selected plan, rather than measured MuJoCo states.
+joints in seven vertically stacked plots against trajectory time (s). Each row
+shows the joint angle (rad, solid blue, left axis) and velocity (rad/s, dashed
+amber, right axis). All seven plots update with live optimization, the
+recorded iteration slider, and iteration replay. Dots mark optimized states;
+curves use the same cubic Hermite position and velocity interpolation as arm
+playback. Each joint has separate angle and velocity scales covering the
+recorded solve, so scrubbing iterations does not rescale the plots. Hover over
+any row or use the inspection-time slider to move all seven cursors and read
+exact values. **Follow arm time** moves the plot cursor with playback; these
+values are from the selected plan, rather than measured MuJoCo states.
 
 Changing the number of states or duration requires a new graph. A difficult
 or unreachable target can leave a residual even when the optimizer stops;
@@ -217,7 +219,7 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 ```
 
 The joint-plot browser check verifies live iteration updates, recorded-snapshot
-values, iteration replay, fixed axes when scrubbing, joint visibility, the
+values, iteration replay, fixed axes when scrubbing, seven aligned rows, synchronized hover, the
 playback cursor, responsive layout, and rebuilding with a new duration.
 
 - `backend/`: native graph, LM stepping, NDJSON protocol, and tests.

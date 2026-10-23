@@ -20,6 +20,20 @@ try {
   await page.getByRole('button', { name: 'Build graph', exact: true }).click();
   await page.locator('.joint-panel[data-iteration="0"]').waitFor();
   assert.equal(await page.locator('.joint-curve').count(), 14);
+  async function checkStack() {
+    const rows = await page.locator('.joint-plots figure').evaluateAll(nodes => nodes.map(n => {
+      const box = n.getBoundingClientRect(), svg = n.querySelector('svg').getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, left: svg.left, width: svg.width, curves: n.querySelectorAll('.joint-curve').length };
+    }));
+    assert.equal(rows.length, 7, 'One plot for each joint');
+    rows.forEach((row, i) => {
+      assert.equal(row.curves, 2, 'Each joint shows its angle and velocity');
+      assert.equal(row.left, rows[0].left, 'Time axes align');
+      assert.equal(row.width, rows[0].width, 'Time scales align');
+      if (i) assert(row.top >= rows[i - 1].bottom, 'Joint plots stack vertically');
+    });
+  }
+  await checkStack();
   assert.equal(await page.locator('.iteration-panel + .joint-panel').count(), 1);
   await page.getByRole('button', { name: 'Play arm trajectory', exact: true }).waitFor();
   await page.evaluate(() => {
@@ -47,7 +61,8 @@ try {
   }
   async function checkValues(snapshot, t) {
     await setRange('Joint plot inspection time', t);
-    const actual = await page.locator('.joint-values td').allTextContents();
+    const actual = [...await page.locator('.joint-value[data-quantity="q"]').allTextContents(),
+      ...await page.locator('.joint-value[data-quantity="v"]').allTextContents()];
     const expected = sampleTrajectoryState(snapshot, t);
     assert.deepEqual(actual, [...expected.q, ...expected.v].map(value => value.toFixed(3)), 'Readout matches the selected native snapshot');
   }
@@ -63,11 +78,14 @@ try {
   await page.waitForFunction(() => Number(document.querySelector('.joint-panel').dataset.iteration) > 0);
   await page.getByRole('button', { name: 'Follow latest', exact: true }).click();
   assert.equal(Number(await page.locator('.joint-panel').getAttribute('data-iteration')), last.iteration);
-  const joint = page.getByRole('button', { name: 'joint1', exact: true });
-  await joint.click();
-  assert.equal(await joint.getAttribute('aria-pressed'), 'false');
-  assert.equal(await page.locator('.joint-curve:visible').count(), 12);
-  await joint.click();
+  const plot = page.locator('.joint-plots svg').nth(3);
+  const width = await plot.evaluate(svg => svg.getBoundingClientRect().width);
+  await plot.hover({ position: { x: 64 + (width - 128) * 0.65, y: 50 } });
+  const hoveredTime = Number(await page.getByRole('slider', { name: 'Joint plot inspection time' }).inputValue());
+  assert(Math.abs(hoveredTime - last.duration * 0.65) < 0.01, 'Hover uses trajectory time');
+  const cursors = await page.locator('.joint-cursor').evaluateAll(nodes => nodes.map(n => Number(n.getAttribute('x1'))));
+  assert.equal(cursors.length, 7);
+  assert(cursors.every(value => value === cursors[0]), 'Hover synchronizes every cursor');
   await page.getByRole('button', { name: 'Follow arm time', exact: true }).click();
   await page.waitForFunction(() => !document.querySelector('.time-slider').disabled);
   await setRange('Arm trajectory time', 2.5);
@@ -75,13 +93,12 @@ try {
   if (process.env.JOINT_PLOT_SCREENSHOT) await page.locator('.joint-panel').screenshot({ path: process.env.JOINT_PLOT_SCREENSHOT });
   await page.setViewportSize({ width: 390, height: 844 });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Panel fits a narrow viewport');
-  const boxes = await page.locator('.joint-plots figure').evaluateAll(nodes => nodes.map(n => ({ top: n.getBoundingClientRect().top, bottom: n.getBoundingClientRect().bottom })));
-  assert(boxes[1].top >= boxes[0].bottom, 'Plots stack on narrow screens');
+  await checkStack();
   await page.getByLabel('Duration seconds').fill('6');
   await page.getByRole('button', { name: 'Rebuild graph', exact: true }).click();
   await page.locator('.joint-panel[data-iteration="0"]').waitFor();
   assert.equal(await page.getByRole('slider', { name: 'Joint plot inspection time' }).getAttribute('max'), '6');
   await checkValues(snapshots.at(-1), 4.5);
   assert.deepEqual(errors, []);
-  console.log('PASS: live solver plots, exact history data, stable axes, replay, joint visibility, arm-time cursor, responsive layout, and graph rebuild.');
+  console.log('PASS: live solver plots, exact history data, stable axes, replay, seven aligned joint rows, synchronized hover, arm-time cursor, responsive layout, and graph rebuild.');
 } finally { await browser.close(); }
