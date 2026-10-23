@@ -16,12 +16,14 @@ option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
 option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
 option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
 option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
+option(GTDYNAMICS_BUILD_STEAP_WEBDEMO "Build interactive STEAP teaching demo backend" OFF)
 mark_as_advanced(CLEAR
   GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   GTDYNAMICS_WITH_TBB
   GTDYNAMICS_BUILD_PANDA_ROBOT
   GTDYNAMICS_BUILD_PYTHON
   GTDYNAMICS_BUILD_EXAMPLES
+  GTDYNAMICS_BUILD_STEAP_WEBDEMO
 )
 mark_as_advanced(
   GTDYNAMICS_WITH_SUITESPARSE
@@ -114,6 +116,10 @@ endif()
 include(cmake/HandleTBB.cmake)              # TBB
 
 add_subdirectory(gtdynamics)
+
+if(GTDYNAMICS_BUILD_STEAP_WEBDEMO)
+  add_subdirectory(steap-webdemo/backend)
+endif()
 
 message(STATUS "Build Python Wrapper: ${GTDYNAMICS_BUILD_PYTHON}")
 
