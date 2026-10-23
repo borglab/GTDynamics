@@ -29,7 +29,7 @@ export class SolverSession {
         this.fail(`Invalid optimizer response: ${error.message}`);
       }
     });
-    this.child.once('error', error => this.fail(`Cannot start C++ optimizer: ${error.message}. Build steap_optimizer first (see README).`));
+    this.child.once('error', error => this.fail(`Cannot start C++ optimizer: ${error.message}. Build motion_planning_optimizer first (see README).`));
     this.child.once('exit', (code, signal) => {
       if (!this.closed) this.fail(`C++ optimizer stopped (${signal || code}). Reconnect after rebuilding it.`);
     });

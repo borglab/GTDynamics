@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { Euler, Quaternion } from 'three'
-import { SteapViewer } from './viewer.js'
+import { MotionPlanningViewer } from './viewer.js'
 
 const canvas = ref(null)
 const viewerReady = ref(false)
@@ -301,7 +301,7 @@ async function setupViewer(data) {
   modelError.value = ''
   try {
     await nextTick()
-    viewer = new SteapViewer(canvas.value, {
+    viewer = new MotionPlanningViewer(canvas.value, {
       onTargetChange: targetChanged,
       onSelectionChange: value => { selection.value = value },
       onTimeChange: state => {
@@ -399,7 +399,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="lab-shell">
     <header class="masthead">
-      <a class="brand" href="./" aria-label="STEAP Lab home"><span class="brand-mark" aria-hidden="true">S<span>↗</span></span><span>GTDynamics<span class="brand-divider"> / </span><strong>STEAP Lab</strong></span></a>
+      <a class="brand" href="./" aria-label="Motion Planning Lab home"><span class="brand-mark" aria-hidden="true">M<span>↗</span></span><span>GTDynamics<span class="brand-divider"> / </span><strong>Motion Planning Lab</strong></span></a>
       <div class="masthead-right"><span class="lab-caption">INTERACTIVE ROBOTICS LAB</span><span class="connection-pill" :class="{ online: connected }"><span class="status-dot"></span>{{ connectionLabel }}</span></div>
     </header>
 
@@ -449,7 +449,7 @@ onBeforeUnmount(() => {
 
       <section class="iteration-panel"><div class="iteration-intro"><span class="section-kicker">OPTIMIZER PLAYBACK</span><h2>Watch the solution evolve.</h2><p>Scrub the actual GTSAM iterations. Arm playback follows whichever trajectory estimate you select.</p><div class="history-actions"><button class="button secondary small" :disabled="history.length < 2" @click="toggleIterationReplay"><span aria-hidden="true">{{ replayingIterations ? 'Ⅱ' : '▶' }}</span>{{ replayingIterations ? 'Pause iterations' : 'Replay iterations' }}</button><button class="text-button live-follow" :class="{ active: followLatest }" :disabled="!history.length" @click="followSolution"><span class="status-dot"></span>Follow latest</button></div></div><div class="iteration-details"><div class="iteration-metrics"><div><span>ITERATION</span><strong>{{ shown?.iteration ?? '—' }}<small v-if="history.length"> / {{ history.at(-1)?.iteration ?? 0 }}</small></strong></div><div><span>GRAPH ERROR</span><strong>{{ formatNumber(shown?.error, 3) }}</strong></div><div class="cost-chart"><span>ERROR HISTORY · LOG SCALE</span><svg viewBox="0 0 300 50" aria-label="Graph error across solver iterations" role="img"><line x1="5" y1="44" x2="295" y2="44" stroke="currentColor" opacity="0.2" /><polyline v-if="costPoints" :points="costPoints" fill="none" stroke="currentColor" stroke-width="2" /><circle v-if="costMarker" :cx="costMarker.x" :cy="costMarker.y" r="3.5" fill="currentColor" /></svg></div></div><input class="iteration-slider" type="range" min="0" :max="Math.max(history.length - 1, 0)" :value="historyIndex" :disabled="history.length < 2" @input="reviewIteration" aria-label="Recorded optimizer iteration" /><div class="slider-labels"><span>Initial estimate</span><span>{{ followLatest ? 'Following live optimization' : 'Reviewing a captured estimate' }}</span><span>Latest estimate</span></div><div v-if="residual" class="residuals" :class="{ 'residual-warning': residualLarge }"><span>Endpoint residuals</span><span><i class="legend-dot start"></i>{{ formatNumber(residual.start_position * 1000, 1) }} mm · {{ formatNumber(residual.start_rotation * 180 / Math.PI, 1) }}°</span><span><i class="legend-dot goal"></i>{{ formatNumber(residual.goal_position * 1000, 1) }} mm · {{ formatNumber(residual.goal_rotation * 180 / Math.PI, 1) }}°</span></div><p v-if="residualLarge" class="residual-message">The current estimate misses an endpoint. Try more iterations or move the target closer to the arm’s reachable workspace.</p></div></section>
 
-      <footer><span><strong>STEAP-inspired planning</strong> · Live kinematic factor graph optimization</span><a class="architecture-link" href="./architecture.html" target="_blank" rel="noopener">Architecture &amp; equations ↗</a><span>Teaching demo · No obstacle avoidance or measurement estimation</span></footer>
+      <footer><span><strong>Motion planning</strong> · Live kinematic factor graph optimization</span><a class="architecture-link" href="./architecture.html" target="_blank" rel="noopener">Architecture &amp; equations ↗</a><span>Teaching demo · No obstacle avoidance or measurement estimation</span></footer>
     </main>
   </div>
 </template>

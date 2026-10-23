@@ -107,10 +107,10 @@ export function sampleTrajectory(snapshot, time) {
   return sampleTrajectoryState(snapshot, time)?.q ?? null;
 }
 
-export class SteapViewer {
+export class MotionPlanningViewer {
   constructor(container, { onTargetChange, onTimeChange, onSelectionChange } = {}) {
     this.container = container;
-    this.container.steapViewer = this;
+    this.container.motionPlanningViewer = this;
     this.onTargetChange = onTargetChange;
     this.onTimeChange = onTimeChange;
     this.onSelectionChange = onSelectionChange;
@@ -207,7 +207,7 @@ export class SteapViewer {
     this.description = description;
     const response = await fetch('./assets/manifest.json');
     if (!response.ok || !response.headers.get('content-type')?.includes('json')) {
-      throw new Error('Panda assets are missing. Run python steap-webdemo/scripts/bootstrap_models.py, then reload.');
+      throw new Error('Panda assets are missing. Run python motion-planning-webdemo/scripts/bootstrap_models.py, then reload.');
     }
     const manifest = await response.json();
     const mujoco = await loadMujoco();
@@ -602,7 +602,7 @@ export class SteapViewer {
     this.data?.delete();
     this.model?.delete();
     this.targetData = null;
-    delete this.container.steapViewer;
+    delete this.container.motionPlanningViewer;
     this.data = null;
     this.model = null;
   }

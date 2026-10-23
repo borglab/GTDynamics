@@ -1,4 +1,4 @@
-# Franka trajectory laboratory
+# Franka motion planning demo
 
 A local teaching app alongside `webdemo`: drag two six-DOF tool frames, build a
 GTDynamics kinematic factor graph, watch native GTSAM iterations reshape the
@@ -25,10 +25,10 @@ Use the same C++ dependencies as GTDynamics, plus **Boost 1.75+** (Boost.JSON),
 normal GTDynamics build with the optional demo target:
 
 ```bash
-cmake -S . -B build -DGTDYNAMICS_BUILD_STEAP_WEBDEMO=ON
-cmake --build build --target steap_optimizer steap_factor_test -j2
-python3 steap-webdemo/scripts/bootstrap_models.py
-cd steap-webdemo
+cmake -S . -B build -DGTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO=ON
+cmake --build build --target motion_planning_optimizer motion_planning_factor_test -j2
+python3 motion-planning-webdemo/scripts/bootstrap_models.py
+cd motion-planning-webdemo
 npm install
 npm run dev
 ```
@@ -43,7 +43,7 @@ fresh C++-only build can use `-DGTDYNAMICS_BUILD_PYTHON=OFF` and
 `-DGTDYNAMICS_BUILD_EXAMPLES=OFF`. To use another build directory:
 
 ```bash
-STEAP_BACKEND=/absolute/path/to/steap_optimizer npm run dev
+MOTION_PLANNING_BACKEND=/absolute/path/to/motion_planning_optimizer npm run dev
 ```
 
 The servers bind to loopback. When running on a remote development machine,
@@ -117,11 +117,54 @@ poses, while the simulated arm follows optimized joint angles. Their temporary
 disagreement during optimization is meaningful. Neither the optimizer nor its
 interpolated trajectory includes collision-avoidance costs in this demo.
 
-This is a **STEAP-inspired endpoint replanning demonstration** using batch LM
-warm starts. Full simultaneous trajectory estimation and planning additionally
-incorporates execution measurements, commonly through incremental inference.
-The repository's `gtdynamics/gpmp2/tests/testSTEAP.cpp` demonstrates that
-measurement-update/iSAM2 formulation; this app does not claim to implement it.
+This is a **motion planning demo** using batch LM warm starts. Moving an endpoint
+changes the planning problem. MuJoCo's feedback controller tracks the resulting
+trajectory, but its execution measurements never enter the factor graph.
+
+## What would it take to implement full STEAP?
+
+[STEAP (Simultaneous Trajectory Estimation and Planning)](https://arxiv.org/abs/1807.10425)
+jointly estimates the executed trajectory and plans its future continuation,
+conditioned on incoming sensor measurements and planning costs. Repeatedly
+solving for new endpoint targets does not provide that joint estimation.
+Extending this demo would require:
+
+1. **A trajectory spanning past, present, and future.** Track execution time and
+   retain the executed states as estimation variables alongside the unexecuted
+   plan. Replace the current ping-pong replay clock with an execution cursor.
+2. **Measurement factors with timestamps and uncertainty.** Initially stream
+   actual MuJoCo `qpos`/`qvel` observations, optionally with simulated noise, back
+   to C++. Associate measurements with the correct states (or interpolate for
+   asynchronous observations), and give them explicit noise models. Desired
+   actuator commands are not measurements.
+3. **A probabilistic temporal model.** For a formulation matching the paper, use
+   a continuous-time Gaussian-process trajectory prior and its corresponding
+   interpolation, with process noise and state uncertainty. The repository's
+   `GPLinearPriorFactor` is a starting point; retain the kinematic constraints
+   needed to relate joint states to link poses and twists. The current
+   trapezoidal and velocity-change costs alone do not implement that model.
+4. **Persistent joint inference as observations arrive.** Add measurement factors
+   and update both the past estimate and future plan. iSAM2 offers incremental
+   updates; track factor indices so planning priors can be replaced or removed
+   as execution progresses. Merely swapping LM for iSAM2, or resetting the start
+   pose from a sensor reading, does not implement the joint problem.
+5. **An execution and replanning loop.** Execute the future portion from the
+   current estimated state, ingest observations, update the joint solution,
+   and send revised future commands. Keep recorded execution separate from
+   desired motion; at arrival, use an observation rather than treating the goal
+   as evidence of where the arm actually ended. To reproduce the paper's
+   collision-aware planning, also add obstacle/SDF factors and collision checks
+   between support states; obstacle avoidance is currently absent.
+6. **A demonstration of estimation under disturbances.** Show measured,
+   estimated, and planned motion separately, including uncertainty. Test noisy
+   or delayed observations and execution disturbances, verifying that new data
+   changes the estimated history and remaining plan, and that updates meet the
+   execution loop's timing requirements.
+
+The existing [STEAP tests](../gtdynamics/gpmp2/tests/testSTEAP.cpp) provide a small
+starting example: a GP trajectory prior, obstacle factors, iSAM2 measurement
+updates, and replacement of a goal prior with an arrival measurement. Connecting
+those ideas to this app's simulated execution is the missing integration.
 
 ## Model coordinates and assets
 
@@ -142,8 +185,8 @@ optimization variables.
 
 ```bash
 # From the repository root:
-ctest --test-dir build -R '^steap_' --output-on-failure
-cd steap-webdemo
+ctest --test-dir build -R '^motion_planning_' --output-on-failure
+cd motion-planning-webdemo
 npm test
 npm run build
 ```

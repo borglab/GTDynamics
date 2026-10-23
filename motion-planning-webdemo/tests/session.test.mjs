@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { SolverSession } from '../server/session.mjs';
 
 async function fixture(t) {
-  const dir = await mkdtemp(join(tmpdir(), 'steap-session-'));
+  const dir = await mkdtemp(join(tmpdir(), 'motion-planning-session-'));
   const executable = join(dir, 'optimizer.mjs');
   await writeFile(executable, `#!/usr/bin/env node
 import { createInterface } from 'node:readline';

@@ -158,11 +158,11 @@ We recommend going through the examples to get a better understanding of how to 
 ## Browser Demonstrations
 
 - [MuJoCo trajectory viewer](webdemo/README.md): replay robot motion clips in a browser.
-- [Franka trajectory laboratory](steap-webdemo/README.md): edit six-DOF endpoint
+- [Franka motion planning demo](motion-planning-webdemo/README.md): edit six-DOF endpoint
   frames, build kinematic slice factor graphs, watch native C++/GTSAM optimization
   iterations, and replay or interactively replan the trajectory in MuJoCo.
 
-[![Franka demo: edit the goal, build a factor graph, inspect GTSAM iterations, and play or replan the motion in MuJoCo](steap-webdemo/docs/demo.gif)](steap-webdemo/README.md)
+[![Franka demo: edit the goal, build a factor graph, inspect GTSAM iterations, and play or replan the motion in MuJoCo](motion-planning-webdemo/docs/demo.gif)](motion-planning-webdemo/README.md)
 
 ## Constrained Optimization (GTSAM-backed)
 

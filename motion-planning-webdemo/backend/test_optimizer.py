@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 
 
 EXECUTABLE = pathlib.Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else (
-    pathlib.Path(__file__).resolve().parents[2] / "build/steap-webdemo/backend/steap_optimizer"
+    pathlib.Path(__file__).resolve().parents[2] / "build/motion-planning-webdemo/backend/motion_planning_optimizer"
 )
 URDF = pathlib.Path(__file__).resolve().parents[2] / "models/urdfs/panda/panda.urdf"
 

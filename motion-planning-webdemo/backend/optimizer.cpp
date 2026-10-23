@@ -1,6 +1,6 @@
 // Native GTDynamics/GTSAM trajectory optimizer. One NDJSON request per line.
-// This is a batch LM teaching demo of STEAP-style slices, not an iSAM2
-// simultaneous measurement/trajectory estimator or a collision-aware planner.
+// Batch LM motion planning over kinematic slices. Execution measurements
+// are not incorporated into the graph.
 #include "TrajectoryFactors.h"
 
 #include <boost/json/src.hpp>
@@ -229,7 +229,7 @@ class Demo {
       if (k == 0) continue;
       for (const auto& joint : joints_) {
         const auto j = joint->id();
-        graph_.emplace_shared<steap_demo::JointTrapezoidalFactor>(
+        graph_.emplace_shared<motion_planning_demo::JointTrapezoidalFactor>(
             JointAngleKey(j, k - 1), JointAngleKey(j, k), JointVelKey(j, k - 1),
             JointVelKey(j, k), dt, Isotropic::Sigma(1, .003));
         // Sum (v[k]-v[k-1])^2/dt approximates integral squared acceleration.
@@ -239,7 +239,7 @@ class Demo {
       }
       for (const auto& link : links_) {
         if (link->isFixed()) continue;
-        graph_.emplace_shared<steap_demo::PoseTrapezoidalFactor>(
+        graph_.emplace_shared<motion_planning_demo::PoseTrapezoidalFactor>(
             PoseKey(link->id(), k - 1), PoseKey(link->id(), k),
             TwistKey(link->id(), k - 1), TwistKey(link->id(), k), dt,
             Isotropic::Sigma(6, .02));
@@ -336,7 +336,7 @@ int main(int argc, char** argv) {
   std::ostream protocol(std::cout.rdbuf());
   std::cout.rdbuf(std::cerr.rdbuf());
   try {
-    Demo demo(argc > 1 ? argv[1] : STEAP_PANDA_URDF);
+    Demo demo(argc > 1 ? argv[1] : MOTION_PLANNING_PANDA_URDF);
     std::string line;
     while (std::getline(std::cin, line)) {
       json::value request_id = nullptr;
@@ -359,7 +359,7 @@ int main(int argc, char** argv) {
       }
     }
   } catch (const std::exception& error) {
-    std::cerr << "STEAP backend initialization failed: " << error.what() << '\n';
+    std::cerr << "Motion planning backend initialization failed: " << error.what() << '\n';
     return 1;
   }
   return 0;

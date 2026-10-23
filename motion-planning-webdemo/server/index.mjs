@@ -5,11 +5,11 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { SolverSession } from './session.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const executable = process.env.STEAP_BACKEND || resolve(root, 'build/steap-webdemo/backend/steap_optimizer');
-const port = Number(process.env.STEAP_PORT || 8766);
+const executable = process.env.MOTION_PLANNING_BACKEND || resolve(root, 'build/motion-planning-webdemo/backend/motion_planning_optimizer');
+const port = Number(process.env.MOTION_PLANNING_PORT || 8766);
 const server = createServer((request, response) => {
   response.writeHead(request.url === '/health' ? 200 : 404, { 'Content-Type': 'application/json' });
-  response.end(JSON.stringify(request.url === '/health' ? { service: 'steap-native-bridge' } : { error: 'Not found' }));
+  response.end(JSON.stringify(request.url === '/health' ? { service: 'motion-planning-native-bridge' } : { error: 'Not found' }));
 });
 const wss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
 server.on('upgrade', (request, socket, head) => {
@@ -34,7 +34,7 @@ wss.on('connection', ws => {
   ws.on('close', () => session.close());
   ws.on('error', () => session.close());
 });
-server.listen(port, '127.0.0.1', () => console.log(`STEAP C++ bridge: http://127.0.0.1:${port}`));
+server.listen(port, '127.0.0.1', () => console.log(`Motion planning C++ bridge: http://127.0.0.1:${port}`));
 server.on('error', error => { console.error(error.message); process.exitCode = 1; });
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
   for (const ws of wss.clients) ws.close();

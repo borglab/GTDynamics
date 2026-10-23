@@ -7,7 +7,7 @@
 
 int main() {
   using namespace gtsam;
-  using namespace steap_demo;
+  using namespace motion_planning_demo;
   const auto noise = noiseModel::Isotropic::Sigma(6, 1.);
   PoseTrapezoidalFactor factor(0, 1, 2, 3, .3, noise);
   const Pose3 p0(Rot3::RzRyRx(.4, -.3, .8), Point3(.2, -.1, .7));

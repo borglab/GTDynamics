@@ -3,11 +3,11 @@
  * Vite dev server (npm run dev), Chrome, and an external Playwright installation.
  * This keeps browser-test dependencies out of the app's runtime dependencies.
  *
- * Example from steap-webdemo/:
- * PLAYWRIGHT_MODULE=/tmp/steap-browser-test/node_modules/playwright/index.mjs \
+ * Example from motion-planning-webdemo/:
+ * PLAYWRIGHT_MODULE=/path/to/node_modules/playwright/index.mjs \
  *   node tests/playback.browser.mjs
  *
- * Optional: STEAP_URL, STEAP_OPTIMIZER, CHROME_EXECUTABLE. Without an explicit
+ * Optional: MOTION_PLANNING_URL, MOTION_PLANNING_OPTIMIZER, CHROME_EXECUTABLE. Without an explicit
  * module path, import the locally installed `playwright` package.
  */
 import assert from 'node:assert/strict';
@@ -17,9 +17,9 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const binary = process.env.STEAP_OPTIMIZER || fileURLToPath(
-  new URL('../../build/steap-webdemo/backend/steap_optimizer', import.meta.url));
-const url = process.env.STEAP_URL || 'http://127.0.0.1:3001/';
+const binary = process.env.MOTION_PLANNING_OPTIMIZER || fileURLToPath(
+  new URL('../../build/motion-planning-webdemo/backend/motion_planning_optimizer', import.meta.url));
+const url = process.env.MOTION_PLANNING_URL || 'http://127.0.0.1:3001/';
 const optimizer = spawn(binary, [], { stdio: ['pipe', 'pipe', 'ignore'] });
 const lines = createInterface({ input: optimizer.stdout })[Symbol.asyncIterator]();
 async function send(command, fields = {}) {
@@ -50,8 +50,8 @@ try {
     body: '<div id="viewer" style="width:900px;height:700px"></div>' }));
   await page.goto(url);
   const result = await page.evaluate(async ({ description, snapshot }) => {
-    const { SteapViewer, sampleTrajectory } = await import('/src/viewer.js');
-    const viewer = new SteapViewer(document.querySelector('#viewer'));
+    const { MotionPlanningViewer, sampleTrajectory } = await import('/src/viewer.js');
+    const viewer = new MotionPlanningViewer(document.querySelector('#viewer'));
     await viewer.init(description);
     viewer.setTrajectory(snapshot);
     const scenarios = [];

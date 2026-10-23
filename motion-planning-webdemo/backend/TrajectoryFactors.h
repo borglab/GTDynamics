@@ -3,7 +3,7 @@
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
 
-namespace steap_demo {
+namespace motion_planning_demo {
 
 // q[k+1] - q[k] = dt/2 (v[k] + v[k+1]). The signed residual is
 // immaterial; its four Jacobians must match the same convention.
@@ -65,4 +65,4 @@ class PoseTrapezoidalFactor
     return std::make_shared<PoseTrapezoidalFactor>(*this);
   }
 };
-}  // namespace steap_demo
+}  // namespace motion_planning_demo
