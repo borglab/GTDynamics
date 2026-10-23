@@ -10,13 +10,17 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   const errors = [], snapshots = [];
+  let description;
   page.on('pageerror', error => errors.push(error.message));
   page.on('websocket', socket => socket.on('framereceived', ({ payload }) => {
     const message = JSON.parse(payload.toString());
+    if (message.type === 'description') description = message;
     if (['built', 'targets', 'iteration'].includes(message.type)) snapshots.push(message);
   }));
   await page.goto(process.env.MOTION_PLANNING_URL || 'http://127.0.0.1:3001/');
   await page.locator('.joint-empty').waitFor();
+  const units = page.getByRole('combobox', { name: 'Joint plot angle units' });
+  assert.equal(await units.inputValue(), 'degrees', 'Degrees are the default');
   await page.getByRole('button', { name: 'Build graph', exact: true }).click();
   await page.locator('.joint-panel[data-iteration="0"]').waitFor();
   assert.equal(await page.locator('.joint-curve').count(), 14);
@@ -64,9 +68,34 @@ try {
     const actual = [...await page.locator('.joint-value[data-quantity="q"]').allTextContents(),
       ...await page.locator('.joint-value[data-quantity="v"]').allTextContents()];
     const expected = sampleTrajectoryState(snapshot, t);
-    assert.deepEqual(actual, [...expected.q, ...expected.v].map(value => value.toFixed(3)), 'Readout matches the selected native snapshot');
+    const scale = await units.inputValue() === 'degrees' ? 180 / Math.PI : 1;
+    assert.deepEqual(actual, [...expected.q, ...expected.v].map(value => (value * scale).toFixed(3)), 'Readout matches the selected native snapshot');
+  }
+  async function checkLimits(scale) {
+    assert.deepEqual(await page.locator('.joint-limit-value').allTextContents(),
+      description.joint_limits.flat().map(value => (value * scale).toFixed(3)), 'Limits come from the native robot model');
+    const lines = await page.locator('.joint-limit').evaluateAll(nodes => nodes.map(n => Number(n.getAttribute('y1'))));
+    assert.equal(lines.length, 14, 'Both limits are shown for every joint');
+    assert(lines.every(y => y > 12 && y < 92), 'Angle axes include the limits');
   }
   await checkValues(last, 1.237);
+  await checkLimits(180 / Math.PI);
+  await units.selectOption('radians');
+  await checkValues(last, 1.237);
+  await checkLimits(1);
+  assert((await page.locator('.joint-legend').innerText()).includes('rad/s'));
+  assert.notDeepEqual(await page.locator('.joint-axis text').allTextContents(), finalTicks, 'Axis labels convert with the units');
+  assert.deepEqual(await paths(), finalPaths, 'Unit selection does not alter the physical trajectory');
+  await units.selectOption('degrees');
+  await checkValues(last, 1.237);
+  assert.deepEqual(await page.locator('.joint-axis text').allTextContents(), finalTicks);
+  const limitToggle = page.getByRole('checkbox', { name: 'Show position limits' });
+  await limitToggle.uncheck();
+  assert.equal(await page.locator('.joint-limit').count(), 0);
+  assert.notDeepEqual(await paths(), finalPaths, 'Hiding limits rescales to the recorded motion');
+  await limitToggle.check();
+  assert.deepEqual(await paths(), finalPaths);
+  await checkLimits(180 / Math.PI);
   await setRange('Recorded optimizer iteration', 0);
   assert.equal(await page.locator('.joint-panel').getAttribute('data-iteration'), '0');
   await checkValues(snapshots[0], 1.237);
@@ -100,5 +129,5 @@ try {
   assert.equal(await page.getByRole('slider', { name: 'Joint plot inspection time' }).getAttribute('max'), '6');
   await checkValues(snapshots.at(-1), 4.5);
   assert.deepEqual(errors, []);
-  console.log('PASS: live solver plots, exact history data, stable axes, replay, seven aligned joint rows, synchronized hover, arm-time cursor, responsive layout, and graph rebuild.');
+  console.log('PASS: live solver plots, exact history data, stable axes, replay, degree/radian conversion, model position limits, seven aligned joint rows, synchronized hover, arm-time cursor, responsive layout, and graph rebuild.');
 } finally { await browser.close(); }

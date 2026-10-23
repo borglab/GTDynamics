@@ -78,16 +78,25 @@ does not need to be forwarded.
    coalesced; stale solver replies cannot overwrite the newest targets.
 
 Below **Optimizer playback**, the **Joint trajectories** panel plots all seven
-joints in seven vertically stacked plots against trajectory time (s). Each row
-shows the joint angle (rad, solid blue, left axis) and velocity (rad/s, dashed
-amber, right axis). All seven plots update with live optimization, the
-recorded iteration slider, and iteration replay. Dots mark optimized states;
-curves use the same cubic Hermite position and velocity interpolation as arm
-playback. Each joint has separate angle and velocity scales covering the
-recorded solve, so scrubbing iterations does not rescale the plots. Hover over
-any row or use the inspection-time slider to move all seven cursors and read
-exact values. **Follow arm time** moves the plot cursor with playback; these
-values are from the selected plan, rather than measured MuJoCo states.
+joints in vertically stacked plots against trajectory time (s). Each row shows
+the joint angle (solid blue, left axis) and velocity (dashed amber, right axis).
+The **Units** selector defaults to degrees (° and °/s) and also offers radians
+(rad and rad/s); it converts the axes, values, and limit labels. Native solver
+states and playback remain in radians.
+
+Red lines and shaded regions indicate the position limits from the robot model,
+with numeric bounds beside each joint name. **Show position limits** includes
+those bounds in the angle scale; uncheck it to zoom to the recorded motion.
+These are position limits on the left axis, not velocity limits.
+
+All seven plots update with live optimization, the recorded iteration slider,
+and iteration replay. Dots mark optimized states; curves use the same cubic
+Hermite position and velocity interpolation as arm playback. Each joint has
+separate angle and velocity scales covering the recorded solve, so scrubbing
+iterations does not rescale the plots. Hover over any row or use the
+inspection-time slider to move all seven cursors and read exact values.
+**Follow arm time** moves the plot cursor with playback; these values are from
+the selected plan, rather than measured MuJoCo states.
 
 Changing the number of states or duration requires a new graph. A difficult
 or unreachable target can leave a residual even when the optimizer stops;
@@ -219,7 +228,8 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 ```
 
 The joint-plot browser check verifies live iteration updates, recorded-snapshot
-values, iteration replay, fixed axes when scrubbing, seven aligned rows, synchronized hover, the
+values, iteration replay, degree/radian conversion, model position limits, fixed axes when scrubbing,
+seven aligned rows, synchronized hover, the
 playback cursor, responsive layout, and rebuilding with a new duration.
 
 - `backend/`: native graph, LM stepping, NDJSON protocol, and tests.

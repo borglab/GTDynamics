@@ -6,12 +6,21 @@ const props = defineProps({
   snapshot: Object,
   history: { type: Array, default: () => [] },
   jointNames: { type: Array, default: () => [] },
+  jointLimits: { type: Array, default: () => [] },
   playbackTime: { type: Number, default: 0 },
 })
-const quantities = [
-  { key: 'q', title: 'Angle', unit: 'rad', color: '#8abfff' },
-  { key: 'v', title: 'Velocity', unit: 'rad/s', color: '#f2ba72' },
-]
+const angleUnit = ref('degrees')
+const showLimits = ref(true)
+const unitScale = computed(() => angleUnit.value === 'degrees' ? 180 / Math.PI : 1)
+const unitLabel = computed(() => angleUnit.value === 'degrees' ? '°' : 'rad')
+const quantities = computed(() => [
+  { key: 'q', title: 'Angle', unit: unitLabel.value, color: '#8abfff' },
+  { key: 'v', title: 'Velocity', unit: `${unitLabel.value}/s`, color: '#f2ba72' },
+])
+function limitsFor(index) {
+  const limits = props.jointLimits[index]
+  return limits?.length === 2 && limits.every(Number.isFinite) && limits[0] < limits[1] ? limits : []
+}
 const panel = ref(null)
 const plotWidth = ref(900)
 let resizeObserver
@@ -54,13 +63,21 @@ const ranges = computed(() => {
   for (const snapshot of snapshots) {
     for (const sample of samples(snapshot)) {
       for (const joint of joints.value) {
-        for (const { key } of quantities) {
+        for (const key of ['q', 'v']) {
           const range = bounds[joint.index][key], value = sample[key][joint.index]
           range[0] = Math.min(range[0], value)
           range[1] = Math.max(range[1], value)
         }
       }
     }
+  }
+  if (showLimits.value) {
+    bounds.forEach((joint, index) => {
+      for (const limit of limitsFor(index)) {
+        joint.q[0] = Math.min(joint.q[0], limit)
+        joint.q[1] = Math.max(joint.q[1], limit)
+      }
+    })
   }
   return bounds.map(joint => Object.fromEntries(Object.entries(joint).map(([key, [min, max]]) => {
     if (!Number.isFinite(min)) return [key, [-1, 1]]
@@ -72,7 +89,9 @@ function x(t) { return left + t / duration.value * (right.value - left) }
 function y(value, range) { return bottom - (value - range[0]) / (range[1] - range[0]) * (bottom - top) }
 const plots = computed(() => joints.value.map(joint => ({
   ...joint,
-  series: quantities.map(quantity => {
+  limits: limitsFor(joint.index),
+  angleRange: ranges.value[joint.index].q,
+  series: quantities.value.map(quantity => {
     const range = ranges.value[joint.index][quantity.key]
     return {
       ...quantity, range,
@@ -94,7 +113,8 @@ function inspect(event) {
   const local = point.matrixTransform(matrix.inverse())
   inspectedTime.value = Math.max(0, Math.min(duration.value, (local.x - left) / (right.value - left) * duration.value))
 }
-function format(value) { return Number.isFinite(value) ? value.toFixed(3) : '—' }
+// Convert display values only; native snapshots and interpolation stay in radians.
+function format(value) { return Number.isFinite(value) ? (value * unitScale.value).toFixed(3) : '—' }
 function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toPrecision(3)).toString() }
 </script>
 
@@ -103,7 +123,10 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
     <div class="joint-header">
       <div><span class="section-kicker">JOINT TRAJECTORIES</span><h2 id="joint-panel-title">See how each joint moves.</h2>
         <p>One plot per joint, synchronized in trajectory time and optimizer iteration.</p></div>
-      <span class="joint-iteration">ITERATION <strong>{{ snapshot?.iteration ?? '—' }}</strong></span>
+      <div class="joint-options">
+        <label>Units <select v-model="angleUnit" aria-label="Joint plot angle units"><option value="degrees">Degrees</option><option value="radians">Radians</option></select></label>
+        <span class="joint-iteration">ITERATION <strong>{{ snapshot?.iteration ?? '—' }}</strong></span>
+      </div>
     </div>
     <p v-if="!curves.length" class="joint-empty">Build the factor graph to inspect joint angles and velocities. Solve to watch the time series evolve.</p>
     <template v-else>
@@ -113,6 +136,7 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
           {{ quantity.title }} · {{ quantity.unit }} · {{ quantity.key === 'q' ? 'left axis' : 'right axis' }}
         </span>
       </div>
+      <label class="joint-limit-toggle"><input v-model="showLimits" type="checkbox" /> Show position limits <span>(left axis)</span></label>
       <div class="joint-inspector">
         <label for="joint-inspect-time">Inspect <strong>{{ cursorTime.toFixed(2) }} s</strong></label>
         <input id="joint-inspect-time" type="range" min="0" :max="duration" step="0.001" :value="cursorTime"
@@ -121,21 +145,31 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
       </div>
       <div class="joint-plots">
         <figure v-for="plot in plots" :key="plot.index" :data-joint="plot.index">
-          <figcaption><strong>{{ plot.name }}</strong><span v-for="series in plot.series" :key="series.key" :style="{ color: series.color }">
+          <figcaption><strong>{{ plot.name }}</strong><span v-if="plot.limits.length" class="joint-limit-readout">Limits <span v-for="(limit, index) in plot.limits" :key="index"><span v-if="index"> … </span><output class="joint-limit-value">{{ format(limit) }}</output></span> {{ unitLabel }}</span><span v-for="series in plot.series" :key="series.key" :style="{ color: series.color }">
             {{ series.title }} <output class="joint-value" :data-quantity="series.key">{{ format(cursor[series.key][plot.index]) }}</output> {{ series.unit }}
           </span></figcaption>
           <svg :viewBox="`0 0 ${plotWidth} 120`" role="img"
-            :aria-label="`${plot.name}: angle in radians (left axis) and velocity in radians per second (right axis) versus trajectory time, iteration ${snapshot.iteration}`"
+            :aria-label="`${plot.name}: angle in ${angleUnit} (left axis) and velocity in ${angleUnit} per second (right axis) versus trajectory time, iteration ${snapshot.iteration}`"
             @pointermove="inspect" @pointerdown="inspect">
+            <g v-if="showLimits && plot.limits.length" class="joint-limit-bands">
+              <rect :x="left" :y="top" :width="right - left" :height="y(plot.limits[1], plot.angleRange) - top" />
+              <rect :x="left" :y="y(plot.limits[0], plot.angleRange)" :width="right - left" :height="bottom - y(plot.limits[0], plot.angleRange)" />
+            </g>
             <line v-for="i in 3" :key="`grid-${i}`" class="joint-grid" :x1="left" :x2="right"
               :y1="top + (bottom - top) * (i - 1) / 2" :y2="top + (bottom - top) * (i - 1) / 2" />
             <g v-for="series in plot.series" :key="`axis-${series.key}`" class="joint-axis" :fill="series.color">
               <text v-for="value in series.ticks" :key="value" :x="series.key === 'q' ? left - 8 : right + 8"
-                :y="y(value, series.range) + 4" :text-anchor="series.key === 'q' ? 'end' : 'start'">{{ tick(value) }}</text>
+                :y="y(value, series.range) + 4" :text-anchor="series.key === 'q' ? 'end' : 'start'">{{ tick(value * unitScale) }}</text>
             </g>
             <g v-for="i in 5" :key="i" class="joint-axis joint-time-axis">
               <line class="joint-grid" :x1="x((i - 1) * duration / 4)" :x2="x((i - 1) * duration / 4)" :y1="top" :y2="bottom" />
               <text :x="x((i - 1) * duration / 4)" :y="bottom + 18" text-anchor="middle">{{ tick((i - 1) * duration / 4) }}</text>
+            </g>
+            <g v-if="showLimits" class="joint-limits">
+              <line v-for="(limit, index) in plot.limits" :key="index" class="joint-limit" :data-limit="index === 0 ? 'lower' : 'upper'"
+                :x1="left" :x2="right" :y1="y(limit, plot.angleRange)" :y2="y(limit, plot.angleRange)">
+                <title>{{ index === 0 ? 'Lower' : 'Upper' }} position limit: {{ format(limit) }} {{ unitLabel }}</title>
+              </line>
             </g>
             <g v-for="series in plot.series" :key="series.key" :stroke="series.color" :fill="series.color">
               <polyline class="joint-curve" :data-quantity="series.key" :data-joint="plot.index" :points="series.points"
@@ -148,7 +182,7 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
         </figure>
       </div>
       <p class="joint-time-label">Trajectory time (s) · shared across all seven joints</p>
-      <p class="joint-note">Each joint has its own angle and velocity scales, held fixed across recorded iterations. Dots are optimized states; curves use the same Hermite interpolation as arm playback. Hover over any plot or use the time slider to inspect all joints together.</p>
+      <p class="joint-note">Each joint has its own angle and velocity scales, held fixed across recorded iterations. Red lines mark position limits from the robot model; shaded areas are outside those limits. Dots are optimized states; curves use the same Hermite interpolation as arm playback. Hover over any plot or use the time slider to inspect all joints together.</p>
     </template>
   </section>
 </template>
@@ -158,6 +192,8 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
 .joint-header { display: flex; justify-content: space-between; align-items: start; gap: 20px; }
 .joint-header h2 { font-size: 20px; font-weight: 500; margin-top: 7px; }
 .joint-header p, .joint-empty, .joint-note { color: var(--muted); font-size: 11px; line-height: 1.8; margin-top: 10px; }
+.joint-options { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+.joint-options label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
 .joint-iteration { white-space: nowrap; font: 10px var(--mono); color: var(--muted); padding-top: 6px; }
 .joint-iteration strong { margin-left: 8px; font-size: 20px; color: var(--accent); font-weight: 400; }
 .joint-empty { padding: 35px 0; text-align: center; }
@@ -168,7 +204,12 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
 .joint-plots { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 figure { margin: 0; min-width: 0; border-top: 1px solid var(--border); padding-top: 12px; }
 figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 24px; font: 11px var(--mono); margin-bottom: 4px; }
-figcaption strong { color: var(--text); font-weight: 500; margin-right: auto; }
+figcaption strong { color: var(--text); font-weight: 500; }
+.joint-limit-readout { margin-right: auto; color: #e49a9d; font-size: 10px; }
+.joint-limit-toggle { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: #e49a9d; font-size: 11px; }
+.joint-limit-toggle span { color: var(--muted); }
+.joint-limit { stroke: #ee7276; stroke-width: 1; stroke-dasharray: 3 4; }
+.joint-limit-bands { fill: #ee7276; opacity: .08; }
 figcaption span { white-space: nowrap; }
 .joint-value { display: inline-block; min-width: 48px; text-align: right; }
 svg { display: block; width: 100%; cursor: crosshair; }
