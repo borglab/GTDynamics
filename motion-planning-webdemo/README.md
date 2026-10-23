@@ -77,6 +77,16 @@ does not need to be forwarded.
    estimate, and playback follows the arriving trajectory. Rapid edits are
    coalesced; stale solver replies cannot overwrite the newest targets.
 
+Below **Optimizer playback**, the **Joint trajectories** panel plots all seven
+joint angles (rad) and velocities (rad/s) against trajectory time (s). Both
+plots update with live optimization, the recorded iteration slider, and iteration
+replay. Dots mark optimized states; curves use the same cubic Hermite position
+and velocity interpolation as arm playback. Axes cover the recorded solve so
+scrubbing iterations does not rescale the plots. Click joint names to hide or
+show their curves, and hover or use the inspection-time slider to read exact
+values. **Follow arm time** moves the plot cursor with playback; these values
+are from the selected plan, rather than measured MuJoCo states.
+
 Changing the number of states or duration requires a new graph. A difficult
 or unreachable target can leave a residual even when the optimizer stops;
 inspect the endpoint errors rather than equating convergence with success.
@@ -202,12 +212,20 @@ Chrome, and a separate Playwright installation:
 ```bash
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
   node tests/playback.browser.mjs
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+  node tests/joint-plots.browser.mjs
 ```
+
+The joint-plot browser check verifies live iteration updates, recorded-snapshot
+values, iteration replay, fixed axes when scrubbing, joint visibility, the
+playback cursor, responsive layout, and rebuilding with a new duration.
 
 - `backend/`: native graph, LM stepping, NDJSON protocol, and tests.
 - `server/`: local WebSocket-to-NDJSON bridge; one C++ process per tab.
 - `src/viewer.js`: MuJoCo loading, frame gizmos, trajectory ghosts, and playback.
 - `src/App.vue`: teaching controls, live replanning, and iteration history.
+- `src/JointTrajectoryPanel.vue`: joint time series and synchronized inspection of
+  the selected optimizer snapshot.
 
 Browser commands are `build`, `solve`, `stop`, and `targets`. The bridge sends
 native `describe`, `build`, `targets`, and single-step `iterate` commands with
