@@ -41,6 +41,20 @@ pybind_wrap(
   ${GTDYNAMICS_ENABLE_BOOST_SERIALIZATION} # use_boost_serialization
 )
 
+# Use gtwrap's pybind11 headers before broad dependency include directories.
+# In particular, Homebrew's include directory can contain another pybind11
+# version with an incompatible type registry. SYSTEM includes are searched
+# after all ordinary includes, so BEFORE alone does not prevent that mismatch.
+get_target_property(_gtd_pybind11_headers pybind11::pybind11_headers ALIASED_TARGET)
+if(NOT _gtd_pybind11_headers)
+  set(_gtd_pybind11_headers pybind11::pybind11_headers)
+endif()
+set_property(TARGET ${_gtd_pybind11_headers}
+             PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "")
+set_property(TARGET ${PROJECT_NAME}_py PROPERTY NO_SYSTEM_FROM_IMPORTED ON)
+target_include_directories(${PROJECT_NAME}_py BEFORE PRIVATE ${pybind11_INCLUDE_DIR})
+unset(_gtd_pybind11_headers)
+
 set_target_properties(
   ${PROJECT_NAME}_py
   PROPERTIES OUTPUT_NAME "${PROJECT_NAME}"

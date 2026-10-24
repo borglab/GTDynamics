@@ -155,6 +155,15 @@ We recommend going through the examples to get a better understanding of how to 
     ```
     where `XXX` corresponds to the folder name in `examples`. For example, `make example_quadruped_mp.sim` or `make example_spider_walking.sim`. Make sure you have `pybullet` and `matplotlib` installed in your Python environment. 
 
+## Browser Demonstrations
+
+- [MuJoCo trajectory viewer](webdemo/README.md): replay robot motion clips in a browser.
+- [Franka motion planning demo](motion-planning-webdemo/README.md): edit six-DOF endpoint
+  frames, build kinematic slice factor graphs, watch native C++/GTSAM optimization
+  iterations, and replay or interactively replan the trajectory in MuJoCo.
+
+[![Franka demo: edit the goal, build a factor graph, inspect GTSAM iterations, and play or replan the motion in MuJoCo](motion-planning-webdemo/docs/demo.gif)](motion-planning-webdemo/README.md)
+
 ## Constrained Optimization (GTSAM-backed)
 
 GTDynamics now routes some constrained optimization methods through GTSAM's constrained optimizers.
