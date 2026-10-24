@@ -186,7 +186,7 @@ static void InsertFixedLinks(const std::vector<LinkSharedPtr> &links, size_t t,
 }
 
 void Robot::resetFKCache() {
-  fk_cache_ = std::make_shared<FKTraversalCache>();
+  fk_cache_.clear();
 }
 
 gtsam::Values Robot::forwardKinematics(
@@ -205,50 +205,9 @@ gtsam::Values Robot::forwardKinematics(
     InsertTwist(&values, root_link->id(), t, gtsam::Vector6::Zero());
   }
 
-  // Use the traversal cached for this root, which is computed on first use
-  // or if it is stale, e.g. because joints were attached to links after the
-  // robot was constructed.
-  const auto traversal = fk_cache_->get(root_link);
-  const auto &links = traversal->links;
-
-  // Links with known poses are checked, but not expanded further. In graphs
-  // with kinematic loops this changes which spanning tree BFS finds, so fall
-  // back to discovering the traversal on the fly.
-  if (!traversal->loop_edges.empty()) {
-    for (size_t i = 1; i < links.size(); ++i) {
-      if (values.exists(PoseKey(links[i]->id(), t))) {
-        BreadthFirstKinematics(root_link, t, &values);
-        return values;
-      }
-    }
-  }
-
-  std::vector<Pose3> poses(links.size());
-  std::vector<Vector6> twists(links.size());
-  std::vector<bool> expanded(links.size(), false);
-  poses[0] = Pose(values, root_link->id(), t);
-  twists[0] = Twist(values, root_link->id(), t);
-  expanded[0] = true;
-
-  // Walk the spanning tree, parents before children.
-  std::pair<Pose3, Vector6> poseTwist;
-  for (const FKEdge &edge : traversal->tree_edges) {
-    if (!expanded[edge.from]) continue;
-    if (Propagate(edge.joint, links[edge.from], poses[edge.from],
-                  twists[edge.from], t, &values, &poseTwist)) {
-      std::tie(poses[edge.to], twists[edge.to]) = poseTwist;
-      expanded[edge.to] = true;
-    }
-  }
-
-  // Check that loop closing joints are consistent, from both sides.
-  for (const FKEdge &edge : traversal->loop_edges) {
-    for (const size_t i : {edge.from, edge.to}) {
-      if (!expanded[i]) continue;
-      Propagate(edge.joint, links[i], poses[i], twists[i], t, &values,
-                &poseTwist);
-    }
-  }
+  // Propagate from the root using the traversal cached for it, which is
+  // computed on first use or recomputed if the robot topology changed.
+  fk_cache_.get(root_link)->run(t, &values);
   return values;
 }
 

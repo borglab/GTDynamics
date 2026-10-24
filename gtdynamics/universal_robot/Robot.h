@@ -20,7 +20,6 @@
 #include <gtdynamics/universal_robot/RobotTypes.h>
 
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -42,6 +41,12 @@ using LinkVector = std::vector<std::reference_wrapper<Link>>;
 using JointVector = std::vector<std::reference_wrapper<Joint>>;
 
 using LinkJointPair = std::pair<LinkMap, JointMap>;
+// map from link name to link pose
+using LinkPoses = std::map<std::string, gtsam::Pose3>;
+// map from link name to link twist
+using LinkTwists = std::map<std::string, gtsam::Vector6>;
+// type for storing forward kinematics results
+using FKResults = std::pair<LinkPoses, LinkTwists>;
 
 /**
  * Robot is used to create a representation of a robot's
@@ -56,11 +61,10 @@ class Robot {
   JointMap name_to_joint_;
 
   /** Forward kinematics traversals, computed lazily for each root link the
-   * first time it is used. Shared between copies of the robot, which share
-   * the same links and joints, and replaced when the robot topology changes.
+   * first time it is used and recomputed when the joints of any traversed
+   * link change. Copies of the robot get their own copy of the cache.
    */
-  std::shared_ptr<FKTraversalCache> fk_cache_ =
-      std::make_shared<FKTraversalCache>();
+  mutable FKTraversalCache fk_cache_;
 
  public:
   /** Default Constructor */
