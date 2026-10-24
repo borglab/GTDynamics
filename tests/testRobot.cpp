@@ -207,6 +207,36 @@ TEST(Robot, ForwardKinematicsRPR) {
   EXPECT(assert_equal(V_l3_move, Twist(fk_results, 3)));
 }
 
+// Replacing a joint keeps every link's joint count the same, but the cached
+// traversal must still be refreshed so FK uses the new joint.
+TEST(ForwardKinematics, ReplaceJoint) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
+  robot = robot.fixLink("l1");
+  auto l1 = robot.link("l1"), l2 = robot.link("l2");
+  auto old_joint = robot.joint("j1");
+
+  // Populate the cache using the original joint (id 0, about the x axis).
+  Values values;
+  InsertJointAngle(&values, 0, M_PI_2);
+  InsertJointAngle(&values, 1, M_PI_2);
+  Values results = robot.forwardKinematics(values);
+  EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI_2), Point3(0, -1, 2)),
+                      Pose(results, 1)));
+
+  // Swap in a joint with a different id, rotating about the y axis.
+  auto new_joint = std::make_shared<RevoluteJoint>(
+      1, "j2", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, gtsam::Vector3(0, 1, 0));
+  for (auto &&link : {l1, l2}) {
+    link->removeJoint(old_joint);
+    link->addJoint(new_joint);
+  }
+
+  results = robot.forwardKinematics(values);
+  EXPECT(assert_equal(Pose3(Rot3::Ry(M_PI_2), Point3(1, 0, 2)),
+                      Pose(results, 1)));
+}
+
 // test fk for a four bar linkage (loopy)
 TEST(ForwardKinematics, FourBar) {
   Robot robot = CreateRobotFromFile(

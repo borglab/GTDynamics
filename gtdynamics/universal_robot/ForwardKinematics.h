@@ -41,8 +41,8 @@ struct FKTraversal {
   std::vector<LinkSharedPtr> links;  ///< BFS order, links[0] is the root.
   std::vector<FKEdge> tree_edges;    ///< Spanning tree joints, in BFS order.
   std::vector<FKEdge> loop_edges;    ///< Joints that close kinematic loops.
-  std::vector<size_t> num_joints;    ///< Joint count of each link, used to
-                                     ///< detect topology changes.
+  std::vector<size_t> versions;      ///< Topology version of each link, used
+                                     ///< to detect topology changes.
 
   /// Check the traversal still matches the joints attached to its links.
   bool isCurrent() const;
@@ -55,7 +55,7 @@ using FKTraversalMap =
 /**
  * Thread-safe cache of forward kinematics traversals, keyed by root link.
  * Traversals are computed lazily, the first time a root is requested, and
- * recomputed if the joints attached to their links have changed.
+ * recomputed if joints were added to or removed from any of their links.
  */
 class FKTraversalCache {
   std::mutex mutex_;

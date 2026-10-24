@@ -26,7 +26,7 @@ namespace gtdynamics {
 
 bool FKTraversal::isCurrent() const {
   for (size_t i = 0; i < links.size(); ++i) {
-    if (links[i]->numJoints() != num_joints[i]) return false;
+    if (links[i]->topologyVersion() != versions[i]) return false;
   }
   return true;
 }
@@ -55,7 +55,7 @@ FKTraversal ComputeFKTraversal(const LinkSharedPtr &root) {
     }
   }
   for (auto &&link : traversal.links) {
-    traversal.num_joints.push_back(link->numJoints());
+    traversal.versions.push_back(link->topologyVersion());
   }
   return traversal;
 }
