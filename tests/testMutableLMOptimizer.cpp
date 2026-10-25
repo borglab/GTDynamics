@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testTspaceBasis.cpp
+ * @file  testMutableLMOptimizer.cpp
  * @brief Test tangent space basis for constraint manifold.
  * @author Yetong Zhang
  */

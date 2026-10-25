@@ -21,7 +21,7 @@ using std::cout, std::setprecision, std::setw, std::endl;
 
 namespace gtdynamics {
 
-using gtsam::IndeterminantLinearSystemException;
+using gtsam::IndeterminateSystemException;
 using gtsam::JacobianFactor;
 using gtsam::Key;
 using gtsam::Matrix;
@@ -118,39 +118,9 @@ SQPTrial::SQPTrial(const SQPState &state, const double _lambda,
 
   // solve linear update
   try {
-    // delta = damped_system.optimize();
-    // GaussianFactorGraph new_system;
-    // for (auto factor : damped_system) {
-    //   JacobianFactor::shared_ptr jacobian_factor(
-    //       std::dynamic_pointer_cast<JacobianFactor>(factor));
-    //   // if (jacobian_factor) {
-    //   auto noise_model = jacobian_factor->get_model();
-    //   if (noise_model && noise_model->isConstrained()) {
-    //     new_system.push_back(ZerobFactor(jacobian_factor));
-    //   } else {
-    //     new_system.push_back(factor);
-    //   }
-    // }
-    // for (const auto& key: state.values.keys()) {
-    //   size_t dim = state.values.at(key).dim();
-    //   new_system.emplace_shared<JacobianFactor>(key, Matrix::Identity(dim,
-    //   dim)*1e3, Vector::Ones(dim), noiseModel::Unit::Create(dim));
-    // }
     delta = SolveLinear(damped_system, params.lm_params);
-    // auto delta1 = SolveLinear(new_system, params.lm_params);
-    // // delta = damped_system.optimize();
-    // // auto delta1 = new_system.optimize();
-    // std::cout << "linear error zero: " <<
-    // damped_system.error(VectorValues::Zero(delta)) << "\n"; std::cout <<
-    // "linear error delta: " << damped_system.error(delta) << "\n"; std::cout
-    // << "linear error delta1: " << damped_system.error(delta1) << "\n";
-
-    // std::cout << "new linear error delta1: " << new_system.error(delta1) <<
-    // "\n"; std::cout << "new linear error zero: " <<
-    // new_system.error(VectorValues::Zero(delta)) << "\n"; std::cout <<
-    // "delta1_norm: " << delta1.norm() << "\n";
     solve_successful = true;
-  } catch (const IndeterminantLinearSystemException &) {
+  } catch (const IndeterminateSystemException &) {
     return;
   }
   VectorValues zero_delta = VectorValues::Zero(delta);
@@ -230,7 +200,7 @@ void SQPTrial::resolveLinearUsingMeritSystem(const SQPState &state,
   try {
     delta = SolveLinear(damped_system, params.lm_params);
     solve_successful = true;
-  } catch (const IndeterminantLinearSystemException &) {
+  } catch (const IndeterminateSystemException &) {
     solve_successful = false;
     return;
   }

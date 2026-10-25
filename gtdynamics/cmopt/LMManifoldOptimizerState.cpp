@@ -198,7 +198,7 @@ LMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
   try {
     delta = SolveLinear(damped_system, params);
     solveSuccessful = true;
-  } catch (const gtsam::IndeterminantLinearSystemException &) {
+  } catch (const gtsam::IndeterminateSystemException &) {
     solveSuccessful = false;
     return;
   }

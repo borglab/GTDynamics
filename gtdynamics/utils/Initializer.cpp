@@ -133,9 +133,11 @@ Values Initializer::InitializeSolutionInterpolation(
 
     // Compute forward dynamics to obtain remaining link poses.
     // TODO(Alejandro): forwardKinematics needs to get passed prev link twist
+    // Keep FK input local to this timestep to avoid copying the whole trajectory.
+    Values fk_input;
     for (auto&& joint : robot.joints()) {
-      InsertJointAngle(&init_vals, joint->id(), t, sampler.sample()[0]);
-      InsertJointVel(&init_vals, joint->id(), t, sampler.sample()[0]);
+      InsertJointAngle(&fk_input, joint->id(), t, sampler.sample()[0]);
+      InsertJointVel(&fk_input, joint->id(), t, sampler.sample()[0]);
     }
 
     auto link = robot.link(link_name);
@@ -143,9 +145,9 @@ Values Initializer::InitializeSolutionInterpolation(
       throw std::invalid_argument("InitializeSolutionInterpolation: Link " +
                                   link_name + " is fixed.");
     }
-    InsertPose(&init_vals, link->id(), t, wTl_t);
-    InsertTwist(&init_vals, link->id(), t, gtsam::Z_6x1);
-    init_vals = robot.forwardKinematics(init_vals, t, link_name);
+    InsertPose(&fk_input, link->id(), t, wTl_t);
+    InsertTwist(&fk_input, link->id(), t, gtsam::Z_6x1);
+    init_vals.insert(robot.forwardKinematics(fk_input, t, link_name));
 
     const Values zero_values =
         ZeroValues(robot, t, gaussian_noise, contact_points);

@@ -4,7 +4,7 @@
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/PCGSolver.h>
 #include <gtsam/linear/SubgraphSolver.h>
-#include <gtsam/nonlinear/NonlinearEquality.h>
+#include <gtsam/constrained/NonlinearEquality.h>
 
 #if GTSAM_ENABLE_BOOST_SERIALIZATION
 GTSAM_VALUE_EXPORT(double)

@@ -65,6 +65,10 @@ class Link : public std::enable_shared_from_this<Link> {
   /// Joints connected to the link
   std::vector<JointSharedPtr> joints_;
 
+  /// Incremented whenever joints are added or removed, so that cached
+  /// traversals of the link-joint graph can detect changes.
+  size_t topology_version_ = 0;
+
   /// Robot class should have access to the internals of its links.
   friend class Robot;
 
@@ -112,14 +116,19 @@ class Link : public std::enable_shared_from_this<Link> {
 
   /// remove the joint
   void removeJoint(const JointSharedPtr &joint) {
-    joints_.erase(std::remove(joints_.begin(), joints_.end(), joint));
+    joints_.erase(std::remove(joints_.begin(), joints_.end(), joint),
+                  joints_.end());
+    ++topology_version_;
   }
 
   /// return ID of the link
   uint8_t id() const { return id_; }
 
   /// add joint to the link
-  void addJoint(const JointSharedPtr &joint) { joints_.push_back(joint); }
+  void addJoint(const JointSharedPtr &joint) {
+    joints_.push_back(joint);
+    ++topology_version_;
+  }
 
   /// Relative pose at rest from link’s COM to the base frame.
   inline const gtsam::Pose3 &bMcom() const { return bMcom_; }
@@ -143,6 +152,10 @@ class Link : public std::enable_shared_from_this<Link> {
 
   /// return the number of connected joints
   size_t numJoints() const { return joints_.size(); }
+
+  /// Version of the joints attached to this link, changed by every
+  /// addJoint/removeJoint call.
+  size_t topologyVersion() const { return topology_version_; }
 
   /// Return link name.
   const std::string &name() const { return name_; }

@@ -261,9 +261,9 @@
     <p>
       The retraction policy is not selected inside the outer nonlinear optimizer.
       It is selected when each <code>ConstraintManifold</code> is constructed:
-      <code>ConstraintManifold::Params::retractor_creator</code> creates the
+      <code>ConstraintManifold::Params::retractorCreator</code> creates the
       concrete <code>Retractor</code>. The default parameter object chooses
-      <code>UoptRetractorCreator</code>.
+      <code>UnconstrainedOptimizationRetractorCreator</code>.
     </p>
 
     <div class="flow">
@@ -273,7 +273,7 @@
       </div>
       <div class="step">
         <strong>2. Lift</strong>
-        <code>TspaceBasis</code> maps <code>xi</code> to ambient
+        <code>TangentSpaceBasis</code> maps <code>xi</code> to ambient
         <code>VectorValues</code>.
       </div>
       <div class="step">
@@ -304,12 +304,12 @@
         <tr>
           <td>Select basis and retractor</td>
           <td><a href="ConstraintManifold.h#L70"><code>ConstraintManifold.h:70</code></a></td>
-          <td><code>ConstraintManifold::Params</code> contains <code>basis_creator</code> and <code>retractor_creator</code>.</td>
+          <td><code>ConstraintManifold::Params</code> contains <code>basisCreator</code> and <code>retractorCreator</code>.</td>
         </tr>
         <tr>
           <td>Default retractor</td>
           <td><a href="ConstraintManifold.h#L76"><code>ConstraintManifold.h:76</code></a></td>
-          <td>The default is <code>UoptRetractorCreator</code>.</td>
+          <td>The default is <code>UnconstrainedOptimizationRetractorCreator</code>.</td>
         </tr>
         <tr>
           <td>Create concrete retractor</td>
@@ -353,13 +353,13 @@
       </thead>
       <tbody>
         <tr>
-          <td><code>UoptRetractor</code></td>
+          <td><code>UnconstrainedOptimizationRetractor</code></td>
           <td>Unconstrained LM on the equality-constraint penalty graph.</td>
           <td>Simple default, approximate projection, small problems where all constrained variables may move.</td>
           <td><a href="Retractor.cpp#L56"><code>Retractor.cpp:56</code></a></td>
         </tr>
         <tr>
-          <td><code>ProjRetractor</code></td>
+          <td><code>ProjectionRetractor</code></td>
           <td>Metric-projection style solve using priors around the base-retracted trial point, followed by optional cleanup.</td>
           <td>Small problems where the closest feasible point to the proposed step matters.</td>
           <td><a href="Retractor.cpp#L88"><code>Retractor.cpp:88</code></a></td>
@@ -381,14 +381,14 @@
   </div>
 
   <div class="section">
-    <h2>1. UoptRetractor: Unconstrained Penalty Projection</h2>
+    <h2>1. UnconstrainedOptimizationRetractor: Unconstrained Penalty Projection</h2>
     <div class="choice-title">
       <span class="tag">default</span>
       <span class="tag">all variables free</span>
       <span class="tag">approximate projection</span>
     </div>
     <p>
-      <code>UoptRetractor</code> is the default CM-OPT retraction. It takes the
+      <code>UnconstrainedOptimizationRetractor</code> is the default CM-OPT retraction. It takes the
       base-retracted trial values and runs LM on the equality constraint penalty
       graph. There are no priors tying the result to the trial point, so all
       variables in the connected component may move as long as the constraint
@@ -403,7 +403,7 @@
     <h3>Mechanics</h3>
     <ol>
       <li><code>Retractor::retract</code> first computes <code>values.retract(delta)</code>.</li>
-      <li><code>UoptRetractor::retractConstraints</code> sets those values into the mutable LM optimizer.</li>
+      <li><code>UnconstrainedOptimizationRetractor::retractConstraints</code> sets those values into the mutable LM optimizer.</li>
       <li>The optimizer minimizes only the penalty graph generated from the equality constraints.</li>
       <li>The returned values replace the component values for the next manifold state.</li>
     </ol>
@@ -414,7 +414,7 @@
       <li><a href="Retractor.cpp#L50"><code>Retractor.cpp:50</code></a>: constructor stores the penalty graph in <code>MutableLMOptimizer</code>.</li>
       <li><a href="Retractor.cpp#L56"><code>Retractor.cpp:56</code></a>: <code>retractConstraints(const Values&amp;)</code>.</li>
       <li><a href="Retractor.cpp#L64"><code>Retractor.cpp:64</code></a>: rvalue overload.</li>
-      <li><a href="Retractor.h#L325"><code>Retractor.h:325</code></a>: <code>UoptRetractorCreator</code>.</li>
+      <li><a href="Retractor.h#L325"><code>Retractor.h:325</code></a>: <code>UnconstrainedOptimizationRetractorCreator</code>.</li>
       <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.cpp#L487"><code>ConstrainedOptBenchmark.cpp:487</code></a>: benchmark default uses this retractor.</li>
     </ul>
 
@@ -432,23 +432,23 @@
       can redistribute motion across the component.
     </p>
 
-    <pre><code>auto params = std::make_shared&lt;RetractParams&gt;();
-params-&gt;lm_params.setMaxIterations(10);
-params-&gt;check_feasible = true;
+    <pre><code>auto params = std::make_shared&lt;RetractionParams&gt;();
+params-&gt;lmParams.setMaxIterations(10);
+params-&gt;checkFeasible = true;
 
-moptParams.cc_params-&gt;retractor_creator =
-    std::make_shared&lt;UoptRetractorCreator&gt;(params);</code></pre>
+moptParams.constraintManifoldParams-&gt;retractorCreator =
+    std::make_shared&lt;UnconstrainedOptimizationRetractorCreator&gt;(params);</code></pre>
   </div>
 
   <div class="section">
-    <h2>2. ProjRetractor: Metric-Projection Style Retraction</h2>
+    <h2>2. ProjectionRetractor: Metric-Projection Style Retraction</h2>
     <div class="choice-title">
       <span class="tag">closest feasible trial</span>
       <span class="tag">uses priors</span>
       <span class="tag">small-problem friendly</span>
     </div>
     <p>
-      <code>ProjRetractor</code> is the code path closest to the metric projection
+      <code>ProjectionRetractor</code> is the code path closest to the metric projection
       described in CM-OPT. It starts from the product-manifold trial point,
       appends Gaussian priors centered at that trial point, and solves a graph
       containing both equality-constraint penalties and those priors. The priors
@@ -458,8 +458,8 @@ moptParams.cc_params-&gt;retractor_creator =
     <p>
       After the solve with priors, the implementation usually runs a second LM
       solve without priors. That cleanup step improves final feasibility. If
-      <code>use_basis_keys</code> is enabled and the prior solve is already below
-      <code>feasible_threshold</code>, the implementation returns early.
+      <code>useBasisKeys</code> is enabled and the prior solve is already below
+      <code>feasibleThreshold</code>, the implementation returns early.
     </p>
 
     <h3>Mechanics</h3>
@@ -479,14 +479,14 @@ moptParams.cc_params-&gt;retractor_creator =
       <li><a href="Retractor.cpp#L88"><code>Retractor.cpp:88</code></a>: overridden <code>retract</code> with priors.</li>
       <li><a href="Retractor.cpp#L92"><code>Retractor.cpp:92</code></a>: add priors either on basis keys or all keys.</li>
       <li><a href="Retractor.cpp#L108"><code>Retractor.cpp:108</code></a>: cleanup solve without priors.</li>
-      <li><a href="Retractor.h#L344"><code>Retractor.h:344</code></a>: <code>ProjRetractorCreator</code>.</li>
+      <li><a href="Retractor.h#L344"><code>Retractor.h:344</code></a>: <code>ProjectionRetractorCreator</code>.</li>
     </ul>
 
     <div class="warning">
       <strong>Current factory caveat.</strong>
-      <code>ProjRetractor</code> can accept optional basis keys in its constructor,
-      but <code>ProjRetractorCreator</code> currently creates it without passing
-      basis keys. Do not set <code>params-&gt;use_basis_keys = true</code> through
+      <code>ProjectionRetractor</code> can accept optional basis keys in its constructor,
+      but <code>ProjectionRetractorCreator</code> currently creates it without passing
+      basis keys. Do not set <code>params-&gt;useBasisKeys = true</code> through
       the current creator unless you also extend the creator or instantiate the
       retractor directly with basis keys.
     </div>
@@ -500,13 +500,13 @@ moptParams.cc_params-&gt;retractor_creator =
       per call and runs one or two LM solves.
     </p>
 
-    <pre><code>auto params = std::make_shared&lt;RetractParams&gt;();
+    <pre><code>auto params = std::make_shared&lt;RetractionParams&gt;();
 params-&gt;sigma = 1.0;
-params-&gt;lm_params.setMaxIterations(20);
-params-&gt;check_feasible = true;
+params-&gt;lmParams.setMaxIterations(20);
+params-&gt;checkFeasible = true;
 
-moptParams.cc_params-&gt;retractor_creator =
-    std::make_shared&lt;ProjRetractorCreator&gt;(params);</code></pre>
+moptParams.constraintManifoldParams-&gt;retractorCreator =
+    std::make_shared&lt;ProjectionRetractorCreator&gt;(params);</code></pre>
   </div>
 
   <div class="section">
@@ -535,7 +535,7 @@ moptParams.cc_params-&gt;retractor_creator =
       <li>The constructor receives <code>basis_keys</code> and builds a graph where factors touching those keys are wrapped as <code>ConstVarFactor</code>.</li>
       <li>On every retraction, each wrapped factor receives the trial values for the fixed basis variables.</li>
       <li>The optimizer receives only the non-basis variables present in its graph.</li>
-      <li>If the reduced graph is already below <code>feasible_threshold</code>, the fast path returns without LM.</li>
+      <li>If the reduced graph is already below <code>feasibleThreshold</code>, the fast path returns without LM.</li>
       <li>Otherwise LM solves for the non-basis variables, and the fixed basis variables are inserted back into the result.</li>
     </ol>
 
@@ -548,7 +548,7 @@ moptParams.cc_params-&gt;retractor_creator =
       <li><a href="Retractor.cpp#L199"><code>Retractor.cpp:199</code></a>: LM solve for non-basis variables.</li>
       <li><a href="Retractor.cpp#L203"><code>Retractor.cpp:203</code></a>: optional recompute fallback.</li>
       <li><a href="Retractor.h#L364"><code>Retractor.h:364</code></a>: <code>BasisRetractorCreator</code>.</li>
-      <li><a href="TspaceBasis.cpp#L437"><code>TspaceBasis.cpp:437</code></a>: <code>EliminationBasis</code> verifies basis-key dimensions and constructs the symbolic ordering.</li>
+      <li><a href="TangentSpaceBasis.cpp#L437"><code>TangentSpaceBasis.cpp:437</code></a>: <code>EliminationBasis</code> verifies basis-key dimensions and constructs the symbolic ordering.</li>
       <li><a href="../constrained_optimizer/ConstrainedOptBenchmark.cpp#L499"><code>ConstrainedOptBenchmark.cpp:499</code></a>: benchmark SV default uses this path.</li>
     </ul>
 
@@ -574,8 +574,8 @@ moptParams.cc_params-&gt;retractor_creator =
 auto moptParams =
     ConstrainedOptBenchmark::DefaultMoptParamsSV(basisKeyFunc);
 
-moptParams.cc_params-&gt;retractor_creator-&gt;params()
-    -&gt;lm_params.setMaxIterations(10);</code></pre>
+moptParams.constraintManifoldParams-&gt;retractorCreator-&gt;params()
+    -&gt;lmParams.setMaxIterations(10);</code></pre>
   </div>
 
   <div class="section">
@@ -626,7 +626,7 @@ moptParams.cc_params-&gt;retractor_creator-&gt;params()
       In the current constructor, <code>basis_q_keys_ = q_keys</code> is assigned
       after optional basis-key classification. That means q-level basis selection
       is effectively all q keys in the current implementation, even when
-      <code>use_basis_keys</code> is true.
+      <code>useBasisKeys</code> is true.
     </div>
 
     <h3>Choosing It</h3>
@@ -637,12 +637,12 @@ moptParams.cc_params-&gt;retractor_creator-&gt;params()
       assumption about how the physics variables should be recovered.
     </p>
 
-    <pre><code>auto params = std::make_shared&lt;RetractParams&gt;();
-params-&gt;use_basis_keys = true;
+    <pre><code>auto params = std::make_shared&lt;RetractionParams&gt;();
+params-&gt;useBasisKeys = true;
 params-&gt;sigma = 1.0;
-params-&gt;check_feasible = true;
+params-&gt;checkFeasible = true;
 
-moptParams.cc_params-&gt;retractor_creator =
+moptParams.constraintManifoldParams-&gt;retractorCreator =
     std::make_shared&lt;DynamicsRetractorCreator&gt;(params, basisKeyFunc);</code></pre>
   </div>
 
@@ -668,14 +668,14 @@ moptParams.cc_params-&gt;retractor_creator =
         <tr>
           <td><code>OrthonormalBasis</code></td>
           <td>Linearize constraints, compute a null-space basis, and lift <code>xi</code> through that dense or sparse null space.</td>
-          <td><code>UoptRetractor</code> or <code>ProjRetractor</code>.</td>
-          <td><a href="TspaceBasis.cpp#L95"><code>TspaceBasis.cpp:95</code></a>, <a href="TspaceBasis.cpp#L225"><code>TspaceBasis.cpp:225</code></a></td>
+          <td><code>UnconstrainedOptimizationRetractor</code> or <code>ProjectionRetractor</code>.</td>
+          <td><a href="TangentSpaceBasis.cpp#L95"><code>TangentSpaceBasis.cpp:95</code></a>, <a href="TangentSpaceBasis.cpp#L225"><code>TangentSpaceBasis.cpp:225</code></a></td>
         </tr>
         <tr>
           <td><code>EliminationBasis</code></td>
           <td>Select explicit basis keys, eliminate non-basis variables, and cache recovery Jacobians.</td>
           <td><code>BasisRetractor</code>.</td>
-          <td><a href="TspaceBasis.cpp#L437"><code>TspaceBasis.cpp:437</code></a>, <a href="TspaceBasis.cpp#L608"><code>TspaceBasis.cpp:608</code></a></td>
+          <td><a href="TangentSpaceBasis.cpp#L437"><code>TangentSpaceBasis.cpp:437</code></a>, <a href="TangentSpaceBasis.cpp#L608"><code>TangentSpaceBasis.cpp:608</code></a></td>
         </tr>
       </tbody>
     </table>
@@ -683,7 +683,7 @@ moptParams.cc_params-&gt;retractor_creator =
     <p>
       The benchmark defaults make this relationship explicit:
       <code>DefaultMoptParams()</code> uses <code>OrthonormalBasisCreator</code>
-      and <code>UoptRetractorCreator</code>, while
+      and <code>UnconstrainedOptimizationRetractorCreator</code>, while
       <code>DefaultMoptParamsSV()</code> uses <code>EliminationBasisCreator</code>
       and <code>BasisRetractorCreator</code>.
     </p>
@@ -720,12 +720,12 @@ moptParams.cc_params-&gt;retractor_creator =
       <tbody>
         <tr>
           <td>You want the default and can allow all constrained variables to move during feasibility restoration.</td>
-          <td><code>UoptRetractor</code></td>
+          <td><code>UnconstrainedOptimizationRetractor</code></td>
           <td>Lowest setup burden. It only needs the equality constraints and LM parameters.</td>
         </tr>
         <tr>
           <td>You are solving a small constrained problem and want the feasible point closest to the trial step.</td>
-          <td><code>ProjRetractor</code></td>
+          <td><code>ProjectionRetractor</code></td>
           <td>The priors around the trial point express the projection metric directly.</td>
         </tr>
         <tr>
@@ -743,7 +743,7 @@ moptParams.cc_params-&gt;retractor_creator =
 
     <div class="note">
       <strong>Recommendation for a small mechanics example.</strong>
-      Start with <code>ProjRetractor</code> if your question is geometric:
+      Start with <code>ProjectionRetractor</code> if your question is geometric:
       "which feasible point is closest to this proposed motion?" Start with
       <code>BasisRetractor</code> if your question is coordinate-mechanical:
       "these generalized coordinates are independent; recover everything else."
@@ -756,9 +756,9 @@ moptParams.cc_params-&gt;retractor_creator =
     <h2>Parameter Map</h2>
     <p>
       The shared options live in <a href="Retractor.h#L50"><code>Retractor.h:50</code></a>
-      as <code>RetractParams</code>.
+      as <code>RetractionParams</code>.
     </p>
-    <table summary="RetractParams parameter effects by retractor">
+    <table summary="RetractionParams parameter effects by retractor">
       <thead>
         <tr>
           <th>Parameter</th>
@@ -768,23 +768,23 @@ moptParams.cc_params-&gt;retractor_creator =
       </thead>
       <tbody>
         <tr>
-          <td><code>lm_params</code></td>
+          <td><code>lmParams</code></td>
           <td>All four</td>
           <td>Controls inner LM iterations, linear solver, damping limits, and verbosity.</td>
         </tr>
         <tr>
-          <td><code>check_feasible</code>, <code>feasible_threshold</code></td>
+          <td><code>checkFeasible</code>, <code>feasibleThreshold</code></td>
           <td>All via <code>checkFeasible</code>; threshold also affects fast paths</td>
           <td>Reports failed feasibility checks and controls early return conditions.</td>
         </tr>
         <tr>
           <td><code>sigma</code></td>
-          <td><code>ProjRetractor</code>, <code>DynamicsRetractor</code></td>
+          <td><code>ProjectionRetractor</code>, <code>DynamicsRetractor</code></td>
           <td>Standard deviation for priors around the trial point. Smaller values hold closer to the trial.</td>
         </tr>
         <tr>
-          <td><code>use_basis_keys</code></td>
-          <td><code>BasisRetractor</code>, <code>DynamicsRetractor</code>, partial support in <code>ProjRetractor</code></td>
+          <td><code>useBasisKeys</code></td>
+          <td><code>BasisRetractor</code>, <code>DynamicsRetractor</code>, partial support in <code>ProjectionRetractor</code></td>
           <td>Indicates that a selected basis-key set should define independent coordinates or priors.</td>
         </tr>
         <tr>
@@ -793,9 +793,9 @@ moptParams.cc_params-&gt;retractor_creator =
           <td>If the reduced solve is still infeasible, optionally inserts basis variables and reruns full LM.</td>
         </tr>
         <tr>
-          <td><code>apply_base_retraction</code></td>
+          <td><code>applyBaseRetraction</code></td>
           <td>Present in params, not active in current generic retractor flow</td>
-          <td>The relevant conditional in <code>ProjRetractor</code> is currently commented out; the code initializes from the base-retracted values.</td>
+          <td>The relevant conditional in <code>ProjectionRetractor</code> is currently commented out; the code initializes from the base-retracted values.</td>
         </tr>
       </tbody>
     </table>

@@ -147,7 +147,7 @@ bool MutableLMOptimizer::tryLambda(const GaussianFactorGraph& linear,
     // ============ Solve is where most computation happens !! =================
     delta = solve(dampedSystem, params_);
     systemSolvedSuccessfully = true;
-  } catch (const gtsam::IndeterminantLinearSystemException&) {
+  } catch (const gtsam::IndeterminateSystemException&) {
     systemSolvedSuccessfully = false;
   }
 
