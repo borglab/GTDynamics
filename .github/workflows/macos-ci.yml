@@ -26,7 +26,7 @@ jobs:
       matrix:
         name: [macos-15-xcode-16.4]
         build_type: [Debug, Release]
-        python_version: [3]
+        python_version: ['3.15.0']
         include:
           - name: macos-15-xcode-16.4
             os: macos-15
@@ -81,12 +81,18 @@ jobs:
           cd ${{ github.workspace }}
           rm -rf /tmp/CppUnitLite
 
+      - name: Set up Python (Release only)
+        if: matrix.build_type == 'Release'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python_version }}
+
       - name: Python Dependencies (Release only)
         if: matrix.build_type == 'Release'
         shell: bash
         run: |
           set -e 
-          python${{ env.PYTHON_VERSION }} -m venv venv
+          python -m venv venv
           source venv/bin/activate
           echo "VENV_PYTHON_EXECUTABLE=${{ github.workspace }}/venv/bin/python" >> $GITHUB_ENV
           echo "${{ github.workspace }}/venv/bin" >> $GITHUB_PATH
@@ -165,6 +171,31 @@ jobs:
         if: matrix.build_type == 'Release'
         run: |
           set -e
+          export PYTHONPATH="${{ github.workspace }}/build/python${PYTHONPATH:+:$PYTHONPATH}"
+          "${{ env.VENV_PYTHON_EXECUTABLE }}" -u - <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          import gtsam
+          import gtsam.gtsam as gtsam_ext
+
+          def internals_ids(path):
+              return sorted({match.decode('ascii') for match in
+                             re.findall(rb'__pybind11_internals_v[0-9A-Za-z_]+',
+                                        Path(path).read_bytes())})
+
+          print('Python:', sys.executable, sys.version)
+          print('GTSAM package:', gtsam.__file__)
+          print('GTSAM extension:', gtsam_ext.__file__)
+          print('NoiseModelFactor available:', hasattr(gtsam, 'NoiseModelFactor'),
+                hasattr(gtsam_ext, 'NoiseModelFactor'))
+          print('GTSAM pybind11 internals:', internals_ids(gtsam_ext.__file__))
+          for extension in sorted(Path('python/gtdynamics').glob('gtdynamics*.so')):
+              print('GTDynamics extension:', extension.resolve())
+              print('GTDynamics pybind11 internals:', internals_ids(extension))
+          import gtdynamics.gtdynamics
+          PY
           make -j${NTHREADS} python-install
         working-directory: ./build
 
