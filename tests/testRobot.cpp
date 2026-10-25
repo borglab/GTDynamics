@@ -237,6 +237,30 @@ TEST(ForwardKinematics, ReplaceJoint) {
                       Pose(results, 1)));
 }
 
+// Copying or moving a robot carries its cached traversals along, and FK on
+// the copy or moved-to robot is unchanged.
+TEST(ForwardKinematics, CopyAndMove) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"))
+          .fixLink("l1");
+  Values values;
+  InsertJointAngle(&values, 0, M_PI_2);
+  const Values expected = robot.forwardKinematics(values);  // fills cache
+
+  Robot copied(robot);
+  EXPECT(assert_equal(expected, copied.forwardKinematics(values)));
+
+  Robot moved(std::move(copied));
+  EXPECT(assert_equal(expected, moved.forwardKinematics(values)));
+
+  Robot assigned;
+  assigned = std::move(moved);
+  EXPECT(assert_equal(expected, assigned.forwardKinematics(values)));
+
+  robot = robot.fixLink("l1");  // move assignment from a copy
+  EXPECT(assert_equal(expected, robot.forwardKinematics(values)));
+}
+
 // test fk for a four bar linkage (loopy)
 TEST(ForwardKinematics, FourBar) {
   Robot robot = CreateRobotFromFile(

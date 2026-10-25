@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.cache/
+public/assets/franka_emika_panda
+public/assets/manifest.json

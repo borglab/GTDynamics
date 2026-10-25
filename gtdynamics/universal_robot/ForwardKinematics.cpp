@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <unordered_set>
+#include <utility>
 
 using gtsam::Pose3;
 using gtsam::Vector6;
@@ -187,6 +188,19 @@ FKTraversalCache &FKTraversalCache::operator=(const FKTraversalCache &other) {
   if (this != &other) {
     std::scoped_lock lock(mutex_, other.mutex_);
     traversals_ = other.traversals_;
+  }
+  return *this;
+}
+
+FKTraversalCache::FKTraversalCache(FKTraversalCache &&other) {
+  std::lock_guard<std::mutex> lock(other.mutex_);
+  traversals_ = std::move(other.traversals_);
+}
+
+FKTraversalCache &FKTraversalCache::operator=(FKTraversalCache &&other) {
+  if (this != &other) {
+    std::scoped_lock lock(mutex_, other.mutex_);
+    traversals_ = std::move(other.traversals_);
   }
   return *this;
 }
