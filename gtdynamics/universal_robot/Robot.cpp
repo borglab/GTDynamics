@@ -29,7 +29,7 @@ using gtsam::Vector6;
 namespace gtdynamics {
 
 template <typename K, typename V>
-std::vector<V> getValues(std::map<K, V> m) {
+std::vector<V> getValues(const std::map<K, V>& m) {
   std::vector<V> vec;
   vec.reserve(m.size());
   std::transform(m.begin(), m.end(), back_inserter(vec),
