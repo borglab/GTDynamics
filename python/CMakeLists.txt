@@ -41,6 +41,11 @@ pybind_wrap(
   ${GTDYNAMICS_ENABLE_BOOST_SERIALIZATION} # use_boost_serialization
 )
 
+# Keep the wrapper on GTSAM's pybind11 headers if another dependency exposes
+# a different pybind11 version through a broader include directory.
+target_include_directories(${PROJECT_NAME}_py BEFORE PRIVATE
+                           "${pybind11_INCLUDE_DIR}")
+
 set_target_properties(
   ${PROJECT_NAME}_py
   PROPERTIES OUTPUT_NAME "${PROJECT_NAME}"
