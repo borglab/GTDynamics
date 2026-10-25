@@ -172,13 +172,13 @@ jobs:
         run: |
           set -e
           export PYTHONPATH="${{ github.workspace }}/build/python${PYTHONPATH:+:$PYTHONPATH}"
+          export DYLD_LIBRARY_PATH="${{ env.GTSAM_INSTALL_DIR }}/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
           "${{ env.VENV_PYTHON_EXECUTABLE }}" -u - <<'PY'
+          import importlib.util
+          import os
           import re
           import sys
           from pathlib import Path
-
-          import gtsam
-          import gtsam.gtsam as gtsam_ext
 
           def internals_ids(path):
               return sorted({match.decode('ascii') for match in
@@ -186,14 +186,24 @@ jobs:
                                         Path(path).read_bytes())})
 
           print('Python:', sys.executable, sys.version)
+          print('PYTHONPATH:', os.environ.get('PYTHONPATH'))
+          print('DYLD_LIBRARY_PATH:', os.environ.get('DYLD_LIBRARY_PATH'))
+          gtsam_spec = importlib.util.find_spec('gtsam')
+          print('GTSAM package candidate:', gtsam_spec.origin if gtsam_spec else None)
+          if gtsam_spec:
+              for extension in sorted(Path(gtsam_spec.origin).parent.glob('gtsam*.so')):
+                  print('GTSAM extension candidate:', extension.resolve())
+                  print('GTSAM pybind11 internals:', internals_ids(extension))
+          for extension in sorted(Path('python/gtdynamics').glob('gtdynamics*.so')):
+              print('GTDynamics extension candidate:', extension.resolve())
+              print('GTDynamics pybind11 internals:', internals_ids(extension))
+
+          import gtsam
+          import gtsam.gtsam as gtsam_ext
           print('GTSAM package:', gtsam.__file__)
           print('GTSAM extension:', gtsam_ext.__file__)
           print('NoiseModelFactor available:', hasattr(gtsam, 'NoiseModelFactor'),
                 hasattr(gtsam_ext, 'NoiseModelFactor'))
-          print('GTSAM pybind11 internals:', internals_ids(gtsam_ext.__file__))
-          for extension in sorted(Path('python/gtdynamics').glob('gtdynamics*.so')):
-              print('GTDynamics extension:', extension.resolve())
-              print('GTDynamics pybind11 internals:', internals_ids(extension))
           import gtdynamics.gtdynamics
           PY
           make -j${NTHREADS} python-install
