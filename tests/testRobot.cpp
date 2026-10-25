@@ -207,6 +207,60 @@ TEST(Robot, ForwardKinematicsRPR) {
   EXPECT(assert_equal(V_l3_move, Twist(fk_results, 3)));
 }
 
+// Replacing a joint keeps every link's joint count the same, but the cached
+// traversal must still be refreshed so FK uses the new joint.
+TEST(ForwardKinematics, ReplaceJoint) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
+  robot = robot.fixLink("l1");
+  auto l1 = robot.link("l1"), l2 = robot.link("l2");
+  auto old_joint = robot.joint("j1");
+
+  // Populate the cache using the original joint (id 0, about the x axis).
+  Values values;
+  InsertJointAngle(&values, 0, M_PI_2);
+  InsertJointAngle(&values, 1, M_PI_2);
+  Values results = robot.forwardKinematics(values);
+  EXPECT(assert_equal(Pose3(Rot3::Rx(M_PI_2), Point3(0, -1, 2)),
+                      Pose(results, 1)));
+
+  // Swap in a joint with a different id, rotating about the y axis.
+  auto new_joint = std::make_shared<RevoluteJoint>(
+      1, "j2", Pose3(Rot3(), Point3(0, 0, 2)), l1, l2, gtsam::Vector3(0, 1, 0));
+  for (auto &&link : {l1, l2}) {
+    link->removeJoint(old_joint);
+    link->addJoint(new_joint);
+  }
+
+  results = robot.forwardKinematics(values);
+  EXPECT(assert_equal(Pose3(Rot3::Ry(M_PI_2), Point3(1, 0, 2)),
+                      Pose(results, 1)));
+}
+
+// Copying or moving a robot carries its cached traversals along, and FK on
+// the copy or moved-to robot is unchanged.
+TEST(ForwardKinematics, CopyAndMove) {
+  Robot robot =
+      CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"))
+          .fixLink("l1");
+  Values values;
+  InsertJointAngle(&values, 0, M_PI_2);
+  const Values expected = robot.forwardKinematics(values);  // fills cache
+
+  Robot copied(robot);
+  EXPECT(assert_equal(expected, copied.forwardKinematics(values)));
+
+  Robot moved(std::move(copied));
+  EXPECT(assert_equal(expected, moved.forwardKinematics(values)));
+
+  Robot assigned;
+  assigned = std::move(moved);
+  EXPECT(assert_equal(expected, assigned.forwardKinematics(values)));
+
+  robot = robot.fixLink("l1");  // move assignment from a copy
+  EXPECT(assert_equal(expected, robot.forwardKinematics(values)));
+}
+
 // test fk for a four bar linkage (loopy)
 TEST(ForwardKinematics, FourBar) {
   Robot robot = CreateRobotFromFile(
@@ -232,6 +286,67 @@ TEST(ForwardKinematics, FourBar) {
   Values wrong_vels = values;
   InsertJointVel(&wrong_vels, 0, 1.0);
   THROWS_EXCEPTION(robot.forwardKinematics(wrong_vels));
+}
+
+// FK for a four bar linkage, with an extra link l5 hanging off l3, when the
+// pose of an intermediate link is known. Known links are not expanded, so if
+// the cached traversal from l1 reaches l3 through the known link, l3 and l5
+// must instead be found through the other side of the loop.
+TEST(ForwardKinematics, FourBarKnownLink) {
+  // Each robot is created fresh, so its traversal cache starts empty.
+  auto fourBarWithTail = []() {
+    const Robot four_bar = CreateRobotFromFile(
+        kSdfPath + std::string("test/four_bar_linkage_pure.sdf"));
+    const auto l3 = four_bar.link("l3");
+    const auto l5 = std::make_shared<Link>(
+        4, "l5", 1.0, gtsam::I_3x3,
+        l3->bMcom() * Pose3(Rot3(), Point3(0, 0, 1)), Pose3());
+    const auto j5 = std::make_shared<RevoluteJoint>(
+        4, "j5", l3->bMcom(), l3, l5, gtsam::Vector3(1, 0, 0));
+    l3->addJoint(j5);
+    l5->addJoint(j5);
+
+    LinkMap links{{"l5", l5}};
+    for (auto &&link : four_bar.links()) links.emplace(link->name(), link);
+    JointMap joints{{"j5", j5}};
+    for (auto &&joint : four_bar.joints()) joints.emplace(joint->name(), joint);
+    return Robot(links, joints).fixLink("l1");
+  };
+
+  Values joint_angles;
+  InsertJointAngle(&joint_angles, 4, 0.3);
+  InsertJointVel(&joint_angles, 4, 0.5);
+  const Values expected = fourBarWithTail().forwardKinematics(joint_angles);
+
+  // l2 and l4 are both next to the root, and one of them is l3's parent in
+  // the cached traversal.
+  for (const std::string name : {"l2", "l4"}) {
+    Robot robot = fourBarWithTail();
+    const size_t i = robot.link(name)->id();
+    Values known = joint_angles;
+    InsertPose(&known, i, Pose(expected, i));
+    InsertTwist(&known, i, Twist(expected, i));
+
+    // Run on the first (uncached) call and on the cached call.
+    for (size_t call = 0; call < 2; ++call) {
+      const Values results = robot.forwardKinematics(known);
+      for (auto &&link : robot.links()) {
+        const size_t j = link->id();
+        EXPECT(results.exists(PoseKey(j)));
+        if (!results.exists(PoseKey(j))) continue;
+        EXPECT(assert_equal(Pose(expected, j), Pose(results, j), 1e-4));
+        EXPECT(assert_equal(Twist(expected, j), Twist(results, j), 1e-4));
+      }
+    }
+
+    // A known pose inconsistent with the joint angles should throw.
+    Robot robot2 = fourBarWithTail();
+    Values wrong = joint_angles;
+    InsertPose(&wrong, i, Pose(expected, i) * Pose3(Rot3(), Point3(0, 0, 0.1)));
+    InsertTwist(&wrong, i, Twist(expected, i));
+    THROWS_EXCEPTION(robot2.forwardKinematics(wrong));
+    THROWS_EXCEPTION(robot2.forwardKinematics(wrong));
+  }
 }
 
 TEST(ForwardKinematics, A1) {
