@@ -71,9 +71,13 @@ class GTSAM_EXPORT FKTraversalCache {
  public:
   FKTraversalCache() = default;
 
-  /// Copies the cached traversals; each copy gets its own mutex.
+  /// Copy the cached traversals, keeping an independent mutex.
   FKTraversalCache(const FKTraversalCache &other);
   FKTraversalCache &operator=(const FKTraversalCache &other);
+
+  /// Move the cached traversals, keeping an independent mutex.
+  FKTraversalCache(FKTraversalCache &&other);
+  FKTraversalCache &operator=(FKTraversalCache &&other);
 
   /// Return the traversal rooted at `root`, computing it if missing or stale.
   std::shared_ptr<const FKTraversal> get(const LinkSharedPtr &root);
