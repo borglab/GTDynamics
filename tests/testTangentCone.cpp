@@ -27,13 +27,11 @@ template <typename Map> bool ContainerEqual(Map const &lhs, Map const &rhs) {
 
 /** Test projecting into the cone defined by y<=2x; 2y>=x. */
 TEST(project, example_2d) {
-  Matrix A = (Matrix(2, 2) << -1, 2, 2, -1).finished();
-
   LinearInequalityConstraints constraints;
   auto factor1 = std::make_shared<JacobianFactor>(
-      1, (Matrix(1, 2) << -1, 2).finished(), Vector1(0), noiseModel::Unit::Create(1));
+      1, (Matrix(1, 2) << 1, -2).finished(), Vector1(0), noiseModel::Unit::Create(1));
   auto factor2 = std::make_shared<JacobianFactor>(
-      1, (Matrix(1, 2) << 2, -1).finished(), Vector1(0), noiseModel::Unit::Create(1));
+      1, (Matrix(1, 2) << -2, 1).finished(), Vector1(0), noiseModel::Unit::Create(1));
   constraints.emplace_shared<JacobianLinearInequalityConstraint>(factor1);
   constraints.emplace_shared<JacobianLinearInequalityConstraint>(factor2);
   TangentCone cone(constraints);

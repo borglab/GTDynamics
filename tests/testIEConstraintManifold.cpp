@@ -38,7 +38,7 @@ TEST(IEConstraintManifold, HalfSphere) {
   e_constraints->emplace_shared<ExpressionEqualityConstraint<double>>(
       sphere_expr, 1.0, Vector1(1.0));
   i_constraints->push_back(
-      ScalarExpressionInequalityConstraint::LeqZero(z_expr, 1.0));
+      ScalarExpressionInequalityConstraint::GeqZero(z_expr, 1.0));
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
@@ -122,8 +122,8 @@ TEST(IEConstraintManifold, HalfSphere) {
       auto manifold_constraint = linearManifoldInequalityConstraints.at(idx);
       auto base_constraint_eval = (*base_constraint)(tangentVector);
       auto manifold_constraint_eval = (*manifold_constraint)(delta);
-      EXPECT(assert_equal(Vector1(2.0), base_constraint_eval));
-      EXPECT(assert_equal(Vector1(2.0), manifold_constraint_eval));
+      EXPECT(assert_equal(Vector1(-2.0), base_constraint_eval));
+      EXPECT(assert_equal(Vector1(-2.0), manifold_constraint_eval));
     }
   }
 }

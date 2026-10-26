@@ -131,10 +131,10 @@ IndexSet IEConstraintManifold::blockingIndices(
         error += linear_factor->getA(it) * tangentVector.at(*it);
       }
     }
-    // A negative directional derivative means this active face would be
+    // A positive directional derivative means this g(x)<=0 face would be
     // violated by the proposed tangent step; these are blocking constraints
     // in the sense of thesis Eq. (4.45).
-    if ((error.array() < -1e-5).any()) {
+    if ((error.array() > 1e-5).any()) {
       blocking_indices.insert(idx);
     }
   }

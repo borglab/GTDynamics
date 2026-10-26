@@ -132,16 +132,26 @@ TEST(HalfSphere, Dome) {
     IndexSet tight_indices;
     VectorValues proj_delta;
     std::tie(tight_indices, proj_delta) = manifold.projectTangentCone(delta);
-    EXPECT(tight_indices.size() == 0);
+    // At (1,0,0), the solid dome requires dx<=0. Remove the outward
+    // radial component while retaining motion along the boundary.
+    EXPECT(tight_indices.size() == 1);
+    EXPECT(tight_indices.exists(0));
     VectorValues expected_proj_delta;
-    expected_proj_delta.insert(point_key, Vector3(1, 1, 0));
+    expected_proj_delta.insert(point_key, Vector3(0, 1, 0));
     EXPECT(assert_equal(expected_proj_delta, proj_delta));
 
     // check retraction
     Values expected_values;
-    expected_values.insert(point_key, Point3(2 / sqrt(5), 1 / sqrt(5), 0));
+    expected_values.insert(point_key, Point3(1 / sqrt(2), 1 / sqrt(2), 0));
     auto new_manifold = manifold.retract(proj_delta, tight_indices);
     EXPECT(assert_equal(expected_values, new_manifold.values()));
+  }
+  {
+    VectorValues inward;
+    inward.insert(point_key, Vector3(-1, 1, 0));
+    auto [active, projected] = manifold.projectTangentCone(inward);
+    EXPECT(active.empty());
+    EXPECT(assert_equal(inward, projected));
   }
 }
 

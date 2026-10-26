@@ -91,7 +91,9 @@ ComputeLagrangianMultipliers(const GaussianFactorGraph &cost,
     b.middleRows(start_row, grad.size()) = grad;
   }
 
-  Vector lambda = jac_mat.transpose().colPivHouseholderQr().solve(b);
+  // For g(x)=A*x-b <= 0, stationarity is grad(f)+A^T*lambda=0,
+  // with lambda >= 0. The former sign assumed g(x) >= 0.
+  Vector lambda = jac_mat.transpose().colPivHouseholderQr().solve(-b);
   for (const auto &idx : active_indices) {
     lambdas.insert({idx, lambda.middleRows(start_row_map.at(idx),
                                            constraints.at(idx)->dim())});
@@ -155,8 +157,9 @@ ClipUpdate(const VectorValues &x, const VectorValues &p,
       // A_i.print("A_i", GTDKeyFormatter);
       // p.print("p", GTDKeyFormatter);
       double Aip = SubDot(A_i, p);
-      if (Aip < 0) {
-        double clip_rate = -SubDot(A_i, x) / Aip;
+      if (Aip > 0) {
+        // Include the affine offset: feasibility is A*x-b <= 0.
+        double clip_rate = -(*constraint)(x)(row_idx) / Aip;
         if (clip_rate < alpha) {
           alpha = clip_rate;
           blocking_idx = idx;
