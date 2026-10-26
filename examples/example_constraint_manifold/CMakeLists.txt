@@ -79,3 +79,13 @@ add_custom_target(
   DEPENDS ${QUADRUPED_MP}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples/${PROJECT_NAME})
 
+
+# Full cable robot kinodynamics, including the optional winch factors.
+if(GTDYNAMICS_BUILD_CABLE_ROBOT)
+  set(CABLE_KINODYNAMICS ${PROJECT_NAME}_cable_kinodynamics)
+  add_executable(${CABLE_KINODYNAMICS} main_cablerobot_kinodynamics.cpp)
+  target_link_libraries(${CABLE_KINODYNAMICS} PRIVATE gtdynamics)
+  add_custom_target(${CABLE_KINODYNAMICS}.run
+    COMMAND $<TARGET_FILE:${CABLE_KINODYNAMICS}>
+    DEPENDS ${CABLE_KINODYNAMICS})
+endif()

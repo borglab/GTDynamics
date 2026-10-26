@@ -52,7 +52,10 @@ endif()
 set_property(TARGET ${_gtd_pybind11_headers}
              PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "")
 set_property(TARGET ${PROJECT_NAME}_py PROPERTY NO_SYSTEM_FROM_IMPORTED ON)
-target_include_directories(${PROJECT_NAME}_py BEFORE PRIVATE ${pybind11_INCLUDE_DIR})
+# Prefer this checkout over GTDynamics headers in the GTSAM install prefix.
+# Keep the selected pybind11 provider first as well.
+target_include_directories(${PROJECT_NAME}_py BEFORE PRIVATE
+  ${pybind11_INCLUDE_DIR} ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 unset(_gtd_pybind11_headers)
 
 set_target_properties(
@@ -88,7 +91,7 @@ add_custom_target(
   COMMAND
     ${CMAKE_COMMAND} -E env
     "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
-    "${GTD_STUB_LIB_PATH_VAR}=${GTSAM_LIBRARY_DIR}${GTD_PATH_SEP}${CMAKE_LIBRARY_OUTPUT_DIRECTORY}${GTD_PATH_SEP}$ENV{${GTD_STUB_LIB_PATH_VAR}}"
+    "${GTD_STUB_LIB_PATH_VAR}=$<TARGET_FILE_DIR:gtdynamics>${GTD_PATH_SEP}${GTSAM_LIBRARY_DIR}${GTD_PATH_SEP}$ENV{${GTD_STUB_LIB_PATH_VAR}}"
     ${PYTHON_EXECUTABLE} -m pybind11_stubgen -o . --ignore-all-errors
     ${GTD_PYTHON_STUB_MODULE}
   DEPENDS ${PROJECT_NAME}_py

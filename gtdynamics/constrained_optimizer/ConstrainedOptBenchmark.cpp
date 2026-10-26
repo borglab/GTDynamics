@@ -366,6 +366,15 @@ void ConstrainedOptBenchmark::setMoptFactory(MoptFactory factory) {
   moptFactory_ = std::move(factory);
 }
 
+void ConstrainedOptBenchmark::setPenaltyConfig(PenaltyConfig callback) {
+  penaltyConfig_ = std::move(callback);
+}
+
+void ConstrainedOptBenchmark::setAugmentedLagrangianConfig(
+    AugmentedLagrangianConfig callback) {
+  augmentedLagrangianConfig_ = std::move(callback);
+}
+
 void ConstrainedOptBenchmark::setResultCallback(ResultCallback callback) {
   resultCallback_ = std::move(callback);
 }
@@ -413,6 +422,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
         std::cout << "penalty method:\n";
         auto penaltyParams = std::make_shared<gtsam::PenaltyOptimizerParams>();
         penaltyParams->lmParams = lmParams;
+        if (penaltyConfig_) penaltyConfig_(penaltyParams.get());
         result = OptimizePenalty(problem, latexOs, penaltyParams,
                                  options_.constraintUnitScale);
         break;
@@ -421,6 +431,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
         std::cout << "augmented lagrangian:\n";
         auto almParams = std::make_shared<gtsam::AugmentedLagrangianParams>();
         almParams->lmParams = lmParams;
+        if (augmentedLagrangianConfig_) augmentedLagrangianConfig_(almParams.get());
         result = OptimizeAugmentedLagrangian(problem, latexOs, almParams,
                                              options_.constraintUnitScale);
         break;

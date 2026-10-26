@@ -95,6 +95,9 @@ class ConstrainedOptBenchmark {
   using LmConfig =
       std::function<void(Method method, LevenbergMarquardtParams*)>;
   using MoptFactory = std::function<ManifoldOptimizerParameters(Method method)>;
+  using PenaltyConfig = std::function<void(gtsam::PenaltyOptimizerParams*)>;
+  using AugmentedLagrangianConfig =
+      std::function<void(gtsam::AugmentedLagrangianParams*)>;
   using ResultCallback =
       std::function<void(Method method, const Values& result)>;
 
@@ -112,6 +115,12 @@ class ConstrainedOptBenchmark {
 
   /// Set callback to construct manifold optimizer parameters per CM method.
   void setMoptFactory(MoptFactory factory);
+
+  /** Configure penalty parameters after the per-method LM settings are applied. */
+  void setPenaltyConfig(PenaltyConfig callback);
+
+  /** Configure augmented-Lagrangian parameters after the LM settings are applied. */
+  void setAugmentedLagrangianConfig(AugmentedLagrangianConfig callback);
 
   /// Set callback invoked after each method completes with resulting values.
   void setResultCallback(ResultCallback callback);
@@ -173,6 +182,8 @@ class ConstrainedOptBenchmark {
   LmConfig outerLmConfig_;
   MoptFactory moptFactory_;
   ResultCallback resultCallback_;
+  PenaltyConfig penaltyConfig_;
+  AugmentedLagrangianConfig augmentedLagrangianConfig_;
 };
 
 }  // namespace gtdynamics
