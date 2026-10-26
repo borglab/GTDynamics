@@ -14,14 +14,13 @@
 #pragma once
 
 #include <gtdynamics/constraints/LinearInequalityConstraint.h>
-#include <gtdynamics/optimizer/QPSolver.h>
 
 namespace gtdynamics {
 using namespace gtsam;
 
 
-/// Tangent cone C = {x | A x >= 0} from thesis Eq. (4.16), built from
-/// linearized active inequalities.
+/// Tangent cone C = {x | A x <= 0}, built from linearized active inequalities
+/// using the current g(x) <= 0 convention for thesis Eq. (4.16).
 class TangentCone {
 public:
   typedef std::shared_ptr<TangentCone> shared_ptr;
@@ -34,7 +33,8 @@ public:
       :constraints_(constraints) {}
 
   /// Project xi as in thesis Eq. (4.31), solving argmin_x ||x - xi||^2 subject
-  /// to A x >= 0, and return the active rows that block xi.
+  /// to A x <= 0 using GTSAM's ActiveSetSolver. Return the indices of constraints
+  /// whose rows are all active; partially active blocks stay row-wise in GTSAM.
   std::pair<IndexSet, Vector> project(const Vector &xi) const;
 };
 

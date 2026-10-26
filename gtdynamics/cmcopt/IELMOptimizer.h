@@ -29,6 +29,7 @@ struct IELMParams {
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
   LevenbergMarquardtParams lmParams;
+  /// Strict GTSAM active-set iteration limit; zero skips QP refinement.
   size_t iqpMaxIterations = 0;
   bool showActiveConstraints = false;
   bool activeConstraintsGroupedAsCategories = false;

@@ -191,7 +191,12 @@ How the code matches the math:
 - `linearizeIConstraints()` builds the linearized inequality constraints at the current state.
 - `LinearUpdate(...)` builds the damped LM system.
 - `initialEstimate(...)` seeds the IQP with blocking constraints coming from the negative gradient.
-- `SolveConvexIQP(...)` is then used to refine the constrained step.
+- Cone projection and LM refinement construct a GTSAM `QpProblem` and invoke
+  its sparse `ActiveSetSolver` directly. The LM solve preserves the damped
+  objective, warm-starts the blocking rows, enforces `iqpMaxIterations`, and
+  marks the trial unsuccessful if GTSAM cannot converge. No extra QP
+  regularization is added. Only blocks whose rows are all active are passed
+  to retraction as equalities.
 
 Thesis reference: Eq. (4.44) is the CMC Levenberg-Marquardt quadratic subproblem, constrained by the cone coordinates for each CMC.
 

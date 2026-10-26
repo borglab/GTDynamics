@@ -1,9 +1,10 @@
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
-#include <gtdynamics/optimizer/ConvexIQPSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
+#include <gtsam/constrained/ActiveSetSolver.h>
 
+#include <algorithm>
 #include <iomanip>
 
 using std::cout, std::setw, std::setprecision, std::endl;
@@ -523,11 +524,53 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
 
     // solve IQP
     if (params.iqpMaxIterations > 0) {
-      size_t num_new_solves;
-      std::tie(delta, blocking_indices, num_new_solves, solveSuccessful) =
-          SolveConvexIQP(damped_system, state.linearManifoldInequalityConstraints,
-                         blocking_indices, delta, params.iqpMaxIterations);
-      numSolves += num_new_solves;
+      QpProblem problem;
+      for (const auto &factor : damped_system) {
+        if (factor) problem.addCost(factor);
+      }
+      ActiveSetSolver::State workingSet;
+      const auto &constraints = state.linearManifoldInequalityConstraints;
+      for (size_t index = 0; index < constraints.size(); ++index) {
+        problem.addConstraint(LinearConstraint::LessEqual(
+            constraints[index]->createL2Factor()->whiten()));
+        workingSet.activeInequalityRows.insert(
+            workingSet.activeInequalityRows.end(), constraints[index]->dim(),
+            blocking_indices.exists(index));
+      }
+      Values initial;
+      for (const auto &[key, value] : delta) initial.insert(key, value);
+      auto qpParams = std::make_shared<ActiveSetSolverParams>();
+      qpParams->maxIterations = params.iqpMaxIterations;
+      // The LM system is already damped; preserve its objective exactly.
+      qpParams->regularization = 0.0;
+      try {
+        const auto [values, qpState] =
+            ActiveSetSolver(problem, qpParams)
+                .optimizeWithState(initial, workingSet);
+        for (auto &[key, value] : delta) value = values.at<Vector>(key);
+        numSolves += qpState.iterations;
+        blocking_indices.clear();
+        size_t offset = 0;
+        for (size_t index = 0; index < constraints.size(); ++index) {
+          const size_t dim = constraints[index]->dim();
+          // Only fully active blocks may become retraction equalities.
+          if (dim > 0 &&
+              std::all_of(qpState.activeInequalityRows.begin() + offset,
+                          qpState.activeInequalityRows.begin() + offset + dim,
+                          [](bool active) { return active; })) {
+            blocking_indices.insert(index);
+          }
+          offset += dim;
+        }
+        solveSuccessful = qpState.converged;
+      } catch (const IndeterminateSystemException &) {
+        solveSuccessful = false;
+      } catch (const std::runtime_error &) {
+        solveSuccessful = false;
+      } catch (const std::invalid_argument &) {
+        solveSuccessful = false;
+      }
+      if (!solveSuccessful) return;
     }
   }
 
