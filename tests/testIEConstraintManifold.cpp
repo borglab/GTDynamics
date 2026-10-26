@@ -128,6 +128,82 @@ TEST(IEConstraintManifold, HalfSphere) {
   }
 }
 
+TEST(IEConstraintManifold, PenaltyRetractionRetainsNewBoundary) {
+  const Key key = 7;
+  auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
+  inequalities->push_back(ScalarExpressionInequalityConstraint::GeqZero(
+      Expression<double>(key), 1.0));
+  auto params = std::make_shared<IEConstraintManifold::Params>();
+  params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
+  auto retractionParams = std::make_shared<IERetractorParams>();
+  retractionParams->ensureFeasible = true;
+  retractionParams->feasibleThreshold = 1e-8;
+  params->retractorCreator =
+      std::make_shared<BarrierRetractorCreator>(retractionParams);
+  Values values;
+  values.insert(key, 1.0);
+  const IEConstraintManifold manifold(
+      params, std::make_shared<NonlinearEqualityConstraints>(), inequalities,
+      values);
+  EXPECT(manifold.activeIndices().empty());
+  VectorValues step;
+  step.insert(key, Vector1(-2.0));
+  const auto boundary = manifold.retract(step);
+  EXPECT_DOUBLES_EQUAL(0.0, boundary.values().at<double>(key), 1e-8);
+  // A feasible boundary point still needs its face in the next tangent QP.
+  EXPECT(boundary.activeIndices().exists(0));
+  const auto [blocking, projected] = boundary.projectTangentCone(step);
+  EXPECT(blocking.exists(0));
+  EXPECT_DOUBLES_EQUAL(0.0, projected.at(key)(0), 1e-8);
+  step.at(key) = Vector1(-0.5);
+  const auto interior = manifold.retract(step);
+  EXPECT_DOUBLES_EQUAL(0.5, interior.values().at<double>(key), 1e-8);
+  EXPECT(interior.activeIndices().empty());
+}
+
+// Constraint sigma must be applied once, and must not change the feasible side.
+TEST(IEConstraintManifold, ScaledInequalityLinearization) {
+  const Key key = 7;
+  const Key manifoldKey = 9;
+  for (const double sigma : {0.01, 3.0}) {
+    for (const bool lowerBound : {false, true}) {
+      auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
+      const Expression<double> expression(key);
+      inequalities->push_back(lowerBound
+          ? ScalarExpressionInequalityConstraint::GeqZero(expression, sigma)
+          : ScalarExpressionInequalityConstraint::LeqZero(expression, sigma));
+      auto params = std::make_shared<IEConstraintManifold::Params>();
+      params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
+      params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
+      Values values;
+      values.insert(key, 0.0);
+      const IEConstraintManifold manifold(
+          params, std::make_shared<NonlinearEqualityConstraints>(), inequalities,
+          values);
+      VectorValues outward, inward;
+      outward.insert(key, Vector1(lowerBound ? -2.0 : 2.0));
+      inward.insert(key, -outward.at(key));
+      VectorValues coordinates;
+      coordinates.insert(manifoldKey, manifold.eBasis()->computeXi(outward));
+      const auto base = manifold.linearActiveBaseInequalityConstraints().at(0);
+      const auto reduced =
+          manifold.linearActiveManifoldInequalityConstraints(manifoldKey).at(0);
+      EXPECT_DOUBLES_EQUAL(2.0 / sigma, (*base)(outward)(0), 1e-8);
+      EXPECT_DOUBLES_EQUAL(2.0 / sigma, (*reduced)(coordinates)(0), 1e-8);
+      EXPECT(!base->feasible(outward));
+      EXPECT(base->feasible(inward));
+      EXPECT(manifold.blockingIndices(outward).exists(0));
+      EXPECT(manifold.blockingIndices(inward).empty());
+      const auto [blocking, projected] = manifold.projectTangentCone(outward);
+      EXPECT(blocking.exists(0));
+      EXPECT_DOUBLES_EQUAL(0.0, projected.at(key)(0), 1e-8);
+      const auto [released, unchanged] = manifold.projectTangentCone(inward);
+      EXPECT(released.empty());
+      EXPECT(assert_equal(inward, unchanged, 1e-8));
+    }
+  }
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);

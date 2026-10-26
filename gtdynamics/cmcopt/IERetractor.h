@@ -104,7 +104,7 @@ public:
 
   virtual ~IERetractor() {}
 
-  /// Retract the ambient variables back to h(x)=0, g(x)>=0, optionally with
+  /// Retract the ambient variables back to h(x)=0, g(x)<=0, optionally with
   /// selected blocking inequalities promoted to equalities.
   virtual IEConstraintManifold
   retract(const IEConstraintManifold *manifold, const VectorValues &delta,

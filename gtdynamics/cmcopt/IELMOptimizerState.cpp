@@ -496,91 +496,123 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const IELMState &state,
                                       const IELMParams &params)
     : lambda(_lambda), numSolves(0) {
+  // Damping controls the trial step. Predicted cost reduction below is measured
+  // with the original, undamped model.
+  const auto &linear = *state.linearManifoldGraph;
+  const VectorValues sqrtHessianDiagonal =
+      SqrtHessianDiagonal(linear, params.lmParams);
+  const auto dampedSystem =
+      buildDampedSystem(linear, sqrtHessianDiagonal, state, params.lmParams);
+  IndexSet blockingIndices;
 
-  // build damped system
-  GaussianFactorGraph::shared_ptr linear = state.linearManifoldGraph;
-  VectorValues sqrt_hessian_diagonal =
-      SqrtHessianDiagonal(*linear, params.lmParams);
-  auto damped_system = buildDampedSystem(*linear, sqrt_hessian_diagonal, state,
-                                         params.lmParams);
-  IndexSet blocking_indices;
-
-  // no active constraints
-  if (state.linearBaseInequalityConstraints.size() == 0) {
+  if (state.linearBaseInequalityConstraints.empty()) {
+    // With no active inequality faces, this is an ordinary LM linear solve.
     try {
-      delta = SolveLinear(damped_system, params.lmParams);
+      delta = SolveLinear(dampedSystem, params.lmParams);
       solveSuccessful = true;
     } catch (const IndeterminateSystemException &) {
       solveSuccessful = false;
     }
     numSolves = 1;
   } else {
-    // solve IQP init estimate
-    std::tie(delta, blocking_indices, numSolves, solveSuccessful) =
-        initialEstimate(damped_system, state, params.lmParams);
-    if (!solveSuccessful) {
-      return;
-    }
+    // First obtain a cone-feasible step using the gradient's blocking faces.
+    // This is also the final approximation when QP refinement is disabled.
+    std::tie(delta, blockingIndices, numSolves, solveSuccessful) =
+        initialEstimate(dampedSystem, state, params.lmParams);
+    if (!solveSuccessful) return;
 
-    // solve IQP
+    // Refine both the step and working set; initially blocking faces may need
+    // to be released to reach the constrained minimum.
     if (params.iqpMaxIterations > 0) {
-      QpProblem problem;
-      for (const auto &factor : damped_system) {
-        if (factor) problem.addCost(factor);
-      }
-      ActiveSetSolver::State workingSet;
-      const auto &constraints = state.linearManifoldInequalityConstraints;
-      for (size_t index = 0; index < constraints.size(); ++index) {
-        problem.addConstraint(LinearConstraint::LessEqual(
-            constraints[index]->createL2Factor()->whiten()));
-        workingSet.activeInequalityRows.insert(
-            workingSet.activeInequalityRows.end(), constraints[index]->dim(),
-            blocking_indices.exists(index));
-      }
-      Values initial;
-      for (const auto &[key, value] : delta) initial.insert(key, value);
-      auto qpParams = std::make_shared<ActiveSetSolverParams>();
-      qpParams->maxIterations = params.iqpMaxIterations;
-      // The LM system is already damped; preserve its objective exactly.
-      qpParams->regularization = 0.0;
-      try {
-        const auto [values, qpState] =
-            ActiveSetSolver(problem, qpParams)
-                .optimizeWithState(initial, workingSet);
-        for (auto &[key, value] : delta) value = values.at<Vector>(key);
-        numSolves += qpState.iterations;
-        blocking_indices.clear();
-        size_t offset = 0;
-        for (size_t index = 0; index < constraints.size(); ++index) {
-          const size_t dim = constraints[index]->dim();
-          // Only fully active blocks may become retraction equalities.
-          if (dim > 0 &&
-              std::all_of(qpState.activeInequalityRows.begin() + offset,
-                          qpState.activeInequalityRows.begin() + offset + dim,
-                          [](bool active) { return active; })) {
-            blocking_indices.insert(index);
-          }
-          offset += dim;
-        }
-        solveSuccessful = qpState.converged;
-      } catch (const IndeterminateSystemException &) {
-        solveSuccessful = false;
-      } catch (const std::runtime_error &) {
-        solveSuccessful = false;
-      } catch (const std::invalid_argument &) {
-        solveSuccessful = false;
-      }
+      refineIQPStep(dampedSystem, state.linearManifoldInequalityConstraints,
+                    blockingIndices, params.iqpMaxIterations);
       if (!solveSuccessful) return;
     }
   }
 
-  // record linear update info
+  recordSolution(state, blockingIndices);
+}
+
+/* ************************************************************************* */
+void IELMTrial::LinearUpdate::refineIQPStep(
+    const GaussianFactorGraph &dampedSystem,
+    const LinearInequalityConstraints &constraints, IndexSet &blockingIndices,
+    size_t maxIterations) {
+  QpProblem problem;
+  for (const auto &factor : dampedSystem) {
+    if (factor) problem.addCost(factor);
+  }
+
+  // GTSAM tracks individual rows, while CMCOpt tracks constraint blocks.
+  // Expand each initial blocking block into rows in constraint order. Whitening
+  // preserves the residual scaling used by the CMCOpt feasibility checks.
+  ActiveSetSolver::State workingSet;
+  for (size_t index = 0; index < constraints.size(); ++index) {
+    problem.addConstraint(LinearConstraint::LessEqual(
+        constraints[index]->createL2Factor()->whiten()));
+    workingSet.activeInequalityRows.insert(
+        workingSet.activeInequalityRows.end(), constraints[index]->dim(),
+        blockingIndices.exists(index));
+  }
+  Values initial;
+  for (const auto &[key, value] : delta) initial.insert(key, value);
+  auto qpParams = std::make_shared<ActiveSetSolverParams>();
+  qpParams->maxIterations = maxIterations;
+  // The supplied objective already includes LM damping. Additional QP
+  // regularization would change the trial step we are trying to compute.
+  qpParams->regularization = 0.0;
+
+  try {
+    const ActiveSetSolver solver(problem, qpParams);
+    const auto [values, qpState] =
+        solver.optimizeWithState(initial, workingSet);
+    for (auto &[key, value] : delta) value = values.at<Vector>(key);
+    numSolves += qpState.iterations;
+    blockingIndices =
+        fullyActiveConstraintIndices(constraints, qpState.activeInequalityRows);
+    solveSuccessful = qpState.converged;
+  } catch (const IndeterminateSystemException &) {
+    solveSuccessful = false;
+  } catch (const std::runtime_error &) {
+    solveSuccessful = false;
+  } catch (const std::invalid_argument &) {
+    solveSuccessful = false;
+  }
+}
+
+/* ************************************************************************* */
+IndexSet IELMTrial::LinearUpdate::fullyActiveConstraintIndices(
+    const LinearInequalityConstraints &constraints,
+    const std::vector<bool> &activeRows) {
+  IndexSet activeIndices;
+  size_t offset = 0;
+  for (size_t index = 0; index < constraints.size(); ++index) {
+    const size_t dim = constraints[index]->dim();
+    // Retraction imposes an entire blocking constraint as an equality. A block
+    // with slack rows must not be promoted, even if some rows are active.
+    if (dim > 0 &&
+        std::all_of(activeRows.begin() + offset,
+                    activeRows.begin() + offset + dim,
+                    [](bool active) { return active; })) {
+      activeIndices.insert(index);
+    }
+    offset += dim;
+  }
+  return activeIndices;
+}
+
+/* ************************************************************************* */
+void IELMTrial::LinearUpdate::recordSolution(
+    const IELMState &state, const IndexSet &blockingIndices) {
+  // Return to original constraint indices and ambient tangent coordinates for
+  // the nonlinear retraction, then evaluate the undamped model's reduction.
   blockingIndicesMap =
-      state.linearInequalityIndexTranslator.decodeIndices(blocking_indices);
+      state.linearInequalityIndexTranslator.decodeIndices(blockingIndices);
   tangentVector = computeTangentVector(state, delta, state.unconstrainedKeys);
-  checkSolutionValid(state, tangentVector, blocking_indices);
-  oldError = linear->error(VectorValues::Zero(delta));
-  newError = linear->error(delta);
+  checkSolutionValid(state, tangentVector, blockingIndices);
+  const auto &linear = *state.linearManifoldGraph;
+  oldError = linear.error(VectorValues::Zero(delta));
+  newError = linear.error(delta);
   costChange = oldError - newError;
 }
 

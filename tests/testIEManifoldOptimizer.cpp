@@ -21,6 +21,7 @@
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/constrained/LinearConstraint.h>
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -177,6 +178,59 @@ TEST(IELMLinearUpdate, GtsamWorkingSetPreservesConstraintIndices) {
   EXPECT_DOUBLES_EQUAL(0.0, update.tangentVector.at(5)(0), 1e-8);
   EXPECT_LONGS_EQUAL(1, update.blockingIndicesMap.size());
   EXPECT(update.blockingIndicesMap.at(5).exists(0));
+}
+
+// Coupling makes the projected gradient initially block x although the QP
+// optimum can require releasing it. Exercise both inequality senses and KKT
+// multiplier signs through the production CMC-to-GTSAM path.
+TEST(IELMLinearUpdate, CoupledBoundsWithBothSenses) {
+  const Key key = 7;
+  const double damping = 0.01;
+  for (const bool lowerBound : {false, true}) {
+    for (const bool release : {false, true}) {
+      const double sign = lowerBound ? 1.0 : -1.0;
+      Matrix2 information;
+      information << 1.0, sign * 0.9, sign * 0.9, 1.0;
+      const Vector target = Vector2(sign * (release ? 1.0 : -1.0), -2.0);
+      NonlinearFactorGraph graph;
+      graph.emplace_shared<PriorFactor<Vector>>(
+          key, target, noiseModel::Gaussian::Information(information));
+      const JacobianFactor face(
+          key, (Matrix(1, 2) << 1.0, 0.0).finished(), Vector1(0.0));
+      NonlinearInequalityConstraints inequalities;
+      inequalities.push_back(
+          (lowerBound ? LinearConstraint::GreaterEqual(face, Vector1(3.0))
+                      : LinearConstraint::LessEqual(face, Vector1(3.0)))
+              .createInequalityFactor());
+      Values initial;
+      initial.insert(key, Vector(Vector2::Zero()));
+      auto manifoldParams = std::make_shared<IEConstraintManifold::Params>();
+      manifoldParams->equalityBasisCreator =
+          std::make_shared<OrthonormalBasisCreator>();
+      manifoldParams->retractorCreator =
+          std::make_shared<BarrierRetractorCreator>();
+      const auto manifolds = IEOptimizer::identifyManifolds(
+          {}, inequalities, initial, manifoldParams);
+      const auto manifoldGraph = ManifoldOptimizer::manifoldGraph(
+          graph, IEOptimizer::varToManifoldKeyMap(manifolds));
+      const IELMState state(manifolds, {}, graph, manifoldGraph, damping, 10.0);
+      EXPECT(state.gradientBlockingIndicesMap.at(key).exists(0));
+      IELMParams params;
+      params.iqpMaxIterations = 100;
+      const IELMTrial::LinearUpdate update(damping, graph, state, params);
+      EXPECT(update.solveSuccessful);
+      const Matrix2 hessian = information + damping * Matrix2::Identity();
+      const Vector2 rhs = information * target;
+      Vector expected = hessian.ldlt().solve(rhs);
+      if (!release) expected = Vector2(0.0, rhs(1) / hessian(1, 1));
+      EXPECT(assert_equal(expected, update.tangentVector.at(key), 1e-8));
+      if (release) {
+        EXPECT(update.blockingIndicesMap.empty());
+      } else {
+        EXPECT(update.blockingIndicesMap.at(key).exists(0));
+      }
+    }
+  }
 }
 
 int main() {

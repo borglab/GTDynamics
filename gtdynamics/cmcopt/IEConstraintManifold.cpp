@@ -5,70 +5,24 @@ using namespace gtsam;
 
 namespace {
 
-/**
- * Extract the block Jacobian d f / d x_key from a linearized factor.
+/** Form Dg(x) and -g(x) without whitening or clipping feasible rows.
  *
- * Why this exists:
- * 1) New constrained GTSAM APIs return linearized constraints as a generic
- *    `GaussianFactor::shared_ptr`.
- * 2) CMCOpt still needs per-key Jacobian blocks to project constraints into
- *    the manifold basis and to build `JacobianFactor`s for tangent-cone QP.
- * 3) The previous CMCOpt code path relied on custom inequality-constraint
- *    methods that directly returned jacobian maps; those methods no longer
- *    exist in the current GTSAM constraint classes.
- *
- * What it does:
- * - Walks the factor variable ordering to compute the starting column of `key`
- *   in the dense Jacobian matrix returned by `GaussianFactor::jacobian()`.
- * - Returns the middle block corresponding to that key's local dimension.
- *
- * Notes:
- * - This helper assumes `key` is present in `linear_factor`.
- * - It intentionally mirrors the existing helper used in
- *   `IPOptOptimizer.cpp` to keep behavior consistent across optimizers.
- */
-Matrix RetrieveVarJacobian(const GaussianFactor::shared_ptr &linear_factor,
-                           const Key &key) {
-  size_t start_col = 0;
-  size_t var_dim = 0;
-  for (auto it = linear_factor->begin(); it != linear_factor->end(); it++) {
-    if (*it == key) {
-      var_dim = linear_factor->getDim(it);
-      break;
-    }
-    start_col += linear_factor->getDim(it);
-  }
-  auto jacobian = linear_factor->jacobian().first;
-  return jacobian.middleCols(start_col, var_dim);
-}
-
-/**
- * Linearize a nonlinear inequality constraint as a JacobianFactor.
- *
- * Why this exists:
- * - Current GTSAM inequality constraints expose `unwhitenedExpr(...)` and
- *   `createEqualityConstraint()`, but do not expose the old CMCOpt-style
- *   jacobian map API.
- * - CMCOpt needs a linearized constraint in matrix form to:
- *   1) detect blocking constraints from directional derivatives,
- *   2) project active constraints into manifold coordinates,
- *   3) build `LinearInequalityConstraint`s for tangent-cone projection.
- *
- * How it maps old behavior:
- * - We form the equality counterpart g(x)=0 of the inequality boundary via
- *   `createEqualityConstraint()`.
- * - We linearize that equality at `values`.
- * - We normalize to `JacobianFactor` so downstream code can use block access
- *   (`rows()`, `getA(it)`, key iteration) without branching on factor type.
- *
- * This keeps the previous algorithmic structure intact while adapting to the
- * new constrained-GTSAM interface.
+ * Equality-factor linearization already whitens by the constraint sigma.
+ * Callers attach that sigma to the resulting linear inequality, so using an
+ * equality linearization here would apply the scaling twice. Read g and Dg
+ * directly; unlike an inequality's error Jacobian, Dg also retains inward rows.
  */
 JacobianFactor::shared_ptr LinearizedIConstraint(
-    const NonlinearInequalityConstraint::shared_ptr &i_constraint,
+    const NonlinearInequalityConstraint::shared_ptr &constraint,
     const Values &values) {
-  auto linear_factor = i_constraint->createEqualityConstraint()->linearize(values);
-  return std::make_shared<JacobianFactor>(*linear_factor);
+  std::vector<Matrix> jacobians(constraint->size());
+  const Vector expression = constraint->unwhitenedExpr(values, &jacobians);
+  std::vector<std::pair<Key, Matrix>> terms;
+  terms.reserve(constraint->size());
+  for (size_t index = 0; index < constraint->size(); ++index) {
+    terms.emplace_back(constraint->keys()[index], jacobians[index]);
+  }
+  return std::make_shared<JacobianFactor>(terms, -expression);
 }
 
 }  // namespace
@@ -269,7 +223,7 @@ IEConstraintManifold::linearActiveBaseInequalityConstraints() const {
     std::vector<std::pair<Key, Matrix>> jacobians;
     jacobians.reserve(linear_factor->size());
     for (auto it = linear_factor->begin(); it != linear_factor->end(); ++it) {
-      jacobians.emplace_back(*it, RetrieveVarJacobian(linear_factor, *it));
+      jacobians.emplace_back(*it, linear_factor->getA(it));
     }
     auto noise_model = noiseModel::Diagonal::Sigmas(i_constraint->sigmas());
     auto jacobian_factor = std::make_shared<JacobianFactor>(

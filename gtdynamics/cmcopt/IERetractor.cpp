@@ -144,14 +144,16 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   Values opt_values = RunPenaltyOptimization(
       prior_graph, e_constraints, i_constraints, init_values, params_);
 
-  // collect active indices
+  // Positive g(x) means the penalty optimum lies outside g(x)<=0, even when
+  // its violation is below the feasibility tolerance. Retain those faces for
+  // cleanup and the next tangent QP; feasible() would silently discard them.
   IndexSet active_indices;
   if (blocking_indices) {
     active_indices = *blocking_indices;
   }
   for (size_t constraint_idx = 0; constraint_idx < i_constraints.size();
        constraint_idx++) {
-    if (!i_constraints.at(constraint_idx)->feasible(opt_values)) {
+    if (i_constraints.at(constraint_idx)->active(opt_values)) {
       active_indices.insert(constraint_idx);
     }
   }
@@ -279,8 +281,8 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
 
   // solve q level without priors
   for (const auto &i : i_indices_q_) {
-    if (blocking_indices && blocking_indices->exists(i) ||
-        !i_constraints.at(i)->feasible(results_q)) {
+    if ((blocking_indices && blocking_indices->exists(i)) ||
+        i_constraints.at(i)->active(results_q)) {
       active_indices.insert(i);
       graph_np_q.add(i_constraints.at(i)->penaltyFactorEquality(1.0));
     }
@@ -310,8 +312,8 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
 
   // solve v level without priors
   for (const auto &i : i_indices_v_) {
-    if (blocking_indices && blocking_indices->exists(i) ||
-        !i_constraints.at(i)->feasible(results_v)) {
+    if ((blocking_indices && blocking_indices->exists(i)) ||
+        i_constraints.at(i)->active(results_v)) {
       active_indices.insert(i);
       // TODO: turn into const v graph
       graph_np_v.add(i_constraints.at(i)->penaltyFactorEquality(1.0));
@@ -342,8 +344,8 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
 
   // solve a and dynamics level without priors
   for (const auto &i : i_indices_ad_) {
-    if (blocking_indices && blocking_indices->exists(i) ||
-        !i_constraints.at(i)->feasible(results_ad)) {
+    if ((blocking_indices && blocking_indices->exists(i)) ||
+        i_constraints.at(i)->active(results_ad)) {
       active_indices.insert(i);
       graph_np_ad.add(i_constraints.at(i)->penaltyFactorEquality(1.0));
     }
