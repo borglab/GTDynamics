@@ -166,7 +166,9 @@ We recommend going through the examples to get a better understanding of how to 
 
 ## Constrained Optimization (GTSAM-backed)
 
-GTDynamics now routes some constrained optimization methods through GTSAM's constrained optimizers.
+Penalty and augmented Lagrangian methods, plus CMC-Opt's tangent-cone projection
+and LM QP refinement, use GTSAM's constrained optimizers. CMC-Opt constructs
+`QpProblem` instances and calls `ActiveSetSolver` directly.
 
 Typical entry points:
 

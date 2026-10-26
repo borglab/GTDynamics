@@ -19,6 +19,8 @@
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
+#include <gtsam/slam/PriorFactor.h>
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -119,6 +121,62 @@ TEST(identifyManifolds, Dome) {
     EXPECT_LONGS_EQUAL(1, manifold.values().size());
   }
   EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
+}
+
+// Build a real CMCOpt state at a unilateral contact boundary. Force that
+// boundary into the initial working set to exercise release during refinement.
+static IELMState unilateralContactState(double target = 4.0) {
+  const Key key = 5;
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<double>>(
+      key, target, noiseModel::Isotropic::Sigma(1, 2));
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(ScalarExpressionInequalityConstraint::GeqZero(
+      Expression<double>(key), 1.0));
+  Values initial;
+  initial.insert(key, 0.0);
+  auto params = std::make_shared<IEConstraintManifold::Params>();
+  params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
+  params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
+  const auto manifolds = IEOptimizer::identifyManifolds({}, inequalities,
+                                                        initial, params);
+  const auto manifoldGraph = ManifoldOptimizer::manifoldGraph(
+      graph, IEOptimizer::varToManifoldKeyMap(manifolds));
+  IELMState state(manifolds, {}, graph, manifoldGraph, 0.5, 10.0);
+  state.gradientBlockingIndicesMap[key].insert(0);
+  return state;
+}
+
+TEST(IELMLinearUpdate, ReleaseUnilateralContactWithGtsam) {
+  const auto state = unilateralContactState();
+  IELMParams params;
+  params.iqpMaxIterations = 100;
+  const IELMTrial::LinearUpdate update(0.5, {}, state, params);
+  EXPECT(update.solveSuccessful);
+  // Preserve both the prior precision 1/4 and LM damping 1/2.
+  EXPECT_DOUBLES_EQUAL(4.0 / 3.0, update.tangentVector.at(5)(0), 1e-8);
+  EXPECT(update.blockingIndicesMap.empty());
+  EXPECT(update.numSolves > 1);
+}
+
+TEST(IELMLinearUpdate, GtsamIterationExhaustionIsFailure) {
+  const auto state = unilateralContactState();
+  IELMParams params;
+  // A single iteration releases the boundary; it cannot certify the new step.
+  params.iqpMaxIterations = 1;
+  const IELMTrial::LinearUpdate update(0.5, {}, state, params);
+  EXPECT(!update.solveSuccessful);
+}
+
+TEST(IELMLinearUpdate, GtsamWorkingSetPreservesConstraintIndices) {
+  const auto state = unilateralContactState(-4.0);
+  IELMParams params;
+  params.iqpMaxIterations = 100;
+  const IELMTrial::LinearUpdate update(0.5, {}, state, params);
+  EXPECT(update.solveSuccessful);
+  EXPECT_DOUBLES_EQUAL(0.0, update.tangentVector.at(5)(0), 1e-8);
+  EXPECT_LONGS_EQUAL(1, update.blockingIndicesMap.size());
+  EXPECT(update.blockingIndicesMap.at(5).exists(0));
 }
 
 int main() {

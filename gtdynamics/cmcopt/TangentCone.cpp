@@ -12,39 +12,59 @@
  */
 
 #include <gtdynamics/cmcopt/TangentCone.h>
-#include <gtdynamics/optimizer/ConvexIQPSolver.h>
+#include <gtsam/constrained/ActiveSetSolver.h>
 
+#include <algorithm>
 
 namespace gtdynamics {
 using namespace gtsam;
 
-
 /* ************************************************************************* */
-std::pair<IndexSet, Vector> TangentCone::project(const Vector &xi) const {
+std::pair<IndexSet, Vector> TangentCone::project(const Vector& xi) const {
   if (constraints_.size() == 0) {
     return {IndexSet(), xi};
   }
 
-  // Encode min ||x - xi||^2 as a least-squares objective and let the convex
-  // IQP solver enforce the cone inequalities A x <= 0.
-  GaussianFactorGraph graph;
-  Key x_key = 1;
-  size_t dim = xi.size();
-  auto factor = std::make_shared<JacobianFactor>(
-      x_key, Matrix::Identity(dim, dim), xi, noiseModel::Unit::Create(dim));
-  graph.push_back(factor);
-
-  IndexSet init_active_indices;
-  VectorValues init_values;
-  init_values.insert(x_key, Vector::Zero(dim));
-
-  auto [values, active_indices, numSolves, solveSuccessful] =
-      SolveConvexIQP(graph, constraints_, init_active_indices, init_values);
-  if (!solveSuccessful) {
-    std::cout << "solve failed in project T-cone.\n";
-    return {init_active_indices, init_values.at(x_key)};
+  const Key key = 1;
+  QpProblem problem;
+  problem.addCost(
+      JacobianFactor(key, Matrix::Identity(xi.size(), xi.size()), xi));
+  ActiveSetSolver::State workingSet;
+  for (const auto& constraint : constraints_) {
+    problem.addConstraint(
+        LinearConstraint::LessEqual(constraint->createL2Factor()->whiten()));
+    workingSet.activeInequalityRows.insert(
+        workingSet.activeInequalityRows.end(), constraint->dim(), false);
   }
-  return {active_indices, values.at(x_key)};
+  Values initial;
+  initial.insert(key, Vector::Zero(xi.size()).eval());
+  auto params = std::make_shared<ActiveSetSolverParams>();
+  params->regularization = 0.0;
+
+  try {
+    const auto [values, state] =
+        ActiveSetSolver(problem, params).optimizeWithState(initial, workingSet);
+    IndexSet activeIndices;
+    size_t offset = 0;
+    for (size_t index = 0; index < constraints_.size(); ++index) {
+      const size_t dim = constraints_[index]->dim();
+      // CMCOpt can impose a whole constraint as an equality only if all its
+      // rows are active. GTSAM handles partially active blocks internally.
+      if (dim > 0 &&
+          std::all_of(state.activeInequalityRows.begin() + offset,
+                      state.activeInequalityRows.begin() + offset + dim,
+                      [](bool active) { return active; })) {
+        activeIndices.insert(index);
+      }
+      offset += dim;
+    }
+    return {activeIndices, values.at<Vector>(key)};
+  } catch (const IndeterminateSystemException& error) {
+    std::cerr << "Tangent-cone projection failed: " << error.what() << '\n';
+  } catch (const std::runtime_error& error) {
+    std::cerr << "Tangent-cone projection failed: " << error.what() << '\n';
+  }
+  return {IndexSet(), Vector::Zero(xi.size())};
 }
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

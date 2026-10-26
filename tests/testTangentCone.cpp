@@ -72,6 +72,54 @@ TEST(project, example_2d) {
   }
 }
 
+// Preserve the affine clipping regression through the production projection
+// caller, including the non-unit noise on the inequality residual.
+TEST(project, AffineUpperBound) {
+  LinearInequalityConstraints constraints;
+  constraints.emplace_shared<JacobianLinearInequalityConstraint>(
+      std::make_shared<JacobianFactor>(1, I_1x1, Vector1(2),
+                                       noiseModel::Isotropic::Sigma(1, 3)));
+  const auto [active, projected] = TangentCone(constraints).project(Vector1(3));
+  EXPECT_DOUBLES_EQUAL(2.0, projected(0), 1e-8);
+  EXPECT(active.exists(0));
+}
+
+TEST(project, UnilateralContactCanIncrease) {
+  LinearInequalityConstraints constraints;
+  constraints.emplace_shared<JacobianLinearInequalityConstraint>(
+      std::make_shared<JacobianFactor>(1, -I_1x1, Vector1(0)));
+  const auto [active, projected] = TangentCone(constraints).project(Vector1(4));
+  EXPECT_DOUBLES_EQUAL(4.0, projected(0), 1e-8);
+  EXPECT(active.empty());
+}
+
+TEST(project, MultirowWorkingSet) {
+  LinearInequalityConstraints constraints;
+  constraints.emplace_shared<JacobianLinearInequalityConstraint>(
+      std::make_shared<JacobianFactor>(1, Matrix2::Identity(), Vector2::Zero()));
+  TangentCone cone(constraints);
+  {
+    const auto [active, projected] = cone.project(Vector2(1, -1));
+    EXPECT(assert_equal(Vector2(0, -1), projected, 1e-8));
+    // A partially active block cannot become a whole-block equality.
+    EXPECT(active.empty());
+  }
+  {
+    const auto [active, projected] = cone.project(Vector2(1, 2));
+    EXPECT(assert_equal(Vector2::Zero(), projected, 1e-8));
+    EXPECT_LONGS_EQUAL(1, active.size());
+    EXPECT(active.exists(0));
+  }
+}
+
+TEST(project, EmptyCone) {
+  LinearInequalityConstraints constraints;
+  const Vector direction = Vector2(1, -2);
+  const auto [active, projected] = TangentCone(constraints).project(direction);
+  EXPECT(assert_equal(direction, projected));
+  EXPECT(active.empty());
+}
+
 int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
