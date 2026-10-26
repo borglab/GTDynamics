@@ -31,24 +31,25 @@ void trajectoryOptimization(size_t numSteps,
     throw std::invalid_argument("--num-steps must be between 2 and INT_MAX");
   options = cableRobotBenchmarkOptions(options);
   CableRobotParams params;
-  params.dt = 0.01;
-  params.R = 1;
-  params.Q = 100;
-  params.initPose = Pose3(Rot3(), Point3(1.5, 1.0, 0));
+  params.timeStep = 0.01;
+  params.torqueWeight = 1;
+  params.waypointWeight = 100;
+  params.initialPose = Pose3(Rot3(), Point3(1.5, 1.0, 0));
   const CableRobot robot(params);
 
   std::map<int, Pose3> waypoints;
-  for (size_t k = 0; k < numSteps; ++k) {
-    const double fraction = static_cast<double>(k) / (numSteps - 1);
-    waypoints.emplace(k, Pose3(Rot3(), Point3(1.5 + 0.2 * fraction,
-                                              1.0 + 0.1 * fraction, 0)));
+  for (size_t stepIndex = 0; stepIndex < numSteps; ++stepIndex) {
+    const double fraction = static_cast<double>(stepIndex) / (numSteps - 1);
+    waypoints.emplace(
+        stepIndex,
+        Pose3(Rot3(), Point3(1.5 + 0.2 * fraction, 1.0 + 0.1 * fraction, 0)));
   }
   const auto constraints = NonlinearEqualityConstraints::FromCostGraph(
       robot.constraintFactors(numSteps));
   const auto costGroups = robot.costFactors(numSteps, waypoints);
   NonlinearFactorGraph costs;
   for (const auto &[name, group] : costGroups) costs.add(group);
-  const auto initial = robot.initialValues(numSteps);
+  const auto initialValues = robot.initialValues(numSteps);
   auto reportCosts = [&](const Values &values) {
     for (const auto &[name, group] : costGroups) {
       const double error = group.error(values);
@@ -57,18 +58,18 @@ void trajectoryOptimization(size_t numSteps,
       std::cout << name << ": " << error << '\n';
     }
   };
-  reportCosts(initial);
+  reportCosts(initialValues);
   // Use the common data directory and portable filenames, including the initial
   // trajectory. The method token only supplies the conventional filename
   // prefix.
   robot.exportTrajectory(
-      initial, numSteps,
+      initialValues, numSteps,
       ConstrainedOptBenchmark::MethodDataPath(
           options, ConstrainedOptBenchmark::Method::SOFT, "_initial_traj.csv"));
 
   ConstrainedOptBenchmark runner(options);
   runner.setProblemFactory(
-      [=]() { return EConsOptProblem(costs, constraints, initial); });
+      [=]() { return EConsOptProblem(costs, constraints, initialValues); });
   runner.setOuterLmConfig(configureCableRobotLm);
   runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
     return cableRobotManifoldParams();
@@ -82,9 +83,9 @@ void trajectoryOptimization(size_t numSteps,
         result, numSteps,
         ConstrainedOptBenchmark::MethodDataPath(options, method, "_traj.csv"));
   });
-  std::ostringstream latex;
-  runner.run(latex);
-  std::cout << latex.str();
+  std::ostringstream latexOutput;
+  runner.run(latexOutput);
+  std::cout << latexOutput.str();
 }
 
 int main(int argc, char **argv) {

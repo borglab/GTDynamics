@@ -38,10 +38,23 @@ record. Neither the original branch nor PR #363 was changed.
 | 2. Benchmark and wrapper integration | The original `scripts/gerry02_cablerobot_kinodynamics_manifold.cpp` and plotting notebook move under `examples/example_constraint_manifold/`. `CableRobotBenchmark.h` records explicit solver settings. The shared runner gains optional penalty/AL configuration hooks. Cable wrapper return types and local include/library precedence are corrected. |
 | 3. Regression and CI coverage | New cable model/manifold and analytical solver-schedule tests; Clang Debug enables cable support and runs a 60-second bounded eight-sample smoke benchmark. Other configurations retain their defaults. |
 | 4. Migration record | This provenance, semantic mapping, validation and limitation record. |
+| 5. Naming alignment | Replace the revived shorthand with descriptive parameter, geometry and local names in the utility, example, tests and plotting notebook; preserve all equations and numeric settings. |
 
 Gerry remains the author of the first two revived groups; the original Gerry Chen
 and Yetong Zhang file attribution is retained. New tests and documentation are
 migration work.
+
+The final naming pass follows PR #427: `waypointWeight` and `torqueWeight`
+represent Q and R, `timeStep` represents dt, and `torquePrior` is the nominal
+motor torque. Geometry uses `frameMountPoints`, `endEffectorMountPoints`,
+`endEffectorId` and `endEffector`; loops use `cableIndex` and `stepIndex`.
+The mathematical notation below and exported CSV columns are unchanged.
+Existing master APIs and wrapper declarations are unaffected by this pass.
+The focused regressions, example, wrapper and stubs rebuild successfully, and
+all plotting notebook cells execute. Before/after runs of all five methods at
+8 and 32 samples have exactly equal recorded objectives, residuals, dimensions,
+and iteration fields; all exported trajectory values are exactly equal too.
+Wall-clock timings are excluded from this comparison.
 
 ## Mathematical problem
 
