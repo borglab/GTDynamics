@@ -15,7 +15,7 @@ using namespace gtsam;
 void EvaluateAndExportIELMResult(
     const IEConsOptProblem &problem,
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const IELMItersDetails &ielm_iters,
+    const IELMOptimizationDetails &ielm_iters,
     const std::string &scenario_folder, bool print_values,
     bool print_iter_details) {
   size_t num_steps = vision60_multi_phase.numSteps();
@@ -24,7 +24,7 @@ void EvaluateAndExportIELMResult(
   Values result_values = ielm_iters.back().state.baseValues();
   if (print_iter_details) {
     for (const auto &iter_details : ielm_iters) {
-      IEOptimizer::PrintIterDetails(
+      IEOptimizer::printIterationDetails(
           iter_details, num_steps, false, IEVision60Robot::PrintValues,
           IEVision60Robot::PrintDelta, GTDKeyFormatter);
     }
@@ -153,7 +153,7 @@ std::vector<std::string> ActiveNames(const IEManifoldValues &manifolds) {
 /* ************************************************************************* */
 void ExportOptimizationProgress(
     const IEVision60RobotMultiPhase &vision60_multi_phase,
-    const std::string &scenario_folder, const IELMItersDetails &iters_details) {
+    const std::string &scenario_folder, const IELMOptimizationDetails &iters_details) {
   std::string progress_folder = scenario_folder + "progress/";
   std::filesystem::create_directory(progress_folder);
 

@@ -6,29 +6,29 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  NonlinearMOptimizer.cpp
+ * @file  NonlinearManifoldOptimizer.cpp
  * @brief Manifold optimizer implementations.
  * @author: Yetong Zhang
  */
 
 #include <gtdynamics/cmopt/ConstraintManifold.h>
-#include <gtdynamics/cmopt/NonlinearMOptimizer.h>
+#include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
 #include <gtdynamics/factors/SubstituteFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
 
 /* ************************************************************************* */
-Values NonlinearMOptimizer::optimize(const NonlinearFactorGraph& costs,
+Values NonlinearManifoldOptimizer::optimize(const NonlinearFactorGraph& costs,
                                      const NonlinearEqualityConstraints& constraints,
                                      const Values& init_values) const {
-  auto mopt_problem = initializeMoptProblem(costs, constraints, init_values);
-  return optimizeMOpt(mopt_problem);
+  auto mopt_problem = initializeManifoldOptimizationProblem(costs, constraints, init_values);
+  return optimizeManifoldProblem(mopt_problem);
 }
 
 /* ************************************************************************* */
-Values NonlinearMOptimizer::optimizeMOpt(
-    const ManifoldOptProblem& mopt_problem) const {
+Values NonlinearManifoldOptimizer::optimizeManifoldProblem(
+    const ManifoldOptimizationProblem& mopt_problem) const {
   auto nonlinear_optimizer = constructNonlinearOptimizer(mopt_problem);
   auto nopt_values = nonlinear_optimizer->optimize();
   // if (intermediate_result) {
@@ -42,23 +42,23 @@ Values NonlinearMOptimizer::optimizeMOpt(
 
 /* ************************************************************************* */
 std::shared_ptr<NonlinearOptimizer>
-NonlinearMOptimizer::constructNonlinearOptimizer(
-    const ManifoldOptProblem& mopt_problem) const {
-  if (std::holds_alternative<GaussNewtonParams>(nopt_params_)) {
+NonlinearManifoldOptimizer::constructNonlinearOptimizer(
+    const ManifoldOptimizationProblem& mopt_problem) const {
+  if (std::holds_alternative<GaussNewtonParams>(nonlinearOptimizerParams_)) {
     return std::make_shared<gtsam::GaussNewtonOptimizer>(
-        mopt_problem.graph_, mopt_problem.values_,
-        std::get<GaussNewtonParams>(nopt_params_));
-  } else if (std::holds_alternative<LevenbergMarquardtParams>(nopt_params_)) {
+        mopt_problem.graph, mopt_problem.values,
+        std::get<GaussNewtonParams>(nonlinearOptimizerParams_));
+  } else if (std::holds_alternative<LevenbergMarquardtParams>(nonlinearOptimizerParams_)) {
     return std::make_shared<gtsam::LevenbergMarquardtOptimizer>(
-        mopt_problem.graph_, mopt_problem.values_,
-        std::get<LevenbergMarquardtParams>(nopt_params_));
-  } else if (std::holds_alternative<DoglegParams>(nopt_params_)) {
+        mopt_problem.graph, mopt_problem.values,
+        std::get<LevenbergMarquardtParams>(nonlinearOptimizerParams_));
+  } else if (std::holds_alternative<DoglegParams>(nonlinearOptimizerParams_)) {
     return std::make_shared<gtsam::DoglegOptimizer>(
-        mopt_problem.graph_, mopt_problem.values_,
-        std::get<DoglegParams>(nopt_params_));
+        mopt_problem.graph, mopt_problem.values,
+        std::get<DoglegParams>(nonlinearOptimizerParams_));
   } else {
     return std::make_shared<gtsam::LevenbergMarquardtOptimizer>(
-        mopt_problem.graph_, mopt_problem.values_);
+        mopt_problem.graph, mopt_problem.values);
   }
 }
 

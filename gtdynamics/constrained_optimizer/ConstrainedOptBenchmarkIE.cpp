@@ -43,21 +43,21 @@ Values ProjectValues(const IEConsOptProblem &problem, const Values &values,
   NonlinearFactorGraph graph = problem.eConstraints().penaltyGraph();
   graph.add(problem.iConstraints().penaltyGraph());
 
-  LevenbergMarquardtParams lm_params;
-  lm_params.setlambdaUpperBound(1e10);
-  lm_params.setErrorTol(1e-30);
-  lm_params.setAbsoluteErrorTol(1e-30);
-  lm_params.setRelativeErrorTol(1e-30);
-  // lm_params.setVerbosityLM("SUMMARY");
+  LevenbergMarquardtParams lmParams;
+  lmParams.setlambdaUpperBound(1e10);
+  lmParams.setErrorTol(1e-30);
+  lmParams.setAbsoluteErrorTol(1e-30);
+  lmParams.setRelativeErrorTol(1e-30);
+  // lmParams.setVerbosityLM("SUMMARY");
 
   // First stage, optimize with priors
   NonlinearFactorGraph graph_wp = graph;
   AddGeneralPriors(values, sigma, graph_wp);
-  LevenbergMarquardtOptimizer optimizer_wp(graph, values, lm_params);
+  LevenbergMarquardtOptimizer optimizer_wp(graph, values, lmParams);
   auto result_wp = optimizer_wp.optimize();
 
   // Second stage, optimize without priors
-  LevenbergMarquardtOptimizer optimizer(graph, result_wp, lm_params);
+  LevenbergMarquardtOptimizer optimizer(graph, result_wp, lmParams);
   Values projected_values = optimizer.optimize();
   return projected_values;
 }
@@ -173,13 +173,13 @@ void IEResultSummary::exportFile(const std::string &file_path) const {
 
 /* ************************************************************************* */
 std::pair<IEResultSummary, LMItersDetail> OptimizeIE_Soft(
-    const IEConsOptProblem &problem, LevenbergMarquardtParams lm_params,
+    const IEConsOptProblem &problem, LevenbergMarquardtParams lmParams,
     double mu, bool eval_projected_cost) {
   /// Run optimization.
   NonlinearFactorGraph graph = problem.costs_;
   graph.add(problem.constraints().penaltyGraph(mu));
   graph.add(problem.iConstraints().penaltyGraph(mu));
-  HistoryLMOptimizer optimizer(graph, problem.initValues(), lm_params);
+  HistoryLMOptimizer optimizer(graph, problem.initValues(), lmParams);
 
   Timer timer;
   timer.start();
@@ -375,8 +375,8 @@ std::pair<IEResultSummary, IPItersDetails> OptimizeIE_IPOPT(
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IEGDItersDetails> OptimizeIE_CMCOptGD(
-    const IEConsOptProblem &problem, const GDParams &params,
+std::pair<IEResultSummary, IEGDOptimizationDetails> OptimizeIE_CMCOptGD(
+    const IEConsOptProblem &problem, const GradientDescentParams &params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     bool eval_projected_cost) {
   /// Run optimization.
@@ -401,14 +401,14 @@ std::pair<IEResultSummary, IEGDItersDetails> OptimizeIE_CMCOptGD(
   /// Summary of each iteration.
   const auto &iters_details = optimizer.details();
   summary.total_inner_iters =
-      iters_details.back().state.totalNumberInnerIterations;
+      iters_details.back().state.totalInnerIterations;
   summary.total_iters = iters_details.back().state.iterations;
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     Values state_values = state.manifolds.baseValues();
     IEIterSummary iter_summary;
     iter_summary.accum_iters = state.iterations;
-    iter_summary.accum_inner_iters = state.totalNumberInnerIterations;
+    iter_summary.accum_inner_iters = state.totalInnerIterations;
     iter_summary.evaluate(problem, state_values, eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }
@@ -416,7 +416,7 @@ std::pair<IEResultSummary, IEGDItersDetails> OptimizeIE_CMCOptGD(
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
+std::pair<IEResultSummary, IELMOptimizationDetails> OptimizeIE_CMOpt(
     const IEConsOptProblem &problem, const IELMParams &ielm_params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params, double mu,
     bool eval_projected_cost) {
@@ -443,13 +443,13 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
   /// Summary of each iteration.
   const auto &iters_details = optimizer.details();
   summary.total_inner_iters =
-      iters_details.back().state.totalNumberInnerIterations;
+      iters_details.back().state.totalInnerIterations;
   summary.total_iters = iters_details.back().state.iterations;
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     IEIterSummary iter_summary;
     iter_summary.accum_iters = state.iterations;
-    iter_summary.accum_inner_iters = state.totalNumberInnerIterations;
+    iter_summary.accum_inner_iters = state.totalInnerIterations;
     iter_summary.evaluate(problem, state.baseValues(), eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }
@@ -457,7 +457,7 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMCOptLM(
+std::pair<IEResultSummary, IELMOptimizationDetails> OptimizeIE_CMCOptLM(
     const IEConsOptProblem &problem, const IELMParams &ielm_params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     std::string exp_name, bool eval_projected_cost) {
@@ -482,13 +482,13 @@ std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMCOptLM(
   /// Summary of each iteration.
   const auto &iters_details = optimizer.details();
   summary.total_inner_iters =
-      iters_details.back().state.totalNumberInnerIterations;
+      iters_details.back().state.totalInnerIterations;
   summary.total_iters = iters_details.back().state.iterations;
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
     IEIterSummary iter_summary;
     iter_summary.accum_iters = state.iterations;
-    iter_summary.accum_inner_iters = state.totalNumberInnerIterations;
+    iter_summary.accum_inner_iters = state.totalInnerIterations;
     iter_summary.evaluate(problem, state.baseValues(), eval_projected_cost);
     summary.iters_summary.emplace_back(iter_summary);
   }

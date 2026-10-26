@@ -31,10 +31,10 @@ namespace gtdynamics {
 
 /**
  * Unary factor that acts to prevent collision of a robot with obstacles, by
- * keeping every query point clear of a given signed distance field. 
- * The connected variable is q (stacked set of joint angles), as ordered in the 
- * RobotQueryPoints model. 
- * The signed distance field has positive values outside obstacles, negative values 
+ * keeping every query point clear of a given signed distance field.
+ * The connected variable is q (stacked set of joint angles), as ordered in the
+ * RobotQueryPoints model.
+ * The signed distance field has positive values outside obstacles, negative values
  * inside obstacles, and can be further offset by a standoff distance (epsilon).
  */
 class ObstacleSDFFactor : public gtsam::NoiseModelFactorN<gtsam::Vector> {

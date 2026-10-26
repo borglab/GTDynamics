@@ -434,13 +434,13 @@ IEVision60Robot::basisKeys(const size_t k,
 }
 
 /* ************************************************************************* */
-BasisKeyFunc IEVision60Robot::getBasisKeyFunc() const {
+BasisKeyFunction IEVision60Robot::getBasisKeyFunction() const {
   bool express_redundancy = params->express_redundancy;
   bool ad_basis_using_torques = params->ad_basis_using_torques;
   IndexSet contact_indices = phase_info->contact_indices;
   IndexSet leaving_indices = phase_info->leaving_indices;
 
-  BasisKeyFunc basis_key_func =
+  BasisKeyFunction basisKeyFunction =
       [express_redundancy, ad_basis_using_torques, contact_indices,
        leaving_indices](const KeyVector &keys) -> KeyVector {
     if (keys.size() == 1) {
@@ -491,7 +491,7 @@ BasisKeyFunc IEVision60Robot::getBasisKeyFunc() const {
     }
     return basis_keys;
   };
-  return basis_key_func;
+  return basisKeyFunction;
 }
 
 /* ************************************************************************* */

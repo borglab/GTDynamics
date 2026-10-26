@@ -43,15 +43,15 @@ using gtsam::NonlinearEqualityConstraints;
  * @see README.md#ccc-transformation
  * @see README.md#equivalent-factors
  */
-struct ManifoldOptProblem {
-  NonlinearFactorGraph graph_;  // cost function on constraint manifolds
+struct ManifoldOptimizationProblem {
+  NonlinearFactorGraph graph;  // cost function on constraint manifolds
   std::vector<NonlinearEqualityConstraints::shared_ptr>
-      components_;  // All the constraint-connected components
+      components;  // All the constraint-connected components
   Values
-      values_;  // values for constraint manifolds and unconstrained variables
-  Values fixed_manifolds_;     // fully constrained variables
-  KeySet unconstrained_keys_;  // keys for unconstrained variables
-  KeySet manifold_keys_;       // keys for constraint manifold variables
+      values;  // values for constraint manifolds and unconstrained variables
+  Values fixedManifolds;     // fully constrained variables
+  KeySet unconstrainedKeys;  // keys for unconstrained variables
+  KeySet manifoldKeys;       // keys for constraint manifold variables
 
   /** Dimension of the manifold optimization problem, as factor dimension x
    * variable dimension.
@@ -86,10 +86,10 @@ struct ManifoldOptProblem {
 struct ManifoldOptimizerParameters : public ConstrainedOptimizationParameters {
   using Base = ConstrainedOptimizationParameters;
   ConstraintManifold::Params::shared_ptr
-      cc_params;               // Parameter for constraint-connected components
-  bool retract_init = true;    // Perform retraction on constructing values for
+      constraintManifoldParams;               // Parameter for constraint-connected components
+  bool retractInitialValues = true;    // Perform retraction on constructing values for
                                // connected component.
-  bool retract_final = false;  // Perform retraction on manifolds after
+  bool retractFinalValues = false;  // Perform retraction on manifolds after
                                // optimization, used for infeasible methods.
   /// Default Constructor.
   ManifoldOptimizerParameters();
@@ -130,13 +130,13 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @param var_index Variable index over constraints.
    * @return Constraint subset corresponding to the connected component.
    */
-  static NonlinearEqualityConstraints::shared_ptr IdentifyConnectedComponent(
+  static NonlinearEqualityConstraints::shared_ptr identifyConnectedComponent(
       const NonlinearEqualityConstraints &constraints, const Key start_key, KeySet &keys,
       const VariableIndex &var_index);
 
   /// Identify the connected components by constraints.
   static std::vector<NonlinearEqualityConstraints::shared_ptr>
-  IdentifyConnectedComponents(const NonlinearEqualityConstraints &constraints);
+  identifyConnectedComponents(const NonlinearEqualityConstraints &constraints);
 
   /**
    * Create equivalent cost graph on manifold variables.
@@ -145,7 +145,7 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @param fc_manifolds Values of fully constrained manifolds.
    * @return Transformed manifold graph.
    */
-  static NonlinearFactorGraph ManifoldGraph(
+  static NonlinearFactorGraph manifoldGraph(
       const NonlinearFactorGraph &graph,
       const std::map<Key, Key> &var2man_keymap,
       const Values &fc_manifolds = Values());
@@ -157,8 +157,8 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @param equalityConstrainedProblem Input constrained problem.
    * @param mopt_problem Output manifold optimization problem.
    */
-  void constructMoptValues(const EConsOptProblem &equalityConstrainedProblem,
-                           ManifoldOptProblem &mopt_problem) const;
+  void constructManifoldOptimizationValues(const EConsOptProblem &equalityConstrainedProblem,
+                           ManifoldOptimizationProblem &mopt_problem) const;
 
   /**
    * Create initial values for constraint manifold variables.
@@ -167,7 +167,7 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    */
   void constructManifoldValues(
       const EConsOptProblem &equalityConstrainedProblem,
-      ManifoldOptProblem &mopt_problem) const;
+      ManifoldOptimizationProblem &mopt_problem) const;
 
   /**
    * Collect initial values for unconstrained variables.
@@ -176,23 +176,23 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    */
   static void constructUnconstrainedValues(
       const EConsOptProblem &equalityConstrainedProblem,
-      ManifoldOptProblem &mopt_problem);
+      ManifoldOptimizationProblem &mopt_problem);
 
   /** Create a factor graph of cost function with the constraint manifold
    * variables.
    * @param equalityConstrainedProblem Input constrained problem.
    * @param mopt_problem Output manifold optimization problem.
    */
-  static void constructMoptGraph(
+  static void constructManifoldOptimizationGraph(
       const EConsOptProblem &equalityConstrainedProblem,
-      ManifoldOptProblem &mopt_problem);
+      ManifoldOptimizationProblem &mopt_problem);
 
   /** Transform an equality-constrained optimization problem into a manifold
    * optimization problem by creating constraint manifolds.
    * @param equalityConstrainedProblem Input constrained problem.
    * @return Transformed manifold optimization problem.
    */
-  ManifoldOptProblem problemTransform(
+  ManifoldOptimizationProblem transformProblem(
       const EConsOptProblem &equalityConstrainedProblem) const;
 
   /**
@@ -202,7 +202,7 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @param init_values Initial values.
    * @return Initialized manifold optimization problem.
    */
-  ManifoldOptProblem initializeMoptProblem(
+  ManifoldOptimizationProblem initializeManifoldOptimizationProblem(
       const NonlinearFactorGraph &costs, const NonlinearEqualityConstraints &constraints,
       const Values &init_values) const;
 
@@ -212,7 +212,7 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @param nopt_values Optimized values in transformed variable space.
    * @return Values in original base variable space.
    */
-  Values baseValues(const ManifoldOptProblem &mopt_problem,
+  Values baseValues(const ManifoldOptimizationProblem &mopt_problem,
                     const Values &nopt_values) const;
 
   /**
@@ -222,7 +222,7 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
    * @param delta Delta in transformed variable space.
    * @return Tangent vectors in base variable space.
    */
-  VectorValues baseTangentVector(const ManifoldOptProblem &mopt_problem,
+  VectorValues baseTangentVector(const ManifoldOptimizationProblem &mopt_problem,
                                  const Values &values,
                                  const VectorValues &delta) const;
 };

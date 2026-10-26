@@ -38,9 +38,9 @@ std::pair<IndexSet, Vector> TangentCone::project(const Vector &xi) const {
   VectorValues init_values;
   init_values.insert(x_key, Vector::Zero(dim));
 
-  auto [values, active_indices, num_solves, solve_successful] =
+  auto [values, active_indices, numSolves, solveSuccessful] =
       SolveConvexIQP(graph, constraints_, init_active_indices, init_values);
-  if (!solve_successful) {
+  if (!solveSuccessful) {
     std::cout << "solve failed in project T-cone.\n";
     return {init_active_indices, init_values.at(x_key)};
   }

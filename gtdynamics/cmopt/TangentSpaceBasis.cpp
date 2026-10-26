@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  TspaceBasis.cpp
+ * @file  TangentSpaceBasis.cpp
  * @brief Tagent space basis implementations.
  * @author: Yetong Zhang
  */
@@ -17,7 +17,7 @@
 
 #include <SuiteSparseQR.hpp>
 #endif
-#include <gtdynamics/cmopt/TspaceBasis.h>
+#include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -30,7 +30,7 @@
 namespace gtdynamics {
 
 /* ************************************************************************* */
-std::vector<VectorValues> TspaceBasis::basisVectors() const {
+std::vector<VectorValues> TangentSpaceBasis::basisVectors() const {
   std::vector<VectorValues> basis_vectors;
   basis_vectors.reserve(dim());
   for (size_t i = 0; i < dim(); i++) {
@@ -71,8 +71,8 @@ Matrix OrthonormalBasis::computeConstraintJacobian(const Values &values) const {
 /* ************************************************************************* */
 OrthonormalBasis::OrthonormalBasis(
     const NonlinearEqualityConstraints::shared_ptr &constraints,
-    const Values &values, const TspaceBasisParams::shared_ptr &params)
-    : TspaceBasis(params), attributes_(std::make_shared<Attributes>()) {
+    const Values &values, const TangentSpaceBasisParams::shared_ptr &params)
+    : TangentSpaceBasis(params), attributes_(std::make_shared<Attributes>()) {
   // set attributes
   attributes_->total_constraint_dim = constraints->dim();
   attributes_->total_var_dim = values.dim();
@@ -86,7 +86,7 @@ OrthonormalBasis::OrthonormalBasis(
     attributes_->var_location[key] = position;
     position += var_dim;
   }
-  if (params_->always_construct_basis) {
+  if (params_->alwaysConstructBasis) {
     construct(values);
   }
 }
@@ -97,7 +97,7 @@ void OrthonormalBasis::construct(const Values &values) {
     basis_ = Matrix::Identity(attributes_->total_basis_dim,
                               attributes_->total_basis_dim);
   } else {
-    if (params_->use_sparse) {
+    if (params_->useSparse) {
       constructSparse(values);
     } else {
       constructDense(values);
@@ -126,17 +126,17 @@ void OrthonormalBasis::constructSparse(const Values &values) {
   cholmod_common *cc = &common;
   cholmod_l_start(cc);
 
-  cholmod_sparse *A_t = SparseJacobianTranspose(nrows, ncols, triplets, cc);
+  cholmod_sparse *A_t = sparseJacobianTranspose(nrows, ncols, triplets, cc);
   SuiteSparseQR_factorization<double> *QR = SuiteSparseQR_factorize<double>(
       SPQR_ORDERING_DEFAULT, SPQR_DEFAULT_TOL, A_t, cc);
 
-  cholmod_sparse *selection_mat = LastColsSelectionMat(
+  cholmod_sparse *selection_mat = lastColsSelectionMatrix(
       attributes_->total_var_dim, attributes_->total_basis_dim, cc);
 
   cholmod_sparse *basis_cholmod =
       SuiteSparseQR_qmult(SPQR_QX, QR, selection_mat, cc);
 
-  basis_ = CholmodToEigen(basis_cholmod, cc);
+  basis_ = cholmodToEigen(basis_cholmod, cc);
 
   cholmod_l_free_sparse(&A_t, cc);
   SuiteSparseQR_free(&QR, cc);
@@ -144,21 +144,21 @@ void OrthonormalBasis::constructSparse(const Values &values) {
   cholmod_l_free_sparse(&basis_cholmod, cc);
   cholmod_l_finish(cc);
 #else
-  SpMatrix A_t = SparseJacobianTranspose(nrows, ncols, triplets);
+  SpMatrix A_t = sparseJacobianTranspose(nrows, ncols, triplets);
   Eigen::SparseQR<SpMatrix, Eigen::COLAMDOrdering<int>> qr;
   qr.compute(A_t);
   if (qr.info() != Eigen::Success) {
     throw std::runtime_error("Eigen SparseQR failed for tangent basis.");
   }
 
-  SpMatrix selection_mat = LastColsSelectionMat(attributes_->total_var_dim,
+  SpMatrix selection_mat = lastColsSelectionMatrix(attributes_->total_var_dim,
                                                 attributes_->total_basis_dim);
   basis_ = qr.matrixQ() * Matrix(selection_mat);
 #endif
 }
 
 /* ************************************************************************* */
-TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
+TangentSpaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
     const NonlinearEqualityConstraints &constraints, const Values &values,
     bool create_from_scratch) const {
   // attributes
@@ -186,7 +186,7 @@ TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
   }
   auto new_linear_graph = new_merit_graph.linearize(values);
 
-  if (params_->use_sparse) {
+  if (params_->useSparse) {
     return createWithAdditionalConstraintsSparse(*new_linear_graph,
                                                  new_attributes);
   } else {
@@ -196,7 +196,7 @@ TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraints(
 }
 
 /* ************************************************************************* */
-TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsDense(
+TangentSpaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsDense(
     const GaussianFactorGraph &graph,
     const Attributes::shared_ptr &new_attributes) const {
   gtsam::JacobianFactor combined(graph);
@@ -210,7 +210,7 @@ TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsDense(
 }
 
 /* ************************************************************************* */
-TspaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsSparse(
+TangentSpaceBasis::shared_ptr OrthonormalBasis::createWithAdditionalConstraintsSparse(
     const GaussianFactorGraph &graph,
     const Attributes::shared_ptr &new_attributes) const {
   SpMatrix A_new = eigenSparseJacobian(graph);
@@ -283,7 +283,7 @@ void PrintSparse(cholmod_sparse *A, cholmod_common *cc) {
 
 /* ************************************************************************* */
 #if defined(GTDYNAMICS_WITH_SUITESPARSE)
-cholmod_sparse *OrthonormalBasis::SparseJacobianTranspose(
+cholmod_sparse *OrthonormalBasis::sparseJacobianTranspose(
     const size_t nrows, const size_t ncols,
     const std::vector<std::tuple<int, int, double>> &triplets,
     cholmod_common *cc) {
@@ -317,7 +317,7 @@ cholmod_sparse *OrthonormalBasis::SparseJacobianTranspose(
 }
 
 /* ************************************************************************* */
-cholmod_sparse *OrthonormalBasis::LastColsSelectionMat(const size_t nrows,
+cholmod_sparse *OrthonormalBasis::lastColsSelectionMatrix(const size_t nrows,
                                                        const size_t ncols,
                                                        cholmod_common *cc) {
   int A_stype = 0;
@@ -339,7 +339,7 @@ cholmod_sparse *OrthonormalBasis::LastColsSelectionMat(const size_t nrows,
 }
 
 /* ************************************************************************* */
-OrthonormalBasis::SpMatrix OrthonormalBasis::CholmodToEigen(
+OrthonormalBasis::SpMatrix OrthonormalBasis::cholmodToEigen(
     cholmod_sparse *A, cholmod_common *cc) {
   cholmod_triplet *T = cholmod_l_sparse_to_triplet(A, cc);
   std::vector<Eigen::Triplet<double>> triplets;
@@ -355,7 +355,7 @@ OrthonormalBasis::SpMatrix OrthonormalBasis::CholmodToEigen(
   return A_eigen;
 }
 #else
-OrthonormalBasis::SpMatrix OrthonormalBasis::SparseJacobianTranspose(
+OrthonormalBasis::SpMatrix OrthonormalBasis::sparseJacobianTranspose(
     const size_t nrows, const size_t ncols,
     const std::vector<std::tuple<int, int, double>> &triplets) {
   const size_t last_col = ncols - 1;
@@ -373,7 +373,7 @@ OrthonormalBasis::SpMatrix OrthonormalBasis::SparseJacobianTranspose(
   return A_t;
 }
 
-OrthonormalBasis::SpMatrix OrthonormalBasis::LastColsSelectionMat(
+OrthonormalBasis::SpMatrix OrthonormalBasis::lastColsSelectionMatrix(
     const size_t nrows, const size_t ncols) {
   std::vector<Eigen::Triplet<double>> entries;
   entries.reserve(ncols);
@@ -389,7 +389,7 @@ OrthonormalBasis::SpMatrix OrthonormalBasis::LastColsSelectionMat(
 #endif
 
 /* ************************************************************************* */
-OrthonormalBasis::SpMatrix OrthonormalBasis::EigenSparseJacobian(
+OrthonormalBasis::SpMatrix OrthonormalBasis::eigenSparseJacobianFromGraph(
     const GaussianFactorGraph &graph) {
   Ordering ordering(graph.keys());
   size_t rows, cols;
@@ -436,9 +436,9 @@ OrthonormalBasis::SpMatrix OrthonormalBasis::eigenSparseJacobian(
 /* ************************************************************************* */
 EliminationBasis::EliminationBasis(
     const NonlinearEqualityConstraints::shared_ptr &constraints,
-    const Values &values, const TspaceBasisParams::shared_ptr &params,
+    const Values &values, const TangentSpaceBasisParams::shared_ptr &params,
     std::optional<const KeyVector> basis_keys)
-    : TspaceBasis(params), attributes_(std::make_shared<Attributes>()) {
+    : TangentSpaceBasis(params), attributes_(std::make_shared<Attributes>()) {
   // Structural setup happens once for this basis object. It records the
   // component dimension, per-variable dimensions, and the constraint merit
   // graph used later for numeric construction. This part is not repeated by
@@ -467,7 +467,7 @@ EliminationBasis::EliminationBasis(
   } else {
     // The no-basis-key path would require automatically choosing independent
     // variables. That symbolic choice is not implemented; all production uses
-    // route through EliminationBasisCreator with use_basis_keys enabled.
+    // route through EliminationBasisCreator with useBasisKeys enabled.
     throw std::runtime_error(
         "elimination basis without keys not implemented.");
   }
@@ -488,7 +488,7 @@ EliminationBasis::EliminationBasis(
   // flag is false, ConstraintManifold::makeSureBasisConstructed will call
   // construct lazily on first recover-with-Jacobian, localCoordinates, or
   // retract use.
-  if (params_->always_construct_basis) {
+  if (params_->alwaysConstructBasis) {
     construct(values);
   }
 }
@@ -496,11 +496,11 @@ EliminationBasis::EliminationBasis(
 /* ************************************************************************* */
 EliminationBasis::EliminationBasis(const Values &values,
                                    const EliminationBasis &other)
-    : TspaceBasis(other.params_), attributes_(other.attributes_) {
+    : TangentSpaceBasis(other.params_), attributes_(other.attributes_) {
   // This path is used after a manifold moves to new values. The symbolic
   // structure is reused, but the numeric Jacobians are value-dependent and are
   // rebuilt here only for eager-construction configurations.
-  if (params_->always_construct_basis) {
+  if (params_->alwaysConstructBasis) {
     construct(values);
   }
 }
@@ -524,13 +524,13 @@ void EliminationBasis::construct(const Values &values) {
   // Convert Bayes-net conditionals into recovery Jacobians d(non-basis)/d(basis)
   // used by computeTangentVector and recoverJacobian. After this cache is
   // filled, per-retraction tangent lifting is just block multiplication.
-  ComputeBayesNetJacobian(*bayes_net, attributes_->basis_keys,
+  computeBayesNetJacobian(*bayes_net, attributes_->basis_keys,
                           attributes_->var_dim, jacobians_);
   is_constructed_ = true;
 }
 
 /* ************************************************************************* */
-TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
+TangentSpaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
     const NonlinearEqualityConstraints &constraints, const Values &values,
     bool create_from_scratch) const {
   // This path is used when active inequality constraints are temporarily added
@@ -565,7 +565,7 @@ TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
   //   linear_graph.eliminatePartialSequential(new_ordering, EliminateQR);
   // auto bayes_net = elim_result.first;
   // MultiJacobians new_jacobians;
-  // ComputeBayesNetJacobian(*bayes_net, new_basis_keys, var_dim_,
+  // computeBayesNetJacobian(*bayes_net, new_basis_keys, var_dim_,
   // new_jacobians);
   Ordering new_ordering(new_constraint_keys.begin(), new_constraint_keys.end());
 
@@ -598,7 +598,7 @@ TspaceBasis::shared_ptr EliminationBasis::createWithAdditionalConstraints(
     for (const Key &key : new_constraint_keys) {
       new_jacobians.insert({key, MultiJacobian()});
     }
-    new_basis->jacobians_ = JacobiansMultiply(jacobians_, new_jacobians);
+    new_basis->jacobians_ = multiplyJacobians(jacobians_, new_jacobians);
     new_basis->is_constructed_ = true;
   }
   return new_basis;

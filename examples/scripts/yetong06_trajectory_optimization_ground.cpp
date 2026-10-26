@@ -37,7 +37,7 @@
 #include "gtdynamics/factors/ContactPointFactor.h"
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include "gtdynamics/cmopt/ConstraintManifold.h"
-#include "gtdynamics/cmopt/TspaceBasis.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/GraphUtils.h"
 #include "gtdynamics/utils/values.h"
@@ -137,30 +137,30 @@ void TrajectoryOptimization() {
 
   // Parameters
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->ecm_params->basis_creator =
-      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunc());
+  iecm_params->equalityManifoldParams->basisCreator =
+      std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  // retractor_params->lm_params.setVerbosityLM("SUMMARY");
-  // retractor_params->lm_params.minModelFidelity = 0.5;
-  retractor_params->check_feasible = true;
-  retractor_params->feasible_threshold = 1e-3;
-  retractor_params->prior_sigma = 0.1;
-  iecm_params->retractor_creator =
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
+  // retractor_params->lmParams.minModelFidelity = 0.5;
+  retractor_params->checkFeasible = true;
+  retractor_params->feasibleThreshold = 1e-3;
+  retractor_params->priorSigma = 0.1;
+  iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->e_basis_creator = iecm_params->ecm_params->basis_creator;
-  iecm_params->e_basis_build_from_scratch = false;
+  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
+  iecm_params->equalityBasisBuildFromScratch = false;
 
   IELMParams ie_params;
-  ie_params.lm_params.setMaxIterations(10);
+  ie_params.lmParams.setMaxIterations(10);
 
   // optimize IELM
   auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
   Values result_values = lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
-    IEOptimizer::PrintIterDetails(
+    IEOptimizer::printIterationDetails(
         iter_details, num_steps, false, IEVision60Robot::PrintValues,
         IEVision60Robot::PrintDelta, GTDKeyFormatter);
   }

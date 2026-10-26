@@ -9,7 +9,7 @@
  * @file  SubstituteFactor.h
  * @brief Factor that substitute certain variables with its corresponding
  * recover function from the constraint manifold. It is used to represent the
- * equivalent new cost factors on manifold varaibles.
+ * equivalent new cost factors on manifold variables.
  * @author: Yetong Zhang
  */
 

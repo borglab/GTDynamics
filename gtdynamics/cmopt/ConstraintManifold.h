@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/cmopt/Retractor.h>
-#include <gtdynamics/cmopt/TspaceBasis.h>
+#include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
@@ -49,7 +49,7 @@ using gtsam::NonlinearEqualityConstraints;
  * optimization problems.
  *
  * The manifold dimension is `embedding_dim - constraint_dim`, and tangent
- * space mapping is delegated to `TspaceBasis` while feasibility projection is
+ * space mapping is delegated to `TangentSpaceBasis` while feasibility projection is
  * delegated to `Retractor`.
  *
  * @see README.md#constraint-manifold
@@ -61,21 +61,21 @@ class ConstraintManifold {
   /**
    * Parameters that define basis construction and retraction behavior.
    *
-   * `basis_creator` controls tangent-space parameterization and
-   * `retractor_creator` controls how feasibility is enforced after updates.
+   * `basisCreator` controls tangent-space parameterization and
+   * `retractorCreator` controls how feasibility is enforced after updates.
    *
    * @see README.md#tangent-basis
    * @see README.md#retraction
    */
   struct Params {
     using shared_ptr = std::shared_ptr<Params>;
-    TspaceBasisCreator::shared_ptr basis_creator;
-    RetractorCreator::shared_ptr retractor_creator;
+    TangentSpaceBasisCreator::shared_ptr basisCreator;
+    RetractorCreator::shared_ptr retractorCreator;
 
     /** Default constructor. */
     Params()
-        : basis_creator(std::make_shared<OrthonormalBasisCreator>()),
-          retractor_creator(std::make_shared<UoptRetractorCreator>()) {}
+        : basisCreator(std::make_shared<OrthonormalBasisCreator>()),
+          retractorCreator(std::make_shared<UnconstrainedOptimizationRetractorCreator>()) {}
   };
 
  protected:
@@ -86,7 +86,7 @@ class ConstraintManifold {
   size_t embedding_dim_;             // dimension of embedding space
   size_t constraint_dim_;            // dimension of constraints
   size_t dim_;                       // dimension of constraint manifold
-  TspaceBasis::shared_ptr basis_;    // tangent space basis
+  TangentSpaceBasis::shared_ptr basis_;    // tangent space basis
 
  public:
   enum { dimension = Eigen::Dynamic };
@@ -98,7 +98,7 @@ class ConstraintManifold {
    * @param constraints Equality constraints defining the component.
    * @param values Initial values of variables in the connected component.
    * @param params Parameters controlling basis and retraction behavior.
-   * @param retract_init If true, retract values to satisfy constraints at
+   * @param retractInitialValues If true, retract values to satisfy constraints at
    * construction.
    * @param basis Optional pre-built tangent basis.
    */
@@ -106,19 +106,19 @@ class ConstraintManifold {
       const NonlinearEqualityConstraints::shared_ptr constraints,
       const gtsam::Values &values,
       const Params::shared_ptr &params = std::make_shared<Params>(),
-      bool retract_init = true,
-      std::optional<TspaceBasis::shared_ptr> basis = {})
+      bool retractInitialValues = true,
+      std::optional<TangentSpaceBasis::shared_ptr> basis = {})
       : params_(params),
         constraints_(constraints),
-        retractor_(params->retractor_creator->create(constraints_)),
-        values_(constructValues(values, retractor_, retract_init)),
+        retractor_(params->retractorCreator->create(constraints_)),
+        values_(constructValues(values, retractor_, retractInitialValues)),
         embedding_dim_(values_.dim()),
         constraint_dim_(constraints_->dim()),
         dim_(embedding_dim_ > constraint_dim_ ? embedding_dim_ - constraint_dim_
                                               : 0),
         basis_(basis ? *basis
                      : (dim_ == 0 ? createFixedBasis(constraints_, values_)
-                                  : params->basis_creator->create(constraints_,
+                                  : params->basisCreator->create(constraints_,
                                                                   values_))) {}
 
   /**
@@ -211,7 +211,7 @@ class ConstraintManifold {
   bool equals(const ConstraintManifold &other, double tol = 1e-8) const;
 
   /// Return the basis of the tangent space.
-  const TspaceBasis::shared_ptr &basis() const { return basis_; }
+  const TangentSpaceBasis::shared_ptr &basis() const { return basis_; }
 
   /// Return the retractor.
   const Retractor::shared_ptr &retractor() const { return retractor_; }
@@ -220,11 +220,11 @@ class ConstraintManifold {
   const Values feasibleValues() const;
 
  protected:
-  static TspaceBasis::shared_ptr createFixedBasis(
+  static TangentSpaceBasis::shared_ptr createFixedBasis(
       const NonlinearEqualityConstraints::shared_ptr &constraints,
       const gtsam::Values &values) {
-    auto basis_params = std::make_shared<TspaceBasisParams>();
-    basis_params->always_construct_basis = false;
+    auto basis_params = std::make_shared<TangentSpaceBasisParams>();
+    basis_params->alwaysConstructBasis = false;
     return std::make_shared<OrthonormalBasis>(constraints, values,
                                               basis_params);
   }
@@ -233,18 +233,18 @@ class ConstraintManifold {
    * Initialize values for the manifold state.
    * @param values Candidate values of variables in the connected component.
    * @param retractor Retraction object used for feasibility projection.
-   * @param retract_init If true, perform constraint retraction.
+   * @param retractInitialValues If true, perform constraint retraction.
    * @return Initialized values, optionally retracted to feasibility.
    */
   static Values constructValues(const gtsam::Values &values,
                                 const Retractor::shared_ptr &retractor,
-                                bool retract_init);
+                                bool retractInitialValues);
 
   /// Make sure the tangent space basis is constructed.
   /// NOTE: The static mutex creates a global synchronization point across all
   /// ConstraintManifold instances. This is a known limitation that could cause
   /// unnecessary contention. A better design would move the mutex to the
-  /// TspaceBasis class itself.
+  /// TangentSpaceBasis class itself.
   void makeSureBasisConstructed() const {
     if (!basis_->isConstructed()) {
       static std::mutex basis_mutex;

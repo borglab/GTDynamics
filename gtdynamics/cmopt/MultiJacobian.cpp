@@ -22,7 +22,7 @@ MultiJacobian::MultiJacobian(const Key &key, const Matrix &matrix)
 }
 
 /* ************************************************************************* */
-MultiJacobian MultiJacobian::Identity(const Key &key, const size_t &dim) {
+MultiJacobian MultiJacobian::identity(const Key &key, const size_t &dim) {
   MultiJacobian jacobian;
   jacobian[key] = Matrix::Identity(dim, dim);
   jacobian.dim_ = dim;
@@ -30,7 +30,7 @@ MultiJacobian MultiJacobian::Identity(const Key &key, const size_t &dim) {
 }
 
 /* ************************************************************************* */
-MultiJacobian MultiJacobian::VerticalStack(const MultiJacobian &jac1,
+MultiJacobian MultiJacobian::verticalStack(const MultiJacobian &jac1,
                                            const MultiJacobian &jac2) {
   size_t dim1 = jac1.numRows();
   size_t dim2 = jac2.numRows();
@@ -137,13 +137,13 @@ KeySet MultiJacobian::keys() const {
 }
 
 /* ************************************************************************* */
-void ComputeBayesNetJacobian(const GaussianBayesNet &bn,
+void computeBayesNetJacobian(const GaussianBayesNet &bn,
                              const KeyVector &basis_keys,
                              const std::map<Key, size_t> &var_dim,
                              MultiJacobians &jacobians) {
   // set jacobian of basis variables to identity
   for (const Key &key : basis_keys) {
-    jacobians.emplace(key, MultiJacobian::Identity(key, var_dim.at(key)));
+    jacobians.emplace(key, MultiJacobian::identity(key, var_dim.at(key)));
   }
 
   GaussianBayesNet reversed_bn = bn;
@@ -212,7 +212,7 @@ MultiJacobian operator+(const MultiJacobian &jac1, const MultiJacobian &jac2) {
   return sum_jac;
 }
 
-MultiJacobians JacobiansMultiply(const MultiJacobians &jacs1,
+MultiJacobians multiplyJacobians(const MultiJacobians &jacs1,
                                  const MultiJacobians &jacs2) {
   MultiJacobians result_jacs;
   for (const auto &it : jacs1) {

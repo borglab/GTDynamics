@@ -25,13 +25,13 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include "gtdynamics/cmopt/TspaceBasis.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
 
 /** Simple example Pose3 with between constraints. */
-TEST(TspaceBasis, connected_poses) {
+TEST(TangentSpaceBasis, connected_poses) {
   Key x1_key = 1;
   Key x2_key = 2;
   Key x3_key = 3;
@@ -54,13 +54,13 @@ TEST(TspaceBasis, connected_poses) {
 
 
   // Construct retractor.
-  auto params_uopt = std::make_shared<RetractParams>();
-  auto params_proj = std::make_shared<RetractParams>();
-  auto params_fix_vars = std::make_shared<RetractParams>();
-  params_fix_vars->use_basis_keys = true;
+  auto params_uopt = std::make_shared<RetractionParams>();
+  auto params_proj = std::make_shared<RetractionParams>();
+  auto params_fix_vars = std::make_shared<RetractionParams>();
+  params_fix_vars->useBasisKeys = true;
   KeyVector basis_keys{x3_key};
-  UoptRetractor retractor_uopt(constraints, params_uopt);
-  ProjRetractor retractor_proj(constraints, params_proj);
+  UnconstrainedOptimizationRetractor retractor_uopt(constraints, params_uopt);
+  ProjectionRetractor retractor_proj(constraints, params_proj);
   BasisRetractor retractor_basis(constraints, params_fix_vars, basis_keys);
 
   Values values_uopt = retractor_uopt.retractConstraints(base_values);

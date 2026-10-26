@@ -47,52 +47,52 @@ void SaveValues(const std::string file_name, const Values &values) {
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsManual() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<HalfSphereRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   return iecm_params;
 }
 
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetECMParamsManual() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<SphereRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   return iecm_params;
 }
 
 // /* *************************************************************************
 // */ IEConstraintManifold::Params::shared_ptr GetIECMParamsSP() {
 //   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-//   iecm_params->retractor_creator =
+//   iecm_params->retractorCreator =
 //       std::make_shared<UniversalIERetractorCreator>(
 //           std::make_shared<HalfSphereRetractor>(half_sphere));
-//   iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+//   iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 //   return iecm_params;
 // }
 
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsCR() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  retractor_params->lm_params.setlambdaUpperBound(1e10);
-  retractor_params->lm_params.setAbsoluteErrorTol(1e-10);
-  retractor_params->check_feasible = true;
-  retractor_params->ensure_feasible = true;
-  retractor_params->feasible_threshold = 1e-5;
-  retractor_params->use_varying_sigma = true;
-  retractor_params->metric_sigmas = std::make_shared<VectorValues>();
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  retractor_params->lmParams.setlambdaUpperBound(1e10);
+  retractor_params->lmParams.setAbsoluteErrorTol(1e-10);
+  retractor_params->checkFeasible = true;
+  retractor_params->ensureFeasible = true;
+  retractor_params->feasibleThreshold = 1e-5;
+  retractor_params->useVaryingSigma = true;
+  retractor_params->metricSigmas = std::make_shared<VectorValues>();
   auto retract_penalty_params = std::make_shared<PenaltyParameters>();
   retract_penalty_params->initial_mu = 1.0;
   retract_penalty_params->mu_increase_rate = 10.0;
   retract_penalty_params->num_iterations = 3;
-  retractor_params->penalty_params = retract_penalty_params;
-  iecm_params->retractor_creator =
+  retractor_params->penaltyParams = retract_penalty_params;
+  iecm_params->retractorCreator =
       std::make_shared<BarrierRetractorCreator>(retractor_params);
   return iecm_params;
 }
@@ -162,13 +162,13 @@ IEConsOptProblem CreateProblem() {
 }
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails> SecondPhaseOptimization(
+std::pair<IEResultSummary, IELMOptimizationDetails> SecondPhaseOptimization(
     const Values values, std::string exp_name) {
   auto problem = CreateProblem();
   problem.values_ = values;
 
   IELMParams ie_params;
-  ie_params.boundary_approach_rate_threshold = 1e10;
+  ie_params.boundaryApproachRateThreshold = 1e10;
   return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
                              false);
 }
@@ -178,23 +178,23 @@ int main(int argc, char **argv) {
   auto problem = CreateProblem();
 
   IELMParams ie_params;
-  // ie_params.lm_params.minModelFidelity = 0.5;
+  // ie_params.lmParams.minModelFidelity = 0.5;
 
   // soft constraints
   std::cout << "optimize soft...\n";
-  LevenbergMarquardtParams lm_params;
-  auto soft_result = OptimizeIE_Soft(problem, lm_params, 1e2);
+  LevenbergMarquardtParams lmParams;
+  auto soft_result = OptimizeIE_Soft(problem, lmParams, 1e2);
 
   // penalty method
   std::cout << "optimize penalty...\n";
-  auto penalty_params = std::make_shared<PenaltyParameters>();
-  penalty_params->initial_mu = 1;
-  penalty_params->num_iterations = 4;
-  penalty_params->mu_increase_rate = 10;
-  penalty_params->store_iter_details = true;
-  penalty_params->store_lm_details = true;
-  penalty_params->lm_params.setVerbosityLM("SUMMARY");
-  auto penalty_result = OptimizeIE_Penalty(problem, penalty_params);
+  auto penaltyParams = std::make_shared<PenaltyParameters>();
+  penaltyParams->initial_mu = 1;
+  penaltyParams->num_iterations = 4;
+  penaltyParams->mu_increase_rate = 10;
+  penaltyParams->store_iter_details = true;
+  penaltyParams->store_lm_details = true;
+  penaltyParams->lmParams.setVerbosityLM("SUMMARY");
+  auto penalty_result = OptimizeIE_Penalty(problem, penaltyParams);
 
   // augmented Lagrangian
   std::cout << "optimize augmented Lagrangian...\n";
@@ -225,7 +225,7 @@ int main(int argc, char **argv) {
 
   // // // IEGD method
   // // std::cout << "optimize CMOpt(IE-GD)...\n";
-  // // GDParams gd_params;
+  // // GradientDescentParams gd_params;
   // // // gd_params.muLowerBound = 1e-10;
   // // // gd_params.verbose = true;
   // // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
 
   // // // IELM cost-aware projection
   // // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
-  // // // ie_params.lm_params.setVerbosityLM("SUMMARY");
+  // // // ie_params.lmParams.setVerbosityLM("SUMMARY");
   // // auto ielm_cr_result =
   // //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(),
   // "CMOpt(IE-LM-CR)");

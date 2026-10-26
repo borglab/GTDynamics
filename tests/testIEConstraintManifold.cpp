@@ -41,9 +41,9 @@ TEST(IEConstraintManifold, HalfSphere) {
       ScalarExpressionInequalityConstraint::LeqZero(z_expr, 1.0));
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->ecm_params = std::make_shared<ConstraintManifold::Params>();
-  params->retractor_creator = std::make_shared<BarrierRetractorCreator>();
-  params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
+  params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
+  params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
   {
     Values values;
@@ -110,17 +110,17 @@ TEST(IEConstraintManifold, HalfSphere) {
 
     // Test linear i-constraints
     Key manifold_key = 3;
-    VectorValues tangent_vector;
-    tangent_vector.insert(point_key, Vector3(8, -6, 2));
-    Vector xi = manifold.eBasis()->computeXi(tangent_vector);
+    VectorValues tangentVector;
+    tangentVector.insert(point_key, Vector3(8, -6, 2));
+    Vector xi = manifold.eBasis()->computeXi(tangentVector);
     VectorValues delta;
     delta.insert(manifold_key, xi);
-    auto linear_base_i_constraints = manifold.linearActiveBaseIConstraints();
-    auto linear_manifold_i_constraints = manifold.linearActiveManIConstraints(manifold_key);
+    auto linearBaseInequalityConstraints = manifold.linearActiveBaseInequalityConstraints();
+    auto linearManifoldInequalityConstraints = manifold.linearActiveManifoldInequalityConstraints(manifold_key);
 
-    for (const auto&[idx, base_constraint]: linear_base_i_constraints) {
-      auto manifold_constraint = linear_manifold_i_constraints.at(idx);
-      auto base_constraint_eval = (*base_constraint)(tangent_vector);
+    for (const auto&[idx, base_constraint]: linearBaseInequalityConstraints) {
+      auto manifold_constraint = linearManifoldInequalityConstraints.at(idx);
+      auto base_constraint_eval = (*base_constraint)(tangentVector);
       auto manifold_constraint_eval = (*manifold_constraint)(delta);
       EXPECT(assert_equal(Vector1(2.0), base_constraint_eval));
       EXPECT(assert_equal(Vector1(2.0), manifold_constraint_eval));

@@ -1,6 +1,6 @@
 
 #include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/TspaceBasis.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
@@ -23,7 +23,7 @@
 using namespace gtdynamics;
 using namespace gtsam;
 
-TEST(IdentifyManifolds, HalfSphere) {
+TEST(identifyManifolds, HalfSphere) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
@@ -40,12 +40,12 @@ TEST(IdentifyManifolds, HalfSphere) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<HalfSphereRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
+  auto manifolds = IEOptimizer::identifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
   for (const auto &it : manifolds) {
     const auto &manifold = it.second;
@@ -56,7 +56,7 @@ TEST(IdentifyManifolds, HalfSphere) {
   EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
 }
 
-TEST(IdentifyManifolds, CartPoleWithFriction) {
+TEST(identifyManifolds, CartPoleWithFriction) {
   IECartPoleWithFriction cp;
   size_t num_steps = 2;
 
@@ -73,12 +73,12 @@ TEST(IdentifyManifolds, CartPoleWithFriction) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<CartPoleWithFrictionRetractor>(cp));
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
+  auto manifolds = IEOptimizer::identifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
   for (const auto &it : manifolds) {
     const auto &manifold = it.second;
@@ -89,7 +89,7 @@ TEST(IdentifyManifolds, CartPoleWithFriction) {
   EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
 }
 
-TEST(IdentifyManifolds, Dome) {
+TEST(identifyManifolds, Dome) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
@@ -100,17 +100,17 @@ TEST(IdentifyManifolds, Dome) {
   }
 
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(
           std::make_shared<DomeRetractor>(half_sphere));
-  iecm_params->e_basis_creator = std::make_shared<OrthonormalBasisCreator>();
+  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
   Values values;
   for (size_t k = 0; k <= num_steps; k++) {
     values.insert(PointKey(k), Point3(0, 1, 0));
   }
 
-  auto manifolds = IEOptimizer::IdentifyManifolds(e_constraints, i_constraints,
+  auto manifolds = IEOptimizer::identifyManifolds(e_constraints, i_constraints,
                                                   values, iecm_params);
   for (const auto &it : manifolds) {
     const auto &manifold = it.second;

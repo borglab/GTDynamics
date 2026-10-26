@@ -162,7 +162,7 @@ class HalfSphereRetractor : public IERetractor {
   IEConstraintManifold retract(
       const IEConstraintManifold *manifold, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
-      IERetractInfo *retract_info = nullptr) const override {
+      IERetractionInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -194,7 +194,7 @@ class SphereRetractor : public IERetractor {
   IEConstraintManifold retract(
       const IEConstraintManifold *manifold, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
-      IERetractInfo *retract_info = nullptr) const override {
+      IERetractionInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -221,7 +221,7 @@ class DomeRetractor : public IERetractor {
   IEConstraintManifold retract(
       const IEConstraintManifold *manifold, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
-      IERetractInfo *retract_info = nullptr) const override {
+      IERetractionInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
     Vector3 v = delta.at(key);
@@ -240,7 +240,7 @@ class DomeRetractor : public IERetractor {
   /** Move the current point onto active dome boundary constraints. */
   IEConstraintManifold moveToBoundary(
       const IEConstraintManifold *manifold, const IndexSet &blocking_indices,
-      IERetractInfo *retract_info = nullptr) const override {
+      IERetractionInfo *retract_info = nullptr) const override {
     Key key = manifold->values().keys().front();
     Point3 p = manifold->values().at<Point3>(key);
 

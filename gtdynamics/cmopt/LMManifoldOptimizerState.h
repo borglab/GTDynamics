@@ -37,7 +37,7 @@ using gtsam::VectorValues;
 
 struct LMState;
 struct LMTrial;
-struct LMIterDetails;
+struct LMIterationDetails;
 
 /**
  * State for one outer iteration of manifold LM optimization.
@@ -51,13 +51,13 @@ struct LMIterDetails;
 struct LMState {
  public:
   EManifoldValues manifolds;
-  Values unconstrained_values;
-  EManifoldValues const_manifolds;
+  Values unconstrainedValues;
+  EManifoldValues constManifolds;
   double error = 0;
   double lambda = 0;
-  double lambda_factor = 0;
+  double lambdaFactor = 0;
   size_t iterations = 0;
-  size_t totalNumberInnerIterations = 0;
+  size_t totalInnerIterations = 0;
 
   LMState() {}
 
@@ -66,11 +66,11 @@ struct LMState {
    * @param graph Base cost graph.
    * @param problem Transformed manifold optimization problem.
    * @param _lambda Initial damping value.
-   * @param _lambda_factor Lambda scaling factor.
+   * @param _lambdaFactor Lambda scaling factor.
    * @param _iterations Current outer iteration index.
    */
-  LMState(const NonlinearFactorGraph &graph, const ManifoldOptProblem &problem,
-          const double &_lambda, const double &_lambda_factor,
+  LMState(const NonlinearFactorGraph &graph, const ManifoldOptimizationProblem &problem,
+          const double &_lambda, const double &_lambdaFactor,
           size_t _iterations = 0);
 
   /**
@@ -80,7 +80,7 @@ struct LMState {
    * @param params LM parameters.
    * @return New LM state for the next outer iteration.
    */
-  static LMState FromLastIteration(const LMIterDetails &iter_details,
+  static LMState fromLastIteration(const LMIterationDetails &iter_details,
                                    const NonlinearFactorGraph &graph,
                                    const LevenbergMarquardtParams &params);
 
@@ -92,7 +92,7 @@ struct LMState {
    * @param _const_manifolds Fixed manifold values.
    * @return Total nonlinear graph error.
    */
-  static double EvaluateGraphError(const NonlinearFactorGraph &graph,
+  static double evaluateGraphError(const NonlinearFactorGraph &graph,
                                    const EManifoldValues &_manifolds,
                                    const Values &_unconstrained_values,
                                    const EManifoldValues &_const_manifolds);
@@ -136,11 +136,11 @@ struct LMTrial {
   struct LinearUpdate {
     double lambda;
     VectorValues delta;
-    VectorValues tangent_vector;
-    double old_error;
-    double new_error;
-    double cost_change;
-    bool solve_successful;
+    VectorValues tangentVector;
+    double oldError;
+    double newError;
+    double costChange;
+    bool solveSuccessful;
 
     /** Default constructor. */
     LinearUpdate() {}
@@ -215,10 +215,10 @@ struct LMTrial {
    * @see README.md#solvers
    */
   struct NonlinearUpdate {
-    EManifoldValues new_manifolds;
-    Values new_unconstrained_values;
-    double new_error;
-    double cost_change;
+    EManifoldValues newManifolds;
+    Values newUnconstrainedValues;
+    double newError;
+    double costChange;
 
     /** Default constructor. */
     NonlinearUpdate() {}
@@ -226,51 +226,51 @@ struct LMTrial {
     /**
      * Compute nonlinear trial update from a linear update.
      * @param state Current LM state.
-     * @param linear_update Linear trial update.
+     * @param linearUpdate Linear trial update.
      * @param graph Base cost graph.
      */
-    NonlinearUpdate(const LMState &state, const LinearUpdate &linear_update,
+    NonlinearUpdate(const LMState &state, const LinearUpdate &linearUpdate,
                     const NonlinearFactorGraph &graph);
   };
 
  public:
   // linear update
-  LinearUpdate linear_update;
+  LinearUpdate linearUpdate;
 
   // nonlinear update
-  NonlinearUpdate nonlinear_update;
+  NonlinearUpdate nonlinearUpdate;
 
   // decision making
-  double model_fidelity;
-  bool step_is_successful;
-  bool stop_searching_lambda;
-  double trial_time;
+  double modelFidelity;
+  bool stepIsSuccessful;
+  bool stopSearchingLambda;
+  double trialTime;
 
   /**
    * Update lambda for the next trial/state.
    * @param new_lambda Output lambda value.
-   * @param new_lambda_factor Output lambda scaling factor.
+   * @param newLambdaFactor Output lambda scaling factor.
    * @param params LM parameters.
    */
-  void setNextLambda(double &new_lambda, double &new_lambda_factor,
+  void setNextLambda(double &new_lambda, double &newLambdaFactor,
                      const LevenbergMarquardtParams &params) const;
 
   /**
    * Increase lambda for the next trial/state.
    * @param new_lambda Output lambda value.
-   * @param new_lambda_factor Output lambda scaling factor.
+   * @param newLambdaFactor Output lambda scaling factor.
    * @param params LM parameters.
    */
-  void setIncreasedNextLambda(double &new_lambda, double &new_lambda_factor,
+  void setIncreasedNextLambda(double &new_lambda, double &newLambdaFactor,
                               const LevenbergMarquardtParams &params) const;
 
   /**
    * Decrease lambda for the next trial/state.
    * @param new_lambda Output lambda value.
-   * @param new_lambda_factor Output lambda scaling factor.
+   * @param newLambdaFactor Output lambda scaling factor.
    * @param params LM parameters.
    */
-  void setDecreasedNextLambda(double &new_lambda, double &new_lambda_factor,
+  void setDecreasedNextLambda(double &new_lambda, double &newLambdaFactor,
                               const LevenbergMarquardtParams &params) const;
 
   /**
@@ -280,7 +280,7 @@ struct LMTrial {
   void print(const LMState &state) const;
 
   /// Print table header for LM trial summaries.
-  static void PrintTitle();
+  static void printTitle();
 };
 
 /**
@@ -288,11 +288,11 @@ struct LMTrial {
  *
  * @see README.md#solvers
  */
-struct LMIterDetails {
+struct LMIterationDetails {
   LMState state;
   std::vector<LMTrial> trials;
 
-  LMIterDetails(const LMState &_state) : state(_state), trials() {}
+  LMIterationDetails(const LMState &_state) : state(_state), trials() {}
 };
 
 /**
@@ -300,9 +300,9 @@ struct LMIterDetails {
  *
  * @see README.md#solvers
  */
-class LMItersDetails : public std::vector<LMIterDetails> {
+class LMOptimizationDetails : public std::vector<LMIterationDetails> {
  public:
-  using base = std::vector<LMIterDetails>;
+  using base = std::vector<LMIterationDetails>;
   using base::base;
 
   /**

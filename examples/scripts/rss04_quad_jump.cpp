@@ -150,84 +150,84 @@ std::vector<NonlinearFactorGraph> GetCostTerms(const IEVision60RobotMultiPhase& 
 /* ************************************************************************* */
 IERetractorParams::shared_ptr GetNominalRetractorParams() {
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  retractor_params->lm_params.setlambdaUpperBound(1e10);
-  retractor_params->lm_params.setAbsoluteErrorTol(1e-10);
-  retractor_params->check_feasible = true;
-  retractor_params->ensure_feasible = true;
-  retractor_params->feasible_threshold = 1e-5;
-  retractor_params->prior_sigma = 1e-1;
-  retractor_params->use_varying_sigma = false;
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  retractor_params->lmParams.setlambdaUpperBound(1e10);
+  retractor_params->lmParams.setAbsoluteErrorTol(1e-10);
+  retractor_params->checkFeasible = true;
+  retractor_params->ensureFeasible = true;
+  retractor_params->feasibleThreshold = 1e-5;
+  retractor_params->priorSigma = 1e-1;
+  retractor_params->useVaryingSigma = false;
 
-  auto penalty_params = std::make_shared<PenaltyParameters>();
-  // penalty_params->lm_params = params_->lm_params;
-  penalty_params->initial_mu = 10.0;
-  penalty_params->mu_increase_rate = 10.0;
-  penalty_params->num_iterations = 2;
-  auto lm_params1 = retractor_params->lm_params;
-  auto lm_params2 = retractor_params->lm_params;
+  auto penaltyParams = std::make_shared<PenaltyParameters>();
+  // penaltyParams->lmParams = params_->lmParams;
+  penaltyParams->initial_mu = 10.0;
+  penaltyParams->mu_increase_rate = 10.0;
+  penaltyParams->num_iterations = 2;
+  auto lm_params1 = retractor_params->lmParams;
+  auto lm_params2 = retractor_params->lmParams;
   // lm_params1.setMaxIterations(20);
   // lm_params1.setVerbosityLM("SUMMARY");
-  penalty_params->iters_lm_params = std::vector<LevenbergMarquardtParams>();
-  for (size_t i = 0; i < penalty_params->num_iterations - 1; i++) {
-    penalty_params->iters_lm_params.push_back(lm_params1);
+  penaltyParams->iters_lm_params = std::vector<LevenbergMarquardtParams>();
+  for (size_t i = 0; i < penaltyParams->num_iterations - 1; i++) {
+    penaltyParams->iters_lm_params.push_back(lm_params1);
   }
-  penalty_params->iters_lm_params.push_back(lm_params2);
-  retractor_params->penalty_params = penalty_params;
+  penaltyParams->iters_lm_params.push_back(lm_params2);
+  retractor_params->penaltyParams = penaltyParams;
   return retractor_params;
 }
 
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsSP() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_build_from_scratch = false;
-  iecm_params->retractor_creator =
+  iecm_params->equalityBasisBuildFromScratch = false;
+  iecm_params->retractorCreator =
       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
           vision60_multi_phase, GetNominalRetractorParams(), false);
-  iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
+  iecm_params->equalityBasisCreator = OrthonormalBasisCreator::createSparse();
   return iecm_params;
 }
 
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsCR() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_build_from_scratch = false;
+  iecm_params->equalityBasisBuildFromScratch = false;
   auto retractor_params_cr = GetNominalRetractorParams();
-  retractor_params_cr->use_varying_sigma = true;
-  retractor_params_cr->metric_sigmas = std::make_shared<VectorValues>();
-  // retractor_params_cr->scale_varying_sigma = true;
-  iecm_params->retractor_creator =
+  retractor_params_cr->useVaryingSigma = true;
+  retractor_params_cr->metricSigmas = std::make_shared<VectorValues>();
+  // retractor_params_cr->scaleVaryingSigma = true;
+  iecm_params->retractorCreator =
       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
           vision60_multi_phase, retractor_params_cr, false);
-  iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
+  iecm_params->equalityBasisCreator = OrthonormalBasisCreator::createSparse();
   return iecm_params;
 }
 
 /* ************************************************************************* */
 IELMParams NominalIELMParams() {
   IELMParams ie_params;
-  ie_params.boundary_approach_rate_threshold = 1e10;
-  ie_params.lm_params.setVerbosityLM("SUMMARY");
-  // ie_params.lm_params.setMaxIterations(50);
-  ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-  ie_params.lm_params.setlambdaUpperBound(1e10);
-  // ie_params.lm_params.lambdaInitial = 1e-6;
-  ie_params.iqp_max_iters = 100;
-  ie_params.show_active_constraints = true;
-  ie_params.active_constraints_group_as_categories = true;
+  ie_params.boundaryApproachRateThreshold = 1e10;
+  ie_params.lmParams.setVerbosityLM("SUMMARY");
+  // ie_params.lmParams.setMaxIterations(50);
+  ie_params.lmParams.setLinearSolverType("SEQUENTIAL_QR");
+  ie_params.lmParams.setlambdaUpperBound(1e10);
+  // ie_params.lmParams.lambdaInitial = 1e-6;
+  ie_params.iqpMaxIterations = 100;
+  ie_params.showActiveConstraints = true;
+  ie_params.activeConstraintsGroupedAsCategories = true;
   return ie_params;
 }
 
 
 /* ************************************************************************* */
-std::pair<IEResultSummary, IELMItersDetails>
+std::pair<IEResultSummary, IELMOptimizationDetails>
 SecondPhaseOptimization(const Values values, std::string exp_name) {
   auto problem = std::get<0>(CreateProblem());
   problem.values_ = values;
 
   IELMParams ie_params = NominalIELMParams();
-  ie_params.lm_params.setLinearSolverType("MULTIFRONTAL_QR");
-  // ie_params.boundary_approach_rate_threshold = 10;
+  ie_params.lmParams.setLinearSolverType("MULTIFRONTAL_QR");
+  // ie_params.boundaryApproachRateThreshold = 10;
   return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name, false);
 }
 
@@ -248,31 +248,31 @@ void TrajectoryOptimization() {
   PenaltyItersDetails penalty_iters_details;
   AugmentedLagrangianItersDetails augl_iters_details;
   SQPItersDetails sqp_iters_details;
-  IELMItersDetails cmopt_iters_details;
-  IELMItersDetails cmcopt_iters_details;
+  IELMOptimizationDetails cmopt_iters_details;
+  IELMOptimizationDetails cmcopt_iters_details;
   IPItersDetails ip_iters_details;
 
   // soft constraints
   if (run_soft) {
     std::cout << "optimize soft...\n";
-    LevenbergMarquardtParams lm_params;
-    lm_params.setlambdaUpperBound(1e10);
-    lm_params.setVerbosityLM("SUMMARY");
-    std::tie(soft_summary, soft_iters_details) = OptimizeIE_Soft(problem, lm_params, 1e4, evaluate_projected);
+    LevenbergMarquardtParams lmParams;
+    lmParams.setlambdaUpperBound(1e10);
+    lmParams.setVerbosityLM("SUMMARY");
+    std::tie(soft_summary, soft_iters_details) = OptimizeIE_Soft(problem, lmParams, 1e4, evaluate_projected);
   }
 
 
   // penalty method
   if (run_penalty) {
     std::cout << "optimize penalty...\n";
-    auto penalty_params = std::make_shared<PenaltyParameters>();
-    penalty_params->initial_mu = 1e-4;
-    penalty_params->mu_increase_rate = 4;
-    penalty_params->num_iterations = 16;
-    penalty_params->lm_params.setVerbosityLM("SUMMARY");
-    penalty_params->lm_params.setlambdaUpperBound(1e10);
-    penalty_params->lm_params.setMaxIterations(30);
-    std::tie(penalty_summary, penalty_iters_details) = OptimizeIE_Penalty(problem, penalty_params, evaluate_projected);
+    auto penaltyParams = std::make_shared<PenaltyParameters>();
+    penaltyParams->initial_mu = 1e-4;
+    penaltyParams->mu_increase_rate = 4;
+    penaltyParams->num_iterations = 16;
+    penaltyParams->lmParams.setVerbosityLM("SUMMARY");
+    penaltyParams->lmParams.setlambdaUpperBound(1e10);
+    penaltyParams->lmParams.setMaxIterations(30);
+    std::tie(penalty_summary, penalty_iters_details) = OptimizeIE_Penalty(problem, penaltyParams, evaluate_projected);
   }
 
   if (run_augl) {
@@ -285,9 +285,9 @@ void TrajectoryOptimization() {
     // al_params->max_dual_step_size_e = 1e0;
     // al_params->max_dual_step_size_i = 1e0;
 
-    al_params->lm_params.setVerbosityLM("SUMMARY");
-    al_params->lm_params.setlambdaUpperBound(1e10);
-    al_params->lm_params.setMaxIterations(30);
+    al_params->lmParams.setVerbosityLM("SUMMARY");
+    al_params->lmParams.setlambdaUpperBound(1e10);
+    al_params->lmParams.setMaxIterations(30);
 
     if (log_progress) {
       al_params->store_iter_details = true;
@@ -330,9 +330,9 @@ void TrajectoryOptimization() {
 
   // // IEGD method
   // std::cout << "optimize CMOpt(IE-GD)...\n";
-  // GDParams gd_params;
+  // GradientDescentParams gd_params;
   // gd_params.verbose = true;
-  // gd_params.init_lambda = 1e-5;
+  // gd_params.initialLambda = 1e-5;
   // gd_params.muLowerBound = 1e-15;
   // gd_params.maxIterations = 20;
   // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params, GetIECMParamsSP(),

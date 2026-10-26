@@ -175,7 +175,7 @@ class IECartPoleWithLimits {
   Values getInitValuesInterp(size_t num_steps) const;
 
   /** Return a function that selects basis keys for constraint manifolds. */
-  BasisKeyFunc getBasisKeyFunc() const;
+  BasisKeyFunction getBasisKeyFunction() const;
 };
 
 /** Retraction rule that clamps cart position and force to their limits. */
@@ -193,7 +193,7 @@ class CartPoleWithLimitsRetractor : public IERetractor {
   IEConstraintManifold retract(
       const IEConstraintManifold *manifold, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
-      IERetractInfo *retract_info = nullptr) const override;
+      IERetractionInfo *retract_info = nullptr) const override;
 };
 
 }  // namespace gtdynamics

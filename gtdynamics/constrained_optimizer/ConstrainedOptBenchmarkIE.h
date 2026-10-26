@@ -50,15 +50,13 @@ struct PenaltyParameters : public gtsam::PenaltyOptimizerParams {
   double &initial_mu;
   double &mu_increase_rate;
   size_t &num_iterations;
-  LevenbergMarquardtParams &lm_params;
   std::vector<LevenbergMarquardtParams> iters_lm_params;
   bool store_iter_details = false;
   bool store_lm_details = false;
 
   PenaltyParameters()
       : gtsam::PenaltyOptimizerParams(), initial_mu(initialMuEq),
-        mu_increase_rate(muEqIncreaseRate), num_iterations(maxIterations),
-        lm_params(lmParams) {}
+        mu_increase_rate(muEqIncreaseRate), num_iterations(maxIterations) {}
 };
 
 struct AugmentedLagrangianParameters : public gtsam::AugmentedLagrangianParams {
@@ -71,7 +69,6 @@ struct AugmentedLagrangianParameters : public gtsam::AugmentedLagrangianParams {
   double &dual_step_size_factor_i;
   double &max_dual_step_size_e;
   double &max_dual_step_size_i;
-  LevenbergMarquardtParams &lm_params;
   bool store_iter_details = false;
   bool store_lm_details = false;
 
@@ -84,7 +81,7 @@ struct AugmentedLagrangianParameters : public gtsam::AugmentedLagrangianParams {
         dual_step_size_factor_e(dualStepSizeFactorEq),
         dual_step_size_factor_i(dualStepSizeFactorIneq),
         max_dual_step_size_e(maxDualStepSizeEq),
-        max_dual_step_size_i(maxDualStepSizeIneq), lm_params(lmParams) {}
+        max_dual_step_size_i(maxDualStepSizeIneq) {}
 };
 
 using PenaltyItersDetails = gtsam::PenaltyOptimizer::Progress;
@@ -168,7 +165,7 @@ typedef std::vector<gtsam::internal::LevenbergMarquardtState> LMItersDetail;
  */
 std::pair<IEResultSummary, LMItersDetail> OptimizeIE_Soft(
     const IEConsOptProblem &problem,
-    LevenbergMarquardtParams lm_params = LevenbergMarquardtParams(),
+    LevenbergMarquardtParams lmParams = LevenbergMarquardtParams(),
     double mu = 100, bool eval_projected_cost = true);
 
 /** Run constrained optimization using the penalty method. */
@@ -193,19 +190,19 @@ std::pair<IEResultSummary, IPItersDetails> OptimizeIE_IPOPT(
     const IEConsOptProblem &problem, bool eval_projected_cost = true);
 
 /** Run e-manifold optimization, with added penalty for i-constraints. */
-std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMOpt(
+std::pair<IEResultSummary, IELMOptimizationDetails> OptimizeIE_CMOpt(
     const IEConsOptProblem &problem, const IELMParams &ielm_params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     double mu = 100, bool eval_projected_cost = true);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
-std::pair<IEResultSummary, IEGDItersDetails> OptimizeIE_CMCOptGD(
-    const IEConsOptProblem &problem, const GDParams &params,
+std::pair<IEResultSummary, IEGDOptimizationDetails> OptimizeIE_CMCOptGD(
+    const IEConsOptProblem &problem, const GradientDescentParams &params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     bool eval_projected_cost = true);
 
 /** Run constrained optimization using the Augmented Lagrangian method. */
-std::pair<IEResultSummary, IELMItersDetails> OptimizeIE_CMCOptLM(
+std::pair<IEResultSummary, IELMOptimizationDetails> OptimizeIE_CMCOptLM(
     const IEConsOptProblem &problem, const IELMParams &ielm_params,
     const IEConstraintManifold::Params::shared_ptr &iecm_params,
     std::string exp_name = "CMOpt(IE)", bool eval_projected_cost = true);

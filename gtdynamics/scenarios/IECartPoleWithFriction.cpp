@@ -276,7 +276,7 @@ void UpdateBoundary(const double &a, const double &b, const size_t &index,
 IEConstraintManifold CartPoleWithFrictionRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo *retract_info) const {
+    IERetractionInfo *retract_info) const {
   Values new_values = manifold->values().retract(delta);
   int k = Symbol(new_values.keys().front()).index();
   double q = new_values.atDouble(QKey(k));
@@ -437,7 +437,7 @@ IEConstraintManifold CartPoleWithFrictionRetractor::retract1(
 IEConstraintManifold CPBarrierRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo *retract_info) const {
+    IERetractionInfo *retract_info) const {
   const NonlinearInequalityConstraints &i_constraints =
       *manifold->iConstraints();
   const NonlinearEqualityConstraints &e_constraints = *manifold->eConstraints();

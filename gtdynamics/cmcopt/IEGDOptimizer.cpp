@@ -21,45 +21,45 @@ using namespace gtsam;
 
 
 /* ************************************************************************* */
-IEGDState IEGDState::FromLastIteration(const IEGDIterDetails &iter_details,
+IEGDState IEGDState::fromLastIteration(const IEGDIterationDetails &iter_details,
                                        const NonlinearFactorGraph &graph,
-                                       const GDParams &params) {
+                                       const GradientDescentParams &params) {
   double lambda;
   const auto &last_trial = iter_details.trials.back();
   const auto &prev_state = iter_details.state;
   IEGDState state;
-  if (last_trial.step_is_successful) {
-    state = IEGDState(last_trial.new_manifolds, graph);
+  if (last_trial.stepIsSuccessful) {
+    state = IEGDState(last_trial.newManifolds, graph);
   } else {
     // pick the trials with smallest error
     state = IEGDState(iter_details.state.manifolds, graph);
     for (const auto &trial : iter_details.trials) {
-      if (trial.new_error < state.error) {
-        state = IEGDState(trial.new_manifolds, graph);
+      if (trial.newError < state.error) {
+        state = IEGDState(trial.newManifolds, graph);
       }
     }
   }
 
   last_trial.setNextLambda(state.lambda, params);
   state.iterations = prev_state.iterations + 1;
-  state.totalNumberInnerIterations =
-      prev_state.totalNumberInnerIterations + iter_details.trials.size();
+  state.totalInnerIterations =
+      prev_state.totalInnerIterations + iter_details.trials.size();
   return state;
 }
 
 /* ************************************************************************* */
 void IEGDState::computeDescentDirection(const NonlinearFactorGraph &graph) {
   std::map<Key, Key> keymap_var2manifold =
-      IEOptimizer::Var2ManifoldKeyMap(manifolds);
+      IEOptimizer::varToManifoldKeyMap(manifolds);
   NonlinearFactorGraph manifold_graph =
-      ManifoldOptimizer::ManifoldGraph(graph, keymap_var2manifold);
+      ManifoldOptimizer::manifoldGraph(graph, keymap_var2manifold);
 
-  auto linear_graph = manifold_graph.linearize(e_manifolds);
+  auto linear_graph = manifold_graph.linearize(equalityManifolds);
 
   gradient = linear_graph->gradientAtZero();
-  descent_dir = -1 * gradient;
-  std::tie(blocking_indices_map, projected_descent_dir) =
-      IEOptimizer::ProjectTangentCone(manifolds, descent_dir);
+  descentDirection = -1 * gradient;
+  std::tie(blockingIndicesMap, projectedDescentDirection) =
+      IEOptimizer::projectTangentCone(manifolds, descentDirection);
 }
 
 /* ************************************************************************* */
@@ -70,11 +70,11 @@ Values IEGDState::baseValues() const {
 }
 
 /* ************************************************************************* */
-void IEGDTrial::setNextLambda(double &new_mu, const GDParams &params) const {
-  if (forced_indices_map.size() > 0) {
+void IEGDTrial::setNextLambda(double &new_mu, const GradientDescentParams &params) const {
+  if (forcedIndicesMap.size() > 0) {
     new_mu = lambda;
   } else {
-    if (step_is_successful) {
+    if (stepIsSuccessful) {
       new_mu = lambda / params.beta;
     } else {
       new_mu = lambda * params.beta;
@@ -84,22 +84,22 @@ void IEGDTrial::setNextLambda(double &new_mu, const GDParams &params) const {
 
 /* ************************************************************************* */
 void IEGDTrial::computeDelta(const IEGDState &state) {
-  delta = lambda * state.projected_descent_dir;
-  tangent_vector = IEOptimizer::ComputeTangentVector(state.manifolds, delta);
-  linear_cost_change = state.descent_dir.dot(delta);
+  delta = lambda * state.projectedDescentDirection;
+  tangentVector = IEOptimizer::computeTangentVector(state.manifolds, delta);
+  linearCostChange = state.descentDirection.dot(delta);
 }
 
 /* ************************************************************************* */
 void IEGDTrial::computeNewManifolds(const IEGDState &state) {
-  new_manifolds = IEManifoldValues();
+  newManifolds = IEManifoldValues();
   for (const auto &[key, manifold] : state.manifolds) {
-    auto manifold_tv = SubValues(tangent_vector, manifold.values().keys());
-    if (state.blocking_indices_map.find(key) !=
-        state.blocking_indices_map.end()) {
-      const auto &blocking_indices = state.blocking_indices_map.at(key);
-      new_manifolds.emplace(key, manifold.retract(manifold_tv, blocking_indices));
+    auto manifold_tv = SubValues(tangentVector, manifold.values().keys());
+    if (state.blockingIndicesMap.find(key) !=
+        state.blockingIndicesMap.end()) {
+      const auto &blocking_indices = state.blockingIndicesMap.at(key);
+      newManifolds.emplace(key, manifold.retract(manifold_tv, blocking_indices));
     } else {
-      new_manifolds.emplace(key, manifold.retract(manifold_tv));
+      newManifolds.emplace(key, manifold.retract(manifold_tv));
     }
   }
 }
@@ -107,9 +107,9 @@ void IEGDTrial::computeNewManifolds(const IEGDState &state) {
 /* ************************************************************************* */
 void IEGDTrial::computeNewError(const NonlinearFactorGraph &graph,
                                 const IEGDState &state) {
-  new_error = graph.error(new_manifolds.baseValues());
-  nonlinear_cost_change = state.error - new_error;
-  model_fidelity = nonlinear_cost_change / linear_cost_change;
+  newError = graph.error(newManifolds.baseValues());
+  nonlinearCostChange = state.error - newError;
+  modelFidelity = nonlinearCostChange / linearCostChange;
 }
 
 /* ************************************************************************* */
@@ -125,18 +125,18 @@ void PrintIEGDTrialTitle() {
 /* ************************************************************************* */
 void IEGDTrial::print(const IEGDState &state) const {
   cout << setw(10) << state.iterations << "|";
-  cout << setw(12) << setprecision(4) << new_error << "|";
-  cout << setw(12) << setprecision(4) << nonlinear_cost_change << "|";
-  cout << setw(12) << setprecision(4) << linear_cost_change << "|";
+  cout << setw(12) << setprecision(4) << newError << "|";
+  cout << setw(12) << setprecision(4) << nonlinearCostChange << "|";
+  cout << setw(12) << setprecision(4) << linearCostChange << "|";
   cout << setw(10) << setprecision(2) << lambda << "|";
-  cout << setw(10) << setprecision(2) << tangent_vector.norm() << endl;
+  cout << setw(10) << setprecision(2) << tangentVector.norm() << endl;
 }
 
 // /* *************************************************************************
 // */ IEManifoldValues IEGDOptimizer::lineSearch(
 //     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
 //     const VectorValues &proj_dir, const VectorValues
-//     &descent_dir, VectorValues &delta) const {
+//     &descentDirection, VectorValues &delta) const {
 //   double alpha = 0.2;
 //   double beta = 0.5;
 //   double t = 1;
@@ -149,12 +149,12 @@ void IEGDTrial::print(const IEGDState &state) const {
 //     delta = t * proj_dir;
 //     // delta.print("delta");
 
-//     IEManifoldValues new_manifolds = RetractManifolds(manifolds, delta);
-//     Values new_values = CollectManifoldValues(new_manifolds);
+//     IEManifoldValues newManifolds = retractManifolds(manifolds, delta);
+//     Values new_values = CollectManifoldValues(newManifolds);
 //     double new_eval = graph.error(new_values);
 
 //     double nonlinear_error_decrease = eval - new_eval;
-//     double linear_error_decrease = descent_dir.dot(delta);
+//     double linear_error_decrease = descentDirection.dot(delta);
 
 //     std::cout << "t: " << t << "\tnonlinear: " << nonlinear_error_decrease
 //               << "\tlinear: " << linear_error_decrease << std::endl;
@@ -163,7 +163,7 @@ void IEGDTrial::print(const IEGDState &state) const {
 //     }
 
 //     if (nonlinear_error_decrease > linear_error_decrease * alpha) {
-//       return new_manifolds;
+//       return newManifolds;
 //     }
 //     t *= beta;
 //   }
@@ -172,9 +172,9 @@ void IEGDTrial::print(const IEGDState &state) const {
 // }
 
 /* ************************************************************************* */
-IEGDIterDetails IEGDOptimizer::iterate(const NonlinearFactorGraph &graph,
+IEGDIterationDetails IEGDOptimizer::iterate(const NonlinearFactorGraph &graph,
                                        const IEGDState &state) const {
-  IEGDIterDetails iter_details(state);
+  IEGDIterationDetails iter_details(state);
   if (checkModeChange(graph, iter_details)) {
     return iter_details;
   }
@@ -193,15 +193,15 @@ IEGDIterDetails IEGDOptimizer::iterate(const NonlinearFactorGraph &graph,
     iter_details.trials.emplace_back(trial);
 
     // Check condition 1.
-    if (trial.step_is_successful) {
+    if (trial.stepIsSuccessful) {
       break;
     }
 
     // Check condition 2.
     double abs_change_tol = std::max(params_.absoluteErrorTol,
                                      params_.relativeErrorTol * state.error);
-    if (trial.linear_cost_change < abs_change_tol) {
-      if (trial.nonlinear_cost_change < abs_change_tol) {
+    if (trial.linearCostChange < abs_change_tol) {
+      if (trial.nonlinearCostChange < abs_change_tol) {
         break;
       }
     }
@@ -228,9 +228,9 @@ void IEGDOptimizer::tryLambda(const NonlinearFactorGraph &graph,
   trial.computeNewError(graph, state);
 
   // Check if successful.
-  trial.step_is_successful = false;
-  if (trial.nonlinear_cost_change > trial.linear_cost_change * params_.alpha) {
-    trial.step_is_successful = true;
+  trial.stepIsSuccessful = false;
+  if (trial.nonlinearCostChange > trial.linearCostChange * params_.alpha) {
+    trial.stepIsSuccessful = true;
   }
 
   if (params_.verbose) {
@@ -241,17 +241,17 @@ void IEGDOptimizer::tryLambda(const NonlinearFactorGraph &graph,
 /* ************************************************************************* */
 Values IEGDOptimizer::optimizeManifolds(
     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
-    const Values &unconstrained_values) const {
+    const Values &unconstrainedValues) const {
   // construct equivalent factors on e-manifolds
   // std::cout << "in optimize\n";
-  std::map<Key, Key> keymap_var2manifold = Var2ManifoldKeyMap(manifolds);
+  std::map<Key, Key> keymap_var2manifold = varToManifoldKeyMap(manifolds);
   NonlinearFactorGraph manifold_graph =
-      ManifoldOptimizer::ManifoldGraph(graph, keymap_var2manifold);
+      ManifoldOptimizer::manifoldGraph(graph, keymap_var2manifold);
   // std::cout << "graph done\n";
 
   // Construct initial state
   IEGDState state(manifolds, graph, 0);
-  state.lambda = params_.init_lambda;
+  state.lambda = params_.initialLambda;
 
   if (params_.verbose) {
     std::cout << "Initial error: " << state.error << "\n";
@@ -268,8 +268,8 @@ Values IEGDOptimizer::optimizeManifolds(
   IEGDState prev_state;
   do {
     prev_state = state;
-    IEGDIterDetails iter_details = iterate(graph, state);
-    state = IEGDState::FromLastIteration(iter_details, graph, params_);
+    IEGDIterationDetails iter_details = iterate(graph, state);
+    state = IEGDState::fromLastIteration(iter_details, graph, params_);
     details_->push_back(iter_details);
   } while (state.iterations < params_.maxIterations &&
            !checkConvergence(prev_state, state) &&
@@ -286,7 +286,7 @@ bool IEGDOptimizer::checkMuWithinLimits(const double &lambda) const {
 /* ************************************************************************* */
 bool IEGDOptimizer::checkModeChange(
     const NonlinearFactorGraph &graph,
-    IEGDIterDetails &current_iter_details) const {
+    IEGDIterationDetails &current_iter_details) const {
   if (details_->size() == 0) {
     return false;
   }
@@ -294,7 +294,7 @@ bool IEGDOptimizer::checkModeChange(
   // Find the first state in the sequence of states that have the same mode.
   int n = details_->size();
   int first_i = n - 1;
-  while (first_i >= 0 && IsSameMode(current_iter_details.state.manifolds,
+  while (first_i >= 0 && isSameMode(current_iter_details.state.manifolds,
                                     details_->at(first_i).state.manifolds)) {
     first_i--;
   }
@@ -313,7 +313,7 @@ bool IEGDOptimizer::checkModeChange(
   size_t trial_idx = details_->back().trials.size() - 1;
   bool failed_trial_exists = false;
   while (true) {
-    if (!details_->at(iter_idx).trials.at(trial_idx).step_is_successful) {
+    if (!details_->at(iter_idx).trials.at(trial_idx).stepIsSuccessful) {
       failed_trial_exists = true;
       break;
     }
@@ -333,18 +333,18 @@ bool IEGDOptimizer::checkModeChange(
     return false;
   }
 
-  IndexSetMap change_indices_map = IdentifyChangeIndices(
+  IndexSetMap change_indices_map = identifyChangeIndices(
       current_iter_details.state.manifolds,
-      details_->at(iter_idx).trials.at(trial_idx).new_manifolds);
+      details_->at(iter_idx).trials.at(trial_idx).newManifolds);
 
   // Condition2(2): most recent failed trial results in other mode
   if (change_indices_map.size() == 0) {
     return false;
   }
 
-  auto approach_indices_map = IdentifyApproachingIndices(
+  auto approach_indices_map = identifyApproachingIndices(
       init_iter_dertails.state.manifolds, current_iter_details.state.manifolds,
-      change_indices_map, params_.boundary_approach_rate_threshold);
+      change_indices_map, params_.boundaryApproachRateThreshold);
 
   // Condition3: approaching boundary with decent rate
   if (approach_indices_map.size() == 0) {
@@ -354,11 +354,11 @@ bool IEGDOptimizer::checkModeChange(
   // Enforce approaching indices;
   IEGDTrial trial;
   trial.lambda = current_iter_details.state.lambda;
-  trial.forced_indices_map = approach_indices_map;
-  trial.new_manifolds = current_iter_details.state.manifolds.moveToBoundaries(
+  trial.forcedIndicesMap = approach_indices_map;
+  trial.newManifolds = current_iter_details.state.manifolds.moveToBoundaries(
       approach_indices_map);
-  trial.new_error = graph.error(trial.new_manifolds.baseValues());
-  trial.step_is_successful = true;
+  trial.newError = graph.error(trial.newManifolds.baseValues());
+  trial.stepIsSuccessful = true;
   current_iter_details.trials.emplace_back(trial);
   return true;
 }
@@ -370,7 +370,7 @@ bool IEGDOptimizer::checkConvergence(const IEGDState &prev_state,
     return true;
 
   // check if mode changes
-  if (!IsSameMode(prev_state.manifolds, state.manifolds)) {
+  if (!isSameMode(prev_state.manifolds, state.manifolds)) {
     return false;
   }
 

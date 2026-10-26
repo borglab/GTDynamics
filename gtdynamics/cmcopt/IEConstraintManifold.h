@@ -28,12 +28,12 @@ public:
 
   struct Params {
     using shared_ptr = std::shared_ptr<Params>;
-    ConstraintManifold::Params::shared_ptr ecm_params =
+    ConstraintManifold::Params::shared_ptr equalityManifoldParams =
         std::make_shared<ConstraintManifold::Params>();
     // IERetractType ie_retract_type = IERetractType::Barrier;
-    IERetractorCreator::shared_ptr retractor_creator;
-    TspaceBasisCreator::shared_ptr e_basis_creator;
-    bool e_basis_build_from_scratch = true;
+    IERetractorCreator::shared_ptr retractorCreator;
+    TangentSpaceBasisCreator::shared_ptr equalityBasisCreator;
+    bool equalityBasisBuildFromScratch = true;
     /** Default constructor. */
     Params() = default;
   };
@@ -47,7 +47,7 @@ protected:
   size_t embedding_dim_;
   size_t e_constraints_dim_;
   size_t dim_;
-  TspaceBasis::shared_ptr e_basis_;
+  TangentSpaceBasis::shared_ptr e_basis_;
   TangentCone::shared_ptr i_cone_;
   IERetractor::shared_ptr retractor_;
 
@@ -62,13 +62,13 @@ public:
       : params_(params), e_constraints_(e_constraints),
         i_constraints_(i_constraints), values_(values),
         active_indices_(
-            IdentifyActiveConstraints(*i_constraints, values, active_indices)),
+            identifyActiveConstraints(*i_constraints, values, active_indices)),
         embedding_dim_(values.dim()), e_constraints_dim_(e_constraints_->dim()),
         dim_(embedding_dim_ - e_constraints_dim_),
-        e_basis_(params->e_basis_creator->create(e_constraints_, values_)),
-        i_cone_(ConstructTangentCone(*i_constraints, values, active_indices_,
+        e_basis_(params->equalityBasisCreator->create(e_constraints_, values_)),
+        i_cone_(constructTangentCone(*i_constraints, values, active_indices_,
                                      e_basis_)),
-        retractor_(params->retractor_creator->create(*this)) {}
+        retractor_(params->retractorCreator->create(*this)) {}
 
   /** constructor from other manifold but update the values. */
   IEConstraintManifold(const IEConstraintManifold &other, const Values &values,
@@ -76,11 +76,11 @@ public:
       : params_(other.params_), e_constraints_(other.e_constraints_),
         i_constraints_(other.i_constraints_), values_(values),
         active_indices_(
-            IdentifyActiveConstraints(*i_constraints_, values, active_indices)),
+            identifyActiveConstraints(*i_constraints_, values, active_indices)),
         embedding_dim_(other.embedding_dim_),
         e_constraints_dim_(other.e_constraints_dim_), dim_(other.dim_),
         e_basis_(other.e_basis_->createWithNewValues(values_)),
-        i_cone_(ConstructTangentCone(*i_constraints_, values_, active_indices_,
+        i_cone_(constructTangentCone(*i_constraints_, values_, active_indices_,
                                      e_basis_)),
         retractor_(other.retractor_) {}
 
@@ -97,7 +97,7 @@ public:
   /// Active set A(x): tight inequality indices, as in thesis Eq. (4.3).
   const IndexSet &activeIndices() const { return active_indices_; }
 
-  const TspaceBasis::shared_ptr eBasis() const { return e_basis_; }
+  const TangentSpaceBasis::shared_ptr eBasis() const { return e_basis_; }
 
   /// Tangent cone C_x induced by thesis Eqs. (4.14)-(4.16).
   const TangentCone::shared_ptr &tangentCone() const { return i_cone_; }
@@ -121,28 +121,28 @@ public:
 
   /// Same projection as above, but starting from ambient tangent vectors.
   virtual std::pair<IndexSet, VectorValues>
-  projectTangentCone(const VectorValues &tangent_vector) const;
+  projectTangentCone(const VectorValues &tangentVector) const;
 
   /// Retract using the on-corner rule from thesis Eq. (4.46) when blocking
   /// inequalities are supplied.
   virtual IEConstraintManifold
   retract(const Vector &xi,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const;
+          IERetractionInfo *retract_info = nullptr) const;
 
   /// Retract an ambient tangent update back to a feasible IE manifold point.
   virtual IEConstraintManifold
   retract(const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
-          IERetractInfo *retract_info = nullptr) const;
+          IERetractionInfo *retract_info = nullptr) const;
 
   /// Return active inequalities that block the step, matching thesis Eq. (4.45).
-  IndexSet blockingIndices(const VectorValues &tangent_vector) const;
+  IndexSet blockingIndices(const VectorValues &tangentVector) const;
 
   /// Force a mode change by moving directly onto the requested boundary set.
   IEConstraintManifold
   moveToBoundary(const IndexSet &active_indices,
-                 IERetractInfo *retract_info = nullptr) const;
+                 IERetractionInfo *retract_info = nullptr) const;
 
   /// Construct an e-constraint manifold that only includes equalily
   /// constraints.
@@ -152,35 +152,35 @@ public:
   /// equality constraints. Used for EQP-based methods.,
   ConstraintManifold eConstraintManifold(const IndexSet &active_indices) const;
 
-  double evalIViolation() const {
+  double evaluateInequalityViolation() const {
     return i_constraints_->violationNorm(values_);
   }
 
-  double evalEViolation() const {
+  double evaluateEqualityViolation() const {
     return e_constraints_->violationNorm(values_);
   }
 
   /// Linearize active inequalities as Dg_A(x) B_x, the K matrix in thesis
   /// Eq. (4.15), for manifold-space QPs.
   LinearIConstraintMap
-  linearActiveManIConstraints(const Key manifold_key) const;
+  linearActiveManifoldInequalityConstraints(const Key manifold_key) const;
 
   /// Linearize the active inequalities directly in ambient variable space.
-  LinearIConstraintMap linearActiveBaseIConstraints() const;
+  LinearIConstraintMap linearActiveBaseInequalityConstraints() const;
 
 protected:
   /// Identify A(x), either from explicit mode information or from which
   /// inequalities are tight at the current values.
-  static IndexSet IdentifyActiveConstraints(
+  static IndexSet identifyActiveConstraints(
       const NonlinearInequalityConstraints &i_constraints,
       const Values &values, const std::optional<IndexSet> &active_indices = {});
 
   /// Construct the tangent cone in thesis Eqs. (4.14)-(4.16) by forming the
   /// active Jacobian Dg_A(x) and projecting it through the equality basis B_x.
   static TangentCone::shared_ptr
-  ConstructTangentCone(const NonlinearInequalityConstraints &i_constraints,
+  constructTangentCone(const NonlinearInequalityConstraints &i_constraints,
                        const Values &values, const IndexSet &active_indices,
-                       const TspaceBasis::shared_ptr &t_basis);
+                       const TangentSpaceBasis::shared_ptr &t_basis);
 };
 
 class IEManifoldValues : public std::map<Key, IEConstraintManifold> {

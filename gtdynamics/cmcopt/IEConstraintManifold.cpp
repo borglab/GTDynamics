@@ -92,8 +92,8 @@ IEConstraintManifold::projectTangentCone(const Vector &xi) const {
 
 /* ************************************************************************* */
 std::pair<IndexSet, VectorValues> IEConstraintManifold::projectTangentCone(
-    const VectorValues &tangent_vector) const {
-  Vector xi = e_basis_->computeXi(tangent_vector);
+    const VectorValues &tangentVector) const {
+  Vector xi = e_basis_->computeXi(tangentVector);
   auto result = projectTangentCone(xi);
   VectorValues projected_tangent_vector =
       e_basis_->computeTangentVector(result.second);
@@ -104,22 +104,22 @@ std::pair<IndexSet, VectorValues> IEConstraintManifold::projectTangentCone(
 IEConstraintManifold
 IEConstraintManifold::retract(const Vector &xi,
                               const std::optional<IndexSet> &blocking_indices,
-                              IERetractInfo *retract_info) const {
-  auto tangent_vector = e_basis_->computeTangentVector(xi);
-  return retract(tangent_vector, blocking_indices, retract_info);
+                              IERetractionInfo *retract_info) const {
+  auto tangentVector = e_basis_->computeTangentVector(xi);
+  return retract(tangentVector, blocking_indices, retract_info);
 }
 
 /* ************************************************************************* */
 IEConstraintManifold
 IEConstraintManifold::retract(const VectorValues &delta,
                               const std::optional<IndexSet> &blocking_indices,
-                              IERetractInfo *retract_info) const {
+                              IERetractionInfo *retract_info) const {
   return retractor_->retract(this, delta, blocking_indices, retract_info);
 }
 
 /* ************************************************************************* */
 IndexSet IEConstraintManifold::blockingIndices(
-    const VectorValues &tangent_vector) const {
+    const VectorValues &tangentVector) const {
   IndexSet blocking_indices;
 
   for (const auto &idx : active_indices_) {
@@ -127,8 +127,8 @@ IndexSet IEConstraintManifold::blockingIndices(
     auto linear_factor = LinearizedIConstraint(i_constraint, values_);
     Vector error = Vector::Zero(linear_factor->rows());
     for (auto it = linear_factor->begin(); it != linear_factor->end(); ++it) {
-      if (tangent_vector.exists(*it)) {
-        error += linear_factor->getA(it) * tangent_vector.at(*it);
+      if (tangentVector.exists(*it)) {
+        error += linear_factor->getA(it) * tangentVector.at(*it);
       }
     }
     // A negative directional derivative means this active face would be
@@ -144,13 +144,13 @@ IndexSet IEConstraintManifold::blockingIndices(
 /* ************************************************************************* */
 IEConstraintManifold
 IEConstraintManifold::moveToBoundary(const IndexSet &active_indices,
-                                     IERetractInfo *retract_info) const {
+                                     IERetractionInfo *retract_info) const {
   return retractor_->moveToBoundary(this, active_indices, retract_info);
 }
 
 /* ************************************************************************* */
 ConstraintManifold IEConstraintManifold::eConstraintManifold() const {
-  return ConstraintManifold(e_constraints_, values_, params_->ecm_params, false,
+  return ConstraintManifold(e_constraints_, values_, params_->equalityManifoldParams, false,
                             e_basis_);
 }
 
@@ -172,13 +172,13 @@ ConstraintManifold IEConstraintManifold::eConstraintManifold(
   active_constraints->add(new_active_constraints);
 
   auto new_basis = e_basis_->createWithAdditionalConstraints(
-      new_active_constraints, values_, params_->e_basis_build_from_scratch);
-  return ConstraintManifold(active_constraints, values_, params_->ecm_params,
+      new_active_constraints, values_, params_->equalityBasisBuildFromScratch);
+  return ConstraintManifold(active_constraints, values_, params_->equalityManifoldParams,
                             false, new_basis);
 }
 
 /* ************************************************************************* */
-IndexSet IEConstraintManifold::IdentifyActiveConstraints(
+IndexSet IEConstraintManifold::identifyActiveConstraints(
     const NonlinearInequalityConstraints &i_constraints,
     const Values &values, const std::optional<IndexSet> &active_indices) {
   if (active_indices) {
@@ -202,10 +202,10 @@ IndexSet IEConstraintManifold::IdentifyActiveConstraints(
 }
 
 /* ************************************************************************* */
-TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
+TangentCone::shared_ptr IEConstraintManifold::constructTangentCone(
     const NonlinearInequalityConstraints &i_constraints,
     const Values &values, const IndexSet &active_indices,
-    const TspaceBasis::shared_ptr &t_basis) {
+    const TangentSpaceBasis::shared_ptr &t_basis) {
 
   LinearInequalityConstraints constraints;
   for (const auto &constraint_idx : active_indices) {
@@ -232,7 +232,7 @@ TangentCone::shared_ptr IEConstraintManifold::ConstructTangentCone(
 
 /* ************************************************************************* */
 LinearIConstraintMap
-IEConstraintManifold::linearActiveManIConstraints(
+IEConstraintManifold::linearActiveManifoldInequalityConstraints(
     const Key manifold_key) const {
 
   LinearIConstraintMap active_constraints;
@@ -260,7 +260,7 @@ IEConstraintManifold::linearActiveManIConstraints(
 
 /* ************************************************************************* */
 LinearIConstraintMap
-IEConstraintManifold::linearActiveBaseIConstraints() const {
+IEConstraintManifold::linearActiveBaseInequalityConstraints() const {
   LinearIConstraintMap active_constraints;
 
   for (const auto &constraint_idx : active_indices_) {

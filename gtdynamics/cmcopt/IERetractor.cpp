@@ -39,11 +39,11 @@ namespace {
  * Behavioral intent (compatibility):
  * - Preserve previous flow: solve a penalty-form constrained problem using the
  *   provided cost graph and current equality/inequality constraints.
- * - Keep LM settings controlled by `IERetractorParams::lm_params` by copying
+ * - Keep LM settings controlled by `IERetractorParams::lmParams` by copying
  *   them into `PenaltyOptimizerParams::lmParams` right before solve.
  *
  * Notes for review:
- * - This helper mutates `params->penalty_params->lmParams` intentionally so the
+ * - This helper mutates `params->penaltyParams->lmParams` intentionally so the
  *   retractor-level LM tuning remains the single source of truth.
  * - It is `namespace {}` local on purpose: this is a file-scoped adapter layer,
  *   not reusable public API.
@@ -54,10 +54,10 @@ Values RunPenaltyOptimization(
     const NonlinearInequalityConstraints &i_constraints,
     const Values &initial_values,
     const IERetractorParams::shared_ptr &params) {
-  auto penalty_params = params->penalty_params;
-  penalty_params->lmParams = params->lm_params;
+  auto penaltyParams = params->penaltyParams;
+  penaltyParams->lmParams = params->lmParams;
   ConstrainedOptProblem problem(cost, e_constraints, i_constraints);
-  PenaltyOptimizer optimizer(problem, initial_values, penalty_params);
+  PenaltyOptimizer optimizer(problem, initial_values, penaltyParams);
   return optimizer.optimize();
 }
 
@@ -68,7 +68,7 @@ Values RunPenaltyOptimization(
 IEConstraintManifold
 IERetractor::moveToBoundary(const IEConstraintManifold *manifold,
                             const IndexSet &blocking_indices,
-                            IERetractInfo *retract_info) const {
+                            IERetractionInfo *retract_info) const {
   VectorValues delta = manifold->values().zeroVectors();
   return retract(manifold, delta, blocking_indices, retract_info);
 }
@@ -77,7 +77,7 @@ IERetractor::moveToBoundary(const IEConstraintManifold *manifold,
 IEConstraintManifold
 BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
                                  const IndexSet &blocking_indices,
-                                 IERetractInfo *retract_info) const {
+                                 IERetractionInfo *retract_info) const {
 
   // Turning blocking inequalities into equalities picks the boundary face that
   // the next mode should land on.
@@ -96,15 +96,15 @@ BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
   merit_graph.add(manifold->eConstraints()->penaltyGraph(1.0));
   merit_graph.add(manifold->iConstraints()->penaltyGraph(1.0));
   LevenbergMarquardtOptimizer optimizer_np(merit_graph, opt_values,
-                                           params_->lm_params);
+                                           params_->lmParams);
   Values result = optimizer_np.optimize();
 
-  if (params_->check_feasible) {
+  if (params_->checkFeasible) {
     size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
     std::string k_string = "(" + std::to_string(k) + ")";
     if (!CheckFeasible(merit_graph, result,
                        "penalty move to boundary" + k_string,
-                       params_->feasible_threshold)) {
+                       params_->feasibleThreshold)) {
     }
   }
 
@@ -116,7 +116,7 @@ IEConstraintManifold
 BarrierRetractor::retract(const IEConstraintManifold *manifold,
                           const VectorValues &delta,
                           const std::optional<IndexSet> &blocking_indices,
-                          IERetractInfo *retract_info) const {
+                          IERetractionInfo *retract_info) const {
 
   // The prior graph is the quadratic stay-close term centered at x + delta.
   // This implements the metric-projection objective in thesis Eq. (4.26), and
@@ -140,7 +140,7 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   // First solve the soft penalty subproblem, then recover the hard active set
   // from the resulting feasible-or-nearly-feasible point.
   const Values &init_values =
-      params_->init_values_as_x ? manifold->values() : new_values;
+      params_->initValuesAsX ? manifold->values() : new_values;
   Values opt_values = RunPenaltyOptimization(
       prior_graph, e_constraints, i_constraints, init_values, params_);
 
@@ -167,16 +167,16 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   NonlinearFactorGraph graph_np = active_constraints.penaltyGraph(1.0);
   graph_np.add(i_constraints.penaltyGraph(1.0));
   LevenbergMarquardtOptimizer optimizer_np(graph_np, opt_values,
-                                           params_->lm_params);
+                                           params_->lmParams);
   Values result = optimizer_np.optimize();
 
   // check and ensure feasible
-  if (params_->check_feasible) {
+  if (params_->checkFeasible) {
     size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
     std::string k_string = "(" + std::to_string(k) + ")";
     if (!CheckFeasible(graph_np, result, "penalty retraction" + k_string,
-                       params_->feasible_threshold)) {
-      if (params_->ensure_feasible) {
+                       params_->feasibleThreshold)) {
+      if (params_->ensureFeasible) {
         return retract(manifold, 0.7 * delta, blocking_indices, retract_info);
       }
     }
@@ -184,7 +184,7 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
 
   // record retraction info
   if (retract_info) {
-    // retract_info->num_lm_iters =
+    // retract_info->numLMIterations =
     //     opt_info.num_iters.back() + optimizer_np.iterations();
     // TODO
   }
@@ -256,7 +256,7 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
 IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     const IEConstraintManifold *manifold, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
-    IERetractInfo *retract_info) const {
+    IERetractionInfo *retract_info) const {
 
   size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
   std::string k_string = "(" + std::to_string(k) + ")";
@@ -274,7 +274,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   params_->addPriors(new_values, basis_q_keys_, graph_wp_q);
   Values init_values_q = SubValues(values, graph_wp_q.keys());
   LevenbergMarquardtOptimizer optimizer_wp_q(graph_wp_q, init_values_q,
-                                             params_->lm_params);
+                                             params_->lmParams);
   Values results_q = optimizer_wp_q.optimize();
 
   // solve q level without priors
@@ -286,12 +286,12 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     }
   }
   LevenbergMarquardtOptimizer optimizer_np_q(graph_np_q, results_q,
-                                             params_->lm_params);
+                                             params_->lmParams);
   Values new_results_q = optimizer_np_q.optimize();
   known_values.insert(new_results_q);
-  if (params_->check_feasible) {
+  if (params_->checkFeasible) {
     if (!CheckFeasible(graph_np_q, new_results_q, "q-level" + k_string,
-                       params_->feasible_threshold)) {
+                       params_->feasibleThreshold)) {
       failed = true;
     }
   }
@@ -305,7 +305,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   params_->addPriors(new_values, basis_v_keys_, graph_wp_v);
   Values init_values_v = SubValues(values, graph_wp_v.keys());
   LevenbergMarquardtOptimizer optimizer_wp_v(graph_wp_v, init_values_v,
-                                             params_->lm_params);
+                                             params_->lmParams);
   Values results_v = optimizer_wp_v.optimize();
 
   // solve v level without priors
@@ -318,12 +318,12 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     }
   }
   LevenbergMarquardtOptimizer optimizer_np_v(graph_np_v, results_v,
-                                             params_->lm_params);
+                                             params_->lmParams);
   Values new_results_v = optimizer_np_v.optimize();
   known_values.insert(new_results_v);
-  if (params_->check_feasible) {
+  if (params_->checkFeasible) {
     if (!CheckFeasible(graph_np_v, new_results_v, "v-level" + k_string,
-                       params_->feasible_threshold)) {
+                       params_->feasibleThreshold)) {
       failed = true;
     }
   }
@@ -337,7 +337,7 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   params_->addPriors(new_values, basis_ad_keys_, graph_wp_ad);
   Values init_values_ad = SubValues(values, graph_wp_ad.keys());
   LevenbergMarquardtOptimizer optimizer_wp_ad(graph_wp_ad, init_values_ad,
-                                              params_->lm_params);
+                                              params_->lmParams);
   Values results_ad = optimizer_wp_ad.optimize();
 
   // solve a and dynamics level without priors
@@ -350,36 +350,36 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
   }
 
   LevenbergMarquardtOptimizer optimizer_np_ad(graph_np_ad, results_ad,
-                                              params_->lm_params);
+                                              params_->lmParams);
   Values new_results_ad = optimizer_np_ad.optimize();
   known_values.insert(new_results_ad);
-  if (params_->check_feasible) {
+  if (params_->checkFeasible) {
     if (!CheckFeasible(graph_np_ad, new_results_ad, "ad-level" + k_string,
-                       params_->feasible_threshold)) {
+                       params_->feasibleThreshold)) {
       failed = true;
     }
   }
 
   if (retract_info) {
-    retract_info->num_lm_iters = optimizer_wp_q.iterations();
-    retract_info->num_lm_iters += optimizer_np_q.iterations();
-    retract_info->num_lm_iters += optimizer_wp_v.iterations();
-    retract_info->num_lm_iters += optimizer_np_v.iterations();
-    retract_info->num_lm_iters += optimizer_wp_ad.iterations();
-    retract_info->num_lm_iters += optimizer_np_ad.iterations();
+    retract_info->numLMIterations = optimizer_wp_q.iterations();
+    retract_info->numLMIterations += optimizer_np_q.iterations();
+    retract_info->numLMIterations += optimizer_wp_v.iterations();
+    retract_info->numLMIterations += optimizer_np_v.iterations();
+    retract_info->numLMIterations += optimizer_wp_ad.iterations();
+    retract_info->numLMIterations += optimizer_np_ad.iterations();
   }
 
   // solve a and dynamics level without priors
   if (failed) {
     LevenbergMarquardtOptimizer optimizer_all(merit_graph_, known_values,
-                                              params_->lm_params);
+                                              params_->lmParams);
     known_values = optimizer_all.optimize();
     if (retract_info) {
-      retract_info->num_lm_iters += optimizer_all.iterations();
+      retract_info->numLMIterations += optimizer_all.iterations();
     }
     if (!CheckFeasible(merit_graph_, known_values, "all-levels" + k_string,
-                       params_->feasible_threshold)) {
-      if (params_->ensure_feasible) {
+                       params_->feasibleThreshold)) {
+      if (params_->ensureFeasible) {
         return *manifold;
       }
     }

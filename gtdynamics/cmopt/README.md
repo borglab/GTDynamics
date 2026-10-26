@@ -31,9 +31,9 @@ constraint-manifold variable, and cost factors touching constrained variables
 are replaced by equivalent factors on those manifold variables.
 
 In code, this transformation happens in three stages:
-- Find CCCs from equality constraints: [`ManifoldOptimizer::IdentifyConnectedComponents`](ManifoldOptimizer.cpp#L120)
+- Find CCCs from equality constraints: [`ManifoldOptimizer::identifyConnectedComponents`](ManifoldOptimizer.cpp#L120)
 - Build one `ConstraintManifold` per CCC: [`ManifoldOptimizer::constructManifoldValues`](ManifoldOptimizer.cpp#L184)
-- Build equivalent cost factors on manifold variables: [`ManifoldOptimizer::constructMoptGraph`](ManifoldOptimizer.cpp#L232), using [`SubstituteFactor`](../factors/SubstituteFactor.h#L39)
+- Build equivalent cost factors on manifold variables: [`ManifoldOptimizer::constructManifoldOptimizationGraph`](ManifoldOptimizer.cpp#L232), using [`SubstituteFactor`](../factors/SubstituteFactor.h#L39)
 
 Useful cross-reference:
 
@@ -71,17 +71,17 @@ For each CCC, CM-Opt constructs:
 - the transformed unconstrained problem, paper Eq. (16).
 
 Code mapping:
-- DFS over the constraint-variable bipartite graph: [`IdentifyConnectedComponent`](ManifoldOptimizer.cpp#L88)
-- All components: [`IdentifyConnectedComponents`](ManifoldOptimizer.cpp#L120)
-- Full transformation pipeline: [`problemTransform`](ManifoldOptimizer.cpp#L165)
-- Map from base keys to manifold keys: [`constructMoptGraph`](ManifoldOptimizer.cpp#L232)
+- DFS over the constraint-variable bipartite graph: [`identifyConnectedComponent`](ManifoldOptimizer.cpp#L88)
+- All components: [`identifyConnectedComponents`](ManifoldOptimizer.cpp#L120)
+- Full transformation pipeline: [`transformProblem`](ManifoldOptimizer.cpp#L165)
+- Map from base keys to manifold keys: [`constructManifoldOptimizationGraph`](ManifoldOptimizer.cpp#L232)
 - Equivalent factor construction: [`SubstituteFactor`](../factors/SubstituteFactor.h#L39)
 
 Implementation detail:
 - A CCC whose manifold dimension is positive becomes a free manifold-valued
-  variable in `mopt_problem.values_`.
+  variable in `mopt_problem.values`.
 - A fully constrained CCC becomes a fixed manifold in
-  `mopt_problem.fixed_manifolds_`; equivalent factors can still recover values
+  `mopt_problem.fixedManifolds`; equivalent factors can still recover values
   from it, but it is not optimized as a free variable.
 - Variables untouched by equality constraints are copied as ordinary
   unconstrained variables.
@@ -138,22 +138,22 @@ B_{\theta_c}\mathcal{M}_c = B_{X_c^C}\tilde{\mathcal{M}}_c \, N,
 paper Eq. (20), where \(N\) is a null-space basis of the constraint Jacobian.
 
 Code mapping:
-- Abstract basis API: [`TspaceBasis`](TspaceBasis.h#L90)
-- Orthonormal/null-space basis: [`OrthonormalBasis`](TspaceBasis.h#L164)
-- Constraint Jacobian: [`OrthonormalBasis::computeConstraintJacobian`](TspaceBasis.cpp#L57)
-- Dense null-space basis: [`OrthonormalBasis::constructDense`](TspaceBasis.cpp#L108)
-- Sparse null-space basis: [`OrthonormalBasis::constructSparse`](TspaceBasis.cpp#L115)
-- Map reduced coordinates \(\xi\) to ambient `VectorValues`: [`OrthonormalBasis::computeTangentVector`](TspaceBasis.cpp#L223)
+- Abstract basis API: [`TangentSpaceBasis`](TangentSpaceBasis.h#L90)
+- Orthonormal/null-space basis: [`OrthonormalBasis`](TangentSpaceBasis.h#L164)
+- Constraint Jacobian: [`OrthonormalBasis::computeConstraintJacobian`](TangentSpaceBasis.cpp#L57)
+- Dense null-space basis: [`OrthonormalBasis::constructDense`](TangentSpaceBasis.cpp#L108)
+- Sparse null-space basis: [`OrthonormalBasis::constructSparse`](TangentSpaceBasis.cpp#L115)
+- Map reduced coordinates \(\xi\) to ambient `VectorValues`: [`OrthonormalBasis::computeTangentVector`](TangentSpaceBasis.cpp#L223)
 
 Parameterized/basis-variable path:
-- Eliminate non-basis variables: [`EliminationBasis::construct`](TspaceBasis.cpp#L492)
-- Propagate Bayes-net Jacobians: [`ComputeBayesNetJacobian`](MultiJacobian.cpp#L140)
-- Lift reduced coordinates to full tangent values: [`EliminationBasis::computeTangentVector`](TspaceBasis.cpp#L572)
+- Eliminate non-basis variables: [`EliminationBasis::construct`](TangentSpaceBasis.cpp#L492)
+- Propagate Bayes-net Jacobians: [`computeBayesNetJacobian`](MultiJacobian.cpp#L140)
+- Lift reduced coordinates to full tangent values: [`EliminationBasis::computeTangentVector`](TangentSpaceBasis.cpp#L572)
 
 The thesis is useful here because it separates the two basis choices. Eqs.
 (3.7)-(3.11) describe the parameterized/elimination basis; Eqs. (3.12)-(3.14)
 describe the orthonormal basis. The code supports both through
-`TspaceBasisCreator`.
+`TangentSpaceBasisCreator`.
 
 <a id="retraction"></a>
 ## 4) Retraction on Constraint Manifolds (Paper Sec. IV-B, Eqs. 21-24)
@@ -165,8 +165,8 @@ The paper gives three practical retraction schemes:
 
 | Scheme | Paper equation | Code |
 | --- | --- | --- |
-| Metric projection | Eq. (22) | [`ProjRetractor::retract`](Retractor.cpp#L88) |
-| Approximate metric projection | Eq. (23) | [`UoptRetractor::retractConstraints`](Retractor.cpp#L56) |
+| Metric projection | Eq. (22) | [`ProjectionRetractor::retract`](Retractor.cpp#L88) |
+| Approximate metric projection | Eq. (23) | [`UnconstrainedOptimizationRetractor::retractConstraints`](Retractor.cpp#L56) |
 | Retract basis variables | Eq. (24) | [`BasisRetractor::retractConstraints`](Retractor.cpp#L154) |
 
 Shared flow:
@@ -176,9 +176,9 @@ Shared flow:
 - The retractor then enforces the equality constraints: [`Retractor::retractConstraints`](Retractor.h#L118)
 
 How the implementations differ:
-- `UoptRetractor` runs unconstrained LM on the penalty graph, matching the
+- `UnconstrainedOptimizationRetractor` runs unconstrained LM on the penalty graph, matching the
   approximate projection idea in paper Eq. (23).
-- `ProjRetractor` adds priors around the product-manifold trial point, then can
+- `ProjectionRetractor` adds priors around the product-manifold trial point, then can
   run a cleanup solve without priors. This is the code path closest to the
   metric-projection objective in paper Eq. (22).
 - `BasisRetractor` fixes the chosen basis variables at their retracted values
@@ -228,14 +228,14 @@ implementation.
 The paper's optimization target is the transformed unconstrained manifold
 problem in Eq. (16). In GTDynamics there are two optimizer paths:
 
-- Generic path: [`NonlinearMOptimizer`](NonlinearMOptimizer.cpp#L22) transforms
+- Generic path: [`NonlinearManifoldOptimizer`](NonlinearManifoldOptimizer.cpp#L22) transforms
   the equality-constrained problem, then reuses standard GTSAM nonlinear
   optimizers on the manifold-valued variables.
 - Custom LM path: [`LMManifoldOptimizer`](LMManifoldOptimizer.cpp#L43) keeps
   explicit state/trial bookkeeping for CM-Opt updates.
 
 Benchmark helpers:
-- `ConstrainedOptBenchmark::OptimizeCmOpt` uses `NonlinearMOptimizer`: [`ConstrainedOptBenchmark.cpp#L514`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L514)
+- `ConstrainedOptBenchmark::OptimizeCmOpt` uses `NonlinearManifoldOptimizer`: [`ConstrainedOptBenchmark.cpp#L514`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L514)
 - Dense/null-space plus approximate projection defaults: [`DefaultMoptParams`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L487)
 - Elimination basis plus basis-variable retraction defaults: [`DefaultMoptParamsSV`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L499)
 
@@ -254,7 +254,7 @@ constraint manifold in Eq. (26).
 In code, approximate behavior appears through retractor settings rather than a
 separate mathematical type:
 - limiting inner LM iterations in examples,
-- using `UoptRetractor` for approximate metric projection,
+- using `UnconstrainedOptimizationRetractor` for approximate metric projection,
 - using `BasisRetractor` for sparse/basis-variable updates,
 - fast-pathing already feasible basis-retraction solves in
   [`BasisRetractor::retractConstraints`](Retractor.cpp#L154).
@@ -277,10 +277,10 @@ For a concrete end-to-end run, `examples/example_constraint_manifold/main_connec
 Read the core implementation in this order:
 1. [`ManifoldOptimizer.h`](ManifoldOptimizer.h) and [`ManifoldOptimizer.cpp`](ManifoldOptimizer.cpp)
 2. [`ConstraintManifold.h`](ConstraintManifold.h) and [`ConstraintManifold.cpp`](ConstraintManifold.cpp)
-3. [`TspaceBasis.h`](TspaceBasis.h), [`TspaceBasis.cpp`](TspaceBasis.cpp), and [`MultiJacobian.cpp`](MultiJacobian.cpp)
+3. [`TangentSpaceBasis.h`](TangentSpaceBasis.h), [`TangentSpaceBasis.cpp`](TangentSpaceBasis.cpp), and [`MultiJacobian.cpp`](MultiJacobian.cpp)
 4. [`Retractor.h`](Retractor.h) and [`Retractor.cpp`](Retractor.cpp)
 5. [`SubstituteFactor.h`](../factors/SubstituteFactor.h) and [`SubstituteFactor.cpp`](../factors/SubstituteFactor.cpp)
-6. [`NonlinearMOptimizer.h`](NonlinearMOptimizer.h), [`NonlinearMOptimizer.cpp`](NonlinearMOptimizer.cpp), and optionally [`LMManifoldOptimizer.cpp`](LMManifoldOptimizer.cpp)
+6. [`NonlinearManifoldOptimizer.h`](NonlinearManifoldOptimizer.h), [`NonlinearManifoldOptimizer.cpp`](NonlinearManifoldOptimizer.cpp), and optionally [`LMManifoldOptimizer.cpp`](LMManifoldOptimizer.cpp)
 
 For inequality boundaries and corners, see the separate CMC-Opt documentation in
 [`../cmcopt/README.md`](../cmcopt/README.md).

@@ -42,7 +42,7 @@ using gtsam::Values;
  * `LMManifoldOptimizerState`.
  *
  * It is the explicit LM implementation path in `cmopt`, complementary to the
- * generic `NonlinearMOptimizer` wrapper around standard GTSAM optimizers.
+ * generic `NonlinearManifoldOptimizer` wrapper around standard GTSAM optimizers.
  *
  * @see README.md#solvers
  * @see ManifoldOptimizer
@@ -52,12 +52,12 @@ using gtsam::Values;
 class LMManifoldOptimizer : public ManifoldOptimizer {
  protected:
   const LevenbergMarquardtParams params_;  ///< LM parameters
-  std::shared_ptr<LMItersDetails> details_;
+  std::shared_ptr<LMOptimizationDetails> details_;
 
  public:
   typedef std::shared_ptr<LMManifoldOptimizer> shared_ptr;
 
-  const LMItersDetails &details() const { return *details_; }
+  const LMOptimizationDetails &details() const { return *details_; }
 
   /**
    * Constructor.
@@ -69,7 +69,7 @@ class LMManifoldOptimizer : public ManifoldOptimizer {
       const LevenbergMarquardtParams &params = LevenbergMarquardtParams())
       : ManifoldOptimizer(mopt_params),
         params_(params),
-        details_(std::make_shared<LMItersDetails>()) {}
+        details_(std::make_shared<LMOptimizationDetails>()) {}
 
   /** Virtual destructor */
   ~LMManifoldOptimizer() {}
@@ -96,7 +96,7 @@ class LMManifoldOptimizer : public ManifoldOptimizer {
    * @return Optimized base-variable values.
    */
   gtsam::Values optimize(const NonlinearFactorGraph &graph,
-                         const ManifoldOptProblem &mopt_problem) const;
+                         const ManifoldOptimizationProblem &mopt_problem) const;
 
   /**
    * Perform one outer LM iteration, potentially with multiple lambda trials.
@@ -105,7 +105,7 @@ class LMManifoldOptimizer : public ManifoldOptimizer {
    * @param state Current optimizer state.
    * @return Iteration details including all trials.
    */
-  LMIterDetails iterate(const NonlinearFactorGraph &graph,
+  LMIterationDetails iterate(const NonlinearFactorGraph &graph,
                         const NonlinearFactorGraph &manifold_graph,
                         const LMState &state) const;
 

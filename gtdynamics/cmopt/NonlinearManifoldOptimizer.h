@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  NonlinearMOptimizer.h
+ * @file  NonlinearManifoldOptimizer.h
  * @brief Manifold optimizer that internally calls nonlinear optimizer.
  * @author: Yetong Zhang
  */
@@ -41,30 +41,30 @@ using gtsam::Values;
  * @see README.md#solvers
  * @see README.md#ccc-transformation
  */
-class NonlinearMOptimizer : public ManifoldOptimizer {
+class NonlinearManifoldOptimizer : public ManifoldOptimizer {
  public:
-  using shared_ptr = std::shared_ptr<const NonlinearMOptimizer>;
+  using shared_ptr = std::shared_ptr<const NonlinearManifoldOptimizer>;
   typedef std::variant<GaussNewtonParams, LevenbergMarquardtParams,
                        DoglegParams>
-      NonlinearOptParamsVariant;
+      NonlinearOptimizerParamsVariant;
 
  protected:
-  NonlinearOptParamsVariant nopt_params_;
+  NonlinearOptimizerParamsVariant nonlinearOptimizerParams_;
 
  public:
   /**
    * Construct from manifold and nonlinear optimizer parameters.
    * @param mopt_params Parameters for manifold construction/transformation.
    * @param nopt_params Parameters for the underlying nonlinear optimizer.
-   * @param basis_key_func Optional basis-key selector.
+   * @param basisKeyFunction Optional basis-key selector.
    */
-  NonlinearMOptimizer(const ManifoldOptimizerParameters& mopt_params,
-                      const NonlinearOptParamsVariant& nopt_params,
-                      std::optional<BasisKeyFunc> basis_key_func = {})
-      : ManifoldOptimizer(mopt_params), nopt_params_(nopt_params) {}
+  NonlinearManifoldOptimizer(const ManifoldOptimizerParameters& mopt_params,
+                      const NonlinearOptimizerParamsVariant& nopt_params,
+                      std::optional<BasisKeyFunction> basisKeyFunction = {})
+      : ManifoldOptimizer(mopt_params), nonlinearOptimizerParams_(nopt_params) {}
 
   /// Virtual destructor.
-  virtual ~NonlinearMOptimizer() {}
+  virtual ~NonlinearManifoldOptimizer() {}
 
   /**
    * Run manifold optimization from a constrained problem definition.
@@ -82,7 +82,7 @@ class NonlinearMOptimizer : public ManifoldOptimizer {
    * @param mopt_problem Transformed manifold optimization problem.
    * @return Optimized base-variable values.
    */
-  Values optimizeMOpt(const ManifoldOptProblem& mopt_problem) const;
+  Values optimizeManifoldProblem(const ManifoldOptimizationProblem& mopt_problem) const;
 
   /**
    * Create the underlying nonlinear optimizer instance.
@@ -90,7 +90,7 @@ class NonlinearMOptimizer : public ManifoldOptimizer {
    * @return Nonlinear optimizer configured for transformed variables.
    */
   std::shared_ptr<NonlinearOptimizer> constructNonlinearOptimizer(
-      const ManifoldOptProblem& mopt_problem) const;
+      const ManifoldOptimizationProblem& mopt_problem) const;
 
  protected:
 };

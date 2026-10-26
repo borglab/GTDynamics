@@ -127,28 +127,28 @@ void TrajectoryOptimization() {
   /* <========================== Optimize IELM ============================> */
   /* <=====================================================================> */
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->e_basis_build_from_scratch = false;
+  iecm_params->equalityBasisBuildFromScratch = false;
 
   /* <=========== retractor ===========> */
   auto retractor_params = std::make_shared<IERetractorParams>();
-  retractor_params->lm_params = LevenbergMarquardtParams();
-  retractor_params->lm_params.setlambdaUpperBound(1e10);
-  retractor_params->lm_params.setAbsoluteErrorTol(1e-10);
-  retractor_params->check_feasible = true;
-  retractor_params->ensure_feasible = true;
-  retractor_params->feasible_threshold = 1e-5;
-  retractor_params->prior_sigma = 1e-1;
-  retractor_params->use_varying_sigma = true;
-  // retractor_params->scale_varying_sigma = true;
-  retractor_params->metric_sigmas = std::make_shared<VectorValues>();
+  retractor_params->lmParams = LevenbergMarquardtParams();
+  retractor_params->lmParams.setlambdaUpperBound(1e10);
+  retractor_params->lmParams.setAbsoluteErrorTol(1e-10);
+  retractor_params->checkFeasible = true;
+  retractor_params->ensureFeasible = true;
+  retractor_params->feasibleThreshold = 1e-5;
+  retractor_params->priorSigma = 1e-1;
+  retractor_params->useVaryingSigma = true;
+  // retractor_params->scaleVaryingSigma = true;
+  retractor_params->metricSigmas = std::make_shared<VectorValues>();
 
   auto barrier_params = std::make_shared<PenaltyParameters>();
-  // barrier_params->lm_params = params_->lm_params;
+  // barrier_params->lmParams = params_->lmParams;
   barrier_params->initial_mu = 10.0;
   barrier_params->mu_increase_rate = 10.0;
   barrier_params->num_iterations = 2;
-  auto lm_params1 = retractor_params->lm_params;
-  auto lm_params2 = retractor_params->lm_params;
+  auto lm_params1 = retractor_params->lmParams;
+  auto lm_params2 = retractor_params->lmParams;
   // lm_params1.setMaxIterations(20);
   // lm_params1.setVerbosityLM("SUMMARY");
   barrier_params->iters_lm_params = std::vector<LevenbergMarquardtParams>();
@@ -156,28 +156,28 @@ void TrajectoryOptimization() {
     barrier_params->iters_lm_params.push_back(lm_params1);
   }
   barrier_params->iters_lm_params.push_back(lm_params2);
-  retractor_params->penalty_params = barrier_params;
+  retractor_params->penaltyParams = barrier_params;
 
-  // iecm_params->retractor_creator =
+  // iecm_params->retractorCreator =
   //     std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
   //         vision60_multi_phase, retractor_params, false);
-  iecm_params->retractor_creator =
+  iecm_params->retractorCreator =
       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
           vision60_multi_phase, retractor_params, false);
 
   /* <=========== t-space basis ===========> */
-  iecm_params->e_basis_creator = OrthonormalBasisCreator::CreateSparse();
+  iecm_params->equalityBasisCreator = OrthonormalBasisCreator::createSparse();
 
   /* <=========== IELM params ===========> */
   IELMParams ie_params;
-  ie_params.lm_params.setVerbosityLM("SUMMARY");
-  ie_params.lm_params.setMaxIterations(200);
-  ie_params.lm_params.setLinearSolverType("SEQUENTIAL_QR");
-  // ie_params.lm_params.setlambdaInitial(1e-2);
-  ie_params.lm_params.setlambdaUpperBound(1e10);
-  ie_params.iqp_max_iters = 100;
-  ie_params.show_active_constraints = true;
-  ie_params.active_constraints_group_as_categories = true;
+  ie_params.lmParams.setVerbosityLM("SUMMARY");
+  ie_params.lmParams.setMaxIterations(200);
+  ie_params.lmParams.setLinearSolverType("SEQUENTIAL_QR");
+  // ie_params.lmParams.setlambdaInitial(1e-2);
+  ie_params.lmParams.setlambdaUpperBound(1e10);
+  ie_params.iqpMaxIterations = 100;
+  ie_params.showActiveConstraints = true;
+  ie_params.activeConstraintsGroupedAsCategories = true;
 
   /* <=========== optimize ===========> */
   auto ielm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
