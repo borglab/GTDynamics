@@ -80,6 +80,18 @@ if(TARGET gtsam)
 endif()
 
 include(GtsamBuildTypes)
+# GtsamBuildTypes defines per-configuration target flags; including it alone
+# does not apply them. Use them throughout GTDynamics, including examples and
+# tests, without importing GTSAM's private warning policy.
+foreach(_build_type Debug Release RelWithDebInfo Timing Profiling)
+  string(TOUPPER "${_build_type}" _build_type_upper)
+  add_compile_options(
+    "$<$<CONFIG:${_build_type}>:${GTSAM_COMPILE_OPTIONS_PRIVATE_${_build_type_upper}}>")
+  add_compile_definitions(
+    "$<$<CONFIG:${_build_type}>:${GTSAM_COMPILE_DEFINITIONS_PRIVATE_${_build_type_upper}}>")
+endforeach()
+unset(_build_type)
+unset(_build_type_upper)
 include(GtsamTesting)
 
 # For unit tests and scripts.

@@ -120,12 +120,10 @@ struct IELMTrial {
     /** Default constructor. */
     LinearUpdate() {}
 
-    /** The function computes:
-     * 1) linear update as (approx) solution the i-constrained qp problem
-     * 2) blocking constraints as of solving the IQP problem
-     * 3) e-manifolds corresponding to the e-constraints and blocking
-     * constraints 4) corresponding linear cost change 5) solveSuccessful
-     * indicating if solving the linear system is successful
+    /** Compute a damped LM step and its blocking inequality constraints.
+     * First find a feasible step, then optionally refine it with GTSAM's
+     * active-set QP solver. Lift the result to ambient tangent coordinates and
+     * record the predicted reduction in the undamped cost model.
      */
     LinearUpdate(const double &_lambda, const NonlinearFactorGraph &graph,
                  const IELMState &state, const IELMParams &params);
@@ -158,6 +156,25 @@ struct IELMTrial {
                                    const IndexSet &blocking_indices);
 
   protected:
+    /** Refine the feasible delta and blocking indices with GTSAM's QP solver.
+     * Updates delta, blockingIndices, numSolves, and solveSuccessful. Numerical
+     * failure, infeasible initialization, or iteration exhaustion sets
+     * solveSuccessful to false.
+     */
+    void refineIQPStep(const GaussianFactorGraph &dampedSystem,
+                       const LinearInequalityConstraints &constraints,
+                       IndexSet &blockingIndices, size_t maxIterations);
+
+    /** Translate GTSAM's row working set into fully active constraint blocks.
+     * Only those blocks can be imposed as equalities during retraction.
+     */
+    static IndexSet fullyActiveConstraintIndices(
+        const LinearInequalityConstraints &constraints,
+        const std::vector<bool> &activeRows);
+
+    /** Decode the working set, lift delta, and record undamped cost reduction. */
+    void recordSolution(const IELMState &state, const IndexSet &blockingIndices);
+
     /** Following functions are adapted from LMOptimizerState. */
     mutable std::vector<LMCachedModel> noiseModelCache;
     LMCachedModel *getCachedModel(size_t dim) const;

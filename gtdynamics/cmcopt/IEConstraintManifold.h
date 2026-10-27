@@ -53,7 +53,7 @@ protected:
 
 public:
   /// Bundle one constraint-connected component as the feasible set from thesis
-  /// Eq. (4.34), M_IE = {x | h(x)=0, g(x)>=0}, plus its active set.
+  /// Eq. (4.34), M_IE = {x | h(x)=0, g(x)<=0}, plus its active set.
   IEConstraintManifold(
       const Params::shared_ptr &params,
       const NonlinearEqualityConstraints::shared_ptr &e_constraints,

@@ -25,6 +25,23 @@ $$
 
 This is the factor-graph NLP form in thesis Eq. (4.1), using the thesis sign convention for feasible inequalities.
 
+The implementation uses GTSAM's opposite convention: an inequality expression
+`c(x)` is feasible when `c(x) <= 0`, so `c = -g` for the thesis notation used in
+this note. `GeqZero(f)` constructs `c = -f`; `LeqZero(f)` constructs `c = f`.
+Consequently, the implemented tangent cone uses `Dc(x) B xi <= 0`, and a positive
+directional derivative identifies an outward step. Both QP callers pass
+`LinearConstraint::LessEqual` to GTSAM's `ActiveSetSolver`.
+
+GTSAM's working-set multipliers solve `A_active.transpose() * lambda = gradient`;
+for `A*x-b <= 0`, valid inequality multipliers in that internal convention are
+nonpositive. Positive ones release a working-set row. CMC does not negate or
+reinterpret those multipliers; it consumes the returned active rows.
+
+Constraint sigmas are applied once to the raw expression Jacobian. Reading an
+already-whitened equality linearization and attaching the sigma again would
+double the scaling. The sign and scaling regressions cover both bound senses,
+non-unit sigmas, and a coupled QP whose initial blocking face must be released.
+
 In code, the top-level optimizer API takes exactly those three pieces:
 
 - cost graph,
@@ -223,6 +240,14 @@ The concrete barrier retractor does three things:
 1. builds priors around the trial point,
 2. promotes blocking inequalities to equalities,
 3. runs a constrained penalty solve and then a cleanup LM solve.
+
+The penalty solution can have a positive inequality residual smaller than the
+feasibility tolerance. It is still on the outward side and must contribute an
+active face to cleanup and the next tangent QP. Active-set collection therefore
+uses `constraint->active(values)` rather than `!constraint->feasible(values)`.
+The latter can return a boundary point with an empty active set, causing later
+LM steps to bypass inequality QP refinement entirely. A scalar unilateral-contact
+regression checks both the returned boundary point and its tangent cone.
 
 Thesis reference: Eq. (4.26) is the standard CMC metric-projection retraction. Eq. (4.46) is the on-corner retraction that additionally enforces blocking inequalities as equalities. Eq. (4.27) is the cleanup feasibility objective used after the penalty projection.
 
