@@ -251,6 +251,53 @@ regression checks both the returned boundary point and its tangent cone.
 
 Thesis reference: Eq. (4.26) is the standard CMC metric-projection retraction. Eq. (4.46) is the on-corner retraction that additionally enforces blocking inequalities as equalities. Eq. (4.27) is the cleanup feasibility objective used after the penalty projection.
 
+### Affine equality manifolds: reduced QCQP retraction
+
+[`ReducedQcqpRetractor`](ReducedQcqpRetractor.h) applies when the equality
+constraints are **exactly affine in Euclidean variables**. The caller explicitly
+asserts that condition with `AffineEqualities{}` and supplies an exact scalar
+unary quadratic model for each inequality. This includes linear inequalities
+with a zero quadratic matrix. It is not an automatic approximation of nonlinear
+pose or trajectory constraints.
+
+The retractor obtains `B` from the component's existing `eBasis()`. At an
+equality-feasible anchor `x0`, it substitutes `x = x0 + B z` into the projection
+objective and every inequality. The existing prior factory supplies the metric,
+including varying sigmas and optional prior keys. A Cholesky transformation of
+`B' W B`, followed by a common trial-length scale, produces a well-scaled
+quadratic objective without changing its minimizer. Blocked inequalities become
+equalities in the same reduced QCQP. GTSAM's `AugmentedLagrangianOptimizer`
+solves the subproblem; CMC's outer direction QP continues to use its existing
+solver.
+
+For an elliptic friction cone, the retraction models
+`(t1/mu1)^2 + (t2/mu2)^2 - n^2 <= 0` together with `n >= 0`. The outer CMC
+constraint retains its original norm-valued expression and Jacobian. The
+quadratic model must preserve the full feasible set and the requested boundary
+faces in conjunction with the other domain constraints.
+
+The AL driver uses GTSAM's public BCL iteration and floors its shrinking inner
+stationarity target at the requested final tolerance. This prevents LM from
+being asked to solve the inner problem more accurately than required before
+another dual update. The default normalized stationarity tolerance is `1e-7`;
+original whitened equality/inequality residuals must satisfy `1e-8`. Near-tight
+original inequalities within `1e-7` remain explicitly active. These are residual
+norm tolerances, separate from `IERetractorParams::feasibleThreshold`'s legacy
+graph-cost convention. The AL/validation settings live in
+`ReducedQcqpRetractor::Settings`; the shared retractor parameters supply the
+metric and initialization choice.
+
+This implementation throws on a failed AL convergence check or original
+constraint check. It does not hide failure with an ambient penalty fallback.
+In particular, the squared cone has zero gradient at its apex. Some valid apex
+projections have no finite KKT multipliers in this representation, so this AL
+retractor does **not** solve the zero-force issue in general. For nonconvex
+QCQPs (including some forced boundary faces), AL stationarity also does not
+establish a global closest point.
+
+Regression tests are in [`testReducedQcqpRetractor.cpp`](../../tests/testReducedQcqpRetractor.cpp)
+and [`testReducedQcqpRetractionValidation.cpp`](../../tests/testReducedQcqpRetractionValidation.cpp).
+
 ## 10) Boundary Forcing and Mode Changes
 
 CMC-Opt does not only react to the current active set. It can also force a boundary switch when repeated failed trials show that a new boundary is being approached strongly enough.

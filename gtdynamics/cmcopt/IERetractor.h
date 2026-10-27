@@ -9,11 +9,13 @@
  * @file  IERetractor.h
  * @brief Retractor for IEConstraintManifold.
  * @author: Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #pragma once
 
 #include <gtdynamics/factors/ConstVarFactor.h>
+#include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/cmopt/MultiJacobian.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/PenaltyOptimizer.h>

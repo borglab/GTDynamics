@@ -1,3 +1,14 @@
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415
+# All Rights Reserved
+# See LICENSE for the license information
+# --------------------------------------------------------------------------
+
+## @file CMakeLists.txt
+# @brief Configure the GTDynamics build.
+# @author Frank Dellaert
+
 cmake_minimum_required(VERSION 3.9...3.29)
 enable_testing()
 project(gtdynamics

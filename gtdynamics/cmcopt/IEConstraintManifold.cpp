@@ -1,3 +1,16 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file IEConstraintManifold.cpp
+ * @brief Implement the equality and inequality constraint manifold.
+ * @author Frank Dellaert
+ */
+
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 
 namespace gtdynamics {
@@ -136,13 +149,9 @@ IndexSet IEConstraintManifold::identifyActiveConstraints(
     const NonlinearInequalityConstraints &i_constraints,
     const Values &values, const std::optional<IndexSet> &active_indices) {
   if (active_indices) {
-    for (const auto &i : *active_indices) {
-      if (!i_constraints.at(i)->active(values)) {
-        std::cout << "inequality constraint " << i << " is not active\t";
-        std::cout << i_constraints.at(i)->unwhitenedExpr(values).transpose()
-                  << "\n";
-      }
-    }
+    // A retractor can approach a boundary from inside its feasibility
+    // tolerance. Its explicit mode is authoritative even if g is slightly
+    // negative; active(), which tests g>=0 exactly, is not a validity check.
     return *active_indices;
   }
 

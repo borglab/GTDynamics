@@ -1,3 +1,16 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file ConstVarFactor.cpp
+ * @brief Implement factors with fixed variables.
+ * @author Frank Dellaert
+ */
+
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
