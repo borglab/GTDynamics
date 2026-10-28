@@ -8,8 +8,7 @@
 /**
  * @file  IERetractor.h
  * @brief Retractor for IEConstraintManifold.
- * @author: Yetong Zhang
- * @author Frank Dellaert
+ * @author Yetong Zhang
  */
 
 #pragma once

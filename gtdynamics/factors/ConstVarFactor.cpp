@@ -8,7 +8,7 @@
 /**
  * @file ConstVarFactor.cpp
  * @brief Implement factors with fixed variables.
- * @author Frank Dellaert
+ * @author Yetong Zhang
  */
 
 #include <gtdynamics/factors/ConstVarFactor.h>

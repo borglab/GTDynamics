@@ -44,7 +44,7 @@ IEConstraintManifold makeManifold(
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(
       std::make_shared<ReducedQcqpRetractor>(
-          ReducedQcqpRetractor::AffineEqualities{}, std::move(model), metric,
+          std::move(model), metric,
           ReducedQcqpRetractor::Settings{}, priorKeys));
   return IEConstraintManifold(
       params, std::make_shared<NonlinearEqualityConstraints>(equalities),

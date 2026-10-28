@@ -69,7 +69,7 @@ ReducedQcqpRetractor::Settings::Settings() {
 }
 
 ReducedQcqpRetractor::ReducedQcqpRetractor(
-    AffineEqualities, InequalityModel model,
+    InequalityModel model,
     const IERetractorParams::shared_ptr& params, const Settings& settings,
     const std::optional<KeyVector>& priorKeys)
     : IERetractor(params), model_(std::move(model)), settings_(settings),
@@ -300,6 +300,9 @@ IEConstraintManifold ReducedQcqpRetractor::retract(
   for (size_t index : blocking)
     if (index >= manifold->iConstraints()->size())
       throw std::invalid_argument("Invalid QCQP retraction blocking index");
+  // Form the ambient trial point (addition for the supported Euclidean values).
+  // It may violate constraints; the reduced solve below projects this target
+  // onto the feasible set, with blocking inequalities enforced as equalities.
   const Values target = manifold->values().retract(delta);
   const Reduction reduction = buildReduction(*manifold, target);
   Values result = manifold->values();

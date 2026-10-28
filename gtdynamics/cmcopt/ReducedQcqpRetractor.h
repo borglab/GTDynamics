@@ -23,9 +23,10 @@ namespace gtdynamics {
 
 /** Metric projection on an affine equality manifold with QCQP inequalities.
  *
- * The caller explicitly certifies that the equalities are affine in Euclidean
- * variables. The retractor uses the manifold's own equality basis B, with
- * x = x0 + B z; no separate dynamics reduction is supplied by the caller.
+ * The equalities must be affine in Euclidean variables; the caller is
+ * responsible for satisfying this precondition. The retractor uses the
+ * manifold's own equality basis B, with x = x0 + B z; no separate dynamics
+ * reduction is supplied by the caller.
  * A Cholesky change of coordinates makes the projection metric the identity;
  * a common trial-length scaling then keeps the target norm at most one.
  * Both linear and quadratic inequalities are solved by GTSAM's AL optimizer.
@@ -42,9 +43,6 @@ namespace gtdynamics {
  */
 class ReducedQcqpRetractor : public IERetractor {
  public:
-  /// Explicit assertion by the caller, not an inferred Jacobian property.
-  struct AffineEqualities {};
-
   /** Exact scalar inequality model in its original variable coordinates.
    * The returned unary quadratic must have the same feasible set AND boundary
    * as the original constraint (in conjunction with the other inequalities).
@@ -65,19 +63,30 @@ class ReducedQcqpRetractor : public IERetractor {
     Settings();
   };
 
-  ReducedQcqpRetractor(AffineEqualities, InequalityModel model,
+  /// Construct a retractor for affine equalities and exact inequality models.
+  ReducedQcqpRetractor(InequalityModel model,
                        const IERetractorParams::shared_ptr& params,
                        const Settings& settings = Settings(),
                        const std::optional<KeyVector>& priorKeys = {});
 
+  /** Project the ambient trial point onto the constrained affine manifold.
+   * The non-owning manifold pointer follows the virtual IERetractor API and
+   * must be nonnull; a null pointer throws std::invalid_argument.
+   */
   IEConstraintManifold retract(
       const IEConstraintManifold* manifold, const VectorValues& delta,
       const std::optional<IndexSet>& blockingIndices = {},
       IERetractionInfo* info = nullptr) const override;
 
  private:
+  /** Coordinates anchored at the manifold's current values.
+   * Cholesky whitening and a common length scale make the projection metric
+   * proportional to the identity, with a target norm at most one.
+   */
   struct Reduction {
-    std::map<Key, Matrix> maps;  // dx/du, with unit metric in u coordinates
+    /// Per-variable displacement maps: x[key] = x0[key] + maps[key] * u.
+    std::map<Key, Matrix> maps;
+    /// Unconstrained projection target in the normalized u coordinates.
     Vector target;
   };
   InequalityModel model_;

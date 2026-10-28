@@ -254,8 +254,8 @@ Thesis reference: Eq. (4.26) is the standard CMC metric-projection retraction. E
 ### Affine equality manifolds: reduced QCQP retraction
 
 [`ReducedQcqpRetractor`](ReducedQcqpRetractor.h) applies when the equality
-constraints are **exactly affine in Euclidean variables**. The caller explicitly
-asserts that condition with `AffineEqualities{}` and supplies an exact scalar
+constraints are **exactly affine in Euclidean variables**. The caller is
+responsible for this precondition and supplies an exact scalar
 unary quadratic model for each inequality. This includes linear inequalities
 with a zero quadratic matrix. It is not an automatic approximation of nonlinear
 pose or trajectory constraints.

@@ -8,7 +8,7 @@
 /**
  * @file IEConstraintManifold.cpp
  * @brief Implement the equality and inequality constraint manifold.
- * @author Frank Dellaert
+ * @author Yetong Zhang
  */
 
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
