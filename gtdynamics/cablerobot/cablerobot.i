@@ -33,7 +33,7 @@ class CableTensionFactor : gtsam::NonlinearFactor {
 template<T = {double, gtsam::Vector2, gtsam::Vector3, gtsam::Vector4, gtsam::Vector5, gtsam::Vector6}>
 class PriorFactor : gtsam::NonlinearFactor {
   PriorFactor(size_t key, const T& prior, const gtsam::noiseModel::Base* noiseModel);
-  T prior() const;
+  const T& prior() const;
 
   void print(const string &s,
              const gtsam::KeyFormatter &keyFormatter);

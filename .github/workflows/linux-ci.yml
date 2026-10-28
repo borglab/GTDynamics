@@ -133,7 +133,12 @@ jobs:
             BUILD_PYTHON=OFF
             PYTHON_ARGS=""
           fi
+          BUILD_CABLE=OFF
+          if [ "${{ matrix.compiler }}" = "clang" ] && [ "${{ matrix.build_type }}" = "Debug" ]; then
+            BUILD_CABLE=ON
+          fi
           cmake -DGTDYNAMICS_BUILD_PYTHON=${BUILD_PYTHON} \
+                -DGTDYNAMICS_BUILD_CABLE_ROBOT=${BUILD_CABLE} \
                 ${PYTHON_ARGS} \
                 -DGTSAM_DIR="${{ env.GTSAM_INSTALL_DIR }}/lib/cmake/GTSAM" \
                 -DCMAKE_PREFIX_PATH="${{ env.GTSAM_INSTALL_DIR }}" \
@@ -155,6 +160,13 @@ jobs:
             fi
           fi
           make -j${NTHREADS} check
+        working-directory: ./build
+
+      - name: Cable kinodynamics smoke (Clang Debug)
+        if: matrix.compiler == 'clang' && matrix.build_type == 'Debug'
+        run: |
+          timeout 60 ./examples/example_constraint_manifold/example_constraint_manifold_cable_kinodynamics \
+            --num-steps 8 --methods all --benchmark-id cable_ci
         working-directory: ./build
 
       - name: Install Python Wrappers (Release only)
