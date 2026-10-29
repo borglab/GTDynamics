@@ -23,6 +23,29 @@ model loads and behaves correctly.
 Note: `ur5` is in the repo, but **no test or example loads it** (checked with grep). Panda is the
 best example of a manipulator that is both stored and tested.
 
+## Where to get the UR10e URDF
+
+UR publishes its models as **xacro**, not as ready-made URDF, so you have to flatten them.
+
+1. **Universal Robots ROS 2 description (recommended):**
+   https://github.com/UniversalRobots/Universal_Robots_ROS2_Description (BSD-3-Clause)
+   - One generic xacro covers every UR model: `urdf/ur.urdf.xacro`, selected with `ur_type:=ur10e`.
+   - The UR10e-specific parameters are in `config/ur10e/`: `default_kinematics.yaml`,
+     `physical_parameters.yaml` (masses and inertias), `joint_limits.yaml` and `visual_parameters.yaml`.
+   - The meshes are in `meshes/ur10e/visual/*.dae` and `meshes/ur10e/collision/*.stl`.
+   - Flatten it with:
+     `ros2 run xacro xacro <ur_description>/urdf/ur.urdf.xacro ur_type:=ur10e name:=ur10e > ur10e.urdf`
+2. **ROS-Industrial `universal_robot` (ROS 1, legacy):** https://github.com/ros-industrial/universal_robot
+   (`ur_description/`). The existing `ur5.urdf` was generated from this package. Its
+   `melodic-devel`/`noetic-devel` branches include the e-series xacros.
+3. **Pre-generated, without ROS:** the `robot_descriptions` Python package
+   (`from robot_descriptions import ur10e_description`) downloads a description and exposes `URDF_PATH`.
+   Check which upstream repo it pulls and that the inertials are present. MuJoCo Menagerie's
+   `universal_robots_ur10e` is MJCF, not URDF, so it is useful only for the web demo.
+
+All of these give nominal kinematics. Each physical robot has its own factory calibration, which
+UR's `ur_calibration` tool can extract if you need exact FK for one specific arm.
+
 ## How models are found: no code changes needed
 
 - [gtdynamics/config.h.in:30-31](../gtdynamics/config.h.in#L30-L31) sets
@@ -58,11 +81,27 @@ reach through `kUrdfPath`.
 - **Think about the fixed joints** (`base_link-base_fixed_joint`, `tool0`, `world_joint`, `ft_frame`
   and `flange` on e-series). With the default `preserve_fixed_joint=false`, sdformat merges the links
   attached by fixed joints into their parents. You should end up with the 6 revolute joints
-  `shoulder_pan` … `wrist_3`. Decide whether you need `tool0` as a separate link; if you do, load
-  the robot with `preserve_fixed_joint=true`.
+  `shoulder_pan` … `wrist_3`. **Checked:** `preserve_fixed_joint=true` does *not* keep `tool0`,
+  `flange`, `ft_frame` or `base`. sdformat drops massless links ("link[ft_frame] is not modeled in
+  sdf"), so both modes give 7 links and 6 joints. To use the TCP, apply the constant offset
+  `wrist_3_link → tool0` (translation 0, the rotation from the `flange`/`tool0` joints) in code.
 - Keep the UR license/attribution header (BSD-3) at the top of the URDF.
 
 **Why:** this is the only change you must make. The rest of the steps check the model or put it to use.
+
+**Status: done.** `models/urdfs/ur10e/` contains `ur10e.urdf`, `visual/*.dae`, `collision/*.stl` and
+`LICENSE`. The source is upstream tag `4.4.0` (commit `81f7c9fe`). The UR10e meshes are BSD-3; UR's
+restricted graphics terms cover only other models. The file was converted by hand from the YAML
+files because this machine has no ROS or xacro. Upstream `base_link_inertia` is folded into
+`base_link`, which leaves the geometry unchanged. Checks run:
+- All 14 mesh paths resolve.
+- The robot loads with 7 links and 6 joints, with masses from `physical_parameters.yaml`.
+- FK of `wrist_3_link` matches the standard UR10e DH model (expressed in `base`) to 3e-10 in full
+  pose, at zero and 5 random configurations.
+
+Note for step 2: GTDynamics stores link poses at the **center of mass**. To compare with DH or the
+URDF link frame, compose with the inverse of the link's inertial origin. For `wrist_3_link`, that
+is `Pose3(Rot3(), Point3(0, 0, 0.026))`.
 
 ### 2. `python/tests/` (strongly recommended): Python regression test
 **Purpose:** pytest/unittest tests that run against the wrapped `gtdynamics` module.
