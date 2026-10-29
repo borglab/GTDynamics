@@ -6,16 +6,17 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  QuadrupedUtils.cpp
+ * @file  IEQuadrupedUtilsCosts.cpp
  * @brief Quadruped utilities implementations.
  * @author: Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 #include <gtdynamics/factors/CollocationFactors.h>
-#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/constraints/FrictionConeConstraints.h>
 #include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -214,28 +215,13 @@ IEVision60Robot::getConstraintsGraphStepAD(const int t) const {
 }
 
 /* ************************************************************************* */
-ScalarExpressionInequalityConstraint::shared_ptr
+NonlinearInequalityConstraint::shared_ptr
 IEVision60Robot::frictionConeConstraint(const std::string &link_name,
                                         const size_t k) const {
   auto link_id = robot.link(link_name)->id();
-  double mu = params->mu;
-  double mu_prime = mu * mu;
-  auto friction_cone_function =
-      [mu_prime](const Vector3 &f, OptionalJacobian<1, 3> H = {}) {
-        const double &fx = f(0), fy = f(1), fz = f(2);
-        int sign_fz = (fz > 0) - (fz < 0);
-        double result = sign_fz * mu_prime * fz * fz - fx * fx - fy * fy;
-        if (H) {
-          (*H) << -2 * fx, -2 * fy, 2 * sign_fz * mu_prime * fz;
-        }
-        return result;
-      };
-
-  Vector3_ contact_force_expr(ContactForceKey(link_id, 0, k));
-  Double_ compute_fc_expr(friction_cone_function, contact_force_expr);
-  std::string name = "fc[" + link_name + "]" + std::to_string(k);
-  return ScalarExpressionInequalityConstraint::GeqZero(compute_fc_expr,
-                                                      params->tol_fc);
+  return std::make_shared<SignedSquareFrictionConeConstraint>(
+      ContactForceKey(link_id, 0, k), Vector2::Constant(params->mu),
+      params->tol_fc);
 }
 
 /* ************************************************************************* */
