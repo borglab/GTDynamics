@@ -45,36 +45,12 @@ JacobianFactor::shared_ptr LinearizedIConstraint(
 TangentSpaceMetric::shared_ptr IEConstraintManifold::projectionMetric(
     const IERetractorParams &params,
     const std::optional<KeyVector> &priorKeys) const {
-  const KeyVector keys = priorKeys ? *priorKeys : values_.keys();
-  if (params.useVaryingSigma && !params.metricSigmas)
-    throw std::invalid_argument("Missing projection metric sigmas");
-  double scale = 1.0;
-  if (params.useVaryingSigma && params.scaleVaryingSigma) {
-    // Match AddGeneralPriors' nominal-sigma convention.
-    double minimum = 1e10;
-    for (Key key : keys)
-      if (params.metricSigmas->exists(key))
-        minimum = std::min(minimum, params.metricSigmas->at(key).minCoeff());
-    scale = params.priorSigma / minimum;
-  }
-  VectorValues precisions;
-  for (Key key : keys) {
-    const size_t dim = values_.at(key).dim();
-    if (params.useVaryingSigma && !params.metricSigmas->exists(key)) continue;
-    const Vector sigma = params.useVaryingSigma
-        ? Vector(scale * params.metricSigmas->at(key))
-        : Vector::Constant(dim, params.priorSigma);
-    if (sigma.size() != dim || !sigma.allFinite() || (sigma.array() <= 0).any())
-      throw std::invalid_argument("Invalid projection metric sigmas");
-    const Vector weights = sigma.array().square().inverse();
-    // Repeated prior keys have the same semantics as repeated prior factors.
-    if (precisions.exists(key)) precisions.at(key) += weights;
-    else precisions.insert(key, weights);
-  }
+  const auto precisions = params.priorPrecisions(
+      values_, priorKeys ? *priorKeys : values_.keys());
   std::lock_guard<std::mutex> lock(metric_cache_->mutex);
-  if (!metric_cache_->metric || !metric_cache_->metric->matches(precisions))
+  if (!metric_cache_->metric || !metric_cache_->metric->matches(precisions, params.whitenAffineCoordinates))
     metric_cache_->metric =
-        std::make_shared<TangentSpaceMetric>(*e_basis_, values_, precisions);
+        std::make_shared<TangentSpaceMetric>(*e_basis_, values_, precisions, params.whitenAffineCoordinates);
   return metric_cache_->metric;
 }
 

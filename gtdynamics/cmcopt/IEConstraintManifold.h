@@ -122,6 +122,9 @@ public:
 
   const TangentSpaceBasis::shared_ptr eBasis() const { return e_basis_; }
 
+  /// Immutable affine contract captured at construction, shared by all retractors.
+  bool hasAffineEqualities() const { return affine_equalities_; }
+
   /** Reusable projection geometry for this basis and the requested metric.
    * Affine successor states share it; nonlinear updates get a fresh cache.
    * Effective precisions are compared by value, including selected prior keys.

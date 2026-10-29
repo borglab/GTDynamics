@@ -407,3 +407,53 @@ If you want to trace the math in code order, read these files in this order:
 ## 15) Relation to CM-Opt
 
 CMC-Opt reuses the equality-manifold machinery from CM-Opt and adds active sets, tangent cones, and boundary-aware retraction. For the equality-only side, see [../cmopt/README.md](../cmopt/README.md).
+
+
+## Shared affine projection for AL and Barrier retraction
+
+`IEConstraintManifold` owns the equality basis. With
+`IEConstraintManifold::Params::affineEqualities = true`, successive states reuse
+that numeric basis and its projection-metric cache. This is an explicit contract
+for affine equalities in Euclidean variables; nonlinear manifolds continue to
+rebuild their bases.
+
+`IERetractorParams::priorPrecisions()` defines the projection distance for both
+ambient prior factors and reduced objectives. It handles constant or varying
+sigmas, optional nominal scaling, selected keys, and repeated keys. The metric
+cache changes when the effective weights, selected keys, or whitening option
+change; those changes do not reconstruct the equality basis.
+
+`AffineProjection` supplies shared recovery, original scalar inequality
+pullbacks and derivatives, required blocking faces, and original-coordinate
+validation. Constraints may involve any original key, including eliminated
+variables. Both reduced solvers use it:
+
+- `ReducedALRetractor` retains its AL policy, normalization, and explicit
+  stationarity/feasibility convergence checks.
+- `BarrierRetractor` uses it when `IERetractorParams::useReducedCoordinates` is
+  true **and** the manifold has the affine contract. Otherwise it retains the
+  existing ambient implementation. The reduced path uses the existing GTSAM
+  penalty solver followed by active-face feasibility cleanup. It validates all
+  original constraints and required faces before returning. Its validation
+  threshold is `feasibleThreshold`, interpreted as an infinity norm of original
+  whitened residuals in this opt-in path; failure throws. Cleanup establishes
+  feasibility, not a stationarity certificate for the nearest point.
+
+For a fair penalty comparison, the reduced Barrier path retains original
+constraint scaling and projection-cost magnitude. AL's trial-length and row
+normalizations are not applied to the penalty problem, where they would change
+finite-penalty iterates. Eliminating the equalities does remove their penalty
+terms, so ambient and reduced solver trajectories need not coincide.
+
+`whitenAffineCoordinates` defaults to true. Setting it false retains the original
+basis coordinates and the quadratic cost metric instead of absorbing that
+metric into recovery maps. Both choices represent the same projection objective;
+conditioning and finite solver tolerances can still affect numerical results.
+
+Both reduced methods bypass the solver when the trial or its unconstrained
+weighted equality projection is already feasible, including any requested
+blocking faces. `numALSolveCalls`, `numPenaltySolveCalls`, `numFeasibleTrials`, and
+`numFeasibleProjections` distinguish these cases.
+
+The hierarchical CMC retractor and CM-only retractors are not converted to
+reduced solves by this change. Nonlinear finite recovery remains future work.

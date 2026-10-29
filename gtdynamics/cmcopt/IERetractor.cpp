@@ -8,12 +8,15 @@
 /**
  * @file  IERetractor.cpp
  * @brief Retraction operation implementations for manifold with boundaries.
- * @author: Yetong Zhang
+ * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/cmcopt/AffineProjection.h>
+#include <cmath>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -21,6 +24,43 @@
 
 namespace gtdynamics {
 using namespace gtsam;
+
+VectorValues IERetractorParams::priorPrecisions(
+    const Values &values, const KeyVector &keys) const {
+  if (useVaryingSigma && !metricSigmas)
+    throw std::invalid_argument("Missing projection metric sigmas");
+  double scale = 1.0;
+  if (useVaryingSigma && scaleVaryingSigma) {
+    // Match AddGeneralPriors' nominal-sigma convention.
+    double minimum = 1e10;
+    for (Key key : keys)
+      if (metricSigmas->exists(key)) {
+        const auto &sigma = metricSigmas->at(key);
+        if (!sigma.size() || sigma.size() != values.at(key).dim() ||
+            !sigma.allFinite() || (sigma.array() <= 0).any())
+          throw std::invalid_argument("Invalid projection metric sigmas");
+        minimum = std::min(minimum, sigma.minCoeff());
+      }
+    scale = priorSigma / minimum;
+  }
+  VectorValues precisions;
+  for (Key key : keys) {
+    if (useVaryingSigma && !metricSigmas->exists(key)) continue;
+    const size_t dim = values.at(key).dim();
+    const Vector sigma = useVaryingSigma
+        ? Vector(scale * metricSigmas->at(key))
+        : Vector::Constant(dim, priorSigma);
+    if (sigma.size() != dim || !sigma.allFinite() || (sigma.array() <= 0).any())
+      throw std::invalid_argument("Invalid projection metric sigmas");
+    const Vector weights = sigma.array().square().inverse();
+    if (!weights.allFinite() || (weights.array() <= 0).any())
+      throw std::invalid_argument("Invalid projection metric precision");
+    // Repeated prior keys have the same semantics as repeated prior factors.
+    if (precisions.exists(key)) precisions.at(key) += weights;
+    else precisions.insert(key, weights);
+  }
+  return precisions;
+}
 
 namespace {
 
@@ -78,6 +118,9 @@ IEConstraintManifold
 BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
                                  const IndexSet &blocking_indices,
                                  IERetractionInfo *retract_info) const {
+  if (params_->useReducedCoordinates && manifold->hasAffineEqualities())
+    return retractReduced(*manifold, manifold->values().zeroVectors(),
+                          blocking_indices, retract_info);
 
   // Turning blocking inequalities into equalities picks the boundary face that
   // the next mode should land on.
@@ -117,6 +160,10 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
                           const VectorValues &delta,
                           const std::optional<IndexSet> &blocking_indices,
                           IERetractionInfo *retract_info) const {
+  if (params_->useReducedCoordinates && manifold->hasAffineEqualities())
+    return retractReduced(*manifold, delta,
+                          blocking_indices.value_or(IndexSet{}), retract_info);
+
 
   // The prior graph is the quadratic stay-close term centered at x + delta.
   // This implements the metric-projection objective in thesis Eq. (4.26), and
@@ -192,6 +239,56 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   }
 
   return manifold->createWithNewValues(result, active_indices);
+}
+
+/* ************************************************************************* */
+IEConstraintManifold BarrierRetractor::retractReduced(
+    const IEConstraintManifold &manifold, const VectorValues &delta,
+    const IndexSet &blocking, IERetractionInfo *info) const {
+  const auto priorKeys = use_basis_keys_ ? std::optional<KeyVector>(basis_keys_)
+                                        : std::nullopt;
+  // Keep the original projection objective and original whitened constraint
+  // residuals: extra normalization would change finite penalty iterates.
+  AffineProjection projection(manifold, delta, *params_, priorKeys, blocking,
+      params_->feasibleThreshold, std::max(1e-7, params_->feasibleThreshold), false);
+  if (const auto result = projection.feasibleProjection(blocking, info))
+    return manifold.createWithNewValues(result->values, result->active);
+  if (!projection.dim()) {
+    const Values result = projection.recover(Vector());
+    return manifold.createWithNewValues(result, projection.validateResult(result, blocking));
+  }
+  if (!params_->penaltyParams)
+    throw std::invalid_argument("Missing reduced penalty parameters");
+  auto penalty = std::make_shared<PenaltyOptimizerParams>(*params_->penaltyParams);
+  penalty->lmParams = params_->lmParams;
+  penalty->storeOptProgress = info != nullptr;
+  const auto problem = projection.buildProblem(blocking);
+  PenaltyOptimizer optimizer(problem, projection.initialValues(params_->initValuesAsX), penalty);
+  if (info) ++info->numPenaltySolveCalls;
+  const Values optimum = optimizer.optimize();
+  if (info)
+    for (const auto &state : optimizer.progress())
+      info->numLMIterations += state.unconstrainedIterations;
+  const Values ambient = projection.recover(optimum.at<Vector>(AffineProjection::kReduced));
+
+  // Match BarrierRetractor's active-face cleanup. Equality elimination stays
+  // exact throughout; the cleanup only adjusts reduced inequality coordinates.
+  IndexSet active = blocking;
+  for (size_t i = 0; i < manifold.iConstraints()->size(); ++i)
+    if (manifold.iConstraints()->at(i)->active(ambient)) active.insert(i);
+  const auto cleanupProblem = projection.buildProblem(active);
+  NonlinearFactorGraph cleanup = cleanupProblem.eConstraints().penaltyGraph(1.0);
+  cleanup.add(cleanupProblem.iConstraints().penaltyGraph(1.0));
+  Values cleaned = optimum;
+  if (!cleanup.empty()) {
+    LevenbergMarquardtOptimizer lm(cleanup, optimum, params_->lmParams);
+    cleaned = lm.optimize();
+    if (info) info->numLMIterations += lm.iterations();
+  }
+  const Values result = projection.recover(cleaned.at<Vector>(AffineProjection::kReduced));
+  // Unlike legacy ambient cleanup, this opt-in path never silently accepts
+  // infeasible results or loses a required blocking face.
+  return manifold.createWithNewValues(result, projection.validateResult(result, active));
 }
 
 /* ************************************************************************* */

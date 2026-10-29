@@ -11,19 +11,22 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/cmopt/TangentSpaceMetric.h>
 #include <Eigen/Cholesky>
+#include <gtdynamics/cmopt/TangentSpaceMetric.h>
 #include <stdexcept>
 
 namespace gtdynamics {
 
 TangentSpaceMetric::TangentSpaceMetric(const TangentSpaceBasis &basis,
-    const Values &values, const VectorValues &precisions)
-    : precisions_(precisions), dim_(basis.dim()) {
+                                       const Values &values,
+                                       const VectorValues &precisions,
+                                       bool whiten)
+    : precisions_(precisions), dim_(basis.dim()), whiten_(whiten),
+      cost_jacobian_(Matrix::Identity(dim_, dim_)) {
   Matrix metric = Matrix::Zero(dim_, dim_);
   for (const auto &kv : values) {
-    Matrix B = dim_ ? basis.recoverJacobian(kv.key)
-                    : Matrix::Zero(kv.value.dim(), 0);
+    Matrix B =
+        dim_ ? basis.recoverJacobian(kv.key) : Matrix::Zero(kv.value.dim(), 0);
     if (B.rows() != kv.value.dim() || B.cols() != dim_ || !B.allFinite())
       throw std::invalid_argument("Invalid tangent recovery basis");
     maps_.emplace(kv.key, std::move(B));
@@ -37,11 +40,17 @@ TangentSpaceMetric::TangentSpaceMetric(const TangentSpaceBasis &basis,
   }
   if (!metric.allFinite())
     throw std::invalid_argument("Nonfinite reduced projection metric");
-  if (!dim_) return;
+  if (!dim_)
+    return;
   Eigen::LLT<Matrix> cholesky(metric);
   if (cholesky.info() != Eigen::Success)
     throw std::invalid_argument("Projection metric must be positive definite");
-  const Matrix inverseR = cholesky.matrixU().solve(Matrix::Identity(dim_, dim_));
+  if (!whiten_) {
+    cost_jacobian_ = cholesky.matrixU();
+    return;
+  }
+  const Matrix inverseR =
+      cholesky.matrixU().solve(Matrix::Identity(dim_, dim_));
   for (auto &[key, map] : maps_) {
     map = (map * inverseR).eval();
     if (!map.allFinite())
@@ -49,13 +58,19 @@ TangentSpaceMetric::TangentSpaceMetric(const TangentSpaceBasis &basis,
   }
 }
 
-bool TangentSpaceMetric::matches(const VectorValues &precisions) const {
-  if (precisions.size() != precisions_.size()) return false;
+bool TangentSpaceMetric::matches(const VectorValues &precisions,
+                                 bool whiten) const {
+  if (whiten != whiten_)
+    return false;
+  if (precisions.size() != precisions_.size())
+    return false;
   for (const auto &[key, weights] : precisions) {
-    if (!precisions_.exists(key)) return false;
+    if (!precisions_.exists(key))
+      return false;
     const Vector &previous = precisions_.at(key);
     if (weights.size() != previous.size() ||
-        !(weights.array() == previous.array()).all()) return false;
+        !(weights.array() == previous.array()).all())
+      return false;
   }
   return true;
 }
@@ -64,8 +79,13 @@ Vector TangentSpaceMetric::project(const VectorValues &delta) const {
   Vector target = Vector::Zero(dim_);
   for (const auto &[key, weights] : precisions_) {
     if (delta.exists(key))
-      target.noalias() += maps_.at(key).transpose() *
-                         weights.cwiseProduct(delta.at(key));
+      target.noalias() +=
+          maps_.at(key).transpose() * weights.cwiseProduct(delta.at(key));
+  }
+  if (!whiten_ && dim_) {
+    const Vector rhs =
+        cost_jacobian_.transpose().triangularView<Eigen::Lower>().solve(target);
+    target = cost_jacobian_.triangularView<Eigen::Upper>().solve(rhs);
   }
   if (!target.allFinite())
     throw std::invalid_argument("Nonfinite reduced projection target");
@@ -85,4 +105,4 @@ VectorValues TangentSpaceMetric::recover(const Vector &u) const {
   return delta;
 }
 
-}  // namespace gtdynamics
+} // namespace gtdynamics

@@ -37,6 +37,10 @@ struct IERetractorParams {
   bool useVaryingSigma = false;
   bool scaleVaryingSigma = false;
   std::shared_ptr<VectorValues> metricSigmas = NULL;
+  /// Opt into affine reduction in BarrierRetractor; nonlinear manifolds stay ambient.
+  bool useReducedCoordinates = false;
+  /// Coordinate preconditioning only; false retains the original basis metric.
+  bool whitenAffineCoordinates = true;
   bool initValuesAsX = true; //
   bool checkFeasible = true;
   double feasibleThreshold = 1e-3;
@@ -68,26 +72,27 @@ struct IERetractorParams {
         _lmParam, std::make_shared<VectorValues>());
   }
 
+  /** Effective diagonal weights, shared by ambient and reduced projection.
+   * Missing varying-sigma keys are omitted; repeated keys accumulate weight.
+   */
+  VectorValues priorPrecisions(const Values &values, const KeyVector &keys) const;
+
   /// Add the quadratic prior term that pulls the retraction solution toward
   /// the trial point x + delta.
   template <typename CONTAINER>
   void addPriors(const Values &values, const CONTAINER &keys,
                  NonlinearFactorGraph &graph) const {
-    if (useVaryingSigma) {
-      if (scaleVaryingSigma) {
-        AddGeneralPriors(values, keys, *metricSigmas, graph, priorSigma);
-      } else {
-        AddGeneralPriors(values, keys, *metricSigmas, graph);
-      }
-    } else {
-      AddGeneralPriors(values, keys, priorSigma, graph);
-    }
+    const auto precisions = priorPrecisions(values, KeyVector(keys.begin(), keys.end()));
+    for (const auto &[key, weights] : precisions)
+      graph.emplace_shared<GeneralPriorFactor>(
+          key, values.at(key), noiseModel::Diagonal::Precisions(weights));
   }
 };
 
 struct IERetractionInfo {
   size_t numLMIterations = 0;
   size_t numALSolveCalls = 0;
+  size_t numPenaltySolveCalls = 0;
   size_t numFeasibleTrials = 0;
   size_t numFeasibleProjections = 0;
 };
@@ -130,6 +135,11 @@ public:
 class BarrierRetractor : public IERetractor {
 
 protected:
+  /** Penalty solve and active-face cleanup in exact affine coordinates. */
+  IEConstraintManifold retractReduced(const IEConstraintManifold &manifold,
+      const VectorValues &delta, const IndexSet &blocking,
+      IERetractionInfo *info) const;
+
   bool use_basis_keys_;
   KeyVector basis_keys_;
 

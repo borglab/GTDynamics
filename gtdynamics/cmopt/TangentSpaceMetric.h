@@ -20,24 +20,29 @@ namespace gtdynamics {
 /** Immutable metric on one fixed tangent basis.
  * For ambient diagonal precision W, N = B R^-1 and R'R = B'WB.
  * Thus N'WN = I, projection coordinates are N'W delta, and recovery is N u.
+ * With whitening disabled, maps retain B and the cost retains R.
  * This linear algebra is valid for any tangent space; exact finite recovery
  * additionally requires affine equalities in Euclidean variables.
  */
 class TangentSpaceMetric {
- public:
+public:
   using shared_ptr = std::shared_ptr<const TangentSpaceMetric>;
   TangentSpaceMetric(const TangentSpaceBasis &basis, const Values &values,
-                     const VectorValues &precisions);
+                     const VectorValues &precisions, bool whiten = true);
   const std::map<Key, Matrix> &maps() const { return maps_; }
   /// Exact comparison: changed weights or measured keys invalidate the cache.
-  bool matches(const VectorValues &precisions) const;
+  bool matches(const VectorValues &precisions, bool whiten = true) const;
+  /// Square-root information of the projection cost in the chosen coordinates.
+  const Matrix &costJacobian() const { return cost_jacobian_; }
   Vector project(const VectorValues &delta) const;
   VectorValues recover(const Vector &u) const;
 
- private:
+private:
   VectorValues precisions_;
   std::map<Key, Matrix> maps_;
   size_t dim_;
+  bool whiten_;
+  Matrix cost_jacobian_;
 };
 
-}  // namespace gtdynamics
+} // namespace gtdynamics
