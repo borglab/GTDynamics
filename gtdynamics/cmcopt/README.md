@@ -251,52 +251,70 @@ regression checks both the returned boundary point and its tangent cone.
 
 Thesis reference: Eq. (4.26) is the standard CMC metric-projection retraction. Eq. (4.46) is the on-corner retraction that additionally enforces blocking inequalities as equalities. Eq. (4.27) is the cleanup feasibility objective used after the penalty projection.
 
-### Affine equality manifolds: reduced QCQP retraction
+### Affine equality manifolds: reduced AL retraction
 
-[`ReducedQcqpRetractor`](ReducedQcqpRetractor.h) applies when the equality
-constraints are **exactly affine in Euclidean variables**. The caller is
-responsible for this precondition and supplies an exact scalar
-unary quadratic model for each inequality. This includes linear inequalities
-with a zero quadratic matrix. It is not an automatic approximation of nonlinear
-pose or trajectory constraints.
+[`ReducedALRetractor`](ReducedALRetractor.h) applies when the equality
+constraints are **exactly affine in Euclidean variables**. This is a documented
+precondition. It uses the original scalar
+inequalities directly, including nonlinear constraints involving multiple keys.
+It does not require an `InequalityModel`, construct a QCQP, or approximate
+nonlinear pose or trajectory equalities by a globally affine manifold.
 
-The retractor obtains `B` from the component's existing `eBasis()`. At an
-equality-feasible anchor `x0`, it substitutes `x = x0 + B z` into the projection
-objective and every inequality. The existing prior factory supplies the metric,
-including varying sigmas and optional prior keys. A Cholesky transformation of
-`B' W B`, followed by a common trial-length scale, produces a well-scaled
-quadratic objective without changing its minimizer. Blocked inequalities become
-equalities in the same reduced QCQP. GTSAM's `AugmentedLagrangianOptimizer`
-solves the subproblem; CMC's outer direction QP continues to use its existing
-solver.
+The component owns the recovery basis and projection geometry. For a known
+constant affine equality graph, set `IEConstraintManifold::Params::affineEqualities`
+to `true`: successor states share the numeric equality basis, avoiding repeated
+linearization and elimination. The default remains `false`, so nonlinear
+manifolds rebuild their numeric basis at each state. This option is a caller
+contract about fixed affine equations in Euclidean variables; it is not inferred
+from one Jacobian and does not freeze active inequality faces.
 
-For an elliptic friction cone, the retraction models
-`(t1/mu1)^2 + (t2/mu2)^2 - n^2 <= 0` together with `n >= 0`. The outer CMC
-constraint retains its original norm-valued expression and Jacobian. The
-quadratic model must preserve the full feasible set and the requested boundary
-faces in conjunction with the other domain constraints.
+`IEConstraintManifold::projectionMetric()` caches a `TangentSpaceMetric` containing
+recovery maps and Cholesky whitening of `B' W B`. Affine successor states share
+this immutable geometry. Changes to effective prior weights or selected keys
+invalidate the cache; independent components do not share it. The metric follows
+the existing prior sigma conventions, including optional varying sigmas and
+partial priors. Only the target and common trial-length normalization change
+per retraction. Equality factors must remain unchanged during an affine solve.
+
+At an equality-feasible anchor `x0`, recovery is `x = x0 + B z`. Before AL, the
+retractor checks whether the ambient trial already satisfies the original
+constraints **and every requested blocking face**. If so, its projection cost
+is zero and it is returned immediately. Otherwise it computes the unconstrained
+metric projection onto the affine equalities; if that point passes the same
+checks, it is the constrained minimizer and AL is also unnecessary. These are
+optimality shortcuts, not acceptance of an arbitrary feasible AL iterate.
+`IERetractionInfo` counts both shortcuts, AL calls, and inner LM iterations.
+
+Each inequality evaluates its original expression at the recovered variables;
+its reduced Jacobian is the sum of its original key Jacobians times the
+corresponding recovery blocks. Only keys used by that constraint are recovered.
+Original noise sigmas are applied once. A fixed positive scale, the maximum
+reduced gradient norm at the anchor and target (floored at `1e-12`), normalizes
+each row. Blocked inequalities become equalities using the same expression.
+GTSAM's `AugmentedLagrangianOptimizer` solves this reduced nonlinear problem;
+CMC's outer tangent-cone QP continues to use its existing solver.
+
+For elliptic friction, AL now receives the original norm-valued cone expression.
+There is no squared-cone conversion. Its nonsmooth apex and the original
+factor's Jacobian convention remain; this is not a general apex solution.
+For nonconvex problems, including forced curved boundary faces, stationarity
+does not establish a global closest point.
 
 The AL driver uses GTSAM's public BCL iteration and floors its shrinking inner
-stationarity target at the requested final tolerance. This prevents LM from
-being asked to solve the inner problem more accurately than required before
-another dual update. The default normalized stationarity tolerance is `1e-7`;
-original whitened equality/inequality residuals must satisfy `1e-8`. Near-tight
-original inequalities within `1e-7` remain explicitly active. These are residual
-norm tolerances, separate from `IERetractorParams::feasibleThreshold`'s legacy
-graph-cost convention. The AL/validation settings live in
-`ReducedQcqpRetractor::Settings`; the shared retractor parameters supply the
-metric and initialization choice.
+stationarity target at the requested final tolerance. Defaults retain `1e-7`
+normalized stationarity, `1e-8` original whitened feasibility, and `1e-7`
+active-face tolerance. The normalized feasibility target accounts for row
+scaling; original equality and inequality residuals are checked after recovery.
+The retractor throws if convergence or validation fails. It does not accept
+feasibility alone or fall back to an ambient penalty solve. Settings live in
+`ReducedALRetractor::Settings`; shared retractor parameters supply the metric
+and initialization choice.
 
-This implementation throws on a failed AL convergence check or original
-constraint check. It does not hide failure with an ambient penalty fallback.
-In particular, the squared cone has zero gradient at its apex. Some valid apex
-projections have no finite KKT multipliers in this representation, so this AL
-retractor does **not** solve the zero-force issue in general. For nonconvex
-QCQPs (including some forced boundary faces), AL stationarity also does not
-establish a global closest point.
-
-Regression tests are in [`testReducedQcqpRetractor.cpp`](../../tests/testReducedQcqpRetractor.cpp)
-and [`testReducedQcqpRetractionValidation.cpp`](../../tests/testReducedQcqpRetractionValidation.cpp).
+Regression tests are in [`testReducedALRetractor.cpp`](../../tests/testReducedALRetractor.cpp)
+and [`testReducedALRetractionValidation.cpp`](../../tests/testReducedALRetractionValidation.cpp).
+They cover projection signs, affine reduction, weighted metrics, original
+quadratic and norm-cone factors, nonquadratic multi-key constraints, whitening,
+forced boundaries, nonfinite evaluations, and explicit apex failures.
 
 ## 10) Boundary Forcing and Mode Changes
 

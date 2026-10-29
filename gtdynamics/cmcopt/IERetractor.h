@@ -9,6 +9,7 @@
  * @file  IERetractor.h
  * @brief Retractor for IEConstraintManifold.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #pragma once
@@ -86,6 +87,9 @@ struct IERetractorParams {
 
 struct IERetractionInfo {
   size_t numLMIterations = 0;
+  size_t numALSolveCalls = 0;
+  size_t numFeasibleTrials = 0;
+  size_t numFeasibleProjections = 0;
 };
 
 /// Base class for the feasibility-restoring map R_x(delta) used after each
