@@ -74,26 +74,13 @@ Vector ReducedALRetractor::solveProblem(const ConstrainedOptProblem &problem,
                0.5 * settings_.feasibilityTolerance / largestSigma);
   const Values initial = projection.initialValues(params_->initValuesAsX);
   AugmentedLagrangianOptimizer optimizer(problem, initial, al);
-  AugmentedLagrangianState state(0, initial, problem);
-  double penaltyEq = al->bclInitialPenalty, penaltyIneq = penaltyEq;
-  // Use GTSAM's public AL iteration (including its dual/penalty updates).
-  // Bound its shrinking inner target by the requested final stationarity:
-  // solving the inner LM more accurately than that can stall before a useful
-  // dual update. This floor does not relax either final convergence test.
-  for (size_t iteration = 0; iteration < al->maxIterations; ++iteration) {
-    if (state.bclOmega > 0)
-      state.bclOmega =
-          std::max(state.bclOmega, al->absoluteStationarityTolerance);
-    std::tie(state, penaltyEq, penaltyIneq) =
-        optimizer.iterate(state, penaltyEq, penaltyIneq);
-    state.converged =
-        state.innerConverged &&
-        state.augmentedLagrangianStationarity <=
-            al->absoluteStationarityTolerance &&
-        state.generalizedConstraintViolation <= al->absoluteViolationTolerance;
-    if (state.converged || !state.innerConverged)
-      break;
-  }
+  // Let GTSAM retain its merit graph and multifrontal workspace across AL
+  // iterations. The final state supplies diagnostics without storing history;
+  // GTSAM also floors the inner target at the final stationarity tolerance.
+  // Preserve rejection when the caller allows no outer iterations.
+  if (al->maxIterations == 0)
+    throw std::runtime_error("Reduced AL failed: no outer iterations allowed");
+  const auto state = optimizer.optimizeWithState();
   if (info)
     info->numLMIterations += state.totalUnconstrainedIterations;
   if (!state.converged ||

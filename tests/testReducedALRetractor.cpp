@@ -193,11 +193,42 @@ TEST(ReducedALRetractor, BoundSignsAndNewActiveConstraint) {
     EXPECT(start.activeIndices().empty());
     VectorValues delta;
     delta.insert(kX, Vector1(2 * sign));
-    const auto result = start.retract(delta);
+    IERetractionInfo info;
+    const auto result = start.retract(delta, {}, &info);
     EXPECT_DOUBLES_EQUAL(sign, result.values().at<Vector>(kX)(0), 2e-8);
     EXPECT(result.activeIndices().exists(0));
     EXPECT(result.evaluateInequalityViolation() <= 1e-8);
+    EXPECT_LONGS_EQUAL(1, info.numALSolveCalls);
+    EXPECT(info.numLMIterations > 0);
   }
+}
+
+// An already feasible anchor must not mask a stalled projection optimization.
+TEST(ReducedALRetractor, RejectsFeasibleButUnconvergedSolve) {
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(bound(1, QuadraticConstraint::Sense::LessEqual));
+  ReducedALRetractor::Settings settings;
+  settings.al.lmParams.maxIterations = 0;
+  const auto start = manifold(
+      scalarVector(0), {}, inequalities, std::make_shared<IERetractorParams>(),
+      std::make_shared<OrthonormalBasisCreator>(), settings);
+  VectorValues delta;
+  delta.insert(kX, Vector1(2));
+  CHECK_EXCEPTION(start.retract(delta), std::runtime_error);
+}
+
+// A zero outer-iteration budget cannot accept a constrained trial.
+TEST(ReducedALRetractor, RejectsZeroOuterIterationBudget) {
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(bound(1, QuadraticConstraint::Sense::LessEqual));
+  ReducedALRetractor::Settings settings;
+  settings.al.maxIterations = 0;
+  const auto start = manifold(
+      scalarVector(0), {}, inequalities, std::make_shared<IERetractorParams>(),
+      std::make_shared<OrthonormalBasisCreator>(), settings);
+  VectorValues delta;
+  delta.insert(kX, Vector1(2));
+  CHECK_EXCEPTION(start.retract(delta), std::runtime_error);
 }
 
 // Large trial magnitudes must not stall on cancellation in the AL merit cost.
