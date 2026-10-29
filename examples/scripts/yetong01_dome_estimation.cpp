@@ -6,11 +6,13 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  yetong01_dome_estimation.cpp
+ * @file yetong01_dome_estimation.cpp
  * @brief Dome estimation example using inequality-constrained optimization.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/scenarios/DomeRetractor.h>
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>

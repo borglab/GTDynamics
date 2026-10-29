@@ -1,4 +1,22 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
 
+/**
+ * @file testIEManifoldOptimizer.cpp
+ * @brief Regression tests for IEManifoldOptimizer.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
+#include <gtdynamics/scenarios/CartPoleWithFrictionRetractor.h>
+#include <gtdynamics/scenarios/DomeRetractor.h>
+#include <gtdynamics/scenarios/HalfSphereRetractor.h>
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include <CppUnitLite/Test.h>

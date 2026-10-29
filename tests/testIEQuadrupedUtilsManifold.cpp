@@ -1,4 +1,19 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
 
+/**
+ * @file testIEQuadrupedUtilsManifold.cpp
+ * @brief Regression tests for IEQuadrupedUtilsManifold.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+
+#include <gtdynamics/cmopt/BasisRetractor.h>
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/base/Testable.h>

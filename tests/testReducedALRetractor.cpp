@@ -11,6 +11,7 @@
  * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>

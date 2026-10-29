@@ -6,9 +6,10 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  IECartPoleWithFriction.h
+ * @file IECartPoleWithFriction.h
  * @brief Cart-pole trajectory optimization problem with friction cone limits.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #pragma once
@@ -137,46 +138,6 @@ class IECartPoleWithFriction {
   /** Export tangent-vector values to a plain text file. */
   static void ExportVector(const VectorValues &values, const size_t num_steps,
                            const std::string &file_path);
-};
-
-/** Retraction rule specialized for the cart-pole friction cone. */
-class CartPoleWithFrictionRetractor : public IERetractor {
- protected:
-  /// Cart-pole problem parameters.
-  const IECartPoleWithFriction &cp_;
-
- public:
-  /** Constructor. */
-  CartPoleWithFrictionRetractor(const IECartPoleWithFriction &cp)
-      : IERetractor(), cp_(cp) {}
-
-  /** Retract a tangent update and enforce active friction constraints. */
-  IEConstraintManifold retract(
-      const IEConstraintManifold *manifold, const VectorValues &delta,
-      const std::optional<IndexSet> &blocking_indices = {},
-      IERetractionInfo *retract_info = nullptr) const override;
-
-  /** Fallback penalty-based retraction for boundary corner cases. */
-  IEConstraintManifold retract1(const IEConstraintManifold *manifold,
-                                const VectorValues &delta) const;
-};
-
-/** Barrier-based retractor for the cart-pole friction cone. */
-class CPBarrierRetractor : public IERetractor {
- protected:
-  /// Cart-pole problem parameters.
-  const IECartPoleWithFriction &cp_;
-
- public:
-  /** Constructor. */
-  CPBarrierRetractor(const IECartPoleWithFriction &cp)
-      : IERetractor(), cp_(cp) {}
-
-  /** Retract a tangent update using a barrier-style local solve. */
-  IEConstraintManifold retract(
-      const IEConstraintManifold *manifold, const VectorValues &delta,
-      const std::optional<IndexSet> &blocking_indices = {},
-      IERetractionInfo *retract_info = nullptr) const override;
 };
 
 }  // namespace gtdynamics

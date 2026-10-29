@@ -6,11 +6,15 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testRetractor.cpp
+ * @file testRetractor.cpp
  * @brief Test retractor for constraint manifold.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmopt/BasisRetractor.h>
+#include <gtdynamics/cmopt/ProjectionRetractor.h>
+#include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>

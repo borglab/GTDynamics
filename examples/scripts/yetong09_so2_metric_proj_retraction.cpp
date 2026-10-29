@@ -6,11 +6,13 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testManifoldOpt_so2.cpp
+ * @file yetong09_so2_metric_proj_retraction.cpp
  * @brief Test manifold optimizer with SO(2) manifold.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>

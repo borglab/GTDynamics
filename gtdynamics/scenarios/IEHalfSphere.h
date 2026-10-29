@@ -6,9 +6,10 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  IEHalfSphere.h
+ * @file IEHalfSphere.h
  * @brief Manifold with boundary representing the upper half-sphere.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #pragma once
@@ -145,137 +146,6 @@ class IEHalfSphere {
       std::cout << std::setw(10) << p(0) << std::setw(10) << p(1)
                 << std::setw(10) << p(2) << "\n";
     }
-  }
-};
-
-/** Manually defined retractor for half sphere manifold. */
-class HalfSphereRetractor : public IERetractor {
-  /// Sphere radius.
-  double r_;
-
- public:
-  /** Constructor. */
-  HalfSphereRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.radius_) {}
-
-  /** Retract a tangent update and project back to the upper half-sphere. */
-  IEConstraintManifold retract(
-      const IEConstraintManifold *manifold, const VectorValues &delta,
-      const std::optional<IndexSet> &blocking_indices = {},
-      IERetractionInfo *retract_info = nullptr) const override {
-    Key key = manifold->values().keys().front();
-    Point3 p = manifold->values().at<Point3>(key);
-    Vector3 v = delta.at(key);
-    Point3 new_p = p + v;
-
-    if (blocking_indices && blocking_indices->size() > 0) {
-      new_p.z() = 0;
-    }
-    new_p.z() = std::max(0.0, new_p.z());
-    new_p = normalize(new_p) * r_;
-
-    Values new_values;
-    new_values.insert(key, new_p);
-    return manifold->createWithNewValues(new_values);
-  }
-};
-
-/** Manually defined retractor for the sphere manifold. */
-class SphereRetractor : public IERetractor {
-  /// Sphere radius.
-  double r_;
-
- public:
-  /** Constructor. */
-  SphereRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.radius_) {}
-
-  /** Retract a tangent update and project back to the sphere. */
-  IEConstraintManifold retract(
-      const IEConstraintManifold *manifold, const VectorValues &delta,
-      const std::optional<IndexSet> &blocking_indices = {},
-      IERetractionInfo *retract_info = nullptr) const override {
-    Key key = manifold->values().keys().front();
-    Point3 p = manifold->values().at<Point3>(key);
-    Vector3 v = delta.at(key);
-    Point3 new_p = p + v;
-
-    new_p = normalize(new_p) * r_;
-    Values new_values;
-    new_values.insert(key, new_p);
-    return manifold->createWithNewValues(new_values);
-  }
-};
-
-/** Manually defined retractor for the dome manifold. */
-class DomeRetractor : public IERetractor {
-  /// Sphere radius.
-  double r_;
-
- public:
-  /** Constructor. */
-  DomeRetractor(const IEHalfSphere &half_sphere)
-      : IERetractor(), r_(half_sphere.radius_) {}
-
-  /** Retract a tangent update and clamp to the dome boundary if needed. */
-  IEConstraintManifold retract(
-      const IEConstraintManifold *manifold, const VectorValues &delta,
-      const std::optional<IndexSet> &blocking_indices = {},
-      IERetractionInfo *retract_info = nullptr) const override {
-    Key key = manifold->values().keys().front();
-    Point3 p = manifold->values().at<Point3>(key);
-    Vector3 v = delta.at(key);
-    Point3 new_p = p + v;
-
-    new_p.z() = std::max(0.0, new_p.z());
-    if (new_p.norm() > r_) {
-      new_p = r_ / new_p.norm() * new_p;
-    }
-
-    Values new_values;
-    new_values.insert(key, new_p);
-    return manifold->createWithNewValues(new_values);
-  }
-
-  /** Move the current point onto active dome boundary constraints. */
-  IEConstraintManifold moveToBoundary(
-      const IEConstraintManifold *manifold, const IndexSet &blocking_indices,
-      IERetractionInfo *retract_info = nullptr) const override {
-    Key key = manifold->values().keys().front();
-    Point3 p = manifold->values().at<Point3>(key);
-
-    // std::cout << "old p: \n" << p << "\n";
-
-    bool is_sphere = false;
-    bool is_positive_z = false;
-
-    IndexSet active_indices = blocking_indices;
-    for (const auto &constraint_idx : manifold->activeIndices()) {
-      active_indices.insert(constraint_idx);
-    }
-
-    for (const auto &constraint_idx : active_indices) {
-      if (constraint_idx == 0) {
-        is_sphere = true;
-      }
-      if (constraint_idx == 1) {
-        is_positive_z = true;
-      }
-    }
-
-    if (is_positive_z) {
-      p.z() = 0;
-    }
-
-    if (is_sphere) {
-      p = r_ / p.norm() * p;
-    }
-
-    // std::cout << "new p: \n" << p << "\n";
-
-    Values new_values;
-    new_values.insert(key, p);
-    return manifold->createWithNewValues(new_values);
   }
 };
 

@@ -1,3 +1,18 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file yetong05_cart_pole_limits.cpp
+ * @brief Constraint-manifold optimization example.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+#include <gtdynamics/scenarios/CartPoleWithLimitsRetractor.h>
 #include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include <cmath>

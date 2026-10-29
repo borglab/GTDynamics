@@ -1,5 +1,20 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file testIEConstraintManifold.cpp
+ * @brief Regression tests for IEConstraintManifold.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
 
 
+
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>

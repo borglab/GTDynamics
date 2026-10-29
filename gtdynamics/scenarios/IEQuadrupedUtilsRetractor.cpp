@@ -6,11 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  QuadrupedUtils.cpp
+ * @file IEQuadrupedUtilsRetractor.cpp
  * @brief Quadruped utilities implementations.
  * @author: Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
+#include <gtdynamics/cmcopt/KinodynamicHierarchicalRetractor.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>

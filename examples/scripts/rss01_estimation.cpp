@@ -5,6 +5,17 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
+/**
+ * @file rss01_estimation.cpp
+ * @brief Constraint-manifold optimization example.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
+#include <gtdynamics/scenarios/HalfSphereRetractor.h>
+#include <gtdynamics/scenarios/SphereRetractor.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/linear/Sampler.h>

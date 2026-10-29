@@ -1,4 +1,19 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
 
+/**
+ * @file testIERetractor.cpp
+ * @brief Regression tests for IERetractor.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>

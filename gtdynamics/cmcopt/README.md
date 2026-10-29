@@ -230,10 +230,10 @@ Conceptually, the retraction solves a feasibility-restoring projection problem w
 Pointers:
 
 - [IELMTrial::NonlinearUpdate](IELMOptimizerState.cpp#L702)
-- [IERetractor](IERetractor.h#L92)
-- [BarrierRetractor](IERetractor.h#L125)
-- [RunPenaltyOptimization](IERetractor.cpp#L51)
-- [BarrierRetractor::retract](IERetractor.cpp#L116)
+- [IERetractor](IERetractor.h)
+- [BarrierRetractor](BarrierRetractor.h)
+- [RunPenaltyOptimization](BarrierRetractor.cpp)
+- [BarrierRetractor::retract](BarrierRetractor.cpp)
 
 The concrete barrier retractor does three things:
 
@@ -330,7 +330,7 @@ Pointers:
 - [IELMOptimizer::checkModeChange](IELMOptimizer.cpp#L133)
 - [IEConstraintManifold::moveToBoundary](IEConstraintManifold.cpp#L146)
 - [IEManifoldValues::moveToBoundaries](IEConstraintManifoldUtils.cpp#L25)
-- [BarrierRetractor::moveToBoundary](IERetractor.cpp#L78)
+- [BarrierRetractor::moveToBoundary](BarrierRetractor.cpp)
 
 This is where CMC-Opt moves from a purely smooth local method to a boundary-mode method.
 
@@ -386,8 +386,8 @@ Some CMC-Opt runs use varying metric sigmas when building the retraction priors.
 
 Pointers:
 
-- [IERetractorParams](IERetractor.h#L31)
-- [IERetractorParams::createVaryingSigmas](IERetractor.h#L63)
+- [IERetractorParams](IERetractor.h)
+- [IERetractorParams::createVaryingSigmas](IERetractor.h)
 - [IELMState::computeMetricSigmas](IELMOptimizerState.cpp#L148)
 
 Thesis reference: metric retractions are written generically in Eq. (5.12), with the cost-aware metric idea in Eqs. (5.18), (5.20), and (5.21). For CMCs, the projected gradient under the induced metric is Eq. (5.4).
@@ -400,7 +400,7 @@ If you want to trace the math in code order, read these files in this order:
 2. [IEConstraintManifold.h](IEConstraintManifold.h#L25) and [IEConstraintManifold.cpp](IEConstraintManifold.cpp#L181)
 3. [TangentCone.h](TangentCone.h#L25) and [TangentCone.cpp](TangentCone.cpp#L23)
 4. [IELMOptimizerState.h](IELMOptimizerState.h#L35) and [IELMOptimizerState.cpp](IELMOptimizerState.cpp#L493)
-5. [IERetractor.h](IERetractor.h#L90) and [IERetractor.cpp](IERetractor.cpp#L114)
+5. [IERetractor.h](IERetractor.h) and [IERetractor.cpp](IERetractor.cpp)
 6. [IELMOptimizer.h](IELMOptimizer.h#L40) and [IELMOptimizer.cpp](IELMOptimizer.cpp#L31)
 7. [IEGDOptimizer.h](IEGDOptimizer.h#L124) and [IEGDOptimizer.cpp](IEGDOptimizer.cpp#L51)
 

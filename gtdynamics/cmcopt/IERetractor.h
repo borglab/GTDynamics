@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  IERetractor.h
+ * @file IERetractor.h
  * @brief Retractor for IEConstraintManifold.
  * @author Yetong Zhang
  * @author Frank Dellaert
@@ -26,7 +26,6 @@
 
 namespace gtdynamics {
 using namespace gtsam;
-
 
 class IEConstraintManifold;
 
@@ -130,77 +129,6 @@ public:
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
 
-/// Penalty-based approximation to thesis Eq. (4.26); with blocking indices it
-/// implements the on-corner retraction in thesis Eq. (4.46).
-class BarrierRetractor : public IERetractor {
-
-protected:
-  /** Penalty solve and active-face cleanup in exact affine coordinates. */
-  IEConstraintManifold retractReduced(const IEConstraintManifold &manifold,
-      const VectorValues &delta, const IndexSet &blocking,
-      IERetractionInfo *info) const;
-
-  bool use_basis_keys_;
-  KeyVector basis_keys_;
-
-public:
-  BarrierRetractor(const IERetractorParams::shared_ptr &params,
-                   const std::optional<KeyVector> &basis_keys = {})
-      : IERetractor(params) {
-    if (basis_keys) {
-      use_basis_keys_ = true;
-      basis_keys_ = *basis_keys;
-    } else {
-      use_basis_keys_ = false;
-    }
-  }
-
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractionInfo *retract_info = nullptr) const override;
-
-  /// Solve the special case delta = 0 while forcing the requested inequalities
-  /// to become active.
-  IEConstraintManifold
-  moveToBoundary(const IEConstraintManifold *manifold,
-                 const IndexSet &blocking_indices,
-                 IERetractionInfo *retract_info = nullptr) const override;
-};
-
-/**
- * Retractor that hierarchically solves the retraction probelm. It first solves
- * q-level by only considering constraints involving poses and joint angles.
- * Then, it solves for link twists and joint velocities using the v-level
- * constraints and the known q-level values. Finally, it solves for all a-level
- * and dynamics level variables as remainig ad-level factors are linear given
- * the qv-level variables.
- */
-class KinodynamicHierarchicalRetractor : public IERetractor {
-
-public:
-  using Params = IERetractorParams;
-
-protected:
-  KeyVector basis_keys_;
-  NonlinearFactorGraph merit_graph_;
-  NonlinearFactorGraph graph_q_, graph_v_, graph_ad_;
-  IndexSet i_indices_q_, i_indices_v_, i_indices_ad_;
-  KeySet basis_q_keys_, basis_v_keys_, basis_ad_keys_;
-  std::vector<std::shared_ptr<ConstVarFactor>> const_var_factors_v_,
-      const_var_factors_ad_;
-
-public:
-  KinodynamicHierarchicalRetractor(
-      const IEConstraintManifold &manifold, const Params::shared_ptr &params,
-      const std::optional<KeyVector> &basis_keys = {});
-
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractionInfo *retract_info = nullptr) const override;
-};
-
 /* ************************************************************************* */
 /* <=================== Factory class for Retractor =======================> */
 /* ************************************************************************* */
@@ -238,17 +166,6 @@ public:
   create(const IEConstraintManifold &manifold) const override {
     return retractor_;
   }
-};
-
-class BarrierRetractorCreator : public UniversalIERetractorCreator {
-
-public:
-  BarrierRetractorCreator(IERetractorParams::shared_ptr params =
-                              std::make_shared<IERetractorParams>())
-      : UniversalIERetractorCreator(
-            std::make_shared<BarrierRetractor>(params)) {}
-
-  virtual ~BarrierRetractorCreator() {}
 };
 
 } // namespace gtdynamics

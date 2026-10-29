@@ -5,8 +5,18 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
+/**
+ * @file ConstrainedOptBenchmark.cpp
+ * @brief Constrained optimization benchmark implementations.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+
 /* Constrained optimization benchmark implementations. */
 
+#include <gtdynamics/cmopt/BasisRetractor.h>
+#include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtdynamics/config.h>
