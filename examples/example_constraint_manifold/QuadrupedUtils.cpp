@@ -9,6 +9,7 @@
  * @file  QuadrupedUtils.cpp
  * @brief Quadruped utilities implementations.
  * @author: Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #include <gtsam/base/MatrixConstants.h>
@@ -16,7 +17,7 @@
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/CollocationFactors.h>
-#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/dynamics/WrenchFactor.h>

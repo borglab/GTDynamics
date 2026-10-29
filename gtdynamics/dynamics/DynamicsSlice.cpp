@@ -8,11 +8,12 @@
 /**
  * @file  DynamicsSlice.cpp
  * @brief Dynamics factors for a single time slice.
+ * @author Frank Dellaert
  */
 
 #include <gtsam/base/VectorConstants.h>
 #include <gtdynamics/dynamics/Dynamics.h>
-#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtdynamics/dynamics/ContactDynamicsMomentFactor.h>
 #include <gtdynamics/dynamics/ContactKinematicsAccelFactor.h>
 #include <gtdynamics/dynamics/TwistAccelFactor.h>

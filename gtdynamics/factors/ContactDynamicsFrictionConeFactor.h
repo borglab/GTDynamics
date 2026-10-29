@@ -7,8 +7,9 @@
 
 /**
  * @file  ContactDynamicsFrictionConeFactor.h
- * @brief Factor to enforce contact force lies within a friction cone.
+ * @brief Squared friction-cone violation penalty on a contact wrench.
  * @author Alejandro Escontrela
+ * @author Frank Dellaert
  */
 
 #pragma once
@@ -27,8 +28,11 @@
 namespace gtdynamics {
 
 /**
- * ContactDynamicsFrictionConeFactor is binary nonlinear factor which enforces
- * that the linear contact force lies within a friction cone.
+ * Penalty factor on a link pose and contact wrench for an axis-aligned ground.
+ * Its residual is max(0, ||t||^2 - mu^2 n^2), after rotating the force into
+ * world coordinates. A separate unilateral constraint must exclude n < 0.
+ * This factor is a cost, not a signed inequality: its Jacobian is zero on the
+ * feasible side and at the boundary, including the zero-force apex.
  */
 class ContactDynamicsFrictionConeFactor
     : public gtsam::NoiseModelFactorN<gtsam::Pose3, gtsam::Vector6> {
@@ -41,12 +45,13 @@ class ContactDynamicsFrictionConeFactor
 
  public:
   /**
-   * Contact dynamics factor for zero moment at contact.
+   * Construct a friction-cone violation penalty.
    *
    * @param pose_key Key corresponding to the link's CoM pose.
    * @param contact_wrench_key Key corresponding to this link's contact wrench.
    * @param cost_model Noise model for this factor.
-   * @param cTcom Contact frame expressed in com frame.
+   * @param mu Isotropic friction coefficient.
+   * @param gravity Gravity vector selecting the ground normal axis (flat ground).
    */
   ContactDynamicsFrictionConeFactor(
       gtsam::Key pose_key, gtsam::Key contact_wrench_key,
@@ -64,7 +69,7 @@ class ContactDynamicsFrictionConeFactor
   virtual ~ContactDynamicsFrictionConeFactor() {}
 
   /**
-   * Evaluate contact point moment errors.
+   * Evaluate the clamped squared-cone residual.
    * @param contact_wrench Contact wrench on this link.
    */
   gtsam::Vector evaluateError(

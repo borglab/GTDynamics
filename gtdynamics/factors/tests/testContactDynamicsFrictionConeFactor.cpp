@@ -9,11 +9,12 @@
  * @file  testContactDynamicsFrictionConeFactor.cpp
  * @brief test contact dynamics friction cone factor.
  * @author Alejandro Escontrela
+ * @author Frank Dellaert
  */
 
 #include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/dynamics/ContactDynamicsFrictionConeFactor.h>
+#include <gtdynamics/factors/ContactDynamicsFrictionConeFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>

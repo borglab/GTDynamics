@@ -6,9 +6,10 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  QuadrupedUtils.h
+ * @file  IEQuadrupedUtils.h
  * @brief Utilities for quadruped trajectory optimization experiments.
  * @author: Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #pragma once
@@ -354,7 +355,7 @@ public:
   torqueLowerLimitConstraint(const std::string &j_name, const size_t k,
                              const double lower_limit) const;
 
-  ScalarExpressionInequalityConstraint::shared_ptr
+  NonlinearInequalityConstraint::shared_ptr
   frictionConeConstraint(const std::string &link_name, const size_t k) const;
 
   /** <======================= Single Cost Factor ========================> **/
