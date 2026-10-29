@@ -9,6 +9,7 @@
  * @file  testTangentCone.cpp
  * @brief test tangent cone.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #include <CppUnitLite/TestHarness.h>
@@ -110,6 +111,20 @@ TEST(project, MultirowWorkingSet) {
     EXPECT_LONGS_EQUAL(1, active.size());
     EXPECT(active.exists(0));
   }
+}
+
+// Redundant faces must not cause a singular working set and a silent fallback
+// to zero: the unconstrained second coordinate must survive the projection.
+TEST(project, RedundantFaces) {
+  LinearInequalityConstraints constraints;
+  for (const double scale : {1.0, 2.0}) {
+    constraints.emplace_shared<JacobianLinearInequalityConstraint>(
+        std::make_shared<JacobianFactor>(
+            1, (Matrix(1, 2) << scale, 0.0).finished(), Vector1(0.0)));
+  }
+  const auto [active, projected] = TangentCone(constraints).project(Vector2(1, 2));
+  EXPECT(assert_equal(Vector2(0, 2), projected, 1e-8));
+  EXPECT_LONGS_EQUAL(1, active.size());
 }
 
 TEST(project, EmptyCone) {

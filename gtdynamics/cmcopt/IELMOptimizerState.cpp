@@ -1,3 +1,15 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file IELMOptimizerState.cpp
+ * @brief Implement CMC Levenberg-Marquardt states and trial updates.
+ * @author Frank Dellaert
+ */
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
@@ -558,6 +570,9 @@ void IELMTrial::LinearUpdate::refineIQPStep(
   for (const auto &[key, value] : delta) initial.insert(key, value);
   auto qpParams = std::make_shared<ActiveSetSolverParams>();
   qpParams->maxIterations = maxIterations;
+  // This objective is in manifold coordinates (plus unconstrained variables).
+  // Factor it once and solve dense Schur systems as the working set changes.
+  qpParams->qpSubproblemSolver = ActiveSetSolverParams::QpSubproblemSolver::Dense;
   // The supplied objective already includes LM damping. Additional QP
   // regularization would change the trial step we are trying to compute.
   qpParams->regularization = 0.0;
