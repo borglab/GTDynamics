@@ -54,6 +54,7 @@ for(const entry of entries){
     const bytes=await readFile(new URL(registry.sequences.find(s=>s.id===entry.id).data,publicRoot));
     assert.equal(recording.source.datasetSha256,sha256(bytes));
     assert(Object.keys(recording.source.nativeSourceSha256).length>=5);
+    assert('gtdynamics/utils/Slice.h' in recording.source.nativeSourceSha256);
     for(const [path,hash] of Object.entries(recording.source.nativeSourceSha256))
       assert.equal(hash,sha256(await readFile(new URL(path,repoRoot))),`Native recording is stale for ${path}`);
     assert(recording.hardware.cpu.length>3);

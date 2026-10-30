@@ -53,10 +53,11 @@ TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
       robot, "l1", initial_root, measurements, samples, {stance}, 0.01, options,
       &diagnostics);
 
-  EXPECT_LONGS_EQUAL(2, diagnostics.graph.frames.size());
-  EXPECT_LONGS_EQUAL(4, diagnostics.graph.frames.front().sampleIndex);
-  EXPECT_LONGS_EQUAL(8, diagnostics.graph.frames.back().sampleIndex);
-  EXPECT(assert_equal(0.04, diagnostics.graph.frames.front().time, 1e-12));
+  EXPECT_LONGS_EQUAL(2, diagnostics.graph.measurements.size());
+  EXPECT_LONGS_EQUAL(4, diagnostics.graph.measurements.front().slice.k);
+  EXPECT_LONGS_EQUAL(8, diagnostics.graph.measurements.back().slice.k);
+  EXPECT(
+      assert_equal(0.04, diagnostics.graph.measurements.front().time, 1e-12));
   EXPECT(diagnostics.values.exists(PoseKey(root->id(), 4)));
   EXPECT(diagnostics.values.exists(PoseKey(root->id(), 8)));
   EXPECT(assert_equal(initial_root, Pose(result, root->id(), 4), 1e-10));
@@ -144,15 +145,16 @@ TEST(ContactTrajectoryInitializer,
       {{"stance-0", 4, 18, patch}, {"stance-1", 17, 38, patch}}, 0.1, options,
       &diagnostics);
   const std::vector<size_t> expected{4, 14, 17, 18, 28, 38};
-  EXPECT_LONGS_EQUAL(expected.size(), diagnostics.graph.frames.size());
+  EXPECT_LONGS_EQUAL(expected.size(), diagnostics.graph.measurements.size());
   for (size_t i = 0; i < expected.size(); ++i) {
-    const auto& frame = diagnostics.graph.frames.at(i);
-    EXPECT_LONGS_EQUAL(expected[i], frame.sampleIndex);
+    const auto& frame = diagnostics.graph.measurements.at(i);
+    EXPECT_LONGS_EQUAL(expected[i], frame.slice.k);
     EXPECT(diagnostics.values.exists(PoseKey(root->id(), expected[i])));
     EXPECT(assert_equal(Pose(values, foot->id(), samples.front()),
                         Pose(values, foot->id(), expected[i]), 1e-7));
     if (i)
-      EXPECT(frame.time - diagnostics.graph.frames[i - 1].time <= 1.0 + 1e-8);
+      EXPECT(frame.time - diagnostics.graph.measurements[i - 1].time <=
+             1.0 + 1e-8);
   }
   for (const size_t sample : samples) {
     DOUBLES_EQUAL(JointAngle(measurements, joint->id(), sample),
@@ -208,7 +210,7 @@ TEST(ContactTrajectoryInitializer, LandmarkGroundPriorUsesAnchoredFK) {
       0.01, options, &diagnostics);
   double height = 0;
   for (const auto& observation :
-       diagnostics.graph.frames.front().observations) {
+       diagnostics.graph.measurements.front().observations) {
     height += anchor.transformFrom(observation.localPoint).z() / patch.size();
   }
   EXPECT_LONGS_EQUAL(patch.size(), diagnostics.graph.groundFactors.size());

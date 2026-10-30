@@ -90,6 +90,11 @@ for model in ("ground", "patch", "point"):
         count = len(saved["graph"]["landmarks"]) if ground and model != "ground" else 0
         assert len(saved["graph"]["groundLandmarkIndices"]) == count
         assert saved["graph"]["dimensions"]["groundFactors"] == count
+        if model == "patch" and ground and not upright:
+            # A rocking-foot seed previously trapped these solves upside down
+            # at more than 1.6 m RMSE, even with the height prior enabled.
+            assert saved["evaluation"]["positionRmseMeters"] < 0.35
+            assert saved["evaluation"]["orientationRmseDegrees"] < 20
         if count:
             settings = saved["graph"]["regularization"]
             cost = sum(

@@ -45,7 +45,10 @@ is distributed under Unitree's BSD-3-Clause license, included at
 
 The GTSAM-only core is
 [`gtdynamics/utils/ContactInitializer.h`](../../gtdynamics/utils/ContactInitializer.h).
-It accepts FK event observations with persistent stance IDs, returns poses,
+It accepts `ContactMeasurements` containing the existing `Slice` context,
+the sample timestamp, and frozen FK observations with persistent stance IDs.
+`slice.k` preserves the original sample index; selected measurements need not
+be consecutive. The core returns poses,
 landmarks, `gtsam::Values`, diagnostics, and phase timings, and supports caller
 anchors and key conventions. Its implementation has no JSON or reference-data
 dependency.
@@ -91,7 +94,11 @@ from the optimized state; its contact factors become unary landmark factors.
 The default adds no motion or attitude prior. Optional factors are described below; IMU and reference factors are never added.
 
 The initializer first traverses the contact graph, registering frames against
-already placed contacts using a small rigid SVD fit. Then
+already placed contacts using a small rigid SVD fit. For 3D patches it also
+tries a traversal using each patch's material-point centroid, retaining the
+seed with lower contact cost on the full patch observations. This avoids
+accumulating foot-rocking tilt in the seed without adding height or attitude
+constraints. Changing material-point subsets skip the centroid candidate. Then
 `gtsam::LevenbergMarquardtOptimizer` jointly updates all free event `Pose3` and
 contact variables, with analytic Jacobians and multifrontal Cholesky. Numerical
 LM diagonal damping permits point-mode solves but adds no measured attitude
@@ -170,12 +177,10 @@ nearest-rank quantile; with 11 repetitions it is the maximum sample.
 
 | Sequence / mode | Native LM median | Initializer total median | LM iterations | 3D contact RMS |
 | --- | ---: | ---: | ---: | ---: |
-| 8 s policy / hard floor | 97.64 ms | 97.94 ms | 69 | 11.85 mm |
-| 8 s policy / contact-only patch | 150.89 ms | 151.15 ms | 100, cap reached | 11.49 mm |
-| 8 s policy / one point | 3.64 ms | 3.72 ms | 7 | 1.89 mm |
-| 30 s capture / hard floor | 30.72 ms | 30.88 ms | 38 | 19.42 mm |
-| 30 s capture / contact-only patch | 57.19 ms | 57.37 ms | 68 | 17.67 mm |
-| 30 s capture / one point | 5.95 ms | 6.02 ms | 10 | 15.34 mm |
+| 8 s policy / contact-only patch | 146.97 ms | 147.30 ms | 100, cap reached | 10.85 mm |
+| 8 s policy / one point | 3.81 ms | 3.90 ms | 7 | 1.89 mm |
+| 30 s capture / contact-only patch | 57.58 ms | 57.84 ms | 68 | 17.67 mm |
+| 30 s capture / one point | 5.85 ms | 5.92 ms | 10 | 15.34 mm |
 
 The table above shows the configurations without optional priors. All eight combinations
 are saved in the recording files and compared in the UI.
@@ -193,15 +198,18 @@ file IO, JSON, network, and rendering are excluded. Total time covers the sparse
 initializer, not an end-to-end estimator initialization. Individual phase
 medians need not sum exactly to the total median.
 
-The 8-second grounded result has root position RMSE 0.252 m and orientation RMSE
-14.78 degrees, after aligning only the first event. Contact-only patches give
-1.741 m / 96.42 degrees and reach the iteration cap. The point-mode displayed
+The 8-second contact-only patch result has root position RMSE 1.168 m and
+orientation RMSE 85.45 degrees, after aligning only the first event, and reaches
+the iteration cap. The centroid candidate improves the previous 1.741 m /
+96.42 degrees result but does not resolve the rigid-sole model mismatch. With
+only the height prior enabled, patch RMSE improves from 1.720 m to 0.229 m;
+with motion and height it improves from 1.614 m to 0.195 m. The point-mode displayed
 solution gives 0.285 m / 7.58 degrees, but its attitude remains underconstrained.
 Recorded root poses are supplied separately for post-solve C++ evaluation and
 display. They never enter the initializer or its optimization graph.
 
 For the 30-second capture, each support component is aligned independently at
-its first event. The grounded contacts-only component-relative RMSE is 0.235 m / 15.69 degrees;
+its first event. The contact-only patch component-relative RMSE is 0.316 m / 17.84 degrees;
 this is not accuracy of one globally recovered 30-second trajectory. No factor
 or rendered trajectory line connects the independent components in contacts-only
 mode. Enabling weak motion explicitly connects them using a prior.
@@ -236,7 +244,7 @@ details. The Python exporter only orchestrates native runs and packages them;
 it does not solve the graph or evaluate pose errors. It strips reference and
 metadata from the solver dataset, supplies a separate `evaluationReference`
 field used only after solving, and records exact C++ source, binary, and dataset
-SHA-256 hashes. The baseline runs are in `models`; the three additional factor
+SHA-256 hashes. The baseline runs are in `models`; the seven additional factor
 combinations per contact model are in `variants`.
 
 Dataset generation, pinned downloads, contact thresholds, attribution, and

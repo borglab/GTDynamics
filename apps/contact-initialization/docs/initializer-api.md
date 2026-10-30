@@ -74,9 +74,16 @@ the adapter's robot FK and dense trajectory expansion are outside the core
 timer. `dt` supplies event timestamps and does not change the spatial residuals.
 
 For callers that already have FK contact geometry, the lower-level
-`gtdynamics::contact_init::ContactInitializer` accepts `EventFrame` objects
-directly and has no dependency on `Robot`. Its optional pose-key callback also
-supports downstream applications with their own key conventions.
+`gtdynamics::contact_init::ContactInitializer` accepts `ContactMeasurements`
+objects directly and has no dependency on `Robot`. Each object contains the
+existing `gtdynamics::Slice` context, an actual timestamp in seconds, and frozen
+contact observations. `measurements.slice.k` is the original source sample
+index; its position in `Graph::measurements` is only a sparse vector ordinal.
+For example, selected slices 42 and 103 retain those indices, rather than being
+renumbered 0 and 1. The adapter uses `PoseKey(rootLinkId, slice.k)` for the sparse
+root values. The native app JSON keeps its `frames` and `sampleIndex` field names.
+The optional pose-key callback also supports applications with other key
+conventions.
 
 
 Optional priors are explicit native API settings:

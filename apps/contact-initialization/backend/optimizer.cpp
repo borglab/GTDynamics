@@ -79,7 +79,8 @@ std::string text(const json::value& value) {
 }
 // Select original samples and transform fixed sole material points by local FK.
 // Source quaternions use WXYZ; source world-root reference poses are not read.
-std::vector<EventFrame> datasetFrames(const json::object& data, Model model) {
+std::vector<ContactMeasurements> datasetMeasurements(const json::object& data,
+                                                     Model model) {
   const auto& robot = data.at("model").as_object();
   std::vector<Point3> sole;
   if (model == Model::Point)
@@ -94,12 +95,12 @@ std::vector<EventFrame> datasetFrames(const json::object& data, Model model) {
     footByContact[text(c.at("id"))] = text(c.at("foot"));
   }
   const auto& samples = data.at("samples").as_array();
-  std::vector<EventFrame> frames;
+  std::vector<ContactMeasurements> frames;
   for (const auto& source : data.at("frames").as_array()) {
     const auto& f = source.as_object();
     const size_t index = integer(f.at("sampleIndex"));
     const auto& sample = samples.at(index).as_object();
-    EventFrame frame{index, number(f.at("t")), {}};
+    ContactMeasurements frame{gtdynamics::Slice(index), number(f.at("t")), {}};
     for (const auto& idValue : f.at("contacts").as_array()) {
       const std::string id = text(idValue), foot = footByContact.at(id);
       const auto& fk = sample.at("feet").as_object().at(foot).as_object();
@@ -146,8 +147,8 @@ json::object graphJson(const Result& result, const json::object& data,
       contacts.push_back(contact);
     }
   }
-  for (size_t i = 0; i < graph.frames.size(); ++i) {
-    const auto& frame = graph.frames[i];
+  for (size_t i = 0; i < graph.measurements.size(); ++i) {
+    const auto& frame = graph.measurements[i];
     const auto& source = data.at("frames").as_array()[i].as_object();
     json::array measurement;
     for (const auto& o : graph.observations[i]) {
@@ -159,10 +160,11 @@ json::object graphJson(const Result& result, const json::object& data,
            {"local", vectorJson(o.measurement.localPoint)}});
       ++observations;
     }
+    // Preserve the saved JSON schema: sampleIndex is the original Slice::k.
     frames.push_back(
         {{"id", "frame-" + std::to_string(i)},
          {"index", i},
-         {"sampleIndex", frame.sampleIndex},
+         {"sampleIndex", frame.slice.k},
          {"time", frame.time},
          {"contacts", source.at("contacts")},
          {"starts", source.if_contains("starts") ? source.at("starts")
@@ -176,14 +178,16 @@ json::object graphJson(const Result& result, const json::object& data,
   for (const auto& component : graph.contactComponents)
     contactComponents.push_back(indicesJson(component));
   if (options.addBetweenFactors)
-    for (size_t i = 1; i < graph.frames.size(); ++i)
+    for (size_t i = 1; i < graph.measurements.size(); ++i)
       betweenEdges.push_back({i - 1, i});
   if (options.addUprightFactors)
-    for (size_t i = 0; i < graph.frames.size(); ++i) uprightPoses.push_back(i);
+    for (size_t i = 0; i < graph.measurements.size(); ++i)
+      uprightPoses.push_back(i);
   if (!graph.groundFactors.empty())
     for (size_t i = 0; i < graph.landmarks.size(); ++i)
       groundLandmarks.push_back(i);
-  const size_t poses = graph.frames.size(), points = graph.landmarks.size();
+  const size_t poses = graph.measurements.size(),
+               points = graph.landmarks.size();
   const bool ground = model == Model::Ground;
   const size_t gauge = (ground || options.addGroundFactors ? 3
                         : options.addUprightFactors        ? 4
@@ -349,8 +353,8 @@ std::vector<Pose3> alignedReferences(const Graph& graph,
                                      const json::object& reference) {
   const auto& source = reference.at("poses").as_array();
   std::vector<Pose3> poses;
-  for (const auto& frame : graph.frames) {
-    const auto& value = source.at(frame.sampleIndex).as_object();
+  for (const auto& frame : graph.measurements) {
+    const auto& value = source.at(frame.slice.k).as_object();
     const auto& q = value.at("q").as_array();
     Eigen::Quaterniond quaternion(number(q[0]), number(q[1]), number(q[2]),
                                   number(q[3]));
@@ -430,14 +434,15 @@ json::object run(const json::object& request) {
       options.maxIterations > 1000)
     throw std::invalid_argument("Benchmark bounds exceeded.");
   // Source FK adaptation happens once, outside native core phase measurements.
-  const auto frames = datasetFrames(data, model);
+  const auto measurements = datasetMeasurements(data, model);
   options.recordHistory = false;
   ContactInitializer initializer;
-  for (size_t i = 0; i < warmup; ++i) initializer.Initialize(frames, options);
+  for (size_t i = 0; i < warmup; ++i)
+    initializer.Initialize(measurements, options);
   std::vector<double> optimization, build, seed, total;
   std::vector<size_t> iterationCounts;
   for (size_t i = 0; i < repetitions; ++i) {
-    const auto result = initializer.Initialize(frames, options);
+    const auto result = initializer.Initialize(measurements, options);
     optimization.push_back(result.timings.optimizationMs);
     build.push_back(result.timings.graphBuildMs);
     seed.push_back(result.timings.seedMs);
@@ -446,7 +451,7 @@ json::object run(const json::object& request) {
   }
   // History is captured in a separate run and excluded from benchmark samples.
   options.recordHistory = true;
-  const auto result = initializer.Initialize(frames, options);
+  const auto result = initializer.Initialize(measurements, options);
   const auto graph = graphJson(result, data, options);
   // Reference evaluation happens after all solves and outside every timing
   // scope.
