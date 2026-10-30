@@ -98,17 +98,16 @@ LM diagonal damping permits point-mode solves but adds no measured attitude
 information. The recorded cap is 100 LM iterations; stopping tolerances are
 relative objective improvement `1e-8` or absolute improvement `1e-12`.
 
-Three explicit modes are recorded:
+The app offers two contact models, both with free `Point3` landmark heights:
 
 | Mode | Contact variables | Assumption |
 | --- | --- | --- |
-| Sole patch + hard floor | Three `Point2` xy landmarks per stance, fixed common z | Stationary sole patch on known level ground |
 | Contact-only sole patch | Three `Point3` landmarks per stance | Stationary rigid sole, with no terrain constraint |
 | One material point | One `Point3` per stance | Point support; rotations remain ambiguous |
 
-The plane is an exact parameterization, not a soft penalty. First-sole FK sets
-the initial tilt and the plane height in the chosen coordinate system. Given
-fixed world landmarks, one point provides pose rank 3, two distinct points rank
+Landmark heights are constrained only when the height-prior checkbox is enabled.
+The native API and recording archive also retain the hard-floor `Model::Ground`
+experiment, but the app does not expose it. Given fixed world landmarks, one point provides pose rank 3, two distinct points rank
 5, and three noncollinear points rank 6. Local ranks do not certify global graph
 observability or physical validity of the no-slip assumption.
 
@@ -120,8 +119,8 @@ contact residual is not a guarantee of trajectory accuracy.
 
 The contact selector and checkboxes inside the animation window select all
 eight saved combinations of weak motion, upright, and landmark-height priors
-for each of three contact models, for both sequences (48 native configurations
-in total). Every solve, timing measurement,
+for each of the two contact models, for both sequences (32 selectable native
+configurations). Every solve, timing measurement,
 and held-out error calculation runs in C++; the browser selects saved results.
 Large timing and error cards appear above the viewer. The comparison table
 appears below the animation.
@@ -143,13 +142,15 @@ unique `Point3` landmark, with `groundSigma = 0.02` metres. The factor leaves
 XY unconstrained and does not reparameterize landmarks or project their seeds.
 By default, `h` is the mean height of the first stance's points transformed by
 the fixed first pose. The caller can instead supply `groundPriorHeight` in
-world coordinates. Reference poses never determine this height. The hard-floor
-model already fixes Z exactly, so it omits redundant height factors; the UI
-labels this case explicitly. All eight requested combinations are still saved.
+world coordinates. Reference poses never determine this height. Without this
+factor, landmark Z coordinates remain optimization variables with no floor
+constraint.
 
 All optional priors are off by default in the C++ API. The app initially selects
 3D sole landmarks and automatically selects the prior combination with the
-lowest saved translation RMSE when the sequence or contact model changes.
+lowest saved translation RMSE among configurations matching the current
+height-prior checkbox when the sequence or contact model changes. Height starts
+off and changes only through an explicit checkbox or table-row selection.
 Manual checkbox changes still select any saved combination. All three standard
 deviations can be set through the native API.
 

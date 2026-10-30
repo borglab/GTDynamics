@@ -71,6 +71,15 @@ for(const entry of entries){
       assert.equal(graph.groundLandmarkIndices.length,ground&&model!=='ground'?graph.landmarks.length:0);
       assert.equal(graph.dimensions.groundFactors,graph.groundLandmarkIndices.length);
       assert.equal(graph.regularization.groundAlreadyFixed,model==='ground');
+      if(model!=='ground'){
+        assert.equal(graph.groundPlane,null,'Selectable models have no hard floor');
+        assert.equal(graph.dimensions.effectiveLandmarkVariables,graph.landmarks.length*3);
+        if(!ground){
+          const heights=result.landmarks.map(p=>p[2]);
+          assert(Math.max(...heights)-Math.min(...heights)>0.01,'Landmark heights are allowed to vary');
+          assert.equal(result.objectiveComponents.ground,0);
+        }
+      }
       assert.equal(graph.contactComponents.length,entry.data.metadata.stats.graphComponents);
       assert.equal(graph.components.length,between?1:graph.contactComponents.length);
       assert(evaluation.positionRmseMeters>=0&&Number.isFinite(evaluation.positionRmseMeters));

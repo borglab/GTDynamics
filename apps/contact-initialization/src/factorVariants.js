@@ -8,3 +8,10 @@ export const factorVariants = [
   {id:'upright-ground', title:'Upright + height', between:false, upright:true, ground:true},
   {id:'all', title:'All three priors', between:true, upright:true, ground:true},
 ];
+
+// Automatic selection preserves the user's height-prior choice. Only an
+// explicit checkbox or table-row selection may change that assumption.
+export function bestTranslationRow(rows, ground) {
+  return rows.filter(row=>row.ground===ground).reduce((best,row)=>
+    !best||row.run.evaluation.positionRmseMeters<best.run.evaluation.positionRmseMeters?row:best,null);
+}
