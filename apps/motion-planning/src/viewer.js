@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import loadMujoco from 'mujoco-js';
+import { createRobotVisual, updateRobotBodies } from '../../shared/mujocoRobot.js';
 
 THREE.ColorManagement.enabled = true;
 
@@ -271,55 +272,10 @@ export class MotionPlanningViewer {
   }
 
   createRobotMeshes() {
-    const m = this.model;
-    this.bodies = Array.from({ length: m.nbody }, () => new THREE.Group());
-    this.robotRoot = new THREE.Group();
-    this.robotRoot.add(...this.bodies);
+    const visual = createRobotVisual(this.model);
+    this.bodies = visual.bodies;
+    this.robotRoot = visual.root;
     this.scene.add(this.robotRoot);
-    const meshes = new Map();
-    for (let g = 0; g < m.ngeom; g += 1) {
-      // Menagerie's group 2 contains visual geometry; group 3 is collision-only.
-      if (m.geom_group[g] >= 3) continue;
-      const type = m.geom_type[g];
-      const [x, y, z] = m.geom_size.slice(3 * g, 3 * g + 3);
-      let geometry;
-      if (type === 7) {
-        const id = m.geom_dataid[g];
-        if (!meshes.has(id)) {
-          const mesh = new THREE.BufferGeometry();
-          mesh.setAttribute('position', new THREE.BufferAttribute(new Float32Array(m.mesh_vert.slice(
-            3 * m.mesh_vertadr[id], 3 * (m.mesh_vertadr[id] + m.mesh_vertnum[id]))), 3));
-          mesh.setIndex(Array.from(m.mesh_face.slice(
-            3 * m.mesh_faceadr[id], 3 * (m.mesh_faceadr[id] + m.mesh_facenum[id]))));
-          mesh.computeVertexNormals();
-          meshes.set(id, mesh);
-        }
-        geometry = meshes.get(id);
-      } else if (type === 2 || type === 4) {
-        geometry = new THREE.SphereGeometry(type === 2 ? x : 1, 20, 16);
-        if (type === 4) geometry.scale(x, y, z);
-      } else if (type === 3 || type === 5) {
-        geometry = type === 3 ? new THREE.CapsuleGeometry(x, 2 * y, 8, 16)
-          : new THREE.CylinderGeometry(x, x, 2 * y, 20);
-        geometry.rotateX(Math.PI / 2);
-      } else if (type === 6) {
-        geometry = new THREE.BoxGeometry(2 * x, 2 * y, 2 * z);
-      } else continue;
-      const materialId = m.geom_matid[g];
-      const rgba = materialId >= 0 ? m.mat_rgba.slice(4 * materialId, 4 * materialId + 4)
-        : m.geom_rgba.slice(4 * g, 4 * g + 4);
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(rgba[0], rgba[1], rgba[2]).convertSRGBToLinear(),
-        opacity: rgba[3], transparent: rgba[3] < 1, metalness: 0.12, roughness: 0.48,
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.fromArray(m.geom_pos, 3 * g);
-      mesh.quaternion.set(m.geom_quat[4 * g + 1], m.geom_quat[4 * g + 2],
-        m.geom_quat[4 * g + 3], m.geom_quat[4 * g]);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      this.bodies[m.geom_bodyid[g]].add(mesh);
-    }
     this.tcpAxes = new THREE.AxesHelper(0.09);
     this.scene.add(this.tcpAxes);
   }
@@ -572,11 +528,7 @@ export class MotionPlanningViewer {
       }
     }
     if (this.data) {
-      this.bodies.forEach((body, i) => {
-        body.position.fromArray(this.data.xpos, 3 * i);
-        body.quaternion.set(this.data.xquat[4 * i + 1], this.data.xquat[4 * i + 2],
-          this.data.xquat[4 * i + 3], this.data.xquat[4 * i]);
-      });
+      updateRobotBodies(this.bodies, this.data);
       const hand = this.bodies[this.handBody];
       this.tcpAxes.quaternion.copy(hand.quaternion);
       this.tcpAxes.position.set(0, 0, 0.1034).applyQuaternion(hand.quaternion).add(hand.position);

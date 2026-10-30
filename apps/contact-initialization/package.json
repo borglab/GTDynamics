@@ -7,8 +7,8 @@
     "dev": "vite --host 127.0.0.1 --port 3003",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 3003",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs && python3 -m unittest discover -s tests -p 'test_*.py'"
   },
-  "dependencies": {"three": "0.151.3", "vue": "^3.5.13"},
+  "dependencies": {"mujoco-js": "^0.0.7", "three": "0.151.3", "vue": "^3.5.13"},
   "devDependencies": {"@vitejs/plugin-vue": "^5.2.3", "vite": "^6.2.2"}
 }

@@ -13,6 +13,8 @@ try {
     'motion-planning/public/assets/manifest.json',
     'motion-planning/public/assets/franka_emika_panda/scene.xml',
     'motion-planning/public/recording.json',
+    'contact-initialization/public/assets/manifest.json',
+    'contact-initialization/public/assets/unitree_g1/g1.xml',
   ].map(path => access(resolve(root, path))));
 } catch (error) {
   throw new Error('App assets are missing. Run npm run models before building.', { cause: error });

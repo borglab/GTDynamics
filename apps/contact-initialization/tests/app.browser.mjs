@@ -28,11 +28,30 @@ try {
       const app=page.frameLocator('iframe');
       const lab=app.locator('.lab');
       await app.locator('canvas').waitFor();
-      assert.equal(await lab.getAttribute('data-model'),'ground');
+      await app.locator('.scene[data-renderer="mujoco"]').waitFor();
+      assert.equal(await app.locator('.scene').getAttribute('data-joints'),'29');
+      assert(Number(await app.locator('.scene').getAttribute('data-meshes'))>20);
+      assert.equal(await lab.getAttribute('data-model'),'patch');
+      assert.equal(await lab.getAttribute('data-variant'),'all');
+      assert.equal(await app.locator('.configuration-table tbody tr').count(),8);
+      assert.equal(await app.locator('.ground-edge').count(),38);
+      await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).uncheck();
+      await app.getByRole('checkbox',{name:'Upright factors',exact:true}).uncheck();
+      await app.getByRole('checkbox',{name:'Weak BetweenFactors',exact:true}).uncheck();
+      assert.equal(await app.locator('.ground-edge').count(),0);
+      await app.getByRole('combobox',{name:'Contact geometry'}).selectOption('ground');
       assert.equal(await lab.getAttribute('data-sequence'),'g1-policy-8s');
       assert.equal(await app.locator('.error-banner').count(),0);
-      assert.match(await app.locator('.native-timings').innerText(),/GTSAM solves it/);
-      assert.match(await app.locator('.native-badge').innerText(),/Release · 11 runs · 2 warmups/);
+      assert.match(await app.locator('.comparison-panel').innerText(),/Eight saved prior combinations/);
+      assert.match(await app.locator('.timing-context').innerText(),/Release · 11 runs \/ 2 warmups/);
+      assert.match(await app.locator('.headline-metrics').innerText(),/NATIVE GTSAM LM[\s\S]*CONTACT RMS[\s\S]*ROOT POSITION RMSE/);
+      for(const [variant,between,upright,ground] of [['between',true,false,false],['upright',false,true,false],['both',true,true,false],['ground',false,false,true],['between-ground',true,false,true],['upright-ground',false,true,true],['all',true,true,true],['none',false,false,false]]) {
+        await app.getByRole('checkbox',{name:'Weak BetweenFactors',exact:true}).setChecked(between);
+        await app.getByRole('checkbox',{name:'Upright factors',exact:true}).setChecked(upright);
+        await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).setChecked(ground);
+        await app.locator(`.lab[data-variant="${variant}"]`).waitFor();
+        assert.equal(await app.locator('.configuration-table tbody tr.active').count(),1);
+      }
       assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*672/);
       const startingEvent=Number(await lab.getAttribute('data-event'));
       await app.getByRole('button',{name:'Next event',exact:true}).click();
@@ -46,11 +65,11 @@ try {
       await page.waitForTimeout(600);
       await app.getByRole('button',{name:'Pause event playback'}).click();
       assert(Number(await lab.getAttribute('data-event'))>50);
-      await app.getByRole('button',{name:'Freeze the robot'}).click();
-      assert.match(await app.locator('.scene-card .panel-top').innerText(),/RIGID SNAPSHOT/);
-      await app.getByRole('button',{name:'Find the events'}).click();
-      assert.match(await app.locator('.scene-card .panel-top').innerText(),/MEASURED WALK/);
-      await app.getByRole('button',{name:'Connect the contacts'}).click();
+      await app.getByRole('button',{name:'Fixed FK'}).click();
+      assert.match(await app.locator('.scene-card .panel-top').innerText(),/FIXED FK/);
+      await app.getByRole('button',{name:'Frame selection'}).click();
+      assert.match(await app.locator('.scene-card .panel-top').innerText(),/REFERENCE TRAJECTORY/);
+      await app.getByRole('button',{name:'Pose/landmark graph'}).click();
       for(const [mode,scalars] of [['patch',786],['point',558],['ground',672]]) {
         await app.getByRole('combobox',{name:'Contact geometry'}).selectOption(mode);
         await app.getByRole('button',{name:'Replay GTSAM solve'}).waitFor({state:'visible'});
@@ -58,7 +77,7 @@ try {
         assert.match(await app.locator('.graph-stats').innerText(),new RegExp(String(scalars)));
         const metrics=await app.locator('.evaluation-card .solve-metrics strong').allTextContents();
         assert(metrics.every(m=>Number.isFinite(parseFloat(m))));
-        if(mode==='point')assert.match(await app.locator('.insight-card h2').innerText(),/not a full pose/);
+        if(mode==='point')assert.match(await app.locator('.insight-card h2').innerText(),/rank deficiency/);
       }
       await app.getByRole('button',{name:'Replay GTSAM solve'}).click();
       await page.waitForTimeout(650);
@@ -89,9 +108,14 @@ try {
       await app.getByRole('checkbox',{name:'Snapshots',exact:true}).check();
       await app.getByRole('combobox',{name:'Motion sequence'}).selectOption('g1-steptouch-30s');
       await app.locator('.recording-loading').waitFor({state:'hidden'});
+      await app.getByRole('button',{name:'Contacts only',exact:true}).click();
       assert.equal(await lab.getAttribute('data-sequence'),'g1-steptouch-30s');
-      assert.match(await app.locator('.graph-stats').innerText(),/35[\s\S]*19/);
-      assert.match(await app.locator('.component-notice').innerText(),/3 disconnected support components/);
+      assert.match(await app.locator('.graph-stats').innerText(),/55[\s\S]*19/);
+      assert.match(await app.locator('.timeline-meta').innerText(),/34 contact \+ 21 periodic/);
+      assert.equal(await app.locator('.event-tick.periodic').count(),21);
+      await app.getByRole('slider',{name:'Contact event',exact:true}).fill('1');
+      assert.match(await app.locator('.scene-readout').innerText(),/PERIODIC[\s\S]*1.00/);
+      assert.match(await app.locator('.component-notice').innerText(),/2 measured contact components/);
       assert.match(await app.locator('.evaluation-card').innerText(),/component-relative/);
       assert.match(await app.locator('.timeline-caption').innerText(),/height\/speed heuristic/);
       for(const mode of ['point','patch','ground']){

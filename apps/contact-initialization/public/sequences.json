@@ -17,7 +17,7 @@
       "title": "Captured step-touch · 30 s",
       "data": "g1-steptouch-30s.json",
       "recording": "recordings/g1-steptouch-30s.json",
-      "description": "G1 Moves human capture retargeted to G1 · kinematic support labels · 3 support components",
+      "description": "G1 Moves human capture retargeted to G1 · corrected handover · 2 contact components separated by a short hop",
       "sourceUrl": "https://huggingface.co/datasets/exptech/g1-moves/blob/895d064b2385725e6aabf540461c219afc3e0916/README.md",
       "contactEvidence": "kinematic",
       "durationSeconds": 30,

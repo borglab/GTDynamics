@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { MujocoG1 } from './mujocoG1.js';
 
 // Everything in this viewer stays in the robot's native, Z-up coordinate system.
 const COLORS = { ink: '#243438', silver: '#94a4a3', left: '#13836e', right: '#df785c', paper: '#f0f2ed', path: '#778b87', reference: '#a6a7b6' };
-const Z = new THREE.Vector3(0, 0, 1);
-const Y = new THREE.Vector3(0, 1, 0);
 const vec = (a) => new THREE.Vector3(...(a ?? [0, 0, 0]));
 const mean = (points) => points.reduce((a, b) => a.add(vec(b)), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, points.length));
 
@@ -17,7 +16,7 @@ function release(object) {
   const geometries = new Set();
   const materials = new Set();
   object.traverse((child) => {
-    if (child.geometry) geometries.add(child.geometry);
+    if (child.geometry && !child.geometry.userData.sharedMujoco) geometries.add(child.geometry);
     if (child.material) for (const item of [child.material].flat()) materials.add(item);
   });
   for (const geometry of geometries) geometry.dispose();
@@ -50,16 +49,6 @@ function line(points, color, opacity = 1, dashed = false) {
   return result;
 }
 
-function capsuleBetween(a, b, radius, style, radial = 8) {
-  const distance = a.distanceTo(b);
-  if (distance < 1e-5) return new THREE.Group();
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.86, radius, distance, radial), style);
-  mesh.position.copy(a).add(b).multiplyScalar(0.5);
-  mesh.quaternion.setFromUnitVectors(Y, b.clone().sub(a).normalize());
-  mesh.castShadow = style.opacity > 0.7;
-  return mesh;
-}
-
 function sphere(at, radius, style) {
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 12, 8), style);
   mesh.position.copy(at);
@@ -83,76 +72,6 @@ function caption(value, color = COLORS.ink, scale = 0.22) {
   const result = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, toneMapped: false }));
   result.scale.set(scale * 4, scale, 1); result.renderOrder = 30;
   return result;
-}
-
-function samplePoints(sample, model) {
-  const result = {};
-  if (sample?.bodyPoints) (model?.bodyNames ?? []).forEach((name, i) => { result[name] = vec(sample.bodyPoints[i]); });
-  for (const [name, value] of Object.entries(sample?.points ?? sample?.joints ?? {})) result[name] = vec(value);
-  return result;
-}
-
-function bodyPoint(points, names, fallback) {
-  for (const name of names) if (points[name]) return points[name].clone();
-  return vec(fallback);
-}
-
-/** A mesh-free G1 silhouette whose joints are placed using the recorded FK. */
-function robot(sample, model, opacity = 1, reference = false) {
-  const group = new THREE.Group();
-  const points = samplePoints(sample, model);
-  const ink = material(reference ? COLORS.reference : COLORS.ink, opacity,{wireframe:reference});
-  const silver = material(reference ? COLORS.reference : COLORS.silver, opacity,{wireframe:reference});
-  const light = material(reference ? COLORS.reference : '#d8dfd9', opacity,{wireframe:reference});
-  const pelvis = bodyPoint(points, ['pelvis', 'pelvis_link', 'base'], [0, 0, 0]);
-  const chest = bodyPoint(points, ['torso_link', 'torso', 'waist_roll_link'], [0, 0, 0.04]);
-  // The G1 torso link is the waist origin. Shoulder FK also supplies the shell's
-  // orientation, including waist bends, without requiring visual mesh assets.
-  const leftShoulder = bodyPoint(points, ['left_shoulder_pitch_link', 'left_shoulder_roll_link'], [chest.x, 0.19, chest.z + 0.255]);
-  const rightShoulder = bodyPoint(points, ['right_shoulder_pitch_link', 'right_shoulder_roll_link'], [chest.x, -0.19, chest.z + 0.255]);
-  const shoulderCenter = leftShoulder.clone().add(rightShoulder).multiplyScalar(0.5);
-  const torsoUp = shoulderCenter.clone().sub(chest).normalize();
-  const torsoAcross = leftShoulder.clone().sub(rightShoulder).normalize();
-  const torsoForward = new THREE.Vector3().crossVectors(torsoAcross, torsoUp).normalize();
-  torsoAcross.crossVectors(torsoUp, torsoForward).normalize();
-  const torsoOrientation = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(torsoForward, torsoAcross, torsoUp));
-  const upperBody = new THREE.Group(); upperBody.position.copy(chest); upperBody.quaternion.copy(torsoOrientation); group.add(upperBody);
-  const shoulderHeight = shoulderCenter.distanceTo(chest);
-  const hipShell = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.235, 0.145), silver);
-  hipShell.position.copy(pelvis).add(new THREE.Vector3(0, 0, 0.025)); group.add(hipShell);
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.165, 0.24, Math.max(0.18, shoulderHeight)), ink);
-  torso.position.set(0, 0, shoulderHeight / 2); torso.castShadow = opacity > 0.7; upperBody.add(torso);
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.165, 0.165), light);
-  plate.position.set(0.087, 0, shoulderHeight / 2 + 0.015); upperBody.add(plate);
-  const neck = new THREE.Vector3(0, 0, shoulderHeight + 0.055);
-  upperBody.add(capsuleBetween(new THREE.Vector3(0, 0, shoulderHeight), neck, 0.035, silver));
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), light);
-  head.scale.set(0.8, 0.85, 1.06); head.position.copy(neck).add(new THREE.Vector3(0.005, 0, 0.067)); upperBody.add(head);
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.123, 0.053), ink);
-  visor.position.copy(head.position).add(new THREE.Vector3(0.065, 0, 0.005)); upperBody.add(visor);
-
-  for (const [side, sign] of [['left', 1], ['right', -1]]) {
-    const accent = material(reference ? COLORS.reference : COLORS[side], opacity);
-    const hip = bodyPoint(points, [`${side}_hip_roll_link`, `${side}_hip_pitch_link`, `${side}_hip`], [0, sign * 0.095, -0.045]);
-    const knee = bodyPoint(points, [`${side}_knee_link`, `${side}_knee`], [0, sign * 0.095, -0.34]);
-    const ankle = bodyPoint(points, [`${side}_ankle_roll_link`, `${side}_ankle_pitch_link`, `${side}_ankle`], [0, sign * 0.095, -0.67]);
-    group.add(capsuleBetween(hip, knee, 0.048, silver));
-    group.add(capsuleBetween(knee, ankle, 0.036, ink));
-    group.add(sphere(hip, 0.053, ink), sphere(knee, 0.043, accent), sphere(ankle, 0.029, silver));
-    const shinPanel = knee.clone().lerp(ankle, 0.42).add(new THREE.Vector3(0.025, 0, 0));
-    group.add(capsuleBetween(shinPanel.clone().lerp(knee, 0.5), shinPanel.clone().lerp(ankle, 0.6), 0.019, accent));
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.075, 0.045), ink);
-    const footState = sample?.feet?.[side];
-    if (footState?.q) foot.quaternion.set(footState.q[1], footState.q[2], footState.q[3], footState.q[0]);
-    foot.position.copy(footState?.p ? vec(footState.p) : ankle).add(new THREE.Vector3(0.04, 0, -0.026).applyQuaternion(foot.quaternion));
-    foot.castShadow = opacity > 0.7; group.add(foot);
-    const shoulder = bodyPoint(points, [`${side}_shoulder_roll_link`, `${side}_shoulder_pitch_link`, `${side}_shoulder`], [chest.x, sign * 0.19, chest.z + 0.23]);
-    const elbow = bodyPoint(points, [`${side}_elbow_link`, `${side}_elbow`], [chest.x, sign * 0.22, chest.z + 0.03]);
-    const wrist = bodyPoint(points, [`${side}_wrist_yaw_link`, `${side}_wrist_roll_link`, `${side}_wrist`], [chest.x + 0.04, sign * 0.22, chest.z - 0.12]);
-    group.add(capsuleBetween(shoulder, elbow, 0.027, silver), capsuleBetween(elbow, wrist, 0.024, ink));
-    group.add(sphere(shoulder, 0.04, ink), sphere(elbow, 0.03, silver), sphere(wrist, 0.025, ink));
-  }
-  return group;
 }
 
 function contactPoints(contact) {
@@ -186,7 +105,7 @@ function footprint(contact, active = false, projectToFloor = true) {
 
 /**
  * Rendering contract:
- *  model: {bodyNames}; samples: [{bodyPoints, feet:{left:{p,q},right:{p,q}}}]
+ *  model: {jointNames}; samples: [{jointAngles}]
  *  frames: [{sampleIndex, observations:[{local,contactId}]}]
  *  poses: solver {translation, rotation:rowMajor9}; referencePoses: same, or {p,q:wxyz}
  *  contacts: [{id,foot,points:[[x,y,z],...]}]; selectedIndex indexes frames.
@@ -194,6 +113,7 @@ function footprint(contact, active = false, projectToFloor = true) {
 export class ContactScene {
   constructor(container, { onSelect } = {}) {
     this.container = container; this.onSelect = onSelect; this.state = {}; this.disposed = false;
+    this.assetController = new AbortController();
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(COLORS.paper);
     this.scene.fog = new THREE.Fog(COLORS.paper, 9, 24);
     this.camera = new THREE.PerspectiveCamera(35, 1, 0.02, 60); this.camera.up.set(0, 0, 1);
@@ -209,12 +129,12 @@ export class ContactScene {
     this.controls.enableDamping = false; this.controls.minDistance = 0.8; this.controls.maxDistance = 18;
     this.controls.maxPolarAngle = Math.PI * 0.488; this.controls.screenSpacePanning = false;
     this.controls.addEventListener('change', () => this.render());
-    this.scene.add(new THREE.HemisphereLight('#f7fbff', '#a4b0a3', 1.5));
-    const key = new THREE.DirectionalLight('#fff8e9', 2.1); key.position.set(0, -3, 7); key.castShadow = true;
+    this.scene.add(new THREE.HemisphereLight('#f7fbff', '#a4b0a3', 0.65));
+    const key = new THREE.DirectionalLight('#fff8e9', 1.1); key.position.set(0, -3, 7); key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0005; key.shadow.normalBias = 0.015;
     Object.assign(key.shadow.camera, { left: -6, right: 6, bottom: -5, top: 5, near: 0.1, far: 20 });
     this.scene.add(key);
-    const fill = new THREE.DirectionalLight('#d6e9ed', 0.8); fill.position.set(-4, 3, 4); this.scene.add(fill);
+    const fill = new THREE.DirectionalLight('#d6e9ed', 0.35); fill.position.set(-4, 3, 4); this.scene.add(fill);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), material('#edf0e9', 1, { metalness: 0, roughness: 1 }));
     ground.position.z = -0.01; ground.receiveShadow = true; this.scene.add(ground); this.ground=ground;
     const grid = new THREE.GridHelper(30, 120, '#b5c2b7', '#d6ddd3'); grid.rotation.x = Math.PI / 2;
@@ -231,8 +151,17 @@ export class ContactScene {
     this.bounds = { center: new THREE.Vector3(0, 0, 0.6), span: 2 }; this.reset(); this.resize();
   }
 
+  async init() {
+    const robot = await MujocoG1.load(this.assetController.signal);
+    if (this.disposed) { robot.dispose(); return; }
+    this.robot = robot;
+    this.container.dataset.renderer = 'mujoco';
+    this.container.dataset.joints = String(this.robot.joints.size);
+    this.container.dataset.meshes = String(this.robot.model.nmesh);
+  }
+
   update(next) {
-    if (this.disposed) return;
+    if (this.disposed || !this.robot) return;
     const previous = this.state;
     this.state = { ...this.state, ...next };
     const state = this.state;
@@ -285,7 +214,7 @@ export class ContactScene {
       const dot = sphere(positions[index], 0.015, material(COLORS.ink, 0.7)); dot.userData.frameIndex = index;
       this.hitTargets.push(dot); this.pathGroup.add(dot);
       if (index % step !== 0 && index !== frames.length - 1) return;
-      const ghost = robot(this.sample(frame), model, 0.07); ghost.applyMatrix4(poseMatrix(poses[index])); this.ghostGroup.add(ghost);
+      const ghost = this.robot.create(this.sample(frame), model, { opacity: 0.055, color: COLORS.path }); ghost.applyMatrix4(poseMatrix(poses[index])); this.ghostGroup.add(ghost);
       const number = caption(String(index).padStart(2, '0'), '#73827b', 0.12);
       number.position.set(positions[index].x, positions[index].y - 0.12, 0.035); this.labelGroup.add(number);
     });
@@ -304,7 +233,7 @@ export class ContactScene {
     const index = Math.max(0, Math.min(frames.length - 1, selectedIndex));
     const frame = frames[index]; if (!frame || !poses[index]) return;
     const matrix = poseMatrix(poses[index]);
-    const body = robot(this.sample(frame), model); body.applyMatrix4(matrix); this.selectedGroup.add(body);
+    const body = this.robot.create(this.sample(frame), model); body.applyMatrix4(matrix); this.selectedGroup.add(body);
     const root = new THREE.Vector3().setFromMatrixPosition(matrix);
     const floorCenter = root.clone().setZ(0.008);
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.20, 0.207, 64), new THREE.MeshBasicMaterial({ color: COLORS.ink, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }));
@@ -327,7 +256,7 @@ export class ContactScene {
     }
     if (this.state.showReference !== false) {
       const reference = this.referencePose(frame, index);
-      if (reference) { const body = robot(this.sample(frame), model, 0.18, true); body.applyMatrix4(poseMatrix(reference)); this.selectedGroup.add(body); }
+      if (reference) { const body = this.robot.create(this.sample(frame), model, { opacity: 0.2, color: COLORS.reference }); body.applyMatrix4(poseMatrix(reference)); this.selectedGroup.add(body); }
     }
     const referencePath = this.pathGroup.getObjectByName('reference-path');
     if (referencePath) referencePath.visible = this.state.showReference !== false;
@@ -365,9 +294,11 @@ export class ContactScene {
   render() { if (!this.disposed) this.renderer.render(this.scene, this.camera); }
 
   dispose() {
+    if (this.disposed) return;
+    this.assetController.abort();
     this.disposed = true; this.resizeObserver.disconnect(); this.controls.dispose();
     this.renderer.domElement.removeEventListener('pointerdown', this.pointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.pointerUp);
-    release(this.scene); this.renderer.dispose(); this.renderer.domElement.remove();
+    release(this.scene); this.robot?.dispose(); this.renderer.dispose(); this.renderer.domElement.remove();
   }
 }

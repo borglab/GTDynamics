@@ -67,19 +67,31 @@ support turns on below 4 cm and 0.5 m/s, and remains on up to 6 cm and 1.0 m/s.
 Bounded gaps of at most two samples are bridged; episodes shorter than three
 samples are removed. All settings and raw height/speed signals are exported.
 
-The result has **19 candidate stance episodes, 35 event frames, and 3 support
-components**. There are 1,495 double-support samples, 294 single-support samples,
-and 11 samples without candidate support. Some contact-chain breaks reflect
-rapid sliding or uncertain retargeted support: neither foot is ever more than
-4.48 cm above the inferred floor, so these gaps should not be presented as
-verified flight. The conservative speed threshold rejects those uncertain
-states. No artificial motion factors reconnect the components.
+A one-sample lookback now recovers direct handovers that acquisition hysteresis
+otherwise separates. The incoming foot must already meet the height-on and
+speed-hold thresholds at the outgoing foot's final supported sample, and its
+support must be confirmed at the next sample. This refinement never crosses
+an interval without support. It recovers the right-foot touchdown at source
+sample 563 (9.383 s), creating the shared event frame missing from the earlier
+schedule. The correction is recorded in `detector.handoverCorrections`.
 
-Each component has its own gauge and cannot be positioned relative to the others
-from these factors alone. Evaluation must respect the separate gauges; a single
-first-pose alignment over the entire sequence would report a misleading global
-trajectory error. A kinematic contact label also does not establish no-slip or
-rigid-flat-foot contact: the inferred stances may still violate those assumptions.
+The result has **19 candidate stance episodes, 55 selected frames, and 2 contact
+components**. The frames comprise 34 contact boundaries and 21 supplemental
+samples, so adjacent frames are at most one second apart. There are 1,496 double-support samples, 293 single-support samples,
+and 11 unsupported samples (1357–1367, 22.617–22.783 s; next support at 22.800 s).
+Both soles are above the inferred floor throughout that gap: the lower sole is
+3.58–4.48 cm high. A quadratic fit to the model's mass-weighted centre of mass
+in those samples gives vertical acceleration about -9.34 m/s², with 1.81 mm
+fit RMS. This is consistent with a short hop, rather than a missed grounded
+handover. It remains kinematic evidence from retargeted motion, without force
+measurements or a claim of verified physical contact.
+
+Contacts alone leave two independent world gauges. The optional weak
+BetweenFactors connect them as an explicit motion assumption; the UI keeps the
+measured contact-component count separate from the regularized graph count.
+Contacts-only errors align each component separately, while connected variants
+use one first-pose alignment. Candidate support still does not establish no-slip
+or rigid-flat-foot contact.
 
 Samples store `contactSignals.left/right.soleHeightAboveFloorMeters` and
 `minimumSoleSpeedMetersPerSecond`. They have no `normalLoads` field. The dataset
@@ -87,14 +99,40 @@ has `metadata.contactEvidence = "kinematic"` and a documented detector type.
 The shared frame/stance convention is `[start,endExclusive)`, with each graph
 endpoint `end = endExclusive - 1` at the last supported sample.
 
-## Reproduce
+## Frame sampling
 
-Use NumPy and MuJoCo 3.16.0 with the original G1 `model.mjb` described in
-[README.md](README.md). From the repository root:
+Both exporters retain every contact start and final supported sample. Whenever
+the next boundary is more than one second away, they select the latest original
+sample within one second of the preceding frame and repeat until the boundary
+is reached. Each supplemental frame uses that sample's measured FK and the
+contacts active at that timestamp. Contact intervals and flight gaps are
+unchanged. The native GTDynamics adapter applies the same rule to its requested
+joint samples before solving.
+
+The policy walk already has a maximum frame gap of 0.71 s and needs no additional
+frames. The capture now has 55 frames instead of 34, with a maximum gap of 1 s.
+`metadata.frameSampling` records the interval and counts; each frame's `selection`
+is `contact` or `periodic`. The UI marks periodic ticks with dashed lines.
+
+To resample an existing FK export without regenerating measurements, run in
+`py312` from the repository root, then regenerate the native recordings:
 
 ```bash
-python apps/contact-initialization/scripts/export_g1_moves.py \
-  --model /path/to/original/g1-recording/model.mjb
+python apps/contact-initialization/scripts/contact_discovery.py \
+  apps/contact-initialization/public/g1-walk.json \
+  apps/contact-initialization/public/g1-steptouch-30s.json
+python apps/contact-initialization/scripts/export_native_recordings.py \
+  --optimizer build/contact-initialization/contact_initializer
+```
+
+## Reproduce
+
+Use the `py312` environment with NumPy and MuJoCo. Bootstrap the pinned G1
+Menagerie model as described in [README.md](README.md), then run from the
+repository root:
+
+```bash
+python apps/contact-initialization/scripts/export_g1_moves.py
 ```
 
 The script downloads the pinned CSV into the ignored app `.cache/g1-moves/`
@@ -107,3 +145,14 @@ The original dynamic sequence uses
 `scripts/export_g1_contacts.py` and its simulator-force detector. Its normal loads
 must not be compared as if they were the same evidence as the longer capture's
 height/speed labels.
+
+## Visual model
+
+The browser renders Unitree's 29-joint G1 meshes from MuJoCo Menagerie revision
+`a03e87bf13502b0b48ebbf2808928fd96ebf9cf3`, shared with Motion Snippets.
+`scripts/bootstrap_mujoco_models.py` downloads the pinned assets and generates
+the contact app's manifest. The static build includes the model's BSD-3-Clause
+license at `assets/unitree_g1/LICENSE`. Node tests compare its pelvis-relative
+FK with the recorded body positions in both sequences. Rendering uses measured
+joint angles and the recorded event root poses; it does not change the solver's
+measurements or benchmark timings.

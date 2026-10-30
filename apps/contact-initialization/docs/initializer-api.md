@@ -39,9 +39,13 @@ double solveMilliseconds = diagnostics.timings.optimizationMs;
 
 Episode intervals include their first and last samples. Their boundaries must
 occur in `samples`; the initial and final requested samples need active
-contacts. The adapter freezes FK geometry at those event samples and builds
-one GTSAM graph whose variables are event root poses and shared stance points.
-The first root pose fixes the world gauge. The adapter rejects disconnected
+contacts. The adapter retains contact boundaries and selects additional requested
+samples whenever the next boundary is more than one second away. It uses the
+latest measured sample within one second of the previous frame; requested
+samples too sparse to meet that limit are rejected. The adapter freezes FK
+geometry at all selected samples and builds one GTSAM graph whose variables
+are root poses and shared stance points.
+The first root pose fixes the world gauge. By default the adapter rejects disconnected
 contact graphs: independent components have unrelated world gauges and cannot
 safely be interpolated into one dense trajectory. The lower-level core exposes
 those components for diagnosis and visualization.
@@ -73,3 +77,29 @@ For callers that already have FK contact geometry, the lower-level
 `gtdynamics::contact_init::ContactInitializer` accepts `EventFrame` objects
 directly and has no dependency on `Robot`. Its optional pose-key callback also
 supports downstream applications with their own key conventions.
+
+
+Optional priors are explicit native API settings:
+
+```cpp
+options.addBetweenFactors = true;  // Identity motion, between adjacent event poses.
+options.betweenTranslationSigma = 10.0;  // metres
+options.betweenRotationSigma = 3.141592653589793;  // radians
+options.addUprightFactors = true;  // Body Z aligned to world Z; yaw stays free.
+options.uprightSigma = 0.2617993877991494;  // 15 degrees
+options.addGroundFactors = true;  // Scalar landmark-height prior; XY stays free.
+options.groundSigma = 0.02;  // metres
+// Optional known world height; otherwise use the first anchored stance mean.
+options.groundPriorHeight = 0.0;
+```
+
+With BetweenFactors enabled, the graph connects separate contact components
+and fixes only its first pose. The adapter can then expand that regularized
+solution; the cross-gap motion comes from the explicit weak prior. Upright
+and landmark-height factors alone do not connect separate components. `Graph::contactComponents`
+preserves the measured support structure, while `Graph::components` describes
+the complete graph. `Result` reports separate contact, between, upright and
+ground objectives; `residualRms` excludes all prior costs. Soft ground factors
+keep Point3 landmarks and penalize only their Z coordinate. The hard-ground
+Point2 model already enforces the floor exactly and omits redundant height
+factors. A supplied height that conflicts with its fixed plane is rejected.
