@@ -1,3 +1,18 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file yetong03_half_sphere_trajectory.cpp
+ * @brief Constraint-manifold optimization example.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+#include <gtdynamics/scenarios/HalfSphereRetractor.h>
 #include "gtdynamics/cmopt/TangentSpaceBasis.h"
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtsam/base/Matrix.h>

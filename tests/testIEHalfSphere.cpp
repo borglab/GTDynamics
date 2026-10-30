@@ -6,11 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  testIEHalfSphere.cpp
+ * @file testIEHalfSphere.cpp
  * @brief Unit tests for the inequality-constrained half-sphere examples.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/scenarios/DomeRetractor.h>
+#include <gtdynamics/scenarios/HalfSphereRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/cmopt/TangentSpaceBasis.h>

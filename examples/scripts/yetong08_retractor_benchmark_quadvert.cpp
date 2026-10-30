@@ -6,12 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  retractor_benchmark_quadvert.cpp
+ * @file yetong08_retractor_benchmark_quadvert.cpp
  * @brief Tspace and Retractor benchmarking in a quadruped vertical jump
  * trajectory optimization problem.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/utils/GraphUtils.h>

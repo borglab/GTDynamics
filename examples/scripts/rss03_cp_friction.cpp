@@ -6,11 +6,14 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  rss03_cp_friction.cpp
+ * @file rss03_cp_friction.cpp
  * @brief RSS cart-pole friction benchmark for CMC-Opt comparisons.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
+#include <gtdynamics/scenarios/CPBarrierRetractor.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 

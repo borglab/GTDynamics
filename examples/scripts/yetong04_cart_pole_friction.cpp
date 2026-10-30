@@ -6,11 +6,13 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  yetong04_cart_pole_friction.cpp
+ * @file yetong04_cart_pole_friction.cpp
  * @brief Cart-pole friction example using inequality-constrained optimization.
  * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
+#include <gtdynamics/scenarios/CPBarrierRetractor.h>
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>

@@ -230,10 +230,10 @@ Conceptually, the retraction solves a feasibility-restoring projection problem w
 Pointers:
 
 - [IELMTrial::NonlinearUpdate](IELMOptimizerState.cpp#L702)
-- [IERetractor](IERetractor.h#L92)
-- [BarrierRetractor](IERetractor.h#L125)
-- [RunPenaltyOptimization](IERetractor.cpp#L51)
-- [BarrierRetractor::retract](IERetractor.cpp#L116)
+- [IERetractor](IERetractor.h)
+- [BarrierRetractor](BarrierRetractor.h)
+- [RunPenaltyOptimization](BarrierRetractor.cpp)
+- [BarrierRetractor::retract](BarrierRetractor.cpp)
 
 The concrete barrier retractor does three things:
 
@@ -251,6 +251,71 @@ regression checks both the returned boundary point and its tangent cone.
 
 Thesis reference: Eq. (4.26) is the standard CMC metric-projection retraction. Eq. (4.46) is the on-corner retraction that additionally enforces blocking inequalities as equalities. Eq. (4.27) is the cleanup feasibility objective used after the penalty projection.
 
+### Affine equality manifolds: reduced AL retraction
+
+[`ReducedALRetractor`](ReducedALRetractor.h) applies when the equality
+constraints are **exactly affine in Euclidean variables**. This is a documented
+precondition. It uses the original scalar
+inequalities directly, including nonlinear constraints involving multiple keys.
+It does not require an `InequalityModel`, construct a QCQP, or approximate
+nonlinear pose or trajectory equalities by a globally affine manifold.
+
+The component owns the recovery basis and projection geometry. For a known
+constant affine equality graph, set `IEConstraintManifold::Params::affineEqualities`
+to `true`: successor states share the numeric equality basis, avoiding repeated
+linearization and elimination. The default remains `false`, so nonlinear
+manifolds rebuild their numeric basis at each state. This option is a caller
+contract about fixed affine equations in Euclidean variables; it is not inferred
+from one Jacobian and does not freeze active inequality faces.
+
+`IEConstraintManifold::projectionMetric()` caches a `TangentSpaceMetric` containing
+recovery maps and Cholesky whitening of `B' W B`. Affine successor states share
+this immutable geometry. Changes to effective prior weights or selected keys
+invalidate the cache; independent components do not share it. The metric follows
+the existing prior sigma conventions, including optional varying sigmas and
+partial priors. Only the target and common trial-length normalization change
+per retraction. Equality factors must remain unchanged during an affine solve.
+
+At an equality-feasible anchor `x0`, recovery is `x = x0 + B z`. Before AL, the
+retractor checks whether the ambient trial already satisfies the original
+constraints **and every requested blocking face**. If so, its projection cost
+is zero and it is returned immediately. Otherwise it computes the unconstrained
+metric projection onto the affine equalities; if that point passes the same
+checks, it is the constrained minimizer and AL is also unnecessary. These are
+optimality shortcuts, not acceptance of an arbitrary feasible AL iterate.
+`IERetractionInfo` counts both shortcuts, AL calls, and inner LM iterations.
+
+Each inequality evaluates its original expression at the recovered variables;
+its reduced Jacobian is the sum of its original key Jacobians times the
+corresponding recovery blocks. Only keys used by that constraint are recovered.
+Original noise sigmas are applied once. A fixed positive scale, the maximum
+reduced gradient norm at the anchor and target (floored at `1e-12`), normalizes
+each row. Blocked inequalities become equalities using the same expression.
+GTSAM's `AugmentedLagrangianOptimizer` solves this reduced nonlinear problem;
+CMC's outer tangent-cone QP continues to use its existing solver.
+
+For elliptic friction, AL now receives the original norm-valued cone expression.
+There is no squared-cone conversion. Its nonsmooth apex and the original
+factor's Jacobian convention remain; this is not a general apex solution.
+For nonconvex problems, including forced curved boundary faces, stationarity
+does not establish a global closest point.
+
+The AL driver uses GTSAM's public BCL iteration and floors its shrinking inner
+stationarity target at the requested final tolerance. Defaults retain `1e-7`
+normalized stationarity, `1e-8` original whitened feasibility, and `1e-7`
+active-face tolerance. The normalized feasibility target accounts for row
+scaling; original equality and inequality residuals are checked after recovery.
+The retractor throws if convergence or validation fails. It does not accept
+feasibility alone or fall back to an ambient penalty solve. Settings live in
+`ReducedALRetractor::Settings`; shared retractor parameters supply the metric
+and initialization choice.
+
+Regression tests are in [`testReducedALRetractor.cpp`](../../tests/testReducedALRetractor.cpp)
+and [`testReducedALRetractionValidation.cpp`](../../tests/testReducedALRetractionValidation.cpp).
+They cover projection signs, affine reduction, weighted metrics, original
+quadratic and norm-cone factors, nonquadratic multi-key constraints, whitening,
+forced boundaries, nonfinite evaluations, and explicit apex failures.
+
 ## 10) Boundary Forcing and Mode Changes
 
 CMC-Opt does not only react to the current active set. It can also force a boundary switch when repeated failed trials show that a new boundary is being approached strongly enough.
@@ -265,7 +330,7 @@ Pointers:
 - [IELMOptimizer::checkModeChange](IELMOptimizer.cpp#L133)
 - [IEConstraintManifold::moveToBoundary](IEConstraintManifold.cpp#L146)
 - [IEManifoldValues::moveToBoundaries](IEConstraintManifoldUtils.cpp#L25)
-- [BarrierRetractor::moveToBoundary](IERetractor.cpp#L78)
+- [BarrierRetractor::moveToBoundary](BarrierRetractor.cpp)
 
 This is where CMC-Opt moves from a purely smooth local method to a boundary-mode method.
 
@@ -321,8 +386,8 @@ Some CMC-Opt runs use varying metric sigmas when building the retraction priors.
 
 Pointers:
 
-- [IERetractorParams](IERetractor.h#L31)
-- [IERetractorParams::createVaryingSigmas](IERetractor.h#L63)
+- [IERetractorParams](IERetractor.h)
+- [IERetractorParams::createVaryingSigmas](IERetractor.h)
 - [IELMState::computeMetricSigmas](IELMOptimizerState.cpp#L148)
 
 Thesis reference: metric retractions are written generically in Eq. (5.12), with the cost-aware metric idea in Eqs. (5.18), (5.20), and (5.21). For CMCs, the projected gradient under the induced metric is Eq. (5.4).
@@ -335,10 +400,60 @@ If you want to trace the math in code order, read these files in this order:
 2. [IEConstraintManifold.h](IEConstraintManifold.h#L25) and [IEConstraintManifold.cpp](IEConstraintManifold.cpp#L181)
 3. [TangentCone.h](TangentCone.h#L25) and [TangentCone.cpp](TangentCone.cpp#L23)
 4. [IELMOptimizerState.h](IELMOptimizerState.h#L35) and [IELMOptimizerState.cpp](IELMOptimizerState.cpp#L493)
-5. [IERetractor.h](IERetractor.h#L90) and [IERetractor.cpp](IERetractor.cpp#L114)
+5. [IERetractor.h](IERetractor.h) and [IERetractor.cpp](IERetractor.cpp)
 6. [IELMOptimizer.h](IELMOptimizer.h#L40) and [IELMOptimizer.cpp](IELMOptimizer.cpp#L31)
 7. [IEGDOptimizer.h](IEGDOptimizer.h#L124) and [IEGDOptimizer.cpp](IEGDOptimizer.cpp#L51)
 
 ## 15) Relation to CM-Opt
 
 CMC-Opt reuses the equality-manifold machinery from CM-Opt and adds active sets, tangent cones, and boundary-aware retraction. For the equality-only side, see [../cmopt/README.md](../cmopt/README.md).
+
+
+## Shared affine projection for AL and Barrier retraction
+
+`IEConstraintManifold` owns the equality basis. With
+`IEConstraintManifold::Params::affineEqualities = true`, successive states reuse
+that numeric basis and its projection-metric cache. This is an explicit contract
+for affine equalities in Euclidean variables; nonlinear manifolds continue to
+rebuild their bases.
+
+`IERetractorParams::priorPrecisions()` defines the projection distance for both
+ambient prior factors and reduced objectives. It handles constant or varying
+sigmas, optional nominal scaling, selected keys, and repeated keys. The metric
+cache changes when the effective weights, selected keys, or whitening option
+change; those changes do not reconstruct the equality basis.
+
+`AffineProjection` supplies shared recovery, original scalar inequality
+pullbacks and derivatives, required blocking faces, and original-coordinate
+validation. Constraints may involve any original key, including eliminated
+variables. Both reduced solvers use it:
+
+- `ReducedALRetractor` retains its AL policy, normalization, and explicit
+  stationarity/feasibility convergence checks.
+- `BarrierRetractor` uses it when `IERetractorParams::useReducedCoordinates` is
+  true **and** the manifold has the affine contract. Otherwise it retains the
+  existing ambient implementation. The reduced path uses the existing GTSAM
+  penalty solver followed by active-face feasibility cleanup. It validates all
+  original constraints and required faces before returning. Its validation
+  threshold is `feasibleThreshold`, interpreted as an infinity norm of original
+  whitened residuals in this opt-in path; failure throws. Cleanup establishes
+  feasibility, not a stationarity certificate for the nearest point.
+
+For a fair penalty comparison, the reduced Barrier path retains original
+constraint scaling and projection-cost magnitude. AL's trial-length and row
+normalizations are not applied to the penalty problem, where they would change
+finite-penalty iterates. Eliminating the equalities does remove their penalty
+terms, so ambient and reduced solver trajectories need not coincide.
+
+`whitenAffineCoordinates` defaults to true. Setting it false retains the original
+basis coordinates and the quadratic cost metric instead of absorbing that
+metric into recovery maps. Both choices represent the same projection objective;
+conditioning and finite solver tolerances can still affect numerical results.
+
+Both reduced methods bypass the solver when the trial or its unconstrained
+weighted equality projection is already feasible, including any requested
+blocking faces. `numALSolveCalls`, `numPenaltySolveCalls`, `numFeasibleTrials`, and
+`numFeasibleProjections` distinguish these cases.
+
+The hierarchical CMC retractor and CM-only retractors are not converted to
+reduced solves by this change. Nonlinear finite recovery remains future work.

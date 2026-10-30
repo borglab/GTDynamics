@@ -165,15 +165,15 @@ The paper gives three practical retraction schemes:
 
 | Scheme | Paper equation | Code |
 | --- | --- | --- |
-| Metric projection | Eq. (22) | [`ProjectionRetractor::retract`](Retractor.cpp#L88) |
-| Approximate metric projection | Eq. (23) | [`UnconstrainedOptimizationRetractor::retractConstraints`](Retractor.cpp#L56) |
-| Retract basis variables | Eq. (24) | [`BasisRetractor::retractConstraints`](Retractor.cpp#L154) |
+| Metric projection | Eq. (22) | [`ProjectionRetractor::retract`](ProjectionRetractor.cpp) |
+| Approximate metric projection | Eq. (23) | [`UnconstrainedOptimizationRetractor::retractConstraints`](UnconstrainedOptimizationRetractor.cpp) |
+| Retract basis variables | Eq. (24) | [`BasisRetractor::retractConstraints`](BasisRetractor.cpp) |
 
 Shared flow:
 - Reduced tangent coordinates \(\xi\) become an ambient tangent update through
   the basis: [`ConstraintManifold::retract`](ConstraintManifold.cpp#L45)
-- Base variables are retracted first: [`Retractor::retract`](Retractor.h#L96)
-- The retractor then enforces the equality constraints: [`Retractor::retractConstraints`](Retractor.h#L118)
+- Base variables are retracted first: [`Retractor::retract`](Retractor.h)
+- The retractor then enforces the equality constraints: [`Retractor::retractConstraints`](Retractor.h)
 
 How the implementations differ:
 - `UnconstrainedOptimizationRetractor` runs unconstrained LM on the penalty graph, matching the
@@ -257,7 +257,7 @@ separate mathematical type:
 - using `UnconstrainedOptimizationRetractor` for approximate metric projection,
 - using `BasisRetractor` for sparse/basis-variable updates,
 - fast-pathing already feasible basis-retraction solves in
-  [`BasisRetractor::retractConstraints`](Retractor.cpp#L154).
+  [`BasisRetractor::retractConstraints`](BasisRetractor.cpp).
 
 Paper Sec. V-C explains why the basis-variable version is closely related to
 symbolic variable elimination: the chosen basis variables get direct tangent

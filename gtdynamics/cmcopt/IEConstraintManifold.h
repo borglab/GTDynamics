@@ -9,7 +9,8 @@
  * @file  IEConstraintManifold.h
  * @brief Manifold with boundary/corners formulated by equality and inequality
  * constraints
- * @author: Yetong Zhang
+ * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #pragma once
@@ -17,6 +18,8 @@
 #include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/cmcopt/TangentCone.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/TangentSpaceMetric.h>
+#include <mutex>
 
 namespace gtdynamics {
 using namespace gtsam;
@@ -34,6 +37,12 @@ public:
     IERetractorCreator::shared_ptr retractorCreator;
     TangentSpaceBasisCreator::shared_ptr equalityBasisCreator;
     bool equalityBasisBuildFromScratch = true;
+    /** Caller certifies constant affine equalities in Euclidean variables.
+     * Reuse their numeric basis across states of this component. This does not
+     * freeze inequality Jacobians or bases augmented with active faces.
+     * Default false preserves relinearization for nonlinear manifolds.
+     */
+    bool affineEqualities = false;
     /** Default constructor. */
     Params() = default;
   };
@@ -47,7 +56,15 @@ protected:
   size_t embedding_dim_;
   size_t e_constraints_dim_;
   size_t dim_;
+  // Capture the contract at construction; later Params edits cannot freeze a
+  // previously nonlinear basis or change the meaning of an existing state.
+  bool affine_equalities_;
   TangentSpaceBasis::shared_ptr e_basis_;
+  struct MetricCache {
+    std::mutex mutex;
+    TangentSpaceMetric::shared_ptr metric;
+  };
+  std::shared_ptr<MetricCache> metric_cache_;
   TangentCone::shared_ptr i_cone_;
   IERetractor::shared_ptr retractor_;
 
@@ -65,7 +82,9 @@ public:
             identifyActiveConstraints(*i_constraints, values, active_indices)),
         embedding_dim_(values.dim()), e_constraints_dim_(e_constraints_->dim()),
         dim_(embedding_dim_ - e_constraints_dim_),
+        affine_equalities_(params->affineEqualities),
         e_basis_(params->equalityBasisCreator->create(e_constraints_, values_)),
+        metric_cache_(std::make_shared<MetricCache>()),
         i_cone_(constructTangentCone(*i_constraints, values, active_indices_,
                                      e_basis_)),
         retractor_(params->retractorCreator->create(*this)) {}
@@ -79,7 +98,11 @@ public:
             identifyActiveConstraints(*i_constraints_, values, active_indices)),
         embedding_dim_(other.embedding_dim_),
         e_constraints_dim_(other.e_constraints_dim_), dim_(other.dim_),
-        e_basis_(other.e_basis_->createWithNewValues(values_)),
+        affine_equalities_(other.affine_equalities_),
+        e_basis_(affine_equalities_ ? other.e_basis_
+                                   : other.e_basis_->createWithNewValues(values_)),
+        metric_cache_(affine_equalities_ ? other.metric_cache_
+                                        : std::make_shared<MetricCache>()),
         i_cone_(constructTangentCone(*i_constraints_, values_, active_indices_,
                                      e_basis_)),
         retractor_(other.retractor_) {}
@@ -98,6 +121,17 @@ public:
   const IndexSet &activeIndices() const { return active_indices_; }
 
   const TangentSpaceBasis::shared_ptr eBasis() const { return e_basis_; }
+
+  /// Immutable affine contract captured at construction, shared by all retractors.
+  bool hasAffineEqualities() const { return affine_equalities_; }
+
+  /** Reusable projection geometry for this basis and the requested metric.
+   * Affine successor states share it; nonlinear updates get a fresh cache.
+   * Effective precisions are compared by value, including selected prior keys.
+   */
+  TangentSpaceMetric::shared_ptr projectionMetric(
+      const IERetractorParams &params,
+      const std::optional<KeyVector> &priorKeys = {}) const;
 
   /// Tangent cone C_x induced by thesis Eqs. (4.14)-(4.16).
   const TangentCone::shared_ptr &tangentCone() const { return i_cone_; }

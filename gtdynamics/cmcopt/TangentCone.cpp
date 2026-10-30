@@ -6,9 +6,10 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  Tangent Cone.cpp
+ * @file TangentCone.cpp
  * @brief Tangent cone implementations.
- * @author: Yetong Zhang
+ * @author Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #include <gtdynamics/cmcopt/TangentCone.h>
@@ -39,6 +40,9 @@ std::pair<IndexSet, Vector> TangentCone::project(const Vector& xi) const {
   Values initial;
   initial.insert(key, Vector::Zero(xi.size()).eval());
   auto params = std::make_shared<ActiveSetSolverParams>();
+  // Constraints already use equality-reduced coordinates. Reuse the objective
+  // factorization while solving each working set's dense Schur system.
+  params->qpSubproblemSolver = ActiveSetSolverParams::QpSubproblemSolver::Dense;
   params->regularization = 0.0;
 
   try {

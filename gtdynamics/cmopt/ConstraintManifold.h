@@ -6,13 +6,15 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  ConstraintManifold.h
+ * @file ConstraintManifold.h
  * @brief Manifold representing variables satisfying constraints.
  * @author: Yetong Zhang
+ * @author Frank Dellaert
  */
 
 #pragma once
 
+#include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtsam/base/OptionalJacobian.h>

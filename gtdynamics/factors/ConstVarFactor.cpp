@@ -1,3 +1,16 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @file ConstVarFactor.cpp
+ * @brief Implement factors with fixed variables.
+ * @author Yetong Zhang
+ */
+
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
@@ -56,9 +69,12 @@ void ConstVarFactor::setFixedValues(const Values& values) {
 /* ************************************************************************* */
 Vector ConstVarFactor::unwhitenedError(const Values& x,
                                        gtsam::OptionalMatrixVecType H) const {
-  // Construct values for base factor.
-  Values base_x = x;
-  base_x.insert(fixed_values_);
+  // Graph evaluation supplies all current values, but the base factor only
+  // needs its own keys. Avoid deep-copying unrelated variables on every call.
+  Values base_x = fixed_values_;
+  for (Key key : keys()) {
+    base_x.insert(key, x.at(key));
+  }
 
   // compute jacobian
   if (H) {

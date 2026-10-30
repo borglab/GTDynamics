@@ -5,6 +5,16 @@
  * See LICENSE for the license information
  * -------------------------------------------------------------------------- */
 
+/**
+ * @file rss02_cp_limits.cpp
+ * @brief Constraint-manifold optimization example.
+ * @author Yetong Zhang
+ * @author Frank Dellaert
+ */
+
+
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
+#include <gtdynamics/scenarios/CartPoleWithLimitsRetractor.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>
 
