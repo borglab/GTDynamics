@@ -18,7 +18,7 @@ class MassFlowRateFactor: gtsam::NonlinearFactor{
                  const double D, const double L, const double mu, const double epsilon, const double k);
   
   double computeExpectedMassFlow(
-      const double &pm, const double &ps, const double &mdot);
+      const double &pm, const double &ps, const double &mdot) const;
 };
 
 class ValveControlFactor: gtsam::NonlinearFactor{
@@ -28,15 +28,15 @@ class ValveControlFactor: gtsam::NonlinearFactor{
                     const double ct);
   
   double computeExpectedTrueMassFlow(
-      const double &t, const double &to, const double &tc, const double &mdot);
+      const double &t, const double &to, const double &tc, const double &mdot) const;
 };
 
 class ActuatorVolumeFactor: gtsam::NonlinearFactor{
   ActuatorVolumeFactor(gtsam::Key v_key, gtsam::Key l_key,
                  const gtsam::noiseModel::Base *cost_model,
-                 const double D, const double L);
+                 const double d_tube, const double l_tube);
   
-  double computeVolume(const double &l);
+  double computeVolume(const double &l) const;
 };
 
 class ClippingActuatorFactor: gtsam::NonlinearFactor{
@@ -80,11 +80,11 @@ void AddSourceMassCollocationFactor(
     const gtsam::KeyVector& mdot_curr_keys,
     gtsam::Key source_mass_key_prev, gtsam::Key source_mass_key_curr,
     gtsam::Key dt_key, bool isEuler,
-    const gtsam::noiseModel::Base *cost_model);
+    const gtsam::noiseModel::Base::shared_ptr& cost_model);
 
 void AddTimeCollocationFactor(
   gtsam::NonlinearFactorGraph @graph,
   gtsam::Key t_prev_key, gtsam::Key t_curr_key, gtsam::Key dt_key,
-  const gtsam::noiseModel::Base *cost_model);
+  const gtsam::noiseModel::Base::shared_ptr& cost_model);
 
 }  // namespace gtdynamics

@@ -506,8 +506,14 @@ class ActuatorVolumeFactor : public gtsam::NoiseModelFactorN<double, double> {
   virtual ~ActuatorVolumeFactor() {}
 
  public:
+  /// Compute the actuator volume without its Jacobian.
+  double computeVolume(const double &l) const {
+    return computeVolume(l, nullptr);
+  }
+
+  /// Compute the actuator volume and optional contraction-length Jacobian.
   double computeVolume(const double &l,
-                       gtsam::OptionalMatrixType H_l = nullptr) const {
+                       gtsam::OptionalMatrixType H_l) const {
     gtsam::Vector4 l_powers(1, l, l * l, l * l * l);
     double expected_v = L_ * M_PI * pow(D_ / 2, 2);
     expected_v += c_.dot(l_powers);

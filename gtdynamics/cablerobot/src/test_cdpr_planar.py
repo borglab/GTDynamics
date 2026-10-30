@@ -31,35 +31,45 @@ class TestCdprPlanar(GtsamTestCase):
         """
         cdpr = Cdpr()
         kfg = cdpr.kinematics_factors(ks=[0])
+        rng = np.random.default_rng(0)
 
-        def zeroValues():
+        def initialValues():
             values = gtsam.Values()
             for j in range(4):
                 gtd.InsertJointAngle(values, j, 0, 3.0)
-                gtd.InsertJointVel(values, j, 0, 17.0 + np.random.rand(1))
-            gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3())
+                gtd.InsertJointVel(values, j, 0, 17.0 + rng.random())
+            # Start near the positive-rotation assembly configuration.
+            gtd.InsertPose(values, cdpr.ee_id(), 0,
+                           Pose3(Rot3.Ry(0.1), (1.4, 0, 1.6)))
             gtd.InsertTwist(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, 1.4142))
             return values
 
-        # things needed to define FK
+        # Rotate away from the aligned-square singularity, where cable lengths
+        # and rates do not determine all pose and twist components.
+        pose = Pose3(Rot3.Ry(0.2), (1.5, 0, 1.5))
+        twist = np.array([0, 0, 0, 0, 0, -np.sqrt(2)])
+        world_velocity = pose.rotation().rotate(twist[3:])
+        # Compute cable lengths and rates independently from attachment geometry.
         values = gtsam.Values()
-        for j, l, ldot in zip(range(4), [
-                1.35 * np.sqrt(2),
-        ] * 4, [-1, 1, 1, -1.]):
-            gtd.InsertJointAngle(values, j, 0, l)
-            gtd.InsertJointVel(values, j, 0, ldot)
+        for j, (anchor, attachment) in enumerate(
+                zip(cdpr.params.a_locs, cdpr.params.b_locs)):
+            cable = pose.transformFrom(attachment) - anchor
+            length = np.linalg.norm(cable)
+            length_rate = np.dot(cable / length, world_velocity)
+            gtd.InsertJointAngle(values, j, 0, length)
+            gtd.InsertJointVel(values, j, 0, length_rate)
         # things needed to define IK
-        gtd.InsertPose(values, cdpr.ee_id(), 0, Pose3(Rot3(), (1.5, 0, 1.5)))
-        gtd.InsertTwist(values, cdpr.ee_id(), 0, (0, 0, 0, 0, 0, -np.sqrt(2)))
+        gtd.InsertPose(values, cdpr.ee_id(), 0, pose)
+        gtd.InsertTwist(values, cdpr.ee_id(), 0, twist)
         # check that solution has 0 residual
-        self.assertEqual(0.0, kfg.error(values))
+        self.assertAlmostEqual(0.0, kfg.error(values), places=10)
         # try optimizing IK
         ikgraph = gtsam.NonlinearFactorGraph(kfg)
         ikgraph.push_back(
             cdpr.priors_ik([0], [gtd.Pose(values, cdpr.ee_id(), 0)],
                            [gtd.Twist(values, cdpr.ee_id(), 0)]))
         ikres = gtsam.LevenbergMarquardtOptimizer(ikgraph,
-                                                  zeroValues()).optimize()
+                                                  initialValues()).optimize()
         self.gtsamAssertEquals(ikres, values)  # should match with full sol
         # try optimizing FK
         fkgraph = gtsam.NonlinearFactorGraph(kfg)
@@ -68,10 +78,12 @@ class TestCdprPlanar(GtsamTestCase):
                            [[gtd.JointAngle(values, ji, 0)
                              for ji in range(4)]],
                            [[gtd.JointVel(values, ji, 0) for ji in range(4)]]))
+        jacobian, _ = fkgraph.linearize(values).jacobian()
+        self.assertEqual(np.linalg.matrix_rank(jacobian), jacobian.shape[1])
         params = gtsam.LevenbergMarquardtParams()
         params.setAbsoluteErrorTol(
             1e-20)  # FK less sensitive so we need to decrease the tolerance
-        fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, zeroValues(),
+        fkres = gtsam.LevenbergMarquardtOptimizer(fkgraph, initialValues(),
                                                   params).optimize()
         self.gtsamAssertEquals(fkres, values,
                                tol=1e-5)  # should match with full sol
