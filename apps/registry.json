@@ -14,7 +14,7 @@
   {
     "id": "contact-initialization",
     "title": "Contact Initialization",
-    "description": "Freeze G1 geometry at touchdown and lift-off. Connect rigid frames through shared foot contacts, solve for motion, and explore what the contacts can determine.",
+    "description": "Explore a C++ GTSAM alternative to IK initialization. Replay native solves and timings, compare contact models, and switch between G1 walking and a longer captured motion.",
     "tag": "Walking initialization"
   }
 ]

@@ -29,7 +29,10 @@ try {
       const lab=app.locator('.lab');
       await app.locator('canvas').waitFor();
       assert.equal(await lab.getAttribute('data-model'),'ground');
+      assert.equal(await lab.getAttribute('data-sequence'),'g1-policy-8s');
       assert.equal(await app.locator('.error-banner').count(),0);
+      assert.match(await app.locator('.native-timings').innerText(),/GTSAM solves it/);
+      assert.match(await app.locator('.native-badge').innerText(),/Release · 11 runs · 2 warmups/);
       assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*672/);
       const startingEvent=Number(await lab.getAttribute('data-event'));
       await app.getByRole('button',{name:'Next event',exact:true}).click();
@@ -50,23 +53,23 @@ try {
       await app.getByRole('button',{name:'Connect the contacts'}).click();
       for(const [mode,scalars] of [['patch',786],['point',558],['ground',672]]) {
         await app.getByRole('combobox',{name:'Contact geometry'}).selectOption(mode);
-        await app.getByRole('button',{name:'Perturb & solve'}).waitFor({state:'visible'});
-        await page.waitForFunction(()=>!document.querySelector('iframe')?.contentDocument?.querySelector('.solve-button')?.disabled);
+        await app.getByRole('button',{name:'Replay GTSAM solve'}).waitFor({state:'visible'});
         assert.equal(await lab.getAttribute('data-model'),mode);
         assert.match(await app.locator('.graph-stats').innerText(),new RegExp(String(scalars)));
         const metrics=await app.locator('.evaluation-card .solve-metrics strong').allTextContents();
         assert(metrics.every(m=>Number.isFinite(parseFloat(m))));
         if(mode==='point')assert.match(await app.locator('.insight-card h2').innerText(),/not a full pose/);
       }
-      await app.getByRole('button',{name:'Perturb & solve'}).click();
-      await page.waitForFunction(()=>!document.querySelector('iframe')?.contentDocument?.querySelector('.solve-button')?.disabled);
+      await app.getByRole('button',{name:'Replay GTSAM solve'}).click();
+      await page.waitForTimeout(650);
+      await app.getByRole('button',{name:'Pause native replay'}).click();
       const iteration=app.getByRole('slider',{name:'Solver iteration'});
       assert(Number(await iteration.inputValue())>0);
       await iteration.fill('0');
       const initialRms=parseFloat(await app.locator('.solve-card .solve-metrics strong').first().innerText());
       await iteration.fill(await iteration.getAttribute('max'));
       const finalRms=parseFloat(await app.locator('.solve-card .solve-metrics strong').first().innerText());
-      assert(finalRms<initialRms,'Actual optimization decreases contact error');
+      assert(finalRms<initialRms,'Recorded native optimization decreases contact error');
       const downloadPromise=page.waitForEvent('download');
       await app.getByRole('button',{name:'Export initialization JSON'}).click();
       const download=await downloadPromise;
@@ -74,6 +77,8 @@ try {
       assert.equal(exported.eventPoses.length,75);
       assert.equal(exported.contacts.length,38);
       assert.equal(exported.model,'ground');
+      assert.equal(exported.solver,'C++ GTSAM Levenberg–Marquardt');
+      assert.equal(exported.benchmark.repetitions,11);
       assert.equal(exported.assumptions.groundPlane.enabled,true);
       assert(!('reference' in exported));
       await app.getByRole('button',{name:'Top',exact:true}).click();
@@ -82,6 +87,22 @@ try {
       await app.getByRole('checkbox',{name:'Snapshots',exact:true}).uncheck();
       await app.getByRole('checkbox',{name:'Reference',exact:true}).check();
       await app.getByRole('checkbox',{name:'Snapshots',exact:true}).check();
+      await app.getByRole('combobox',{name:'Motion sequence'}).selectOption('g1-steptouch-30s');
+      await app.locator('.recording-loading').waitFor({state:'hidden'});
+      assert.equal(await lab.getAttribute('data-sequence'),'g1-steptouch-30s');
+      assert.match(await app.locator('.graph-stats').innerText(),/35[\s\S]*19/);
+      assert.match(await app.locator('.component-notice').innerText(),/3 disconnected support components/);
+      assert.match(await app.locator('.evaluation-card').innerText(),/component-relative/);
+      assert.match(await app.locator('.timeline-caption').innerText(),/height\/speed heuristic/);
+      for(const mode of ['point','patch','ground']){
+        await app.getByRole('combobox',{name:'Contact geometry'}).selectOption(mode);
+        await page.waitForTimeout(50);
+        assert.equal(await lab.getAttribute('data-model'),mode);
+        assert.equal(await app.locator('.error-banner').count(),0);
+      }
+      await app.getByRole('combobox',{name:'Motion sequence'}).selectOption('g1-policy-8s');
+      await app.locator('.recording-loading').waitFor({state:'hidden'});
+      assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*672/);
       await app.getByRole('slider',{name:'Contact event',exact:true}).fill('24');
       await app.locator('body').evaluate(()=>window.scrollTo(0,0));
       await page.waitForTimeout(350);
@@ -105,7 +126,7 @@ try {
       assert.deepEqual(errors,[],'No browser errors');
       assert.deepEqual(failed,[],'Assets work under the project-site prefix');
       assert.deepEqual(sockets,[],'No server backend required');
-      console.log(`PASS ${base}: contact app navigation, all three models, event playback, stages, real solve replay, JSON export, camera, mobile, direct URL`);
+      console.log(`PASS ${base}: two sequences, native timings, all three models, event playback, stages, GTSAM replay, JSON export, camera, mobile, direct URL`);
     } finally {
       await context.close();server.httpServer.closeAllConnections();await new Promise(resolve=>server.httpServer.close(resolve));
     }

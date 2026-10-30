@@ -285,3 +285,36 @@ footer{font-size:7px;flex-direction:column;gap:8px;padding-bottom:25px}
 
 
 .export-button{display:flex;justify-content:space-between;width:100%;margin-top:16px;border-top:1px solid #e3e9da;background:transparent;padding:13px 0 0;color:#57814c;font-size:10px;text-align:left}
+.sequence-toolbar{display:flex;align-items:center;gap:20px;padding:14px 18px;margin-bottom:19px;border:1px solid #d6e1cf;border-radius:8px;background:#f9fbf4}
+.sequence-toolbar label{display:flex;align-items:center;gap:12px;font-size:9px;letter-spacing:1px;color:#7e8c74;white-space:nowrap}
+.sequence-toolbar select{max-width:320px;padding:8px 12px;border:1px solid #ceddc4;border-radius:5px;background:#eff5e8;color:#3b704b;font-size:12px;letter-spacing:0}
+.sequence-toolbar>span{font-size:10px;line-height:1.6;color:#839078}
+.sequence-toolbar>a{font-size:10px;color:#4b7e48;margin-left:auto;white-space:nowrap}
+.recording-loading{padding:10px 15px;margin-bottom:15px;font-size:11px;color:#608752;background:#e9f1e0;border-radius:5px}
+.component-notice{font-size:10px;line-height:1.7;padding:12px 14px;margin-top:13px;background:#f3ebd8;border:1px solid #e5d7b2;border-radius:6px;color:#8a7441}
+.native-timings{margin-top:22px;border:1px solid #d8e2ce;border-radius:10px;overflow:hidden;background:#f9fcf4}
+.timing-heading{display:flex;align-items:center;justify-content:space-between;padding:21px 23px 16px;gap:20px}
+.timing-heading h2{font-size:17px;letter-spacing:-.5px}
+.native-badge{font-family:ui-monospace,monospace;font-size:10px;white-space:nowrap;color:#668354;padding:8px 11px;background:#e9f1df;border:1px solid #d3dfc5;border-radius:5px}
+.timing-phases{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #e2ead9;border-bottom:1px solid #e2ead9}
+.timing-phases>div{padding:19px 23px;border-right:1px solid #e2ead9;display:flex;flex-direction:column;gap:8px}
+.timing-phases>div:last-child{border:0}
+.timing-phases>div>span:first-child{font-size:10px;color:#788d6d}
+.timing-phases strong{font-size:31px;font-weight:500;letter-spacing:-1px;line-height:1.5;color:#4a6740}
+.timing-phases small{font-size:12px;color:#8c9c81;letter-spacing:0}
+.timing-phases p{font-size:10px;color:#819475}
+.timing-phases .timing-range{font-size:9px;font-family:ui-monospace,monospace;color:#9aa78f;margin-top:3px}
+.timing-phases .featured{background:#e8f1df}
+.timing-phases .featured strong{color:#2f7547}
+.timing-context{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 23px}
+.timing-context p{font-size:10px;line-height:1.9;color:#859879}
+.timing-context i{font-style:normal;margin:0 7px}
+.timing-context a{font-size:10px;line-height:1.6;color:#5a844a;white-space:nowrap}
+.timing-comparison{display:flex;gap:0;border-top:1px solid #e2ead9;background:#f2f6eb}
+.timing-comparison>span{display:flex;align-items:center;gap:12px;padding:12px 23px;font-size:10px;flex:1;color:#8a997c;border-right:1px solid #e1e9d7}
+.timing-comparison>span:last-child{border:0}
+.timing-comparison b{font-family:ui-monospace,monospace;font-weight:400;color:#648653;white-space:nowrap}
+.timing-comparison small{font-size:8px;margin-left:auto;white-space:nowrap}
+.timing-comparison .active{background:#e6efd9;color:#5d7f47}
+@media(max-width:1100px){.sequence-toolbar{gap:12px}.sequence-toolbar select{max-width:240px}.timing-comparison>span{padding:12px 15px;gap:8px;flex-wrap:wrap}.timing-comparison small{margin-left:0}.timing-phases>div{padding:17px}.timing-range{font-size:8px!important}}
+@media(max-width:750px){.sequence-toolbar{flex-wrap:wrap;gap:12px}.sequence-toolbar label{width:100%;justify-content:space-between}.sequence-toolbar select{max-width:70%}.sequence-toolbar>span{flex:1}.timing-heading{align-items:start;flex-direction:column;gap:12px}.timing-phases{grid-template-columns:1fr 1fr}.timing-phases>div:nth-child(2){border-right:0}.timing-phases>div:nth-child(-n+2){border-bottom:1px solid #e2ead9}.timing-context{align-items:start;flex-direction:column;gap:10px}.timing-comparison{flex-direction:column}.timing-comparison>span{border-right:0;border-bottom:1px solid #e1e9d7;flex-wrap:nowrap}.timing-comparison small{margin-left:auto}.timing-heading h2{font-size:16px}.timing-phases strong{font-size:29px}.timing-context p{font-size:9px}.sequence-toolbar label{font-size:8px}}

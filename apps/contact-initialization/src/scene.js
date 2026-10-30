@@ -262,13 +262,22 @@ export class ContactScene {
     this.bounds = { center, span: Math.max(1.7, size.x, size.y, size.z+1.1) };
     this.ground.visible=this.state.floorConstrained!==false;
     if (!this.hasData) { this.hasData = true; this.reset(); }
-    const groundPath = positions.map((p) => new THREE.Vector3(p.x, p.y, 0.015));
-    this.pathGroup.add(line(groundPath, COLORS.path, 0.7, true));
-    this.pathGroup.add(line(positions, COLORS.ink, 0.34));
+    const components=this.state.components||[positions.map((_,i)=>i)];
+    for(const indices of components){
+      const sequence=indices.slice().sort((a,b)=>a-b).map(i=>positions[i]);
+      if(sequence.length<2)continue;
+      const groundPath=sequence.map(p=>new THREE.Vector3(p.x,p.y,0.015));
+      this.pathGroup.add(line(groundPath,COLORS.path,0.7,true));
+      this.pathGroup.add(line(sequence,COLORS.ink,0.34));
+    }
     const ref = frames.map((frame, i) => this.referencePose(frame, i)).filter(Boolean).map((pose) => new THREE.Vector3().setFromMatrixPosition(poseMatrix(pose)));
     if (ref.length > 1) {
-      const referenceLine = line(ref, COLORS.reference, 0.5, true); referenceLine.visible = this.state.showReference !== false;
-      referenceLine.name = 'reference-path'; this.pathGroup.add(referenceLine);
+      const referenceLines=new THREE.Group();referenceLines.name='reference-path';
+      for(const indices of components){
+        const sequence=indices.slice().sort((a,b)=>a-b).map(i=>ref[i]);
+        if(sequence.length>1)referenceLines.add(line(sequence,COLORS.reference,0.5,true));
+      }
+      referenceLines.visible=this.state.showReference!==false;this.pathGroup.add(referenceLines);
     }
     const step = Math.max(1, Math.ceil(frames.length / 9));
     frames.forEach((frame, index) => {

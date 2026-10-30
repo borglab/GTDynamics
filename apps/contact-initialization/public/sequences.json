@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "sequences": [
+    {
+      "id": "g1-policy-8s",
+      "title": "Policy walk · 8 s",
+      "data": "g1-walk.json",
+      "recording": "recordings/g1-policy-8s.json",
+      "description": "Original G1 PR policy rollout · simulator-force support labels",
+      "sourceUrl": "https://github.com/borglab/GTDynamics/pull/446",
+      "contactEvidence": "simulated-force",
+      "durationSeconds": 8,
+      "sampleRateHz": 100
+    },
+    {
+      "id": "g1-steptouch-30s",
+      "title": "Captured step-touch · 30 s",
+      "data": "g1-steptouch-30s.json",
+      "recording": "recordings/g1-steptouch-30s.json",
+      "description": "G1 Moves human capture retargeted to G1 · kinematic support labels · 3 support components",
+      "sourceUrl": "https://huggingface.co/datasets/exptech/g1-moves/blob/895d064b2385725e6aabf540461c219afc3e0916/README.md",
+      "contactEvidence": "kinematic",
+      "durationSeconds": 30,
+      "sampleRateHz": 60
+    }
+  ]
+}
