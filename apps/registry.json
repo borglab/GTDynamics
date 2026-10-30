@@ -10,5 +10,11 @@
     "title": "Motion Planning",
     "description": "Follow a Franka arm’s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
     "tag": "Trajectory optimization"
+  },
+  {
+    "id": "contact-initialization",
+    "title": "Contact Initialization",
+    "description": "Freeze G1 geometry at touchdown and lift-off. Connect rigid frames through shared foot contacts, solve for motion, and explore what the contacts can determine.",
+    "tag": "Walking initialization"
   }
 ]

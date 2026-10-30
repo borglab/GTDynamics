@@ -7,6 +7,7 @@ be opened directly.
 
 - [Motion Snippets](motion-snippets/README.md): MuJoCo playback of robot motion clips.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
+- [Contact Initialization](contact-initialization/README.md): initialize G1 walking from frozen contact-event geometry and shared stance landmarks.
 
 ## Local preview
 
