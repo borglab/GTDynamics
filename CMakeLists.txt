@@ -130,7 +130,7 @@ include(cmake/HandleTBB.cmake)              # TBB
 add_subdirectory(gtdynamics)
 
 if(GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO)
-  add_subdirectory(motion-planning-webdemo/backend)
+  add_subdirectory(apps/motion-planning/backend)
 endif()
 
 message(STATUS "Build Python Wrapper: ${GTDYNAMICS_BUILD_PYTHON}")

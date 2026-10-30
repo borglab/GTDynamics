@@ -1,0 +1,17 @@
+{
+  "name": "gtdynamics-apps",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "workspaces": ["motion-snippets", "motion-planning"],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 3000 --strictPort",
+    "models": "python3 ../scripts/bootstrap_mujoco_models.py && python3 motion-planning/scripts/bootstrap_models.py",
+    "test": "npm test --workspace motion-planning"
+  },
+  "devDependencies": {
+    "vite": "^6.2.2"
+  }
+}

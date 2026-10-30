@@ -1,0 +1,64 @@
+name: Apps / GitHub Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/**'
+      - 'scripts/bootstrap_mujoco_models.py'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'scripts/bootstrap_mujoco_models.py'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/package-lock.json
+      - name: Install apps
+        run: npm ci
+      - name: Bootstrap pinned robot assets
+        run: npm run models
+      - name: Test
+        run: npm test
+      - name: Build all apps
+        run: npm run build
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/dist
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

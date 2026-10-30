@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c1218" />
+    <meta name="description" content="Explore GTDynamics: robot kinematics, dynamics, and trajectory optimization through factor graphs and interactive browser apps." />
+    <title>GTDynamics · Interactive robotics</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%230c1218'/%3E%3Cpath d='M10 28L20 12L30 28M10 28H30' stroke='%23aad8be' stroke-width='2' fill='none'/%3E%3Cg fill='%23aad8be'%3E%3Ccircle cx='10' cy='28' r='3'/%3E%3Ccircle cx='20' cy='12' r='3'/%3E%3Ccircle cx='30' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="header-top">
+        <a class="brand" href="#overview" aria-label="GTDynamics overview">
+          <svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><path d="M8 29L20 9L32 29H8" fill="none" stroke="currentColor" stroke-width="1.5"/><g fill="currentColor"><circle cx="8" cy="29" r="3"/><circle cx="20" cy="9" r="3"/><circle cx="32" cy="29" r="3"/></g></svg>
+          <span>GT<strong>Dynamics</strong></span>
+        </a>
+        <span class="header-caption">ROBOTICS THROUGH FACTOR GRAPHS</span>
+        <a class="source-link" href="https://github.com/borglab/GTDynamics" target="_blank" rel="noopener">View on GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="GTDynamics apps">
+        <a id="tab-overview" class="tab" href="#overview" role="tab" aria-selected="true" aria-controls="overview-panel">Overview</a>
+      </nav>
+    </header>
+
+    <main id="content" tabindex="-1">
+      <div id="overview-panel" class="overview" role="tabpanel" aria-labelledby="tab-overview">
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow"><span></span> THE GTDYNAMICS PROJECT</p>
+            <h1>Robotics, connected<br />by <em>factor graphs.</em></h1>
+            <p class="lede">One language for robot motion. Express kinematics and dynamics as a graph, then let optimization connect the pieces.</p>
+            <p class="hero-detail">Built on GTSAM, GTDynamics brings together robot models, physical constraints, and trajectory optimization in a C++ library with Python bindings.</p>
+            <a class="primary-link" href="#explore">Explore the apps <span aria-hidden="true">↓</span></a>
+          </div>
+          <figure class="graph-figure">
+            <div class="figure-label"><span>A MOTION, EXPRESSED AS A GRAPH</span><span>q · T · V</span></div>
+            <svg viewBox="0 0 560 375" role="img" aria-labelledby="graph-title graph-desc">
+              <title id="graph-title">Robot states connected by factors over time</title>
+              <desc id="graph-desc">Three time slices contain joint angles, link poses, and twists. Factors connect variables inside each slice and link adjacent states over time.</desc>
+              <defs><pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.8" fill="#33444d"/></pattern></defs>
+              <rect x="15" y="15" width="530" height="345" rx="10" fill="url(#grid)"/>
+              <g fill="#16262b" stroke="#30494b"><rect x="57" y="72" width="108" height="240" rx="54"/><rect x="227" y="72" width="108" height="240" rx="54"/><rect x="397" y="72" width="108" height="240" rx="54"/></g>
+              <g stroke="#769e91" stroke-width="1.5"><path d="M111 112V272M281 112V272M451 112V272M111 112H451M111 192H451M111 272H451"/></g>
+              <g fill="#aad8be"><rect x="103" y="144" width="16" height="16"/><rect x="103" y="224" width="16" height="16"/><rect x="273" y="144" width="16" height="16"/><rect x="273" y="224" width="16" height="16"/><rect x="443" y="144" width="16" height="16"/><rect x="443" y="224" width="16" height="16"/><rect x="188" y="104" width="16" height="16"/><rect x="358" y="104" width="16" height="16"/><rect x="188" y="184" width="16" height="16"/><rect x="358" y="184" width="16" height="16"/><rect x="188" y="264" width="16" height="16"/><rect x="358" y="264" width="16" height="16"/></g>
+              <g fill="#142127" stroke="#9ac6b2" stroke-width="1.5"><circle cx="111" cy="112" r="23"/><circle cx="111" cy="192" r="23"/><circle cx="111" cy="272" r="23"/><circle cx="281" cy="112" r="23"/><circle cx="281" cy="192" r="23"/><circle cx="281" cy="272" r="23"/><circle cx="451" cy="112" r="23"/><circle cx="451" cy="192" r="23"/><circle cx="451" cy="272" r="23"/></g>
+              <g fill="#e0eee5" text-anchor="middle" font-family="ui-monospace, monospace" font-size="19"><text x="111" y="118">q</text><text x="111" y="199">T</text><text x="111" y="279">V</text><text x="281" y="118">q</text><text x="281" y="199">T</text><text x="281" y="279">V</text><text x="451" y="118">q</text><text x="451" y="199">T</text><text x="451" y="279">V</text></g>
+              <g fill="#8ca49e" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12"><text x="111" y="50">START</text><text x="281" y="50">t₁</text><text x="451" y="50">GOAL</text><text x="281" y="345">time →</text></g>
+            </svg>
+            <figcaption><span><i class="variable-key"></i>Robot state</span><span><i class="factor-key"></i>Physical constraint</span><span class="figure-note">Connected across time</span></figcaption>
+          </figure>
+        </section>
+
+        <section id="explore" class="explore" aria-labelledby="explore-title">
+          <div class="section-intro"><div><p class="eyebrow">THE INTERACTIVE COLLECTION</p><h2 id="explore-title">See the ideas in motion.</h2></div><p>Open an app. Explore a robot.<br />Get a feel for the underlying math.</p></div>
+          <div id="app-list" class="app-list"></div>
+        </section>
+
+        <section class="principles" aria-label="How GTDynamics works">
+          <div><span class="principle-number">01 / MODEL</span><h3>Start with the robot.</h3><p>Describe links and joints, their geometry, inertia, and the forces acting on them.</p></div>
+          <div><span class="principle-number">02 / CONNECT</span><h3>Make physics explicit.</h3><p>Use factors to express kinematic relationships and dynamics constraints between robot states.</p></div>
+          <div><span class="principle-number">03 / OPTIMIZE</span><h3>Solve for the motion.</h3><p>Combine constraints and objectives to solve forward dynamics, inverse dynamics, and trajectory problems.</p></div>
+        </section>
+        <footer class="site-footer"><span>GTDynamics <span class="footer-dot">·</span> BorgLab</span><div><a href="https://github.com/borglab/GTDynamics#readme" target="_blank" rel="noopener">Documentation ↗</a><a href="https://arxiv.org/abs/2011.06194" target="_blank" rel="noopener">Read the paper ↗</a></div></footer>
+      </div>
+      <div id="app-panel" class="app-panel" role="tabpanel" hidden></div>
+    </main>
+    <noscript><p class="noscript">Enable JavaScript to use the app tabs and robot demos.</p></noscript>
+    <script type="module" src="./shell.js"></script>
+  </body>
+</html>
