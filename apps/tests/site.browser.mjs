@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { preview } from 'vite';
+import apps from '../registry.json' with { type: 'json' };
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -36,7 +37,7 @@ try {
       console.log(`Checking ${base}: overview and navigation`);
       assert.equal(await page.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected'), 'true');
       assert.equal(await page.locator('iframe').count(), 0, 'Overview does not load a simulation');
-      assert.equal(await page.locator('.app-link').count(), 2);
+      assert.equal(await page.locator('.app-link').count(), apps.length);
       if (process.env.SCREENSHOT_DIR && base === '/') {
         await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
         await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/overview.png`, fullPage: true });

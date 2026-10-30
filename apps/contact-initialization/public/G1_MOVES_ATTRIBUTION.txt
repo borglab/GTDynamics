@@ -1,0 +1,27 @@
+G1 Moves: Motion Capture Dataset for the Unitree G1 Humanoid Robot
+
+Creator: Mitch Chaiet / Experiential Technologies
+Performer of J_Dance0_StepTouch: Jasmine Coro
+Capture: MOVIN TRACIN; retargeting: movin_sdk_python
+
+Dataset: https://huggingface.co/datasets/exptech/g1-moves
+Pinned revision: 895d064b2385725e6aabf540461c219afc3e0916
+Source file: dance/J_Dance0_StepTouch/retarget/J_Dance0_StepTouch.csv
+Source SHA-256: d821d4ce0623242965c1f153fc8f8e0fb306294d1c084535ef27d9a3d36322a0
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License summary: https://creativecommons.org/licenses/by/4.0/
+License legal text: https://creativecommons.org/licenses/by/4.0/legalcode
+Original license statement:
+https://huggingface.co/datasets/exptech/g1-moves/blob/895d064b2385725e6aabf540461c219afc3e0916/README.md#license
+
+Changes made for this app: selected original rows 0 through 1799, a continuous
+30-second window at the native 60 Hz rate; normalized root quaternions and
+converted XYZW to WXYZ; computed pelvis-local G1 forward kinematics; inferred
+candidate support episodes from world sole height and horizontal corner speed;
+exported separate reference poses and stance diagnostics. No motion frames were
+repeated, tiled, or synthesized. The app does not imply endorsement by the
+creator, performer, capture provider, or Unitree Robotics.
+
+The original 8-second MJLab policy sequence has separate provenance in
+g1-walk.json and is not part of the G1 Moves dataset.

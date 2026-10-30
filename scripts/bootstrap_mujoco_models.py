@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bootstrap MuJoCo Menagerie models for the Motion Snippets app.
+"""Bootstrap pinned MuJoCo Menagerie models for the browser apps.
 
 What it does:
 1. Sparse-clones/pulls google-deepmind/mujoco_menagerie at a pinned commit.
@@ -21,6 +21,7 @@ import json
 import os
 import shutil
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 MENAGERIE_URL = "https://github.com/google-deepmind/mujoco_menagerie.git"
@@ -64,6 +65,23 @@ def generate_files_json(scenes_dir: Path) -> list[str]:
     return files
 
 
+def prepare_contact_model(repo_root: Path, source: Path) -> None:
+    """Share the G1 checkout with the contact app and list only its visual assets."""
+    assets = repo_root / "apps" / "contact-initialization" / "public" / "assets"
+    ensure_symlink(assets / "unitree_g1", source)
+    description = ET.parse(source / "g1.xml")
+    mesh_files = {f"unitree_g1/assets/{mesh.attrib['file']}"
+                  for mesh in description.findall("./asset/mesh")}
+    manifest = {
+        "source": MENAGERIE_URL,
+        "revision": MENAGERIE_COMMIT,
+        "scene": "unitree_g1/g1.xml",
+        "license": "unitree_g1/LICENSE",
+        "files": ["unitree_g1/g1.xml", *sorted(mesh_files)],
+    }
+    (assets / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     cache_root = repo_root / "apps" / "motion-snippets" / ".cache" / "mujoco_menagerie"
@@ -92,6 +110,7 @@ def main() -> int:
     files = generate_files_json(scenes_dir)
     files_json_path = scenes_dir / "files.json"
     files_json_path.write_text(json.dumps(files, indent=2) + "\n", encoding="utf-8")
+    prepare_contact_model(repo_root, menagerie_repo / "unitree_g1")
 
     print("Bootstrap complete.")
     print(f"Menagerie commit: {MENAGERIE_COMMIT}")

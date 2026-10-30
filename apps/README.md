@@ -7,6 +7,7 @@ be opened directly.
 
 - [Motion Snippets](motion-snippets/README.md): MuJoCo playback of robot motion clips.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
+- [Contact Initialization](contact-initialization/README.md): replay C++ GTSAM walking initialization, inspect native timings, and switch between two G1 motion sequences.
 
 ## Local preview
 

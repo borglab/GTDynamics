@@ -17,6 +17,7 @@ option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
 option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
 option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
 option(GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO "Build interactive motion planning teaching demo backend" OFF)
+option(GTDYNAMICS_BUILD_CONTACT_INITIALIZATION_WEBDEMO "Build GTSAM contact-initialization benchmark and app exporter" OFF)
 mark_as_advanced(CLEAR
   GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   GTDYNAMICS_WITH_TBB
@@ -24,6 +25,7 @@ mark_as_advanced(CLEAR
   GTDYNAMICS_BUILD_PYTHON
   GTDYNAMICS_BUILD_EXAMPLES
   GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO
+  GTDYNAMICS_BUILD_CONTACT_INITIALIZATION_WEBDEMO
 )
 mark_as_advanced(
   GTDYNAMICS_WITH_SUITESPARSE
@@ -131,6 +133,10 @@ add_subdirectory(gtdynamics)
 
 if(GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO)
   add_subdirectory(apps/motion-planning/backend)
+endif()
+
+if(GTDYNAMICS_BUILD_CONTACT_INITIALIZATION_WEBDEMO)
+  add_subdirectory(apps/contact-initialization/backend)
 endif()
 
 message(STATUS "Build Python Wrapper: ${GTDYNAMICS_BUILD_PYTHON}")

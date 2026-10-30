@@ -16,6 +16,7 @@
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/ContactInitializer.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -28,6 +29,20 @@
 #include <vector>
 
 namespace gtdynamics {
+
+/** One uninterrupted stance, including its touchdown and liftoff samples.
+ *
+ * Give each new touchdown a unique ID, including repeated contacts of the same
+ * foot. Points use the existing PointOnLink convention: link COM coordinates.
+ */
+struct ContactEpisode {
+  std::string id;  ///< Unique ID for this touchdown, not just the foot name.
+  size_t firstSample =
+      0;  ///< First supported original sample, included in stance.
+  size_t lastSample =
+      0;  ///< Final supported original sample, included in stance.
+  PointOnLinks points;  ///< Fixed material points in each link's COM frame.
+};
 
 class Initializer {
  private:
@@ -143,6 +158,51 @@ class Initializer {
         const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
         double dt, double gaussian_noise = 1e-8,
         const std::optional<PointOnLinks>& contact_points = {});
+
+    /** Initialize measured joint trajectories from sparse contact events.
+     *
+     * An alternative to InitializeSolutionInverseKinematics when joint angles
+     * are measured and floating-base poses are unknown. Only selected root
+     * poses and shared stance landmarks are optimized. Contact boundaries are
+     * retained and requested samples fill longer gaps to at most one second.
+     * Root poses between frames are interpolated, then FK expands every
+     * requested sample into standard PoseKey/JointAngleKey values. Measured q
+     * and optional joint velocities are preserved exactly; remaining dynamics
+     * variables receive zero seeds. Existing floating-base poses in
+     * measured_joints are ignored.
+     *
+     * @param robot Robot model, with COM-frame forward kinematics.
+     * @param root_link_name Link whose COM pose defines the floating base.
+     * @param wTroot_i World COM pose at the first requested sample (gauge).
+     * @param measured_joints JointAngleKey(j,k) for every joint and requested
+     * sample; optional JointVelKey(j,k) are used by FK, otherwise zero.
+     * @param sample_indices Strictly increasing original graph sample indices,
+     * dense enough to select frames at intervals of at most one second.
+     * @param contacts Stance intervals; endpoints must be requested samples.
+     * @param dt Seconds per sample index, used for event timestamps.
+     * @param options GTSAM solver settings. The anchor and pose keys are
+     * supplied by this adapter to match wTroot_i and PoseKey(root_link_id,k).
+     * @param diagnostics Optional sparse graph, GTSAM timings, and solution.
+     * Timings cover the core initializer; adapter-side FK extraction and dense
+     * expansion are outside those scopes.
+     *
+     * Every selected frame and horizon endpoint must have active contacts.
+     * Disconnected contact graphs are rejected unless optional BetweenFactors
+     * explicitly connect their gauges. That cross-gap motion is a prior, not a
+     * contact measurement. Upright and landmark-height priors alone do not join
+     * components. Interpolation is a seed, not a contact-constrained dense
+     * solve. Root twists are zero seeds; callers with IMU/twist estimates
+     * should retain their own velocity initialization. Invalid schedules,
+     * insufficient sample density, or missing/nonfinite joint measurements
+     * throw invalid_argument.
+     */
+    gtsam::Values InitializeSolutionContacts(
+        const Robot& robot, const std::string& root_link_name,
+        const gtsam::Pose3& wTroot_i, const gtsam::Values& measured_joints,
+        const std::vector<size_t>& sample_indices,
+        const std::vector<ContactEpisode>& contacts, double dt = 1.0,
+        const contact_init::Options& options = {},
+        contact_init::Result* diagnostics = nullptr) const;
 
     /**
      * @fn Initialize solution for multi-phase trajectory to nominal pose.
