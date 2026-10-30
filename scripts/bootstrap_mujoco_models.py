@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bootstrap MuJoCo Menagerie models for GTDynamics webdemo.
+"""Bootstrap MuJoCo Menagerie models for the Motion Snippets app.
 
 What it does:
 1. Sparse-clones/pulls google-deepmind/mujoco_menagerie at a pinned commit.
@@ -9,8 +9,8 @@ What it does:
    - boston_dynamics_spot
 3. Creates symlinks:
    - models/mujoco/<model>
-   - webdemo/public/examples/scenes/<model>
-4. Regenerates webdemo/public/examples/scenes/files.json from on-disk assets.
+   - apps/motion-snippets/public/examples/scenes/<model>
+4. Regenerates apps/motion-snippets/public/examples/scenes/files.json from on-disk assets.
 
 This keeps large binary model files out of this git repository.
 """
@@ -66,7 +66,7 @@ def generate_files_json(scenes_dir: Path) -> list[str]:
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
-    cache_root = Path.home() / ".cache" / "gtdynamics" / "mujoco_menagerie"
+    cache_root = repo_root / "apps" / "motion-snippets" / ".cache" / "mujoco_menagerie"
     checkout_root = cache_root / MENAGERIE_COMMIT
     menagerie_repo = checkout_root / "repo"
 
@@ -82,7 +82,7 @@ def main() -> int:
     run(["git", "sparse-checkout", "set", *MODELS], cwd=menagerie_repo)
 
     models_dir = repo_root / "models" / "mujoco"
-    scenes_dir = repo_root / "webdemo" / "public" / "examples" / "scenes"
+    scenes_dir = repo_root / "apps" / "motion-snippets" / "public" / "examples" / "scenes"
 
     for model in MODELS:
         source = menagerie_repo / model
