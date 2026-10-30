@@ -11,7 +11,7 @@ and a downloaded 30-second [G1 Moves step-touch capture](https://huggingface.co/
 are selectable. The latter is retargeted human motion, with explicitly heuristic
 contact labels and two contact components separated by a short hop.
 
-![G1 contact initialization app](docs/preview.png)
+![G1 contact initialization app](docs/preview.jpg)
 
 ## Run the app
 
