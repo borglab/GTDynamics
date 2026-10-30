@@ -27,6 +27,33 @@ import numpy as np
 from src.jumping_robot import Actuator, JumpingRobot
 
 
+class TestPneumaticBindings(unittest.TestCase):
+    """Exercise factor helpers with their default optional Jacobians."""
+
+    def test_mass_flow(self):
+        model = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        factor = gtd.MassFlowRateFactor(
+            0, 1, 2, model, 0.1575 * 0.0254, 74 * 0.0254,
+            1.8377e-5, 1e-5, 1 / (287.0550 * 296.15))
+        self.assertAlmostEqual(
+            factor.computeExpectedMassFlow(100., 65 * 6.89476, 1e-6),
+            0.000624547, places=8)
+
+    def test_valve_flow(self):
+        model = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        factor = gtd.ValveControlFactor(0, 1, 2, 3, 4, model, 0.1)
+        self.assertAlmostEqual(
+            factor.computeExpectedTrueMassFlow(0.8, 0.7, 1.2, 2.),
+            1.4261447373358271)
+
+    def test_actuator_volume(self):
+        model = gtsam.noiseModel.Isotropic.Sigma(1, 0.001)
+        factor = gtd.ActuatorVolumeFactor(
+            0, 1, model, d_tube=0.004, l_tube=1.)
+        self.assertAlmostEqual(factor.computeVolume(0.),
+                               4.243e-5 + np.pi * 0.002 ** 2)
+
+
 class TestJumpingRobot(unittest.TestCase):
     """ Tests for jumping robot. """
     def setUp(self):

@@ -109,13 +109,19 @@ class MassFlowRateFactor
   virtual ~MassFlowRateFactor() {}
 
  public:
+  /// Compute the mass flow without Jacobians.
+  double computeExpectedMassFlow(const double &pm, const double &ps,
+                                const double &mdot) const {
+    return computeExpectedMassFlow(pm, ps, mdot, nullptr);
+  }
+
   /** compute the mass flow assuming valve is always open
    * fD = [-1.8 log(6.9/Re+(epsilon/3.7D)^1.11)]^-2
    * mdot^2 = (pi^2 D^5)/(16fD L Rs T)/(ps^2-pm^2)
    */
   double computeExpectedMassFlow(
       const double &pm, const double &ps, const double &mdot,
-      gtsam::OptionalMatrixType H_pm = nullptr,
+      gtsam::OptionalMatrixType H_pm,
       gtsam::OptionalMatrixType H_ps = nullptr,
       gtsam::OptionalMatrixType H_mdot = nullptr) const {
     double tmp = term1_ / abs(mdot) + term2_;
@@ -208,13 +214,19 @@ class ValveControlFactor
   virtual ~ValveControlFactor() {}
 
  public:
-  /* Compute the expected mass flow given current time, valve open/close times,
+  /// Compute the valve-controlled mass flow without Jacobians.
+  double computeExpectedTrueMassFlow(const double &t, const double &to,
+                                    const double &tc, const double &mdot) const {
+    return computeExpectedTrueMassFlow(t, to, tc, mdot, nullptr);
+  }
+
+  /** Compute the expected mass flow given current time, valve open/close times,
    * and the nominal mass flow rate assuming valve is always open.
    * mdot_sigma = (sigmoid((t-to)/ct) - sigmoid((t-tc)/ct)) * mdot
    */
   double computeExpectedTrueMassFlow(
       const double &t, const double &to, const double &tc, const double &mdot,
-      gtsam::OptionalMatrixType H_t = nullptr,
+      gtsam::OptionalMatrixType H_t,
       gtsam::OptionalMatrixType H_to = nullptr,
       gtsam::OptionalMatrixType H_tc = nullptr,
       gtsam::OptionalMatrixType H_mdot = nullptr) const {
