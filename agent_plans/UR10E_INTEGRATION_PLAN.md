@@ -89,6 +89,9 @@ reach through `kUrdfPath`.
 
 **Why:** this is the only change you must make. The rest of the steps check the model or put it to use.
 
+To regenerate these files from the official xacro with ROS 2 instead, see
+[URDF_GENERATION_ROS2.md](URDF_GENERATION_ROS2.md).
+
 **Status: done.** `models/urdfs/ur10e/` contains `ur10e.urdf`, `visual/*.dae`, `collision/*.stl` and
 `LICENSE`. The source is upstream tag `4.4.0` (commit `81f7c9fe`). The UR10e meshes are BSD-3; UR's
 restricted graphics terms cover only other models. The file was converted by hand from the YAML
