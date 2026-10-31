@@ -50,7 +50,7 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
       <div class="row"><div class="button-group"><button @click="select(Math.max(0,index-1))" :disabled="index===0" aria-label="Previous iteration">←</button><button @click="replay">{{ replaying ? 'Pause iterations' : 'Replay iterations' }}</button><button @click="select(Math.min(history.length-1,index+1))" :disabled="index===history.length-1" aria-label="Next iteration">→</button></div><button class="quiet" @click="final">Last iteration</button></div>
       <p class="scope" v-if="stage==='initializer'">{{ method==='ik' ? 'Each walking frame has its own LM history. Scrub time to inspect another solve.' : `${data.record.runs.contact.sparseSamples.length} supported samples solved jointly. Intermediate poses are interpolated offline.` }}</p>
       <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.converged ? 'Converged.' : 'Stopped at the iteration limit; convergence criterion not met.' }}</p>
-      <p class="scope" v-else>Iteration 0: feasible initial guess. CM-Opt limit: {{ data.record.maxIterations }} iterations.</p>
+      <p class="scope" v-if="stage==='smoothing'">Iteration 0: feasible initial guess. CM-Opt limit: {{ data.record.maxIterations }} iterations.</p>
     </section>
     <section class="plot-block">
       <div class="row"><h3>{{ stage==='smoothing' ? 'Smoothing objective' : 'Initializer objective' }}</h3><strong class="mono">{{ number(errors[index], 5) }}</strong></div>
