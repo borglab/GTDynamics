@@ -18,6 +18,7 @@ option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
 option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
 option(GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO "Build interactive motion planning teaching demo backend" OFF)
 option(GTDYNAMICS_BUILD_CONTACT_INITIALIZATION_WEBDEMO "Build GTSAM contact-initialization benchmark and app exporter" OFF)
+option(GTDYNAMICS_BUILD_G1_MJLAB "Build G1 CMC friction comparison" OFF)
 mark_as_advanced(CLEAR
   GTDYNAMICS_ENABLE_BOOST_SERIALIZATION
   GTDYNAMICS_WITH_TBB
@@ -130,6 +131,10 @@ endif()
 include(cmake/HandleTBB.cmake)              # TBB
 
 add_subdirectory(gtdynamics)
+
+if(GTDYNAMICS_BUILD_G1_MJLAB)
+  add_subdirectory(examples/g1_mjlab)
+endif()
 
 if(GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO)
   add_subdirectory(apps/motion-planning/backend)
