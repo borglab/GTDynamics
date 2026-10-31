@@ -53,10 +53,9 @@ NonlinearFactorGraph Kinematics::vFactors<Phase>(
 NonlinearFactorGraph Kinematics::contactHeightObjectives(
     const Phase& phase, const gtsam::Vector3& gravity,
     double ground_plane_height) const {
-  const auto contacts = std::static_pointer_cast<const FootContactConstraintSpec>(
-      phase.constraintSpec());
+  const auto contacts = phase.constraintSpec()->groundContactPoints();
   return collectFactors(phase, [&](const Slice& slice) {
-    return contactHeightObjectives(slice, contacts->contactPoints(), gravity,
+    return contactHeightObjectives(slice, contacts, gravity,
                                    ground_plane_height);
   });
 }

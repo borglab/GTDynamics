@@ -289,10 +289,12 @@ gtdynamics::Robot CreateRobotFromFile(const string &file_path,
 
 class PointOnLink {
   PointOnLink();
-  PointOnLink(const gtdynamics::LinkSharedPtr& link, const gtsam::Point3 &point);
+  PointOnLink(const gtdynamics::LinkSharedPtr& link, const gtsam::Point3 &point,
+              bool isGround = true);
 
   gtdynamics::LinkSharedPtr link;
   gtsam::Point3 point;
+  bool isGround;
 
   bool equals(const gtdynamics::PointOnLink& other, double tol = 1e-9) const;
   gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
@@ -303,6 +305,8 @@ class PointOnLink {
 
 #include <gtdynamics/utils/ConstraintSpec.h>
 virtual class ConstraintSpec {
+  const gtdynamics::PointOnLinks &contactPoints() const;
+  gtdynamics::PointOnLinks groundContactPoints() const;
   void print(const string &s) const;
 };
 

@@ -31,11 +31,15 @@ namespace gtdynamics {
 struct PointOnLink {
   LinkSharedPtr link;
   gtsam::Point3 point;
+  /// Whether this contact should receive a ground-height objective.
+  bool isGround = true;
 
   PointOnLink() {}
-  PointOnLink(const LinkSharedPtr& link, const gtsam::Point3& point)
-      : link(link), point(point) {}
+  PointOnLink(const LinkSharedPtr& link, const gtsam::Point3& point,
+              bool isGround = true)
+      : link(link), point(point), isGround(isGround) {}
 
+  // Material-point identity is independent of its phase-specific ground role.
   bool operator==(const PointOnLink& other) const {
     return (point == other.point && link == other.link);
   }
@@ -54,7 +58,7 @@ struct PointOnLink {
   /// GTSAM-style print, works with wrapper.
   void print(const std::string& s = "") const;
 
-  /// GTSAM-style equal, allows for using assert_equal.
+  /// Compare link name, point coordinates (within tol), and ground role.
   bool equals(const PointOnLink& other, double tol = 1e-9) const;
 };
 

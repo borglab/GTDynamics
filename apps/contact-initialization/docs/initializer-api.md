@@ -6,8 +6,9 @@ link name, and an initial world pose, and return ordinary GTDynamics
 `gtsam::Values` suitable for seeding a later optimization.
 
 The inputs differ because this initializer keeps measured joints fixed and
-estimates floating-base poses from repeated ground contacts. It takes a
-`Trajectory` of `Phase` objects with `FootContactConstraintSpec`s. Contact points
+estimates floating-base poses from repeated contacts. It takes a
+`Trajectory` of `Phase` objects whose `ConstraintSpec`s expose `contactPoints()`.
+`FootContactConstraintSpec` implements this interface. Contact points
 use link **COM coordinates**, as do `PointOnLink` and `Robot::forwardKinematics`.
 The same link and exact material-point coordinates in consecutive phases keep
 the same landmark identity, independent of point ordering. A point that disappears
@@ -45,9 +46,19 @@ double solveMilliseconds = diagnostics.timings.optimizationMs;
 Phases use original inclusive sample indices. They must be ordered and
 contiguous; adjacent phases can be disjoint or share one endpoint. A shared
 endpoint uses the union of the two contact sets and produces one state.
-`FootContactConstraintSpec` with no points represents flight. Missing specs,
+A specification with no contact points represents flight. Missing specs,
 duplicate points within a phase, foreign robot links, and invalid intervals
 are rejected. Each joint must be measured at every trajectory slice.
+
+Each `PointOnLink` has an `isGround` flag, defaulting to `true` for existing
+walking examples. For a contact away from the ground plane, use
+`PointOnLink(link, localPoint, false)` (the same constructor is wrapped in Python).
+`ConstraintSpec::groundContactPoints()` selects the flagged contacts for
+kinematic height objectives. The initializer uses **all** `contactPoints()`;
+classification does not change material-point identity or landmark continuity.
+For mixed ground/wall contacts, select `Model::Patch` or `Model::Point` and leave
+`addGroundFactors` disabled. `Model::Ground` still imposes its global level-ground
+model; the flag does not change that solver option.
 
 The initializer keeps supported phase boundaries and supplements long supported
 phases with frames at most one second apart (every sample when `dt > 1`). It

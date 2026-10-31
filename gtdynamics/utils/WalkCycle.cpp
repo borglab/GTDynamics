@@ -14,33 +14,22 @@
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/utils/WalkCycle.h>
 
+#include <algorithm>
+
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
 using gtsam::Point3;
 using gtsam::SharedNoiseModel;
 
-/// cast ConstraintSpec to FootContactConstraintSpec
-const std::shared_ptr<const FootContactConstraintSpec>
-castFootContactConstraintSpec(
-    const std::shared_ptr<const ConstraintSpec> &constraint_spec) {
-  return std::dynamic_pointer_cast<const FootContactConstraintSpec>(
-      constraint_spec);
-}
-
 void WalkCycle::addPhaseContactPoints(const Phase &phase) {
-  // Add unique PointOnLink objects to contact_points_
-  auto foot_contact_spec =
-      castFootContactConstraintSpec(phase.constraintSpec());
-  if (foot_contact_spec) {
-    for (auto &&kv : foot_contact_spec->contactPoints()) {
-      int link_count =
-          std::count_if(contact_points_.begin(), contact_points_.end(),
-                        [&](const PointOnLink &contact_point) {
-                          return contact_point.point == kv.point &&
-                                 contact_point.link == kv.link;
-                        });
-      if (link_count == 0) contact_points_.push_back(kv);
+  // Add unique material points independently of the specification subtype.
+  if (const auto spec = phase.constraintSpec()) {
+    for (const auto& point : spec->contactPoints()) {
+      if (std::find(contact_points_.begin(), contact_points_.end(), point) ==
+          contact_points_.end()) {
+        contact_points_.push_back(point);
+      }
     }
   }
 }
@@ -64,19 +53,17 @@ ContactPointGoals WalkCycle::initContactPointGoal(const Robot &robot,
 
   // Go over all phases, and all contact points
   for (auto &&phase : phases_) {
-    auto foot_contact_spec =
-        castFootContactConstraintSpec(phase.constraintSpec());
-    if (foot_contact_spec) {
-      for (auto &&cp : foot_contact_spec->contactPoints()) {
+    if (const auto spec = phase.constraintSpec()) {
+      for (const auto& cp : spec->contactPoints()) {
         auto link_name = cp.link->name();
         // If no goal set yet, add it here
         if (cp_goals.count(link_name) == 0) {
           LinkSharedPtr link = robot.link(link_name);
-          // Preserve nominal x/y and set contact z to the requested world
-          // ground height.
-          const Point3 foot_rest_w = link->bMcom() * cp.point;
-          const Point3 foot_w(foot_rest_w.x(), foot_rest_w.y(), ground_height);
-          cp_goals.emplace(link_name, foot_w);
+          const Point3 rest_w = link->bMcom() * cp.point;
+          // Only ground contacts receive the requested ground height.
+          const Point3 goal(rest_w.x(), rest_w.y(),
+                            cp.isGround ? ground_height : rest_w.z());
+          cp_goals.emplace(link_name, goal);
         }
       }
     }
@@ -91,8 +78,10 @@ NonlinearFactorGraph WalkCycle::contactPointObjectives(
   NonlinearFactorGraph factors;
 
   for (const Phase &phase : phases_) {
-    auto foot_contact_spec =
-        castFootContactConstraintSpec(phase.constraintSpec());
+    // These stance/swing trajectory generators belong to the walking spec.
+    const auto foot_contact_spec =
+        std::dynamic_pointer_cast<const FootContactConstraintSpec>(
+            phase.constraintSpec());
     if (foot_contact_spec) {
       // Ask the Phase instance to anchor the stance legs
       factors.add(foot_contact_spec->contactPointObjectives(
@@ -122,65 +111,41 @@ std::ostream &operator<<(std::ostream &os, const WalkCycle &walk_cycle) {
 
 std::vector<std::string> WalkCycle::getPhaseSwingLinks(size_t p) const {
   std::vector<std::string> phase_swing_links;
-  const Phase &phase = phases_[p];
-  auto foot_contact_spec =
-      castFootContactConstraintSpec(phase.constraintSpec());
-  if (foot_contact_spec) {
-    for (auto &&kv : contact_points_) {
-      if (!foot_contact_spec->hasContact(kv.link)) {
-        phase_swing_links.push_back(kv.link->name());
-      }
+  if (const auto spec = phases_[p].constraintSpec()) {
+    const auto& active = spec->contactPoints();
+    for (const auto& point : contact_points_) {
+      const bool has_contact = std::any_of(
+          active.begin(), active.end(), [&](const PointOnLink& contact) {
+            return contact.link->name() == point.link->name();
+          });
+      if (!has_contact) phase_swing_links.push_back(point.link->name());
     }
   }
   return phase_swing_links;
 }
 
 const PointOnLinks WalkCycle::getPhaseContactPoints(size_t p) const {
-  PointOnLinks cp;
-  auto foot_contact_spec =
-      castFootContactConstraintSpec(phases_[p].constraintSpec());
-  if (foot_contact_spec) {
-    cp = foot_contact_spec->contactPoints();
+  if (const auto spec = phases_[p].constraintSpec()) {
+    return spec->contactPoints();
   }
-  return cp;
+  return {};
 }
 
 std::vector<PointOnLinks> WalkCycle::allPhasesContactPoints() const {
   std::vector<PointOnLinks> phase_cps;
-  for (auto &&phase : phases_) {
-    auto foot_contact_spec =
-        castFootContactConstraintSpec(phase.constraintSpec());
-    if (foot_contact_spec) {
-      phase_cps.push_back(foot_contact_spec->contactPoints());
-    }
+  for (size_t p = 0; p < phases_.size(); ++p) {
+    phase_cps.push_back(getPhaseContactPoints(p));
   }
   return phase_cps;
 }
 
 std::vector<PointOnLinks> WalkCycle::transitionContactPoints() const {
-  std::vector<PointOnLinks> trans_cps_orig;
-
-  PointOnLinks phase_1_cps;
-  PointOnLinks phase_2_cps;
-
-  for (size_t p = 0; p < phases_.size() - 1; p++) {
-    auto foot_contact_spec1 =
-        castFootContactConstraintSpec(phases_[p].constraintSpec());
-    auto foot_contact_spec2 =
-        castFootContactConstraintSpec(phases_[p + 1].constraintSpec());
-
-    if (foot_contact_spec1) {
-      phase_1_cps = foot_contact_spec1->contactPoints();
-    }
-    if (foot_contact_spec2) {
-      phase_2_cps = foot_contact_spec2->contactPoints();
-    }
-
-    PointOnLinks intersection = getIntersection(phase_1_cps, phase_2_cps);
-    trans_cps_orig.push_back(intersection);
+  std::vector<PointOnLinks> transitions;
+  for (size_t p = 1; p < phases_.size(); ++p) {
+    transitions.push_back(getIntersection(getPhaseContactPoints(p - 1),
+                                          getPhaseContactPoints(p)));
   }
-
-  return trans_cps_orig;
+  return transitions;
 }
 
 void WalkCycle::print(const std::string &s) const {

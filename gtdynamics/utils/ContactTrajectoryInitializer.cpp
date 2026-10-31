@@ -86,11 +86,8 @@ ContactFrames TrackContacts(const Robot& robot, const Trajectory& trajectory) {
               "phases must be ordered and contiguous with at most one shared "
               "endpoint");
     }
-    const auto spec =
-        std::dynamic_pointer_cast<const FootContactConstraintSpec>(
-            phase.constraintSpec());
-    Require(static_cast<bool>(spec),
-            "phases require a FootContactConstraintSpec");
+    const auto spec = phase.constraintSpec();
+    Require(static_cast<bool>(spec), "phases require a ConstraintSpec");
     std::vector<TrackedContact> current;
     for (const auto& cp : spec->contactPoints()) {
       Require(static_cast<bool>(cp.link), "contact point has no link");

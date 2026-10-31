@@ -15,6 +15,7 @@
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/Trajectory.h>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -23,6 +24,52 @@ using std::map;
 using std::string;
 
 #include "contactGoalsExample.h"
+
+namespace {
+// A specification unrelated to FootContactConstraintSpec exercises dispatch
+// through the base interface, with one contact on the ground and one elsewhere.
+class MixedContactSpec : public ConstraintSpec {
+ public:
+  PointOnLinks points;
+  const PointOnLinks& contactPoints() const override { return points; }
+  void print(const std::string&) const override {}
+};
+}  // namespace
+
+TEST(Phase, GroundContactsFromGeneralSpecification) {
+  using namespace contact_goals_example;
+  auto spec = std::make_shared<MixedContactSpec>();
+  spec->points = {{LH, Point3::Zero(), true}, {RF, Point3::Zero(), false}};
+  const Phase phase(5, 7, spec);
+  EXPECT_LONGS_EQUAL(2, phase.constraintSpec()->contactPoints().size());
+  EXPECT_LONGS_EQUAL(1, phase.constraintSpec()->groundContactPoints().size());
+  const auto& wall = spec->points[1];
+  const PointOnLink same_material_point(wall.link, wall.point, true);
+  EXPECT(wall == same_material_point);
+  EXPECT(!wall.equals(same_material_point));
+  EXPECT(wall.equals(PointOnLink(wall.link, wall.point, false)));
+
+  KinematicsParameters parameters;
+  parameters.cp_cost_model = gtsam::noiseModel::Isotropic::Sigma(1, 0.2);
+  const Kinematics kinematics(parameters);
+  const gtsam::Vector3 gravity(0, 0, -9.81);
+  const auto graph = kinematics.contactHeightObjectives(phase, gravity, 0.2);
+  EXPECT_LONGS_EQUAL(3, graph.size());
+  gtsam::Values values;
+  for (size_t k = 5; k <= 7; ++k) {
+    values.insert(PoseKey(LH->id(), k),
+                  gtsam::Pose3(gtsam::Rot3(), Point3(0, 0, 0.4)));
+    EXPECT(graph.keys().count(PoseKey(RF->id(), k)) == 0);
+  }
+  DOUBLES_EQUAL(1.5, graph.error(values), 1e-10);
+  EXPECT_LONGS_EQUAL(1, kinematics.contactHeightObjectives(
+                           Slice(5), spec->points, gravity).size());
+  const Trajectory trajectory(WalkCycle({phase}), 1);
+  EXPECT(graph.equals(
+      kinematics.contactHeightObjectives(trajectory, gravity, 0.2)));
+  spec->points.front().isGround = false;
+  EXPECT_LONGS_EQUAL(0, kinematics.contactHeightObjectives(phase, gravity).size());
+}
 
 TEST(Phase, ContactHeightObjectives) {
   using namespace contact_goals_example;

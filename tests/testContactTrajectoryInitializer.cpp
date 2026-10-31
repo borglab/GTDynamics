@@ -22,6 +22,12 @@ using gtsam::Rot3;
 using gtsam::Values;
 
 namespace {
+class GeneralContactSpec : public ConstraintSpec {
+ public:
+  PointOnLinks points;
+  const PointOnLinks& contactPoints() const override { return points; }
+  void print(const std::string&) const override {}
+};
 Phase ContactPhase(size_t first, size_t last, const PointOnLinks& points) {
   return Phase(first, last,
                std::make_shared<FootContactConstraintSpec>(points));
@@ -39,6 +45,34 @@ bool Rejects(F&& call, const std::string& message) {
   return false;
 }
 }  // namespace
+
+TEST(ContactTrajectoryInitializer, GeneralSpecificationKeepsNonGroundContacts) {
+  const auto robot = CreateRobotFromFile(
+      kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
+  const auto link = robot.link("l2");
+  auto spec = std::make_shared<GeneralContactSpec>();
+  spec->points = {{link, Point3(-.1, -.1, 0), true},
+                  {link, Point3(.1, -.1, .3), false},
+                  {link, Point3(.1, .1, .3), false}};
+  Values measurements;
+  for (size_t k = 4; k <= 5; ++k)
+    InsertJointAngle(&measurements, robot.joint("j1")->id(), k, 0.0);
+  contact_init::Options options;
+  options.model = contact_init::Model::Patch;
+  contact_init::Result diagnostics;
+  const auto result = Initializer().InitializeSolutionContacts(
+      robot, "l1", Pose3(Rot3::Rx(-std::acos(-1.0) / 2), Point3(0, 0, 1)),
+      measurements, Phases({Phase(4, 5, spec)}),
+      .01, options, &diagnostics);
+  EXPECT_LONGS_EQUAL(3, diagnostics.landmarks.size());
+  EXPECT_LONGS_EQUAL(3, diagnostics.graph.measurements.front().observations.size());
+  EXPECT(diagnostics.residualRms < 1e-8);
+  EXPECT(assert_equal(spec->points[1].predict(result, 4),
+                      spec->points[1].predict(result, 5), 1e-8));
+  // The non-ground contacts remain above the ground contact.
+  DOUBLES_EQUAL(.3, spec->points[1].predict(result, 4).z() -
+                       spec->points[0].predict(result, 4).z(), 1e-8);
+}
 
 // Dense expansion preserves measured joints and the chosen root COM gauge.
 TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
@@ -129,7 +163,7 @@ TEST(ContactTrajectoryInitializer, InvalidPhasesAndMeasurementsRejected) {
       },
       "contiguous"));
   EXPECT(Rejects([&] { initialize(Phases({Phase(4, 8, nullptr)})); },
-                 "FootContactConstraintSpec"));
+                 "ConstraintSpec"));
   EXPECT(Rejects([&] { initialize(Phases({ContactPhase(4, 8, {})})); },
                  "active contact"));
   auto duplicate = patch;

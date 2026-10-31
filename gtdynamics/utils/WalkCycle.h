@@ -26,8 +26,8 @@ namespace gtdynamics {
 
 /**
  * @class WalkCycle class stores the sequence of phases
- * in a walk cycle. A WalkCycle is built from FootContactConstraintSpecs
- * and phase lengths, and can spawn phases.
+ * in a walk cycle. Contact queries use the general ConstraintSpec interface;
+ * stance/swing trajectory generation uses FootContactConstraintSpec.
  */
 class WalkCycle {
  protected:
@@ -137,7 +137,8 @@ class WalkCycle {
   /**
    * @fn Returns the initial contact point goal for every contact link.
    * @param[in] robot Robot specification from URDF/SDF.
-   * @param[in] ground_height z-coordinate of ground plane in world frame.
+   * @param[in] ground_height z-coordinate for ground contacts. Non-ground
+   * contacts retain their nominal world height.
    * @return Map from link name to goal points.
    */
   ContactPointGoals initContactPointGoal(const Robot &robot,

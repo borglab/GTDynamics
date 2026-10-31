@@ -33,14 +33,12 @@ TEST(Phase, All) {
   using namespace walk_cycle_example;
   Phase phase1(0, 2, phase_1);
 
-  auto phase1_foot_constraint =
-      std::static_pointer_cast<const FootContactConstraintSpec>(
-          phase1.constraintSpec());
+  const auto& phase1_foot_constraint = phase_1;
 
   Point3 cp = phase1_foot_constraint->contactPoint("tarsus_3_L3");
   EXPECT(assert_equal(contact_in_com, cp));
 
-  PointOnLinks cps = phase1_foot_constraint->contactPoints();
+  PointOnLinks cps = phase1.constraintSpec()->contactPoints();
   EXPECT_LONGS_EQUAL(3, cps.size());
   EXPECT(assert_equal(contact_in_com, cps[0].point));
   EXPECT_LONGS_EQUAL(2, phase1.numTimeSteps());

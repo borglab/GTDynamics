@@ -182,7 +182,8 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
-   * Create contact-height objectives at one slice using explicit contact points.
+   * Create contact-height objectives at one slice for supplied ground contacts.
+   * Points marked isGround=false contribute no height objectives.
    * @param contact_points Contact points on links.
    * @param gravity Gravity vector used to define up direction.
    * @param ground_plane_height Contact ground-plane height in world frame.
@@ -195,8 +196,8 @@ class Kinematics : public Optimizer {
 
   /**
    * Create contact-height objectives for every slice in a phase, including
-   * both endpoints, using the phase's FootContactConstraintSpec.
-   * An empty contact set produces an empty graph.
+   * both endpoints, using the specification's groundContactPoints().
+   * Contacts away from the ground plane contribute no height objectives.
    */
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const Phase& phase, const gtsam::Vector3& gravity,

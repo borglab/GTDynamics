@@ -53,7 +53,7 @@ class FootContactConstraintSpec : public ConstraintSpec {
                    const gtsam::Point3 &contact_in_com);
 
   /// Returns all the contact points in the stance
-  const PointOnLinks &contactPoints() const { return contact_points_; }
+  const PointOnLinks &contactPoints() const override { return contact_points_; }
 
   /// Check if phase has a contact for given link.
   bool hasContact(const LinkSharedPtr &link) const;

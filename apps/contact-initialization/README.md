@@ -63,8 +63,10 @@ gtsam::Values seeds = initializer.InitializeSolutionContacts(
 
 It matches the robot/root/initial-pose arguments and `Values` return type of
 `InitializeSolutionInverseKinematics`. The measured joints and a `Trajectory`
-of contact phases are the additional inputs. The adapter derives landmark continuity from consecutive
-`FootContactConstraintSpec`s using link identity and fixed COM-frame points.
+of contact phases are the additional inputs. The adapter derives landmark continuity
+from each specification's `contactPoints()`, using link identity and fixed
+COM-frame points. It includes non-ground contacts; height objectives separately
+use `groundContactPoints()` and the contacts' `isGround` flags.
 A new contact after an absence gets a fresh landmark; no episode schedule or
 touchdown IDs are required. Supported phase boundaries and supplemental frames
 feed the sparse solve, then root interpolation and FK expand every trajectory

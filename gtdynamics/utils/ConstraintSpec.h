@@ -13,23 +13,33 @@
 
 #pragma once
 
+#include <gtdynamics/utils/PointOnLink.h>
+
+#include <string>
+
 namespace gtdynamics {
 
-/**
- * @class ConstraintSpec is a base class for constraint specification on phases.
- * Derived Constraints could be walking, jumping, rocketry etc..
- * Derived Class currently implemented: FootContactConstraintSpec - specific for walking.
+/** Specification of a phase's constraints and active material contacts.
+ * Contact points may belong to any link. A contact-free phase returns an empty
+ * collection; the ground role is explicit on each PointOnLink.
  */
-
 class ConstraintSpec {
-  public:
-    /// GTSAM-style print, pure virtual here
-    virtual void print(const std::string &s) const = 0;
-    
-    // destructor
-    virtual ~ConstraintSpec() = default;
+ public:
+  /// All active contacts, including contacts away from the ground plane.
+  virtual const PointOnLinks& contactPoints() const = 0;
+
+  /// Active contacts selected for ground-height objectives.
+  PointOnLinks groundContactPoints() const {
+    PointOnLinks ground;
+    for (const auto& contact : contactPoints()) {
+      if (contact.isGround) ground.push_back(contact);
+    }
+    return ground;
+  }
+
+  /// GTSAM-style print.
+  virtual void print(const std::string& s) const = 0;
+  virtual ~ConstraintSpec() = default;
 };
-
-
 
 }  // namespace gtdynamics

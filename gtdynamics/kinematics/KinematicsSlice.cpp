@@ -200,6 +200,7 @@ NonlinearFactorGraph Kinematics::contactHeightObjectives(
   NonlinearFactorGraph graph;
 
   for (const PointOnLink& cp : contact_points) {
+    if (!cp.isGround) continue;
     graph.emplace_shared<ContactHeightFactor>(
         PoseKey(cp.link->id(), slice.k), p_.cp_cost_model, cp.point, gravity,
         ground_plane_height);

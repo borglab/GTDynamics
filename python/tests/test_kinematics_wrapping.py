@@ -113,6 +113,38 @@ class KinematicsWrappingTests(unittest.TestCase):
         empty = kinematics.contactHeightObjectives(gtd.Phase(5, 7, empty_spec), gravity)
         self.assertEqual(empty.size(), 0)
 
+    def test_ground_contact_selection(self):
+        ground = gtd.PointOnLink(self.robot.link("root"), np.zeros(3))
+        wall = gtd.PointOnLink(self.robot.link("tip"), np.zeros(3), False)
+        self.assertTrue(ground.isGround)
+        self.assertFalse(wall.isGround)
+        same_point = gtd.PointOnLink(wall.link, wall.point, True)
+        self.assertFalse(wall.equals(same_point))
+        same_point.isGround = False
+        self.assertTrue(wall.equals(same_point))
+        points = gtd.PointOnLinks([ground, wall])
+        spec = gtd.FootContactConstraintSpec(points)
+        phase = gtd.Phase(5, 7, spec)
+        self.assertEqual(len(phase.constraintSpec().contactPoints()), 2)
+        selected = phase.constraintSpec().groundContactPoints()
+        self.assertEqual(len(selected), 1)
+        self.assertTrue(selected[0].equals(ground))
+        gravity = np.array([0.0, 0.0, -9.81])
+        kinematics = gtd.Kinematics()
+        graph = kinematics.contactHeightObjectives(phase, gravity)
+        self.assertEqual(graph.size(), 3)
+        self.assertEqual(list(graph.keyVector()), [gtd.PoseKey(1, k) for k in (5, 6, 7)])
+        self.assertEqual(
+            kinematics.contactHeightObjectives(gtd.Slice(5), points, gravity).size(), 1
+        )
+        ground.isGround = False
+        spec = gtd.FootContactConstraintSpec(gtd.PointOnLinks([ground, wall]))
+        self.assertEqual(len(spec.contactPoints()), 2)
+        self.assertEqual(len(spec.groundContactPoints()), 0)
+        self.assertEqual(
+            kinematics.contactHeightObjectives(gtd.Phase(5, 7, spec), gravity).size(), 0
+        )
+
     def test_trajectory_contact_height_builder(self):
         def phase(first, last, points):
             return gtd.Phase(

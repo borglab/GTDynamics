@@ -149,7 +149,10 @@ class Initializer {
 
     /** Initialize measured joints over a trajectory of contact phases.
      *
-     * Each phase supplies a FootContactConstraintSpec. The same PointOnLink
+     * Each phase supplies a ConstraintSpec with contactPoints(). All contacts
+     * are used, regardless of their isGround flag. Mixed ground/wall contacts
+     * require a Patch or Point model without global ground priors.
+     * The same PointOnLink
      * (link identity and exact COM-frame coordinates) in consecutive phases
      * shares a landmark, regardless of point ordering. A point that disappears
      * and later returns gets a new landmark. Callers supply no touchdown IDs.
