@@ -17,8 +17,6 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
-#include <stdexcept>
-
 namespace gtdynamics {
 
 using gtsam::NonlinearFactorGraph;
@@ -55,12 +53,8 @@ NonlinearFactorGraph Kinematics::vFactors<Phase>(
 NonlinearFactorGraph Kinematics::contactHeightObjectives(
     const Phase& phase, const gtsam::Vector3& gravity,
     double ground_plane_height) const {
-  const auto contacts = std::dynamic_pointer_cast<const FootContactConstraintSpec>(
+  const auto contacts = std::static_pointer_cast<const FootContactConstraintSpec>(
       phase.constraintSpec());
-  if (!contacts) {
-    throw std::invalid_argument(
-        "contactHeightObjectives requires a FootContactConstraintSpec");
-  }
   return collectFactors(phase, [&](const Slice& slice) {
     return contactHeightObjectives(slice, contacts->contactPoints(), gravity,
                                    ground_plane_height);

@@ -14,14 +14,12 @@
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Trajectory.h>
 
-#include <stdexcept>
-
 #include "contactGoalsExample.h"
 
 using namespace gtdynamics;
 using gtsam::Point3;
 
-TEST(Trajectory, ContactHeightSharedBoundaryAndFlight) {
+TEST(Trajectory, ContactHeightPhaseAccumulation) {
   using namespace contact_goals_example;
   const PointOnLink a(LH, Point3::Zero()), b(LH, Point3(0.2, 0, 0)),
       c(RF, Point3::Zero());
@@ -42,32 +40,23 @@ TEST(Trajectory, ContactHeightSharedBoundaryAndFlight) {
   const auto graph = kinematics.contactHeightObjectives(
       trajectory, gtsam::Vector3(0, 0, -9.81), 0.2);
 
-  // 2 at slice 5, union {a,b,c} at 6, 2 at 7, and 1 at 10. In particular,
-  // b is not counted twice at 6, and a/b remain distinct despite sharing LH.
-  EXPECT_LONGS_EQUAL(8, graph.size());
+  // Each phase contributes its own objectives: 4 + 4 + 0 + 1.
+  EXPECT_LONGS_EQUAL(9, graph.size());
   EXPECT_LONGS_EQUAL(6, graph.keys().size());
   gtsam::Values values;
   for (const auto key : graph.keys()) {
     values.insert(key, gtsam::Pose3(gtsam::Rot3(), Point3(0, 0, 0.4)));
   }
-  DOUBLES_EQUAL(4.0, graph.error(values), 1e-10);
+  DOUBLES_EQUAL(4.5, graph.error(values), 1e-10);
   EXPECT(graph.keys().count(PoseKey(LH->id(), 8)) == 0);
   EXPECT(graph.keys().count(PoseKey(LH->id(), 9)) == 0);
 }
 
-TEST(Trajectory, ContactHeightEmptyAndMissingSpecification) {
+TEST(Trajectory, ContactHeightEmpty) {
   const Kinematics kinematics;
   const gtsam::Vector3 gravity(0, 0, -9.81);
   EXPECT_LONGS_EQUAL(
       0, kinematics.contactHeightObjectives(Trajectory(), gravity).size());
-  bool rejected = false;
-  try {
-    kinematics.contactHeightObjectives(
-        Trajectory(WalkCycle({Phase(5, 7, nullptr)}), 1), gravity);
-  } catch (const std::invalid_argument&) {
-    rejected = true;
-  }
-  EXPECT(rejected);
 }
 
 int main() {

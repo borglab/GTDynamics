@@ -197,18 +197,15 @@ class Kinematics : public Optimizer {
    * Create contact-height objectives for every slice in a phase, including
    * both endpoints, using the phase's FootContactConstraintSpec.
    * An empty contact set produces an empty graph.
-   * @throws std::invalid_argument if the phase has no foot-contact specification.
    */
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const Phase& phase, const gtsam::Vector3& gravity,
       double ground_plane_height = 0.0) const;
 
   /**
-   * Create contact-height objectives using each phase's contact specification.
-   * Each distinct PointOnLink contributes once per slice, including at shared
-   * phase boundaries. Identity uses the link and exact COM-frame coordinates.
-   * Empty trajectories and flight phases contribute no factors.
-   * @throws std::invalid_argument if a phase has no foot-contact specification.
+   * Accumulate contact-height objectives from each phase of a trajectory.
+   * Shared endpoints contribute once per phase. Empty trajectories and flight
+   * phases contribute no factors.
    */
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const Trajectory& trajectory, const gtsam::Vector3& gravity,

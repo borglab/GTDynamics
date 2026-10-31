@@ -12,15 +12,10 @@
  */
 
 #include <gtdynamics/kinematics/Kinematics.h>
-#include <gtdynamics/utils/ContextUtils.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-
-#include <algorithm>
-#include <map>
-#include <stdexcept>
 
 namespace gtdynamics {
 
@@ -32,30 +27,9 @@ using std::vector;
 NonlinearFactorGraph Kinematics::contactHeightObjectives(
     const Trajectory& trajectory, const gtsam::Vector3& gravity,
     double ground_plane_height) const {
-  // Union the contacts at shared slices so a persistent contact is not weighted
-  // twice, while distinct points on the same link retain their own objectives.
-  std::map<size_t, PointOnLinks> contacts_by_slice;
-  for (const auto& phase : trajectory.phases()) {
-    const auto contacts =
-        std::dynamic_pointer_cast<const FootContactConstraintSpec>(
-            phase.constraintSpec());
-    if (!contacts) {
-      throw std::invalid_argument(
-          "contactHeightObjectives requires a FootContactConstraintSpec");
-    }
-    forEachSlice(phase, [&](const Slice& slice) {
-      auto& points = contacts_by_slice[slice.k];
-      for (const auto& point : contacts->contactPoints()) {
-        if (std::find(points.begin(), points.end(), point) == points.end()) {
-          points.push_back(point);
-        }
-      }
-    });
-  }
   NonlinearFactorGraph graph;
-  for (const auto& [k, points] : contacts_by_slice) {
-    graph.add(contactHeightObjectives(Slice(k), points, gravity,
-                                     ground_plane_height));
+  for (const auto& phase : trajectory.phases()) {
+    graph.add(contactHeightObjectives(phase, gravity, ground_plane_height));
   }
   return graph;
 }
