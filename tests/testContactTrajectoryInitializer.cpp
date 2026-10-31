@@ -8,6 +8,7 @@
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/Initializer.h>
+#include <gtdynamics/utils/Trajectory.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/TestableAssertions.h>
 
@@ -19,6 +20,25 @@ using gtsam::Point3;
 using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Values;
+
+namespace {
+Phase ContactPhase(size_t first, size_t last, const PointOnLinks& points) {
+  return Phase(first, last,
+               std::make_shared<FootContactConstraintSpec>(points));
+}
+Trajectory Phases(const std::vector<Phase>& phases) {
+  return Trajectory(WalkCycle(phases), 1);
+}
+template <class F>
+bool Rejects(F&& call, const std::string& message) {
+  try {
+    call();
+  } catch (const std::invalid_argument& error) {
+    return std::string(error.what()).find(message) != std::string::npos;
+  }
+  return false;
+}
+}  // namespace
 
 // Dense expansion preserves measured joints and the chosen root COM gauge.
 TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
@@ -41,7 +61,7 @@ TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
                            {foot, Point3(0.1, -0.05, -0.2)},
                            {foot, Point3(0.1, 0.05, -0.2)},
                            {foot, Point3(-0.1, 0.05, -0.2)}};
-  const ContactEpisode stance{"foot-stance-0", 4, 8, patch};
+  const auto trajectory = Phases({ContactPhase(4, 8, patch)});
   const Pose3 initial_root(Rot3::RzRyRx(0.12, -0.23, 0.34),
                            Point3(1.2, -0.8, 1.5));
   contact_init::Options options;
@@ -50,7 +70,7 @@ TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
   contact_init::Result diagnostics;
   Initializer initializer;
   const auto result = initializer.InitializeSolutionContacts(
-      robot, "l1", initial_root, measurements, samples, {stance}, 0.01, options,
+      robot, "l1", initial_root, measurements, trajectory, 0.01, options,
       &diagnostics);
 
   EXPECT_LONGS_EQUAL(2, diagnostics.graph.measurements.size());
@@ -78,44 +98,52 @@ TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
   }
 }
 
-// Missing joint angles, missing boundaries, and unordered sample keys are
-// rejected.
-TEST(ContactTrajectoryInitializer,
-     ExplicitContactScheduleAndMeasuredAnglesRequired) {
+TEST(ContactTrajectoryInitializer, InvalidPhasesAndMeasurementsRejected) {
   const auto robot = CreateRobotFromFile(
       kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
   const auto foot = robot.link("l2");
-  const auto joint = robot.joint("j1");
-  const ContactEpisode stance{"foot-stance-0", 4, 8, {{foot, Point3(0, 0, 0)}}};
-  Initializer initializer;
+  const PointOnLinks patch{{foot, Point3(-.1, -.1, 0)},
+                           {foot, Point3(.1, -.1, 0)},
+                           {foot, Point3(.1, .1, 0)}};
   Values measurements;
-  InsertJointAngle(&measurements, joint->id(), 4, 0.0);
-  bool missing_angle_rejected = false;
-  try {
-    initializer.InitializeSolutionContacts(robot, "l1", Pose3(), measurements,
-                                           {4, 8}, {stance});
-  } catch (const std::invalid_argument&) {
-    missing_angle_rejected = true;
-  }
-  EXPECT(missing_angle_rejected);
-
-  bool missing_boundary_rejected = false;
-  try {
-    initializer.InitializeSolutionContacts(robot, "l1", Pose3(), measurements,
-                                           {4, 9}, {stance});
-  } catch (const std::invalid_argument&) {
-    missing_boundary_rejected = true;
-  }
-  EXPECT(missing_boundary_rejected);
-
-  bool unordered_samples_rejected = false;
-  try {
-    initializer.InitializeSolutionContacts(robot, "l1", Pose3(), measurements,
-                                           {8, 4}, {stance});
-  } catch (const std::invalid_argument&) {
-    unordered_samples_rejected = true;
-  }
-  EXPECT(unordered_samples_rejected);
+  InsertJointAngle(&measurements, robot.joint("j1")->id(), 4, 0.0);
+  auto initialize = [&](const Trajectory& trajectory) {
+    return Initializer().InitializeSolutionContacts(
+        robot, "l1", Pose3(), measurements, trajectory, .01);
+  };
+  EXPECT(Rejects([&] { initialize(Phases({ContactPhase(4, 8, patch)})); },
+                 "missing joint angle"));
+  EXPECT(Rejects([&] { initialize(Trajectory()); }, "contain phases"));
+  EXPECT(Rejects([&] { initialize(Phases({ContactPhase(8, 4, patch)})); },
+                 "reversed"));
+  EXPECT(Rejects(
+      [&] {
+        initialize(
+            Phases({ContactPhase(4, 5, patch), ContactPhase(7, 8, patch)}));
+      },
+      "contiguous"));
+  EXPECT(Rejects(
+      [&] {
+        initialize(
+            Phases({ContactPhase(4, 7, patch), ContactPhase(6, 8, patch)}));
+      },
+      "contiguous"));
+  EXPECT(Rejects([&] { initialize(Phases({Phase(4, 8, nullptr)})); },
+                 "FootContactConstraintSpec"));
+  EXPECT(Rejects([&] { initialize(Phases({ContactPhase(4, 8, {})})); },
+                 "active contact"));
+  auto duplicate = patch;
+  duplicate.push_back(patch.front());
+  EXPECT(Rejects([&] { initialize(Phases({ContactPhase(4, 8, duplicate)})); },
+                 "duplicate"));
+  const auto other_robot = CreateRobotFromFile(
+      kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
+  EXPECT(Rejects(
+      [&] {
+        initialize(Phases(
+            {ContactPhase(4, 8, {{other_robot.link("l2"), Point3::Zero()}})}));
+      },
+      "another robot"));
 }
 
 // Long stances retain all boundaries and add original samples at most 1 s
@@ -141,10 +169,9 @@ TEST(ContactTrajectoryInitializer,
   options.model = contact_init::Model::Patch;
   contact_init::Result diagnostics;
   const auto values = Initializer().InitializeSolutionContacts(
-      robot, "l1", Pose3(), measurements, samples,
-      {{"stance-0", 4, 18, patch}, {"stance-1", 17, 38, patch}}, 0.1, options,
-      &diagnostics);
-  const std::vector<size_t> expected{4, 14, 17, 18, 28, 38};
+      robot, "l1", Pose3(), measurements, Phases({ContactPhase(4, 38, patch)}),
+      0.1, options, &diagnostics);
+  const std::vector<size_t> expected{4, 14, 24, 34, 38};
   EXPECT_LONGS_EQUAL(expected.size(), diagnostics.graph.measurements.size());
   for (size_t i = 0; i < expected.size(); ++i) {
     const auto& frame = diagnostics.graph.measurements.at(i);
@@ -160,28 +187,6 @@ TEST(ContactTrajectoryInitializer,
     DOUBLES_EQUAL(JointAngle(measurements, joint->id(), sample),
                   JointAngle(values, joint->id(), sample), 0);
   }
-}
-
-// The adapter rejects source samples too sparse to meet its frame-gap bound.
-TEST(ContactTrajectoryInitializer,
-     SparseSamplesCannotMeetOneSecondFrameInterval) {
-  const auto robot = CreateRobotFromFile(
-      kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
-  const auto foot = robot.link("l2");
-  Values measurements;
-  for (size_t sample : {4, 25}) {
-    InsertJointAngle(&measurements, robot.joint("j1")->id(), sample, 0.0);
-  }
-  bool rejected = false;
-  try {
-    Initializer().InitializeSolutionContacts(
-        robot, "l1", Pose3(), measurements, {4, 25},
-        {{"stance", 4, 25, {{foot, Point3(0, 0, 0)}}}}, 0.1);
-  } catch (const std::invalid_argument& error) {
-    rejected =
-        std::string(error.what()).find("too sparse") != std::string::npos;
-  }
-  EXPECT(rejected);
 }
 
 // A soft height prior derives its target from anchored FK and keeps Point3
@@ -206,7 +211,7 @@ TEST(ContactTrajectoryInitializer, LandmarkGroundPriorUsesAnchoredFK) {
   const Pose3 anchor(Rot3::RzRyRx(0.1, -0.2, 0.3), Point3(1, 2, 3));
   contact_init::Result diagnostics;
   const auto values = Initializer().InitializeSolutionContacts(
-      robot, "l1", anchor, measurements, samples, {{"stance", 4, 6, patch}},
+      robot, "l1", anchor, measurements, Phases({ContactPhase(4, 6, patch)}),
       0.01, options, &diagnostics);
   double height = 0;
   for (const auto& observation :
@@ -232,7 +237,7 @@ TEST(ContactTrajectoryInitializer, DisconnectedContactGaugesRejected) {
   const auto joint = robot.joint("j1");
   const PointOnLinks point{{foot, Point3(0, 0, 0)}};
   Values measurements;
-  for (size_t sample : {4, 5, 8, 9}) {
+  for (size_t sample : {4, 5, 6, 7, 8, 9}) {
     InsertJointAngle(&measurements, joint->id(), sample, 0.0);
   }
   Initializer initializer;
@@ -241,15 +246,109 @@ TEST(ContactTrajectoryInitializer, DisconnectedContactGaugesRejected) {
   bool disconnected_rejected = false;
   try {
     initializer.InitializeSolutionContacts(
-        robot, "l1", Pose3(), measurements, {4, 5, 8, 9},
-        {{"stance-before-flight", 4, 5, point},
-         {"stance-after-flight", 8, 9, point}},
+        robot, "l1", Pose3(), measurements,
+        Phases({ContactPhase(4, 5, point), ContactPhase(6, 7, {}),
+                ContactPhase(8, 9, point)}),
         0.01, options);
   } catch (const std::invalid_argument& error) {
     disconnected_rejected =
         std::string(error.what()).find("disconnected") != std::string::npos;
   }
   EXPECT(disconnected_rejected);
+}
+
+// Changing the other foot or reordering material points must not split a
+// stance.
+TEST(ContactTrajectoryInitializer, PhaseContinuityAndPointReentry) {
+  const auto robot = CreateRobotFromFile(
+      kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
+  const auto foot = robot.link("l2"), root = robot.link("l1");
+  const PointOnLinks patch{{foot, Point3(-.1, -.1, 0)},
+                           {foot, Point3(.1, -.1, 0)},
+                           {foot, Point3(.1, .1, 0)},
+                           {foot, Point3(-.1, .1, 0)}};
+  PointOnLinks double_support(patch.rbegin(), patch.rend());
+  double_support.insert(double_support.end(), {{root, Point3(-.1, -.1, 0)},
+                                               {root, Point3(.1, -.1, 0)},
+                                               {root, Point3(.1, .1, 0)}});
+  Values measured;
+  for (size_t k = 4; k <= 9; ++k)
+    InsertJointAngle(&measured, robot.joint("j1")->id(), k, 0.0);
+  contact_init::Options options;
+  options.model = contact_init::Model::Patch;
+  contact_init::Result result;
+  Initializer initializer;
+  initializer.InitializeSolutionContacts(
+      robot, "l1", Pose3(), measured,
+      Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, double_support),
+              ContactPhase(8, 9, patch)}),
+      .01, options, &result);
+  EXPECT_LONGS_EQUAL(7, result.landmarks.size());
+  EXPECT_LONGS_EQUAL(1, result.graph.contactComponents.size());
+  EXPECT(result.residualRms < 1e-8);
+  // A point absent for a phase gets a fresh landmark even when its link stays.
+  double_support.erase(double_support.begin());
+  initializer.InitializeSolutionContacts(
+      robot, "l1", Pose3(), measured,
+      Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, double_support),
+              ContactPhase(8, 9, patch)}),
+      .01, options, &result);
+  EXPECT_LONGS_EQUAL(8, result.landmarks.size());
+}
+
+TEST(ContactTrajectoryInitializer, SharedEndpointsAndFlightSeeds) {
+  const auto robot = CreateRobotFromFile(
+      kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
+  const auto foot = robot.link("l2"), root = robot.link("l1");
+  const PointOnLinks patch{{foot, Point3(-.1, -.1, 0)},
+                           {foot, Point3(.1, -.1, 0)},
+                           {foot, Point3(.1, .1, 0)}};
+  Values measured;
+  for (size_t k = 4; k <= 9; ++k)
+    InsertJointAngle(&measured, robot.joint("j1")->id(), k, .02 * k);
+  contact_init::Options options;
+  options.model = contact_init::Model::Patch;
+  contact_init::Result diagnostics;
+  const Pose3 anchor(Rot3(), Point3(1, 2, 3));
+  const auto result = Initializer().InitializeSolutionContacts(
+      robot, "l1", anchor, measured,
+      Phases({ContactPhase(4, 4, {}), ContactPhase(5, 6, patch),
+              ContactPhase(6, 7, patch), ContactPhase(8, 9, {})}),
+      .01, options, &diagnostics);
+  EXPECT_LONGS_EQUAL(3, diagnostics.graph.measurements.size());
+  EXPECT_LONGS_EQUAL(3, diagnostics.graph.measurements[1].observations.size());
+  EXPECT_LONGS_EQUAL(3, diagnostics.landmarks.size());
+  EXPECT(assert_equal(anchor, Pose(result, root->id(), 4), 1e-10));
+  EXPECT(assert_equal(anchor, Pose(result, root->id(), 5), 1e-10));
+  EXPECT(assert_equal(Pose(result, root->id(), 7), Pose(result, root->id(), 9),
+                      1e-10));
+  for (size_t k = 4; k <= 9; ++k)
+    DOUBLES_EQUAL(JointAngle(measured, robot.joint("j1")->id(), k),
+                  JointAngle(result, robot.joint("j1")->id(), k), 0.0);
+}
+
+TEST(ContactTrajectoryInitializer, FlightBreaksLandmarksEvenWithMotionPrior) {
+  const auto robot = CreateRobotFromFile(
+      kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
+  const auto foot = robot.link("l2");
+  const PointOnLinks patch{{foot, Point3(-.1, -.1, 0)},
+                           {foot, Point3(.1, -.1, 0)},
+                           {foot, Point3(.1, .1, 0)}};
+  Values measured;
+  for (size_t k = 4; k <= 9; ++k)
+    InsertJointAngle(&measured, robot.joint("j1")->id(), k, 0.0);
+  contact_init::Options options;
+  options.model = contact_init::Model::Patch;
+  options.addBetweenFactors = true;
+  contact_init::Result diagnostics;
+  Initializer().InitializeSolutionContacts(
+      robot, "l1", Pose3(), measured,
+      Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, {}),
+              ContactPhase(8, 9, patch)}),
+      .01, options, &diagnostics);
+  EXPECT_LONGS_EQUAL(6, diagnostics.landmarks.size());
+  EXPECT_LONGS_EQUAL(2, diagnostics.graph.contactComponents.size());
+  EXPECT_LONGS_EQUAL(1, diagnostics.graph.components.size());
 }
 
 int main() {

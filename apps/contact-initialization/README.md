@@ -58,23 +58,25 @@ The GTDynamics adapter is:
 ```cpp
 gtsam::Values seeds = initializer.InitializeSolutionContacts(
     robot, rootLinkName, initialRootCOMPose,
-    measuredJoints, sampleIndices, contactEpisodes, dt, options, &diagnostics);
+    measuredJoints, trajectory, dt, options, &diagnostics);
 ```
 
 It matches the robot/root/initial-pose arguments and `Values` return type of
-`InitializeSolutionInverseKinematics`. The additional measured-joint trajectory
-and episode schedule are necessary inputs. The adapter freezes root-relative FK
-at episode boundaries and fills longer gaps from requested samples to at most
-one second, runs the sparse contact initializer, interpolates root
-seeds between events, and expands them through FK at requested sample indices.
-It preserves measured joint angles and velocities and uses normal GTDynamics
-`PoseKey(link_id, sample)` keys. Contact coordinates are relative to link COMs.
+`InitializeSolutionInverseKinematics`. The measured joints and a `Trajectory`
+of contact phases are the additional inputs. The adapter derives landmark continuity from consecutive
+`FootContactConstraintSpec`s using link identity and fixed COM-frame points.
+A new contact after an absence gets a fresh landmark; no episode schedule or
+touchdown IDs are required. Supported phase boundaries and supplemental frames
+feed the sparse solve, then root interpolation and FK expand every trajectory
+slice. Unsupported prefix/suffix poses are held constant; internal flight is
+interpolated. Measured joint angles and velocities are preserved, using normal
+GTDynamics `PoseKey(link_id, sample)` keys.
 
 An estimator that accepts a root pose seed can consume those poses while keeping
 its own IMU twists, velocities, and bias initialization. The C++ adapter rejects
 disconnected schedules rather than silently joining unrelated gauges. This is
 a compatible pose-seeding workflow, not a literal replacement for IK's desired
-pose inputs. Python bindings for the new C++ API are not included.
+pose inputs. The same API is exposed in the standard `gtdynamics` Python package.
 
 See [the integration example and API contract](docs/initializer-api.md).
 

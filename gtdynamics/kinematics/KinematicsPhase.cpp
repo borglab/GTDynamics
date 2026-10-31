@@ -12,9 +12,12 @@
  */
 
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/ContextUtils.h>
 #include <gtdynamics/utils/Phase.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
+#include <stdexcept>
 
 namespace gtdynamics {
 
@@ -47,6 +50,29 @@ NonlinearFactorGraph Kinematics::vFactors<Phase>(
     const std::optional<PointOnLinks>& contact_points) const {
   const Interval& interval = static_cast<const Interval&>(phase);
   return vFactors(interval, robot, contact_points);
+}
+
+template <>
+NonlinearFactorGraph Kinematics::contactHeightObjectives<Phase>(
+    const Phase& phase, const PointOnLinks& contact_points,
+    const gtsam::Vector3& gravity, double ground_plane_height) const {
+  return collectFactors(phase, [&](const Slice& slice) {
+    return contactHeightObjectives(slice, contact_points, gravity,
+                                   ground_plane_height);
+  });
+}
+
+NonlinearFactorGraph Kinematics::contactHeightObjectives(
+    const Phase& phase, const gtsam::Vector3& gravity,
+    double ground_plane_height) const {
+  const auto contacts = std::dynamic_pointer_cast<const FootContactConstraintSpec>(
+      phase.constraintSpec());
+  if (!contacts) {
+    throw std::invalid_argument(
+        "contactHeightObjectives requires a FootContactConstraintSpec");
+  }
+  return contactHeightObjectives(phase, contacts->contactPoints(), gravity,
+                                 ground_plane_height);
 }
 
 }  // namespace gtdynamics

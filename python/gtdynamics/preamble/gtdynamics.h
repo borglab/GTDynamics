@@ -3,3 +3,8 @@
 PYBIND11_MAKE_OPAQUE(gtdynamics::PointOnLinks);
 PYBIND11_MAKE_OPAQUE(gtdynamics::SelfCollisionPairs);
 PYBIND11_MAKE_OPAQUE(gtdynamics::ContactPointGoals);
+
+// Expose the existing nested parameter type without inventing a wrapper class.
+namespace gtdynamics {
+using ConstraintManifoldParams = ConstraintManifold::Params;
+}

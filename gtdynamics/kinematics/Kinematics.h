@@ -24,6 +24,8 @@
 
 namespace gtdynamics {
 
+class Phase;
+
 /**
  * Desired world position for a given point on some link.
  *
@@ -189,6 +191,16 @@ class Kinematics : public Optimizer {
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const CONTEXT& context, const PointOnLinks& contact_points,
       const gtsam::Vector3& gravity,
+      double ground_plane_height = 0.0) const;
+
+  /**
+   * Create contact-height objectives for every slice in a phase, including
+   * both endpoints, using the phase's FootContactConstraintSpec.
+   * An empty contact set produces an empty graph.
+   * @throws std::invalid_argument if the phase has no foot-contact specification.
+   */
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const Phase& phase, const gtsam::Vector3& gravity,
       double ground_plane_height = 0.0) const;
 
   /**

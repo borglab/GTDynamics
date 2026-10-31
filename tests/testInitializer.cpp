@@ -230,6 +230,20 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   }
 }
 
+TEST(InitializeSolutionUtils, MultipleContactPointsShareWrenchSeed) {
+  const Robot robot = simple_rr::getRobot();
+  const auto link = robot.link("link_0");
+  const PointOnLinks patch = {{link, Point3(0, 0, 0)},
+                              {link, Point3(0.1, 0, 0)},
+                              {link, Point3(0, 0.1, 0)}};
+  Initializer initializer;
+  const auto single = initializer.ZeroValues(robot, 7, 0.0,
+                                             PointOnLinks{patch.front()});
+  const auto multiple = initializer.ZeroValues(robot, 7, 0.0, patch);
+  EXPECT(assert_equal(single, multiple));
+  EXPECT(multiple.exists(ContactWrenchKey(link->id(), 0, 7)));
+}
+
 TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   auto robot =
       CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
