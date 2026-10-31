@@ -173,21 +173,24 @@ one global alignment. The table labels this distinction for the longer clip.
 
 ## Native timings and accuracy
 
-The checked-in measurements used **Apple M5, macOS arm64, Apple Clang,
-Release, GTSAM 4.3.2**, and `MULTIFRONTAL_CHOLESKY`. Each model has 2 warmups and
+The checked-in measurements were regenerated on **October 31, 2026**, using
+**Intel Core i7-14700F, Linux x86_64, Ubuntu Clang 18.1.3, Release, GTSAM 4.3.2**,
+one Eigen thread, and `MULTIFRONTAL_CHOLESKY`. Each model has 2 warmups and
 11 fresh runs. The app reports medians, minima, p95, all raw samples, iteration
 counts, build details, and exact source/data hashes. The p95 is the empirical
 nearest-rank quantile; with 11 repetitions it is the maximum sample.
 
 | Sequence / mode | Native LM median | Initializer total median | LM iterations | 3D contact RMS |
 | --- | ---: | ---: | ---: | ---: |
-| 8 s policy / contact-only patch | 146.97 ms | 147.30 ms | 100, cap reached | 10.85 mm |
-| 8 s policy / one point | 3.81 ms | 3.90 ms | 7 | 1.89 mm |
-| 30 s capture / contact-only patch | 57.58 ms | 57.84 ms | 68 | 17.67 mm |
-| 30 s capture / one point | 5.85 ms | 5.92 ms | 10 | 15.34 mm |
+| 8 s policy / contact-only patch | 266.78 ms | 267.32 ms | 100, cap reached | 10.85 mm |
+| 8 s policy / one point | 5.29 ms | 5.42 ms | 7 | 1.89 mm |
+| 30 s capture / contact-only patch | 65.44 ms | 65.82 ms | 68 | 17.67 mm |
+| 30 s capture / one point | 5.84 ms | 5.93 ms | 10 | 15.34 mm |
 
 The table above shows the configurations without optional priors. All eight combinations
-are saved in the recording files and compared in the UI.
+are saved in the recording files and compared in the UI. The archive includes
+24 configurations per sequence (three contact models × eight prior combinations);
+the UI exposes the patch and point models.
 
 The longer capture has fewer selected frames (55 versus 75), different motion and
 contact evidence, and disconnected components; its shorter solve time is not a
@@ -204,10 +207,8 @@ medians need not sum exactly to the total median.
 
 The 8-second contact-only patch result has root position RMSE 1.168 m and
 orientation RMSE 85.45 degrees, after aligning only the first event, and reaches
-the iteration cap. The centroid candidate improves the previous 1.741 m /
-96.42 degrees result but does not resolve the rigid-sole model mismatch. With
-only the height prior enabled, patch RMSE improves from 1.720 m to 0.229 m;
-with motion and height it improves from 1.614 m to 0.195 m. The point-mode displayed
+the iteration cap. With only the height prior enabled, patch RMSE is 0.229 m /
+13.48 degrees; with motion and height it is 0.195 m / 8.11 degrees. The point-mode displayed
 solution gives 0.285 m / 7.58 degrees, but its attitude remains underconstrained.
 Recorded root poses are supplied separately for post-solve C++ evaluation and
 display. They never enter the initializer or its optimization graph.
