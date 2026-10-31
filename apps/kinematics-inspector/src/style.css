@@ -2,3 +2,5 @@
 
 .recording-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.recording-controls>select{padding:8px;font-size:12px;max-width:100%}@media(max-width:1250px){.toolbar{flex-wrap:wrap}}
 .phase-strip.dense{gap:0}
+
+.path-legend{display:flex;flex-wrap:wrap;gap:8px 16px;padding:8px 20px;font-size:10px;color:#627466;background:#f1f3ef}.estimated-path{color:var(--method)}.superodom-path{color:#536b89}

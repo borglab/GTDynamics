@@ -30,6 +30,17 @@ export class ReplayScene {
     });
     this.path = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color }));
     this.scene.add(this.path);
+    // Compare XY ground projections in the same recorded world frame.
+    const referencePoints = Array.from({ length: record.samples }, (_, k) => {
+      const offset = bodyOffset(record, record.reference, k, record.rootBody);
+      return new THREE.Vector3(floats[offset], floats[offset + 1], .014);
+    });
+    this.referencePath = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(referencePoints),
+      new THREE.LineDashedMaterial({ color: '#536b89', dashSize: .10, gapSize: .07 }),
+    );
+    this.referencePath.computeLineDistances();
+    this.scene.add(this.referencePath);
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(container);
     this.reset(); this.resize();
     container.dataset.ready = 'true';
@@ -39,6 +50,27 @@ export class ReplayScene {
     this.focus = new THREE.Vector3().fromArray(this.floats, offset);
     this.controls.target.copy(this.focus); this.camera.position.copy(this.focus).add(new THREE.Vector3(2.6, -3.4, 1.25));
     this.controls.update(); this.render();
+  }
+  fitPaths() {
+    if (!this.path.geometry.attributes.position) return;
+    this.path.geometry.computeBoundingBox();
+    const bounds = this.path.geometry.boundingBox.clone();
+    if (this.referencePath.visible) {
+      this.referencePath.geometry.computeBoundingBox();
+      bounds.union(this.referencePath.geometry.boundingBox);
+    }
+    // Include robot height above the XY paths, even for a stationary recording.
+    bounds.max.z = Math.max(bounds.max.z, 1.5);
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const vertical = THREE.MathUtils.degToRad(this.camera.fov) / 2;
+    const horizontal = Math.atan(Math.tan(vertical) * this.camera.aspect);
+    const distance = Math.max(2, sphere.radius / Math.sin(Math.min(vertical, horizontal)) * 1.1);
+    const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+    this.controls.target.copy(sphere.center);
+    this.camera.position.copy(sphere.center).addScaledVector(direction, distance);
+    this.controls.maxDistance = Math.max(20, distance * 2);
+    this.camera.far = Math.max(80, distance * 4);
+    this.camera.updateProjectionMatrix(); this.controls.update(); this.render();
   }
   place(visual, state, frame) {
     visual.bodies.forEach((body, i) => {
@@ -56,6 +88,7 @@ export class ReplayScene {
     this.controls.update();
     this.place(this.robot, state, frame);
     this.place(this.reference, this.record.reference, frame); this.reference.root.visible = showReference;
+    this.referencePath.visible = showReference;
     if (this.pathState !== pathState) {
       this.pathState = pathState;
       const points = Array.from({ length: this.record.samples }, (_, k) => {

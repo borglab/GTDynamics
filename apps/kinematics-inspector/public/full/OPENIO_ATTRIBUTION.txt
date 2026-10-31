@@ -12,7 +12,7 @@ https://creativecommons.org/licenses/by/4.0/
 
 Modifications: Selected seconds 0–219.958; resampled encoders/poses to 5 Hz using linear interpolation and quaternion SLERP; converted the pelvis IMU origin to the robot root; applied one constant world translation to place the start near the origin and estimated floor at z=0; inferred contact phases from FK sole height/speed; computed initialization and smoothing iterations. Pelvis accelerometer and gyro samples retain their original values and timestamps.
 
-Reference: SuperOdom LiDAR-inertial odometry. Contacts are heuristic labels, not force measurements. IMU is retained but not used by this kinematic smoother.
+Reference: SuperOdom LiDAR-inertial odometry. Contacts are heuristic labels, not force measurements. Original IMU samples are retained; recording metadata identifies whether IMU aiding was enabled.
 
 Source SHA-256 checksums:
 6aa3b901a081346cb6874c4ea31f885cac94820431ff51b2d7f03c67120764be  imus.npy

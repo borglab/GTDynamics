@@ -19,6 +19,12 @@ try {
       await page.goto(`http://127.0.0.1:${server.httpServer.address().port}${base}`);
       await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
       assert.equal(await page.locator('canvas').count(),2);
+      const reference = page.getByRole('checkbox', {name:'SuperOdom reference'});
+      assert(await reference.isChecked());
+      assert.equal(await page.locator('.superodom-path').count(), 2);
+      await reference.uncheck();
+      assert.equal(await page.locator('.superodom-path').count(), 0);
+      await reference.check();
       const contact=page.locator('.method-panel.contact'), ik=page.locator('.method-panel.ik');
       const contactIteration=contact.getByRole('slider',{name:'Contact initialization iteration'});
       assert.equal(await contactIteration.getAttribute('max'),'10');
@@ -42,6 +48,21 @@ try {
       await contact.getByRole('button',{name:'Last iteration',exact:true}).click();
       assert(Number(await contact.getAttribute('data-iteration'))>1);
       await page.getByRole('slider',{name:'Walking time'}).fill('400');
+      const aiding = page.getByRole('checkbox', {name:'IMU aiding',exact:true});
+      await aiding.check();
+      await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
+      assert.equal(await page.locator('main').getAttribute('data-imu'), 'true');
+      assert.equal(await page.locator('main').getAttribute('data-frame'), '400');
+      assert.match(await contact.innerText(), /Shared accelerometer bias/);
+      assert.match(await page.locator('footer').innerText(), /Galilean IMU factors/);
+      assert.equal(await page.getByRole('link',{name:'Download IMU measurements'}).getAttribute('href'), './imu/imu.json');
+      await contact.getByRole('button', {name:'Fit paths',exact:true}).click();
+      await ik.getByRole('button', {name:'Fit paths',exact:true}).click();
+      if(base==='/') await page.screenshot({path:'/tmp/gtd-kinematics-imu.png',fullPage:true});
+      await contact.getByRole('button', {name:'Reset view',exact:true}).click();
+      await aiding.uncheck();
+      await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
+      assert.equal(await page.locator('main').getAttribute('data-frame'), '400');
       await page.getByRole('checkbox',{name:'SuperOdom reference'}).check();
       await page.getByRole('combobox',{name:'Joint to inspect'}).selectOption({label:'right_knee_joint'});
       assert.match(await ik.locator('.plot-block').nth(1).innerText(),/right knee joint/);
@@ -77,6 +98,15 @@ try {
       await page.getByRole('button',{name:'CM-Opt smoothing',exact:true}).click();
       assert.match(await contact.locator('.iteration-controls').innerText(), /Iteration 10 \/ 10/);
       if(base==='/') await page.screenshot({path:'/tmp/gtd-kinematics-full.png',fullPage:true});
+      await aiding.check();
+      await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
+      assert.equal(await page.locator('main').getAttribute('data-frame'), '1045');
+      assert.equal(await page.getByRole('link',{name:'Download IMU measurements'}).getAttribute('href'), './full-imu/imu.json');
+      assert.match(await ik.innerText(), /Shared gyroscope bias/);
+      await page.getByRole('button',{name:'Initialization',exact:true}).click();
+      assert(!/Shared gyroscope bias/.test(await ik.innerText()));
+      if(base==='/') await page.screenshot({path:'/tmp/gtd-kinematics-full-imu.png',fullPage:true});
+
       await page.setViewportSize({width:390,height:844});
       await page.getByRole('button',{name:'CM-Opt smoothing',exact:true}).click();
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
@@ -85,6 +115,10 @@ try {
       await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
       assert.equal(await page.getByRole('slider',{name:'Walking time'}).getAttribute('max'), '499');
       assert.equal(await page.locator('main').getAttribute('data-frame'), '0');
+      assert.equal(await page.locator('main').getAttribute('data-imu'), 'true');
+      await aiding.uncheck();
+      await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
+      assert.equal(await page.locator('main').getAttribute('data-imu'), 'false');
       assert.deepEqual(errors,[]); assert.deepEqual(failures,[]); assert.deepEqual(sockets,[]);
       console.log(`Passed: ${base}`);
     } finally {await context.close(); await server.httpServer.close();}

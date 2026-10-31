@@ -2,10 +2,11 @@
 import { computed, markRaw, onBeforeUnmount, onMounted, ref } from 'vue';
 import { loadRecording } from './recording.js';
 import MethodPanel from './MethodPanel.vue';
-const data = ref(null), error = ref(''), frame = ref(0), stage = ref('smoothing'), showReference = ref(false), joint = ref(0), playing = ref(false);
+const data = ref(null), error = ref(''), frame = ref(0), stage = ref('smoothing'), showReference = ref(true), joint = ref(0), playing = ref(false);
 const selection = ref('turn');
+const useImu = ref(false);
 const recordings = [{id:'turn', label:'Turn · 204–214 s · 50 Hz', directory:''}, {id:'full', label:'Entire trajectory · 5 Hz', directory:'full/'}];
-const directory = computed(() => recordings.find(r => r.id === selection.value).directory);
+const directory = computed(() => useImu.value ? (selection.value === 'full' ? 'full-imu/' : 'imu/') : recordings.find(r => r.id === selection.value).directory);
 let controller;
 let animation = 0, origin = 0, firstFrame = 0;
 const phase = computed(() => data.value?.record.phases.find(p => p.start <= frame.value && p.end >= frame.value));
@@ -24,10 +25,11 @@ function play() {
   firstFrame=frame.value; origin=performance.now(); playing.value=true; animation=requestAnimationFrame(tick);
 }
 function changeStage(value) { pause(); stage.value=value; }
-async function changeRecording(value) {
+async function changeRecording(value, aided = useImu.value) {
   pause(); controller?.abort();
   const request = new AbortController(); controller = request;
-  selection.value = value; data.value = null; error.value = ''; frame.value = 0;
+  const savedFrame = value === selection.value ? frame.value : 0;
+  selection.value = value; useImu.value = aided; data.value = null; error.value = ''; frame.value = savedFrame;
   try {
     const loaded = await loadRecording(request.signal, directory.value);
     if (request.signal.aborted) return;
@@ -39,12 +41,13 @@ onMounted(() => changeRecording(selection.value));
 onBeforeUnmount(() => { pause(); controller?.abort(); });
 </script>
 <template>
-  <main :data-stage="stage" :data-frame="frame">
+  <main :data-stage="stage" :data-frame="frame" :data-imu="useImu">
     <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / G1 WALKING</span><h1>Kinematics</h1><p>Full-trajectory kinematic optimization with contact and inverse-kinematics initialization.</p></div><span class="recorded-badge"><i></i> OFFLINE RECORDING</span></header>
       <section class="toolbar">
         <div class="recording-controls">
         <div class="stage-selector" role="group" aria-label="Inspection stage"><button :aria-pressed="stage==='smoothing'" @click="changeStage('smoothing')">CM-Opt smoothing</button><button :aria-pressed="stage==='initializer'" @click="changeStage('initializer')">Initialization</button></div>
         <select :value="selection" aria-label="Recording" @change="changeRecording($event.target.value)"><option v-for="r in recordings" :key="r.id" :value="r.id">{{r.label}}</option></select>
+        <label><input type="checkbox" :checked="useImu" @change="changeRecording(selection,$event.target.checked)"> IMU aiding</label>
         </div>
         <div v-if="data" class="settings"><label><input type="checkbox" v-model="showReference"> {{data.record.motionSource?.referenceLabel || 'Reference overlay'}}</label><label>Joint <select v-model.number="joint" aria-label="Joint to inspect"><option v-for="(name,index) in data.record.jointNames" :key="name" :value="index">{{name}}</option></select></label></div>
       </section>
@@ -65,9 +68,12 @@ onBeforeUnmount(() => { pause(); controller?.abort(); });
           <p>{{motionCredit.changes}} Contacts are inferred from sole height and speed, not measured contact forces.</p>
           <a :href="`./${directory}${motionCredit.localNotice}`">Motion attribution and modifications</a>
         </div>
-        <p v-if="data.record.motionSource?.imu">Physical pelvis IMU: {{data.record.motionSource.imu.samples.toLocaleString()}} accelerometer and gyroscope samples at nominally 200 Hz. Original timestamps are retained. The kinematic smoother does not use IMU factors. <a :href="`./${directory}${data.record.motionSource.imu.file}`" download>Download IMU measurements</a>.</p>
+        <p v-if="data.record.motionSource?.imu">Physical pelvis IMU: {{data.record.motionSource.imu.samples.toLocaleString()}} accelerometer and gyroscope samples at nominally 200 Hz. Original timestamps are retained. {{useImu ? 'Galilean IMU factors connect the slices, with world-frame COM velocities and one shared sensor-frame bias.' : 'The kinematic smoother does not use IMU factors.'}} <a :href="`./${directory}${data.record.motionSource.imu.file}`" download>Download IMU measurements</a>.</p>
+        <p v-if="useImu">Poses map COM coordinates into world coordinates (world_T_COM). The mounting transform maps IMU coordinates into the COM frame. GTSAM corrects sensor rotation and centripetal acceleration; angular-acceleration lever-arm terms are omitted. Initializers are unchanged. Aided and unaided objectives contain different factors; compare reference errors and physical residuals.</p>
+        <p>Ground contact displacement is a soft cost: σ={{data.record.graph.contactSlipSigmaMeters * 1000}} mm per axis per slice interval ({{data.record.dt}} s). Stance feet may slip.</p>
         <p v-if="data.record.motionSource?.fullTrajectory">Contact labels are detected at 50 Hz with a local floor estimate, then sampled at 5 Hz. {{data.record.motionSource.detector.unsupportedSamples}} samples have no detected support. Weak identity-motion priors connect {{data.record.motionSource.detector.contactComponents}} contact components for initialization (translation σ=10 m, rotation σ=π rad). The reference trajectory retains its original vertical drift.</p>
         <p>{{data.record.motionSource?.referenceDescription || 'Reference overlays are source root poses with measured-joint FK.'}} The first root pose anchors estimation; later reference poses are used for contact labeling and evaluation.</p>
+        <details v-if="useImu"><summary>IMU frames, noise, and priors</summary><pre>{{JSON.stringify(data.record.imuAiding,null,2)}}</pre></details>
         <p>{{data.record.notes}}</p><p>Robot transforms and residuals were calculated offline from the example’s actual values; the viewer performs no optimization or forward kinematics.</p><details><summary>Source and input fingerprints</summary><pre>{{JSON.stringify(data.record.provenance,null,2)}}</pre></details><a :href="`./${directory}recording.json`" download>Download recording metadata</a> · <a href="./MODEL_LICENSE.txt">Robot model license</a></footer>
     </template>
   </main>

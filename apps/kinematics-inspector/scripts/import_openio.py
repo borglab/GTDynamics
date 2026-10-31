@@ -267,7 +267,17 @@ def main() -> None:
     }
     args.output.mkdir(parents=True, exist_ok=True)
     mujoco.mj_saveModel(model, str(args.output / "model.mjb"))
-    np.savez_compressed(args.output / "walk.npz", qpos=qpos)
+    # Include bracketing measurements for exact interval integration, while the
+    # public IMU download still contains only samples inside the selected window.
+    imu_first = max(0, int(np.searchsorted(times, target[0], side="right")) - 1)
+    imu_last = min(len(times), int(np.searchsorted(times, target[-1], side="left")) + 1)
+    np.savez_compressed(
+        args.output / "walk.npz",
+        qpos=qpos,
+        imu_time=times[imu_first:imu_last] - args.start_seconds,
+        imu_acceleration=arrays["imus"][0, imu_first:imu_last, :3].astype(float),
+        imu_angular_rate=arrays["imus"][0, imu_first:imu_last, 3:6].astype(float),
+    )
     write_json(args.output / "walk.json", {"policy_dt": 1 / args.fps, "command_speed_m_s": 0.0, "motionSource": metadata})
     write_json(args.output / "contacts.json", {
         "schemaVersion": 1, "metadata": metadata, "model": description, "samples": samples,
@@ -291,7 +301,7 @@ def main() -> None:
         "License: Creative Commons Attribution 4.0 International (CC BY 4.0)\n"
         "https://creativecommons.org/licenses/by/4.0/\n\n"
         f"Modifications: {changes}\n\nReference: SuperOdom LiDAR-inertial odometry. "
-        "Contacts are heuristic labels, not force measurements. IMU is retained but not used by this kinematic smoother.\n\n"
+        "Contacts are heuristic labels, not force measurements. Original IMU samples are retained; recording metadata identifies whether IMU aiding was enabled.\n\n"
         "Source SHA-256 checksums:\n" + "\n".join(f"{value}  {name}" for name, value in CHECKSUMS.items()) + "\n"
     )
     print(json.dumps({"samples": len(target), "imuSamples": int(last - first), "contacts": len(contacts),

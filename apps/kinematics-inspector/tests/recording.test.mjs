@@ -13,6 +13,7 @@ test('complete real recording, feasible final states, and monotone objectives', 
   assert.equal(record.samples, 500);
   assert.equal(record.dt, 1/50);
   assert.equal(record.maxIterations, 10);
+  assert.equal(record.graph.contactSlipSigmaMeters, 0.05);
   assert.equal(record.phases.length, 15);
   for (const method of ['contact', 'ik']) {
     const run = record.runs[method];
@@ -128,6 +129,7 @@ test('entire trajectory at 5 Hz has complete histories and original IMU coverage
   validateRecording(full, values);
   assert.equal(full.samples, 1100);
   assert.equal(full.dt, .2);
+  assert.equal(full.graph.contactSlipSigmaMeters, 0.05);
   assert.equal(full.motionSource.fullTrajectory, true);
   assert.equal(full.motionSource.sourceWindow.startSample, 0);
   assert.equal(full.motionSource.sourceWindow.endExclusiveSample, 43991);
@@ -146,3 +148,52 @@ test('entire trajectory at 5 Hz has complete histories and original IMU coverage
   assert.equal(imu.timeSeconds[0], 0);
   assert(Math.abs(imu.timeSeconds.at(-1) - full.motionSource.sourceDurationSeconds) < 1e-9);
 });
+
+for (const [baselineDirectory, aidedDirectory] of [['', 'imu/'], ['full/', 'full-imu/']]) {
+  test(`Gal3 aiding preserves inputs and initializers: ${aidedDirectory}`, () => {
+    const load = directory => {
+      const metadata = JSON.parse(readFileSync(new URL(`../public/${directory}recording.json`, import.meta.url)));
+      const bytes = gunzipSync(readFileSync(new URL(`../public/${directory}states.bin.gz`, import.meta.url)));
+      const values = decodeStates(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), metadata.storage);
+      validateRecording(metadata, values);
+      return {metadata, values};
+    };
+    const baseline = load(baselineDirectory), aided = load(aidedDirectory);
+    const {metadata, values} = aided;
+    assert.equal(metadata.imuAiding.enabled, true);
+    assert.equal(metadata.graph.contactSlipSigmaMeters, baseline.metadata.graph.contactSlipSigmaMeters);
+    assert.equal(metadata.imuAiding.factor, 'GalileanImuFactor');
+    assert.equal(metadata.imuAiding.intervals, metadata.samples - 1);
+    assert.equal(metadata.imuAiding.biasVariables, 1);
+    assert.equal(metadata.imuAiding.poseFrame, 'world_T_linkCOM');
+    assert.equal(metadata.motionSource.imu.usedBySmoother, true);
+    assert.equal(metadata.graph.costFactors - baseline.metadata.graph.costFactors, metadata.samples + 1);
+    assert.deepEqual(metadata.phases, baseline.metadata.phases);
+    assert.equal(metadata.provenance.inputs['imu.json'], baseline.metadata.provenance.inputs['imu.json']);
+    for (const method of ['contact', 'ik']) {
+      const run = metadata.runs[method], original = baseline.metadata.runs[method];
+      assert.equal(run.solver.iterations, 10);
+      assert(run.smoothing.at(-1).metrics.kinematic_equality_l2 < 1e-5);
+      assert(run.smoothing.at(-1).metrics.cost < run.smoothing[0].metrics.cost);
+      const history = [...run.initializer, ...run.ikFrames.flat()];
+      const originalHistory = [...original.initializer, ...original.ikFrames.flat()];
+      assert.equal(history.length, originalHistory.length);
+      for (let k=0; k<history.length; k++) {
+        const state = history[k], other = originalHistory[k], size = state.frames * metadata.bodies * 7;
+        assert.equal(state.iteration, other.iteration);
+        assert.equal(state.velocityOffset, undefined);
+        assert.deepEqual(values.subarray(state.poseOffset, state.poseOffset+size),
+          baseline.values.subarray(other.poseOffset, other.poseOffset+size));
+      }
+      for (const state of run.smoothing) {
+        assert.equal(state.bias.length, 6);
+        assert(state.bias.every(Number.isFinite));
+        assert(Number.isInteger(state.velocityOffset));
+        assert(values.subarray(state.velocityOffset, state.velocityOffset+3*metadata.samples).every(Number.isFinite));
+      }
+    }
+    const invalid = structuredClone(metadata);
+    invalid.runs.contact.smoothing.at(-1).velocityOffset = values.length;
+    assert.throws(() => validateRecording(invalid, values), /Invalid IMU/);
+  });
+}
