@@ -1,0 +1,8 @@
+__pycache__/
+assets/
+!/results/
+/results/*
+!/results/report.html
+!/results/four-way-*.json.gz
+!/results/history.json
+!/results/history.md
