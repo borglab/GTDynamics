@@ -88,7 +88,13 @@ class KinematicsWrappingTests(unittest.TestCase):
         kinematics = gtd.Kinematics()
         gravity = np.array([0.0, 0.0, -9.81])
         graph = kinematics.contactHeightObjectives(phase, gravity, 0.2)
-        explicit = kinematics.contactHeightObjectives(phase, self.points, gravity, 0.2)
+        explicit = gtsam.NonlinearFactorGraph()
+        for k in range(5, 8):
+            explicit.push_back(
+                kinematics.contactHeightObjectives(gtd.Slice(k), self.points, gravity, 0.2)
+            )
+        with self.assertRaises(TypeError):
+            kinematics.contactHeightObjectives(phase, self.points, gravity, 0.2)
         self.assertEqual(graph.size(), 12)
         self.assertEqual(
             list(graph.keyVector()), [gtd.PoseKey(2, k) for k in range(5, 8)]
@@ -109,6 +115,42 @@ class KinematicsWrappingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "FootContactConstraintSpec"):
             kinematics.contactHeightObjectives(gtd.Phase(5, 7, None), gravity)
 
+    def test_trajectory_contact_height_builder(self):
+        def phase(first, last, points):
+            return gtd.Phase(
+                first, last, gtd.FootContactConstraintSpec(gtd.PointOnLinks(points))
+            )
+
+        trajectory = gtd.Trajectory(
+            gtd.WalkCycle([
+                phase(5, 6, [self.points[0], self.points[1]]),
+                phase(6, 7, [self.points[2], self.points[1]]),
+                phase(8, 9, []),
+                phase(10, 10, [self.points[0]]),
+            ]), 1
+        )
+        kinematics = gtd.Kinematics()
+        gravity = np.array([0.0, 0.0, -9.81])
+        graph = kinematics.contactHeightObjectives(trajectory, gravity, 0.2)
+        # Shared point at slice 6 contributes once; distinct points on the same
+        # link still contribute separately. Flight contributes no factors.
+        self.assertEqual(graph.size(), 8)
+        self.assertEqual(
+            list(graph.keyVector()), [gtd.PoseKey(2, k) for k in (5, 6, 7, 10)]
+        )
+        values = gtsam.Values()
+        for k in (5, 6, 7, 10):
+            values.insert(
+                gtd.PoseKey(2, k), gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, 0.2]))
+            )
+        self.assertAlmostEqual(graph.error(values), 0.0)
+        self.assertEqual(
+            kinematics.contactHeightObjectives(gtd.Trajectory(), gravity).size(), 0
+        )
+        invalid = gtd.Trajectory(gtd.WalkCycle([gtd.Phase(5, 7, None)]), 1)
+        with self.assertRaisesRegex(ValueError, "FootContactConstraintSpec"):
+            kinematics.contactHeightObjectives(invalid, gravity)
+
     def test_context_graphs_and_cmopt_with_python_basis_callback(self):
         spec = gtd.FootContactConstraintSpec(self.points)
         phase = gtd.Phase(0, 3, spec)
@@ -122,7 +164,7 @@ class KinematicsWrappingTests(unittest.TestCase):
         self.assertEqual(kinematics.constraints(phase, self.robot).size(), 4)
         costs = kinematics.jointAngleObjectives(trajectory, self.robot, self.measured)
         costs.push_back(
-            kinematics.contactHeightObjectives(phase, np.array([0.0, 0.0, -9.81]))
+            kinematics.contactHeightObjectives(trajectory, np.array([0.0, 0.0, -9.81]))
         )
         initial = gtsam.Values()
         for k in range(4):

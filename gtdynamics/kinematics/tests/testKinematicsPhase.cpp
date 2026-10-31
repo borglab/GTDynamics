@@ -37,8 +37,11 @@ TEST(Phase, ContactHeightObjectives) {
   const Kinematics kinematics(parameters);
 
   const auto graph = kinematics.contactHeightObjectives(phase, gravity, height);
-  const auto explicit_graph = kinematics.contactHeightObjectives(
-      phase, contacts->contactPoints(), gravity, height);
+  gtsam::NonlinearFactorGraph explicit_graph;
+  for (size_t k = 5; k <= 7; ++k) {
+    explicit_graph.add(kinematics.contactHeightObjectives(
+        Slice(k), contacts->contactPoints(), gravity, height));
+  }
   EXPECT_LONGS_EQUAL(6, graph.size());
   EXPECT(graph.equals(explicit_graph));
 

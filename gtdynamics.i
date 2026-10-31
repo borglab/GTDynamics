@@ -478,10 +478,10 @@ class Kinematics {
       const gtdynamics::Slice& context, const gtdynamics::PointOnLinks& points,
       const gtsam::Vector3& gravity, double ground_plane_height = 0.0) const;
   gtsam::NonlinearFactorGraph contactHeightObjectives(
-      const gtdynamics::Phase& phase, const gtdynamics::PointOnLinks& points,
-      const gtsam::Vector3& gravity, double ground_plane_height = 0.0) const;
-  gtsam::NonlinearFactorGraph contactHeightObjectives(
       const gtdynamics::Phase& phase, const gtsam::Vector3& gravity,
+      double ground_plane_height = 0.0) const;
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const gtdynamics::Trajectory& trajectory, const gtsam::Vector3& gravity,
       double ground_plane_height = 0.0) const;
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,

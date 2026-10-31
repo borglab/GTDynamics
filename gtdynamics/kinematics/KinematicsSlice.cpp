@@ -194,8 +194,7 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   return graph;
 }
 
-template <>
-NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
+NonlinearFactorGraph Kinematics::contactHeightObjectives(
     const Slice& slice, const PointOnLinks& contact_points,
     const gtsam::Vector3& gravity, double ground_plane_height) const {
   NonlinearFactorGraph graph;

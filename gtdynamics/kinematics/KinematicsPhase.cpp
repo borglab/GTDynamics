@@ -52,16 +52,6 @@ NonlinearFactorGraph Kinematics::vFactors<Phase>(
   return vFactors(interval, robot, contact_points);
 }
 
-template <>
-NonlinearFactorGraph Kinematics::contactHeightObjectives<Phase>(
-    const Phase& phase, const PointOnLinks& contact_points,
-    const gtsam::Vector3& gravity, double ground_plane_height) const {
-  return collectFactors(phase, [&](const Slice& slice) {
-    return contactHeightObjectives(slice, contact_points, gravity,
-                                   ground_plane_height);
-  });
-}
-
 NonlinearFactorGraph Kinematics::contactHeightObjectives(
     const Phase& phase, const gtsam::Vector3& gravity,
     double ground_plane_height) const {
@@ -71,8 +61,10 @@ NonlinearFactorGraph Kinematics::contactHeightObjectives(
     throw std::invalid_argument(
         "contactHeightObjectives requires a FootContactConstraintSpec");
   }
-  return contactHeightObjectives(phase, contacts->contactPoints(), gravity,
-                                 ground_plane_height);
+  return collectFactors(phase, [&](const Slice& slice) {
+    return contactHeightObjectives(slice, contacts->contactPoints(), gravity,
+                                   ground_plane_height);
+  });
 }
 
 }  // namespace gtdynamics
