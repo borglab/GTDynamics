@@ -32,14 +32,14 @@ try {
       assert.equal(await app.locator('.scene').getAttribute('data-joints'),'29');
       assert(Number(await app.locator('.scene').getAttribute('data-meshes'))>20);
       assert.equal(await lab.getAttribute('data-model'),'patch');
-      assert.equal(await lab.getAttribute('data-variant'),'all');
+      assert.equal(await lab.getAttribute('data-variant'),'both');
+      assert.equal(await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).evaluate(el=>el.checked),false);
+      assert.equal(await app.locator('#contact-model option[value="ground"]').count(),0);
       assert.equal(await app.locator('.configuration-table tbody tr').count(),8);
-      assert.equal(await app.locator('.ground-edge').count(),38);
-      await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).uncheck();
+      assert.equal(await app.locator('.ground-edge').count(),0);
       await app.getByRole('checkbox',{name:'Upright factors',exact:true}).uncheck();
       await app.getByRole('checkbox',{name:'Weak BetweenFactors',exact:true}).uncheck();
       assert.equal(await app.locator('.ground-edge').count(),0);
-      await app.getByRole('combobox',{name:'Contact geometry'}).selectOption('ground');
       assert.equal(await lab.getAttribute('data-sequence'),'g1-policy-8s');
       assert.equal(await app.locator('.error-banner').count(),0);
       assert.match(await app.locator('.comparison-panel').innerText(),/Eight saved prior combinations/);
@@ -52,7 +52,7 @@ try {
         await app.locator(`.lab[data-variant="${variant}"]`).waitFor();
         assert.equal(await app.locator('.configuration-table tbody tr.active').count(),1);
       }
-      assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*672/);
+      assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*786/);
       const startingEvent=Number(await lab.getAttribute('data-event'));
       await app.getByRole('button',{name:'Next event',exact:true}).click();
       assert.equal(Number(await lab.getAttribute('data-event')),startingEvent+1);
@@ -70,7 +70,7 @@ try {
       await app.getByRole('button',{name:'Frame selection'}).click();
       assert.match(await app.locator('.scene-card .panel-top').innerText(),/REFERENCE TRAJECTORY/);
       await app.getByRole('button',{name:'Pose/landmark graph'}).click();
-      for(const [mode,scalars] of [['patch',786],['point',558],['ground',672]]) {
+      for(const [mode,scalars] of [['point',558],['patch',786]]) {
         await app.getByRole('combobox',{name:'Contact geometry'}).selectOption(mode);
         await app.getByRole('button',{name:'Replay GTSAM solve'}).waitFor({state:'visible'});
         assert.equal(await lab.getAttribute('data-model'),mode);
@@ -95,10 +95,11 @@ try {
       const exported=JSON.parse(await readFile(await download.path(),'utf8'));
       assert.equal(exported.eventPoses.length,75);
       assert.equal(exported.contacts.length,38);
-      assert.equal(exported.model,'ground');
+      assert.equal(exported.model,'patch');
       assert.equal(exported.solver,'C++ GTSAM Levenberg–Marquardt');
       assert.equal(exported.benchmark.repetitions,11);
-      assert.equal(exported.assumptions.groundPlane.enabled,true);
+      assert.equal(exported.assumptions.groundPlane,null);
+      assert.equal(exported.regularization.ground,false);
       assert(!('reference' in exported));
       await app.getByRole('button',{name:'Top',exact:true}).click();
       await app.getByRole('button',{name:'Reset camera'}).click();
@@ -118,15 +119,19 @@ try {
       assert.match(await app.locator('.component-notice').innerText(),/2 measured contact components/);
       assert.match(await app.locator('.evaluation-card').innerText(),/component-relative/);
       assert.match(await app.locator('.timeline-caption').innerText(),/height\/speed heuristic/);
-      for(const mode of ['point','patch','ground']){
+      for(const mode of ['point','patch']){
         await app.getByRole('combobox',{name:'Contact geometry'}).selectOption(mode);
         await page.waitForTimeout(50);
         assert.equal(await lab.getAttribute('data-model'),mode);
         assert.equal(await app.locator('.error-banner').count(),0);
+        assert.equal(await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).evaluate(el=>el.checked),false);
       }
+      await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).check();
       await app.getByRole('combobox',{name:'Motion sequence'}).selectOption('g1-policy-8s');
       await app.locator('.recording-loading').waitFor({state:'hidden'});
-      assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*672/);
+      assert.equal(await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).evaluate(el=>el.checked),true);
+      await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).uncheck();
+      assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*786/);
       await app.getByRole('slider',{name:'Contact event',exact:true}).fill('24');
       await app.locator('body').evaluate(()=>window.scrollTo(0,0));
       await page.waitForTimeout(350);
@@ -150,7 +155,7 @@ try {
       assert.deepEqual(errors,[],'No browser errors');
       assert.deepEqual(failed,[],'Assets work under the project-site prefix');
       assert.deepEqual(sockets,[],'No server backend required');
-      console.log(`PASS ${base}: two sequences, native timings, all three models, event playback, stages, GTSAM replay, JSON export, camera, mobile, direct URL`);
+      console.log(`PASS ${base}: two sequences, native timings, free-height models, event playback, stages, GTSAM replay, JSON export, camera, mobile, direct URL`);
     } finally {
       await context.close();server.httpServer.closeAllConnections();await new Promise(resolve=>server.httpServer.close(resolve));
     }

@@ -4,12 +4,14 @@
  * @file ContactInitializer.h
  * Sparse root-pose initialization from fixed forward-kinematics measurements.
  *
- * A selected frame supplies material contact points in the root frame. Repeated
- * observations of the same stance point share one world landmark. The solver
- * estimates root-to-world Pose3 states and those landmarks; joint measurements
- * and contact labels remain fixed. No floating-base reference poses are inputs.
+ * Each selected slice supplies material contact points in the root frame.
+ * Repeated observations of the same stance point share one world landmark. The
+ * solver estimates root-to-world Pose3 states and those landmarks; joint
+ * measurements and contact labels remain fixed. No floating-base reference
+ * poses are inputs.
  */
 
+#include <gtdynamics/utils/Slice.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -54,17 +56,18 @@ struct Observation {
   gtsam::Point3 localPoint;
 };
 
-/** Frozen FK observations at a contact boundary or supplemental sample.
+/** Frozen FK contact measurements associated with one selected Slice.
  *
- * Supply frames in temporal order. The core consumes this selection directly;
- * the GTDynamics adapter adds measured frames to keep gaps at most one second.
+ * Supply measurements in temporal order, at contact boundaries and supplemental
+ * samples. Slice::k retains the original source index, independently of the
+ * sparse vector ordinal. The adapter supplements gaps longer than one second.
  */
-struct EventFrame {
-  /// Original source-sample key, preserved independently of the frame ordinal.
-  size_t sampleIndex = 0;
+struct ContactMeasurements {
+  /// Original source slice, rather than the ordinal in the sparse selection.
+  Slice slice;
   /// Source time in seconds; optional motion factors follow vector order.
   double time = 0;
-  /// Active stance-point observations, with no duplicate pair within a frame.
+  /// Active stance-point observations, with no duplicate pair within a slice.
   std::vector<Observation> observations;
 };
 
@@ -121,10 +124,11 @@ struct Options {
    * arbitrary gauges unless identity motion factors explicitly connect them.
    */
   std::optional<gtsam::Pose3> anchorPose;
-  /** Map a frame ordinal to its Pose3 key, not an original sample index.
+  /** Map a selected-slice ordinal to its Pose3 key, not a source sample index.
    *
    * Keys must be unique and disjoint from landmark keys. The GTDynamics adapter
-   * supplies PoseKey(rootLinkId, frames[i].sampleIndex) through this callback.
+   * supplies PoseKey(rootLinkId, measurements[i].slice.k) through this
+   * callback.
    */
   std::function<gtsam::Key(size_t)> poseKey = [](size_t i) {
     return gtsam::Symbol('x', i);
@@ -157,13 +161,13 @@ struct IndexedObservation {
 
 /** Indexed factor graph, initialization state, and structural diagnostics.
  *
- * All pose vectors use frame ordinals; all landmark vectors use landmark
+ * All pose vectors follow measurements order; all landmark vectors use landmark
  * ordinals. The physical positions returned for hard-ground landmarks are
  * Point3 values, although their optimized Values entries are Point2.
  */
 struct Graph {
-  /// Selected input frames, in caller order.
-  std::vector<EventFrame> frames;
+  /// Selected input measurements and their source slices, in caller order.
+  std::vector<ContactMeasurements> measurements;
   /// Indexed material-point observations for each frame.
   std::vector<std::vector<IndexedObservation>> observations;
   /// Unique stance points in discovery order.
@@ -177,7 +181,7 @@ struct Graph {
   /// Per-frame contact rank against known world landmarks, not global graph
   /// rank.
   std::vector<int> frameRanks;
-  /// Contact-registration root-to-world seeds.
+  /// Root-to-world seeds selected using contact error, before perturbations.
   std::vector<gtsam::Pose3> seedPoses;
   /// Seeds after optional demo perturbation.
   std::vector<gtsam::Pose3> initialPoses;
@@ -280,11 +284,14 @@ struct Result {
 
 /** FK/contact-only alternative to per-frame inverse kinematics.
  *
- * The core registers frames through their shared stance points, fixes one exact
- * pose per contact component, and jointly optimizes free poses and landmarks.
- * Optional identity motion factors connect those components and retain only
- * the first fixed pose. Upright and landmark-height factors do not connect
- * components. These priors express assumptions rather than contact evidence.
+ * The core registers frames through their shared stance points. Patch mode
+ * also tries consistent material-point centroids and selects the lower-cost
+ * seed using the original observations, without adding priors. It fixes one
+ * exact pose per contact component, and jointly optimizes free poses and
+ * landmarks. Optional identity motion factors connect those components and
+ * retain only the first fixed pose. Upright and landmark-height factors do not
+ * connect components. These priors express assumptions rather than contact
+ * evidence.
  *
  * Input contains measured geometry, not floating-base reference poses. This
  * class does not infer contacts, sample frames, compute joint FK, or expand a
@@ -293,9 +300,9 @@ struct Result {
  */
 class ContactInitializer {
  public:
-  /** Register and optimize the supplied frames, retaining exact pose gauges.
+  /** Register and optimize selected measurements, retaining exact pose gauges.
    *
-   * Supply frames in temporal order, fixed local measurements in metres, and
+   * Supply slices in temporal order, fixed local measurements in metres, and
    * unique keys through Options. Returns sparse states and optional history.
    *
    * Throws std::invalid_argument for empty input, invalid observation IDs or
@@ -304,18 +311,19 @@ class ContactInitializer {
    * Throws std::runtime_error if an LM iterate has nonfinite or increasing
    * cost; GTSAM can also report linear-solver errors for an unsuitable graph.
    */
-  Result Initialize(const std::vector<EventFrame>& frames,
+  Result Initialize(const std::vector<ContactMeasurements>& measurements,
                     const Options& options = {}) const;
 
-  /** Return Initialize(frames, options).values using the same gauges and keys.
+  /** Return Initialize(measurements, options).values with the same gauges and
+   * keys.
    *
    * Entries contain sparse root poses and stance landmarks, including fixed
    * poses; this convenience function does not produce dense robot-link states.
    */
   gtsam::Values InitializeSolutionContactFrames(
-      const std::vector<EventFrame>& frames,
+      const std::vector<ContactMeasurements>& measurements,
       const Options& options = {}) const {
-    return Initialize(frames, options).values;
+    return Initialize(measurements, options).values;
   }
 };
 

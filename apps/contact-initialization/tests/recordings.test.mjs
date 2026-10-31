@@ -54,6 +54,7 @@ for(const entry of entries){
     const bytes=await readFile(new URL(registry.sequences.find(s=>s.id===entry.id).data,publicRoot));
     assert.equal(recording.source.datasetSha256,sha256(bytes));
     assert(Object.keys(recording.source.nativeSourceSha256).length>=5);
+    assert('gtdynamics/utils/Slice.h' in recording.source.nativeSourceSha256);
     for(const [path,hash] of Object.entries(recording.source.nativeSourceSha256))
       assert.equal(hash,sha256(await readFile(new URL(path,repoRoot))),`Native recording is stale for ${path}`);
     assert(recording.hardware.cpu.length>3);
@@ -71,6 +72,15 @@ for(const entry of entries){
       assert.equal(graph.groundLandmarkIndices.length,ground&&model!=='ground'?graph.landmarks.length:0);
       assert.equal(graph.dimensions.groundFactors,graph.groundLandmarkIndices.length);
       assert.equal(graph.regularization.groundAlreadyFixed,model==='ground');
+      if(model!=='ground'){
+        assert.equal(graph.groundPlane,null,'Selectable models have no hard floor');
+        assert.equal(graph.dimensions.effectiveLandmarkVariables,graph.landmarks.length*3);
+        if(!ground){
+          const heights=result.landmarks.map(p=>p[2]);
+          assert(Math.max(...heights)-Math.min(...heights)>0.01,'Landmark heights are allowed to vary');
+          assert.equal(result.objectiveComponents.ground,0);
+        }
+      }
       assert.equal(graph.contactComponents.length,entry.data.metadata.stats.graphComponents);
       assert.equal(graph.components.length,between?1:graph.contactComponents.length);
       assert(evaluation.positionRmseMeters>=0&&Number.isFinite(evaluation.positionRmseMeters));

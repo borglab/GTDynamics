@@ -12,6 +12,40 @@ using namespace gtsam;
 void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+
+namespace contact_measurements_fixture {
+
+// Sparse source slices must retain their original indices and pose keys.
+void checkSparseSlices(const std::vector<ContactMeasurements>& original,
+                       const std::vector<Pose3>& truth) {
+  auto measurements = original;
+  const std::vector<size_t> indices{42, 51, 103, 145, 220};
+  require(measurements.size() == indices.size(), "Sparse slice fixture size");
+  for (size_t i = 0; i < measurements.size(); ++i) {
+    measurements[i].slice = gtdynamics::Slice(indices[i]);
+    measurements[i].time = indices[i] * 0.01;
+  }
+  Options options;
+  options.model = Model::Patch;
+  options.poseKey = [&measurements](size_t i) {
+    return Symbol('s', measurements.at(i).slice.k);
+  };
+  const auto result = ContactInitializer().Initialize(measurements, options);
+  for (size_t i = 0; i < measurements.size(); ++i) {
+    require(result.graph.measurements[i].slice.k == indices[i],
+            "Sparse source indices are not renumbered");
+    require(result.graph.measurements[i].time == measurements[i].time,
+            "Source timestamps are retained");
+    require(
+        result.values.at<Pose3>(Symbol('s', indices[i])).equals(truth[i], 1e-7),
+        "Pose values use source slice keys");
+  }
+  require(!result.values.exists(Symbol('s', 0)),
+          "Sparse ordinal zero is not substituted for the first source slice");
+}
+
+}  // namespace contact_measurements_fixture
+
 int main() {
   try {
     const Pose3 pose(Rot3::RzRyRx(0.3, -0.2, 0.7), Point3(0.4, -0.2, 0.8));
@@ -91,12 +125,12 @@ int main() {
                                                   {"R0", {0.23, 0.12, -0.8}},
                                                   {"L1", {0.46, -0.12, -0.8}}};
     std::vector<Pose3> truth;
-    std::vector<EventFrame> frames;
+    std::vector<ContactMeasurements> frames;
     for (size_t i = 0; i < active.size(); ++i) {
       const Pose3 x(Rot3::RzRyRx(0.02 * i, -0.01 * i, 0.08 * i),
                     Point3(0.1 * i, 0.012 * i, 0.02 * std::sin(i)));
       truth.push_back(x);
-      EventFrame frame{i, i * 0.1, {}};
+      ContactMeasurements frame{gtdynamics::Slice(i), i * 0.1, {}};
       for (const auto& id : active[i])
         for (size_t j = 0; j < sole.size(); ++j)
           frame.observations.push_back(
@@ -104,6 +138,7 @@ int main() {
                x.transformTo(Point3(locations.at(id) + sole[j]))});
       frames.push_back(frame);
     }
+    contact_measurements_fixture::checkSparseSlices(frames, truth);
     for (const Model model : {Model::Patch, Model::Ground}) {
       Options options;
       options.model = model;
@@ -152,6 +187,9 @@ int main() {
     heightOptions.model = Model::Patch;
     const auto withoutHeight =
         ContactInitializer().Initialize(rocked, heightOptions);
+    require(!withoutHeight.graph.groundHeight &&
+                withoutHeight.graph.groundFactors.empty(),
+            "Height-off mode has neither a plane nor height factors");
     heightOptions.addGroundFactors = true;
     const auto withHeight =
         ContactInitializer().Initialize(rocked, heightOptions);
@@ -185,14 +223,15 @@ int main() {
     unsupported.anchorPose = pose;
     bool rejected = false;
     try {
-      ContactInitializer().Initialize({EventFrame{0, 0, {}}}, unsupported);
+      ContactInitializer().Initialize(
+          {ContactMeasurements{gtdynamics::Slice(0), 0, {}}}, unsupported);
     } catch (const std::invalid_argument&) {
       rejected = true;
     }
     require(rejected,
             "Ground mode rejects unsupported anchors rather than dereferencing "
             "an empty contact set");
-    std::vector<EventFrame> points = frames;
+    std::vector<ContactMeasurements> points = frames;
     for (auto& frame : points) {
       std::vector<Observation> reduced;
       for (const auto& o : frame.observations)

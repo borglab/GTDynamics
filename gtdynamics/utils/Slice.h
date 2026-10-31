@@ -13,15 +13,17 @@
 
 #pragma once
 
+#include <cstddef>
+
 namespace gtdynamics {
 
 /// A single discrete time slice.
 struct Slice {
-  size_t k;  // time index
+  std::size_t k;  // time index
 
  public:
   /// Construct from time index.
-  explicit Slice(size_t k = 0) : k(k) {}
+  explicit Slice(std::size_t k = 0) : k(k) {}
 };
 
 }  // namespace gtdynamics

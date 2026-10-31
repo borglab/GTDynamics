@@ -53,6 +53,7 @@ def main():
             cpu,
         )
     native_source_files = [
+        repo / "gtdynamics/utils/Slice.h",
         repo / "gtdynamics/utils/ContactInitializer.h",
         repo / "gtdynamics/utils/ContactInitializer.cpp",
         repo / "gtdynamics/utils/ContactInitializationFactors.h",

@@ -49,10 +49,9 @@ Rot3 align(const Point3& a, const Point3& b) {
   return Rot3(Eigen::Quaterniond::FromTwoVectors(a, b));
 }
 // Level the first observed stance patch without using a reference root pose.
-Rot3 levelRotation(const EventFrame& frame) {
+Rot3 levelRotation(const ContactMeasurements& frame) {
   if (frame.observations.empty())
-    throw std::invalid_argument(
-        "Level ground requires supported event frames.");
+    throw std::invalid_argument("Level ground requires supported slices.");
   const std::string& id = frame.observations.front().stanceId;
   std::vector<Point3> points;
   for (const auto& o : frame.observations)
@@ -76,7 +75,7 @@ std::vector<Point3> averageLandmarks(const Graph& graph,
                                      const std::vector<Pose3>& poses) {
   std::vector<Point3> result(graph.landmarks.size(), Point3::Zero());
   std::vector<size_t> counts(result.size(), 0);
-  for (size_t i = 0; i < graph.frames.size(); ++i)
+  for (size_t i = 0; i < graph.measurements.size(); ++i)
     for (const auto& o : graph.observations[i]) {
       result[o.landmarkIndex] +=
           poses[i].transformFrom(o.measurement.localPoint);
@@ -89,7 +88,7 @@ std::vector<Point3> averageLandmarks(const Graph& graph,
 // Associate by touchdown ID and material-point index, never by foot name alone.
 void indexObservations(Graph& graph) {
   std::map<std::pair<std::string, size_t>, size_t> indices;
-  for (const auto& frame : graph.frames) {
+  for (const auto& frame : graph.measurements) {
     std::vector<IndexedObservation> observations;
     std::vector<Point3> points;
     std::set<std::pair<std::string, size_t>> seen;
@@ -114,26 +113,65 @@ void indexObservations(Graph& graph) {
     graph.frameRanks.push_back(ContactPoseRank(points));
   }
 }
+// Reduce each patch to the centroid of the same material points at every
+// observation. Changing point subsets cannot define a stationary centroid.
+std::optional<std::vector<ContactMeasurements>> centroidMeasurements(
+    const std::vector<ContactMeasurements>& measurements) {
+  std::map<std::string, std::set<size_t>> materialPoints;
+  std::vector<ContactMeasurements> result;
+  for (const auto& sample : measurements) {
+    ContactMeasurements centered{sample.slice, sample.time, {}};
+    std::map<std::string, std::vector<Observation>> patches;
+    for (const auto& observation : sample.observations)
+      patches[observation.stanceId].push_back(observation);
+    for (const auto& [id, observations] : patches) {
+      std::set<size_t> indices;
+      std::vector<Point3> points;
+      for (const auto& observation : observations) {
+        indices.insert(observation.pointIndex);
+        points.push_back(observation.localPoint);
+      }
+      const auto [entry, inserted] = materialPoints.emplace(id, indices);
+      if (!inserted && entry->second != indices) return std::nullopt;
+      centered.observations.push_back(
+          {id, observations.front().foot, 0, centroid(points)});
+    }
+    result.push_back(std::move(centered));
+  }
+  return result;
+}
+// Evaluate a candidate seed against all original patch observations, after
+// eliminating landmarks by averaging. No optional priors or reference enter.
+double seedContactError(const Graph& graph, const std::vector<Pose3>& poses) {
+  const auto landmarks = averageLandmarks(graph, poses);
+  double error = 0;
+  for (size_t i = 0; i < graph.measurements.size(); ++i)
+    for (const auto& observation : graph.observations[i])
+      error += (poses[i].transformFrom(observation.measurement.localPoint) -
+                landmarks[observation.landmarkIndex])
+                   .squaredNorm();
+  return error;
+}
 // Traverse shared contacts, registering unknown frames against introduced
 // points. A component's first frame fixes its gauge; subsequent frames inherit
 // placement through measured overlaps. Disconnected components have arbitrary
 // placements.
 void seed(Graph& graph, const Options& options) {
-  const size_t n = graph.frames.size();
+  const size_t n = graph.measurements.size();
   graph.seedPoses.resize(n);
   std::vector<bool> assigned(n, false), known(graph.landmarks.size(), false);
   std::vector<Point3> landmarks(graph.landmarks.size(), Point3::Zero());
   if (options.model == Model::Ground) {
     const auto level = levelRotation(
-        graph.frames[0]);  // Validate even with a supplied anchor.
+        graph.measurements[0]);  // Validate even with a supplied anchor.
     const auto rotation =
         options.anchorPose ? options.anchorPose->rotation() : level;
     const Pose3 anchor(rotation, options.anchorPose
                                      ? options.anchorPose->translation()
                                      : Point3::Zero());
     std::vector<Point3> points;
-    const auto& id = graph.frames[0].observations.front().stanceId;
-    for (const auto& o : graph.frames[0].observations)
+    const auto& id = graph.measurements[0].observations.front().stanceId;
+    for (const auto& o : graph.measurements[0].observations)
       if (o.stanceId == id)
         points.push_back(anchor.transformFrom(o.localPoint));
     graph.groundHeight = centroid(points).z();
@@ -150,10 +188,10 @@ void seed(Graph& graph, const Options& options) {
       rotation = options.anchorPose->rotation();
       position = options.anchorPose->translation();
     } else if (graph.groundHeight) {
-      rotation = levelRotation(graph.frames[anchor]);
+      rotation = levelRotation(graph.measurements[anchor]);
       std::vector<Point3> points;
-      const auto& id = graph.frames[anchor].observations.front().stanceId;
-      for (const auto& o : graph.frames[anchor].observations)
+      const auto& id = graph.measurements[anchor].observations.front().stanceId;
+      for (const auto& o : graph.measurements[anchor].observations)
         if (o.stanceId == id) points.push_back(rotation.rotate(o.localPoint));
       position.z() = *graph.groundHeight - centroid(points).z();
     }
@@ -198,6 +236,23 @@ void seed(Graph& graph, const Options& options) {
     graph.components = {std::vector<size_t>()};
     for (size_t i = 0; i < n; ++i) graph.components.front().push_back(i);
   }
+  if (options.model == Model::Patch) {
+    // Rocking feet can accumulate large tilt in full-patch registration. Try
+    // a centroid-only traversal too, then retain the seed with lower error on
+    // the original patch factors. This changes no measurement or constraint.
+    if (const auto measurements = centroidMeasurements(graph.measurements)) {
+      Graph centers;
+      centers.measurements = *measurements;
+      indexObservations(centers);
+      Options centerOptions = options;
+      centerOptions.model = Model::Point;
+      centerOptions.perturb = false;
+      seed(centers, centerOptions);
+      if (seedContactError(graph, centers.seedPoses) <
+          seedContactError(graph, graph.seedPoses))
+        graph.seedPoses = std::move(centers.seedPoses);
+    }
+  }
   graph.initialPoses = graph.seedPoses;
   const std::set<size_t> anchors(graph.anchors.begin(), graph.anchors.end());
   if (options.perturb)
@@ -215,7 +270,7 @@ void seed(Graph& graph, const Options& options) {
 // unary landmark factors. Free poses retain the binary pose/landmark factors.
 void buildFactors(Graph& graph, const Options& options) {
   const std::set<size_t> anchors(graph.anchors.begin(), graph.anchors.end());
-  for (size_t i = 0; i < graph.frames.size(); ++i)
+  for (size_t i = 0; i < graph.measurements.size(); ++i)
     if (!anchors.count(i))
       graph.initialValues.insert(options.poseKey(i), graph.initialPoses[i]);
   for (size_t i = 0; i < graph.landmarks.size(); ++i) {
@@ -227,7 +282,7 @@ void buildFactors(Graph& graph, const Options& options) {
       graph.initialValues.insert(options.landmarkKey(i),
                                  graph.initialLandmarks[i]);
   }
-  for (size_t i = 0; i < graph.frames.size(); ++i)
+  for (size_t i = 0; i < graph.measurements.size(); ++i)
     for (const auto& o : graph.observations[i]) {
       const auto key = options.landmarkKey(o.landmarkIndex);
       if (anchors.count(i)) {
@@ -259,7 +314,7 @@ void buildRegularizers(Graph& graph, const Options& options) {
     sigmas.head<3>().setConstant(options.betweenRotationSigma);
     sigmas.tail<3>().setConstant(options.betweenTranslationSigma);
     const auto noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-    for (size_t i = 1; i < graph.frames.size(); ++i) {
+    for (size_t i = 1; i < graph.measurements.size(); ++i) {
       if (anchors.count(i - 1)) {
         // Substituting the fixed first pose makes this identity edge a prior.
         graph.betweenFactors.emplace_shared<gtsam::PriorFactor<Pose3>>(
@@ -273,7 +328,7 @@ void buildRegularizers(Graph& graph, const Options& options) {
   if (options.addUprightFactors) {
     const auto noise =
         gtsam::noiseModel::Isotropic::Sigma(3, options.uprightSigma);
-    for (size_t i = 0; i < graph.frames.size(); ++i) {
+    for (size_t i = 0; i < graph.measurements.size(); ++i) {
       const UprightFactor factor(options.poseKey(i), options.uprightSigma);
       if (anchors.count(i)) {
         // Keep the gauge pose exact and retain its constant upright cost.
@@ -297,7 +352,7 @@ void buildRegularizers(Graph& graph, const Options& options) {
             "Ground prior height conflicts with the hard floor.");
     } else {
       std::vector<Point3> points;
-      const auto& first = graph.frames.front();
+      const auto& first = graph.measurements.front();
       if (first.observations.empty())
         throw std::invalid_argument(
             "Ground prior requires a supported first frame.");
@@ -331,7 +386,7 @@ Snapshot snapshot(const Graph& graph, const Options& options,
   state.rms = std::sqrt(2 * graph.contactFactors.error(values) /
                         std::max<size_t>(1, count));
   const std::set<size_t> anchors(graph.anchors.begin(), graph.anchors.end());
-  for (size_t i = 0; i < graph.frames.size(); ++i)
+  for (size_t i = 0; i < graph.measurements.size(); ++i)
     state.poses.push_back(anchors.count(i)
                               ? graph.seedPoses[i]
                               : values.at<Pose3>(options.poseKey(i)));
@@ -395,11 +450,12 @@ Pose3 FitRigidTransform(const std::vector<Point3>& local,
   return Pose3(rotation, b - rotation.rotate(a));
 }
 
-Result ContactInitializer::Initialize(const std::vector<EventFrame>& frames,
-                                      const Options& options) const {
-  if (frames.empty())
+Result ContactInitializer::Initialize(
+    const std::vector<ContactMeasurements>& measurements,
+    const Options& options) const {
+  if (measurements.empty())
     throw std::invalid_argument(
-        "At least one contact event frame is required.");
+        "At least one slice of contact measurements is required.");
   for (double sigma :
        {options.betweenTranslationSigma, options.betweenRotationSigma,
         options.uprightSigma, options.groundSigma})
@@ -411,7 +467,7 @@ Result ContactInitializer::Initialize(const std::vector<EventFrame>& frames,
   Result result;
   const auto totalStart = Clock::now();
   auto phaseStart = Clock::now();
-  result.graph.frames = frames;
+  result.graph.measurements = measurements;
   indexObservations(result.graph);
   result.timings.graphBuildMs = elapsed(phaseStart);
   phaseStart = Clock::now();
