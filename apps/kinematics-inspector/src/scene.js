@@ -20,7 +20,7 @@ export class ReplayScene {
     this.controls.addEventListener('change', () => this.render());
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x788679, 1.1));
     const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(2, -3, 6); this.scene.add(light);
-    const grid = new THREE.GridHelper(20, 80, '#bac7bb', '#dce2d9'); grid.rotation.x = Math.PI / 2; this.scene.add(grid);
+    this.grid = new THREE.GridHelper(40, 160, '#bac7bb', '#dce2d9'); this.grid.rotation.x = Math.PI / 2; this.scene.add(this.grid);
     this.robot = createRobotVisual(model); this.scene.add(this.robot.root);
     this.reference = createRobotVisual(model); this.scene.add(this.reference.root);
     this.reference.root.traverse(object => {
@@ -35,9 +35,9 @@ export class ReplayScene {
     container.dataset.ready = 'true';
   }
   reset() {
-    const offset = bodyOffset(this.record, this.record.reference, Math.floor(this.record.samples / 2), this.record.rootBody);
-    const x = this.floats[offset], y = this.floats[offset + 1];
-    this.controls.target.set(x, y, .65); this.camera.position.set(x + 2.6, y - 3.4, 1.9);
+    const offset = bodyOffset(this.record, this.currentState || this.record.reference, this.currentFrame || 0, this.record.rootBody);
+    this.focus = new THREE.Vector3().fromArray(this.floats, offset);
+    this.controls.target.copy(this.focus); this.camera.position.copy(this.focus).add(new THREE.Vector3(2.6, -3.4, 1.25));
     this.controls.update(); this.render();
   }
   place(visual, state, frame) {
@@ -47,6 +47,13 @@ export class ReplayScene {
     });
   }
   update(state, frame, showReference, pathState) {
+    this.currentState = state; this.currentFrame = frame;
+    const offset = bodyOffset(this.record, state, frame, this.record.rootBody);
+    const focus = new THREE.Vector3().fromArray(this.floats, offset);
+    const delta = focus.clone().sub(this.focus);
+    this.camera.position.add(delta); this.controls.target.add(delta); this.focus.copy(focus);
+    this.grid.position.set(Math.round(focus.x / 5) * 5, Math.round(focus.y / 5) * 5, 0);
+    this.controls.update();
     this.place(this.robot, state, frame);
     this.place(this.reference, this.record.reference, frame); this.reference.root.visible = showReference;
     if (this.pathState !== pathState) {

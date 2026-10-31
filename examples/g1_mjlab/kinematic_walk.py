@@ -123,6 +123,7 @@ def initialize(
     keys: Sequence[int],
     contact_diagnostics: gtd.contact_init.Result | None = None,
     ik_iteration: Callable[[int, int, float, gtsam.Values], None] | None = None,
+    contact_options: gtd.contact_init.Options | None = None,
 ) -> tuple[gtsam.Values, dict[str, int | float | bool]]:
     """Call the native initializers; optional observers support offline inspection.
 
@@ -132,7 +133,7 @@ def initialize(
     """
     initializer = gtd.Initializer()
     if method == "contact":
-        options = gtd.contact_init.Options()
+        options = contact_options if contact_options is not None else gtd.contact_init.Options()
         options.recordHistory = contact_diagnostics is not None
         diagnostics = (
             contact_diagnostics

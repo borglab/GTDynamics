@@ -62,6 +62,7 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
       <div><span>Contact height RMS</span><strong>{{ number(metrics.stance_height_rms_m*1000) }} <small>mm</small></strong></div>
       <div><span>Contact slip RMS / step</span><strong>{{ number(metrics.stance_step_slip_rms_m*1000) }} <small>mm</small></strong></div>
       <div><span>Joint measurement RMS</span><strong>{{ number(metrics.joint_measurement_rms_rad) }} <small>rad</small></strong></div>
+      <div><span>Reference root position RMS</span><strong>{{ number(metrics.reference_root_translation_rms_m) }} <small>m</small></strong></div>
     </div>
     <div v-else class="metrics local-metrics"><div><span>Per-frame IK objective</span><strong>{{ number(state.error,5) }}</strong></div><div><span>Selected joint</span><strong>{{ number(currentAngle) }} <small>rad</small></strong></div></div>
     <section class="plot-block">

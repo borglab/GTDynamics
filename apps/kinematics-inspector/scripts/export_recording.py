@@ -12,6 +12,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from typing import Any
@@ -217,11 +218,11 @@ def export_model(model: mujoco.MjModel, output: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data", type=Path, default=APP / ".cache/jazzwalk")
+    parser.add_argument("--data", type=Path, default=APP / ".cache/openio")
     parser.add_argument(
         "--contacts",
         type=Path,
-        default=APP / ".cache/jazzwalk/contacts.json",
+        default=APP / ".cache/openio/contacts.json",
     )
     parser.add_argument(
         "--output", type=Path, default=Path(__file__).resolve().parents[1] / "public"
@@ -239,6 +240,12 @@ def main() -> None:
     if args.max_iterations < 1 or (args.max_frames is not None and args.max_frames < 2):
         parser.error("Use positive iterations and at least two frames")
     walk = example.load_walk(args.data, args.contacts, args.max_frames)
+    _, input_metadata = load_recording(args.data)
+    contact_settings = input_metadata.get("motionSource", {}).get("contactInitialization", {})
+    contact_options = gtd.contact_init.Options()
+    for name in ("addBetweenFactors", "betweenTranslationSigma", "betweenRotationSigma"):
+        if name in contact_settings:
+            setattr(contact_options, name, contact_settings[name])
     model = load_model(args.data)
     recorder = Recorder(walk, model)
     costs, constraints, keys = example.build_problem(walk)
@@ -258,7 +265,8 @@ def main() -> None:
             ik_frames[sample].append(state)
 
         seed, info = example.initialize(
-            walk, method, keys, contact_result, ik_iteration if method == "ik" else None
+            walk, method, keys, contact_result, ik_iteration if method == "ik" else None,
+            contact_options=contact_options,
         )
         initializer = []
         sparse_samples: list[int] = []
@@ -388,6 +396,8 @@ def main() -> None:
                 REPO / "apps/contact-initialization/scripts/contact_discovery.py",
             ]
         )
+    if metadata.get("motionSource", {}).get("imu"):
+        source_files.append(APP / "scripts/import_openio.py")
     record = {
         "schemaVersion": 1,
         "title": "G1 walking · kinematics smoothing",
@@ -431,6 +441,13 @@ def main() -> None:
         "notes": "Every completed outer LM iterate is saved, including iteration zero. Internal damping trials and CM-Opt feasibility retraction subiterations are not separate optimizer iterates. IK histories are per sample; contact initialization jointly solves sparse frames, with SE(3) interpolation for display. Export runs collect history and are not timing benchmarks.",
     }
     args.output.mkdir(parents=True, exist_ok=True)
+    motion_source = metadata.get("motionSource", {})
+    if motion_source.get("imu"):
+        for name in ("imu.json", "OPENIO_ATTRIBUTION.txt"):
+            shutil.copyfile(args.data / name, args.output / name)
+        record["provenance"]["inputs"]["imu.json"] = hashlib.sha256(
+            (args.data / "imu.json").read_bytes()
+        ).hexdigest()
     export_model(model, args.output)
     args.output.joinpath("states.bin.gz").write_bytes(recorder.encoded_states())
     args.output.joinpath("recording.json").write_text(

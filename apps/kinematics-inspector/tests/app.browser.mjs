@@ -26,12 +26,15 @@ try {
       assert.match(await contact.locator('.iteration-controls').innerText(),/Iteration 10 \/ 10/);
       assert(!/\bstates\b/.test(await page.locator('main').innerText()));
       const credit = page.locator('.motion-attribution');
-      assert.match(await credit.innerText(), /JazzWalk.*G1 Moves.*Mitch Chaiet/s);
-      assert.match(await credit.innerText(), /Jasmine Coro/);
+      assert.match(await credit.innerText(), /10871_humanoid_20260520_223451.*Open-IO.*Yuheng Qiu/s);
       assert.equal(await credit.getByRole('link', {name:'CC BY 4.0', exact:true}).getAttribute('href'), 'https://creativecommons.org/licenses/by/4.0/');
-      const notice = await page.request.get(new URL('./G1_MOVES_ATTRIBUTION.txt', page.url()).href);
+      const notice = await page.request.get(new URL('./OPENIO_ATTRIBUTION.txt', page.url()).href);
       assert.equal(notice.status(), 200);
-      assert.match(await notice.text(), /J_ShortDance16_JazzWalk/);
+      assert.match(await notice.text(), /10871_humanoid_20260520_223451/);
+      const imu = await page.request.get(new URL('./imu.json', page.url()).href);
+      assert.equal(imu.status(), 200);
+      assert.equal((await imu.json()).timeSeconds.length, 2000);
+      assert.match(await page.locator('footer').innerText(), /does not use IMU factors/);
       await contactIteration.fill('0');
       assert.equal(await contact.getAttribute('data-iteration'),'0');
       await contact.getByRole('button',{name:'Next iteration',exact:true}).click();
@@ -39,7 +42,7 @@ try {
       await contact.getByRole('button',{name:'Last iteration',exact:true}).click();
       assert(Number(await contact.getAttribute('data-iteration'))>1);
       await page.getByRole('slider',{name:'Walking time'}).fill('400');
-      await page.getByRole('checkbox',{name:'Reference overlay'}).check();
+      await page.getByRole('checkbox',{name:'SuperOdom reference'}).check();
       await page.getByRole('combobox',{name:'Joint to inspect'}).selectOption({label:'right_knee_joint'});
       assert.match(await ik.locator('.plot-block').nth(1).innerText(),/right knee joint/);
       if(base==='/') await page.screenshot({path:'/tmp/gtd-kinematics-inspector.png',fullPage:true});
@@ -62,10 +65,26 @@ try {
       await page.waitForTimeout(500);
       await page.getByRole('button',{name:'Pause walking',exact:true}).click();
       assert(Number(await page.locator('main').getAttribute('data-frame'))>before);
+      // Switch with Initialization selected: old scenes/iterates must be disposed.
+      const recording = page.getByRole('combobox', {name:'Recording',exact:true});
+      await recording.selectOption('full');
+      await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
+      assert.equal(await page.locator('main').getAttribute('data-frame'), '0');
+      assert.equal(await page.getByRole('slider',{name:'Walking time'}).getAttribute('max'), '1099');
+      assert.match(await page.locator('footer').innerText(), /43,991/);
+      assert.equal(await page.getByRole('link',{name:'Download IMU measurements'}).getAttribute('href'), './full/imu.json');
+      await page.getByRole('slider',{name:'Walking time'}).fill('1045');
+      await page.getByRole('button',{name:'CM-Opt smoothing',exact:true}).click();
+      assert.match(await contact.locator('.iteration-controls').innerText(), /Iteration 10 \/ 10/);
+      if(base==='/') await page.screenshot({path:'/tmp/gtd-kinematics-full.png',fullPage:true});
       await page.setViewportSize({width:390,height:844});
       await page.getByRole('button',{name:'CM-Opt smoothing',exact:true}).click();
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
       if(base==='/') await page.screenshot({path:'/tmp/gtd-kinematics-inspector-mobile.png',fullPage:true});
+      await recording.selectOption('turn');
+      await page.locator('.method-panel.ik .scene[data-ready="true"]').waitFor();
+      assert.equal(await page.getByRole('slider',{name:'Walking time'}).getAttribute('max'), '499');
+      assert.equal(await page.locator('main').getAttribute('data-frame'), '0');
       assert.deepEqual(errors,[]); assert.deepEqual(failures,[]); assert.deepEqual(sockets,[]);
       console.log(`Passed: ${base}`);
     } finally {await context.close(); await server.httpServer.close();}

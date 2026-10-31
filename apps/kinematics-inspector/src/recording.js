@@ -74,10 +74,10 @@ async function fetchFile(name, signal, compressed = false) {
   return new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
 }
 
-export async function loadRecording(signal) {
-  const record = await fetchFile('recording.json', signal);
+export async function loadRecording(signal, directory = '') {
+  const record = await fetchFile(`${directory}recording.json`, signal);
   const [stateBuffer, modelBuffer] = await Promise.all([
-    fetchFile(record.storage.states, signal, true), fetchFile(record.storage.model, signal, true),
+    fetchFile(`${directory}${record.storage.states}`, signal, true), fetchFile(`${directory}${record.storage.model}`, signal, true),
   ]);
   const floats = decodeStates(stateBuffer, record.storage);
   validateRecording(record, floats);
