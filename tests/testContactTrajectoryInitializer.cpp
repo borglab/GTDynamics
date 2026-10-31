@@ -291,7 +291,7 @@ TEST(ContactTrajectoryInitializer, DisconnectedContactGaugesRejected) {
   EXPECT(disconnected_rejected);
 }
 
-// Changing the other foot or reordering material points must not split a
+// Changing the other foot or reordering contact points must not split a
 // stance.
 TEST(ContactTrajectoryInitializer, PhaseContinuityAndPointReentry) {
   const auto robot = CreateRobotFromFile(

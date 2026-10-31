@@ -85,7 +85,7 @@ std::vector<Point3> averageLandmarks(const Graph& graph,
     result[i] = projected(graph, result[i] / static_cast<double>(counts[i]));
   return result;
 }
-// Associate by touchdown ID and material-point index, never by foot name alone.
+// Associate by touchdown ID and contact-point index, never by foot name alone.
 void indexObservations(Graph& graph) {
   std::map<std::pair<std::string, size_t>, size_t> indices;
   for (const auto& frame : graph.measurements) {
@@ -113,7 +113,7 @@ void indexObservations(Graph& graph) {
     graph.frameRanks.push_back(ContactPoseRank(points));
   }
 }
-// Reduce each patch to the centroid of the same material points at every
+// Reduce each patch to the centroid of the same contact points at every
 // observation. Changing point subsets cannot define a stationary centroid.
 std::optional<std::vector<ContactMeasurements>> centroidMeasurements(
     const std::vector<ContactMeasurements>& measurements) {

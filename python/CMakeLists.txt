@@ -123,6 +123,16 @@ endmacro()
 
 PYTHON_UNIT_TEST_SUITE(base ${PROJECT_SOURCE_DIR}/python/tests)
 
+# The G1 example uses the standard package, with no separate binding target.
+if(GTDYNAMICS_BUILD_G1_MJLAB)
+  add_test(NAME g1_kinematic_walk_python
+    COMMAND ${CMAKE_COMMAND} -E env
+      "PYTHONPATH=${GTD_PYTHON_BINARY_DIR}${GTD_PATH_SEP}$ENV{PYTHONPATH}"
+      ${PYTHON_EXECUTABLE}
+      ${PROJECT_SOURCE_DIR}/examples/g1_mjlab/test_kinematic_walk.py)
+endif()
+
+
 if(GTDYNAMICS_BUILD_CABLE_ROBOT)
   PYTHON_UNIT_TEST_SUITE(cablerobot ${PROJECT_SOURCE_DIR}/gtdynamics/cablerobot/src)
 endif()

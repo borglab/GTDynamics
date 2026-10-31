@@ -91,7 +91,7 @@ class MinTorqueFactor : gtsam::NoiseModelFactor {
 gtsam::NoiseModelFactor* WrenchFactor(
     const gtsam::noiseModel::Base *cost_model, const gtdynamics::Link *link,
     const std::vector<gtsam::Key> wrench_keys, int t = 0,
-    const std::optional<gtsam::Vector3> &gravity);
+    const std::optional<gtsam::Vector3> &gravity = std::nullopt);
 
 #include <gtdynamics/factors/CollocationFactors.h>
 class EulerPoseCollocationFactor : gtsam::NoiseModelFactor {
@@ -478,6 +478,9 @@ class Kinematics {
   gtsam::NonlinearFactorGraph jointAngleObjectives(
       const gtdynamics::Trajectory& context, const gtdynamics::Robot& robot,
       const gtsam::Values& joint_priors) const;
+  gtsam::NonlinearFactorGraph contactEqualityFactors(
+      const gtdynamics::Trajectory& trajectory,
+      const std::shared_ptr<gtsam::noiseModel::Base>& model) const;
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const gtdynamics::Slice& context, const gtdynamics::PointOnLinks& points,
       const gtsam::Vector3& gravity, double ground_plane_height = 0.0) const;
@@ -603,11 +606,11 @@ enum CollocationScheme { Euler, RungeKutta, Trapezoidal, HermiteSimpson };
 class DynamicsGraph {
   DynamicsGraph();
   DynamicsGraph(const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, 9.81),
-                const std::optional<gtsam::Vector3> &planar_axis);
+                const std::optional<gtsam::Vector3> &planar_axis = std::nullopt);
   DynamicsGraph(const gtdynamics::OptimizerSetting &opt);
   DynamicsGraph(const gtdynamics::OptimizerSetting &opt,
                 const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, 9.81),
-                const std::optional<gtsam::Vector3> &planar_axis);
+                const std::optional<gtsam::Vector3> &planar_axis = std::nullopt);
 
   gtsam::GaussianFactorGraph linearDynamicsGraph(
       const gtdynamics::Robot &robot, const int k,
@@ -908,8 +911,27 @@ class Timings {
   double optimizationMs;
   double totalMs;
 };
+class ContactMeasurements {
+  ContactMeasurements();
+  gtdynamics::Slice slice;
+  double time;
+};
+class Graph {
+  Graph();
+  std::vector<gtdynamics::contact_init::ContactMeasurements> measurements;
+};
+class Snapshot {
+  Snapshot();
+  size_t iteration;
+  double objective;
+  double rms;
+  std::vector<gtsam::Pose3> poses;
+  std::vector<gtsam::Point3> landmarks;
+};
 class Result {
   Result();
+  gtdynamics::contact_init::Graph graph;
+  std::vector<gtdynamics::contact_init::Snapshot> history;
   gtsam::Values values;
   std::vector<gtsam::Pose3> poses;
   std::vector<gtsam::Point3> landmarks;
@@ -930,7 +952,8 @@ class Initializer {
       const gtdynamics::Robot& robot, const string& link_name,
       const gtsam::Pose3& initial_pose, const std::vector<gtsam::Pose3>& target_poses,
       const std::vector<double>& times, double dt, double gaussian_noise = 1e-8,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt);
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt,
+      const gtdynamics::InitializationIterationCallback& iteration_callback = nullptr);
   gtsam::Values InitializeSolutionContacts(
       const gtdynamics::Robot& robot, const string& root_link_name,
       const gtsam::Pose3& initial_pose, const gtsam::Values& measured_joints,
@@ -1071,7 +1094,7 @@ gtsam::Vector6 Wrench(const gtsam::Values &values, int i, int j, int t=0);
 class Simulator {
   Simulator(const gtdynamics::Robot &robot, const gtsam::Values &initial_values,
             const gtsam::Vector3 &gravity = gtsam::Vector3(0, 0, 9.81),
-            const std::optional<gtsam::Vector3> &planar_axis);
+            const std::optional<gtsam::Vector3> &planar_axis = std::nullopt);
 
   void reset(const double t);
   void forwardDynamics(const gtsam::Values &torques);

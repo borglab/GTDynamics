@@ -190,7 +190,8 @@ Values Initializer::InitializeSolutionInverseKinematics(
     const Robot& robot, const std::string& link_name, const Pose3& wTl_i,
     const std::vector<Pose3>& wTl_t, const std::vector<double>& timesteps,
     double dt, double gaussian_noise,
-    const std::optional<PointOnLinks>& contact_points) {
+    const std::optional<PointOnLinks>& contact_points,
+    const InitializationIterationCallback& iteration_callback) {
   double t_i = 0.0;  // Time elapsed.
 
   Vector3 gravity(0, 0, -9.8);
@@ -215,7 +216,17 @@ Values Initializer::InitializeSolutionInverseKinematics(
     kfg.addPrior(PoseKey(robot.link(link_name)->id(), t), wTl_dt[t],
                  gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
-    gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values);
+    gtsam::LevenbergMarquardtParams params;
+    gtsam::LevenbergMarquardtOptimizer* active_optimizer = nullptr;
+    if (iteration_callback) {
+      params.iterationHook = [&](size_t iteration, double, double error) {
+        iteration_callback(t, iteration, error, active_optimizer->values());
+      };
+    }
+    gtsam::LevenbergMarquardtOptimizer optimizer(kfg, values, params);
+    active_optimizer = &optimizer;
+    if (iteration_callback)
+      iteration_callback(t, 0, optimizer.error(), optimizer.values());
     Values results = optimizer.optimize();
 
     // Add zero initial values for remaining variables.
@@ -383,7 +394,7 @@ Values Initializer::ZeroValues(
   if (contact_points) {
     for (auto&& cp : *contact_points) {
       // Contact points on one link share its aggregate contact wrench seed.
-      // A sole patch can contain several material points on that same link.
+      // A sole patch can contain several contact points on that same link.
       const auto key = ContactWrenchKey(cp.link->id(), 0, t);
       if (!values.exists(key)) values.insert(key, sampler.sample());
     }

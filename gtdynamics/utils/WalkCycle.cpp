@@ -23,7 +23,7 @@ using gtsam::Point3;
 using gtsam::SharedNoiseModel;
 
 void WalkCycle::addPhaseContactPoints(const Phase &phase) {
-  // Add unique material points independently of the specification subtype.
+  // Add unique contact points independently of the specification subtype.
   if (const auto spec = phase.constraintSpec()) {
     for (const auto& point : spec->contactPoints()) {
       if (std::find(contact_points_.begin(), contact_points_.end(), point) ==

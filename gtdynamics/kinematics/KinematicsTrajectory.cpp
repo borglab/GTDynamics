@@ -11,11 +11,18 @@
  * @author: Frank Dellaert
  */
 
+#include <gtdynamics/factors/ContactEqualityFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
+#include <algorithm>
+#include <iterator>
+#include <limits>
+#include <map>
+#include <stdexcept>
 
 namespace gtdynamics {
 
@@ -23,6 +30,60 @@ using gtsam::NonlinearFactorGraph;
 using gtsam::Values;
 using std::string;
 using std::vector;
+
+NonlinearFactorGraph Kinematics::contactEqualityFactors(
+    const Trajectory& trajectory, const gtsam::SharedNoiseModel& model) const {
+  if (!model || model->dim() != 3) {
+    throw std::invalid_argument("contactEqualityFactors requires a 3D noise model");
+  }
+  // Union contacts at shared phase endpoints before constructing temporal edges.
+  std::map<size_t, PointOnLinks> contacts;
+  const auto& phases = trajectory.phases();
+  for (size_t i = 0; i < phases.size(); ++i) {
+    const auto& phase = phases[i];
+    if (phase.k_start > phase.k_end ||
+        phase.k_end > static_cast<size_t>(std::numeric_limits<int>::max()) ||
+        (i && phase.k_start < phases[i - 1].k_end)) {
+      throw std::invalid_argument(
+          "contactEqualityFactors requires ordered phases "
+          "with at most one shared endpoint");
+    }
+    const auto spec = phase.constraintSpec();
+    if (!spec) {
+      throw std::invalid_argument(
+          "contactEqualityFactors requires contact specifications");
+    }
+    const auto points = spec->groundContactPoints();
+    for (const auto& point : points) {
+      if (!point.link || !point.point.allFinite()) {
+        throw std::invalid_argument(
+            "contactEqualityFactors requires valid contact points");
+      }
+    }
+    for (size_t k = phase.k_start; k <= phase.k_end; ++k) {
+      auto& current = contacts[k];
+      for (const auto& point : points) {
+        if (std::find(current.begin(), current.end(), point) == current.end()) {
+          current.push_back(point);
+        }
+      }
+    }
+  }
+  NonlinearFactorGraph graph;
+  for (auto current = contacts.begin(); current != contacts.end(); ++current) {
+    if (current == contacts.begin()) continue;
+    const auto previous = std::prev(current);
+    if (current->first != previous->first + 1) continue;
+    for (const auto& point : current->second) {
+      if (std::find(previous->second.begin(), previous->second.end(), point) !=
+          previous->second.end()) {
+        graph.emplace_shared<ContactEqualityFactor>(
+            point, model, previous->first, current->first);
+      }
+    }
+  }
+  return graph;
+}
 
 NonlinearFactorGraph Kinematics::contactHeightObjectives(
     const Trajectory& trajectory, const gtsam::Vector3& gravity,

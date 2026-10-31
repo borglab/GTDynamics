@@ -213,6 +213,20 @@ class Kinematics : public Optimizer {
       double ground_plane_height = 0.0) const;
 
   /**
+   * Softly equate continuing ground contact points at adjacent samples.
+   * Uses each phase's groundContactPoints(); non-ground contacts contribute no
+   * factors. Continuing contact means the same point on the same link.
+   * Shared endpoints use the union of ground contacts without duplicates;
+   * flight, non-ground intervals, and missing samples break continuity.
+   * Phases must be ordered and overlap by at most one endpoint.
+   * No world contact positions are required.
+   * @param model Three-dimensional noise model for world displacement (metres).
+   * @returns ContactEqualityFactors, one per continuing point and sample pair.
+   */
+  gtsam::NonlinearFactorGraph contactEqualityFactors(
+      const Trajectory& trajectory, const gtsam::SharedNoiseModel& model) const;
+
+  /**
    * @fn Create fixed-link pose prior objectives.
    * @returns graph with fixed-link pose priors.
    */

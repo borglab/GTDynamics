@@ -19,7 +19,7 @@
 
 namespace gtdynamics {
 
-/** Specification of a phase's constraints and active material contacts.
+/** Specification of a phase's constraints and active contact points.
  * Contact points may belong to any link. A contact-free phase returns an empty
  * collection; the ground role is explicit on each PointOnLink.
  */
