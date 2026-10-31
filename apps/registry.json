@@ -8,7 +8,7 @@
   {
     "id": "motion-planning",
     "title": "Motion Planning",
-    "description": "Follow a Franka arm’s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
+    "description": "Follow a Franka arm\u2019s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
     "tag": "Trajectory optimization"
   },
   {
@@ -16,5 +16,11 @@
     "title": "Contact Initialization",
     "description": "Explore a C++ GTSAM alternative to IK initialization. Replay native solves and timings, compare contact models, and switch between G1 walking and a longer captured motion.",
     "tag": "Walking initialization"
+  },
+  {
+    "id": "kinematics-inspector",
+    "title": "Kinematics",
+    "description": "Full-trajectory G1 kinematics optimization with contact and inverse-kinematics initialization. Inspect recorded CM-Opt iterations, link poses, contact residuals, and joint angles.",
+    "tag": "Kinematics smoothing"
   }
 ]

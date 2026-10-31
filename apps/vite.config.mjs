@@ -3,6 +3,8 @@ import apps from './registry.json' with { type: 'json' };
 
 export default defineConfig({
   base: './',
+  // Static preview must serve the built apps, without development proxies.
+  preview: { proxy: {} },
   server: {
     host: process.env.GTDYNAMICS_APPS_HOST || '127.0.0.1',
     allowedHosts: (process.env.GTDYNAMICS_APPS_ALLOWED_HOSTS || '')

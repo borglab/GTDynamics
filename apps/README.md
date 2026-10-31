@@ -9,6 +9,8 @@ be opened directly.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [Contact Initialization](contact-initialization/README.md): replay C++ GTSAM walking initialization, inspect native timings, and switch between two G1 motion sequences.
 
+- [Kinematics](kinematics-inspector/README.md): inspect every offline initialization and full-walk CM-Opt iteration from contact and IK starting points.
+
 ## Local preview
 
 Use **Node.js 22+**, npm, Python 3, and Git. From the repository root:
@@ -57,7 +59,7 @@ npm run preview
 ```
 
 Both commands use port 3000, so stop the dev server before starting preview.
-The static site is assembled in `apps/dist/`, including both apps, model assets,
+The static site is assembled in `apps/dist/`, including all registered apps, model assets,
 and the shared navigation. Asset URLs are relative, so the same build works at
 `/`, `/GTDynamics/`, and on a custom domain.
 

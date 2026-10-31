@@ -1,0 +1,30 @@
+G1 Moves: Motion Capture Dataset for the Unitree G1 Humanoid Robot
+
+Clip: J_ShortDance16_JazzWalk
+Creator: Mitch Chaiet / Experiential Technologies
+Performer: Jasmine Coro
+Capture: MOVIN TRACIN; retargeting: movin_sdk_python
+
+Dataset: https://huggingface.co/datasets/exptech/g1-moves
+Pinned revision: 895d064b2385725e6aabf540461c219afc3e0916
+Source file: dance/J_ShortDance16_JazzWalk/retarget/J_ShortDance16_JazzWalk.csv
+Source SHA-256: f8f61ea840a38da7a7c9ce468dcdf4643d47ad1e055e7292a278735e60ae1309
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License summary: https://creativecommons.org/licenses/by/4.0/
+License legal text: https://creativecommons.org/licenses/by/4.0/legalcode
+Original license statement:
+https://huggingface.co/datasets/exptech/g1-moves/blob/895d064b2385725e6aabf540461c219afc3e0916/README.md#license
+
+Changes for this app: retained all 637 original rows (0 through 636), at the
+native 60 Hz rate; normalized root quaternions and converted XYZW to WXYZ;
+computed forward kinematics using the MJLab G1 model; inferred candidate
+contact phases from sole height and horizontal corner speed; calculated and
+recorded contact initialization, inverse kinematics, and ten CM-Opt smoothing
+iterations. Render coordinates are quantized to 1e-6. Reference overlays show
+the original motion, while initialization and smoothing views show our modified
+estimates. No source motion frames were repeated or synthesized. The legacy IK
+initializer uses a stationary commanded root rather than the recorded root path.
+
+The app does not imply endorsement by the creator, performer, capture provider,
+or Unitree Robotics. Robot geometry has its separate notice in MODEL_LICENSE.txt.

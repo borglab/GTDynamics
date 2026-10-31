@@ -84,7 +84,7 @@ See [the integration example and API contract](docs/initializer-api.md).
 
 ## Factor graph and native solve
 
-For a material sole point `a_j`, FK at event `i` supplies a fixed measurement
+For a fixed sole point `a_j`, FK at event `i` supplies a fixed measurement
 `p_ij = root_T_foot(q_i) a_j`. Each touchdown creates a fresh stance landmark
 set; all events within that stance share it. The objective is
 
@@ -99,10 +99,11 @@ The default adds no motion or attitude prior. Optional factors are described bel
 
 The initializer first traverses the contact graph, registering frames against
 already placed contacts using a small rigid SVD fit. For 3D patches it also
-tries a traversal using each patch's material-point centroid, retaining the
+tries a traversal using the centroid of each patch's contact points, retaining the
 seed with lower contact cost on the full patch observations. This avoids
 accumulating foot-rocking tilt in the seed without adding height or attitude
-constraints. Changing material-point subsets skip the centroid candidate. Then
+constraints. If the set of contact points changes between frames, it skips the
+centroid candidate. Then
 `gtsam::LevenbergMarquardtOptimizer` jointly updates all free event `Pose3` and
 contact variables, with analytic Jacobians and multifrontal Cholesky. Numerical
 LM diagonal damping permits point-mode solves but adds no measured attitude
@@ -114,7 +115,7 @@ The app offers two contact models, both with free `Point3` landmark heights:
 | Mode | Contact variables | Assumption |
 | --- | --- | --- |
 | Contact-only sole patch | Three `Point3` landmarks per stance | Stationary rigid sole, with no terrain constraint |
-| One material point | One `Point3` per stance | Point support; rotations remain ambiguous |
+| One contact point | One `Point3` per stance | Point support; rotations remain ambiguous |
 
 Landmark heights are constrained only when the height-prior checkbox is enabled.
 The native API and recording archive also retain the hard-floor `Model::Ground`

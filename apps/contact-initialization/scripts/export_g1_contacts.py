@@ -144,7 +144,7 @@ def main():
     reference_feet = {side: [] for side in feet}
 
     # Lower collision-envelope rectangle of the seven left sole capsules.
-    # These are fixed material landmarks, not collision contact centroids.
+    # These are landmarks at fixed locations on the sole, not collision contact centroids.
     bounds = []
     for geom in range(model.ngeom):
         if (
@@ -361,7 +361,7 @@ def main():
             "soleCorners": rounded(outline[:3]),
             "soleOutline": rounded(outline),
             "soleCenter": rounded(np.mean(outline, axis=0)),
-            "soleDefinition": "Three fixed material points on a rectangular approximation of the capsule collision sole lower envelope, expressed in ankle-roll body coordinates; not changing collision centroids.",
+            "soleDefinition": "Three fixed sole points on a rectangular approximation of the capsule collision sole lower envelope, expressed in ankle-roll body coordinates; not changing collision centroids.",
         },
         "samples": samples,
         "contacts": contacts,

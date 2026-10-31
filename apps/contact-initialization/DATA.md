@@ -62,7 +62,7 @@ The floating-base poses are stored separately for evaluation and display.
 The detector uses the minimum height of the four fixed sole rectangle corners.
 A robust floor estimate is the fifth percentile of the lower of both feet over
 the window. To accommodate rocking, speed is the minimum horizontal speed among
-the four material corners, rather than the speed of the foot center. Candidate
+the four sole corners, rather than the speed of the foot center. Candidate
 support turns on below 4 cm and 0.5 m/s, and remains on up to 6 cm and 1.0 m/s.
 Bounded gaps of at most two samples are bridged; episodes shorter than three
 samples are removed. All settings and raw height/speed signals are exported.
