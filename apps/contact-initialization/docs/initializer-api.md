@@ -6,49 +6,72 @@ link name, and an initial world pose, and return ordinary GTDynamics
 `gtsam::Values` suitable for seeding a later optimization.
 
 The inputs differ because this initializer keeps measured joints fixed and
-estimates floating-base poses from repeated ground contacts. It needs measured
-joint angles and an explicit stance schedule instead of desired pose goals.
-Each uninterrupted stance gets a new ID; a later touchdown of the same foot
-must use a different ID. Contact points use link **COM coordinates**, as do
-`PointOnLink` and `Robot::forwardKinematics` elsewhere in GTDynamics.
+estimates floating-base poses from repeated contacts. It takes a
+`Trajectory` of `Phase` objects whose `ConstraintSpec`s expose `contactPoints()`.
+`FootContactConstraintSpec` implements this interface. Contact points
+use link **COM coordinates**, as do `PointOnLink` and `Robot::forwardKinematics`.
+The same link and exact material-point coordinates in consecutive phases keep
+the same landmark identity, independent of point ordering. A point that disappears
+and later returns gets a fresh landmark. Callers do not supply touchdown IDs or
+a second contact schedule.
 
 ```cpp
 #include <gtdynamics/utils/Initializer.h>
+#include <gtdynamics/utils/Trajectory.h>
 #include <gtdynamics/utils/values.h>
 
-gtdynamics::Initializer initializer;
-std::vector<size_t> samples = /* original graph indices, increasing */;
+using namespace gtdynamics;
+auto left = std::make_shared<FootContactConstraintSpec>(leftSolePoints);
+auto right = std::make_shared<FootContactConstraintSpec>(rightSolePoints);
+PointOnLinks bothPoints = leftSolePoints;
+bothPoints.insert(bothPoints.end(), rightSolePoints.begin(), rightSolePoints.end());
+auto both = std::make_shared<FootContactConstraintSpec>(bothPoints);
+Trajectory trajectory(WalkCycle(std::vector<Phase>{
+    Phase(0, 9, left), Phase(10, 14, both), Phase(15, 23, right),
+    Phase(24, 28, both), Phase(29, 40, left)}), 1);
+
 gtsam::Values measuredJoints;
-// Populate JointAngleKey(joint_id, sample) for every joint and sample.
+// Populate JointAngleKey(joint_id, sample) for every joint and slice 0..40.
 // Optional JointVelKey measurements are preserved; absent velocities are zero.
-
-std::vector<gtdynamics::ContactEpisode> contacts = {
-    {"left-stance-0", 0, 14, leftSolePoints},
-    {"right-stance-0", 10, 28, rightSolePoints},
-    {"left-stance-1", 24, 40, leftSolePoints}};
-
-gtdynamics::contact_init::Options options;
-options.model = gtdynamics::contact_init::Model::Ground;
-gtdynamics::contact_init::Result diagnostics;
-gtsam::Values seeds = initializer.InitializeSolutionContacts(
-    robot, rootLinkName, initialRootCOMPose, measuredJoints, samples,
-    contacts, samplePeriodSeconds, options, &diagnostics);
+contact_init::Options options;
+options.model = contact_init::Model::Ground;
+contact_init::Result diagnostics;
+gtsam::Values seeds = Initializer().InitializeSolutionContacts(
+    robot, rootLinkName, initialRootCOMPose, measuredJoints,
+    trajectory, samplePeriodSeconds, options, &diagnostics);
 
 double solveMilliseconds = diagnostics.timings.optimizationMs;
 ```
 
-Episode intervals include their first and last samples. Their boundaries must
-occur in `samples`; the initial and final requested samples need active
-contacts. The adapter retains contact boundaries and selects additional requested
-samples whenever the next boundary is more than one second away. It uses the
-latest measured sample within one second of the previous frame; requested
-samples too sparse to meet that limit are rejected. The adapter freezes FK
-geometry at all selected samples and builds one GTSAM graph whose variables
-are root poses and shared stance points.
-The first root pose fixes the world gauge. By default the adapter rejects disconnected
-contact graphs: independent components have unrelated world gauges and cannot
-safely be interpolated into one dense trajectory. The lower-level core exposes
-those components for diagnosis and visualization.
+Phases use original inclusive sample indices. They must be ordered and
+contiguous; adjacent phases can be disjoint or share one endpoint. A shared
+endpoint uses the union of the two contact sets and produces one state.
+A specification with no contact points represents flight. Missing specs,
+duplicate points within a phase, foreign robot links, and invalid intervals
+are rejected. Each joint must be measured at every trajectory slice.
+
+Each `PointOnLink` has an `isGround` flag, defaulting to `true` for existing
+walking examples. For a contact away from the ground plane, use
+`PointOnLink(link, localPoint, false)` (the same constructor is wrapped in Python).
+`ConstraintSpec::groundContactPoints()` selects the flagged contacts for
+kinematic height objectives. The initializer uses **all** `contactPoints()`;
+classification does not change material-point identity or landmark continuity.
+For mixed ground/wall contacts, select `Model::Patch` or `Model::Point` and leave
+`addGroundFactors` disabled. `Model::Ground` still imposes its global level-ground
+model; the flag does not change that solver option.
+
+The initializer keeps supported phase boundaries and supplements long supported
+phases with frames at most one second apart (every sample when `dt > 1`). It
+freezes FK at those samples and solves root poses and shared contact landmarks.
+The initial root pose anchors the first supported frame. Unsupported prefix
+samples hold that pose; unsupported suffix samples hold the final solved pose.
+Internal flight samples interpolate between surrounding solved frames. These
+are explicit initialization assumptions, not observed motion.
+
+By default, disconnected contact graphs are rejected: independent contact
+components have unrelated world gauges. The optional motion prior can connect
+them. The lower-level core retains component diagnostics. At least one supported
+frame is required.
 
 The returned trajectory uses the original `PoseKey(link_id, sample)` and
 `JointAngleKey(joint_id, sample)` conventions. Between event samples, the
@@ -65,8 +88,7 @@ only its existing `PoseKey` values from `seeds` after constructing all slices,
 preserving its own twist, velocity, and bias keys. This makes the pose seeds
 compatible with that workflow while leaving the estimator's sensor factors
 and state layout intact. This API is not a literal replacement for an IK call:
-the measured joint trajectory and contact episode schedule are additional
-required information.
+the measured joints and phase trajectory are additional required information.
 
 `diagnostics.timings` separates native graph construction, initial placement,
 and GTSAM Levenberg–Marquardt optimization. Those times cover the sparse core;

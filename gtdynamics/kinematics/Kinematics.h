@@ -24,6 +24,9 @@
 
 namespace gtdynamics {
 
+class Phase;
+class Trajectory;
+
 /**
  * Desired world position for a given point on some link.
  *
@@ -179,16 +182,34 @@ class Kinematics : public Optimizer {
       const CONTEXT& context, const ContactGoals& contact_goals) const;
 
   /**
-   * @fn Create contact-height objectives.
+   * Create contact-height objectives at one slice for supplied ground contacts.
+   * Points marked isGround=false contribute no height objectives.
    * @param contact_points Contact points on links.
    * @param gravity Gravity vector used to define up direction.
    * @param ground_plane_height Contact ground-plane height in world frame.
    * @returns graph with contact-height factors.
    */
-  template <class CONTEXT>
   gtsam::NonlinearFactorGraph contactHeightObjectives(
-      const CONTEXT& context, const PointOnLinks& contact_points,
+      const Slice& slice, const PointOnLinks& contact_points,
       const gtsam::Vector3& gravity,
+      double ground_plane_height = 0.0) const;
+
+  /**
+   * Create contact-height objectives for every slice in a phase, including
+   * both endpoints, using the specification's groundContactPoints().
+   * Contacts away from the ground plane contribute no height objectives.
+   */
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const Phase& phase, const gtsam::Vector3& gravity,
+      double ground_plane_height = 0.0) const;
+
+  /**
+   * Accumulate contact-height objectives from each phase of a trajectory.
+   * Shared endpoints contribute once per phase. Empty trajectories and flight
+   * phases contribute no factors.
+   */
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const Trajectory& trajectory, const gtsam::Vector3& gravity,
       double ground_plane_height = 0.0) const;
 
   /**

@@ -24,6 +24,59 @@
 using namespace gtdynamics;
 using gtsam::Point3;
 
+namespace {
+class GeneralContactSpec : public ConstraintSpec {
+ public:
+  explicit GeneralContactSpec(PointOnLinks points) : points_(std::move(points)) {}
+  const PointOnLinks& contactPoints() const override { return points_; }
+  void print(const std::string&) const override {}
+
+ private:
+  PointOnLinks points_;
+};
+}  // namespace
+
+TEST(WalkCycle, GeneralSpecificationsAndFlight) {
+  using namespace walk_cycle_example;
+  const PointOnLink a(links_1[0], Point3(0, 0, 0.1));
+  const PointOnLink b(links_1[1], Point3(0, 0, 0.3), false);
+  const PointOnLink c(links_1[2], Point3(0, 0, 0.2));
+  const auto first = std::make_shared<GeneralContactSpec>(PointOnLinks{a, b});
+  const auto second = std::make_shared<GeneralContactSpec>(PointOnLinks{b, c});
+  const auto flight = std::make_shared<GeneralContactSpec>(PointOnLinks{});
+  const WalkCycle cycle(std::vector<Phase>{
+      Phase(3, 4, first), Phase(4, 5, second), Phase(6, 7, flight),
+      Phase(8, 9, second)});
+
+  EXPECT_LONGS_EQUAL(3, cycle.contactPoints().size());
+  EXPECT_LONGS_EQUAL(2, cycle.getPhaseContactPoints(0).size());
+  EXPECT(!cycle.getPhaseContactPoints(0)[1].isGround);
+  const auto all = cycle.allPhasesContactPoints();
+  EXPECT_LONGS_EQUAL(4, all.size());
+  EXPECT_LONGS_EQUAL(0, all[2].size());
+  const auto transitions = cycle.transitionContactPoints();
+  EXPECT_LONGS_EQUAL(3, transitions.size());
+  EXPECT_LONGS_EQUAL(1, transitions[0].size());
+  EXPECT(transitions[0][0].equals(b));
+  EXPECT_LONGS_EQUAL(0, transitions[1].size());
+  EXPECT_LONGS_EQUAL(0, transitions[2].size());
+  EXPECT(cycle.getPhaseSwingLinks(0) == std::vector<std::string>{c.link->name()});
+  EXPECT_LONGS_EQUAL(3, cycle.getPhaseSwingLinks(2).size());
+
+  constexpr double ground_height = 7.0;
+  const auto goals = cycle.initContactPointGoal(robot, ground_height);
+  EXPECT_LONGS_EQUAL(3, goals.size());
+  DOUBLES_EQUAL(ground_height, goals.at(a.link->name()).z(), 1e-12);
+  DOUBLES_EQUAL(ground_height, goals.at(c.link->name()).z(), 1e-12);
+  EXPECT(gtsam::assert_equal(b.link->bMcom() * b.point,
+                             goals.at(b.link->name()), 1e-12));
+
+  const Trajectory trajectory(cycle, 1);
+  EXPECT_LONGS_EQUAL(4, trajectory.phaseContactPoints().size());
+  EXPECT(trajectory.transitionContactPoints()[0][0].equals(b));
+  EXPECT(WalkCycle().transitionContactPoints().empty());
+}
+
 // Class to test protected method
 class WalkCycleTest : public WalkCycle {
  public:

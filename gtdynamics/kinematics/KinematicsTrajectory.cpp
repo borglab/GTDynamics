@@ -24,6 +24,16 @@ using gtsam::Values;
 using std::string;
 using std::vector;
 
+NonlinearFactorGraph Kinematics::contactHeightObjectives(
+    const Trajectory& trajectory, const gtsam::Vector3& gravity,
+    double ground_plane_height) const {
+  NonlinearFactorGraph graph;
+  for (const auto& phase : trajectory.phases()) {
+    graph.add(contactHeightObjectives(phase, gravity, ground_plane_height));
+  }
+  return graph;
+}
+
 template <>
 NonlinearFactorGraph Kinematics::graph<Trajectory>(const Trajectory& trajectory,
                                                    const Robot& robot) const {

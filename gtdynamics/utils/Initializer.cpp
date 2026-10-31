@@ -382,8 +382,10 @@ Values Initializer::ZeroValues(
 
   if (contact_points) {
     for (auto&& cp : *contact_points) {
-      // TODO(frank): allow multiple contact points on one link, id = 0,1,2...
-      values.insert(ContactWrenchKey(cp.link->id(), 0, t), sampler.sample());
+      // Contact points on one link share its aggregate contact wrench seed.
+      // A sole patch can contain several material points on that same link.
+      const auto key = ContactWrenchKey(cp.link->id(), 0, t);
+      if (!values.exists(key)) values.insert(key, sampler.sample());
     }
   }
 

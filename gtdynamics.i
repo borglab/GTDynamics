@@ -289,11 +289,14 @@ gtdynamics::Robot CreateRobotFromFile(const string &file_path,
 
 class PointOnLink {
   PointOnLink();
-  PointOnLink(const gtdynamics::LinkSharedPtr& link, const gtsam::Point3 &point);
+  PointOnLink(const gtdynamics::LinkSharedPtr& link, const gtsam::Point3 &point,
+              bool isGround = true);
 
   gtdynamics::LinkSharedPtr link;
   gtsam::Point3 point;
+  bool isGround;
 
+  bool equals(const gtdynamics::PointOnLink& other, double tol = 1e-9) const;
   gtsam::Point3 predict(const gtsam::Values &values, size_t k = 0) const;
   void print(const string &s = "");
 };
@@ -302,6 +305,8 @@ class PointOnLink {
 
 #include <gtdynamics/utils/ConstraintSpec.h>
 virtual class ConstraintSpec {
+  const gtdynamics::PointOnLinks &contactPoints() const;
+  gtdynamics::PointOnLinks groundContactPoints() const;
   void print(const string &s) const;
 };
 
@@ -323,6 +328,90 @@ class FootContactConstraintSpec : gtdynamics::ConstraintSpec {
 class OptimizationParameters {
   gtsam::LevenbergMarquardtParams lm_parameters;
   OptimizationParameters();
+};
+
+/********************** Equality constraints and CM-Opt **********************/
+#include <gtdynamics/cmopt/ManifoldOptimizer.h>
+class NonlinearEqualityConstraints {
+  NonlinearEqualityConstraints();
+  size_t size() const;
+  gtsam::KeyVector keyVector() const;
+  gtsam::Vector violationVector(const gtsam::Values& values, bool whiten = true) const;
+  double violationNorm(const gtsam::Values& values) const;
+  gtsam::NonlinearFactorGraph penaltyGraph(double mu = 1.0) const;
+};
+
+#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+class TangentSpaceBasisParams {
+  TangentSpaceBasisParams(bool useBasisKeys = false, bool alwaysConstructBasis = true);
+  bool alwaysConstructBasis;
+  bool useBasisKeys;
+  bool useSparse;
+};
+virtual class TangentSpaceBasisCreator {};
+virtual class EliminationBasisCreator : gtdynamics::TangentSpaceBasisCreator {
+  EliminationBasisCreator(gtdynamics::BasisKeyFunction basisKeyFunction);
+  EliminationBasisCreator(gtdynamics::BasisKeyFunction basisKeyFunction,
+                          gtdynamics::TangentSpaceBasisParams* params);
+};
+
+#include <gtdynamics/cmopt/Retractor.h>
+class RetractionParams {
+  RetractionParams();
+  bool checkFeasible;
+  double feasibleThreshold;
+  gtsam::LevenbergMarquardtParams lmParams;
+  bool useBasisKeys;
+  double sigma;
+  bool applyBaseRetraction;
+  bool recompute;
+};
+virtual class RetractorCreator {};
+#include <gtdynamics/cmopt/BasisRetractor.h>
+virtual class BasisRetractorCreator : gtdynamics::RetractorCreator {
+  BasisRetractorCreator(gtdynamics::BasisKeyFunction basisKeyFunction,
+                        gtdynamics::RetractionParams* params);
+};
+
+// ConstraintManifoldParams is a wrapper alias for ConstraintManifold::Params.
+#include <gtdynamics/cmopt/ConstraintManifold.h>
+class ConstraintManifoldParams {
+  ConstraintManifoldParams();
+  gtdynamics::TangentSpaceBasisCreator* basisCreator;
+  gtdynamics::RetractorCreator* retractorCreator;
+};
+class ManifoldOptimizerParameters {
+  ManifoldOptimizerParameters();
+  gtdynamics::ConstraintManifoldParams* constraintManifoldParams;
+  bool retractInitialValues;
+  bool retractFinalValues;
+};
+class ManifoldOptimizationProblem {
+  gtsam::NonlinearFactorGraph graph;
+  gtsam::Values values;
+  std::vector<std::shared_ptr<gtdynamics::NonlinearEqualityConstraints>> components;
+  std::pair<size_t, size_t> problemDimension() const;
+};
+virtual class ManifoldOptimizer {
+  ManifoldOptimizer();
+  ManifoldOptimizer(const gtdynamics::ManifoldOptimizerParameters& parameters);
+  gtdynamics::ManifoldOptimizationProblem initializeManifoldOptimizationProblem(
+      const gtsam::NonlinearFactorGraph& costs,
+      const gtdynamics::NonlinearEqualityConstraints& constraints,
+      const gtsam::Values& initial_values) const;
+  gtsam::Values baseValues(const gtdynamics::ManifoldOptimizationProblem& problem,
+                          const gtsam::Values& values) const;
+};
+#include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
+virtual class NonlinearManifoldOptimizer : gtdynamics::ManifoldOptimizer {
+  NonlinearManifoldOptimizer(const gtdynamics::ManifoldOptimizerParameters& parameters,
+                            const gtsam::LevenbergMarquardtParams& lm_parameters);
+  gtsam::Values optimize(const gtsam::NonlinearFactorGraph& costs,
+                        const gtdynamics::NonlinearEqualityConstraints& constraints,
+                        const gtsam::Values& initial_values) const;
+  gtsam::Values optimizeManifoldProblem(const gtdynamics::ManifoldOptimizationProblem& problem) const;
+  std::shared_ptr<gtsam::NonlinearOptimizer> constructNonlinearOptimizer(
+      const gtdynamics::ManifoldOptimizationProblem& problem) const;
 };
 
 /********************** kinematics **********************/
@@ -380,6 +469,24 @@ class KinematicsParameters : gtdynamics::OptimizationParameters {
 class Kinematics {
   Kinematics(gtdynamics::KinematicsParameters parameters =
                  gtdynamics::KinematicsParameters());
+  gtdynamics::NonlinearEqualityConstraints constraints(
+      const gtdynamics::Slice& context, const gtdynamics::Robot& robot) const;
+  gtdynamics::NonlinearEqualityConstraints constraints(
+      const gtdynamics::Interval& context, const gtdynamics::Robot& robot) const;
+  gtdynamics::NonlinearEqualityConstraints constraints(
+      const gtdynamics::Trajectory& context, const gtdynamics::Robot& robot) const;
+  gtsam::NonlinearFactorGraph jointAngleObjectives(
+      const gtdynamics::Trajectory& context, const gtdynamics::Robot& robot,
+      const gtsam::Values& joint_priors) const;
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const gtdynamics::Slice& context, const gtdynamics::PointOnLinks& points,
+      const gtsam::Vector3& gravity, double ground_plane_height = 0.0) const;
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const gtdynamics::Phase& phase, const gtsam::Vector3& gravity,
+      double ground_plane_height = 0.0) const;
+  gtsam::NonlinearFactorGraph contactHeightObjectives(
+      const gtdynamics::Trajectory& trajectory, const gtsam::Vector3& gravity,
+      double ground_plane_height = 0.0) const;
   gtsam::Values inverse(const gtdynamics::Slice &slice,
                         const gtdynamics::Robot &robot,
                         const gtdynamics::ContactGoals &contact_goals,
@@ -773,9 +880,63 @@ std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3 &start,
                                                  size_t num_steps);
 
 /********************** Value Initialization **********************/
+#include <gtdynamics/utils/ContactInitializer.h>
+namespace contact_init {
+enum class Model { Ground, Patch, Point };
+class Options {
+  Options();
+  gtdynamics::contact_init::Model model;
+  size_t maxIterations;
+  bool perturb;
+  bool recordHistory;
+  bool addBetweenFactors;
+  bool addUprightFactors;
+  bool addGroundFactors;
+  double betweenTranslationSigma;
+  double betweenRotationSigma;
+  double uprightSigma;
+  double groundSigma;
+  std::optional<double> groundPriorHeight;
+  double relativeErrorTolerance;
+  double absoluteErrorTolerance;
+  std::optional<gtsam::Pose3> anchorPose;
+};
+class Timings {
+  Timings();
+  double graphBuildMs;
+  double seedMs;
+  double optimizationMs;
+  double totalMs;
+};
+class Result {
+  Result();
+  gtsam::Values values;
+  std::vector<gtsam::Pose3> poses;
+  std::vector<gtsam::Point3> landmarks;
+  gtdynamics::contact_init::Timings timings;
+  size_t iterations;
+  bool converged;
+  double objectiveInitial;
+  double objectiveFinal;
+  double residualRms;
+};
+} // namespace contact_init
+
 #include <gtdynamics/utils/Initializer.h>
 class Initializer {
   Initializer();
+
+  gtsam::Values InitializeSolutionInverseKinematics(
+      const gtdynamics::Robot& robot, const string& link_name,
+      const gtsam::Pose3& initial_pose, const std::vector<gtsam::Pose3>& target_poses,
+      const std::vector<double>& times, double dt, double gaussian_noise = 1e-8,
+      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt);
+  gtsam::Values InitializeSolutionContacts(
+      const gtdynamics::Robot& robot, const string& root_link_name,
+      const gtsam::Pose3& initial_pose, const gtsam::Values& measured_joints,
+      const gtdynamics::Trajectory& trajectory, double dt = 1.0,
+      const gtdynamics::contact_init::Options& options = gtdynamics::contact_init::Options(),
+      gtdynamics::contact_init::Result @diagnostics = nullptr) const;
 
   gtsam::Values ZeroValues(
       const gtdynamics::Robot& robot, const int t,
@@ -941,7 +1102,9 @@ class Interval {
 
 // ContactPointGoals is defined in specializations
 
-class Phase {
+class Phase : gtdynamics::Interval {
+  @pybind_lambda
+  std::shared_ptr<const gtdynamics::ConstraintSpec> constraintSpec() const;
   Phase(size_t k_start, size_t k_end,
         const std::shared_ptr<gtdynamics::ConstraintSpec> &constraints);
   size_t numTimeSteps() const;
@@ -975,6 +1138,7 @@ class WalkCycle {
 class Trajectory {
   Trajectory();
   Trajectory(const gtdynamics::WalkCycle &walk_cycle, size_t repeat);
+  const std::vector<gtdynamics::Phase>& phases() const;
   std::vector<gtdynamics::PointOnLinks> phaseContactPoints() const;
   std::vector<gtdynamics::PointOnLinks> transitionContactPoints() const;
   std::vector<int> phaseDurations() const;

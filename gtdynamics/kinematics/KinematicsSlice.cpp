@@ -194,13 +194,13 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Slice>(
   return graph;
 }
 
-template <>
-NonlinearFactorGraph Kinematics::contactHeightObjectives<Slice>(
+NonlinearFactorGraph Kinematics::contactHeightObjectives(
     const Slice& slice, const PointOnLinks& contact_points,
     const gtsam::Vector3& gravity, double ground_plane_height) const {
   NonlinearFactorGraph graph;
 
   for (const PointOnLink& cp : contact_points) {
+    if (!cp.isGround) continue;
     graph.emplace_shared<ContactHeightFactor>(
         PoseKey(cp.link->id(), slice.k), p_.cp_cost_model, cp.point, gravity,
         ground_plane_height);

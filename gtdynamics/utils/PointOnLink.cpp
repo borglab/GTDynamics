@@ -31,7 +31,8 @@ void PointOnLink::print(const std::string &s) const {
 }
 
 bool PointOnLink::equals(const PointOnLink &other, double tol) const {
-  return other.link->name() == link->name() &&
+  return isGround == other.isGround &&
+         other.link->name() == link->name() &&
          gtsam::equal<gtsam::Point3>(other.point, point, tol);
 }
 

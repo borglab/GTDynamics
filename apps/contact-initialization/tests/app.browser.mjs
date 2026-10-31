@@ -7,6 +7,7 @@ import { preview } from 'vite';
 
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root=fileURLToPath(new URL('../../',import.meta.url));
+const policyRecording=JSON.parse(await readFile(new URL('../public/recordings/g1-policy-8s.json',import.meta.url),'utf8'));
 const browser=await chromium.launch({
   executablePath:process.env.CHROME_EXECUTABLE || (existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':undefined),
   headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader'],
@@ -84,11 +85,19 @@ try {
       await app.getByRole('button',{name:'Pause native replay'}).click();
       const iteration=app.getByRole('slider',{name:'Solver iteration'});
       assert(Number(await iteration.inputValue())>0);
+      const activeModel=await lab.getAttribute('data-model');
+      const activeVariant=await lab.getAttribute('data-variant');
+      const activeRun=activeVariant==='none'?policyRecording.models[activeModel]:policyRecording.variants[activeModel][activeVariant];
+      const recordedHistory=activeRun.result.history;
+      const rmsMetric=app.locator('.solve-card .solve-metrics strong').first();
       await iteration.fill('0');
-      const initialRms=parseFloat(await app.locator('.solve-card .solve-metrics strong').first().innerText());
+      await rmsMetric.filter({hasText:(recordedHistory[0].rms*1000).toFixed(2)}).waitFor();
       await iteration.fill(await iteration.getAttribute('max'));
-      const finalRms=parseFloat(await app.locator('.solve-card .solve-metrics strong').first().innerText());
-      assert(finalRms<initialRms,'Recorded native optimization decreases contact error');
+      await rmsMetric.filter({hasText:(recordedHistory.at(-1).rms*1000).toFixed(2)}).waitFor();
+      // Priors can increase the contact-only residual while reducing the
+      // weighted objective. Replay must display the saved values faithfully.
+      assert(recordedHistory.at(-1).objective<recordedHistory[0].objective,
+        'Recorded native optimization decreases its weighted objective');
       const downloadPromise=page.waitForEvent('download');
       await app.getByRole('button',{name:'Export initialization JSON'}).click();
       const download=await downloadPromise;
