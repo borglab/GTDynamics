@@ -13,6 +13,27 @@ import numpy as np
 
 
 class KinematicsWrappingTests(unittest.TestCase):
+    def test_galilean_imu_factors(self):
+        spec = gtd.FootContactConstraintSpec(gtd.PointOnLinks([]))
+        trajectory = gtd.Trajectory(
+            gtd.WalkCycle([gtd.Phase(0, 1, spec), gtd.Phase(1, 2, spec)]), 1
+        )
+        params = gtsam.PreintegrationParams.MakeSharedU(9.81)
+        pim = gtsam.PreintegratedImuMeasurementsG(params, gtsam.imuBias.ConstantBias())
+        pim.integrateMeasurement(np.array([0.0, 0.0, 9.81]), np.zeros(3), 0.2)
+        bias_key = gtsam.symbol("b", 0)
+        graph = gtd.Kinematics().imuFactors(trajectory, 1, [pim, pim], bias_key)
+        self.assertEqual(graph.size(), 2)
+        self.assertIsInstance(graph.at(0), gtsam.GalileanImuFactor)
+        values = gtsam.Values()
+        values.insert(bias_key, gtsam.imuBias.ConstantBias())
+        for k in range(3):
+            values.insert(gtd.PoseKey(1, k), gtsam.Pose3())
+            values.insert(gtd.LinearVelocityKey(1, k), np.zeros(3))
+        self.assertAlmostEqual(graph.error(values), 0.0)
+        with self.assertRaises(ValueError):
+            gtd.Kinematics().imuFactors(trajectory, 1, [pim], bias_key)
+
     def setUp(self):
         self.anchor = gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, 1.0]))
         root = gtd.Link(1, "root", 1.0, np.eye(3), self.anchor, self.anchor)

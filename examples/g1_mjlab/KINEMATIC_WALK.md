@@ -159,6 +159,34 @@ the reference-root error is not used to tune either run.
 The detailed JSON is an ignored local output. Compact measured results are
 recorded below so the example stays small.
 
+The soft contact displacement cost is configurable with
+`--contact-slip-sigma` (metres per axis per adjacent slice interval; default
+0.005). `build_problem(walk, contact_slip_sigma=...)` exposes the same setting.
+This is a displacement sigma, not a velocity sigma, and is not scaled with sample
+rate. The Open-IO app uses 0.05 to allow more stance slip during turns; its
+[comparison](../../apps/kinematics-inspector/README.md#contact-slip) retains the
+5/20/50 mm experiment. The MJLab timing results below use the original 0.005.
+
+## Optional Gal3 IMU aiding
+
+For recordings containing native IMU timestamps, `imu_aiding.py` constructs
+GTSAM `PreintegratedImuMeasurementsG` objects (`pim`, or `pims` for a collection)
+and calls the wrapped `Kinematics.imuFactors` trajectory builder. It adds one
+world-frame COM velocity per slice and one shared sensor-frame bias, with explicit
+velocity and bias priors. Existing `solve_cm` handles these additional variables.
+
+Poses map COM coordinates into world coordinates. Velocity is the world-frame
+linear velocity of that COM, not the six-dimensional body twist. The model's
+`COM_T_IMU` transform is passed as `body_P_sensor`; specific force includes gravity
+at rest. GTSAM applies rotation and centripetal lever-arm corrections but omits
+the angular-acceleration lever-arm term. Native timestamps are integrated over
+exact slice intervals, including phase boundaries and flight.
+
+The [Kinematics app](../../apps/kinematics-inspector/README.md#imu-aiding) exports
+and displays both aided and unaided solves for Open-IO. See its documentation for
+noise assumptions, priors, regeneration commands, and measured limitations.
+The timing comparison above continues to measure the kinematics-only problem.
+
 ## Measured whole-walk comparison (October 31, 2026)
 
 ### Current ground-contact equality factors
