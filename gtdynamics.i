@@ -4,6 +4,7 @@ virtual class gtsam::NonlinearFactor;
 virtual class gtsam::NoiseModelFactor;
 virtual class gtsam::NonlinearFactorGraph;
 virtual class gtsam::Values;
+class gtsam::PreintegratedImuMeasurementsG;
 
 namespace gtdynamics {
 
@@ -481,6 +482,10 @@ class Kinematics {
   gtsam::NonlinearFactorGraph contactEqualityFactors(
       const gtdynamics::Trajectory& trajectory,
       const std::shared_ptr<gtsam::noiseModel::Base>& model) const;
+  gtsam::NonlinearFactorGraph imuFactors(
+      const gtdynamics::Trajectory& trajectory, int link_id,
+      const std::vector<gtsam::PreintegratedImuMeasurementsG>& pims,
+      gtsam::Key bias_key) const;
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const gtdynamics::Slice& context, const gtdynamics::PointOnLinks& points,
       const gtsam::Vector3& gravity, double ground_plane_height = 0.0) const;
@@ -930,6 +935,7 @@ class Snapshot {
 };
 class Result {
   Result();
+  std::vector<gtdynamics::Slice> slices() const;
   gtdynamics::contact_init::Graph graph;
   std::vector<gtdynamics::contact_init::Snapshot> history;
   gtsam::Values values;
@@ -959,7 +965,8 @@ class Initializer {
       const gtsam::Pose3& initial_pose, const gtsam::Values& measured_joints,
       const gtdynamics::Trajectory& trajectory, double dt = 1.0,
       const gtdynamics::contact_init::Options& options = gtdynamics::contact_init::Options(),
-      gtdynamics::contact_init::Result @diagnostics = nullptr) const;
+      gtdynamics::contact_init::Result @diagnostics = nullptr,
+      size_t contactBuffer = 0) const;
 
   gtsam::Values ZeroValues(
       const gtdynamics::Robot& robot, const int t,
@@ -1018,6 +1025,7 @@ gtsam::Key JointVelKey(int j, int t=0);
 gtsam::Key JointAccelKey(int j, int t=0);
 gtsam::Key TorqueKey(int j, int t=0);
 gtsam::Key TwistKey(int i, int t=0);
+gtsam::Key LinearVelocityKey(int i, int t=0);
 gtsam::Key TwistAccelKey(int i, int t=0);
 gtsam::Key WrenchKey(int i, int j, int t=0);
 gtsam::Key PoseKey(int i, int t=0);

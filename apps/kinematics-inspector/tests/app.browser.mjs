@@ -1,0 +1,126 @@
+/** Full-trajectory viewer: recorded parameter experiments and foot-slip overlays. */
+import assert from 'node:assert/strict';
+import {existsSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {preview} from 'vite';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=fileURLToPath(new URL('../',import.meta.url));
+const browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE||(existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':undefined),headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader']});
+try{
+ for(const base of ['/','/GTDynamics/kinematics-inspector/']){
+  const server=await preview({root,configFile:false,base,preview:{host:'127.0.0.1',port:0,strictPort:true}});
+  const context=await browser.newContext({viewport:{width:1460,height:1100}});
+  try{
+   const page=await context.newPage();page.setDefaultTimeout(60000);
+   const errors=[],failures=[],requests=[];page.on('request',r=>requests.push(r.url()));page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400&&!r.url().endsWith('favicon.ico'))failures.push(r.url());});
+   const ready=()=>page.locator('.large-scene[data-ready="true"]').waitFor();
+   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}${base}`);await ready();
+   assert.equal(await page.locator('canvas').count(),1);assert.equal(await page.getByRole('heading',{name:'Kinematics',exact:true}).count(),1);
+   assert(!/\bIK\b/.test(await page.locator('main').innerText()));assert.equal(await page.getByRole('button',{name:'Initialization',exact:true}).count(),0);
+   const imu=page.getByRole('checkbox',{name:'IMU aiding',exact:true}),closure=page.getByRole('checkbox',{name:'Loop closure applied',exact:true});
+   assert(await imu.isChecked());assert(await closure.isChecked());
+   assert.equal(await page.getByRole('combobox',{name:'Stationary contact sigma'}).inputValue(),'50');
+   assert.equal(await page.locator('.factor-table tbody tr').count(),9);
+   const estimate=page.getByRole('combobox',{name:'Estimate',exact:true});
+   assert.equal(await estimate.inputValue(),'final');
+   assert(!requests.some(url=>url.endsWith('/initial.bin.gz')));
+   assert.match(await page.locator('.optimization-summary').innerText(),/CM-Opt: [0-9.]+ s · 10 iterations/);
+   const finalBudget=await page.locator('.factor-section .row').innerText();
+   const statistics=await page.locator('.optimization-summary').innerText();
+   await page.getByRole('slider',{name:'Walking time',exact:true}).fill('200');
+   await estimate.selectOption('initial');await ready();
+   assert.equal(await page.locator('main').getAttribute('data-frame'),'200');
+   assert.equal(await page.locator('main').getAttribute('data-estimate'),'initial');
+   assert.match(await page.locator('.factor-section .row').innerText(),/Initial objective/);
+   assert.notEqual(await page.locator('.factor-section .row').innerText(),finalBudget);
+   assert.equal(await page.locator('.optimization-summary').innerText(),statistics);
+   assert.match(await page.locator('.bias-values').innerText(),/initial prior mean/);
+   assert(requests.some(url=>url.endsWith('/initial.bin.gz')));
+   await page.waitForFunction(()=>document.querySelectorAll('.position-chart[data-ready="true"]').length===4);
+   if(base==='/')await page.screenshot({path:'/tmp/gtd-kinematics-initial.png',fullPage:true});
+   await estimate.selectOption('final');await ready();
+   assert.equal(await page.locator('.factor-section .row').innerText(),finalBudget);
+
+   assert.match(await page.locator('.equality-summary').innerText(),/32,915/);
+   const slip=page.getByRole('checkbox',{name:'Foot slip',exact:true}),scene=page.locator('.large-scene');
+   const initialCount=Number(await scene.getAttribute('data-slip-count'));assert(initialCount>0);
+   await slip.uncheck();assert.equal(await scene.getAttribute('data-slip-count'),'0');await slip.check();
+   assert.equal(Number(await scene.getAttribute('data-slip-count')),initialCount);
+   await page.getByRole('slider',{name:'Slip threshold',exact:true}).fill('50');
+   assert(Number(await scene.getAttribute('data-slip-count'))<initialCount);
+   await page.getByRole('slider',{name:'Slip threshold',exact:true}).fill('5');
+   const loose=Number((await page.locator('.physical-summary strong').first().innerText()).split(' ')[0]);
+   await page.getByRole('slider',{name:'Walking time',exact:true}).fill('600');
+   await page.getByRole('combobox',{name:'Stationary contact sigma'}).selectOption('5');await ready();
+   assert.equal(await page.locator('main').getAttribute('data-frame'),'600');
+   const tight=Number((await page.locator('.physical-summary strong').first().innerText()).split(' ')[0]);assert(tight<loose);
+   assert.match(await page.locator('[data-factor="stationary"]').innerText(),/0.005 m/);
+   assert.equal(await page.getByRole('slider',{name:'Smoothing iteration',exact:true}).count(),0);
+   assert(!requests.some(url=>/\/(smoothing|states)\.(json|bin)\.gz$/.test(url)));
+   assert(requests.some(url=>url.endsWith('/final.bin.gz')));
+   assert.equal(await page.locator('.total-error').count(),9);assert.equal(await page.locator('.average-error').count(),9);
+   assert.equal(await page.locator('.position-plot').count(),4);
+   assert.equal(await page.getByRole('heading',{name:'Pelvis · world frame',exact:true}).count(),1);
+   const plotWidths=await page.locator('.position-plot').evaluateAll(plots=>plots.map(p=>p.getBoundingClientRect().width));
+   assert(plotWidths.every(width=>width>1200));
+   assert.equal(await page.getByRole('img',{name:/Pelvis world [xy] position/}).count(),0);
+   const foot=page.getByRole('combobox',{name:'Foot to plot',exact:true});await foot.selectOption('right');
+   assert.equal(await page.getByRole('img',{name:'Right foot body x position: estimate and reference over time in seconds',exact:true}).count(),1);
+   await page.waitForFunction(()=>[...document.querySelectorAll('.position-chart')].length===4&&[...document.querySelectorAll('.position-chart')].every(chart=>chart.dataset.ready==='true'));
+   const chart=page.locator('.position-chart').first();await chart.scrollIntoViewIfNeeded();
+   const times=await chart.evaluate(div=>div.data[0].x);
+   assert(Math.abs(times[0]-.02)<1e-12);assert(Math.abs(times.at(-1)-219.92)<1e-10);
+   assert(new Set(times.slice(1).map((t,i)=>(t-times[i]).toFixed(2))).size>2);
+   const point=await chart.evaluate(div=>({x:div._fullLayout.margin.l+div._fullLayout.xaxis.l2p(div.data[0].x[200]),y:div._fullLayout.margin.t+div._fullLayout.yaxis.l2p(div.data[0].y[200])}));
+   await chart.click({position:point});
+   await page.waitForFunction(()=>Number(document.querySelector('main').dataset.frame)<600);
+   const zoom=await chart.locator('.nsewdrag').boundingBox();
+   await page.mouse.move(zoom.x+zoom.width*.15,zoom.y+zoom.height*.2);await page.mouse.down();
+   await page.mouse.move(zoom.x+zoom.width*.55,zoom.y+zoom.height*.8,{steps:8});await page.mouse.up();
+   const linkedZoom=()=>page.waitForFunction(()=>{
+    const ranges=[...document.querySelectorAll('.position-chart')].map(div=>div._fullLayout.xaxis.range);
+    return ranges.every(r=>r[1]-r[0]<200&&r.every((v,i)=>Math.abs(v-ranges[0][i])<1e-6));
+   });
+   await linkedZoom();
+   const zoomed=await chart.evaluate(div=>[...div._fullLayout.xaxis.range]);
+   await page.getByRole('slider',{name:'Walking time',exact:true}).fill('600');
+   assert.deepEqual(await chart.evaluate(div=>div._fullLayout.xaxis.range),zoomed);
+   await page.getByRole('button',{name:'Reset plot zoom',exact:true}).click();
+   await page.waitForFunction(()=>[...document.querySelectorAll('.position-chart')].every(div=>Math.abs(div._fullLayout.xaxis.range[1]-219.92)<1e-6));
+   await chart.scrollIntoViewIfNeeded();
+   const wheel=await chart.locator('.nsewdrag').boundingBox();await page.mouse.move(wheel.x+wheel.width*.5,wheel.y+wheel.height*.5);await page.mouse.wheel(0,-200);await linkedZoom();
+   const beforePan=await chart.evaluate(div=>div._fullLayout.xaxis.range[0]);
+   await chart.locator('.modebar-btn[data-title="Pan"]').click();
+   await page.mouse.move(wheel.x+wheel.width*.4,wheel.y+wheel.height*.5);await page.mouse.down();await page.mouse.move(wheel.x+wheel.width*.6,wheel.y+wheel.height*.5,{steps:8});await page.mouse.up();
+   await page.waitForFunction(start=>Math.abs(document.querySelector('.position-chart')._fullLayout.xaxis.range[0]-start)>1e-6,beforePan);
+   await linkedZoom();
+   await page.getByRole('button',{name:'Reset plot zoom',exact:true}).click();
+   await imu.uncheck();await ready();assert.equal(await page.locator('.factor-table tbody tr').count(),6);assert.match(await page.locator('.bias-values').innerText(),/not estimated/);
+   await imu.check();await ready();assert.equal(await page.locator('.factor-table tbody tr').count(),9);
+   await closure.uncheck();await ready();assert.equal(await page.locator('[data-factor="closure"]').count(),0);
+   await closure.check();await ready();
+   await page.getByRole('combobox',{name:'Stationary contact sigma'}).selectOption('20');await ready();
+   assert.match(await page.locator('[data-factor="stationary"]').innerText(),/0.02 m/);
+   await page.getByRole('button',{name:'Follow robot',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Follow robot',exact:true}).getAttribute('aria-pressed'),'true');
+   await page.getByRole('button',{name:'Play walking',exact:true}).click();await page.waitForTimeout(800);await page.getByRole('button',{name:'Pause walking',exact:true}).click();assert(Number(await page.locator('main').getAttribute('data-frame'))>600);
+   await page.getByRole('button',{name:'Fit trajectory',exact:true}).click();
+   if(base==='/')await page.screenshot({path:'/tmp/gtd-kinematics-split.png',fullPage:true});
+   await page.setViewportSize({width:390,height:844});await page.waitForFunction(()=>[...document.querySelectorAll('.position-chart')].every(div=>div._fullLayout.width<=div.clientWidth+1));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+   if(base==='/')await page.screenshot({path:'/tmp/gtd-kinematics-split-mobile.png',fullPage:true});
+   assert.deepEqual(errors,[]);assert.deepEqual(failures,[]);console.log(`Passed Kinematics ${base}`);
+  }finally{await context.close();server.httpServer.closeAllConnections();await new Promise(resolve=>server.httpServer.close(resolve));}
+ }
+ const hub=await preview({root:fileURLToPath(new URL('../../',import.meta.url)),preview:{host:'127.0.0.1',port:0,strictPort:true}});
+ const page=await browser.newPage({viewport:{width:1460,height:1100}});
+ try{
+  await page.goto(`http://127.0.0.1:${hub.httpServer.address().port}/`);
+  const tabs=await page.getByRole('tab').allTextContents();assert.equal(tabs.at(-1).trim(),'Kinematics');assert.equal(tabs.at(-2).trim(),'Contact vs IK');
+  await page.getByRole('tab',{name:'Contact vs IK',exact:true}).click();
+  await page.frameLocator('iframe').getByRole('heading',{name:'Contact vs IK',exact:true}).waitFor();
+  await page.frameLocator('iframe').locator('.method-panel.ik .scene[data-ready="true"]').waitFor({timeout:60000});
+  await page.getByRole('tab',{name:'Kinematics',exact:true}).click();
+  await page.frameLocator('iframe').locator('.large-scene[data-ready="true"]').waitFor({timeout:60000});
+  await page.getByRole('tab',{name:'Overview',exact:true}).click();await page.locator('iframe').waitFor({state:'detached'});assert.equal(await page.locator('iframe').count(),0);
+  console.log('Passed shared hub order, both apps, and unload');
+ }finally{await page.close();hub.httpServer.closeAllConnections();await new Promise(resolve=>hub.httpServer.close(resolve));}
+}finally{await browser.close();}

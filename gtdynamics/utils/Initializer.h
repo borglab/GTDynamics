@@ -178,6 +178,18 @@ class Initializer {
      * At least one supported frame is required. Disconnected contact graphs
      * require an explicit motion prior (options.addBetweenFactors).
      *
+     * A positive contactBuffer excludes that many slices at both ends of
+     * each link's continuous stance, even when it spans multiple phases.
+     * Both retained stance endpoints are selected, with the usual phase and
+     * one-second supplemental samples wherever trusted contacts remain.
+     * Each observation is filtered independently of which foot selected the
+     * slice. Every stance must retain at least two distinct slices, otherwise
+     * std::invalid_argument is thrown; margins are never reduced. Zero keeps
+     * the original selection exactly, including single-slice stances.
+     * The gauge is at the first retained slice; the prefix is held at wTroot_i,
+     * so no root motion is inferred in the trimmed prefix. Dense outputs keep
+     * the original contact schedule. Trimming may disconnect the sparse graph.
+     *
      * @param robot Robot model, with COM-frame forward kinematics.
      * @param root_link_name Link whose COM pose defines the floating base.
      * @param wTroot_i Initial world COM pose, fixing the gauge as above.
@@ -189,6 +201,10 @@ class Initializer {
      * @param options Sparse contact solver settings; anchor/pose keys are set
      * internally to wTroot_i and PoseKey(root_link_id,k).
      * @param diagnostics Optional sparse graph, solution, and core timings.
+     * diagnostics->slices() returns the exact source slices used by the solve,
+     * allowing downstream estimation at those same, irregularly spaced times.
+     * @param contactBuffer Number of source slices excluded at each stance
+     * boundary; defaults to zero. The time margin is contactBuffer * dt.
      *
      * FK expands all trajectory slices into ordinary GTDynamics Values,
      * preserving measured joints and zero-seeding remaining dynamics variables.
@@ -200,7 +216,8 @@ class Initializer {
         const gtsam::Pose3& wTroot_i, const gtsam::Values& measured_joints,
         const Trajectory& trajectory, double dt = 1.0,
         const contact_init::Options& options = {},
-        contact_init::Result* diagnostics = nullptr) const;
+        contact_init::Result* diagnostics = nullptr,
+        size_t contactBuffer = 0) const;
 
     /**
      * @fn Initialize solution for multi-phase trajectory to nominal pose.

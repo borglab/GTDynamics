@@ -1,0 +1,17 @@
+[
+  {
+    "id": "walk",
+    "label": "Walking \u00b7 40\u201350 s",
+    "start": 40
+  },
+  {
+    "id": "corner",
+    "label": "Corner \u00b7 100\u2013110 s",
+    "start": 100
+  },
+  {
+    "id": "turn",
+    "label": "Turn \u00b7 204\u2013214 s",
+    "start": 204
+  }
+]

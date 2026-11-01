@@ -21,6 +21,7 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
+#include <gtsam/navigation/GalileanImuFactor.h>
 
 namespace gtdynamics {
 
@@ -225,6 +226,32 @@ class Kinematics : public Optimizer {
    */
   gtsam::NonlinearFactorGraph contactEqualityFactors(
       const Trajectory& trajectory, const gtsam::SharedNoiseModel& model) const;
+
+  /**
+   * Add one GalileanImuFactor between each consecutive pair of unique slices.
+   * Phase boundaries (including shared endpoints and flight) do not reset IMU
+   * integration. Ordered phases may share one endpoint. Gaps between phase
+   * indices are bridged by the corresponding supplied preintegrated interval.
+   *
+   * State convention: PoseKey(link_id,k) is world_T_COM; LinearVelocityKey
+   * (link_id,k) is the WORLD-frame velocity of that COM, not a spatial twist.
+   * All factors use the SAME bias_key (imuBias::ConstantBias, accelerometer
+   * then gyro, in sensor axes). Callers initialize these extra values and add
+   * velocity/bias priors appropriate to their problem; this builder adds none.
+   *
+   * pims must contain N-1 Gal3 PIMs, in unique-slice order, integrated
+   * over the exact time intervals, with positive durations. Each PIM's params
+   * must express gravity in world coordinates and body_P_sensor = COM_T_IMU.
+   * Raw acceleration is specific force (including gravity at rest) in m/s^2;
+   * angular rate is in rad/s. GTSAM performs the configured sensor-frame and
+   * centripetal lever-arm correction. Its body_P_sensor correction does not
+   * remove angular-acceleration lever-arm terms; compensate these before
+   * integration when significant. No reference trajectory is used here.
+   */
+  gtsam::NonlinearFactorGraph imuFactors(
+      const Trajectory& trajectory, int link_id,
+      const std::vector<gtsam::PreintegratedImuMeasurementsG>& pims,
+      gtsam::Key bias_key) const;
 
   /**
    * @fn Create fixed-link pose prior objectives.

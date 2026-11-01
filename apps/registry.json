@@ -1,14 +1,8 @@
 [
   {
-    "id": "motion-snippets",
-    "title": "Motion Snippets",
-    "description": "Explore robot motion clips with Unitree G1, A1, and Boston Dynamics Spot. Replay joint trajectories with MuJoCo physics in your browser.",
-    "tag": "Motion playback"
-  },
-  {
     "id": "motion-planning",
     "title": "Motion Planning",
-    "description": "Follow a Franka arm’s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
+    "description": "Follow a Franka arm\u2019s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
     "tag": "Trajectory optimization"
   },
   {
@@ -16,5 +10,17 @@
     "title": "Contact Initialization",
     "description": "Explore a C++ GTSAM alternative to IK initialization. Replay native solves and timings, compare contact models, and switch between G1 walking and a longer captured motion.",
     "tag": "Walking initialization"
+  },
+  {
+    "id": "contact-vs-ik",
+    "title": "Contact vs IK",
+    "description": "Compare contact and inverse-kinematics initialization and recorded CM-Opt iterations on three ten-second G1 walking snippets.",
+    "tag": "Initialization comparison"
+  },
+  {
+    "id": "kinematics-inspector",
+    "title": "Kinematics",
+    "description": "Inspect a full G1 trajectory with contact initialization, Gal3 IMU aiding, loop closure, stationary-contact weights, factor errors, and foot slip.",
+    "tag": "Kinematics smoothing"
   }
 ]

@@ -19,9 +19,11 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <limits>
 #include <map>
+#include <set>
 #include <stdexcept>
 
 namespace gtdynamics {
@@ -31,12 +33,60 @@ using gtsam::Values;
 using std::string;
 using std::vector;
 
+NonlinearFactorGraph Kinematics::imuFactors(
+    const Trajectory& trajectory, int link_id,
+    const std::vector<gtsam::PreintegratedImuMeasurementsG>& pims,
+    gtsam::Key bias_key) const {
+  std::set<size_t> indices;
+  const auto& phases = trajectory.phases();
+  for (size_t i = 0; i < phases.size(); ++i) {
+    const auto& phase = phases[i];
+    if (phase.k_start > phase.k_end ||
+        phase.k_end > static_cast<size_t>(std::numeric_limits<int>::max()) ||
+        (i && phase.k_start < phases[i - 1].k_end)) {
+      throw std::invalid_argument(
+          "imuFactors requires ordered phases with at most one shared "
+          "endpoint");
+    }
+    for (size_t k = phase.k_start; k <= phase.k_end; ++k) indices.insert(k);
+  }
+  const size_t count = indices.empty() ? 0 : indices.size() - 1;
+  if (pims.size() != count) {
+    throw std::invalid_argument(
+        "imuFactors requires one PIM per consecutive pair of unique slices");
+  }
+  NonlinearFactorGraph graph;
+  auto first = indices.begin();
+  for (size_t i = 0; i < count; ++i) {
+    const auto second = std::next(first);
+    if (!std::isfinite(pims[i].deltaTij()) || pims[i].deltaTij() <= 0) {
+      throw std::invalid_argument(
+          "imuFactors requires positive finite preintegration durations");
+    }
+    if (bias_key == PoseKey(link_id, *first) ||
+        bias_key == PoseKey(link_id, *second) ||
+        bias_key == LinearVelocityKey(link_id, *first) ||
+        bias_key == LinearVelocityKey(link_id, *second)) {
+      throw std::invalid_argument(
+          "imuFactors bias key collides with a pose or velocity key");
+    }
+    graph.emplace_shared<gtsam::GalileanImuFactor>(
+        PoseKey(link_id, *first), LinearVelocityKey(link_id, *first),
+        PoseKey(link_id, *second), LinearVelocityKey(link_id, *second),
+        bias_key, pims[i]);
+    first = second;
+  }
+  return graph;
+}
+
 NonlinearFactorGraph Kinematics::contactEqualityFactors(
     const Trajectory& trajectory, const gtsam::SharedNoiseModel& model) const {
   if (!model || model->dim() != 3) {
-    throw std::invalid_argument("contactEqualityFactors requires a 3D noise model");
+    throw std::invalid_argument(
+        "contactEqualityFactors requires a 3D noise model");
   }
-  // Union contacts at shared phase endpoints before constructing temporal edges.
+  // Union contacts at shared phase endpoints before constructing temporal
+  // edges.
   std::map<size_t, PointOnLinks> contacts;
   const auto& phases = trajectory.phases();
   for (size_t i = 0; i < phases.size(); ++i) {

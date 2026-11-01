@@ -7,9 +7,6 @@ import apps from '../registry.json' with { type: 'json' };
 const root = fileURLToPath(new URL('../', import.meta.url));
 try {
   await Promise.all([
-    'motion-snippets/public/examples/scenes/unitree_g1/scene.xml',
-    'motion-snippets/public/examples/scenes/unitree_a1/scene.xml',
-    'motion-snippets/public/examples/scenes/boston_dynamics_spot/scene.xml',
     'motion-planning/public/assets/manifest.json',
     'motion-planning/public/assets/franka_emika_panda/scene.xml',
     'motion-planning/public/recording.json',

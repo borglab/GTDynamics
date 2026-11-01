@@ -248,7 +248,6 @@ native `describe`, `build`, `targets`, and single-step `iterate` commands with
 request IDs. Snapshots contain graph counts, costs, endpoint errors, and all
 trajectory states. stdout is reserved for JSON; native diagnostics use stderr.
 
-The visualizer follows the same MuJoCo/Three.js approach as the adjacent
-`apps/motion-snippets`, whose framework lineage is
+The MuJoCo/Three.js integration draws on
 [Axellwppr/humanoid-policy-viewer](https://github.com/Axellwppr/humanoid-policy-viewer).
 Runtime dependencies are MuJoCo (`mujoco-js`), Three.js, Vue, Vite, and `ws`.

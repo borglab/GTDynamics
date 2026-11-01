@@ -159,7 +159,6 @@ We recommend going through the examples to get a better understanding of how to 
 
 - [Apps overview and local preview](apps/README.md): a shared tabbed site, built
   and published to GitHub Pages with all browser apps.
-- [Motion Snippets](apps/motion-snippets/README.md): replay robot motion clips in a browser.
 - [Motion Planning](apps/motion-planning/README.md): edit six-DOF endpoint
   frames, build kinematic slice factor graphs, watch native C++/GTSAM optimization
   iterations, and replay or interactively replan the trajectory in MuJoCo.

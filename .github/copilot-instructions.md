@@ -6,14 +6,29 @@ clear responsibilities over long functions or unnecessary abstractions.
 
 ## C++ style
 
-These conventions follow GTSAM's repository guidance. Use classes and types in
-`UpperCamelCase`, methods and functions in `lowerCamelCase`, and public struct
-fields with plain names without trailing underscores. Apart from those naming
-conventions, follow Google C++ style. Preserve established public API names when
-making documentation or formatting changes.
+### Naming conventions
+
+Imported from GTSAM's `.github/copilot-instructions.md`, “C++ style” and
+“Wrappers and vendored code”:
+
+- Classes and types are `UpperCamelCase`; methods and functions are
+  `lowerCamelCase`.
+- Public fields in structs use plain names without a trailing underscore.
+- Apart from those naming conventions, follow Google C++ style.
+- When a C++ function is exposed in a wrapper `.i` file, parameter names must
+  match exactly between the header declaration and the `.i` declaration.
+  Update both whenever a wrapped parameter name changes.
+
+Additional GTDynamics convention: new C++ parameters and local variables use
+`lowerCamelCase`, for example `contactBuffer`. Preserve these names in wrappers
+and Python keyword calls; Python-defined APIs still follow the Python style
+below. Preserve established identifiers outside the scope of a change.
+
+### Implementation style
 
 - Use meaningful variable names, for example `measurement` rather than `msm`;
-  avoid abbreviations.
+  avoid abbreviations. Use `pim` for a `PreintegratedImuMeasurementsG` instance
+  and `pims` for a collection.
 - Prefer concise examples and the fewest helpers needed. Favor direct
   construction and small local functors or lambdas over adapter functions.
 - Keep functions focused. When reviewing overly complex or long functions,
@@ -44,12 +59,28 @@ making documentation or formatting changes.
 
 ### C++ tests
 
-- Prefer small, named fixture-style namespaces containing helpers and the tests
-  that use them over one large anonymous namespace collecting every helper.
-- Put a short `//` comment immediately above each `TEST()` explaining the
-  behavior being verified.
-- If using `/* ************************************************************************* */`
-  dividers, place them around a fixture namespace, not between its tests.
+Adapted from GTSAM’s `.github/copilot-instructions.md`, “C++ test organization”.
+
+* Avoid one large anonymous namespace collecting every helper at the top of a
+  test file. Prefer small, named fixture-style namespaces containing both the
+  helpers and tests that use them.
+* Put at least one short `//` comment immediately above every `TEST()` explaining
+  the behavior being verified.
+* When using `/* ************************************************************************* */`
+  dividers, put one immediately before each fixture namespace and one
+  immediately after it closes. Do not put dividers between tests in the same
+  fixture namespace:
+
+  ```cpp
+  /* ************************************************************************* */
+  namespace my_fixture {
+
+  // Verifies the expected behavior.
+  TEST(Suite, Case) {}
+
+  }  // namespace my_fixture
+  /* ************************************************************************* */
+  ```
 
 ## Python style
 
@@ -118,11 +149,19 @@ when practical.
 
 - Put browser apps under `apps/`. Register new apps in `apps/registry.json` and
   the npm workspaces in `apps/package.json`, and use the shared navigation.
-- **Use MuJoCo through `mujoco-js` for browser robot viewers.** Use the real
-  robot's MJCF model, meshes, and materials from the pinned MuJoCo Menagerie
-  assets when available. Avoid rebuilding available robot models from boxes,
-  capsules, or approximate link silhouettes. Three.js remains appropriate for
-  contact markers, factor graphs, trajectories, labels, and other overlays.
+- **Start robot viewers with `apps/shared/RobotViewport.js` and
+  `apps/shared/CameraController.js`.** See `apps/shared/README.md` for a minimal
+  app and the camera/resource ownership contract. Reuse their renderer, stage,
+  orbit controls, resize handling, animation loop, fitting, and following.
+  Add app-specific overlays and picking to the shared scene; keep simulation,
+  recording loading, optimization, and UI state in the app. Prefer composition
+  over a new viewer hierarchy or copies of another app's constructor.
+- Use real robot MJCF geometry, meshes, and materials from the recording's
+  model or pinned MuJoCo Menagerie assets. Avoid approximate link silhouettes.
+  **Load `mujoco-js` when the browser needs FK or physics.** For saved link-pose
+  estimates, render those transforms directly without loading MuJoCo or
+  recomputing FK. This preserves infeasible optimizer iterates and keeps static
+  replay startup small. Three.js renders both modes and their overlays.
 - Reuse `apps/shared/mujocoRobot.js` to build visuals from compiled MuJoCo
   geometry and update body transforms. See
   `apps/contact-initialization/src/mujocoG1.js` for configuration replay and
@@ -139,9 +178,24 @@ when practical.
   for configuration replay; use `mj_step` when simulating dynamics. Apply the
   intended root pose and measured joint configuration consistently to the
   robot, snapshots, reference overlays, and contacts.
+- Use `viewport.start(update)` for live physics and `viewport.render()` after
+  recorded updates. The app owns simulation time and stepping; the viewport
+  owns the display loop. Do not add a second renderer, resize observer, or idle
+  animation loop. Call `viewport.dispose()` on unmount, and separately delete
+  app-owned MuJoCo data/models and abort pending loads. Shared mesh geometry
+  must be marked and disposed only by its model/cache owner.
 - Keep native optimization and browser visualization distinct. Static demos
   replay recorded native results and timings; label recorded and live modes
   accurately. Recorded playback must work without a native backend.
+- Publish only assets consumed by the registered apps, including selectable
+  replay bundles and required attribution/license files. Keep raw sensor inputs
+  and intermediate exports in ignored caches. Extend the public-asset inventory
+  test when adding a consumer; avoid duplicate metadata encodings and obsolete
+  recording versions in branch history.
+- Store app recordings and compiled display geometry under the LFS rules in
+  `.gitattributes`. Keep small manifests, source files, and license notices in
+  ordinary Git. Hydrate app assets before tests/builds (`git lfs pull
+  --include="apps/**" --exclude=""`); Pages checkout must retain `lfs: true`.
 - Resolve app assets relative to `import.meta.env.BASE_URL` or the app document.
   Verify both `/` and `/GTDynamics/` deployment paths, including direct app URLs.
 - Abort pending asset loads on unmount and release MuJoCo data/models, Three.js
