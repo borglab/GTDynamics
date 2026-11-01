@@ -58,6 +58,7 @@ def contact_slices(
 def build_problem(
     walk: KinematicRecording,
     contact_slip_sigma: float = 0.005,
+    objective_groups: dict[str, gtsam.NonlinearFactorGraph] | None = None,
 ) -> tuple[gtsam.NonlinearFactorGraph, gtd.NonlinearEqualityConstraints, list[int]]:
     """Build one full trajectory problem for either initializer.
 
@@ -67,6 +68,8 @@ def build_problem(
     because stance feet may slip. contact_slip_sigma is the per-axis standard
     deviation of point displacement in metres per adjacent slice interval.
     It is not a velocity sigma and is not automatically scaled with sample rate.
+    If supplied, objective_groups receives the native graphs by objective type
+    for reporting counts and error budgets; their union is the returned cost.
     There are no inequalities, dynamics variables, or per-frame final solves.
     """
     if not np.isfinite(contact_slip_sigma) or contact_slip_sigma <= 0:
@@ -79,23 +82,20 @@ def build_problem(
     constraints: gtd.NonlinearEqualityConstraints = kinematics.constraints(
         walk.trajectory, walk.robot
     )
-    costs: gtsam.NonlinearFactorGraph = kinematics.jointAngleObjectives(
+    joint_costs: gtsam.NonlinearFactorGraph = kinematics.jointAngleObjectives(
         walk.trajectory, walk.robot, walk.measured
     )
-    for phase in walk.trajectory.phases():
-        height_costs: gtsam.NonlinearFactorGraph = kinematics.contactHeightObjectives(
-            phase, np.array([0.0, 0.0, -9.81])
-        )
-        costs.push_back(height_costs)
+    height_costs: gtsam.NonlinearFactorGraph = kinematics.contactHeightObjectives(
+        walk.trajectory, np.array([0.0, 0.0, -9.81])
+    )
     # Penalize displacement of each continuing ground contact point, including
     # across phase boundaries where the other foot changes contact.
-    costs.push_back(
-        kinematics.contactEqualityFactors(
-            walk.trajectory, gtsam.noiseModel.Isotropic.Sigma(3, contact_slip_sigma)
-        )
+    stationary_costs: gtsam.NonlinearFactorGraph = kinematics.contactEqualityFactors(
+        walk.trajectory, gtsam.noiseModel.Isotropic.Sigma(3, contact_slip_sigma)
     )
+    root_costs = gtsam.NonlinearFactorGraph()
     for k in range(walk.count - 1):
-        costs.add(
+        root_costs.add(
             gtsam.BetweenFactorPose3(
                 gtd.PoseKey(walk.root.id(), k),
                 gtd.PoseKey(walk.root.id(), k + 1),
@@ -104,13 +104,26 @@ def build_problem(
             )
         )
     first = gtd.Slice(0)
-    costs.add(
+    anchor_cost = gtsam.NonlinearFactorGraph()
+    anchor_cost.add(
         gtsam.PriorFactorPose3(
             gtd.PoseKey(walk.root.id(), first.k),
             walk.anchor,
             gtsam.noiseModel.Isotropic.Sigma(6, 1e-5),
         )
     )
+    groups = {
+        "joint": joint_costs,
+        "height": height_costs,
+        "stationary": stationary_costs,
+        "root": root_costs,
+        "anchor": anchor_cost,
+    }
+    costs = gtsam.NonlinearFactorGraph()
+    for group in groups.values():
+        costs.push_back(group)
+    if objective_groups is not None:
+        objective_groups.update(groups)
     keys = sorted(set(costs.keyVector()) | set(constraints.keyVector()))
     return costs, constraints, keys
 
