@@ -964,7 +964,8 @@ class Initializer {
       const gtsam::Pose3& initial_pose, const gtsam::Values& measured_joints,
       const gtdynamics::Trajectory& trajectory, double dt = 1.0,
       const gtdynamics::contact_init::Options& options = gtdynamics::contact_init::Options(),
-      gtdynamics::contact_init::Result @diagnostics = nullptr) const;
+      gtdynamics::contact_init::Result @diagnostics = nullptr,
+      size_t contactBuffer = 0) const;
 
   gtsam::Values ZeroValues(
       const gtdynamics::Robot& robot, const int t,

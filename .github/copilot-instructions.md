@@ -6,11 +6,25 @@ clear responsibilities over long functions or unnecessary abstractions.
 
 ## C++ style
 
-These conventions follow GTSAM's repository guidance. Use classes and types in
-`UpperCamelCase`, methods and functions in `lowerCamelCase`, and public struct
-fields with plain names without trailing underscores. Apart from those naming
-conventions, follow Google C++ style. Preserve established public API names when
-making documentation or formatting changes.
+### Naming conventions
+
+Imported from GTSAM's `.github/copilot-instructions.md`, “C++ style” and
+“Wrappers and vendored code”:
+
+- Classes and types are `UpperCamelCase`; methods and functions are
+  `lowerCamelCase`.
+- Public fields in structs use plain names without a trailing underscore.
+- Apart from those naming conventions, follow Google C++ style.
+- When a C++ function is exposed in a wrapper `.i` file, parameter names must
+  match exactly between the header declaration and the `.i` declaration.
+  Update both whenever a wrapped parameter name changes.
+
+Additional GTDynamics convention: new C++ parameters and local variables use
+`lowerCamelCase`, for example `contactBuffer`. Preserve these names in wrappers
+and Python keyword calls; Python-defined APIs still follow the Python style
+below. Preserve established identifiers outside the scope of a change.
+
+### Implementation style
 
 - Use meaningful variable names, for example `measurement` rather than `msm`;
   avoid abbreviations. Use `pim` for a `PreintegratedImuMeasurementsG` instance

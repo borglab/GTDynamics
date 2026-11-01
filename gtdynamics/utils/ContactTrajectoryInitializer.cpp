@@ -134,8 +134,8 @@ gtsam::Values Initializer::InitializeSolutionContacts(
     const Robot& robot, const std::string& root_link_name,
     const gtsam::Pose3& wTroot_i, const gtsam::Values& measured_joints,
     const Trajectory& trajectory, double dt,
-    const contact_init::Options& options,
-    contact_init::Result* diagnostics) const {
+    const contact_init::Options& options, contact_init::Result* diagnostics,
+    size_t contactBuffer) const {
   Require(std::isfinite(dt) && dt > 0, "dt must be finite and positive");
   const auto root = robot.link(root_link_name);
   Require(static_cast<bool>(root), "unknown root link " + root_link_name);
@@ -143,18 +143,51 @@ gtsam::Values Initializer::InitializeSolutionContacts(
   const auto frames = TrackContacts(robot, trajectory);
 
   std::set<size_t> event_indices;
+  auto trustedFrames = frames;
+  if (contactBuffer > 0) {
+    // A foot's stance may span several phases as the other foot changes
+    // contact. Reuse the tracked stance IDs rather than trim each phase.
+    std::map<std::string, std::pair<size_t, size_t>> spans;
+    for (const auto& [sample, contacts] : frames) {
+      for (const auto& contact : contacts) {
+        auto it =
+            spans.emplace(contact.stance, std::make_pair(sample, sample)).first;
+        it->second.second = sample;
+      }
+    }
+    for (const auto& [stance, span] : spans) {
+      const auto [first, last] = span;
+      Require(last > first && contactBuffer <= (last - first - 1) / 2,
+              "stance " + stance + " has fewer than two slices after a " +
+                  std::to_string(contactBuffer) + "-slice contact buffer");
+      event_indices.insert(first + contactBuffer);
+      event_indices.insert(last - contactBuffer);
+    }
+    // Filter observations as well as selection: a slice selected by one foot
+    // must not reintroduce the other foot's touchdown/liftoff measurements.
+    for (auto& [sample, contacts] : trustedFrames) {
+      contacts.erase(
+          std::remove_if(contacts.begin(), contacts.end(),
+                         [&, sampleIndex = sample](const auto& c) {
+                           const auto [first, last] = spans.at(c.stance);
+                           return sampleIndex - first < contactBuffer ||
+                                  last - sampleIndex < contactBuffer;
+                         }),
+          contacts.end());
+    }
+  }
   for (const auto& phase : trajectory.phases()) {
     // Retain both sides of each phase transition. Flight has no observations;
     // its dense poses will be interpolated after solving supported frames.
     for (size_t k : {phase.k_start, phase.k_end})
-      if (!frames.at(k).empty()) event_indices.insert(k);
+      if (!trustedFrames.at(k).empty()) event_indices.insert(k);
     if (phase.k_start == phase.k_end) continue;
     const size_t stride = static_cast<size_t>(
         std::max(1.0, std::min(static_cast<double>(phase.k_end - phase.k_start),
                                std::floor((1.0 + 1e-8) / dt))));
     for (size_t k = phase.k_start; phase.k_end - k > stride;) {
       k += stride;
-      if (!frames.at(k).empty()) event_indices.insert(k);
+      if (!trustedFrames.at(k).empty()) event_indices.insert(k);
     }
   }
   Require(!event_indices.empty(),
@@ -169,7 +202,7 @@ gtsam::Values Initializer::InitializeSolutionContacts(
     const auto local_fk =
         robot.forwardKinematics(local_known, sample, root_link_name);
     contact_init::ContactMeasurements measurement{slice, sample * dt, {}};
-    for (const auto& contact : frames.at(sample)) {
+    for (const auto& contact : trustedFrames.at(sample)) {
       measurement.observations.push_back(
           {contact.stance, contact.point.link->name(), contact.index,
            contact.point.predict(local_fk, sample)});
