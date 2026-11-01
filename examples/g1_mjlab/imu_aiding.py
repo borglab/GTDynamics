@@ -94,7 +94,7 @@ class ImuAiding:
                 for k in range(walk.count)
             ]
         )
-        velocities = np.gradient(positions, walk.dt, axis=0)
+        velocities = np.gradient(positions, walk.times, axis=0)
         for k, velocity in enumerate(velocities):
             values.insert(gtd.LinearVelocityKey(walk.root.id(), k), velocity)
         values.insert(BIAS_KEY, self.bias)
@@ -141,7 +141,7 @@ def build_imu_aiding(walk: KinematicRecording, directory: Path) -> ImuAiding:
         arrays["imu_time"],
         arrays["imu_acceleration"],
         arrays["imu_angular_rate"],
-        np.arange(walk.count) * walk.dt,
+        walk.times,
         params,
         bias,
     )
@@ -169,6 +169,7 @@ def build_imu_aiding(walk: KinematicRecording, directory: Path) -> ImuAiding:
             "enabled": True,
             "factor": "GalileanImuFactor",
             "intervals": len(pims),
+            "intervalSeconds": [pim.deltaTij() for pim in pims],
             "poseFrame": "world_T_linkCOM",
             "velocityFrame": "world; linear velocity of link COM",
             "biasFrame": "pelvis IMU measurement axes",

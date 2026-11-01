@@ -176,6 +176,22 @@ class KinematicRecording:
     speed: float
     reference_root_positions: NDArray[np.float64]
     provenance: dict[str, str]
+    # Seconds from the input recording's start, and indices into its qpos array.
+    # None retains compatibility with uniformly sampled recordings.
+    timestamps: NDArray[np.float64] | None = None
+    source_indices: NDArray[np.int64] | None = None
+
+    # (dense slice index, link id) whose preceding source interval has a lift-off.
+    contact_breaks: frozenset[tuple[int, int]] = frozenset()
+
+    @property
+    def times(self) -> NDArray[np.float64]:
+        """Actual slice times in seconds; dt is only the source sampling period."""
+        return (
+            np.arange(self.count) * self.dt
+            if self.timestamps is None
+            else self.timestamps
+        )
 
 
 def load_kinematic_recording(

@@ -63,6 +63,43 @@ GTDynamics COM-frame forward kinematics against MuJoCo at three samples.
 A newly recorded or different walk needs a matching `--contacts` dataset.
 `--max-frames 12` is a diagnostic prefix; it is never the default benchmark.
 
+## Estimating only at contact-initializer slices
+
+For irregular contact-selected sampling, initialize before building the graph:
+
+```python
+source = load_walk(data, contacts_path)
+walk, seed, initialization = initialize_contact_slices(source, contact_buffer=1)
+costs, constraints, keys = build_problem(walk)
+seed = seed.extract(keys)
+solution, solver = solve_cm(costs, constraints, seed, walk.root.id(), 10)
+```
+
+The native `contact_init.Result.slices()` API returns the exact source slices
+used by `Initializer.InitializeSolutionContacts`, in pose order, excluding
+dense interpolated outputs. Pass a `Result` as `diagnostics` and `contactBuffer=1`
+to that existing call. Slice indices retain their original values; timestamps
+are `slice.k * dt`, also available as `result.graph.measurements[i].time`.
+Each continuous foot stance must retain two slices after trimming both ends.
+The initializer also selects phase boundaries where a trusted contact remains
+and supplemental slices in long stances, at intervals of at most one second.
+
+`initialize_contact_slices` reindexes those states into contiguous solver keys
+and constructs the reduced `Trajectory` from the source phases. It preserves
+`walk.source_indices` for reference alignment and `walk.times` in seconds from
+the recording start. The smoother keeps source contact specifications; it
+removes stationary-contact edges across lift-offs skipped by sparse sampling.
+The seed is the native solution at those exact slices, not another initializer
+run. Its first retained pose uses the original initial gauge; no later reference
+pose enters estimation.
+
+`imu_aiding.build_imu_aiding` integrates one `pim` between each pair of actual
+`walk.times`, clipping native IMU intervals at both ends. Velocity seeds use
+finite differences at those same times. Stationary-contact sigma remains a
+displacement sigma per selected interval, not a velocity sigma. Contact vs IK
+continues using uniform snippet sampling; the Kinematics app uses this reduced
+trajectory workflow.
+
 ## Graph construction
 
 Each state contains 30 link COM poses and 29 scalar joint angles. Contact
