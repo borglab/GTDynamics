@@ -63,6 +63,12 @@ inline gtsam::Key PoseKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("p", i, t);
 }
 
+/// World-frame linear velocity (Vector3) of link i's COM, in metres/second.
+/// Distinct from the body-frame spatial twist stored at TwistKey(i, t).
+inline gtsam::Key LinearVelocityKey(int i, int t = 0) {
+  return DynamicsSymbol::LinkSymbol("vW", i, t);
+}
+
 /// Shorthand for V_i_t, for 6D link twist vector on the i-th link.
 inline gtsam::Key TwistKey(int i, int t = 0) {
   return DynamicsSymbol::LinkSymbol("V", i, t);

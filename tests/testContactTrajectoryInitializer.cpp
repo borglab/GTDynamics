@@ -13,6 +13,7 @@
 #include <gtsam/base/TestableAssertions.h>
 
 #include <cmath>
+#include <limits>
 
 using namespace gtdynamics;
 using gtsam::assert_equal;
@@ -21,7 +22,8 @@ using gtsam::Pose3;
 using gtsam::Rot3;
 using gtsam::Values;
 
-namespace {
+/* ************************************************************************* */
+namespace contact_trajectory {
 class GeneralContactSpec : public ConstraintSpec {
  public:
   PointOnLinks points;
@@ -44,8 +46,7 @@ bool Rejects(F&& call, const std::string& message) {
   }
   return false;
 }
-}  // namespace
-
+// General specifications retain ground and non-ground contact observations.
 TEST(ContactTrajectoryInitializer, GeneralSpecificationKeepsNonGroundContacts) {
   const auto robot = CreateRobotFromFile(
       kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
@@ -62,16 +63,18 @@ TEST(ContactTrajectoryInitializer, GeneralSpecificationKeepsNonGroundContacts) {
   contact_init::Result diagnostics;
   const auto result = Initializer().InitializeSolutionContacts(
       robot, "l1", Pose3(Rot3::Rx(-std::acos(-1.0) / 2), Point3(0, 0, 1)),
-      measurements, Phases({Phase(4, 5, spec)}),
-      .01, options, &diagnostics);
+      measurements, Phases({Phase(4, 5, spec)}), .01, options, &diagnostics);
   EXPECT_LONGS_EQUAL(3, diagnostics.landmarks.size());
-  EXPECT_LONGS_EQUAL(3, diagnostics.graph.measurements.front().observations.size());
+  EXPECT_LONGS_EQUAL(
+      3, diagnostics.graph.measurements.front().observations.size());
   EXPECT(diagnostics.residualRms < 1e-8);
   EXPECT(assert_equal(spec->points[1].predict(result, 4),
                       spec->points[1].predict(result, 5), 1e-8));
   // The non-ground contacts remain above the ground contact.
-  DOUBLES_EQUAL(.3, spec->points[1].predict(result, 4).z() -
-                       spec->points[0].predict(result, 4).z(), 1e-8);
+  DOUBLES_EQUAL(.3,
+                spec->points[1].predict(result, 4).z() -
+                    spec->points[0].predict(result, 4).z(),
+                1e-8);
 }
 
 // Dense expansion preserves measured joints and the chosen root COM gauge.
@@ -132,6 +135,7 @@ TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
   }
 }
 
+// Reject malformed schedules and missing or invalid joint/contact inputs.
 TEST(ContactTrajectoryInitializer, InvalidPhasesAndMeasurementsRejected) {
   const auto robot = CreateRobotFromFile(
       kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
@@ -330,6 +334,7 @@ TEST(ContactTrajectoryInitializer, PhaseContinuityAndPointReentry) {
   EXPECT_LONGS_EQUAL(8, result.landmarks.size());
 }
 
+// Shared endpoints are deduplicated and flight prefixes/suffixes are seeded.
 TEST(ContactTrajectoryInitializer, SharedEndpointsAndFlightSeeds) {
   const auto robot = CreateRobotFromFile(
       kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
@@ -361,6 +366,8 @@ TEST(ContactTrajectoryInitializer, SharedEndpointsAndFlightSeeds) {
                   JointAngle(result, robot.joint("j1")->id(), k), 0.0);
 }
 
+// A new stance after flight gets new landmarks, even with motion
+// regularization.
 TEST(ContactTrajectoryInitializer, FlightBreaksLandmarksEvenWithMotionPrior) {
   const auto robot = CreateRobotFromFile(
       kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
@@ -384,6 +391,156 @@ TEST(ContactTrajectoryInitializer, FlightBreaksLandmarksEvenWithMotionPrior) {
   EXPECT_LONGS_EQUAL(2, diagnostics.graph.contactComponents.size());
   EXPECT_LONGS_EQUAL(1, diagnostics.graph.components.size());
 }
+
+}  // namespace contact_trajectory
+/* ************************************************************************* */
+
+/* ************************************************************************* */
+namespace buffered_contacts {
+using contact_trajectory::ContactPhase;
+using contact_trajectory::Phases;
+using contact_trajectory::Rejects;
+
+struct Fixture {
+  Robot robot = CreateRobotFromFile(
+      kUrdfPath + std::string("test/simple_urdf_prismatic.urdf"));
+  PointOnLinks foot{{robot.link("l2"), Point3(-.1, -.1, 0)},
+                    {robot.link("l2"), Point3(.1, -.1, 0)},
+                    {robot.link("l2"), Point3(.1, .1, 0)}};
+  PointOnLinks other{{robot.link("l1"), Point3(-.1, -.1, 0)},
+                     {robot.link("l1"), Point3(.1, -.1, 0)},
+                     {robot.link("l1"), Point3(.1, .1, 0)}};
+  Pose3 anchor{Rot3::RzRyRx(.1, -.2, .3), Point3(1, 2, 3)};
+  Values measured;
+  contact_init::Options options;
+
+  Fixture() {
+    options.model = contact_init::Model::Patch;
+    for (size_t k = 4; k <= 38; ++k)
+      InsertJointAngle(&measured, robot.joint("j1")->id(), k, 0.0);
+  }
+
+  Values initialize(const Trajectory& trajectory, size_t buffer,
+                    contact_init::Result* result, double dt = .01) const {
+    return Initializer().InitializeSolutionContacts(
+        robot, "l1", anchor, measured, trajectory, dt, options, result, buffer);
+  }
+};
+
+// Zero preserves the legacy selection exactly; buffers 1/2/3 move both ends.
+TEST(ContactTrajectoryInitializer, OptionalSliceBufferAndDensePrefix) {
+  Fixture f;
+  const auto trajectory = Phases({ContactPhase(4, 14, f.foot)});
+  contact_init::Result legacy, zero;
+  const auto expected = Initializer().InitializeSolutionContacts(
+      f.robot, "l1", f.anchor, f.measured, trajectory, .01, f.options, &legacy);
+  const auto unchanged = f.initialize(trajectory, 0, &zero);
+  EXPECT(assert_equal(expected, unchanged, 1e-12));
+  EXPECT_LONGS_EQUAL(legacy.graph.measurements.size(),
+                     zero.graph.measurements.size());
+  for (size_t i = 0; i < legacy.graph.measurements.size(); ++i)
+    EXPECT_LONGS_EQUAL(legacy.graph.measurements[i].slice.k,
+                       zero.graph.measurements[i].slice.k);
+  for (size_t buffer : {1, 2, 3}) {
+    contact_init::Result result;
+    const auto values = f.initialize(trajectory, buffer, &result);
+    EXPECT_LONGS_EQUAL(2, result.graph.measurements.size());
+    EXPECT_LONGS_EQUAL(4 + buffer, result.graph.measurements.front().slice.k);
+    EXPECT_LONGS_EQUAL(14 - buffer, result.graph.measurements.back().slice.k);
+    for (size_t k = 4; k <= 14; ++k) {
+      EXPECT(assert_equal(f.anchor, Pose(values, f.robot.link("l1")->id(), k),
+                          1e-8));
+      DOUBLES_EQUAL(0.0, JointAngle(values, f.robot.joint("j1")->id(), k), 0);
+      EXPECT(values.exists(ContactWrenchKey(f.robot.link("l2")->id(), 0, k)));
+    }
+  }
+}
+
+// A continuous foot stance spans phases; the other foot cannot leak transients.
+TEST(ContactTrajectoryInitializer, BufferFiltersEachFootIndependently) {
+  Fixture f;
+  PointOnLinks both = f.foot;
+  both.insert(both.end(), f.other.begin(), f.other.end());
+  contact_init::Result result;
+  f.initialize(Phases({ContactPhase(4, 7, f.foot), ContactPhase(8, 16, both),
+                       ContactPhase(17, 20, f.foot)}),
+               2, &result);
+  const std::vector<size_t> expected{6, 7, 8, 10, 14, 16, 17, 18};
+  EXPECT_LONGS_EQUAL(expected.size(), result.graph.measurements.size());
+  EXPECT_LONGS_EQUAL(6, result.landmarks.size());
+  for (size_t i = 0; i < expected.size(); ++i) {
+    const auto& measurement = result.graph.measurements[i];
+    EXPECT_LONGS_EQUAL(expected[i], measurement.slice.k);
+    const bool otherTrusted =
+        measurement.slice.k >= 10 && measurement.slice.k <= 14;
+    EXPECT_LONGS_EQUAL(otherTrusted ? 6 : 3, measurement.observations.size());
+    for (const auto& observation : measurement.observations)
+      EXPECT(observation.foot == "l2" || otherTrusted);
+  }
+}
+
+// Keep the one-second supplemental samples in addition to trimmed endpoints.
+TEST(ContactTrajectoryInitializer, BufferedLongStanceSupplementalSlices) {
+  Fixture f;
+  contact_init::Result result;
+  f.initialize(Phases({ContactPhase(4, 38, f.foot)}), 2, &result, .1);
+  const std::vector<size_t> expected{6, 14, 24, 34, 36};
+  EXPECT_LONGS_EQUAL(expected.size(), result.graph.measurements.size());
+  const auto slices = result.slices();
+  EXPECT_LONGS_EQUAL(expected.size(), slices.size());
+  for (size_t i = 0; i < expected.size(); ++i) {
+    EXPECT_LONGS_EQUAL(expected[i], result.graph.measurements[i].slice.k);
+    EXPECT_LONGS_EQUAL(expected[i], slices[i].k);
+    DOUBLES_EQUAL(expected[i] * .1, result.graph.measurements[i].time, 1e-12);
+    EXPECT(assert_equal(
+        result.poses[i],
+        Pose(result.values, f.robot.link("l1")->id(), slices[i].k), 1e-8));
+  }
+  EXPECT(contact_init::Result().slices().empty());
+}
+
+// Never shrink the requested margin to retain a short stance; zero is legacy.
+TEST(ContactTrajectoryInitializer, BufferRequiresTwoInteriorSlices) {
+  Fixture f;
+  contact_init::Result result;
+  f.initialize(Phases({ContactPhase(4, 7, f.foot)}), 1, &result);
+  EXPECT_LONGS_EQUAL(2, result.graph.measurements.size());
+  for (size_t last : {4, 5, 6, 7}) {
+    EXPECT(Rejects(
+        [&] {
+          f.initialize(Phases({ContactPhase(4, last, f.foot)}), 2, &result);
+        },
+        "fewer than two slices"));
+  }
+  EXPECT(Rejects(
+      [&] {
+        f.initialize(Phases({ContactPhase(4, 38, f.foot)}),
+                     std::numeric_limits<size_t>::max(), &result);
+      },
+      "fewer than two slices"));
+  f.initialize(Phases({ContactPhase(4, 4, f.foot)}), 0, &result);
+  EXPECT_LONGS_EQUAL(1, result.graph.measurements.size());
+}
+
+// Trimming a shared endpoint must expose lost connectivity, not restore it.
+TEST(ContactTrajectoryInitializer, BufferCanDisconnectSharedEndpoint) {
+  Fixture f;
+  contact_init::Result result;
+  const auto trajectory =
+      Phases({ContactPhase(4, 10, f.foot), ContactPhase(10, 16, f.other)});
+  f.initialize(trajectory, 0, &result);
+  EXPECT_LONGS_EQUAL(1, result.graph.contactComponents.size());
+  EXPECT(
+      Rejects([&] { f.initialize(trajectory, 1, &result); }, "disconnected"));
+  f.options.addBetweenFactors = true;
+  f.initialize(trajectory, 1, &result);
+  EXPECT_LONGS_EQUAL(2, result.graph.contactComponents.size());
+  EXPECT_LONGS_EQUAL(1, result.graph.components.size());
+  for (const auto& measurement : result.graph.measurements)
+    EXPECT(measurement.slice.k != 10);
+}
+}  // namespace buffered_contacts
+/* ************************************************************************* */
 
 int main() {
   TestResult tr;

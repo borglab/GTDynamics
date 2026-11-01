@@ -140,7 +140,8 @@ struct Options {
   };
 };
 
-/// Identifiers and diagnostic labels for a contact point shared across a stance.
+/// Identifiers and diagnostic labels for a contact point shared across a
+/// stance.
 struct Landmark {
   /// Generated stanceId:pointIndex label.
   std::string id;
@@ -249,6 +250,21 @@ struct Timings {
  * LM stopping criterion does not certify physical accuracy or observability.
  */
 struct Result {
+  /**
+   * Source slices actually used by the sparse solve, in the same order as
+   * poses and graph.measurements. Indices are not renumbered. With the
+   * trajectory adapter, their times are slice.k * dt; contactBuffer may trim
+   * the first/last slices and the intervals need not be uniform. Interpolated
+   * dense output slices are excluded. Empty before initialization.
+   */
+  std::vector<Slice> slices() const {
+    std::vector<Slice> selected;
+    selected.reserve(graph.measurements.size());
+    for (const auto& measurement : graph.measurements)
+      selected.push_back(measurement.slice);
+    return selected;
+  }
+
   /// Indexed measurements, exact anchors, factors, and seed state.
   Graph graph;
   /// Final free variables with exact anchor poses reinserted for downstream

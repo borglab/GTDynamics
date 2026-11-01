@@ -13,6 +13,27 @@ import numpy as np
 
 
 class KinematicsWrappingTests(unittest.TestCase):
+    def test_galilean_imu_factors(self):
+        spec = gtd.FootContactConstraintSpec(gtd.PointOnLinks([]))
+        trajectory = gtd.Trajectory(
+            gtd.WalkCycle([gtd.Phase(0, 1, spec), gtd.Phase(1, 2, spec)]), 1
+        )
+        params = gtsam.PreintegrationParams.MakeSharedU(9.81)
+        pim = gtsam.PreintegratedImuMeasurementsG(params, gtsam.imuBias.ConstantBias())
+        pim.integrateMeasurement(np.array([0.0, 0.0, 9.81]), np.zeros(3), 0.2)
+        bias_key = gtsam.symbol("b", 0)
+        graph = gtd.Kinematics().imuFactors(trajectory, 1, [pim, pim], bias_key)
+        self.assertEqual(graph.size(), 2)
+        self.assertIsInstance(graph.at(0), gtsam.GalileanImuFactor)
+        values = gtsam.Values()
+        values.insert(bias_key, gtsam.imuBias.ConstantBias())
+        for k in range(3):
+            values.insert(gtd.PoseKey(1, k), gtsam.Pose3())
+            values.insert(gtd.LinearVelocityKey(1, k), np.zeros(3))
+        self.assertAlmostEqual(graph.error(values), 0.0)
+        with self.assertRaises(ValueError):
+            gtd.Kinematics().imuFactors(trajectory, 1, [pim], bias_key)
+
     def setUp(self):
         self.anchor = gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, 1.0]))
         root = gtd.Link(1, "root", 1.0, np.eye(3), self.anchor, self.anchor)
@@ -122,6 +143,27 @@ class KinematicsWrappingTests(unittest.TestCase):
                 self.assertLessEqual(after[1], before[1] + 1e-10)
             key = gtd.PoseKey(1, sample)
             self.assertTrue(snapshots[-1][2].atPose3(key).equals(observed.atPose3(key), 1e-10))
+
+    def test_contact_buffer_keyword_and_default(self):
+        spec = gtd.FootContactConstraintSpec(self.points)
+        trajectory = gtd.Trajectory(gtd.WalkCycle([gtd.Phase(0, 3, spec)]), 1)
+        args = (self.robot, "root", self.anchor, self.measured, trajectory)
+        init = gtd.Initializer()
+        original, trimmed = gtd.contact_init.Result(), gtd.contact_init.Result()
+        default = init.InitializeSolutionContacts(*args, dt=0.01, diagnostics=original)
+        zero = init.InitializeSolutionContacts(*args, dt=0.01, contactBuffer=0)
+        self.assertTrue(default.equals(zero, 1e-10))
+        buffered = init.InitializeSolutionContacts(
+            *args, dt=0.01, diagnostics=trimmed, contactBuffer=1
+        )
+        self.assertEqual([m.slice.k for m in original.graph.measurements], [0, 3])
+        self.assertEqual([m.slice.k for m in trimmed.graph.measurements], [1, 2])
+        for k in range(4):
+            self.assertTrue(
+                buffered.atPose3(gtd.PoseKey(1, k)).equals(self.anchor, 1e-8)
+            )
+        with self.assertRaisesRegex(ValueError, "fewer than two slices"):
+            init.InitializeSolutionContacts(*args, dt=0.01, contactBuffer=2)
 
     def test_inverse_kinematics_with_contact_patch(self):
         # Four points on one link exercise the shared contact-wrench key seed.
