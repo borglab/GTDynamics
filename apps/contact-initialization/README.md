@@ -183,10 +183,10 @@ nearest-rank quantile; with 11 repetitions it is the maximum sample.
 
 | Sequence / mode | Native LM median | Initializer total median | LM iterations | 3D contact RMS |
 | --- | ---: | ---: | ---: | ---: |
-| 8 s policy / contact-only patch | 266.78 ms | 267.32 ms | 100, cap reached | 10.85 mm |
-| 8 s policy / one point | 5.29 ms | 5.42 ms | 7 | 1.89 mm |
-| 30 s capture / contact-only patch | 65.44 ms | 65.82 ms | 68 | 17.67 mm |
-| 30 s capture / one point | 5.84 ms | 5.93 ms | 10 | 15.34 mm |
+| 8 s policy / contact-only patch | 267.24 ms | 267.80 ms | 100, cap reached | 10.85 mm |
+| 8 s policy / one point | 5.49 ms | 5.61 ms | 7 | 1.89 mm |
+| 30 s capture / contact-only patch | 65.24 ms | 65.62 ms | 68 | 17.67 mm |
+| 30 s capture / one point | 6.12 ms | 6.22 ms | 10 | 15.34 mm |
 
 The table above shows the configurations without optional priors. All eight combinations
 are saved in the recording files and compared in the UI. The archive includes
