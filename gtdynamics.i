@@ -935,6 +935,7 @@ class Snapshot {
 };
 class Result {
   Result();
+  std::vector<gtdynamics::Slice> slices() const;
   gtdynamics::contact_init::Graph graph;
   std::vector<gtdynamics::contact_init::Snapshot> history;
   gtsam::Values values;

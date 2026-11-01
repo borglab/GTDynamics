@@ -486,8 +486,17 @@ TEST(ContactTrajectoryInitializer, BufferedLongStanceSupplementalSlices) {
   f.initialize(Phases({ContactPhase(4, 38, f.foot)}), 2, &result, .1);
   const std::vector<size_t> expected{6, 14, 24, 34, 36};
   EXPECT_LONGS_EQUAL(expected.size(), result.graph.measurements.size());
-  for (size_t i = 0; i < expected.size(); ++i)
+  const auto slices = result.slices();
+  EXPECT_LONGS_EQUAL(expected.size(), slices.size());
+  for (size_t i = 0; i < expected.size(); ++i) {
     EXPECT_LONGS_EQUAL(expected[i], result.graph.measurements[i].slice.k);
+    EXPECT_LONGS_EQUAL(expected[i], slices[i].k);
+    DOUBLES_EQUAL(expected[i] * .1, result.graph.measurements[i].time, 1e-12);
+    EXPECT(assert_equal(
+        result.poses[i],
+        Pose(result.values, f.robot.link("l1")->id(), slices[i].k), 1e-8));
+  }
+  EXPECT(contact_init::Result().slices().empty());
 }
 
 // Never shrink the requested margin to retain a short stance; zero is legacy.

@@ -201,6 +201,8 @@ class Initializer {
      * @param options Sparse contact solver settings; anchor/pose keys are set
      * internally to wTroot_i and PoseKey(root_link_id,k).
      * @param diagnostics Optional sparse graph, solution, and core timings.
+     * diagnostics->slices() returns the exact source slices used by the solve,
+     * allowing downstream estimation at those same, irregularly spaced times.
      * @param contactBuffer Number of source slices excluded at each stance
      * boundary; defaults to zero. The time margin is contactBuffer * dt.
      *
