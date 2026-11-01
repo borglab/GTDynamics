@@ -18,7 +18,7 @@ namespace gtdynamics::contact_init {
 /** Contact residual X.transformFrom(local) - landmark for a free Point3.
  *
  * Local geometry is frozen FK in the root frame. The Pose3 maps root to world;
- * the landmark is one stationary material point shared across a stance.
+ * the landmark is one stationary contact point shared across a stance.
  * Contact noise has unit standard deviation in each coordinate (one metre).
  */
 class ContactFactor3
@@ -29,7 +29,7 @@ class ContactFactor3
  public:
   /** Associate a root-pose key and a world-landmark key with fixed local FK.
    *
-   * The two keys must be distinct; local is a material-point position in
+   * The two keys must be distinct; local is a contact-point position in
    * metres.
    */
   ContactFactor3(gtsam::Key pose, gtsam::Key point, const gtsam::Point3& local)

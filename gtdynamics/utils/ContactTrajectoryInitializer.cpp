@@ -103,7 +103,7 @@ ContactFrames TrackContacts(const Robot& robot, const Trajectory& trajectory) {
       if (same != previous.end()) {
         current.push_back(*same);
       } else {
-        // Group a link's material points for the core's patch seed. New points
+        // Group a link's contact points for the core's patch seed. New points
         // get fresh indices even if other points on that link remain planted.
         const auto link = std::find_if(
             previous.begin(), previous.end(),

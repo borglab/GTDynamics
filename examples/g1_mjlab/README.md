@@ -18,6 +18,15 @@ Old reports, videos, profiling/diagnostic drivers, and per-case historical data
 are omitted. Model, policy, and trajectory files remain local and can be recreated
 with the commands below. Build and timing logs are not checked in.
 
+## Whole-walk kinematics example
+
+[The student walkthrough](KINEMATIC_WALK.md) accompanies
+[`kinematic_walk.py`](kinematic_walk.py). It builds a single contact-aligned
+`Trajectory` graph for all 800 walking samples and runs an equality-only CM-Opt
+solve with `--initializer contact` or `ik`.
+[`compare_kinematic_walk.py`](compare_kinematic_walk.py) calls those example
+functions to compare the initialization and solve timings (`--repeats 3`).
+
 ## Full graph and input boundary
 
 [`full_model.py`](full_model.py) exports static link/joint parameters, q/v,

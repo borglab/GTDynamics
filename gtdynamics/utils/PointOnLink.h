@@ -39,7 +39,7 @@ struct PointOnLink {
               bool isGround = true)
       : link(link), point(point), isGround(isGround) {}
 
-  // Material-point identity is independent of its phase-specific ground role.
+  // The same point on the same link, even if isGround changes between phases.
   bool operator==(const PointOnLink& other) const {
     return (point == other.point && link == other.link);
   }

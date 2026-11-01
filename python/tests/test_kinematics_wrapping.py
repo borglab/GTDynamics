@@ -33,6 +33,38 @@ class KinematicsWrappingTests(unittest.TestCase):
         for k in range(4):
             self.measured.insert(gtd.JointAngleKey(0, k), 0.0)
 
+    def test_contact_equality_factors(self):
+        spec = gtd.FootContactConstraintSpec(self.points)
+        trajectory = gtd.Trajectory(
+            gtd.WalkCycle([gtd.Phase(0, 1, spec), gtd.Phase(2, 3, spec)]), 1
+        )
+        kinematics = gtd.Kinematics()
+        graph = kinematics.contactEqualityFactors(
+            trajectory, gtsam.noiseModel.Isotropic.Sigma(3, 0.005)
+        )
+        self.assertEqual(graph.size(), 12)
+        values = gtsam.Values()
+        for k in range(4):
+            values.insert(
+                gtd.PoseKey(2, k),
+                gtsam.Pose3(gtsam.Rot3(), np.array([0.005 * k, 0.0, 0.0])),
+            )
+        self.assertAlmostEqual(graph.error(values), 6.0)
+        nonground = gtd.FootContactConstraintSpec(gtd.PointOnLinks([
+            gtd.PointOnLink(p.link, p.point, False) for p in self.points
+        ]))
+        mixed = gtd.Trajectory(
+            gtd.WalkCycle([gtd.Phase(0, 1, nonground), gtd.Phase(2, 3, spec)]), 1
+        )
+        ground_only = kinematics.contactEqualityFactors(
+            mixed, gtsam.noiseModel.Isotropic.Sigma(3, 0.005)
+        )
+        self.assertEqual(ground_only.size(), 4)
+        with self.assertRaises(ValueError):
+            kinematics.contactEqualityFactors(
+                trajectory, gtsam.noiseModel.Isotropic.Sigma(6, 0.005)
+            )
+
     def test_contact_initializer_defaults_and_output_pointer(self):
         spec = gtd.FootContactConstraintSpec(self.points)
         trajectory = gtd.Trajectory(gtd.WalkCycle([gtd.Phase(0, 3, spec)]), 1)
@@ -59,6 +91,37 @@ class KinematicsWrappingTests(unittest.TestCase):
                 .violationNorm(explicit),
                 1e-8,
             )
+
+    def test_initializer_iteration_observers(self):
+        init = gtd.Initializer()
+        trajectory = gtd.Trajectory(gtd.WalkCycle([
+            gtd.Phase(0, 3, gtd.FootContactConstraintSpec(self.points))]), 1)
+        options = gtd.contact_init.Options()
+        options.recordHistory = True
+        result = gtd.contact_init.Result()
+        init.InitializeSolutionContacts(self.robot, "root", self.anchor,
+            self.measured, trajectory, 0.01, options, result)
+        self.assertEqual(len(result.history), result.iterations + 1)
+        self.assertEqual(result.history[0].iteration, 0)
+        self.assertEqual([m.slice.k for m in result.graph.measurements], [0, 3])
+        self.assertTrue(result.history[-1].poses[-1].equals(result.poses[-1], 1e-10))
+        self.assertAlmostEqual(result.history[-1].objective, result.objectiveFinal)
+
+        history = {}
+        def observe(sample, iteration, error, values):
+            history.setdefault(sample, []).append((iteration, error, gtsam.Values(values)))
+        args = (self.robot, "root", self.anchor, [self.anchor], [0.03], 0.01,
+                0.0, self.points)
+        observed = init.InitializeSolutionInverseKinematics(*args, observe)
+        plain = init.InitializeSolutionInverseKinematics(*args)
+        self.assertTrue(observed.equals(plain, 1e-10))
+        self.assertEqual(sorted(history), list(range(4)))
+        for sample, snapshots in history.items():
+            self.assertEqual([s[0] for s in snapshots], list(range(len(snapshots))))
+            for before, after in zip(snapshots, snapshots[1:]):
+                self.assertLessEqual(after[1], before[1] + 1e-10)
+            key = gtd.PoseKey(1, sample)
+            self.assertTrue(snapshots[-1][2].atPose3(key).equals(observed.atPose3(key), 1e-10))
 
     def test_inverse_kinematics_with_contact_patch(self):
         # Four points on one link exercise the shared contact-wrench key seed.

@@ -32,6 +32,11 @@ namespace gtdynamics {
 
 class Trajectory;
 
+/// Observe each per-slice IK seed (iteration zero) and completed LM iteration.
+/// Values are valid during the callback; copy them to retain a state.
+using InitializationIterationCallback =
+    std::function<void(size_t, size_t, double, const gtsam::Values&)>;
+
 class Initializer {
  private:
   const Kinematics kinematics_;
@@ -139,22 +144,24 @@ class Initializer {
      *      Noise drawn from a zero-mean gaussian distribution with a standard
      *      deviation of gaussian_noise.
      * @param[in] contact_points  PointOnLink objects.
+     * @param[in] iteration_callback Optional observer of each slice's seed and
+     * completed LM iterations: (sample index, iteration, GTSAM error, values).
      * @return Initial solution stored in gtsam::Values object.
      */
     gtsam::Values InitializeSolutionInverseKinematics(
         const Robot& robot, const std::string& link_name, const gtsam::Pose3& wTl_i,
         const std::vector<gtsam::Pose3>& wTl_t, const std::vector<double>& ts,
         double dt, double gaussian_noise = 1e-8,
-        const std::optional<PointOnLinks>& contact_points = {});
+        const std::optional<PointOnLinks>& contact_points = {},
+        const InitializationIterationCallback& iteration_callback = {});
 
     /** Initialize measured joints over a trajectory of contact phases.
      *
      * Each phase supplies a ConstraintSpec with contactPoints(). All contacts
      * are used, regardless of their isGround flag. Mixed ground/wall contacts
      * require a Patch or Point model without global ground priors.
-     * The same PointOnLink
-     * (link identity and exact COM-frame coordinates) in consecutive phases
-     * shares a landmark, regardless of point ordering. A point that disappears
+     * The same point on the same link in consecutive phases shares a landmark,
+     * regardless of point ordering. A point that disappears
      * and later returns gets a new landmark. Callers supply no touchdown IDs.
      *
      * Phases use original, inclusive sample indices. They must be ordered and

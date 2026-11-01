@@ -4,7 +4,8 @@
  * @file ContactInitializer.h
  * Sparse root-pose initialization from fixed forward-kinematics measurements.
  *
- * Each selected slice supplies material contact points in the root frame.
+ * Each selected slice supplies contact-point positions on the robot's links,
+ * expressed in the root frame.
  * Repeated observations of the same stance point share one world landmark. The
  * solver estimates root-to-world Pose3 states and those landmarks; joint
  * measurements and contact labels remain fixed. No floating-base reference
@@ -32,13 +33,13 @@ namespace gtdynamics::contact_init {
 enum class Model {
   /// Point2 XY landmarks on a hard plane; requires noncollinear sole points.
   Ground,
-  /// Point3 landmarks for a rigid, noncollinear material-point patch.
+  /// Point3 landmarks for a rigid patch of noncollinear contact points.
   Patch,
   /// Point3 landmarks for point contacts, with attitude ambiguities.
   Point
 };
 
-/** One fixed material-point measurement from forward kinematics.
+/** One FK measurement of a contact point fixed on a link.
  *
  * The pair (stanceId, pointIndex) identifies a shared world landmark. A foot's
  * next touchdown must have a fresh stanceId, even if it touches the same place.
@@ -49,10 +50,10 @@ struct Observation {
   std::string stanceId;
   /// Foot or link label, retained for diagnostics rather than data association.
   std::string foot;
-  /// Stable material-point index within the stance, not a collision centroid
+  /// Stable contact-point index within the stance, not a collision centroid
   /// ID.
   size_t pointIndex = 0;
-  /// Known material-point position in the chosen root frame, in metres.
+  /// Known contact-point position in the chosen root frame, in metres.
   gtsam::Point3 localPoint;
 };
 
@@ -139,7 +140,7 @@ struct Options {
   };
 };
 
-/// Identity and diagnostic labels of one shared stance material point.
+/// Identifiers and diagnostic labels for a contact point shared across a stance.
 struct Landmark {
   /// Generated stanceId:pointIndex label.
   std::string id;
@@ -147,7 +148,7 @@ struct Landmark {
   std::string stanceId;
   /// Foot or link label copied from the first observation.
   std::string foot;
-  /// Material-point index within this stance.
+  /// Contact-point index within this stance.
   size_t pointIndex = 0;
 };
 
@@ -168,7 +169,7 @@ struct IndexedObservation {
 struct Graph {
   /// Selected input measurements and their source slices, in caller order.
   std::vector<ContactMeasurements> measurements;
-  /// Indexed material-point observations for each frame.
+  /// Indexed contact-point observations for each frame.
   std::vector<std::vector<IndexedObservation>> observations;
   /// Unique stance points in discovery order.
   std::vector<Landmark> landmarks;
@@ -218,7 +219,7 @@ struct Snapshot {
   double rms = 0;
   /// Root-to-world poses, in frame order.
   std::vector<gtsam::Pose3> poses;
-  /// World material-point positions, in metres.
+  /// World contact-point positions, in metres.
   std::vector<gtsam::Point3> landmarks;
 };
 
@@ -255,7 +256,7 @@ struct Result {
   gtsam::Values values;
   /// Final root-to-world poses, in frame order.
   std::vector<gtsam::Pose3> poses;
-  /// Final world material-point positions.
+  /// Final world contact-point positions.
   std::vector<gtsam::Point3> landmarks;
   /// Initial state plus each completed iterate; empty when recordHistory is
   /// false.
@@ -285,8 +286,9 @@ struct Result {
 /** FK/contact-only alternative to per-frame inverse kinematics.
  *
  * The core registers frames through their shared stance points. Patch mode
- * also tries consistent material-point centroids and selects the lower-cost
- * seed using the original observations, without adding priors. It fixes one
+ * also tries centroids computed from the same contact points in each frame and
+ * selects the lower-cost seed using the original observations, without adding
+ * priors. It fixes one
  * exact pose per contact component, and jointly optimizes free poses and
  * landmarks. Optional identity motion factors connect those components and
  * retain only the first fixed pose. Upright and landmark-height factors do not
