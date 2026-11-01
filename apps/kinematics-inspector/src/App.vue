@@ -1,90 +1,92 @@
 <script setup>
-import { computed, markRaw, onBeforeUnmount, onMounted, ref } from 'vue';
-import { clearRecordingCache, loadRecording, referenceLabel } from './recording.js';
-import { disposeRobotTemplates } from './scene.js';
-import MethodPanel from './MethodPanel.vue';
-const data = ref(null), error = ref(''), frame = ref(0), stage = ref('smoothing'), showReference = ref(true), joint = ref(0), playing = ref(false);
-const selection = ref('full');
-const useImu = ref(true);
-const useLoopClosure = ref(true);
-const recordings = [{id:'turn', label:'Turn · 204–214 s · 50 Hz', directory:''}, {id:'full', label:'Entire trajectory · 5 Hz', directory:'full/'}];
-const directory = computed(() => selection.value === 'full'
-  ? `full${useImu.value ? '-imu' : ''}${useLoopClosure.value ? '-loop' : ''}/`
-  : useImu.value ? 'imu/' : '');
-let controller;
-let animation = 0, origin = 0, firstFrame = 0;
-const phase = computed(() => data.value?.record.phases.find(p => p.start <= frame.value && p.end >= frame.value));
-const motionCredit = computed(() => data.value?.record.motionSource?.licenseNotes[0]);
-function pause() { cancelAnimationFrame(animation); playing.value = false; }
-function scrub(value) { pause(); frame.value = Number(value); }
-function tick(time) {
-  if (!playing.value) return;
-  const next = firstFrame + Math.floor((time-origin)/1000/data.value.record.dt);
-  frame.value = Math.min(next, data.value.record.samples-1);
-  if (frame.value === data.value.record.samples-1) pause(); else animation = requestAnimationFrame(tick);
+import {computed,markRaw,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue';
+import {clearRecordingCache,historyFor,loadRecording,referenceLabel} from '../../shared/kinematics/recording.js';
+import {disposeRobotTemplates,ReplayScene} from '../../shared/kinematics/scene.js';
+import Timeline from '../../shared/kinematics/Timeline.vue';
+import FactorTable from '../../shared/kinematics/FactorTable.vue';
+import BiasTable from '../../shared/kinematics/BiasTable.vue';
+import Attribution from '../../shared/kinematics/Attribution.vue';
+import TracePlot from '../../shared/kinematics/TracePlot.vue';
+const data=ref(null),error=ref(''),frame=ref(0),iteration=ref(0),useImu=ref(true),useLoop=ref(true),prior=ref(50);
+const showReference=ref(true),showSlip=ref(true),slipThreshold=ref(5),view=ref('trajectory'),replaying=ref(false);
+const sceneElement=ref(null),timeline=ref(null),sceneError=ref('');
+const directory=computed(()=>`variants/${prior.value}${useImu.value?'-imu':''}${useLoop.value?'-loop':''}/`);
+const history=computed(()=>data.value?historyFor(data.value.record,'contact','smoothing',frame.value):[]);
+const state=computed(()=>history.value[Math.min(iteration.value,history.value.length-1)]);
+const run=computed(()=>data.value?.record.runs.contact);
+const finalIteration=computed(()=>history.value.at(-1)?.iteration??0);
+const metrics=computed(()=>state.value?.metrics);
+const contactSlip=computed(()=>{
+  if(!data.value||state.value?.contactSlipOffset===undefined)return [];
+  return Array.from({length:2},(_,foot)=>{
+    const offset=state.value.contactSlipOffset+(frame.value*2+foot)*7;
+    return data.value.floats[offset+6];
+  });
+});
+let controller,scene,timer;
+const number=(value,digits=3)=>value==null?'—':Math.abs(value)<1e-3&&value!==0?value.toExponential(2):value.toFixed(digits);
+function stopIterations(){clearInterval(timer);timer=null;replaying.value=false;}
+function selectIteration(value){stopIterations();iteration.value=Number(value);}
+function replay(){
+  if(replaying.value){stopIterations();return;}
+  iteration.value=0;replaying.value=true;
+  timer=setInterval(()=>{if(iteration.value>=history.value.length-1)stopIterations();else iteration.value++;},650);
 }
-function play() {
-  if (playing.value) { pause(); return; }
-  if (frame.value === data.value.record.samples-1) frame.value=0;
-  firstFrame=frame.value; origin=performance.now(); playing.value=true; animation=requestAnimationFrame(tick);
+function updateScene(){
+  if(scene&&state.value)scene.update(state.value,frame.value,showReference.value,state.value,{showSlip:showSlip.value,slipThreshold:slipThreshold.value/1000});
 }
-function changeStage(value) {
-  pause(); stage.value=value;
-  if (!data.value || !data.value.record.availableStages?.includes(value)) changeRecording(selection.value);
+function camera(value){view.value=value;if(value==='trajectory')scene?.fitPaths();else scene?.reset();}
+async function load(){
+  timeline.value?.pause();stopIterations();controller?.abort();
+  const request=new AbortController();controller=request;data.value=null;error.value='';sceneError.value='';
+  try{
+    const loaded=await loadRecording(request.signal,directory.value,'smoothing');
+    if(request.signal.aborted)return;
+    if(Object.keys(loaded.record.runs).join(',')!=='contact')throw new Error('This viewer requires a contact-only trajectory recording');
+    iteration.value=loaded.record.runs.contact.smoothing.length-2;
+    data.value=markRaw(loaded);
+  }catch(e){if(!request.signal.aborted)error.value=e.message;}
 }
-async function changeRecording(value, aided = useImu.value, closed = useLoopClosure.value) {
-  pause(); controller?.abort();
-  const request = new AbortController(); controller = request;
-  const savedFrame = value === selection.value ? frame.value : 0;
-  selection.value = value; useImu.value = aided; useLoopClosure.value = value === 'full' && closed;
-  data.value = null; error.value = ''; frame.value = savedFrame;
-  try {
-    const loaded = await loadRecording(request.signal, directory.value, stage.value);
-    if (request.signal.aborted) return;
-    data.value = markRaw(loaded);
-    joint.value = Math.max(0, loaded.record.jointNames.indexOf('left_knee_joint'));
-  } catch(e) { if(!request.signal.aborted) error.value=e.message; }
-}
-onMounted(() => changeRecording(selection.value));
-onBeforeUnmount(() => { pause(); controller?.abort(); clearRecordingCache(); disposeRobotTemplates(); });
+watch(data,async loaded=>{
+  scene?.dispose();scene=null;
+  if(!loaded)return;
+  await nextTick();
+  if(data.value!==loaded||!sceneElement.value)return;
+  try{
+    scene=new ReplayScene(sceneElement.value,loaded.model,loaded.record,loaded.floats,'#087f71');
+    updateScene();camera(view.value);
+  }catch(e){sceneError.value=e.message;}
+});
+watch([state,frame,showReference,showSlip,slipThreshold],updateScene);
+onMounted(load);
+onBeforeUnmount(()=>{controller?.abort();stopIterations();scene?.dispose();scene=null;clearRecordingCache();disposeRobotTemplates();});
 </script>
 <template>
-  <main :data-stage="stage" :data-frame="frame" :data-imu="useImu" :data-loop-closure="useLoopClosure">
-    <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / G1 WALKING</span><h1>Kinematics</h1><p>Full-trajectory kinematic optimization with contact and inverse-kinematics initialization.</p></div><span class="recorded-badge"><i></i> OFFLINE RECORDING</span></header>
-      <section class="toolbar">
-        <div class="recording-controls">
-        <div class="stage-selector" role="group" aria-label="Inspection stage"><button :aria-pressed="stage==='smoothing'" @click="changeStage('smoothing')">CM-Opt smoothing</button><button :aria-pressed="stage==='initializer'" @click="changeStage('initializer')">Initialization</button></div>
-        <select :value="selection" aria-label="Recording" @change="changeRecording($event.target.value)"><option v-for="r in recordings" :key="r.id" :value="r.id">{{r.label}}</option></select>
-        <label><input type="checkbox" :checked="useImu" @change="changeRecording(selection,$event.target.checked)"> IMU aiding</label>
-        <label :title="selection === 'full' ? 'Soft return-to-start position observation; no orientation constraint' : 'Available for the entire trajectory; the turn excerpt does not return to its start'"><input type="checkbox" :checked="useLoopClosure" :disabled="selection !== 'full'" @change="changeRecording(selection,useImu,$event.target.checked)"> Loop closure applied <small v-if="selection !== 'full'">(entire trajectory)</small></label>
-        </div>
-        <div v-if="data" class="settings"><label><input type="checkbox" v-model="showReference"> {{referenceLabel}}</label><label>Joint <select v-model.number="joint" aria-label="Joint to inspect"><option v-for="(name,index) in data.record.jointNames" :key="name" :value="index">{{name}}</option></select></label></div>
-      </section>
-    <div v-if="error" role="alert" class="error-banner"><h2>Recording could not be loaded</h2><p>{{error}}</p><p>Generate the saved data with <code>python apps/kinematics-inspector/scripts/export_recording.py</code> from the repository root.</p></div>
-    <div v-else-if="!data" class="loading" role="status">{{stage === 'smoothing' ? 'Loading smoothing iterations…' : 'Loading initializer histories…'}}</div>
+  <main class="kinematics-app" :data-frame="frame" :data-iteration="iteration" :data-imu="useImu" :data-loop-closure="useLoop" :data-prior="prior">
+    <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / G1</span><h1>Kinematics</h1><p>Full-trajectory contact-initialized smoothing · 219.8 s at 5 Hz.</p></div><span class="recorded-badge">OFFLINE RECORDING</span></header>
+    <section class="toolbar"><div class="recording-controls">
+      <label>Stationary contact σ <select v-model.number="prior" aria-label="Stationary contact sigma" @change="load"><option :value="50">50 mm · loose</option><option :value="20">20 mm · medium</option><option :value="5">5 mm · tight</option></select></label>
+      <label><input type="checkbox" v-model="useImu" @change="load"> IMU aiding</label><label><input type="checkbox" v-model="useLoop" @change="load"> Loop closure applied</label>
+    </div><div class="settings"><label><input type="checkbox" v-model="showReference"> {{referenceLabel}}</label><label><input type="checkbox" v-model="showSlip"> Foot slip</label></div></section>
+    <div v-if="error" role="alert" class="error-banner">{{error}}</div>
+    <div v-else-if="!data" role="status" class="loading">Loading trajectory and recorded iterations…</div>
     <template v-else>
-      <section class="timeline">
-        <p v-if="data.record.motionSource" class="motion-title">{{data.record.motionSource.title}}</p>
-        <div class="row"><div class="time-heading"><button class="play-button" @click="play">{{playing ? 'Pause walking' : 'Play walking'}}</button><strong>{{(frame*data.record.dt).toFixed(2)}} <small>/ {{((data.record.samples-1)*data.record.dt).toFixed(2)}} s</small></strong></div><span class="mono">Frame {{frame}} · phase {{data.record.phases.indexOf(phase)+1}} / {{data.record.phases.length}} · {{phase?.contacts.join(' + ') || 'flight'}}</span></div>
-        <input type="range" :value="frame" min="0" :max="data.record.samples-1" aria-label="Walking time" @input="scrub($event.target.value)">
-        <div class="phase-strip" :class="{dense:data.record.phases.length>80}" aria-label="Contact phases"><button v-for="(p,index) in data.record.phases" :key="index" :class="{active:p===phase,double:p.contacts.length===2}" :style="{flex:p.end-p.start+1}" :title="`Phase ${index+1}: ${p.contacts.join(' + ') || 'flight'}, frames ${p.start}–${p.end}`" :aria-label="`Jump to phase ${index+1}`" @click="scrub(p.start)"></button></div>
-        <div class="plot-foot"><span>Contact-aligned phases · click to jump</span><span>{{data.record.samples}} samples · {{data.record.graph.costFactors.toLocaleString()}} costs · {{data.record.graph.equalities.toLocaleString()}} equalities</span></div>
+      <section class="trajectory-viewer">
+        <header class="viewer-controls"><div class="button-group"><button :aria-pressed="view==='trajectory'" @click="camera('trajectory')">Fit trajectory</button><button :aria-pressed="view==='robot'" @click="camera('robot')">Follow robot</button></div><label v-if="showSlip">Slip threshold <input type="range" min="1" max="50" v-model.number="slipThreshold" aria-label="Slip threshold"> {{slipThreshold}} mm / interval</label></header>
+        <div ref="sceneElement" class="scene large-scene"><p v-if="sceneError" role="alert" class="error-banner">{{sceneError}}</p></div>
+        <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{referenceLabel}}</span><span v-if="showSlip" class="slip-legend">Yellow → red: continuing-contact displacement above {{slipThreshold}} mm per {{data.record.dt}} s</span></div>
+        <div v-if="showSlip" class="slip-readout"><span v-for="(distance,foot) in contactSlip" :key="foot">{{foot===0?'Left':'Right'}} foot: {{distance>=0?`${number(distance*1000,2)} mm`:'no continuing contact'}}</span><span>Arrows show displacement direction, enlarged for visibility.</span></div>
+        <Timeline ref="timeline" :record="data.record" v-model:frame="frame" />
       </section>
-      <div class="comparison"><MethodPanel v-for="method in ['contact','ik']" :key="method" :method="method" :stage="stage" :frame="frame" :show-reference="showReference" :data="data" :joint="joint" /></div>
-      <footer><strong>About this recording</strong>
-        <div v-if="motionCredit" class="motion-attribution">
-          <p><a :href="data.record.motionSource.sourceUrl">{{data.record.motionSource.title}}</a> from <a :href="data.record.motionSource.datasetUrl">{{data.record.motionSource.datasetName || 'G1 Moves'}}</a> by {{motionCredit.creator}}.<template v-if="motionCredit.performer"> Performer: {{motionCredit.performer}}.</template> Licensed under <a :href="motionCredit.licenseUrl">CC BY 4.0</a>.</p>
-          <p>{{motionCredit.changes}} Contacts are inferred from sole height and speed, not measured contact forces.</p>
-          <a :href="`./${directory}${motionCredit.localNotice}`">Motion attribution and modifications</a>
-        </div>
-        <p v-if="data.record.motionSource?.imu">Physical pelvis IMU: {{data.record.motionSource.imu.samples.toLocaleString()}} accelerometer and gyroscope samples at nominally 200 Hz. Original timestamps are retained. {{useImu ? 'Galilean IMU factors connect the slices, with world-frame COM velocities and one shared sensor-frame bias.' : 'The kinematic smoother does not use IMU factors.'}} <a :href="`./${directory}${data.record.motionSource.imu.file}`" download>Download IMU measurements</a>.</p>
-        <p v-if="useImu">Poses map COM coordinates into world coordinates (world_T_COM). The mounting transform maps IMU coordinates into the COM frame. GTSAM corrects sensor rotation and centripetal acceleration; angular-acceleration lever-arm terms are omitted. Initializers are unchanged. Aided and unaided objectives contain different factors; compare reference errors and physical residuals.</p>
-        <p>Ground contact displacement is a soft cost: σ={{data.record.graph.contactSlipSigmaMeters * 1000}} mm per axis per slice interval ({{data.record.dt}} s). Stance feet may slip.</p>
-        <p v-if="useLoopClosure">Loop closure adds a position prior on the final root COM at the anchored start position: σx=σy=30 cm, σz=5 cm. It adds no orientation constraint. This is a manually supplied observation for our smoother; it makes no assertion about loop closure in SuperOdom. Initializers and the LiDAR-inertial reference are unchanged.</p>
-        <p v-if="data.record.motionSource?.fullTrajectory">Contact labels are detected at 50 Hz with a local floor estimate, then sampled at 5 Hz. {{data.record.motionSource.detector.unsupportedSamples}} samples have no detected support. Weak identity-motion priors connect {{data.record.motionSource.detector.contactComponents}} contact components for initialization (translation σ=10 m, rotation σ=π rad). The reference trajectory retains its original vertical drift.</p>
-        <p>{{data.record.motionSource?.referenceDescription || 'Reference overlays are source root poses with measured-joint FK.'}} The first root pose anchors estimation; later reference poses are used for contact labeling and evaluation.</p>
-        <details v-if="useImu"><summary>IMU frames, noise, and priors</summary><pre>{{JSON.stringify(data.record.imuAiding,null,2)}}</pre></details>
-        <p>{{data.record.notes}}</p><p>Robot transforms and residuals were calculated offline from the example’s actual values; the viewer performs no optimization or forward kinematics.</p><details><summary>Source and input fingerprints</summary><pre>{{JSON.stringify(data.record.provenance,null,2)}}</pre></details><a :href="`./${directory}recording.json`" download>Download recording metadata</a> · <a href="./MODEL_LICENSE.txt">Robot model license</a></footer>
+      <section class="iteration-controls trajectory-iterations"><div class="row"><h2>CM-Opt iterations</h2><span class="mono">Iteration {{state.iteration}} / {{finalIteration}} · {{run.solver.iterations>=data.record.maxIterations?'iteration limit reached':'solver stopping criterion reached'}}</span></div>
+        <input type="range" min="0" :max="history.length-1" :value="iteration" aria-label="Smoothing iteration" @input="selectIteration($event.target.value)">
+        <div class="row"><div class="button-group"><button :disabled="iteration===0" @click="selectIteration(Math.max(0,iteration-1))" aria-label="Previous iteration">←</button><button @click="replay">{{replaying?'Pause iterations':'Replay iterations'}}</button><button :disabled="iteration===history.length-1" @click="selectIteration(Math.min(history.length-1,iteration+1))" aria-label="Next iteration">→</button></div><button @click="selectIteration(history.length-1)">Last iteration</button></div>
+      </section>
+      <FactorTable :record="data.record" :state="state" />
+      <section class="physical-summary"><div><span>Stance displacement RMS / interval</span><strong>{{number(metrics.stance_step_slip_rms_m*1000)}} <small>mm</small></strong></div><div><span>Contact height RMS</span><strong>{{number(metrics.stance_height_rms_m*1000)}} <small>mm</small></strong></div><div><span>LiDAR-inertial reference position RMS</span><strong>{{number(metrics.reference_root_translation_rms_m)}} <small>m</small></strong></div><div><span>Final COM − start anchor · XYZ</span><strong>{{state.closurePositionErrorWorld.map(v=>number(v)).join(', ')}} <small>m</small></strong></div></section>
+      <p class="model-note">Stationary contacts are soft 3D displacement costs, with σ={{prior}} mm per axis per {{data.record.dt}} s interval. Only this weight changes across the three contact settings. Foot-slip markers use the largest continuing sole-corner displacement per foot. Changing σ changes the objective weights; use physical residuals and the reference error when comparing settings.</p>
+      <div class="diagnostics-grid"><section class="plot-block"><div class="row"><h3>Smoothing objective</h3><span class="mono">{{number(metrics.cost)}}</span></div><TracePlot :values="history.map(s=>s.metrics.cost)" :selected="iteration" interactive label="Smoothing objective by iteration" @select="selectIteration" /></section><BiasTable :bias="state.bias" :aiding="data.record.imuAiding" caption="Estimated IMU bias · selected iteration" /></div>
+      <Attribution :record="data.record" :directory="directory" />
     </template>
   </main>
 </template>

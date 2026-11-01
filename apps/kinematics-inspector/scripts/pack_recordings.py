@@ -67,9 +67,15 @@ def write_replay_bundles(output: Path) -> None:
     ).hexdigest()
     full = {
         **record,
-        "availableStages": ["smoothing", "initializer"],
+        "availableStages": record.get("availableStages", ["smoothing", "initializer"]),
         "modelFingerprint": model_fingerprint,
     }
+    if full["availableStages"] == ["smoothing"]:
+        encoded = json.dumps(full, separators=(",", ":"), allow_nan=False).encode()
+        for name in ("recording.json.gz", "smoothing.json.gz"):
+            (output / name).write_bytes(gzip.compress(encoded, mtime=0))
+        print(f"Packed smoothing replay: {output}", flush=True)
+        return
     packed = {
         **full,
         "availableStages": ["smoothing"],
@@ -91,7 +97,12 @@ def write_replay_bundles(output: Path) -> None:
     for run in packed["runs"].values():
         states.extend(run["smoothing"])
     for state in states:
-        for field in ("poseOffset", "jointOffset", "velocityOffset"):
+        for field in (
+            "poseOffset",
+            "jointOffset",
+            "velocityOffset",
+            "contactSlipOffset",
+        ):
             if field not in state:
                 continue
             original = state[field]

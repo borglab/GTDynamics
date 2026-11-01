@@ -53,16 +53,20 @@ export function validateRecording(record, floats) {
     throw new Error('Unsupported or incomplete kinematics recording. Regenerate it with export_recording.py.');
   }
   const states = [record.reference];
-  for (const method of ['contact', 'ik']) {
+  for (const method of Object.keys(record.runs)) {
     const run = record.runs[method];
     if (run.smoothing.length !== run.solver.iterations + 2) throw new Error(`Incomplete ${method} smoothing history`);
-    states.push(...run.smoothing, ...run.initializer, ...run.ikFrames.flat());
+    states.push(...run.smoothing, ...(run.initializer || []), ...(run.ikFrames || []).flat());
   }
   const includesInitializers = !record.availableStages || record.availableStages.includes('initializer');
-  if (includesInitializers && (record.runs.ik.ikFrames.length !== record.samples || record.runs.ik.ikFrames.some(h => !h.length))) {
+  if (includesInitializers && record.runs.ik && (record.runs.ik.ikFrames.length !== record.samples || record.runs.ik.ikFrames.some(h => !h.length))) {
     throw new Error('Incomplete per-frame IK history');
   }
   for (const state of states) {
+    if (state.contactSlipOffset !== undefined && (!Number.isInteger(state.contactSlipOffset)
+        || state.contactSlipOffset < 0 || state.contactSlipOffset + state.frames*14 > floats.length)) {
+      throw new Error('Invalid contact slip storage');
+    }
     if (state.velocityOffset !== undefined && (!Number.isInteger(state.velocityOffset)
         || state.velocityOffset < 0 || state.velocityOffset + state.frames*3 > floats.length
         || state.bias?.length !== 6 || !state.bias.every(Number.isFinite))) {

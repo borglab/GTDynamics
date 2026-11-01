@@ -9,6 +9,7 @@
     "motion-snippets",
     "motion-planning",
     "contact-initialization",
+    "contact-vs-ik",
     "kinematics-inspector"
   ],
   "scripts": {
@@ -16,7 +17,7 @@
     "build": "node scripts/build.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 3000 --strictPort",
     "models": "python3 ../scripts/bootstrap_mujoco_models.py && python3 motion-planning/scripts/bootstrap_models.py",
-    "test": "npm test --workspace motion-planning && npm test --workspace contact-initialization && npm test --workspace kinematics-inspector"
+    "test": "npm test --workspace motion-planning && npm test --workspace contact-initialization && npm test --workspace contact-vs-ik && npm test --workspace kinematics-inspector"
   },
   "devDependencies": {
     "vite": "^6.2.2"

@@ -18,9 +18,15 @@
     "tag": "Walking initialization"
   },
   {
+    "id": "contact-vs-ik",
+    "title": "Contact vs IK",
+    "description": "Compare contact and inverse-kinematics initialization and recorded CM-Opt iterations on three ten-second G1 walking snippets.",
+    "tag": "Initialization comparison"
+  },
+  {
     "id": "kinematics-inspector",
     "title": "Kinematics",
-    "description": "Full-trajectory G1 kinematics optimization with contact and inverse-kinematics initialization. Inspect recorded CM-Opt iterations, link poses, contact residuals, and joint angles.",
+    "description": "Inspect a full G1 trajectory with contact initialization, Gal3 IMU aiding, loop closure, stationary-contact weights, factor errors, and foot slip.",
     "tag": "Kinematics smoothing"
   }
 ]

@@ -173,6 +173,8 @@ def main() -> None:
     parser.add_argument("--seconds", type=float, default=10.0)
     parser.add_argument("--fps", type=float, default=50.0)
     parser.add_argument("--full-trajectory", action="store_true", help="Use the entire source duration; pass --fps 5 for the overview")
+    parser.add_argument("--allow-disconnected", action="store_true", help="Retain unsupported samples and connect contact components with weak motion priors")
+    parser.add_argument("--local-floor", action="store_true", help="Use the full-clip rolling floor detector for snippet contact labels")
     args = parser.parse_args()
     if not (args.start_seconds >= 0 and args.seconds > 0 and 0 < args.fps <= 200):
         parser.error("Require nonnegative start, positive duration, and 0 < fps <= 200")
@@ -227,7 +229,7 @@ def main() -> None:
     speeds = np.linalg.norm(np.gradient(soles, 1 / args.fps, axis=0)[:, :, :, :2], axis=3).min(axis=2)
     floor = float(np.percentile(heights.min(axis=1), 5))
     _, support, contacts, handovers = detect_support(heights, speeds, floor, .04, .06, .5, 1., 2, 3)
-    if args.full_trajectory:
+    if args.full_trajectory or args.local_floor:
         # Detect at 50 Hz: 5 Hz is too coarse for sole velocities and touchdown.
         # A local floor tracks reference vertical drift for LABELING only; it
         # never modifies the reference trajectory or the solver's ground plane.
@@ -245,12 +247,12 @@ def main() -> None:
         _, dense_support, _, handovers = detect_support(dense_heights - local_floor[:, None], dense_speeds, 0., .04, .06, .5, 1., 2, 3)
         support = dense_support[np.minimum(np.rint(target * 50).astype(int), len(dense_support) - 1)]
         contacts = support_intervals(support)
-        floor = float(local_floor[0])
+        floor = float(np.interp(args.start_seconds, detection_times, local_floor))
     for k, sample in enumerate(samples):
         sample["support"] = {side: bool(support[k, i]) for i, side in enumerate(feet)}
     frames, sampling = sample_frames(samples, contacts)
     components = component_count(frames)
-    if not args.full_trajectory and (not support.any(axis=1).all() or components != 1):
+    if not args.full_trajectory and not args.allow_disconnected and (not support.any(axis=1).all() or components != 1):
         raise ValueError("Choose a walking window with continuous connected support")
     translation = -np.array([qpos[0, 0], qpos[0, 1], floor])
     qpos[:, :3] += translation
@@ -286,8 +288,8 @@ def main() -> None:
         "detector": {"floorHeightMeters": floor, "onHeightMeters": .04, "offHeightMeters": .06,
                      "onSpeedMetersPerSecond": .5, "offSpeedMetersPerSecond": 1.,
                      "bridgeSamples": 2, "minimumSupportSamples": 3, "handoverCorrections": handovers,
-                     "detectionRateHz": 50 if args.full_trajectory else args.fps,
-                     "floorEstimate": "rolling 1.02 s fifth percentile for labels only" if args.full_trajectory else "window fifth percentile",
+                     "detectionRateHz": 50 if args.full_trajectory or args.local_floor else args.fps,
+                     "floorEstimate": "rolling 1.02 s fifth percentile for labels only" if args.full_trajectory or args.local_floor else "window fifth percentile",
                      "unsupportedSamples": int((~support.any(axis=1)).sum()), "contactComponents": components},
         "imu": {"file": "imu.json", "samples": int(last - first), "physicalPart": "pelvis",
                 "frame": "pelvis", "nominalRateHz": 200, "usedBySmoother": False,

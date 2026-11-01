@@ -25,6 +25,33 @@ from numpy.typing import NDArray
 
 REPO = Path(__file__).resolve().parents[3]
 APP = Path(__file__).resolve().parents[1]
+FACTOR_TYPES = {
+    "joint": ("Joint measurements", "PriorFactor<double>", "0.03 rad"),
+    "height": ("Ground contact height", "ContactHeightFactor", "0.01 m"),
+    "stationary": (
+        "Stationary contacts",
+        "ContactEqualityFactor",
+        "per-axis displacement",
+    ),
+    "root": (
+        "Root motion regularization",
+        "BetweenFactor<Pose3>",
+        "rotation 0.3 rad; translation 0.1 m",
+    ),
+    "anchor": ("Initial root pose", "PriorFactor<Pose3>", "1e-5 rad / m"),
+    "imu": (
+        "IMU preintegration",
+        "GalileanImuFactor",
+        "propagated preintegration covariance",
+    ),
+    "bias": (
+        "Shared IMU bias",
+        "PriorFactor<ConstantBias>",
+        "accel 0.5 m/s²; gyro 0.0001 rad/s",
+    ),
+    "velocity": ("Initial COM velocity", "PriorFactor<Vector3>", "3 m/s"),
+    "closure": ("Return to start", "PoseTranslationPrior3D", "XY 0.30 m; Z 0.05 m"),
+}
 sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 import kinematic_walk as example
 from mujoco_io import KinematicRecording, load_model, load_recording, pose
@@ -72,6 +99,7 @@ class Recorder:
         ]
         self.chunks: list[bytes] = []
         self.offset = 0
+        self.factor_groups: dict[str, gtsam.NonlinearFactorGraph] = {}
 
     def append(self, array: NDArray[Any]) -> int:
         data = np.asarray(array, dtype="<f4")
@@ -154,6 +182,14 @@ class Recorder:
             self.walk, self.costs, self.constraints, values
         )
         state["frameMetrics"] = self.frame_metrics(values)
+        if self.factor_groups:
+            state["factorErrors"] = {
+                name: graph.error(values) for name, graph in self.factor_groups.items()
+            }
+            np.testing.assert_allclose(
+                sum(state["factorErrors"].values()), state["metrics"]["cost"], rtol=1e-9
+            )
+            state["contactSlipOffset"] = self.append(self.contact_slip(values))
         state["endpointDisplacementWorld"] = (
             values.atPose3(
                 gtd.PoseKey(self.walk.root.id(), self.walk.count - 1)
@@ -167,6 +203,25 @@ class Recorder:
             - self.walk.anchor.translation()
         ).tolist()
         return state
+
+    def contact_slip(self, values: gtsam.Values) -> NDArray[np.float64]:
+        """Record the largest continuing-corner displacement per foot and slice.
+
+        Each row stores previous XYZ, current XYZ, and displacement in metres.
+        A displacement of -1 means no continuing contact. Frames are world axes;
+        no contact geometry or forward kinematics is recomputed in the browser.
+        """
+        slips = np.zeros((self.walk.count, 2, 7))
+        slips[:, :, 6] = -1
+        for k, _, continuing in example.contact_slices(self.walk.trajectory):
+            for point in continuing:
+                foot = 0 if point.link.name().startswith("left") else 1
+                previous = point.predict(values, k - 1)
+                current = point.predict(values, k)
+                distance = float(np.linalg.norm(current - previous))
+                if distance > slips[k, foot, 6]:
+                    slips[k, foot] = np.r_[previous, current, distance]
+        return slips
 
     def frame_metrics(self, values: gtsam.Values) -> dict[str, list[float]]:
         height, slip, joint, root = [], [], [], []
@@ -261,6 +316,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=APP / ".cache/openio")
     parser.add_argument(
+        "--methods", nargs="+", choices=["contact", "ik"], default=["contact", "ik"]
+    )
+    parser.add_argument(
+        "--smoothing-only",
+        action="store_true",
+        help="Do not capture initializer histories",
+    )
+    parser.add_argument(
         "--imu",
         action="store_true",
         help="Add Gal3 IMU factors, world COM velocities, and one shared bias",
@@ -316,19 +379,39 @@ def main() -> None:
             setattr(contact_options, name, contact_settings[name])
     model = load_model(args.data)
     recorder = Recorder(walk, model)
-    costs, constraints, keys = example.build_problem(walk, args.contact_slip_sigma)
+    groups: dict[str, gtsam.NonlinearFactorGraph] = {}
+    costs, constraints, keys = example.build_problem(
+        walk, args.contact_slip_sigma, groups
+    )
     kinematic_costs = gtsam.NonlinearFactorGraph(costs)
     aiding = build_imu_aiding(walk, args.data) if args.imu else None
     if aiding is not None:
         costs.push_back(aiding.factors)
+        for name, start, end in (
+            ("imu", 0, walk.count - 1),
+            ("bias", walk.count - 1, walk.count),
+            ("velocity", walk.count, walk.count + 1),
+        ):
+            group = gtsam.NonlinearFactorGraph()
+            for index in range(start, end):
+                group.add(aiding.factors.at(index))
+            groups[name] = group
     if args.loop_closure:
-        costs.add(loop_closure_factor(walk))
+        closure = gtsam.NonlinearFactorGraph()
+        closure.add(loop_closure_factor(walk))
+        costs.push_back(closure)
+        groups["closure"] = closure
     recorder.constraints = constraints
     runs = {}
-    for method in ("contact", "ik"):
+    for method in args.methods:
         # Initializer histories solve the same kinematic problem in both modes.
         recorder.costs = kinematic_costs
-        contact_result = gtd.contact_init.Result() if method == "contact" else None
+        recorder.factor_groups = {}
+        contact_result = (
+            gtd.contact_init.Result()
+            if method == "contact" and not args.smoothing_only
+            else None
+        )
         ik_frames: list[list[dict[str, Any]]] = [[] for _ in range(walk.count)]
 
         def ik_iteration(
@@ -345,7 +428,7 @@ def main() -> None:
             method,
             keys,
             contact_result,
-            ik_iteration if method == "ik" else None,
+            ik_iteration if method == "ik" and not args.smoothing_only else None,
             contact_options=contact_options,
         )
         initializer = []
@@ -370,7 +453,7 @@ def main() -> None:
                     "Contact history interpolation differs from the native adapter"
                 )
             assert len(initializer) == contact_result.iterations + 1
-        else:
+        elif method == "ik" and not args.smoothing_only:
             assert all(
                 history and history[0]["iteration"] == 0 for history in ik_frames
             )
@@ -388,6 +471,7 @@ def main() -> None:
         if aiding is not None:
             seed = aiding.initialize(walk, seed)
         recorder.costs = costs
+        recorder.factor_groups = groups
         smoothing = [
             recorder.trajectory(seed, iteration=None, label="Initializer output")
         ]
@@ -421,7 +505,7 @@ def main() -> None:
             "solver": solver,
             "smoothing": smoothing,
             "initializer": initializer,
-            "ikFrames": ik_frames if method == "ik" else [],
+            "ikFrames": ik_frames if method == "ik" and not args.smoothing_only else [],
             "sparseSamples": sparse_samples,
         }
 
@@ -486,8 +570,15 @@ def main() -> None:
         )
     if metadata.get("motionSource", {}).get("imu"):
         source_files.append(APP / "scripts/import_openio.py")
+    equality_graph = constraints.penaltyGraph()
+    equality_dimension = sum(
+        equality_graph.at(i).dim() for i in range(equality_graph.size())
+    )
     record = {
         "schemaVersion": 1,
+        "availableStages": (
+            ["smoothing"] if args.smoothing_only else ["smoothing", "initializer"]
+        ),
         "title": "G1 walking · kinematics smoothing",
         "motionSource": metadata.get("motionSource"),
         "imuAiding": aiding.metadata if aiding is not None else {"enabled": False},
@@ -516,6 +607,29 @@ def main() -> None:
             "contactSlipSigmaMeters": args.contact_slip_sigma,
             "equalities": constraints.size(),
             "inequalities": 0,
+            "factorGroups": [
+                {
+                    "id": name,
+                    "label": FACTOR_TYPES[name][0],
+                    "factorType": FACTOR_TYPES[name][1],
+                    "noise": (
+                        f"{args.contact_slip_sigma:g} m per axis per slice interval"
+                        if name == "stationary"
+                        else FACTOR_TYPES[name][2]
+                    ),
+                    "count": graph.size(),
+                    "dimension": graph.at(0).dim() if graph.size() else 0,
+                }
+                for name, graph in groups.items()
+            ],
+            "equalityDimension": equality_dimension,
+        },
+        "slipVisualization": {
+            "feet": ["left", "right"],
+            "stride": 7,
+            "layout": "previous XYZ, current XYZ, displacement metres; -1 means inactive",
+            "frame": "world",
+            "measurement": "largest displacement among continuing sole corners, per adjacent slice interval",
         },
         "provenance": {
             "revision": subprocess.check_output(

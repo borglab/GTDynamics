@@ -9,7 +9,8 @@ be opened directly.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [Contact Initialization](contact-initialization/README.md): replay C++ GTSAM walking initialization, inspect native timings, and switch between two G1 motion sequences.
 
-- [Kinematics](kinematics-inspector/README.md): inspect every offline initialization and full-walk CM-Opt iteration from contact and IK starting points.
+- [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
+- [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets. This is the last tab.
 
 ## Local preview
 

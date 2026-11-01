@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ReplayScene } from './scene.js';
-import { historyFor, jointValue, referenceLabel } from './recording.js';
-import TracePlot from './TracePlot.vue';
+import { ReplayScene } from '../../shared/kinematics/scene.js';
+import { historyFor, jointValue, referenceLabel } from '../../shared/kinematics/recording.js';
+import TracePlot from '../../shared/kinematics/TracePlot.vue';
+import BiasTable from '../../shared/kinematics/BiasTable.vue';
 const props = defineProps({ method: String, stage: String, frame: Number, showReference: Boolean, data: Object, joint: Number });
 const sceneElement = ref(null), selection = ref(0), replaying = ref(false), sceneError = ref('');
 let scene, timer;
@@ -54,19 +55,7 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
       <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.converged ? 'Converged.' : 'Stopped at the iteration limit; convergence criterion not met.' }}</p>
       <p class="scope" v-if="stage==='smoothing'">Iteration 0: feasible initial guess. CM-Opt limit: {{ data.record.maxIterations }} iterations.</p>
     </section>
-    <section class="plot-block bias-values">
-      <h3>{{stage === 'smoothing' ? 'Estimated IMU bias · selected iteration' : 'Estimated IMU bias · final smoothing iteration'}}</h3>
-      <template v-if="bias">
-        <table><thead><tr><th scope="col">Sensor</th><th scope="col">x</th><th scope="col">y</th><th scope="col">z</th></tr></thead><tbody>
-          <tr><th scope="row">Accelerometer · m/s²</th><td v-for="(value,axis) in bias.slice(0,3)" :key="axis">{{number(value,5)}}</td></tr>
-          <tr><th scope="row">Gyroscope · rad/s</th><td v-for="(value,axis) in bias.slice(3)" :key="axis">{{number(value,5)}}</td></tr>
-          <tr v-if="data.record.imuAiding.stationaryCalibration"><th scope="row">Gyroscope prior · rad/s</th><td v-for="(value,axis) in data.record.imuAiding.biasPriorMean.slice(3)" :key="axis">{{number(value,5)}}</td></tr>
-        </tbody></table>
-        <p class="scope">Pelvis IMU measurement axes. One constant bias shared by all slices.</p>
-        <p v-if="data.record.imuAiding.stationaryCalibration" class="scope">Gyro prior from the initial 0–25 s stationary interval; σ={{data.record.imuAiding.biasPriorSigmas[3]}} rad/s per axis.</p>
-      </template>
-      <p v-else class="scope">Bias is not estimated without IMU aiding.</p>
-    </section>
+    <BiasTable :bias="bias" :aiding="data.record.imuAiding" :caption="stage==='smoothing'?'Estimated IMU bias · selected iteration':'Estimated IMU bias · final smoothing iteration'" />
     <section class="plot-block">
       <div class="row"><h3>{{ stage==='smoothing' ? 'Smoothing objective' : 'Initializer objective' }}</h3><strong class="mono">{{ number(errors[index], 5) }}</strong></div>
       <TracePlot :values="errors" :selected="index" interactive label="Objective at every saved iteration" @select="select" />
