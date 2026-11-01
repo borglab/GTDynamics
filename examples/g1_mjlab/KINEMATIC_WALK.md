@@ -63,6 +63,43 @@ GTDynamics COM-frame forward kinematics against MuJoCo at three samples.
 A newly recorded or different walk needs a matching `--contacts` dataset.
 `--max-frames 12` is a diagnostic prefix; it is never the default benchmark.
 
+## Estimating only at contact-initializer slices
+
+For irregular contact-selected sampling, initialize before building the graph:
+
+```python
+source = load_walk(data, contacts_path)
+walk, seed, initialization = initialize_contact_slices(source, contact_buffer=1)
+costs, constraints, keys = build_problem(walk)
+seed = seed.extract(keys)
+solution, solver = solve_cm(costs, constraints, seed, walk.root.id(), 10)
+```
+
+The native `contact_init.Result.slices()` API returns the exact source slices
+used by `Initializer.InitializeSolutionContacts`, in pose order, excluding
+dense interpolated outputs. Pass a `Result` as `diagnostics` and `contactBuffer=1`
+to that existing call. Slice indices retain their original values; timestamps
+are `slice.k * dt`, also available as `result.graph.measurements[i].time`.
+Each continuous foot stance must retain two slices after trimming both ends.
+The initializer also selects phase boundaries where a trusted contact remains
+and supplemental slices in long stances, at intervals of at most one second.
+
+`initialize_contact_slices` reindexes those states into contiguous solver keys
+and constructs the reduced `Trajectory` from the source phases. It preserves
+`walk.source_indices` for reference alignment and `walk.times` in seconds from
+the recording start. The smoother keeps source contact specifications; it
+removes stationary-contact edges across lift-offs skipped by sparse sampling.
+The seed is the native solution at those exact slices, not another initializer
+run. Its first retained pose uses the original initial gauge; no later reference
+pose enters estimation.
+
+`imu_aiding.build_imu_aiding` integrates one `pim` between each pair of actual
+`walk.times`, clipping native IMU intervals at both ends. Velocity seeds use
+finite differences at those same times. Stationary-contact sigma remains a
+displacement sigma per selected interval, not a velocity sigma. Contact vs IK
+continues using uniform snippet sampling; the Kinematics app uses this reduced
+trajectory workflow.
+
 ## Graph construction
 
 Each state contains 30 link COM poses and 29 scalar joint angles. Contact
@@ -158,6 +195,34 @@ the reference-root error is not used to tune either run.
 
 The detailed JSON is an ignored local output. Compact measured results are
 recorded below so the example stays small.
+
+The soft contact displacement cost is configurable with
+`--contact-slip-sigma` (metres per axis per adjacent slice interval; default
+0.005). `build_problem(walk, contact_slip_sigma=...)` exposes the same setting.
+This is a displacement sigma, not a velocity sigma, and is not scaled with sample
+rate. The Open-IO app uses 0.05 to allow more stance slip during turns; its
+[comparison](../../apps/kinematics-inspector/README.md#contact-slip) retains the
+5/20/50 mm experiment. The MJLab timing results below use the original 0.005.
+
+## Optional Gal3 IMU aiding
+
+For recordings containing native IMU timestamps, `imu_aiding.py` constructs
+GTSAM `PreintegratedImuMeasurementsG` objects (`pim`, or `pims` for a collection)
+and calls the wrapped `Kinematics.imuFactors` trajectory builder. It adds one
+world-frame COM velocity per slice and one shared sensor-frame bias, with explicit
+velocity and bias priors. Existing `solve_cm` handles these additional variables.
+
+Poses map COM coordinates into world coordinates. Velocity is the world-frame
+linear velocity of that COM, not the six-dimensional body twist. The model's
+`COM_T_IMU` transform is passed as `body_P_sensor`; specific force includes gravity
+at rest. GTSAM applies rotation and centripetal lever-arm corrections but omits
+the angular-acceleration lever-arm term. Native timestamps are integrated over
+exact slice intervals, including phase boundaries and flight.
+
+The [Kinematics app](../../apps/kinematics-inspector/README.md#imu-aiding) exports
+and displays both aided and unaided solves for Open-IO. See its documentation for
+noise assumptions, priors, regeneration commands, and measured limitations.
+The timing comparison above continues to measure the kinematics-only problem.
 
 ## Measured whole-walk comparison (October 31, 2026)
 
@@ -260,9 +325,13 @@ GTDynamics keys, in a standard `gtsam.Values` object.
 
 ## Inspect solver iterations
 
-The [Kinematics app](../../apps/kinematics-inspector/README.md) uses the same
-example to process a separate 637-frame G1 Moves JazzWalk capture. It replays
-ten outer CM-Opt iterations from both initializations, the sparse
-contact initializer history, and IK history for each motion frame. Its offline
-exporter calls this example with optional observers. The timing driver leaves
-those observers disabled.
+The [Contact vs IK app](../../apps/contact-vs-ik/README.md) uses the same example
+on three ten-second SSIO G1 walking snippets. It replays up to ten outer CM-Opt
+iterations from both initializations, the sparse contact initializer history,
+and IK history for each motion frame. Its offline exporter calls this example
+with optional observers. The timing driver leaves those observers disabled.
+
+The [Kinematics app](../../apps/kinematics-inspector/README.md) estimates the
+entire SSIO clip on buffered contact-selected slices, with optional Gal3 IMU
+aiding and a return-to-start position prior. It stores only initial and final
+snapshots, factor errors, slip diagnostics, and recorded optimization timings.
