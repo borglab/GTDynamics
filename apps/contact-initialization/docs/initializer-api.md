@@ -10,8 +10,8 @@ estimates floating-base poses from repeated contacts. It takes a
 `Trajectory` of `Phase` objects whose `ConstraintSpec`s expose `contactPoints()`.
 `FootContactConstraintSpec` implements this interface. Contact points
 use link **COM coordinates**, as do `PointOnLink` and `Robot::forwardKinematics`.
-The same link and exact material-point coordinates in consecutive phases keep
-the same landmark identity, independent of point ordering. A point that disappears
+The same point on the same link shares a landmark across consecutive phases,
+regardless of point ordering. A point that disappears
 and later returns gets a fresh landmark. Callers do not supply touchdown IDs or
 a second contact schedule.
 
@@ -55,7 +55,7 @@ walking examples. For a contact away from the ground plane, use
 `PointOnLink(link, localPoint, false)` (the same constructor is wrapped in Python).
 `ConstraintSpec::groundContactPoints()` selects the flagged contacts for
 kinematic height objectives. The initializer uses **all** `contactPoints()`;
-classification does not change material-point identity or landmark continuity.
+changing `isGround` does not change which contact points share a landmark.
 For mixed ground/wall contacts, select `Model::Patch` or `Model::Point` and leave
 `addGroundFactors` disabled. `Model::Ground` still imposes its global level-ground
 model; the flag does not change that solver option.

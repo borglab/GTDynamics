@@ -31,8 +31,8 @@ requires WebGL, but no native server or Python process. All production asset
 URLs are relative.
 
 The viewer uses `mujoco-js` and the detailed 29-joint Unitree G1 model from the
-same pinned Menagerie checkout as Motion Snippets. It shares the compiled-model
-mesh renderer with Motion Planning. Measured joint angles drive MuJoCo forward
+pinned Menagerie checkout maintained by `scripts/bootstrap_mujoco_models.py`.
+It shares the compiled-model mesh renderer with Motion Planning. Measured joint angles drive MuJoCo forward
 kinematics; recorded GTSAM event poses place the robot, snapshots, and reference
 overlay. The browser replays these configurations without advancing physics.
 Contact footprints and solver recordings retain their original geometry.
@@ -84,7 +84,7 @@ See [the integration example and API contract](docs/initializer-api.md).
 
 ## Factor graph and native solve
 
-For a material sole point `a_j`, FK at event `i` supplies a fixed measurement
+For a fixed sole point `a_j`, FK at event `i` supplies a fixed measurement
 `p_ij = root_T_foot(q_i) a_j`. Each touchdown creates a fresh stance landmark
 set; all events within that stance share it. The objective is
 
@@ -99,10 +99,11 @@ The default adds no motion or attitude prior. Optional factors are described bel
 
 The initializer first traverses the contact graph, registering frames against
 already placed contacts using a small rigid SVD fit. For 3D patches it also
-tries a traversal using each patch's material-point centroid, retaining the
+tries a traversal using the centroid of each patch's contact points, retaining the
 seed with lower contact cost on the full patch observations. This avoids
 accumulating foot-rocking tilt in the seed without adding height or attitude
-constraints. Changing material-point subsets skip the centroid candidate. Then
+constraints. If the set of contact points changes between frames, it skips the
+centroid candidate. Then
 `gtsam::LevenbergMarquardtOptimizer` jointly updates all free event `Pose3` and
 contact variables, with analytic Jacobians and multifrontal Cholesky. Numerical
 LM diagonal damping permits point-mode solves but adds no measured attitude
@@ -114,7 +115,7 @@ The app offers two contact models, both with free `Point3` landmark heights:
 | Mode | Contact variables | Assumption |
 | --- | --- | --- |
 | Contact-only sole patch | Three `Point3` landmarks per stance | Stationary rigid sole, with no terrain constraint |
-| One material point | One `Point3` per stance | Point support; rotations remain ambiguous |
+| One contact point | One `Point3` per stance | Point support; rotations remain ambiguous |
 
 Landmark heights are constrained only when the height-prior checkbox is enabled.
 The native API and recording archive also retain the hard-floor `Model::Ground`
@@ -182,10 +183,10 @@ nearest-rank quantile; with 11 repetitions it is the maximum sample.
 
 | Sequence / mode | Native LM median | Initializer total median | LM iterations | 3D contact RMS |
 | --- | ---: | ---: | ---: | ---: |
-| 8 s policy / contact-only patch | 266.78 ms | 267.32 ms | 100, cap reached | 10.85 mm |
-| 8 s policy / one point | 5.29 ms | 5.42 ms | 7 | 1.89 mm |
-| 30 s capture / contact-only patch | 65.44 ms | 65.82 ms | 68 | 17.67 mm |
-| 30 s capture / one point | 5.84 ms | 5.93 ms | 10 | 15.34 mm |
+| 8 s policy / contact-only patch | 267.24 ms | 267.80 ms | 100, cap reached | 10.85 mm |
+| 8 s policy / one point | 5.49 ms | 5.61 ms | 7 | 1.89 mm |
+| 30 s capture / contact-only patch | 65.24 ms | 65.62 ms | 68 | 17.67 mm |
+| 30 s capture / one point | 6.12 ms | 6.22 ms | 10 | 15.34 mm |
 
 The table above shows the configurations without optional priors. All eight combinations
 are saved in the recording files and compared in the UI. The archive includes

@@ -5,13 +5,35 @@ tab. [registry.json](registry.json) supplies the tab labels, overview links, and
 the list of apps to build. Each app keeps its own Vue/Vite project and can also
 be opened directly.
 
-- [Motion Snippets](motion-snippets/README.md): MuJoCo playback of robot motion clips.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [Contact Initialization](contact-initialization/README.md): replay C++ GTSAM walking initialization, inspect native timings, and switch between two G1 motion sequences.
 
+- [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
+- [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets. This is the last tab.
+
 ## Local preview
 
-Use **Node.js 22+**, npm, Python 3, and Git. From the repository root:
+Use **Node.js 22+**, npm, Python 3, Git, and [Git LFS](https://git-lfs.com/).
+Recordings and compiled display geometry are stored in LFS. Install Git LFS,
+then hydrate the app assets from the repository root before running the apps:
+
+```bash
+git lfs install
+git lfs pull --include="apps/**" --exclude=""
+```
+
+Developers who do not need the apps can skip LFS downloads when cloning:
+
+```bash
+GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/borglab/GTDynamics.git
+```
+
+Run the LFS pull above later to obtain the current app assets. This avoids
+downloading their contents during checkout; ordinary Git history still includes
+large assets committed before the LFS migration. Pages CI downloads LFS assets
+before testing and building, so the deployed site contains real files.
+
+From the repository root:
 
 ```bash
 cd apps
@@ -46,8 +68,8 @@ its exact origin (for example, `http://cyber:3000`) to the comma-separated
 The first model bootstrap downloads the pinned MuJoCo Menagerie models.
 Meshes and generated asset manifests stay out of Git; the production build
 copies the actual model files into the site. Model licenses are included in
-their asset directories. Motion Snippets' model cache lives in its `.cache/`;
-its bootstrap also maintains the model links under `models/mujoco/`.
+their asset directories. The G1 cache lives under `models/mujoco/.cache/`;
+the bootstrap maintains its model link under `models/mujoco/`.
 
 To preview exactly what GitHub Pages will serve, including recorded planning:
 
@@ -57,7 +79,7 @@ npm run preview
 ```
 
 Both commands use port 3000, so stop the dev server before starting preview.
-The static site is assembled in `apps/dist/`, including both apps, model assets,
+The static site is assembled in `apps/dist/`, including all registered apps, model assets,
 and the shared navigation. Asset URLs are relative, so the same build works at
 `/`, `/GTDynamics/`, and on a custom domain.
 
@@ -120,6 +142,10 @@ The workflow follows GitHub's [custom Pages workflow](https://docs.github.com/en
    in the development launcher and Pages build.
 4. If it needs downloaded assets, add its bootstrap to the `models` script.
    Native/server functionality needs an explicit static mode for Pages.
+5. Start robot visualization with [the shared viewport and camera](shared/README.md).
+   Use `RobotViewport` for canvas, controls, stage, resizing, animation, and
+   cleanup; use `CameraController` for fit and follow views. Supply live MuJoCo
+   poses or saved body transforms from the app. Add overlays to its scene.
 
 The active app loads only when its tab is selected. Leaving that tab unloads it,
 so inactive robot simulations do not keep running in the background. Browser
@@ -143,5 +169,5 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
   node tests/site.browser.mjs
 ```
 
-It checks navigation, keyboard tabs, mobile layout, physics playback in both
-apps, recorded iteration scrubbing, and requests under a project-site prefix.
+It checks navigation, keyboard tabs, mobile layout, physics playback, recorded
+iteration scrubbing, and requests under a project-site prefix.

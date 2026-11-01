@@ -19,21 +19,29 @@ import numpy as np
 from export_g1_contacts import digest, rounded
 from contact_discovery import component_count, refine_handovers, sample_frames
 
-
 REVISION = "895d064b2385725e6aabf540461c219afc3e0916"
 CLIP = "J_Dance0_StepTouch"
 CSV_PATH = f"dance/{CLIP}/retarget/{CLIP}.csv"
 CSV_SHA256 = "d821d4ce0623242965c1f153fc8f8e0fb306294d1c084535ef27d9a3d36322a0"
+CLIPS = {
+    CLIP: (CSV_SHA256, "StepTouch", "g1-steptouch-30s", 30.0),
+    "J_ShortDance16_JazzWalk": (
+        "f8f61ea840a38da7a7c9ce468dcdf4643d47ad1e055e7292a278735e60ae1309",
+        "JazzWalk",
+        "g1-jazzwalk",
+        637 / 60,
+    ),
+}
 DATASET_URL = "https://huggingface.co/datasets/exptech/g1-moves"
 SOURCE_URL = f"{DATASET_URL}/resolve/{REVISION}/{CSV_PATH}"
 FPS = 60.0
 
 
-def download(path):
+def download(path, url=SOURCE_URL, checksum=CSV_SHA256):
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(urllib.request.urlopen(SOURCE_URL, timeout=60).read())
-    if digest(path) != CSV_SHA256:
+        path.write_bytes(urllib.request.urlopen(url, timeout=60).read())
+    if digest(path) != checksum:
         raise ValueError(f"Source checksum mismatch: {path}")
 
 
@@ -94,6 +102,12 @@ def detect_support(
 def main():
     app = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--clip", choices=CLIPS, default=CLIP)
+    parser.add_argument(
+        "--recording-output",
+        type=Path,
+        help="Also save model.mjb, walk.npz and walk.json for the kinematics example",
+    )
     parser.add_argument(
         "--model", type=Path, default=app.parents[1] / "models/mujoco/unitree_g1/g1.xml"
     )
@@ -103,7 +117,9 @@ def main():
         "--output", type=Path, default=app / "public/g1-steptouch-30s.json"
     )
     parser.add_argument("--start-seconds", type=float, default=0.0)
-    parser.add_argument("--seconds", type=float, default=30.0)
+    parser.add_argument(
+        "--seconds", type=float, help="Defaults to the clip's selected duration"
+    )
     parser.add_argument("--on-height", type=float, default=0.04)
     parser.add_argument("--off-height", type=float, default=0.06)
     parser.add_argument("--on-speed", type=float, default=0.5)
@@ -111,6 +127,11 @@ def main():
     parser.add_argument("--bridge-samples", type=int, default=2)
     parser.add_argument("--minimum-support-samples", type=int, default=3)
     args = parser.parse_args()
+    checksum, title, sequence_id, seconds = CLIPS[args.clip]
+    csv_path = f"dance/{args.clip}/retarget/{args.clip}.csv"
+    source_url = f"{DATASET_URL}/resolve/{REVISION}/{csv_path}"
+    if args.seconds is None:
+        args.seconds = seconds
     if not (
         0 <= args.on_height <= args.off_height
         and 0 <= args.on_speed <= args.off_speed
@@ -120,8 +141,8 @@ def main():
         and args.minimum_support_samples >= 1
     ):
         parser.error("Invalid duration or contact-detector settings")
-    source = args.cache / f"{CLIP}-{REVISION}.csv"
-    download(source)
+    source = args.cache / f"{args.clip}-{REVISION}.csv"
+    download(source, source_url, checksum)
     all_rows = np.loadtxt(source, delimiter=",")
     if all_rows.ndim != 2 or all_rows.shape[1] != 36 or not np.isfinite(all_rows).all():
         raise ValueError(
@@ -201,7 +222,7 @@ def main():
     world_soles = np.array(world_soles)
     heights = world_soles[:, :, :, 2].min(axis=2)
     # A foot can rock around a slow toe or heel while its center moves. Select
-    # the slowest sole material corner, not the moving foot center or centroid.
+    # the slowest sole corner, not the moving foot center or centroid.
     corner_speeds = np.linalg.norm(
         np.gradient(world_soles, 1 / FPS, axis=0)[:, :, :, :2], axis=3
     )
@@ -261,16 +282,16 @@ def main():
         ),
     }
     metadata = {
-        "title": f"G1 Moves · captured StepTouch · {len(samples) / FPS:g} s",
-        "sequenceId": "g1-steptouch-30s",
-        "motionKind": "retargeted human step-touch dance capture",
+        "title": f"G1 Moves · captured {title} · {len(samples) / FPS:g} s",
+        "sequenceId": sequence_id,
+        "motionKind": f"retargeted human {title} dance capture",
         "contactEvidence": "kinematic",
-        "sourceUrl": SOURCE_URL,
+        "sourceUrl": source_url,
         "datasetUrl": DATASET_URL,
         "sourceRevision": REVISION,
-        "sourceFile": CSV_PATH,
-        "sourceSha256": CSV_SHA256,
-        "recordingSha256": CSV_SHA256,
+        "sourceFile": csv_path,
+        "sourceSha256": checksum,
+        "recordingSha256": checksum,
         "modelSha256": digest(args.model),
         "sourceSampleCount": len(all_rows),
         "sourceSampleRateHz": FPS,
@@ -292,7 +313,7 @@ def main():
         "rootQuaternionSourceOrder": "xyzw; normalized and exported as wxyz",
         "detector": {
             "type": "kinematic",
-            "source": "Heuristic from root-referenced FK sole height and minimum horizontal material-corner speed; no measured or simulated contact forces",
+            "source": "Heuristic from root-referenced FK sole height and minimum horizontal sole-corner speed; no measured or simulated contact forces",
             "floorHeightMeters": floor,
             "floorEstimate": "5th percentile of the minimum of both foot sole heights over the selected continuous window",
             "onHeightMeters": args.on_height,
@@ -375,6 +396,21 @@ def main():
     args.output.write_text(
         json.dumps(output, separators=(",", ":"), allow_nan=False) + "\n"
     )
+    if args.recording_output is not None:
+        directory = args.recording_output
+        directory.mkdir(parents=True, exist_ok=True)
+        mujoco.mj_saveModel(model, str(directory / "model.mjb"))
+        np.savez_compressed(directory / "walk.npz", qpos=qpos)
+        # The legacy IK path still requires a constant forward command. A dance
+        # returning near its start has zero commanded speed, not reference poses.
+        recording_metadata = {
+            "policy_dt": 1 / FPS,
+            "command_speed_m_s": 0.0,
+            "motionSource": metadata,
+        }
+        (directory / "walk.json").write_text(
+            json.dumps(recording_metadata, indent=2) + "\n"
+        )
     print(json.dumps(stats, indent=2))
     print(f"Wrote {args.output} ({args.output.stat().st_size:,} bytes)")
 

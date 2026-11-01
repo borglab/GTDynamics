@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RobotViewport, disposeObject3D } from '../../shared/RobotViewport.js';
 import { MujocoG1 } from './mujocoG1.js';
 
 // Everything in this viewer stays in the robot's native, Z-up coordinate system.
@@ -12,16 +12,7 @@ function material(color, opacity = 1, extras = {}) {
     transparent: opacity < 1, opacity, depthWrite: opacity > 0.7, ...extras });
 }
 
-function release(object) {
-  const geometries = new Set();
-  const materials = new Set();
-  object.traverse((child) => {
-    if (child.geometry && !child.geometry.userData.sharedMujoco) geometries.add(child.geometry);
-    if (child.material) for (const item of [child.material].flat()) materials.add(item);
-  });
-  for (const geometry of geometries) geometry.dispose();
-  for (const item of materials) { item.map?.dispose(); item.dispose(); }
-}
+const release = disposeObject3D;
 
 function empty(group) {
   for (const child of [...group.children]) { group.remove(child); release(child); }
@@ -114,31 +105,14 @@ export class ContactScene {
   constructor(container, { onSelect } = {}) {
     this.container = container; this.onSelect = onSelect; this.state = {}; this.disposed = false;
     this.assetController = new AbortController();
-    this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(COLORS.paper);
-    this.scene.fog = new THREE.Fog(COLORS.paper, 9, 24);
-    this.camera = new THREE.PerspectiveCamera(35, 1, 0.02, 60); this.camera.up.set(0, 0, 1);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 0.95;
-    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.domElement.setAttribute('aria-label', 'Interactive 3D reconstruction of the G1 walking sequence');
-    this.renderer.domElement.style.display = 'block';
-    this.container.appendChild(this.renderer.domElement);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = false; this.controls.minDistance = 0.8; this.controls.maxDistance = 18;
-    this.controls.maxPolarAngle = Math.PI * 0.488; this.controls.screenSpacePanning = false;
-    this.controls.addEventListener('change', () => this.render());
-    this.scene.add(new THREE.HemisphereLight('#f7fbff', '#a4b0a3', 0.65));
-    const key = new THREE.DirectionalLight('#fff8e9', 1.1); key.position.set(0, -3, 7); key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0005; key.shadow.normalBias = 0.015;
-    Object.assign(key.shadow.camera, { left: -6, right: 6, bottom: -5, top: 5, near: 0.1, far: 20 });
-    this.scene.add(key);
-    const fill = new THREE.DirectionalLight('#d6e9ed', 0.35); fill.position.set(-4, 3, 4); this.scene.add(fill);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), material('#edf0e9', 1, { metalness: 0, roughness: 1 }));
-    ground.position.z = -0.01; ground.receiveShadow = true; this.scene.add(ground); this.ground=ground;
-    const grid = new THREE.GridHelper(30, 120, '#b5c2b7', '#d6ddd3'); grid.rotation.x = Math.PI / 2;
-    grid.position.z = -0.007; grid.material.transparent = true; grid.material.opacity = 0.6; this.scene.add(grid);
+    this.viewport = new RobotViewport(container, {
+      background: COLORS.paper, fog: [9, 24], far: 60, shadows: true, exposure: .95,
+      controls: {minDistance: .8, maxDistance: 18, maxPolarAngle: Math.PI * .488, screenSpacePanning: false},
+      ariaLabel: 'Interactive 3D reconstruction of the G1 walking sequence',
+    });
+    const {scene, camera, renderer, controls, cameraController} = this.viewport;
+    Object.assign(this, {scene, camera, renderer, controls, cameraController});
+    this.ground = this.viewport.addStage().ground;
     this.pathGroup = new THREE.Group(); this.contactGroup = new THREE.Group(); this.ghostGroup = new THREE.Group();
     this.selectedGroup = new THREE.Group(); this.labelGroup = new THREE.Group();
     this.scene.add(this.pathGroup, this.contactGroup, this.ghostGroup, this.selectedGroup, this.labelGroup);
@@ -147,7 +121,6 @@ export class ContactScene {
     this.pointerUp = (event) => this.pick(event);
     this.renderer.domElement.addEventListener('pointerdown', this.pointerDown);
     this.renderer.domElement.addEventListener('pointerup', this.pointerUp);
-    this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(container);
     this.bounds = { center: new THREE.Vector3(0, 0, 0.6), span: 2 }; this.reset(); this.resize();
   }
 
@@ -277,28 +250,22 @@ export class ContactScene {
   reset() { this.setView('perspective'); }
 
   setView(view) {
-    const { center, span } = this.bounds; const distance = Math.max(2.7, span * 1.1);
-    this.controls.target.copy(center);
-    const offset = view === 'top' ? new THREE.Vector3(0, -0.001, distance * 1.6)
-      : view === 'side' ? new THREE.Vector3(0.001, -distance * 1.5, 0.3)
-        : view === 'front' ? new THREE.Vector3(distance * 1.5, 0.001, 0.3)
-          : new THREE.Vector3(distance * 0.7, -distance * 1.25, distance * 0.62);
-    this.camera.position.copy(center).add(offset); this.controls.update(); this.render();
+    const {center, span} = this.bounds;
+    const bounds = new THREE.Box3().setFromCenterAndSize(center, new THREE.Vector3(span, span, span));
+    this.cameraController.fit(bounds, {view});
+    this.render();
   }
 
-  resize() {
-    const width = Math.max(1, this.container.clientWidth); const height = Math.max(1, this.container.clientHeight);
-    this.camera.aspect = width / height; this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.render();
-  }
+  resize() { this.viewport.resize(); }
 
-  render() { if (!this.disposed) this.renderer.render(this.scene, this.camera); }
+  render() { if (!this.disposed) this.viewport.render(); }
 
   dispose() {
     if (this.disposed) return;
     this.assetController.abort();
-    this.disposed = true; this.resizeObserver.disconnect(); this.controls.dispose();
+    this.disposed = true;
     this.renderer.domElement.removeEventListener('pointerdown', this.pointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.pointerUp);
-    release(this.scene); this.robot?.dispose(); this.renderer.dispose(); this.renderer.domElement.remove();
+    this.viewport.dispose(); this.robot?.dispose();
   }
 }

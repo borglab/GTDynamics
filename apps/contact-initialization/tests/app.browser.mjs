@@ -32,6 +32,7 @@ try {
       await app.locator('.scene[data-renderer="mujoco"]').waitFor();
       assert.equal(await app.locator('.scene').getAttribute('data-joints'),'29');
       assert(Number(await app.locator('.scene').getAttribute('data-meshes'))>20);
+      console.log(`Checking ${base}: G1 assets and contact configurations`);
       assert.equal(await lab.getAttribute('data-model'),'patch');
       assert.equal(await lab.getAttribute('data-variant'),'both');
       assert.equal(await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).evaluate(el=>el.checked),false);
@@ -64,8 +65,10 @@ try {
       assert.match(await app.locator('.scene-readout').innerText(),/5.60/);
       await app.getByRole('button',{name:'Play event playback'}).click();
       await page.waitForTimeout(600);
-      await app.getByRole('button',{name:'Pause event playback'}).click();
+      // Stop replay without waiting for a software-rendered canvas to scroll.
+      await app.getByRole('button',{name:'Pause event playback'}).evaluate(button=>button.click());
       assert(Number(await lab.getAttribute('data-event'))>50);
+      console.log(`Checking ${base}: event playback and display modes`);
       await app.getByRole('button',{name:'Fixed FK'}).click();
       assert.match(await app.locator('.scene-card .panel-top').innerText(),/FIXED FK/);
       await app.getByRole('button',{name:'Frame selection'}).click();
@@ -82,7 +85,7 @@ try {
       }
       await app.getByRole('button',{name:'Replay GTSAM solve'}).click();
       await page.waitForTimeout(650);
-      await app.getByRole('button',{name:'Pause native replay'}).click();
+      await app.getByRole('button',{name:'Pause native replay'}).evaluate(button=>button.click());
       const iteration=app.getByRole('slider',{name:'Solver iteration'});
       assert(Number(await iteration.inputValue())>0);
       const activeModel=await lab.getAttribute('data-model');
@@ -110,6 +113,7 @@ try {
       assert.equal(exported.assumptions.groundPlane,null);
       assert.equal(exported.regularization.ground,false);
       assert(!('reference' in exported));
+      console.log(`Checking ${base}: camera and sequence switching`);
       await app.getByRole('button',{name:'Top',exact:true}).click();
       await app.getByRole('button',{name:'Reset camera'}).click();
       await app.getByRole('checkbox',{name:'Reference',exact:true}).uncheck();

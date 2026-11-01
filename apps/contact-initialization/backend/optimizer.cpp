@@ -77,7 +77,7 @@ json::array indicesJson(const std::vector<T>& values) {
 std::string text(const json::value& value) {
   return std::string(value.as_string());
 }
-// Select original samples and transform fixed sole material points by local FK.
+// Select original samples and transform fixed sole points by local FK.
 // Source quaternions use WXYZ; source world-root reference poses are not read.
 std::vector<ContactMeasurements> datasetMeasurements(const json::object& data,
                                                      Model model) {
