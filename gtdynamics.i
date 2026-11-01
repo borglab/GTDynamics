@@ -4,6 +4,7 @@ virtual class gtsam::NonlinearFactor;
 virtual class gtsam::NoiseModelFactor;
 virtual class gtsam::NonlinearFactorGraph;
 virtual class gtsam::Values;
+class gtsam::PreintegratedImuMeasurementsG;
 
 namespace gtdynamics {
 
@@ -481,6 +482,10 @@ class Kinematics {
   gtsam::NonlinearFactorGraph contactEqualityFactors(
       const gtdynamics::Trajectory& trajectory,
       const std::shared_ptr<gtsam::noiseModel::Base>& model) const;
+  gtsam::NonlinearFactorGraph imuFactors(
+      const gtdynamics::Trajectory& trajectory, int link_id,
+      const std::vector<gtsam::PreintegratedImuMeasurementsG>& pims,
+      gtsam::Key bias_key) const;
   gtsam::NonlinearFactorGraph contactHeightObjectives(
       const gtdynamics::Slice& context, const gtdynamics::PointOnLinks& points,
       const gtsam::Vector3& gravity, double ground_plane_height = 0.0) const;
@@ -1018,6 +1023,7 @@ gtsam::Key JointVelKey(int j, int t=0);
 gtsam::Key JointAccelKey(int j, int t=0);
 gtsam::Key TorqueKey(int j, int t=0);
 gtsam::Key TwistKey(int i, int t=0);
+gtsam::Key LinearVelocityKey(int i, int t=0);
 gtsam::Key TwistAccelKey(int i, int t=0);
 gtsam::Key WrenchKey(int i, int j, int t=0);
 gtsam::Key PoseKey(int i, int t=0);

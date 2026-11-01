@@ -1,0 +1,23 @@
+Unitree G1 Inertial Odometry Dataset
+https://huggingface.co/datasets/Open-IO/humanoid-g1-odometry
+Clip: 10871_humanoid_20260520_223451
+Revision: db621c57833e08a812b2ec8491aa0ca81f0ecb33
+
+Credit: Yuheng Qiu, Yutian Chen, Carlton Cort, Weison Huang, Shibo Zhao, Pieter Abbeel, Rocky Duan, Koushil Sreenath, C. Karen Liu, Carmelo Sferrazza, Junyi Geng, Sebastian Scherer, and Guanya Shi. SSIO: Self-Supervised Inertial Odometry (2026).
+https://arxiv.org/abs/2610.25988
+https://ssio-imu.github.io/
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Modifications: Selected seconds 0–219.958; resampled encoders/poses to 5 Hz using linear interpolation and quaternion SLERP; converted the pelvis IMU origin to the robot root; applied one constant world translation to place the start near the origin and estimated floor at z=0; inferred contact phases from FK sole height/speed; computed initialization and smoothing iterations. Pelvis accelerometer and gyro samples retain their original values and timestamps.
+
+Reference: SuperOdom LiDAR-inertial odometry. Contacts are heuristic labels, not force measurements. Original IMU samples are retained; recording metadata identifies whether IMU aiding was enabled.
+
+Source SHA-256 checksums:
+6aa3b901a081346cb6874c4ea31f885cac94820431ff51b2d7f03c67120764be  imus.npy
+9a0bd4014d941da9efa21aec442874921149683f22b495857c5544c88570b904  joints.json
+2f0784ebea10c8a9cc2b0827e4bd80015bb2b235fc14ec34c289053bd237a154  joints.npy
+8bea8cc0bce5e460c98e1be382ac202cfb5b2056291c1d1aa09637db663f6170  pose.npy
+8fcb27d07c0f6d5eb511bb0109ea535d973b40e4bea0a142aa0d3294b0b74de2  spec.json
+612be31f2e452d7328ddb2fcbcf41c01defd3edd8dc5b6c3409bac71d3edcb83  time_ns.npy

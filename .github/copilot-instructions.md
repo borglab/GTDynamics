@@ -13,7 +13,8 @@ conventions, follow Google C++ style. Preserve established public API names when
 making documentation or formatting changes.
 
 - Use meaningful variable names, for example `measurement` rather than `msm`;
-  avoid abbreviations.
+  avoid abbreviations. Use `pim` for a `PreintegratedImuMeasurementsG` instance
+  and `pims` for a collection.
 - Prefer concise examples and the fewest helpers needed. Favor direct
   construction and small local functors or lambdas over adapter functions.
 - Keep functions focused. When reviewing overly complex or long functions,
@@ -44,12 +45,28 @@ making documentation or formatting changes.
 
 ### C++ tests
 
-- Prefer small, named fixture-style namespaces containing helpers and the tests
-  that use them over one large anonymous namespace collecting every helper.
-- Put a short `//` comment immediately above each `TEST()` explaining the
-  behavior being verified.
-- If using `/* ************************************************************************* */`
-  dividers, place them around a fixture namespace, not between its tests.
+Adapted from GTSAM’s `.github/copilot-instructions.md`, “C++ test organization”.
+
+* Avoid one large anonymous namespace collecting every helper at the top of a
+  test file. Prefer small, named fixture-style namespaces containing both the
+  helpers and tests that use them.
+* Put at least one short `//` comment immediately above every `TEST()` explaining
+  the behavior being verified.
+* When using `/* ************************************************************************* */`
+  dividers, put one immediately before each fixture namespace and one
+  immediately after it closes. Do not put dividers between tests in the same
+  fixture namespace:
+
+  ```cpp
+  /* ************************************************************************* */
+  namespace my_fixture {
+
+  // Verifies the expected behavior.
+  TEST(Suite, Case) {}
+
+  }  // namespace my_fixture
+  /* ************************************************************************* */
+  ```
 
 ## Python style
 

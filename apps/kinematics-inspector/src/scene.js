@@ -20,7 +20,7 @@ export class ReplayScene {
     this.controls.addEventListener('change', () => this.render());
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x788679, 1.1));
     const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(2, -3, 6); this.scene.add(light);
-    const grid = new THREE.GridHelper(20, 80, '#bac7bb', '#dce2d9'); grid.rotation.x = Math.PI / 2; this.scene.add(grid);
+    this.grid = new THREE.GridHelper(40, 160, '#bac7bb', '#dce2d9'); this.grid.rotation.x = Math.PI / 2; this.scene.add(this.grid);
     this.robot = createRobotVisual(model); this.scene.add(this.robot.root);
     this.reference = createRobotVisual(model); this.scene.add(this.reference.root);
     this.reference.root.traverse(object => {
@@ -30,15 +30,47 @@ export class ReplayScene {
     });
     this.path = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color }));
     this.scene.add(this.path);
+    // Compare XY ground projections in the same recorded world frame.
+    const referencePoints = Array.from({ length: record.samples }, (_, k) => {
+      const offset = bodyOffset(record, record.reference, k, record.rootBody);
+      return new THREE.Vector3(floats[offset], floats[offset + 1], .014);
+    });
+    this.referencePath = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(referencePoints),
+      new THREE.LineDashedMaterial({ color: '#536b89', dashSize: .10, gapSize: .07 }),
+    );
+    this.referencePath.computeLineDistances();
+    this.scene.add(this.referencePath);
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(container);
     this.reset(); this.resize();
     container.dataset.ready = 'true';
   }
   reset() {
-    const offset = bodyOffset(this.record, this.record.reference, Math.floor(this.record.samples / 2), this.record.rootBody);
-    const x = this.floats[offset], y = this.floats[offset + 1];
-    this.controls.target.set(x, y, .65); this.camera.position.set(x + 2.6, y - 3.4, 1.9);
+    const offset = bodyOffset(this.record, this.currentState || this.record.reference, this.currentFrame || 0, this.record.rootBody);
+    this.focus = new THREE.Vector3().fromArray(this.floats, offset);
+    this.controls.target.copy(this.focus); this.camera.position.copy(this.focus).add(new THREE.Vector3(2.6, -3.4, 1.25));
     this.controls.update(); this.render();
+  }
+  fitPaths() {
+    if (!this.path.geometry.attributes.position) return;
+    this.path.geometry.computeBoundingBox();
+    const bounds = this.path.geometry.boundingBox.clone();
+    if (this.referencePath.visible) {
+      this.referencePath.geometry.computeBoundingBox();
+      bounds.union(this.referencePath.geometry.boundingBox);
+    }
+    // Include robot height above the XY paths, even for a stationary recording.
+    bounds.max.z = Math.max(bounds.max.z, 1.5);
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const vertical = THREE.MathUtils.degToRad(this.camera.fov) / 2;
+    const horizontal = Math.atan(Math.tan(vertical) * this.camera.aspect);
+    const distance = Math.max(2, sphere.radius / Math.sin(Math.min(vertical, horizontal)) * 1.1);
+    const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+    this.controls.target.copy(sphere.center);
+    this.camera.position.copy(sphere.center).addScaledVector(direction, distance);
+    this.controls.maxDistance = Math.max(20, distance * 2);
+    this.camera.far = Math.max(80, distance * 4);
+    this.camera.updateProjectionMatrix(); this.controls.update(); this.render();
   }
   place(visual, state, frame) {
     visual.bodies.forEach((body, i) => {
@@ -47,8 +79,16 @@ export class ReplayScene {
     });
   }
   update(state, frame, showReference, pathState) {
+    this.currentState = state; this.currentFrame = frame;
+    const offset = bodyOffset(this.record, state, frame, this.record.rootBody);
+    const focus = new THREE.Vector3().fromArray(this.floats, offset);
+    const delta = focus.clone().sub(this.focus);
+    this.camera.position.add(delta); this.controls.target.add(delta); this.focus.copy(focus);
+    this.grid.position.set(Math.round(focus.x / 5) * 5, Math.round(focus.y / 5) * 5, 0);
+    this.controls.update();
     this.place(this.robot, state, frame);
     this.place(this.reference, this.record.reference, frame); this.reference.root.visible = showReference;
+    this.referencePath.visible = showReference;
     if (this.pathState !== pathState) {
       this.pathState = pathState;
       const points = Array.from({ length: this.record.samples }, (_, k) => {

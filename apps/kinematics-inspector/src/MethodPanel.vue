@@ -41,9 +41,10 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
 </script>
 <template>
   <article class="method-panel" :class="method" :data-method="method" :data-iteration="index">
-    <header class="panel-heading"><div><span class="eyebrow">{{ method === 'contact' ? 'CONTACT' : 'IK' }}</span><h2>{{ title }}</h2></div><button class="quiet" @click="scene?.reset()">Reset view</button></header>
+    <header class="panel-heading"><div><span class="eyebrow">{{ method === 'contact' ? 'CONTACT' : 'IK' }}</span><h2>{{ title }}</h2></div><div><button class="quiet" @click="scene?.fitPaths()">Fit paths</button><button class="quiet" @click="scene?.reset()">Reset view</button></div></header>
     <div ref="sceneElement" class="scene"><p v-if="sceneError" role="alert" class="error-banner">{{ sceneError }}</p></div>
     <div class="scene-caption"><span>{{ state.label }}</span><span>{{ (frame * data.record.dt).toFixed(2) }} s · frame {{ frame }}</span></div>
+    <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{data.record.motionSource?.referenceLabel || 'reference'}} path</span><span>XY ground projection</span></div>
     <section class="iteration-controls">
       <div class="row"><h3>{{ stage === 'smoothing' ? 'Whole-trajectory smoothing' : method === 'ik' ? `IK solve · frame ${frame}` : 'Sparse contact solve' }}</h3><span class="mono">Iteration {{ state.iteration }} / {{ history.at(-1).iteration }}</span></div>
       <input type="range" min="0" :max="history.length-1" :value="index" :aria-label="`${title} iteration`" @input="select($event.target.value)">
@@ -62,8 +63,13 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
       <div><span>Contact height RMS</span><strong>{{ number(metrics.stance_height_rms_m*1000) }} <small>mm</small></strong></div>
       <div><span>Contact slip RMS / step</span><strong>{{ number(metrics.stance_step_slip_rms_m*1000) }} <small>mm</small></strong></div>
       <div><span>Joint measurement RMS</span><strong>{{ number(metrics.joint_measurement_rms_rad) }} <small>rad</small></strong></div>
+      <div><span>Reference root position RMS</span><strong>{{ number(metrics.reference_root_translation_rms_m) }} <small>m</small></strong></div>
     </div>
     <div v-else class="metrics local-metrics"><div><span>Per-frame IK objective</span><strong>{{ number(state.error,5) }}</strong></div><div><span>Selected joint</span><strong>{{ number(currentAngle) }} <small>rad</small></strong></div></div>
+    <div v-if="state.bias" class="metrics">
+      <div><span>Shared accelerometer bias [x, y, z] · m/s²</span><span>{{state.bias.slice(0,3).map(x=>number(x,4)).join(', ')}}</span></div>
+      <div><span>Shared gyroscope bias [x, y, z] · rad/s</span><span>{{state.bias.slice(3).map(x=>number(x,4)).join(', ')}}</span></div>
+    </div>
     <section class="plot-block">
       <div class="row"><h3>{{ data.record.jointNames[joint].replaceAll('_',' ') }}</h3><span class="mono">{{ number(currentAngle) }} rad</span></div>
       <TracePlot :values="jointAngles" :secondary="measuredAngles" :selected="frame" label="Joint angle over walking time, with source reference" />

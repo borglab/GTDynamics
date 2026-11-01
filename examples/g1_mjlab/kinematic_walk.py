@@ -57,15 +57,20 @@ def contact_slices(
 
 def build_problem(
     walk: KinematicRecording,
+    contact_slip_sigma: float = 0.005,
 ) -> tuple[gtsam.NonlinearFactorGraph, gtd.NonlinearEqualityConstraints, list[int]]:
     """Build one full trajectory problem for either initializer.
 
     Hard equalities: each link/joint pose relation, via Kinematics.constraints.
-    Costs: measured q, level stance soles, no-slip contact points, weak root
+    Costs: measured q, level stance soles, soft contact slip, weak root
     smoothness, and a common first-pose gauge. Contact observations are soft
-    because this compliant MuJoCo walk does not have perfectly rigid feet.
+    because stance feet may slip. contact_slip_sigma is the per-axis standard
+    deviation of point displacement in metres per adjacent slice interval.
+    It is not a velocity sigma and is not automatically scaled with sample rate.
     There are no inequalities, dynamics variables, or per-frame final solves.
     """
+    if not np.isfinite(contact_slip_sigma) or contact_slip_sigma <= 0:
+        raise ValueError("contact_slip_sigma must be finite and positive")
     parameters = gtd.KinematicsParameters()
     parameters.p_cost_model = gtsam.noiseModel.Isotropic.Sigma(6, 1.0)
     parameters.prior_q_cost_model = gtsam.noiseModel.Isotropic.Sigma(1, 0.03)
@@ -86,7 +91,7 @@ def build_problem(
     # across phase boundaries where the other foot changes contact.
     costs.push_back(
         kinematics.contactEqualityFactors(
-            walk.trajectory, gtsam.noiseModel.Isotropic.Sigma(3, 0.005)
+            walk.trajectory, gtsam.noiseModel.Isotropic.Sigma(3, contact_slip_sigma)
         )
     )
     for k in range(walk.count - 1):
@@ -123,6 +128,7 @@ def initialize(
     keys: Sequence[int],
     contact_diagnostics: gtd.contact_init.Result | None = None,
     ik_iteration: Callable[[int, int, float, gtsam.Values], None] | None = None,
+    contact_options: gtd.contact_init.Options | None = None,
 ) -> tuple[gtsam.Values, dict[str, int | float | bool]]:
     """Call the native initializers; optional observers support offline inspection.
 
@@ -132,7 +138,11 @@ def initialize(
     """
     initializer = gtd.Initializer()
     if method == "contact":
-        options = gtd.contact_init.Options()
+        options = (
+            contact_options
+            if contact_options is not None
+            else gtd.contact_init.Options()
+        )
         options.recordHistory = contact_diagnostics is not None
         diagnostics = (
             contact_diagnostics
@@ -339,6 +349,12 @@ def main() -> None:
     parser.add_argument("--initializer", choices=("contact", "ik"), default="contact")
     parser.add_argument("--max-iterations", type=int, default=50)
     parser.add_argument(
+        "--contact-slip-sigma",
+        type=float,
+        default=0.005,
+        help="Contact displacement sigma in metres per slice interval",
+    )
+    parser.add_argument(
         "--max-frames",
         type=int,
         help="Diagnostic prefix only; default is the ENTIRE snippet",
@@ -351,7 +367,7 @@ def main() -> None:
         parser.error("--max-iterations must be positive and --max-frames at least two")
 
     walk = load_walk(args.data, args.contacts, args.max_frames)
-    costs, constraints, keys = build_problem(walk)
+    costs, constraints, keys = build_problem(walk, args.contact_slip_sigma)
     seed, initialization = initialize(walk, args.initializer, keys)
     initial_metrics = evaluate(walk, costs, constraints, seed)
     solution, solver = solve_cm(
@@ -364,6 +380,7 @@ def main() -> None:
         "samples": walk.count,
         "phases": walk.trajectory.numPhases(),
         "initializer": args.initializer,
+        "contact_slip_sigma_m": args.contact_slip_sigma,
         "initialization": initialization,
         "solver": solver,
         "initial": initial_metrics,

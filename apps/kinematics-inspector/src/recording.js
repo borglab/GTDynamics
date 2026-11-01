@@ -51,6 +51,11 @@ export function validateRecording(record, floats) {
     throw new Error('Incomplete per-frame IK history');
   }
   for (const state of states) {
+    if (state.velocityOffset !== undefined && (!Number.isInteger(state.velocityOffset)
+        || state.velocityOffset < 0 || state.velocityOffset + state.frames*3 > floats.length
+        || state.bias?.length !== 6 || !state.bias.every(Number.isFinite))) {
+      throw new Error('Invalid IMU velocity or bias storage');
+    }
     if (!Number.isInteger(state.poseOffset) || !Number.isInteger(state.jointOffset)
         || state.poseOffset < 0 || state.jointOffset < 0
         || ![1, record.samples].includes(state.frames)
@@ -74,10 +79,10 @@ async function fetchFile(name, signal, compressed = false) {
   return new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
 }
 
-export async function loadRecording(signal) {
-  const record = await fetchFile('recording.json', signal);
+export async function loadRecording(signal, directory = '') {
+  const record = await fetchFile(`${directory}recording.json`, signal);
   const [stateBuffer, modelBuffer] = await Promise.all([
-    fetchFile(record.storage.states, signal, true), fetchFile(record.storage.model, signal, true),
+    fetchFile(`${directory}${record.storage.states}`, signal, true), fetchFile(`${directory}${record.storage.model}`, signal, true),
   ]);
   const floats = decodeStates(stateBuffer, record.storage);
   validateRecording(record, floats);
