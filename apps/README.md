@@ -5,7 +5,6 @@ tab. [registry.json](registry.json) supplies the tab labels, overview links, and
 the list of apps to build. Each app keeps its own Vue/Vite project and can also
 be opened directly.
 
-- [Motion Snippets](motion-snippets/README.md): MuJoCo playback of robot motion clips.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [Contact Initialization](contact-initialization/README.md): replay C++ GTSAM walking initialization, inspect native timings, and switch between two G1 motion sequences.
 
@@ -49,8 +48,8 @@ its exact origin (for example, `http://cyber:3000`) to the comma-separated
 The first model bootstrap downloads the pinned MuJoCo Menagerie models.
 Meshes and generated asset manifests stay out of Git; the production build
 copies the actual model files into the site. Model licenses are included in
-their asset directories. Motion Snippets' model cache lives in its `.cache/`;
-its bootstrap also maintains the model links under `models/mujoco/`.
+their asset directories. The G1 cache lives under `models/mujoco/.cache/`;
+the bootstrap maintains its model link under `models/mujoco/`.
 
 To preview exactly what GitHub Pages will serve, including recorded planning:
 
@@ -146,5 +145,4 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
   node tests/site.browser.mjs
 ```
 
-It checks navigation, keyboard tabs, mobile layout, physics playback in both
-apps, recorded iteration scrubbing, and requests under a project-site prefix.
+It checks navigation, keyboard tabs, mobile layout, physics playback,, recorded iteration scrubbing, and requests under a project-site prefix.

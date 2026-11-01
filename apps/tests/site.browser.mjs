@@ -46,23 +46,8 @@ try {
       // Keyboard activation follows the tab order.
       await page.getByRole('tab', { name: 'Overview' }).focus();
       await page.keyboard.press('ArrowRight');
-      await page.getByRole('tab', { name: 'Motion Snippets', selected: true }).waitFor();
-      assert.equal(await page.getByRole('tab', { name: 'Motion Snippets' }).getAttribute('aria-selected'), 'true');
-      const snippets = page.frameLocator('iframe');
-      console.log(`Checking ${base}: Motion Snippets assets and playback`);
-      await snippets.getByRole('heading', { name: 'Motion Snippets' }).waitFor();
-      await snippets.locator('.overlay').waitFor({ state: 'hidden' });
-      assert.equal(await snippets.locator('.error').count(), 0);
-      // Clips begin playing when loaded; pause before explicitly checking Play.
-      const pauseClip = snippets.getByRole('button', { name: 'Pause', exact: true });
-      if (await pauseClip.count()) await pauseClip.click();
-      await snippets.getByRole('button', { name: 'Play', exact: true }).click();
-      await snippets.getByRole('button', { name: 'Pause', exact: true }).waitFor();
-      const clipTime = snippets.getByRole('slider', { name: 'Time' });
-      await page.waitForTimeout(500);
-      assert(Number(await clipTime.inputValue()) > 0, 'Motion Snippets playback advances');
-
-      await page.getByRole('tab', { name: 'Motion Planning' }).click();
+      await page.getByRole('tab', { name: 'Motion Planning', selected: true }).waitFor();
+      assert.equal(await page.getByRole('tab', { name: 'Motion Snippets' }).count(), 0);
       console.log(`Checking ${base}: Motion Planning assets and recorded solve`);
       const planning = page.frameLocator('iframe');
       await planning.getByText('Recorded native solve.', { exact: true }).waitFor();
@@ -108,7 +93,7 @@ try {
       assert.deepEqual(errors, [], 'No browser script errors');
       assert.deepEqual(failedRequests, [], 'All static assets load, including under a project prefix');
       assert.deepEqual(sockets, [], 'The static site never attempts a backend connection');
-      console.log(`PASS ${base}: default overview, keyboard tabs, both apps, physics playback, recorded iterations, mobile, history, static assets`);
+      console.log(`PASS ${base}: default overview, keyboard tabs, physics playback, recorded iterations, mobile, history, static assets`);
     } finally {
       await context.close();
       server.httpServer.closeAllConnections();

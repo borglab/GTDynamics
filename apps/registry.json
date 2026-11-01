@@ -1,11 +1,5 @@
 [
   {
-    "id": "motion-snippets",
-    "title": "Motion Snippets",
-    "description": "Explore robot motion clips with Unitree G1, A1, and Boston Dynamics Spot. Replay joint trajectories with MuJoCo physics in your browser.",
-    "tag": "Motion playback"
-  },
-  {
     "id": "motion-planning",
     "title": "Motion Planning",
     "description": "Follow a Franka arm\u2019s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",

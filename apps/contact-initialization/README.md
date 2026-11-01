@@ -31,7 +31,7 @@ requires WebGL, but no native server or Python process. All production asset
 URLs are relative.
 
 The viewer uses `mujoco-js` and the detailed 29-joint Unitree G1 model from the
-same pinned Menagerie checkout as Motion Snippets. It shares the compiled-model
+pinned Menagerie checkout maintained by `scripts/bootstrap_mujoco_models.py`. It shares the compiled-model
 mesh renderer with Motion Planning. Measured joint angles drive MuJoCo forward
 kinematics; recorded GTSAM event poses place the robot, snapshots, and reference
 overlay. The browser replays these configurations without advancing physics.

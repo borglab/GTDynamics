@@ -1,37 +1,26 @@
 #!/usr/bin/env python3
-"""Bootstrap pinned MuJoCo Menagerie models for the browser apps.
+"""Fetch the pinned Menagerie G1 and share it with Contact Initialization.
 
-What it does:
-1. Sparse-clones/pulls google-deepmind/mujoco_menagerie at a pinned commit.
-2. Materializes only required model folders:
-   - unitree_g1
-   - unitree_a1
-   - boston_dynamics_spot
-3. Creates symlinks:
-   - models/mujoco/<model>
-   - apps/motion-snippets/public/examples/scenes/<model>
-4. Regenerates apps/motion-snippets/public/examples/scenes/files.json from on-disk assets.
-
-This keeps large binary model files out of this git repository.
+Model XML/meshes live in models/mujoco/.cache, outside Git. The app and the
+retargeted-motion importer refer to the same checkout through local symlinks.
+The website build materializes those links and includes the model license.
 """
 
 from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 MENAGERIE_URL = "https://github.com/google-deepmind/mujoco_menagerie.git"
 MENAGERIE_COMMIT = "a03e87bf13502b0b48ebbf2808928fd96ebf9cf3"
-MODELS = ["unitree_g1", "unitree_a1", "boston_dynamics_spot"]
-ASSET_EXTS = {".xml", ".obj", ".stl", ".png", ".jpg", ".jpeg", ".mtl", ".skn"}
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
-    subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+    subprocess.run(cmd, cwd=cwd, check=True)
 
 
 def ensure_symlink(link_path: Path, target_path: Path) -> None:
@@ -44,34 +33,38 @@ def ensure_symlink(link_path: Path, target_path: Path) -> None:
             shutil.rmtree(link_path)
         else:
             link_path.unlink()
-
     link_path.parent.mkdir(parents=True, exist_ok=True)
-    rel_target = os.path.relpath(target_path, link_path.parent)
-    link_path.symlink_to(rel_target)
+    link_path.symlink_to(os.path.relpath(target_path, link_path.parent))
 
 
-def generate_files_json(scenes_dir: Path) -> list[str]:
-    files: list[str] = []
-    for model in MODELS:
-        model_dir = scenes_dir / model
-        if not model_dir.exists():
-            continue
-        for path in sorted(model_dir.rglob("*")):
-            if not path.is_file():
-                continue
-            if path.suffix.lower() not in ASSET_EXTS:
-                continue
-            files.append(path.relative_to(scenes_dir).as_posix())
-    return files
-
-
-def prepare_contact_model(repo_root: Path, source: Path) -> None:
-    """Share the G1 checkout with the contact app and list only its visual assets."""
-    assets = repo_root / "apps" / "contact-initialization" / "public" / "assets"
+def main() -> int:
+    repo_root = Path(__file__).resolve().parents[1]
+    models = repo_root / "models/mujoco"
+    checkout = models / ".cache/mujoco_menagerie" / MENAGERIE_COMMIT / "repo"
+    checkout.parent.mkdir(parents=True, exist_ok=True)
+    if not checkout.exists():
+        run(
+            [
+                "git",
+                "clone",
+                "--filter=blob:none",
+                "--sparse",
+                MENAGERIE_URL,
+                str(checkout),
+            ]
+        )
+    run(["git", "fetch", "--depth", "1", "origin", MENAGERIE_COMMIT], cwd=checkout)
+    run(["git", "checkout", "--detach", MENAGERIE_COMMIT], cwd=checkout)
+    run(["git", "sparse-checkout", "set", "unitree_g1"], cwd=checkout)
+    source = checkout / "unitree_g1"
+    ensure_symlink(models / "unitree_g1", source)
+    assets = repo_root / "apps/contact-initialization/public/assets"
     ensure_symlink(assets / "unitree_g1", source)
     description = ET.parse(source / "g1.xml")
-    mesh_files = {f"unitree_g1/assets/{mesh.attrib['file']}"
-                  for mesh in description.findall("./asset/mesh")}
+    mesh_files = {
+        f"unitree_g1/assets/{mesh.attrib['file']}"
+        for mesh in description.findall("./asset/mesh")
+    }
     manifest = {
         "source": MENAGERIE_URL,
         "revision": MENAGERIE_COMMIT,
@@ -80,43 +73,7 @@ def prepare_contact_model(repo_root: Path, source: Path) -> None:
         "files": ["unitree_g1/g1.xml", *sorted(mesh_files)],
     }
     (assets / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-
-
-def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
-    cache_root = repo_root / "apps" / "motion-snippets" / ".cache" / "mujoco_menagerie"
-    checkout_root = cache_root / MENAGERIE_COMMIT
-    menagerie_repo = checkout_root / "repo"
-
-    checkout_root.mkdir(parents=True, exist_ok=True)
-
-    if not menagerie_repo.exists():
-        run([
-            "git", "clone", "--filter=blob:none", "--sparse", MENAGERIE_URL, str(menagerie_repo)
-        ])
-
-    run(["git", "fetch", "--depth", "1", "origin", MENAGERIE_COMMIT], cwd=menagerie_repo)
-    run(["git", "checkout", "--detach", MENAGERIE_COMMIT], cwd=menagerie_repo)
-    run(["git", "sparse-checkout", "set", *MODELS], cwd=menagerie_repo)
-
-    models_dir = repo_root / "models" / "mujoco"
-    scenes_dir = repo_root / "apps" / "motion-snippets" / "public" / "examples" / "scenes"
-
-    for model in MODELS:
-        source = menagerie_repo / model
-        ensure_symlink(models_dir / model, source)
-        ensure_symlink(scenes_dir / model, models_dir / model)
-
-    files = generate_files_json(scenes_dir)
-    files_json_path = scenes_dir / "files.json"
-    files_json_path.write_text(json.dumps(files, indent=2) + "\n", encoding="utf-8")
-    prepare_contact_model(repo_root, menagerie_repo / "unitree_g1")
-
-    print("Bootstrap complete.")
-    print(f"Menagerie commit: {MENAGERIE_COMMIT}")
-    print(f"Model symlinks under: {models_dir}")
-    print(f"Scene symlinks under: {scenes_dir}")
-    print(f"Regenerated: {files_json_path}")
+    print(f"G1 assets ready at {source}")
     return 0
 
 

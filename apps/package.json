@@ -6,7 +6,6 @@
     "node": ">=22"
   },
   "workspaces": [
-    "motion-snippets",
     "motion-planning",
     "contact-initialization",
     "contact-vs-ik",

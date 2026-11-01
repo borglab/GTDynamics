@@ -6,9 +6,7 @@ import { createRobotVisual, updateRobotBodies } from '../../shared/mujocoRobot.j
 
 THREE.ColorManagement.enabled = true;
 
-// Like apps/motion-snippets/src/simulation/mujocoUtils.js, geometry comes directly from the
-// compiled MuJoCo model. Here everything stays in MuJoCo's Z-up world: we never
-// swizzle, or modify the WASM model's mesh buffers while constructing geometry.
+// Geometry comes from the compiled MuJoCo model in native Z-up coordinates.
 const MODEL_ROOT = '/working';
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const vec = (p) => new THREE.Vector3().fromArray(p);
