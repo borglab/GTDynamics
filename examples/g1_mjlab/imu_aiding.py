@@ -103,7 +103,10 @@ class ImuAiding:
 
 def build_imu_aiding(walk: KinematicRecording, directory: Path) -> ImuAiding:
     """Use the wrapped trajectory builder; supply one bias and a broad speed prior."""
-    arrays, _ = load_recording(directory)
+    arrays, recording_metadata = load_recording(directory)
+    calibration = recording_metadata.get("motionSource", {}).get(
+        "stationaryImuCalibration"
+    )
     model = load_model(directory)
     root = model.body("robot/pelvis").id
     site = model.site("robot/imu_in_pelvis")
@@ -118,7 +121,22 @@ def build_imu_aiding(walk: KinematicRecording, directory: Path) -> ImuAiding:
     params.setAccelerometerCovariance(np.eye(3) * 0.1**2)
     params.setGyroscopeCovariance(np.eye(3) * 0.01**2)
     params.setIntegrationCovariance(np.eye(3) * 1e-8)
-    bias = gtsam.imuBias.ConstantBias()
+    gyro_bias = np.zeros(3)
+    gyro_sigma = 0.05
+    if calibration is not None:
+        gyro_bias = np.asarray(calibration["gyroMeanRadiansPerSecond"], dtype=float)
+        gyro_sigma = float(calibration["gyroPriorSigmaRadiansPerSecond"])
+        if (
+            gyro_bias.shape != (3,)
+            or not np.isfinite(gyro_bias).all()
+            or not np.isfinite(gyro_sigma)
+            or gyro_sigma <= 0
+        ):
+            raise ValueError(
+                "Stationary gyro calibration must be finite with positive sigma"
+            )
+    bias = gtsam.imuBias.ConstantBias(np.zeros(3), gyro_bias)
+    bias_prior_sigmas = np.array([0.5] * 3 + [gyro_sigma] * 3)
     pims = preintegrate_intervals(
         arrays["imu_time"],
         arrays["imu_acceleration"],
@@ -134,7 +152,7 @@ def build_imu_aiding(walk: KinematicRecording, directory: Path) -> ImuAiding:
         gtsam.PriorFactorConstantBias(
             BIAS_KEY,
             bias,
-            gtsam.noiseModel.Diagonal.Sigmas(np.array([0.5] * 3 + [0.05] * 3)),
+            gtsam.noiseModel.Diagonal.Sigmas(bias_prior_sigmas),
         )
     )
     # The same prior is used for both initializers; no reference velocity input.
@@ -160,7 +178,9 @@ def build_imu_aiding(walk: KinematicRecording, directory: Path) -> ImuAiding:
             "accelerometerNoiseDensity": 0.1,
             "gyroscopeNoiseDensity": 0.01,
             "integrationCovariance": 1e-8,
-            "biasPriorSigmas": [0.5] * 3 + [0.05] * 3,
+            "biasPriorMean": bias.vector().tolist(),
+            "biasPriorSigmas": bias_prior_sigmas.tolist(),
+            "stationaryCalibration": calibration,
             "initialVelocityPriorSigma": 3.0,
             "sensorCorrection": "GTSAM rotation and centripetal lever arm; tangential angular-acceleration term omitted",
             "integration": "native timestamps; piecewise-linear measurements, midpoint integration, exact slice boundaries",

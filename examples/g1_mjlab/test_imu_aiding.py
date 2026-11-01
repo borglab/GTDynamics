@@ -9,6 +9,24 @@ from imu_aiding import preintegrate_intervals
 
 
 class ImuAidingTests(unittest.TestCase):
+    def test_stationary_calibrated_gyro_does_not_rotate(self) -> None:
+        gyro_bias = np.array([-0.00215, -0.00467, -0.00206])
+        bias = gtsam.imuBias.ConstantBias(np.zeros(3), gyro_bias)
+        params = gtsam.PreintegrationParams.MakeSharedU(9.81)
+        pims = preintegrate_intervals(
+            np.array([0.0, 0.13, 0.71, 1.0]),
+            np.tile([0.0, 0.0, 9.81], (4, 1)),
+            np.tile(gyro_bias, (4, 1)),
+            np.array([0.0, 0.5, 1.0]),
+            params,
+            bias,
+        )
+        state = gtsam.NavState(gtsam.Pose3(), np.zeros(3))
+        for pim in pims:
+            state = pim.predict(state, bias)
+        np.testing.assert_allclose(state.pose().matrix(), np.eye(4), atol=1e-12)
+        np.testing.assert_allclose(state.velocity(), np.zeros(3), atol=1e-12)
+
     def test_nonuniform_samples_and_fractional_boundaries(self) -> None:
         times = np.array([-0.013, 0.007, 0.021, 0.038, 0.09, 0.12, 0.21])
         boundaries = np.array([0.0, 0.05, 0.2])
