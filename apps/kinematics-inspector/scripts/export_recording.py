@@ -29,6 +29,7 @@ sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 import kinematic_walk as example
 from mujoco_io import KinematicRecording, load_model, load_recording, pose
 from imu_aiding import BIAS_KEY, build_imu_aiding
+from pack_recordings import write_replay_bundles
 
 
 def compressed_json(path: Path, value: Any) -> None:
@@ -36,6 +37,21 @@ def compressed_json(path: Path, value: Any) -> None:
         gzip.compress(
             json.dumps(value, separators=(",", ":"), allow_nan=False).encode(), mtime=0
         )
+    )
+
+
+def loop_closure_factor(walk: KinematicRecording) -> gtsam.PoseTranslationPrior3D:
+    """Prior the final root COM position to the anchored start, in world axes.
+
+    Sigmas are 30 cm in world X/Y and 5 cm in Z, with no orientation cost.
+    The first pose already has a tight prior to walk.anchor. This unary factor
+    preserves the graph's chain structure. It is a manually supplied return to
+    that anchor, not a measurement from the final LIO pose.
+    """
+    return gtsam.PoseTranslationPrior3D(
+        gtd.PoseKey(walk.root.id(), walk.count - 1),
+        walk.anchor.translation(),
+        gtsam.noiseModel.Diagonal.Sigmas(np.array([0.30, 0.30, 0.05])),
     )
 
 
@@ -138,6 +154,18 @@ class Recorder:
             self.walk, self.costs, self.constraints, values
         )
         state["frameMetrics"] = self.frame_metrics(values)
+        state["endpointDisplacementWorld"] = (
+            values.atPose3(
+                gtd.PoseKey(self.walk.root.id(), self.walk.count - 1)
+            ).translation()
+            - values.atPose3(gtd.PoseKey(self.walk.root.id(), 0)).translation()
+        ).tolist()
+        state["closurePositionErrorWorld"] = (
+            values.atPose3(
+                gtd.PoseKey(self.walk.root.id(), self.walk.count - 1)
+            ).translation()
+            - self.walk.anchor.translation()
+        ).tolist()
         return state
 
     def frame_metrics(self, values: gtsam.Values) -> dict[str, list[float]]:
@@ -238,6 +266,11 @@ def main() -> None:
         help="Add Gal3 IMU factors, world COM velocities, and one shared bias",
     )
     parser.add_argument(
+        "--loop-closure",
+        action="store_true",
+        help="Close full-trajectory root COM positions: world XYZ sigmas 0.30, 0.30, 0.05 m",
+    )
+    parser.add_argument(
         "--contact-slip-sigma",
         type=float,
         default=0.05,
@@ -265,6 +298,11 @@ def main() -> None:
         parser.error("Use positive iterations and at least two frames")
     walk = example.load_walk(args.data, args.contacts, args.max_frames)
     _, input_metadata = load_recording(args.data)
+    if args.loop_closure and (
+        not input_metadata.get("motionSource", {}).get("fullTrajectory")
+        or args.max_frames is not None
+    ):
+        parser.error("Loop closure requires the entire recording, without --max-frames")
     contact_settings = input_metadata.get("motionSource", {}).get(
         "contactInitialization", {}
     )
@@ -283,6 +321,8 @@ def main() -> None:
     aiding = build_imu_aiding(walk, args.data) if args.imu else None
     if aiding is not None:
         costs.push_back(aiding.factors)
+    if args.loop_closure:
+        costs.add(loop_closure_factor(walk))
     recorder.constraints = constraints
     runs = {}
     for method in ("contact", "ik"):
@@ -451,6 +491,17 @@ def main() -> None:
         "title": "G1 walking · kinematics smoothing",
         "motionSource": metadata.get("motionSource"),
         "imuAiding": aiding.metadata if aiding is not None else {"enabled": False},
+        "loopClosure": {
+            "enabled": args.loop_closure,
+            "factor": "PoseTranslationPrior3D",
+            "sample": walk.count - 1,
+            "point": "root link COM",
+            "residual": "p_finish - anchored_start_position, world XYZ",
+            "targetWorldMeters": walk.anchor.translation().tolist(),
+            "positionSigmasMeters": [0.30, 0.30, 0.05],
+            "orientationConstraint": "none",
+            "source": "manually supplied return-to-start observation; not inferred from LIO",
+        },
         "samples": walk.count,
         "maxIterations": args.max_iterations,
         "dt": walk.dt,
@@ -503,6 +554,7 @@ def main() -> None:
     args.output.joinpath("recording.json").write_text(
         json.dumps(record, separators=(",", ":"), allow_nan=False) + "\n"
     )
+    write_replay_bundles(args.output)
     print(
         f"Exported {walk.count} samples, {len(phases)} phases to {args.output}",
         flush=True,

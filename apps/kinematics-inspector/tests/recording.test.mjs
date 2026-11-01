@@ -166,13 +166,19 @@ for (const [baselineDirectory, aidedDirectory] of [['', 'imu/'], ['full/', 'full
     assert.equal(metadata.imuAiding.intervals, metadata.samples - 1);
     assert.equal(metadata.imuAiding.biasVariables, 1);
     assert.equal(metadata.imuAiding.poseFrame, 'world_T_linkCOM');
+    assert.deepEqual(metadata.imuAiding.stationaryCalibration.sourceWindowSeconds, [0, 25]);
+    assert.equal(metadata.imuAiding.stationaryCalibration.sampleCount, 5000);
+    assert.deepEqual(metadata.imuAiding.biasPriorSigmas, [.5, .5, .5, .0001, .0001, .0001]);
+    const gyroMean = [-.002148401415348053, -.00467177232503891, -.0020597515225410463];
+    assert.deepEqual(metadata.imuAiding.biasPriorMean, [0, 0, 0, ...gyroMean]);
+    assert.deepEqual(metadata.imuAiding.stationaryCalibration.gyroMeanRadiansPerSecond, gyroMean);
     assert.equal(metadata.motionSource.imu.usedBySmoother, true);
     assert.equal(metadata.graph.costFactors - baseline.metadata.graph.costFactors, metadata.samples + 1);
     assert.deepEqual(metadata.phases, baseline.metadata.phases);
     assert.equal(metadata.provenance.inputs['imu.json'], baseline.metadata.provenance.inputs['imu.json']);
     for (const method of ['contact', 'ik']) {
       const run = metadata.runs[method], original = baseline.metadata.runs[method];
-      assert.equal(run.solver.iterations, 10);
+      assert(run.solver.iterations > 0 && run.solver.iterations <= metadata.maxIterations);
       assert(run.smoothing.at(-1).metrics.kinematic_equality_l2 < 1e-5);
       assert(run.smoothing.at(-1).metrics.cost < run.smoothing[0].metrics.cost);
       const history = [...run.initializer, ...run.ikFrames.flat()];
@@ -191,9 +197,91 @@ for (const [baselineDirectory, aidedDirectory] of [['', 'imu/'], ['full/', 'full
         assert(Number.isInteger(state.velocityOffset));
         assert(values.subarray(state.velocityOffset, state.velocityOffset+3*metadata.samples).every(Number.isFinite));
       }
+      assert.deepEqual(run.smoothing[0].bias, metadata.imuAiding.biasPriorMean);
+      run.smoothing.at(-1).bias.slice(3).forEach((value, axis) => {
+        assert(Math.abs(value - gyroMean[axis]) < 3*metadata.imuAiding.biasPriorSigmas[axis+3]);
+      });
     }
     const invalid = structuredClone(metadata);
     invalid.runs.contact.smoothing.at(-1).velocityOffset = values.length;
     assert.throws(() => validateRecording(invalid, values), /Invalid IMU/);
+  });
+}
+
+for (const base of ['full', 'full-imu']) {
+  test(`position closure preserves reference and initialization: ${base}`, () => {
+    const load = directory => {
+      const metadata = JSON.parse(readFileSync(new URL(`../public/${directory}/recording.json`, import.meta.url)));
+      const raw = gunzipSync(readFileSync(new URL(`../public/${directory}/states.bin.gz`, import.meta.url)));
+      const values = decodeStates(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength), metadata.storage);
+      validateRecording(metadata, values);
+      return {metadata, values};
+    };
+    const baseline = load(base), closed = load(`${base}-loop`);
+    const {metadata, values} = closed;
+    assert.equal(metadata.loopClosure.enabled, true);
+    assert.deepEqual(metadata.loopClosure.positionSigmasMeters, [.30, .30, .05]);
+    assert.equal(metadata.loopClosure.factor, 'PoseTranslationPrior3D');
+    assert.equal(metadata.loopClosure.sample, metadata.samples-1);
+    assert.equal(metadata.loopClosure.orientationConstraint, 'none');
+    assert.equal(metadata.graph.costFactors, baseline.metadata.graph.costFactors + 1);
+    assert.deepEqual(metadata.provenance.inputs, baseline.metadata.provenance.inputs);
+    const poses = (data, state) => data.values.subarray(state.poseOffset, state.poseOffset + state.frames*data.metadata.bodies*7);
+    assert.deepEqual(poses(closed, metadata.reference), poses(baseline, baseline.metadata.reference));
+    for (const method of ['contact', 'ik']) {
+      const run = metadata.runs[method], original = baseline.metadata.runs[method];
+      assert.equal(run.solver.iterations, 10);
+      assert(run.smoothing.at(-1).metrics.kinematic_equality_l2 < 1e-5);
+      assert.deepEqual(poses(closed, run.smoothing[0]), poses(baseline, original.smoothing[0]));
+      const histories = [...run.initializer, ...run.ikFrames.flat()];
+      const originals = [...original.initializer, ...original.ikFrames.flat()];
+      assert.equal(histories.length, originals.length);
+      for (let k=0; k<histories.length; k++) assert.deepEqual(poses(closed, histories[k]), poses(baseline, originals[k]));
+      // At the identical seed, the only additional objective is the world-position closure.
+      const sigma = metadata.loopClosure.positionSigmasMeters;
+      const closureCost = run.smoothing[0].closurePositionErrorWorld.reduce((cost, x, i) => cost + .5*(x/sigma[i])**2, 0);
+      const difference = run.smoothing[0].metrics.cost - original.smoothing[0].metrics.cost;
+      assert(Math.abs(difference - closureCost) < 1e-6*Math.max(1, closureCost));
+      for(let i=2; i<run.smoothing.length; i++) assert(run.smoothing[i].metrics.cost <= run.smoothing[i-1].metrics.cost + 1e-6);
+      assert(run.smoothing.at(-1).endpointDisplacementWorld.every(Number.isFinite));
+      if (metadata.imuAiding.enabled) assert(run.smoothing.at(-1).bias.every(Number.isFinite));
+    }
+  });
+}
+
+for (const directory of ['', 'imu/', 'full/', 'full-imu/', 'full-loop/', 'full-imu-loop/']) {
+  test(`smoothing bundle preserves every iterate and defers initializer history: ${directory}`, () => {
+    const load = (metadataName, stateName) => {
+      const file = readFileSync(new URL(`../public/${directory}${metadataName}`, import.meta.url));
+      const metadata = JSON.parse(metadataName.endsWith('.gz') ? gunzipSync(file) : file);
+      const bytes = gunzipSync(readFileSync(new URL(`../public/${directory}${stateName}`, import.meta.url)));
+      const values = decodeStates(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength), metadata.storage);
+      validateRecording(metadata,values);
+      return {metadata,values};
+    };
+    const original = load('recording.json','states.bin.gz');
+    const packed = load('smoothing.json.gz','smoothing.bin.gz');
+    assert.deepEqual(packed.metadata.availableStages,['smoothing']);
+    assert(packed.values.length < original.values.length);
+    const sameState = (a,b) => {
+      assert.deepEqual(a.metrics,b.metrics);
+      assert.deepEqual(a.bias,b.bias);
+      for (const [field,size] of [['poseOffset', a.frames*original.metadata.bodies*7],
+          ['jointOffset', a.frames*original.metadata.jointNames.length], ['velocityOffset', a.frames*3]]) {
+        if(a[field] === undefined) continue;
+        assert.deepEqual(packed.values.subarray(a[field],a[field]+size),original.values.subarray(b[field],b[field]+size));
+      }
+    };
+    sameState(packed.metadata.reference, original.metadata.reference);
+    for(const method of ['contact','ik']) {
+      const a=packed.metadata.runs[method], b=original.metadata.runs[method];
+      assert.equal(a.initializer.length,0); assert.equal(a.ikFrames.length,0);
+      assert.equal(a.smoothing.length,b.smoothing.length);
+      a.smoothing.forEach((state,index)=>sameState(state,b.smoothing[index]));
+      assert.throws(()=>historyFor(packed.metadata,method,'initializer',0),/not been loaded/);
+    }
+    const complete=JSON.parse(gunzipSync(readFileSync(new URL(`../public/${directory}recording.json.gz`,import.meta.url))));
+    assert.deepEqual(complete.runs,original.metadata.runs);
+    assert.deepEqual(complete.availableStages,['smoothing','initializer']);
   });
 }

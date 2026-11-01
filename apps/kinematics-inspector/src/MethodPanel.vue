@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ReplayScene } from './scene.js';
-import { historyFor, jointValue } from './recording.js';
+import { historyFor, jointValue, referenceLabel } from './recording.js';
 import TracePlot from './TracePlot.vue';
 const props = defineProps({ method: String, stage: String, frame: Number, showReference: Boolean, data: Object, joint: Number });
 const sceneElement = ref(null), selection = ref(0), replaying = ref(false), sceneError = ref('');
@@ -10,6 +10,7 @@ const title = computed(() => props.method === 'contact' ? 'Contact initializatio
 const history = computed(() => historyFor(props.data.record, props.method, props.stage, props.frame));
 const index = computed(() => Math.min(selection.value, history.value.length - 1));
 const state = computed(() => history.value[index.value]);
+const bias = computed(() => state.value.bias ?? props.data.record.runs[props.method].smoothing.at(-1).bias);
 const dense = computed(() => state.value.frames === 1 ? props.data.record.runs[props.method].smoothing[0] : state.value);
 const metrics = computed(() => state.value.metrics);
 const errors = computed(() => history.value.map(s => props.stage === 'initializer' ? s.error : s.metrics.cost));
@@ -44,7 +45,7 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
     <header class="panel-heading"><div><span class="eyebrow">{{ method === 'contact' ? 'CONTACT' : 'IK' }}</span><h2>{{ title }}</h2></div><div><button class="quiet" @click="scene?.fitPaths()">Fit paths</button><button class="quiet" @click="scene?.reset()">Reset view</button></div></header>
     <div ref="sceneElement" class="scene"><p v-if="sceneError" role="alert" class="error-banner">{{ sceneError }}</p></div>
     <div class="scene-caption"><span>{{ state.label }}</span><span>{{ (frame * data.record.dt).toFixed(2) }} s · frame {{ frame }}</span></div>
-    <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{data.record.motionSource?.referenceLabel || 'reference'}} path</span><span>XY ground projection</span></div>
+    <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{referenceLabel}} path</span><span>XY ground projection</span></div>
     <section class="iteration-controls">
       <div class="row"><h3>{{ stage === 'smoothing' ? 'Whole-trajectory smoothing' : method === 'ik' ? `IK solve · frame ${frame}` : 'Sparse contact solve' }}</h3><span class="mono">Iteration {{ state.iteration }} / {{ history.at(-1).iteration }}</span></div>
       <input type="range" min="0" :max="history.length-1" :value="index" :aria-label="`${title} iteration`" @input="select($event.target.value)">
@@ -52,6 +53,19 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
       <p class="scope" v-if="stage==='initializer'">{{ method==='ik' ? 'Each walking frame has its own LM history. Scrub time to inspect another solve.' : `${data.record.runs.contact.sparseSamples.length} supported samples solved jointly. Intermediate poses are interpolated offline.` }}</p>
       <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.converged ? 'Converged.' : 'Stopped at the iteration limit; convergence criterion not met.' }}</p>
       <p class="scope" v-if="stage==='smoothing'">Iteration 0: feasible initial guess. CM-Opt limit: {{ data.record.maxIterations }} iterations.</p>
+    </section>
+    <section class="plot-block bias-values">
+      <h3>{{stage === 'smoothing' ? 'Estimated IMU bias · selected iteration' : 'Estimated IMU bias · final smoothing iteration'}}</h3>
+      <template v-if="bias">
+        <table><thead><tr><th scope="col">Sensor</th><th scope="col">x</th><th scope="col">y</th><th scope="col">z</th></tr></thead><tbody>
+          <tr><th scope="row">Accelerometer · m/s²</th><td v-for="(value,axis) in bias.slice(0,3)" :key="axis">{{number(value,5)}}</td></tr>
+          <tr><th scope="row">Gyroscope · rad/s</th><td v-for="(value,axis) in bias.slice(3)" :key="axis">{{number(value,5)}}</td></tr>
+          <tr v-if="data.record.imuAiding.stationaryCalibration"><th scope="row">Gyroscope prior · rad/s</th><td v-for="(value,axis) in data.record.imuAiding.biasPriorMean.slice(3)" :key="axis">{{number(value,5)}}</td></tr>
+        </tbody></table>
+        <p class="scope">Pelvis IMU measurement axes. One constant bias shared by all slices.</p>
+        <p v-if="data.record.imuAiding.stationaryCalibration" class="scope">Gyro prior from the initial 0–25 s stationary interval; σ={{data.record.imuAiding.biasPriorSigmas[3]}} rad/s per axis.</p>
+      </template>
+      <p v-else class="scope">Bias is not estimated without IMU aiding.</p>
     </section>
     <section class="plot-block">
       <div class="row"><h3>{{ stage==='smoothing' ? 'Smoothing objective' : 'Initializer objective' }}</h3><strong class="mono">{{ number(errors[index], 5) }}</strong></div>
@@ -66,10 +80,7 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
       <div><span>Reference root position RMS</span><strong>{{ number(metrics.reference_root_translation_rms_m) }} <small>m</small></strong></div>
     </div>
     <div v-else class="metrics local-metrics"><div><span>Per-frame IK objective</span><strong>{{ number(state.error,5) }}</strong></div><div><span>Selected joint</span><strong>{{ number(currentAngle) }} <small>rad</small></strong></div></div>
-    <div v-if="state.bias" class="metrics">
-      <div><span>Shared accelerometer bias [x, y, z] · m/s²</span><span>{{state.bias.slice(0,3).map(x=>number(x,4)).join(', ')}}</span></div>
-      <div><span>Shared gyroscope bias [x, y, z] · rad/s</span><span>{{state.bias.slice(3).map(x=>number(x,4)).join(', ')}}</span></div>
-    </div>
+    <div v-if="data.record.loopClosure?.enabled && state.closurePositionErrorWorld" class="metrics"><div><span>Final COM − start anchor · world [x, y, z] · m</span><strong>{{state.closurePositionErrorWorld.map(x=>number(x,3)).join(', ')}}</strong></div></div>
     <section class="plot-block">
       <div class="row"><h3>{{ data.record.jointNames[joint].replaceAll('_',' ') }}</h3><span class="mono">{{ number(currentAngle) }} rad</span></div>
       <TracePlot :values="jointAngles" :secondary="measuredAngles" :selected="frame" label="Joint angle over walking time, with source reference" />

@@ -4,3 +4,4 @@
 .phase-strip.dense{gap:0}
 
 .path-legend{display:flex;flex-wrap:wrap;gap:8px 16px;padding:8px 20px;font-size:10px;color:#627466;background:#f1f3ef}.estimated-path{color:var(--method)}.superodom-path{color:#536b89}
+.bias-values table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;font-variant-numeric:tabular-nums}.bias-values th,.bias-values td{text-align:right;padding:7px 4px;border-bottom:1px solid #edf0e9}.bias-values th:first-child{text-align:left}.bias-values tbody th{font-weight:400}.bias-values td{color:#304b3e}.recording-controls small{font-size:10px;color:#6b7971}

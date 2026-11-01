@@ -3,6 +3,30 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createRobotVisual } from '../../shared/mujocoRobot.js';
 import { bodyOffset } from './recording.js';
 
+const robotTemplates = new Map();
+
+function robotVisual(model) {
+  if (!robotTemplates.has(model)) {
+    const visual = createRobotVisual(model);
+    const geometries = new Set();
+    visual.root.traverse(object => { if (object.geometry) geometries.add(object.geometry); });
+    robotTemplates.set(model, {...visual, geometries});
+  }
+  const template = robotTemplates.get(model);
+  const root = template.root.clone(true);
+  // Body transforms and materials are independent; mesh geometry is immutable.
+  root.traverse(object => { if (object.material) object.material = object.material.clone(); });
+  return {root, bodies: root.children};
+}
+
+export function disposeRobotTemplates() {
+  for (const template of robotTemplates.values()) {
+    template.geometries.forEach(geometry => geometry.dispose());
+    template.root.traverse(object => { if (object.material) object.material.dispose(); });
+  }
+  robotTemplates.clear();
+}
+
 /** Render stored body transforms directly. No MuJoCo, FK, or optimizer in-browser. */
 export class ReplayScene {
   constructor(container, model, record, floats, color) {
@@ -21,8 +45,8 @@ export class ReplayScene {
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x788679, 1.1));
     const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(2, -3, 6); this.scene.add(light);
     this.grid = new THREE.GridHelper(40, 160, '#bac7bb', '#dce2d9'); this.grid.rotation.x = Math.PI / 2; this.scene.add(this.grid);
-    this.robot = createRobotVisual(model); this.scene.add(this.robot.root);
-    this.reference = createRobotVisual(model); this.scene.add(this.reference.root);
+    this.robot = robotVisual(model); this.scene.add(this.robot.root);
+    this.reference = robotVisual(model); this.scene.add(this.reference.root);
     this.reference.root.traverse(object => {
       if (!object.material) return;
       object.material.color.set('#8b96a6'); object.material.opacity = .18;
@@ -109,7 +133,10 @@ export class ReplayScene {
     this.observer.disconnect(); this.controls.dispose();
     const geometries = new Set(), materials = new Set();
     this.scene.traverse(object => { if (object.geometry) geometries.add(object.geometry); if (object.material) materials.add(object.material); });
-    geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose());
+    // Release renderer allocations/listeners. The shared CPU mesh buffers remain
+    // available in the template for the next renderer to upload.
+    geometries.forEach(g => g.dispose());
+    materials.forEach(m => m.dispose());
     this.renderer.dispose(); this.renderer.domElement.remove();
   }
 }

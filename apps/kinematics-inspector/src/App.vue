@@ -1,12 +1,16 @@
 <script setup>
 import { computed, markRaw, onBeforeUnmount, onMounted, ref } from 'vue';
-import { loadRecording } from './recording.js';
+import { clearRecordingCache, loadRecording, referenceLabel } from './recording.js';
+import { disposeRobotTemplates } from './scene.js';
 import MethodPanel from './MethodPanel.vue';
 const data = ref(null), error = ref(''), frame = ref(0), stage = ref('smoothing'), showReference = ref(true), joint = ref(0), playing = ref(false);
-const selection = ref('turn');
-const useImu = ref(false);
+const selection = ref('full');
+const useImu = ref(true);
+const useLoopClosure = ref(true);
 const recordings = [{id:'turn', label:'Turn · 204–214 s · 50 Hz', directory:''}, {id:'full', label:'Entire trajectory · 5 Hz', directory:'full/'}];
-const directory = computed(() => useImu.value ? (selection.value === 'full' ? 'full-imu/' : 'imu/') : recordings.find(r => r.id === selection.value).directory);
+const directory = computed(() => selection.value === 'full'
+  ? `full${useImu.value ? '-imu' : ''}${useLoopClosure.value ? '-loop' : ''}/`
+  : useImu.value ? 'imu/' : '');
 let controller;
 let animation = 0, origin = 0, firstFrame = 0;
 const phase = computed(() => data.value?.record.phases.find(p => p.start <= frame.value && p.end >= frame.value));
@@ -24,35 +28,40 @@ function play() {
   if (frame.value === data.value.record.samples-1) frame.value=0;
   firstFrame=frame.value; origin=performance.now(); playing.value=true; animation=requestAnimationFrame(tick);
 }
-function changeStage(value) { pause(); stage.value=value; }
-async function changeRecording(value, aided = useImu.value) {
+function changeStage(value) {
+  pause(); stage.value=value;
+  if (!data.value || !data.value.record.availableStages?.includes(value)) changeRecording(selection.value);
+}
+async function changeRecording(value, aided = useImu.value, closed = useLoopClosure.value) {
   pause(); controller?.abort();
   const request = new AbortController(); controller = request;
   const savedFrame = value === selection.value ? frame.value : 0;
-  selection.value = value; useImu.value = aided; data.value = null; error.value = ''; frame.value = savedFrame;
+  selection.value = value; useImu.value = aided; useLoopClosure.value = value === 'full' && closed;
+  data.value = null; error.value = ''; frame.value = savedFrame;
   try {
-    const loaded = await loadRecording(request.signal, directory.value);
+    const loaded = await loadRecording(request.signal, directory.value, stage.value);
     if (request.signal.aborted) return;
     data.value = markRaw(loaded);
     joint.value = Math.max(0, loaded.record.jointNames.indexOf('left_knee_joint'));
   } catch(e) { if(!request.signal.aborted) error.value=e.message; }
 }
 onMounted(() => changeRecording(selection.value));
-onBeforeUnmount(() => { pause(); controller?.abort(); });
+onBeforeUnmount(() => { pause(); controller?.abort(); clearRecordingCache(); disposeRobotTemplates(); });
 </script>
 <template>
-  <main :data-stage="stage" :data-frame="frame" :data-imu="useImu">
+  <main :data-stage="stage" :data-frame="frame" :data-imu="useImu" :data-loop-closure="useLoopClosure">
     <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / G1 WALKING</span><h1>Kinematics</h1><p>Full-trajectory kinematic optimization with contact and inverse-kinematics initialization.</p></div><span class="recorded-badge"><i></i> OFFLINE RECORDING</span></header>
       <section class="toolbar">
         <div class="recording-controls">
         <div class="stage-selector" role="group" aria-label="Inspection stage"><button :aria-pressed="stage==='smoothing'" @click="changeStage('smoothing')">CM-Opt smoothing</button><button :aria-pressed="stage==='initializer'" @click="changeStage('initializer')">Initialization</button></div>
         <select :value="selection" aria-label="Recording" @change="changeRecording($event.target.value)"><option v-for="r in recordings" :key="r.id" :value="r.id">{{r.label}}</option></select>
         <label><input type="checkbox" :checked="useImu" @change="changeRecording(selection,$event.target.checked)"> IMU aiding</label>
+        <label :title="selection === 'full' ? 'Soft return-to-start position observation; no orientation constraint' : 'Available for the entire trajectory; the turn excerpt does not return to its start'"><input type="checkbox" :checked="useLoopClosure" :disabled="selection !== 'full'" @change="changeRecording(selection,useImu,$event.target.checked)"> Loop closure applied <small v-if="selection !== 'full'">(entire trajectory)</small></label>
         </div>
-        <div v-if="data" class="settings"><label><input type="checkbox" v-model="showReference"> {{data.record.motionSource?.referenceLabel || 'Reference overlay'}}</label><label>Joint <select v-model.number="joint" aria-label="Joint to inspect"><option v-for="(name,index) in data.record.jointNames" :key="name" :value="index">{{name}}</option></select></label></div>
+        <div v-if="data" class="settings"><label><input type="checkbox" v-model="showReference"> {{referenceLabel}}</label><label>Joint <select v-model.number="joint" aria-label="Joint to inspect"><option v-for="(name,index) in data.record.jointNames" :key="name" :value="index">{{name}}</option></select></label></div>
       </section>
     <div v-if="error" role="alert" class="error-banner"><h2>Recording could not be loaded</h2><p>{{error}}</p><p>Generate the saved data with <code>python apps/kinematics-inspector/scripts/export_recording.py</code> from the repository root.</p></div>
-    <div v-else-if="!data" class="loading" role="status">Loading robot geometry and recorded iterations…</div>
+    <div v-else-if="!data" class="loading" role="status">{{stage === 'smoothing' ? 'Loading smoothing iterations…' : 'Loading initializer histories…'}}</div>
     <template v-else>
       <section class="timeline">
         <p v-if="data.record.motionSource" class="motion-title">{{data.record.motionSource.title}}</p>
@@ -71,6 +80,7 @@ onBeforeUnmount(() => { pause(); controller?.abort(); });
         <p v-if="data.record.motionSource?.imu">Physical pelvis IMU: {{data.record.motionSource.imu.samples.toLocaleString()}} accelerometer and gyroscope samples at nominally 200 Hz. Original timestamps are retained. {{useImu ? 'Galilean IMU factors connect the slices, with world-frame COM velocities and one shared sensor-frame bias.' : 'The kinematic smoother does not use IMU factors.'}} <a :href="`./${directory}${data.record.motionSource.imu.file}`" download>Download IMU measurements</a>.</p>
         <p v-if="useImu">Poses map COM coordinates into world coordinates (world_T_COM). The mounting transform maps IMU coordinates into the COM frame. GTSAM corrects sensor rotation and centripetal acceleration; angular-acceleration lever-arm terms are omitted. Initializers are unchanged. Aided and unaided objectives contain different factors; compare reference errors and physical residuals.</p>
         <p>Ground contact displacement is a soft cost: σ={{data.record.graph.contactSlipSigmaMeters * 1000}} mm per axis per slice interval ({{data.record.dt}} s). Stance feet may slip.</p>
+        <p v-if="useLoopClosure">Loop closure adds a position prior on the final root COM at the anchored start position: σx=σy=30 cm, σz=5 cm. It adds no orientation constraint. This is a manually supplied observation for our smoother; it makes no assertion about loop closure in SuperOdom. Initializers and the LiDAR-inertial reference are unchanged.</p>
         <p v-if="data.record.motionSource?.fullTrajectory">Contact labels are detected at 50 Hz with a local floor estimate, then sampled at 5 Hz. {{data.record.motionSource.detector.unsupportedSamples}} samples have no detected support. Weak identity-motion priors connect {{data.record.motionSource.detector.contactComponents}} contact components for initialization (translation σ=10 m, rotation σ=π rad). The reference trajectory retains its original vertical drift.</p>
         <p>{{data.record.motionSource?.referenceDescription || 'Reference overlays are source root poses with measured-joint FK.'}} The first root pose anchors estimation; later reference poses are used for contact labeling and evaluation.</p>
         <details v-if="useImu"><summary>IMU frames, noise, and priors</summary><pre>{{JSON.stringify(data.record.imuAiding,null,2)}}</pre></details>

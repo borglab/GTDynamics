@@ -1,7 +1,7 @@
 # Kinematics
 
 Inspect two physical G1 recordings with contact initialization and
-inverse kinematics, followed by 10 CM-Opt iterations on the same smoothing problem.
+inverse kinematics, followed by up to 10 CM-Opt iterations on the same smoothing problem.
 This app is entirely static: optimization, FK, residuals, and body transforms are computed
 offline. The browser only renders stored poses and plots recorded numbers.
 
@@ -11,6 +11,9 @@ The shared `npm run build` includes this app in the static site.
 
 ## Inspect a result
 
+The default is **Entire trajectory · 5 Hz**, with **IMU aiding** and **Loop
+closure applied** enabled.
+
 The selector next to the stage switch offers:
 
 | Recording | Sample rate | Samples |
@@ -18,14 +21,44 @@ The selector next to the stage switch offers:
 | Turn, source seconds 204–214 | 50 Hz | 500 |
 | Entire trajectory, approximately 220 seconds | 5 Hz | 1,100 |
 
-Both have all initializer histories and ten CM-Opt iterations per method.
+Both have all initializer histories and a ten-iteration CM-Opt limit per method.
+With the stationary gyro prior, the aided turn converges in eight iterations.
 **IMU aiding** switches between precomputed solves with and without Gal3 IMU
 factors; changing this option preserves walking time. Initializers are identical
 in both variants. Shared accelerometer and gyroscope biases are shown for every
 smoothing iteration.
 
+**Loop closure applied**, available for the entire trajectory, switches between
+offline solves with and without one return-to-start observation, independently
+of IMU aiding. It preserves walking time. The short turn does not return to its
+start, so this option is disabled for that excerpt. The closure uses GTSAM's
+`PoseTranslationPrior3D` on the final root COM pose, targeting the anchored start
+position in world axes, with standard deviations `[0.30, 0.30, 0.05]` metres.
+The first pose already has a tight prior (sigma 1e-5); a unary endpoint prior
+preserves the graph's chain structure. It has no orientation residual or
+rotational Jacobian. This is a manually supplied observation for the smoother, not a claim
+that SuperOdom used loop closure. Initializers and reference trajectories are
+unchanged.
+
+The prior is soft, and ten iterations need not satisfy it. The saved endpoint
+distance to the start anchor is 0.39 m (contact initialization) and 0.34 m (IK)
+with IMU aiding. Without IMU aiding, those distances are 45.84 m and 0.13 m.
+The viewer reports the world XYZ residual for each saved smoothing iteration.
+Substantial trajectory drift remains even when the endpoint is close to the anchor.
+
+The **Estimated IMU bias** table lists x/y/z accelerometer bias in m/s² and
+gyroscope bias in rad/s, in pelvis IMU measurement axes. Each method estimates
+one constant bias over its entire trajectory. During smoothing, the table follows
+the selected iteration; during initialization, it shows the final smoothing bias.
+
 Changing recordings resets time and disposes the previous scenes. The camera
 follows the selected robot pose while preserving the orbit and zoom.
+
+Loading initially fetches only smoothing iterations, compressed metadata, and
+the shared robot model. Initializer histories are fetched when **Initialization**
+is selected. The two most recently viewed results are cached in memory; model
+data and immutable mesh geometry are reused across variants. Resources are
+released when the app unmounts.
 
 - **Walking time** synchronizes both views. Contact phase strips jump to a phase.
 - **CM-Opt smoothing** shows the feasible initial guess as iteration 0, followed
@@ -34,7 +67,7 @@ follows the selected robot pose while preserving the orbit and zoom.
 - **Initialization** shows the contact initializer's joint sparse solve
   and IK's independent per-frame solves. Change walking time to choose the IK
   problem; its iteration count can differ from neighboring frames.
-- **SuperOdom reference**, enabled by default, shows the LIO root trajectory as
+- **LiDAR-inertial reference**, enabled by default, shows the SuperOdom root trajectory as
   a dashed blue-gray line and its measured-joint MuJoCo FK robot. The estimated
   root path is solid. Both paths are XY ground projections in the same recorded
   world frame; no additional trajectory alignment is applied. **Fit paths** frames
@@ -94,7 +127,7 @@ for labeling and evaluation. The legacy IK initializer retains its existing
 height-only contact model and uses a stationary root command for this clip;
 the dataset supplies no commanded speed. The contact initializer converges after
 27 iterations. Both
-subsequent CM-Opt runs retain exactly ten iterations and satisfy their kinematic
+subsequent CM-Opt runs retain every completed iteration and satisfy their kinematic
 equalities to less than 1e-5 in L2 norm.
 
 ## Regenerate offline
@@ -139,6 +172,12 @@ poses as measurements. IMU aiding is optional. Its original
 43,991 IMU samples are available in `public/full/imu.json`.
 
 The `--max-iterations` option defaults to 10 and limits both CM-Opt runs.
+Generate the loop-closure variants with the full-trajectory command above,
+adding `--loop-closure --output apps/kinematics-inspector/public/full-loop`,
+and then `--loop-closure --imu --output apps/kinematics-inspector/public/full-imu-loop`.
+The exporter rejects loop closure on an excerpt or a `--max-frames` prefix.
+The native factor check can be run with the same Python environment:
+`python apps/kinematics-inspector/tests/test_loop_closure.py`.
 Initializer histories retain their native stopping criteria.
 The importer requires NumPy, SciPy, and MuJoCo. It downloads all six source files
 for the full recording from pinned revision `db621c57833e08a812b2ec8491aa0ca81f0ecb33`,
@@ -161,8 +200,19 @@ contact interpolation, and refuses nonfinite or infeasible final results. Histor
 capture adds overhead: this export is **not a timing benchmark**. Continue using
 `compare_kinematic_walk.py` for timings without history capture.
 
-Four results are retained: the turn in `public/`, the full 5 Hz trajectory in
-`public/full/`, and their aided variants in `public/imu/` and `public/full-imu/`.
+The exporter also writes browser loading bundles: `smoothing.json.gz` and
+`smoothing.bin.gz` contain all smoothing iterates and the reference, while
+`recording.json.gz` provides compressed metadata for the complete archive.
+These bundles copy the original integer coordinates exactly and require no new
+optimization. To regenerate only the loading bundles for existing results:
+
+```bash
+python apps/kinematics-inspector/scripts/pack_recordings.py
+```
+
+Six results are retained: the turn in `public/`, the full 5 Hz trajectory in
+`public/full/`, their aided variants in `public/imu/` and `public/full-imu/`, and
+full-trajectory closure variants in `public/full-loop/` and `public/full-imu-loop/`.
 Each directory contains:
 
 - `public/recording.json`: metrics, phase schedule, iteration indices, float
@@ -201,7 +251,8 @@ The generic example retains its previous 5 mm default; both drivers expose
 `--contact-slip-sigma` for explicit experiments. The selected value and interval
 are recorded in metadata and displayed below the viewer.
 
-On the IMU-aided turn, the measured heading change is −147.5° in SuperOdom:
+In the original slip experiment, before adding the stationary gyro prior, the
+IMU-aided turn had a measured heading change of −147.5° in SuperOdom:
 
 | Sigma | Contact-initialized turn | IK-initialized turn | RMS slip, contact / IK |
 | --- | ---: | ---: | ---: |
@@ -234,14 +285,37 @@ gravity at rest, and angular rate in pelvis axes. The model supplies
 GTSAM corrects rotation and centripetal acceleration at the sensor lever arm;
 its correction omits the angular-acceleration term. This remains an approximation.
 
-A single shared `ConstantBias` is expressed in IMU measurement axes. It starts
-at zero with prior sigmas 0.5 m/s² and 0.05 rad/s. Velocities are initialized by
+A single shared `ConstantBias` is expressed in IMU measurement axes. For both
+Open-IO snippets, gyro bias is initialized and prior-constrained to the mean of
+5,000 physical pelvis readings from the verified stationary interval **0–25 s**:
+`[-0.0021484014, -0.0046717723, -0.0020597515]` rad/s. Its prior sigma is
+**0.0001 rad/s per axis**. The importer computes this calibration from the full
+source clip even when exporting the turn at 204–214 s; it records the window,
+sample count, mean, sample standard deviation, and prior sigma in metadata.
+Raw IMU samples are unchanged, and the `pims` use the calibrated gyro bias as
+their integration bias. Accelerometer bias starts at zero with prior sigma
+0.5 m/s². Recordings without stationary calibration retain the generic zero
+gyro prior with sigma 0.05 rad/s. Velocities are initialized by
 finite differences of each initializer's COM positions. The initial world
 velocity has a zero-mean prior with sigma 3 m/s, identical for both methods;
 reference velocities are never used. Noise densities are provisionally
 0.1 m/s²/√Hz and 0.01 rad/s/√Hz, with integration covariance 1e-8.
 These are example settings, not a sensor calibration. The poses retain the same
 initial gauge and kinematic constraints as the unaided problem.
+
+During the initial rest, measured acceleration minus gravity predicted from the
+LIO attitude averages approximately `[-0.001, -0.026, -0.067]` m/s². This is an
+attitude-dependent diagnostic, not an independent accelerometer calibration.
+The earlier optimized horizontal biases near `[0.33, 0.13]` m/s² were accompanied
+by about 2° of tilt error during rest; bias and gravity direction can trade off.
+The earlier vertical bias near −0.068 m/s² is consistent with the stationary
+diagnostic. The viewer displays the gyro prior beside the estimated biases.
+The tight gyro prior leaves the full contact-initialized accelerometer estimate
+near `[0.329, 0.134, -0.069]` m/s². At rest, the measured-joint reference feet
+are pitched roughly 3–5°, whereas all inferred sole corners receive flat-ground
+height costs. That mismatch can drive tilt and accelerometer bias. These
+horizontal estimates do not agree with the stationary diagnostic and should
+not be interpreted as a physical sensor calibration.
 
 Aided and unaided objectives contain different factors and are not directly
 comparable. Inspect reference position errors and contact/joint residuals instead.

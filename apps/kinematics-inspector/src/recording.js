@@ -1,5 +1,16 @@
 /** Static recording access. Offsets are float counts, poses are body-frame xyzw. */
+export const referenceLabel = 'LiDAR-inertial reference';
+const recordings = new Map();
+let cachedModel;
+
+export function clearRecordingCache() {
+  recordings.clear(); cachedModel = undefined;
+}
+
 export function historyFor(record, method, stage, frame) {
+  if (stage === 'initializer' && record.availableStages && !record.availableStages.includes(stage)) {
+    throw new Error('Initializer history has not been loaded');
+  }
   const run = record.runs[method];
   return stage === 'smoothing' ? run.smoothing.slice(1)
     : method === 'ik' ? run.ikFrames[frame] : run.initializer;
@@ -47,7 +58,8 @@ export function validateRecording(record, floats) {
     if (run.smoothing.length !== run.solver.iterations + 2) throw new Error(`Incomplete ${method} smoothing history`);
     states.push(...run.smoothing, ...run.initializer, ...run.ikFrames.flat());
   }
-  if (record.runs.ik.ikFrames.length !== record.samples || record.runs.ik.ikFrames.some(h => !h.length)) {
+  const includesInitializers = !record.availableStages || record.availableStages.includes('initializer');
+  if (includesInitializers && (record.runs.ik.ikFrames.length !== record.samples || record.runs.ik.ikFrames.some(h => !h.length))) {
     throw new Error('Incomplete per-frame IK history');
   }
   for (const state of states) {
@@ -79,12 +91,41 @@ async function fetchFile(name, signal, compressed = false) {
   return new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
 }
 
-export async function loadRecording(signal, directory = '') {
-  const record = await fetchFile(`${directory}recording.json`, signal);
-  const [stateBuffer, modelBuffer] = await Promise.all([
-    fetchFile(`${directory}${record.storage.states}`, signal, true), fetchFile(`${directory}${record.storage.model}`, signal, true),
+async function loadModel(record, directory, signal) {
+  if (cachedModel && cachedModel.fingerprint === record.modelFingerprint) return cachedModel.model;
+  const buffer = await fetchFile(`${directory}${record.storage.model}`, signal, true);
+  const model = JSON.parse(new TextDecoder().decode(buffer));
+  signal.throwIfAborted();
+  cachedModel = {fingerprint: record.modelFingerprint, model};
+  return model;
+}
+
+export async function loadRecording(signal, directory = '', stage = 'smoothing') {
+  signal.throwIfAborted();
+  const key = `${directory}|${stage}`;
+  const cachedKey = recordings.has(`${directory}|initializer`) ? `${directory}|initializer` : key;
+  if (recordings.has(cachedKey)) {
+    const cached = recordings.get(cachedKey);
+    recordings.delete(cachedKey); recordings.set(cachedKey, cached);
+    return cached;
+  }
+  const name = stage === 'smoothing' ? 'smoothing.json.gz' : 'recording.json.gz';
+  const metadata = await fetchFile(`${directory}${name}`, signal, true);
+  const record = JSON.parse(new TextDecoder().decode(metadata));
+  const [stateBuffer, model] = await Promise.all([
+    fetchFile(`${directory}${record.storage.states}`, signal, true), loadModel(record, directory, signal),
   ]);
+  signal.throwIfAborted();
   const floats = decodeStates(stateBuffer, record.storage);
   validateRecording(record, floats);
-  return { record, floats, model: JSON.parse(new TextDecoder().decode(modelBuffer)) };
+  const data = {record, floats, model};
+  if (stage === 'initializer') recordings.delete(`${directory}|smoothing`);
+  recordings.set(key, data);
+  let retainedBytes = [...recordings.values()].reduce((sum, entry) => sum + entry.floats.byteLength, 0);
+  while (recordings.size > 2 || (recordings.size > 1 && retainedBytes > 192*1024*1024)) {
+    const oldest = recordings.keys().next().value;
+    retainedBytes -= recordings.get(oldest).floats.byteLength;
+    recordings.delete(oldest);
+  }
+  return data;
 }

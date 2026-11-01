@@ -128,9 +128,40 @@ def support_intervals(support: NDArray[np.bool_]) -> list[dict[str, Any]]:
     for side, foot in enumerate(("left", "right")):
         edges = np.diff(np.r_[False, support[:, side], False].astype(int))
         for ordinal, (first, last) in enumerate(zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1))):
-            contacts.append({"id": f"{foot[0].upper()}{ordinal:03d}", "foot": foot,
-                             "start": int(first), "end": int(last - 1), "endExclusive": int(last)})
+            contacts.append(
+                {
+                    "id": f"{foot[0].upper()}{ordinal:03d}",
+                    "foot": foot,
+                    "start": int(first),
+                    "end": int(last - 1),
+                    "endExclusive": int(last),
+                }
+            )
     return sorted(contacts, key=lambda c: (c["start"], c["foot"]))
+
+
+def stationary_imu_calibration(
+    times: NDArray[np.float64], imus: NDArray[Any]
+) -> dict[str, Any]:
+    """Average the physical pelvis IMU over the verified initial rest, 0–25 s.
+
+    The same calibration accompanies every excerpt from this clip, including
+    the turn at 204 s. Gyroscope measurements at rest directly observe bias.
+    Accelerometer means include gravity and are recorded only as diagnostics.
+    """
+    stationary = (times >= 0.0) & (times < 25.0)
+    gyro = imus[0, stationary, 3:6].astype(float)
+    acceleration = imus[0, stationary, :3].astype(float)
+    return {
+        "sourceWindowSeconds": [0.0, 25.0],
+        "sampleCount": int(stationary.sum()),
+        "frame": "pelvis IMU measurement axes",
+        "gyroMeanRadiansPerSecond": gyro.mean(axis=0).tolist(),
+        "gyroSampleStdRadiansPerSecond": gyro.std(axis=0, ddof=1).tolist(),
+        "gyroPriorSigmaRadiansPerSecond": 0.0001,
+        "meanAccelerationMetersPerSecondSquared": acceleration.mean(axis=0).tolist(),
+        "description": "Manually verified initial stationary interval; raw gyroscope sample mean. Accelerometer mean includes gravity and is not an accelerometer bias estimate.",
+    }
 
 
 def main() -> None:
@@ -241,6 +272,7 @@ def main() -> None:
         "sourceRevision": REVISION, "sourceChecksums": CHECKSUMS,
         "sourceSampleCount": len(times), "sourceDurationSeconds": float(times[-1]),
         "sourceSampleRateHz": 200, "sampleCount": len(target), "sampleRateHz": args.fps,
+        "stationaryImuCalibration": stationary_imu_calibration(times, arrays["imus"]),
         "samplePeriodSeconds": 1 / args.fps,
         "fullTrajectory": args.full_trajectory,
         "contactInitialization": {"addBetweenFactors": components > 1,
