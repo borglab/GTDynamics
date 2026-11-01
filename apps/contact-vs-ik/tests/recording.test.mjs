@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
-import {readMetadata,readRecording,poseBlock} from '../../shared/kinematics/recordingTestUtils.mjs';
+import {readRecording,poseBlock} from '../../shared/kinematics/recordingTestUtils.mjs';
 const snippets=JSON.parse(readFileSync(new URL('../public/snippets.json',import.meta.url)));
 test('exactly three ten-second snippets are offered',()=>{
  assert.deepEqual(snippets.map(s=>s.start),[40,100,204]);assert.equal(snippets.length,3);
@@ -30,7 +30,6 @@ for(const snippet of snippets)for(const imu of [false,true]){
    if(method==='contact'){assert.equal(run.initializer.length,run.initialization.iterations+1);}
    else{assert.equal(run.ikFrames.length,500);assert(run.ikFrames.every(h=>h.length>0));}
   }
-  const compressed=readMetadata(directory,'recording.json.gz');assert.deepEqual(compressed.runs,r.runs);
   assert(existsSync(new URL(r.storage.model,directory)));
  });
 }

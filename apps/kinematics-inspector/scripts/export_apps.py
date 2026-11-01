@@ -16,7 +16,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from pack_recordings import write_replay_bundles
+from pack_recordings import read_metadata, write_replay_bundles
 
 REPO = Path(__file__).resolve().parents[3]
 APP = Path(__file__).resolve().parents[1]
@@ -40,9 +40,9 @@ def run(arguments: list[str], log: Path) -> None:
 
 
 def share_assets(output: Path, public: Path) -> None:
-    """Share pinned geometry and full-clip IMU samples across app variants."""
+    """Share pinned geometry across app variants; publish only replay inputs."""
     path = output / "recording.json"
-    record = json.loads(path.read_text())
+    record = read_metadata(output)
     source = output / record["storage"]["model"]
     target = public / "model.json.gz"
     if source.resolve() != target.resolve():
@@ -52,13 +52,6 @@ def share_assets(output: Path, public: Path) -> None:
         target.write_bytes(data)
         source.unlink()
     record["storage"]["model"] = os.path.relpath(target, output)
-    if record["motionSource"].get("fullTrajectory"):
-        source = output / record["motionSource"]["imu"]["file"]
-        target = public / "imu.json"
-        if source.resolve() != target.resolve():
-            target.write_bytes(source.read_bytes())
-            source.unlink()
-        record["motionSource"]["imu"]["file"] = os.path.relpath(target, output)
     path.write_text(json.dumps(record, separators=(",", ":")) + "\n")
     write_replay_bundles(output)
 
@@ -172,24 +165,6 @@ def main() -> None:
     if args.only in ("all", "snippets"):
         (COMPARISON / "public/snippets.json").write_text(
             json.dumps(SNIPPETS, indent=2) + "\n"
-        )
-    if args.only in ("all", "trajectory"):
-        summary = []
-        for path in sorted((APP / "public/variants").glob("*/recording.json")):
-            record = json.loads(path.read_text())
-            final = record["runs"]["contact"]["final"]
-            summary.append(
-                {
-                    "variant": path.parent.name,
-                    "sigma": record["graph"]["contactSlipSigmaMeters"],
-                    "imu": record["imuAiding"]["enabled"],
-                    "closure": record["loopClosure"]["enabled"],
-                    "metrics": final["metrics"],
-                    "factorErrors": final["factorErrors"],
-                }
-            )
-        (APP / "public/experiments.json").write_text(
-            json.dumps(summary, indent=2) + "\n"
         )
 
 

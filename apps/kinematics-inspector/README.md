@@ -142,7 +142,9 @@ Factor errors, foot-slip vectors, and all robot transforms are computed offline.
 `--final-only` retains the initial/final snapshots without recording intermediate
 iterates. Repacking an older final-only archive cannot recover its missing initial
 estimate; regeneration is required. Saved integer pose/joint/velocity/slip blocks and native diagnostics are preserved exactly.
-Geometry and full-clip raw IMU samples are shared across variants. The browser requests only
+Geometry is shared across variants. Raw IMU samples remain in the offline input
+cache; they are not published. Metadata is stored only in the compressed bundles
+the viewer reads and offers for download. The browser requests only
 `final.json.gz`, `final.bin.gz`, and the shared model by default. Selecting Initial
 loads `initial.json.gz` and `initial.bin.gz` on demand. It caches recent results,
 and performs no optimization or kinematics.

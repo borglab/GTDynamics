@@ -22,6 +22,29 @@ from numpy.typing import NDArray
 APP = Path(__file__).resolve().parents[1]
 
 
+def read_metadata(output: Path) -> dict[str, Any]:
+    """Read a fresh export or the canonical, compressed browser metadata."""
+    for name in (
+        "recording.json",
+        "final.json.gz",
+        "recording.json.gz",
+        "smoothing.json.gz",
+    ):
+        path = output / name
+        if path.exists():
+            encoded = path.read_bytes()
+            return json.loads(
+                gzip.decompress(encoded) if name.endswith(".gz") else encoded
+            )
+    raise FileNotFoundError(f"No recording metadata in {output}")
+
+
+def remove_offline_inputs(output: Path) -> None:
+    """Do not publish transient export metadata or unused raw sensor samples."""
+    for name in ("recording.json", "imu.json"):
+        (output / name).unlink(missing_ok=True)
+
+
 def quantized_chunks(
     encoded: bytes, storage: dict[str, Any]
 ) -> dict[int, NDArray[np.int32]]:
@@ -152,9 +175,6 @@ def write_snapshot_bundle(
     (output / f"{stage}.bin.gz").write_bytes(encode_chunks(selected))
     encoded = json.dumps(record, separators=(",", ":"), allow_nan=False).encode()
     (output / f"{stage}.json.gz").write_bytes(gzip.compress(encoded, mtime=0))
-    if stage == "final":
-        (output / "recording.json").write_bytes(encoded + b"\n")
-        (output / "recording.json.gz").write_bytes(gzip.compress(encoded, mtime=0))
 
 
 def write_final_bundle(output: Path) -> None:
@@ -163,8 +183,8 @@ def write_final_bundle(output: Path) -> None:
     Also supports repacking existing final-only archives without inventing an
     initial estimate. A fresh export is needed to obtain that missing state.
     """
-    metadata = (output / "recording.json").read_bytes()
-    record = json.loads(metadata)
+    record = read_metadata(output)
+    metadata = json.dumps(record, separators=(",", ":")).encode()
     if set(record["runs"]) != {"contact"}:
         raise ValueError("Snapshot export requires a contact-only recording")
     chunks = quantized_chunks(
@@ -184,14 +204,20 @@ def write_final_bundle(output: Path) -> None:
         (output / "initial.json.gz").write_bytes(gzip.compress(encoded, mtime=0))
     final = run["final"] if "final" in run else run["smoothing"][-1]
     write_snapshot_bundle(output, record, chunks, "final", final)
-    for name in ("states.bin.gz", "smoothing.bin.gz", "smoothing.json.gz"):
+    for name in (
+        "states.bin.gz",
+        "smoothing.bin.gz",
+        "smoothing.json.gz",
+        "recording.json.gz",
+    ):
         (output / name).unlink(missing_ok=True)
+    remove_offline_inputs(output)
     print(f"Packed trajectory snapshots: {output}", flush=True)
 
 
 def write_replay_bundles(output: Path) -> None:
     """Write compressed metadata and a smaller, independently decodable bundle."""
-    record = json.loads((output / "recording.json").read_text())
+    record = read_metadata(output)
     if record.get("availableStages") == ["final"]:
         write_final_bundle(output)
         return
@@ -208,8 +234,9 @@ def write_replay_bundles(output: Path) -> None:
     }
     if full["availableStages"] == ["smoothing"]:
         encoded = json.dumps(full, separators=(",", ":"), allow_nan=False).encode()
-        for name in ("recording.json.gz", "smoothing.json.gz"):
-            (output / name).write_bytes(gzip.compress(encoded, mtime=0))
+        (output / "smoothing.json.gz").write_bytes(gzip.compress(encoded, mtime=0))
+        (output / "recording.json.gz").unlink(missing_ok=True)
+        remove_offline_inputs(output)
         print(f"Packed smoothing replay: {output}", flush=True)
         return
     packed = {
@@ -256,6 +283,7 @@ def write_replay_bundles(output: Path) -> None:
     for name, value in (("recording.json.gz", full), ("smoothing.json.gz", packed)):
         encoded = json.dumps(value, separators=(",", ":"), allow_nan=False).encode()
         (output / name).write_bytes(gzip.compress(encoded, mtime=0))
+    remove_offline_inputs(output)
     print(f"Packed smoothing replay: {output}", flush=True)
 
 
@@ -265,7 +293,11 @@ def main() -> None:
     parser.add_argument("--final-only", action="store_true")
     args = parser.parse_args()
     directories = args.directories or sorted(
-        path.parent for path in (APP / "public").rglob("recording.json")
+        {
+            path.parent
+            for name in ("recording.json", "final.json.gz", "recording.json.gz")
+            for path in (APP / "public").rglob(name)
+        }
     )
     for directory in directories:
         if args.final_only:

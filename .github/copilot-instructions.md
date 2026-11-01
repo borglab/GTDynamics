@@ -187,6 +187,11 @@ when practical.
 - Keep native optimization and browser visualization distinct. Static demos
   replay recorded native results and timings; label recorded and live modes
   accurately. Recorded playback must work without a native backend.
+- Publish only assets consumed by the registered apps, including selectable
+  replay bundles and required attribution/license files. Keep raw sensor inputs
+  and intermediate exports in ignored caches. Extend the public-asset inventory
+  test when adding a consumer; avoid duplicate metadata encodings and obsolete
+  recording versions in branch history.
 - Resolve app assets relative to `import.meta.env.BASE_URL` or the app document.
   Verify both `/` and `/GTDynamics/` deployment paths, including direct app URLs.
 - Abort pending asset loads on unmount and release MuJoCo data/models, Three.js

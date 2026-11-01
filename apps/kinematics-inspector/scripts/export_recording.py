@@ -560,6 +560,7 @@ def main() -> None:
     arrays, metadata = load_recording(args.data)
     if metadata.get("motionSource", {}).get("imu"):
         metadata["motionSource"]["imu"]["usedBySmoother"] = args.imu
+        metadata["motionSource"]["imu"].pop("file", None)
     data = mujoco.MjData(model)
     transforms = []
     source_indices = (
@@ -721,8 +722,9 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
     motion_source = metadata.get("motionSource", {})
     if motion_source.get("imu"):
-        for name in ("imu.json", "OPENIO_ATTRIBUTION.txt"):
-            shutil.copyfile(args.data / name, args.output / name)
+        shutil.copyfile(
+            args.data / "OPENIO_ATTRIBUTION.txt", args.output / "OPENIO_ATTRIBUTION.txt"
+        )
         record["provenance"]["inputs"]["imu.json"] = hashlib.sha256(
             (args.data / "imu.json").read_bytes()
         ).hexdigest()

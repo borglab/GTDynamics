@@ -10,6 +10,6 @@ const credit=computed(()=>source.value?.licenseNotes?.[0]);
     <p>SuperOdom supplies the LiDAR-inertial reference. It is an odometry estimate; loop-closure settings in the source dataset are unspecified. Contacts are inferred from kinematics.</p>
     <p>All optimization, robot transforms, factor errors, and slip measurements are computed offline. The browser replays saved results.</p>
     <details><summary>Frames, priors, and source fingerprints</summary><pre>{{JSON.stringify({imu:record.imuAiding,closure:record.loopClosure,provenance:record.provenance},null,2)}}</pre></details>
-    <a :href="`./${directory}${record.availableStages?.includes('initial')?'initial.json.gz':'recording.json'}`" download>Download recording metadata</a> · <a href="./MODEL_LICENSE.txt">Robot model license</a>
+    <a :href="`./${directory}${record.availableStages?.includes('initial')?'initial.json.gz':record.availableStages?.includes('final')?'final.json.gz':'recording.json.gz'}`" download>Download recording metadata</a> · <a href="./MODEL_LICENSE.txt">Robot model license</a>
   </footer>
 </template>
