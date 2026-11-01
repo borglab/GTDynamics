@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RobotViewport, disposeObject3D } from '../../shared/RobotViewport.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import loadMujoco from 'mujoco-js';
 import { createRobotVisual, updateRobotBodies } from '../../shared/mujocoRobot.js';
@@ -14,21 +14,7 @@ const poseOf = (object) => ({
   position: object.position.toArray(), quaternion: object.quaternion.toArray(),
 });
 
-function releaseTree(root) {
-  const geometries = new Set();
-  const materials = new Set();
-  root.traverse((object) => {
-    if (object.geometry) geometries.add(object.geometry);
-    if (object.material) {
-      for (const material of [object.material].flat()) materials.add(material);
-    }
-  });
-  for (const geometry of geometries) geometry.dispose();
-  for (const material of materials) {
-    material.map?.dispose();
-    material.dispose();
-  }
-}
+const releaseTree = disposeObject3D;
 
 function label(text, color) {
   const canvas = document.createElement('canvas');
@@ -122,47 +108,22 @@ export class MotionPlanningViewer {
     this.accumulator = 0;
     this.disposed = false;
     this.lastUiUpdate = 0;
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#101b25');
-    this.scene.fog = new THREE.Fog('#101b25', 4, 9);
-    this.camera = new THREE.PerspectiveCamera(38, 1, 0.01, 30);
-    this.camera.up.set(0, 0, 1);
-    this.camera.position.set(1.8, -2.1, 1.55);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.9;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.container.appendChild(this.renderer.domElement);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0.25, 0, 0.45);
-    this.controls.enableDamping = true;
-    this.controls.minDistance = 0.5;
-    this.controls.maxDistance = 5;
-    this.controls.maxPolarAngle = Math.PI * 0.48;
-    this.controls.update();
-
-    this.scene.add(new THREE.HemisphereLight(0xcfe7ff, 0x33444b, 0.5));
-    const key = new THREE.DirectionalLight(0xffffff, 1.0);
-    key.position.set(2, -3, 5);
-    key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
-    Object.assign(key.shadow.camera, { left: -1.6, right: 1.6, top: 1.6, bottom: -1.6, near: 0.1, far: 10 });
-    key.shadow.bias = -0.0003;
-    this.scene.add(key);
-    const fill = new THREE.DirectionalLight(0x83adff, 0.3);
-    fill.position.set(-2, 1, 2);
-    this.scene.add(fill);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20),
-      new THREE.MeshStandardMaterial({ color: 0x15232f, roughness: 0.95 }));
-    ground.position.z = -0.002;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-    const grid = new THREE.GridHelper(4, 40, 0x51616b, 0x293d4d);
-    grid.rotation.x = Math.PI / 2;
-    this.scene.add(grid);
+    this.viewport = new RobotViewport(container, {
+      background: '#101b25', fog: [4, 9], fov: 38, near: .01, far: 30,
+      shadows: true, exposure: .9,
+      controls: {enableDamping: true, maxDistance: 5, maxPolarAngle: Math.PI * .48},
+    });
+    const {scene, camera, renderer, controls, cameraController} = this.viewport;
+    Object.assign(this, {scene, camera, renderer, controls, cameraController});
+    this.cameraController.lookAt(new THREE.Vector3(.25, 0, .45), new THREE.Vector3(1.55, -2.1, 1.1));
+    this.viewport.addStage({
+      hemisphere: [0xcfe7ff, 0x33444b, .5],
+      key: {color: 0xffffff, intensity: 1, position: [2, -3, 5]},
+      fill: {color: 0x83adff, intensity: .3, position: [-2, 1, 2]},
+      shadow: {left: -1.6, right: 1.6, top: 1.6, bottom: -1.6, near: .1, far: 10, bias: -.0003},
+      ground: {size: 20, color: 0x15232f, z: -.002},
+      grid: {size: 4, divisions: 40, colors: [0x51616b, 0x293d4d]},
+    });
     const worldAxes = new THREE.AxesHelper(0.2);
     worldAxes.position.set(-0.36, -0.36, 0.002);
     this.scene.add(worldAxes);
@@ -195,11 +156,9 @@ export class MotionPlanningViewer {
     this.trajectoryGroup = new THREE.Group();
     this.ghostGroup = new THREE.Group();
     this.scene.add(this.trajectoryGroup, this.ghostGroup);
-    this.resizeObserver = new ResizeObserver(() => this.resize());
-    this.resizeObserver.observe(container);
     this.resize();
     this.lastFrame = performance.now();
-    this.renderer.setAnimationLoop((now) => this.render(now));
+    this.viewport.start(now => this.update(now));
   }
 
   async init(description) {
@@ -506,15 +465,9 @@ export class MotionPlanningViewer {
     };
   }
 
-  resize() {
-    const width = Math.max(1, this.container.clientWidth);
-    const height = Math.max(1, this.container.clientHeight);
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
-  }
+  resize() { this.viewport.resize(); }
 
-  render(now) {
+  update(now) {
     if (this.disposed) return;
     const elapsed = clamp((now - this.lastFrame) / 1000, 0, 0.05);
     this.lastFrame = now;
@@ -535,8 +488,6 @@ export class MotionPlanningViewer {
       frame.userData.caption.position.set(0, 0, 0.16)
         .applyQuaternion(frame.quaternion.clone().invert());
     }
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
     if (now - this.lastUiUpdate > 60) {
       this.emitTime();
       this.lastUiUpdate = now;
@@ -545,15 +496,10 @@ export class MotionPlanningViewer {
 
   dispose() {
     this.disposed = true;
-    this.renderer.setAnimationLoop(null);
-    this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown', this.targetClick);
     this.transform.detach();
     this.transform.dispose();
-    this.controls.dispose();
-    releaseTree(this.scene);
-    this.renderer.dispose();
-    this.renderer.domElement.remove();
+    this.viewport.dispose();
     this.targetData?.delete();
     this.data?.delete();
     this.model?.delete();

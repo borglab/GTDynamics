@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RobotViewport } from '../RobotViewport.js';
 import { createRobotVisual } from '../mujocoRobot.js';
 import { bodyOffset } from './recording.js';
 
@@ -9,7 +9,7 @@ function robotVisual(model) {
   if (!robotTemplates.has(model)) {
     const visual = createRobotVisual(model);
     const geometries = new Set();
-    visual.root.traverse(object => { if (object.geometry) geometries.add(object.geometry); });
+    visual.root.traverse(object => { if (object.geometry) { object.geometry.userData.sharedMujoco = true; geometries.add(object.geometry); } });
     robotTemplates.set(model, {...visual, geometries});
   }
   const template = robotTemplates.get(model);
@@ -31,20 +31,16 @@ export function disposeRobotTemplates() {
 export class ReplayScene {
   constructor(container, model, record, floats, color) {
     this.record = record; this.floats = floats; this.container = container;
-    this.scene = new THREE.Scene(); this.scene.background = new THREE.Color('#f1f3ef');
-    this.camera = new THREE.PerspectiveCamera(35, 1, 0.02, 80); this.camera.up.set(0, 0, 1);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
-    this.renderer.domElement.setAttribute('aria-label', 'Recorded G1 robot poses; drag to orbit, scroll to zoom');
-    container.appendChild(this.renderer.domElement);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.minDistance = 0.5; this.controls.maxDistance = 20;
-    this.controls.maxPolarAngle = Math.PI * .49;
-    this.controls.addEventListener('change', () => this.render());
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x788679, 1.1));
-    const light = new THREE.DirectionalLight(0xffffff, 1.2); light.position.set(2, -3, 6); this.scene.add(light);
-    this.grid = new THREE.GridHelper(40, 160, '#bac7bb', '#dce2d9'); this.grid.rotation.x = Math.PI / 2; this.scene.add(this.grid);
+    this.viewport = new RobotViewport(container, {
+      pixelRatio: 1.5, ariaLabel: 'Recorded G1 robot poses; drag to orbit, scroll to zoom',
+    });
+    const {scene, camera, renderer, controls, cameraController} = this.viewport;
+    Object.assign(this, {scene, camera, renderer, controls, cameraController});
+    this.grid = this.viewport.addStage({
+      hemisphere: [0xffffff, 0x788679, 1.1],
+      key: {color: 0xffffff, intensity: 1.2, position: [2, -3, 6]}, fill: false, ground: false,
+      grid: {size: 40, divisions: 160, colors: ['#bac7bb', '#dce2d9']},
+    }).grid;
     this.robot = robotVisual(model); this.scene.add(this.robot.root);
     this.reference = robotVisual(model); this.scene.add(this.reference.root);
     this.reference.root.traverse(object => {
@@ -75,16 +71,13 @@ export class ReplayScene {
       const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), .1, '#ce5827');
       arrow.visible = false; this.scene.add(arrow); return arrow;
     });
-    this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(container);
     this.reset(); this.resize();
     container.dataset.ready = 'true';
   }
   reset() {
-    this.followRoot = true;
     const offset = bodyOffset(this.record, this.currentState || this.record.reference, this.currentFrame || 0, this.record.rootBody);
-    this.focus = new THREE.Vector3().fromArray(this.floats, offset);
-    this.controls.target.copy(this.focus); this.camera.position.copy(this.focus).add(new THREE.Vector3(2.6, -3.4, 1.25));
-    this.controls.update(); this.render();
+    this.cameraController.follow(new THREE.Vector3().fromArray(this.floats, offset));
+    this.render();
   }
   fitPaths() {
     if (!this.path.geometry.attributes.position) return;
@@ -96,17 +89,8 @@ export class ReplayScene {
     }
     // Include robot height above the XY paths, even for a stationary recording.
     bounds.max.z = Math.max(bounds.max.z, 1.5);
-    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
-    const vertical = THREE.MathUtils.degToRad(this.camera.fov) / 2;
-    const horizontal = Math.atan(Math.tan(vertical) * this.camera.aspect);
-    const distance = Math.max(2, sphere.radius / Math.sin(Math.min(vertical, horizontal)) * 1.1);
-    const direction = new THREE.Vector3(.8, -1, 1.3).normalize();
-    this.followRoot = false;
-    this.controls.target.copy(sphere.center);
-    this.camera.position.copy(sphere.center).addScaledVector(direction, distance);
-    this.controls.maxDistance = Math.max(20, distance * 2);
-    this.camera.far = Math.max(80, distance * 4);
-    this.camera.updateProjectionMatrix(); this.controls.update(); this.render();
+    this.cameraController.fit(bounds, {direction: new THREE.Vector3(.8, -1, 1.3)});
+    this.render();
   }
   place(visual, state, frame) {
     visual.bodies.forEach((body, i) => {
@@ -118,9 +102,7 @@ export class ReplayScene {
     this.currentState = state; this.currentFrame = frame;
     const offset = bodyOffset(this.record, state, frame, this.record.rootBody);
     const focus = new THREE.Vector3().fromArray(this.floats, offset);
-    const delta = focus.clone().sub(this.focus);
-    if (this.followRoot) { this.camera.position.add(delta); this.controls.target.add(delta); }
-    this.focus.copy(focus);
+    this.cameraController.updateTarget(focus);
     this.grid.position.set(Math.round(focus.x / 5) * 5, Math.round(focus.y / 5) * 5, 0);
     this.controls.update();
     this.place(this.robot, state, frame);
@@ -173,22 +155,7 @@ export class ReplayScene {
       arrow.setLength(length, Math.min(.08, length*.35), Math.min(.045, length*.22));
     });
   }
-  resize() {
-    const width = this.container.clientWidth, height = this.container.clientHeight;
-    this.renderer.setSize(width, height); this.camera.aspect = width / Math.max(1, height);
-    this.camera.updateProjectionMatrix();
-    if (this.followRoot === false) this.fitPaths();
-    else this.render();
-  }
-  render() { this.renderer.render(this.scene, this.camera); }
-  dispose() {
-    this.observer.disconnect(); this.controls.dispose();
-    const geometries = new Set(), materials = new Set();
-    this.scene.traverse(object => { if (object.geometry) geometries.add(object.geometry); if (object.material) materials.add(object.material); });
-    // Release renderer allocations/listeners. The shared CPU mesh buffers remain
-    // available in the template for the next renderer to upload.
-    geometries.forEach(g => g.dispose());
-    materials.forEach(m => m.dispose());
-    this.renderer.dispose(); this.renderer.domElement.remove();
-  }
+  resize() { this.viewport.resize(); }
+  render() { this.viewport.render(); }
+  dispose() { this.viewport.dispose(); }
 }

@@ -122,6 +122,10 @@ The workflow follows GitHub's [custom Pages workflow](https://docs.github.com/en
    in the development launcher and Pages build.
 4. If it needs downloaded assets, add its bootstrap to the `models` script.
    Native/server functionality needs an explicit static mode for Pages.
+5. Start robot visualization with [the shared viewport and camera](shared/README.md).
+   Use `RobotViewport` for canvas, controls, stage, resizing, animation, and
+   cleanup; use `CameraController` for fit and follow views. Supply live MuJoCo
+   poses or saved body transforms from the app. Add overlays to its scene.
 
 The active app loads only when its tab is selected. Leaving that tab unloads it,
 so inactive robot simulations do not keep running in the background. Browser
@@ -145,4 +149,5 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
   node tests/site.browser.mjs
 ```
 
-It checks navigation, keyboard tabs, mobile layout, physics playback,, recorded iteration scrubbing, and requests under a project-site prefix.
+It checks navigation, keyboard tabs, mobile layout, physics playback, recorded
+iteration scrubbing, and requests under a project-site prefix.

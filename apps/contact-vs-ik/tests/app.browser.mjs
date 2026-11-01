@@ -36,8 +36,13 @@ try{
    await page.getByRole('slider',{name:'Walking time',exact:true}).fill('0');
    await page.getByRole('button',{name:'Play walking',exact:true}).click();
    await page.waitForFunction(()=>Number(document.querySelector('main').dataset.frame)>0,null,{timeout:15000});
-   await page.getByRole('button',{name:'Pause walking',exact:true}).click();
-   const paused=Number(await page.locator('main').getAttribute('data-frame'));assert(paused>0);
+   // Pause atomically: a slow browser may already have reached the end while
+   // Playwright waits to click, when the same button becomes Play again.
+   const paused=await page.evaluate(()=>{
+    const button=document.querySelector('.play-button');
+    if(button.textContent.includes('Pause'))button.click();
+    return Number(document.querySelector('main').dataset.frame);
+   });assert(paused>0);
    await page.waitForTimeout(250);assert.equal(Number(await page.locator('main').getAttribute('data-frame')),paused);
    assert.equal(await page.getByRole('button',{name:'Play walking',exact:true}).count(),1);
    if(base==='/')await page.screenshot({path:'/tmp/gtd-contact-vs-ik.png',fullPage:true});
