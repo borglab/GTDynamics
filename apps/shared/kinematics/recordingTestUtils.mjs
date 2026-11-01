@@ -6,7 +6,7 @@ export function readMetadata(directory,name='recording.json'){
   return JSON.parse(name.endsWith('.gz')?gunzipSync(bytes):bytes);
 }
 export function readRecording(directory,packed=false){
-  const record=readMetadata(directory,packed?'smoothing.json.gz':'recording.json');
+  const record=readMetadata(directory,typeof packed==='string'?`${packed}.json.gz`:packed?'smoothing.json.gz':'recording.json');
   const bytes=gunzipSync(readFileSync(new URL(record.storage.states,directory)));
   const floats=decodeStates(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),record.storage);
   validateRecording(record,floats);return {record,floats};

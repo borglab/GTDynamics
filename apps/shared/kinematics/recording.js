@@ -3,6 +3,22 @@ export const referenceLabel = 'LiDAR-inertial reference';
 const recordings = new Map();
 let cachedModel;
 
+/** Seconds from the input recording start, including any trimmed prefix. */
+export function sliceTime(record, frame) {
+  return record.timestamps ? record.timestamps[frame] : frame * record.dt;
+}
+
+/** Last slice at or before a playback time; clamp outside the recorded span. */
+export function frameAtTime(record, time) {
+  let first = 0, end = record.samples;
+  while (first < end) {
+    const middle = Math.floor((first + end) / 2);
+    if (sliceTime(record, middle) <= time) first = middle + 1;
+    else end = middle;
+  }
+  return Math.max(0, first - 1);
+}
+
 export function clearRecordingCache() {
   recordings.clear(); cachedModel = undefined;
 }
@@ -11,6 +27,7 @@ export function historyFor(record, method, stage, frame) {
   if (stage === 'initializer' && record.availableStages && !record.availableStages.includes(stage)) {
     throw new Error('Initializer history has not been loaded');
   }
+  if (stage === 'smoothing' && record.availableStages?.some(s=>s==='final'||s==='initial')) throw new Error('Smoothing history is not retained in this recording');
   const run = record.runs[method];
   return stage === 'smoothing' ? run.smoothing.slice(1)
     : method === 'ik' ? run.ikFrames[frame] : run.initializer;
@@ -52,11 +69,22 @@ export function validateRecording(record, floats) {
   if (record.schemaVersion !== 1 || record.samples < 2 || record.bodies < 1 || record.dt <= 0) {
     throw new Error('Unsupported or incomplete kinematics recording. Regenerate it with export_recording.py.');
   }
+  if ((record.sampling?.mode === 'contact-initializer' && !record.timestamps)
+      || (record.timestamps && (record.timestamps.length !== record.samples
+      || !record.timestamps.every((t,i)=>Number.isFinite(t)&&(i===0||t>record.timestamps[i-1]))))) {
+    throw new Error('Invalid slice timestamps');
+  }
   const states = [record.reference];
   for (const method of Object.keys(record.runs)) {
     const run = record.runs[method];
-    if (run.smoothing.length !== run.solver.iterations + 2) throw new Error(`Incomplete ${method} smoothing history`);
-    states.push(...run.smoothing, ...(run.initializer || []), ...(run.ikFrames || []).flat());
+    const snapshot = record.availableStages?.find(s=>s==='final'||s==='initial');
+    if (snapshot) {
+      if (!run[snapshot] || run.smoothing || run[snapshot].frames !== record.samples) throw new Error(`Invalid ${method} ${snapshot} result`);
+      states.push(run[snapshot]);
+    } else {
+      if (run.smoothing.length !== run.solver.iterations + 2) throw new Error(`Incomplete ${method} smoothing history`);
+      states.push(...run.smoothing, ...(run.initializer || []), ...(run.ikFrames || []).flat());
+    }
   }
   const includesInitializers = !record.availableStages || record.availableStages.includes('initializer');
   if (includesInitializers && record.runs.ik && (record.runs.ik.ikFrames.length !== record.samples || record.runs.ik.ikFrames.some(h => !h.length))) {
@@ -113,7 +141,7 @@ export async function loadRecording(signal, directory = '', stage = 'smoothing')
     recordings.delete(cachedKey); recordings.set(cachedKey, cached);
     return cached;
   }
-  const name = stage === 'smoothing' ? 'smoothing.json.gz' : 'recording.json.gz';
+  const name = ['initial','final','smoothing'].includes(stage) ? `${stage}.json.gz` : 'recording.json.gz';
   const metadata = await fetchFile(`${directory}${name}`, signal, true);
   const record = JSON.parse(new TextDecoder().decode(metadata));
   const [stateBuffer, model] = await Promise.all([

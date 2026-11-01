@@ -44,12 +44,32 @@ CHECKSUMS = {
 # Unitree SDK JointIndex, checked against the dataset's derived foot poses below.
 # https://github.com/unitreerobotics/unitree_sdk2/blob/main/include/unitree/dds_wrapper/robots/g1/defines.h
 JOINT_NAMES = (
-    [f"{s}_{j}_joint" for s in ("left", "right")
-     for j in ("hip_pitch", "hip_roll", "hip_yaw", "knee", "ankle_pitch", "ankle_roll")]
+    [
+        f"{s}_{j}_joint"
+        for s in ("left", "right")
+        for j in (
+            "hip_pitch",
+            "hip_roll",
+            "hip_yaw",
+            "knee",
+            "ankle_pitch",
+            "ankle_roll",
+        )
+    ]
     + [f"waist_{j}_joint" for j in ("yaw", "roll", "pitch")]
-    + [f"{s}_{j}_joint" for s in ("left", "right")
-       for j in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow",
-                 "wrist_roll", "wrist_pitch", "wrist_yaw")]
+    + [
+        f"{s}_{j}_joint"
+        for s in ("left", "right")
+        for j in (
+            "shoulder_pitch",
+            "shoulder_roll",
+            "shoulder_yaw",
+            "elbow",
+            "wrist_roll",
+            "wrist_pitch",
+            "wrist_yaw",
+        )
+    ]
 )
 
 
@@ -78,7 +98,8 @@ def download(directory: Path) -> None:
 
 
 def root_positions(
-    imu_positions: NDArray[np.float64], rotations: Rotation,
+    imu_positions: NDArray[np.float64],
+    rotations: Rotation,
     imu_offset: NDArray[np.float64],
 ) -> NDArray[np.float64]:
     """The dataset pelvis pose is at the IMU site, not the MuJoCo root origin."""
@@ -86,8 +107,12 @@ def root_positions(
 
 
 def validate_mapping(
-    model: mujoco.MjModel, poses: NDArray[Any], joints: NDArray[Any],
-    part_names: list[str], addresses: list[int], imu_offset: NDArray[np.float64],
+    model: mujoco.MjModel,
+    poses: NDArray[Any],
+    joints: NDArray[Any],
+    part_names: list[str],
+    addresses: list[int],
+    imu_offset: NDArray[np.float64],
 ) -> dict[str, float]:
     """Check joint order AND the IMU-to-root transform against both recorded feet."""
     data = mujoco.MjData(model)
@@ -101,24 +126,44 @@ def validate_mapping(
         for side in ("left", "right"):
             body = model.body(f"robot/{side}_ankle_roll_link").id
             reference = poses[part_names.index(f"{side}_foot"), k]
-            max_position = max(max_position, float(np.linalg.norm(data.xpos[body] - reference[:3])))
+            max_position = max(
+                max_position, float(np.linalg.norm(data.xpos[body] - reference[:3]))
+            )
             actual = Rotation.from_matrix(data.xmat[body].reshape(3, 3))
-            max_rotation = max(max_rotation, float((actual.inv() * Rotation.from_quat(reference[3:])).magnitude()))
+            max_rotation = max(
+                max_rotation,
+                float((actual.inv() * Rotation.from_quat(reference[3:])).magnitude()),
+            )
     if max_position > 1e-4 or max_rotation > 1e-4:
-        raise ValueError(f"Dataset/model mapping mismatch: {max_position=} {max_rotation=}")
-    return {"maxFootPositionErrorMeters": max_position, "maxFootRotationErrorRadians": max_rotation}
+        raise ValueError(
+            f"Dataset/model mapping mismatch: {max_position=} {max_rotation=}"
+        )
+    return {
+        "maxFootPositionErrorMeters": max_position,
+        "maxFootRotationErrorRadians": max_rotation,
+    }
 
 
 def resample_qpos(
-    model: mujoco.MjModel, times: NDArray[np.float64], target: NDArray[np.float64],
-    poses: NDArray[Any], angles: NDArray[Any], addresses: list[int],
+    model: mujoco.MjModel,
+    times: NDArray[np.float64],
+    target: NDArray[np.float64],
+    poses: NDArray[Any],
+    angles: NDArray[Any],
+    addresses: list[int],
 ) -> NDArray[np.float64]:
     rotation = Slerp(times, Rotation.from_quat(poses[0, :, 3:]))(target)
-    position = np.column_stack([np.interp(target, times, poses[0, :, i]) for i in range(3)])
+    position = np.column_stack(
+        [np.interp(target, times, poses[0, :, i]) for i in range(3)]
+    )
     qpos = np.tile(model.qpos0, (len(target), 1))
-    qpos[:, :3] = root_positions(position, rotation, model.site("robot/imu_in_pelvis").pos)
+    qpos[:, :3] = root_positions(
+        position, rotation, model.site("robot/imu_in_pelvis").pos
+    )
     qpos[:, 3:7] = rotation.as_quat()[:, [3, 0, 1, 2]]
-    qpos[:, addresses] = np.column_stack([np.interp(target, times, a) for a in angles.T])
+    qpos[:, addresses] = np.column_stack(
+        [np.interp(target, times, a) for a in angles.T]
+    )
     return qpos
 
 
@@ -127,7 +172,9 @@ def support_intervals(support: NDArray[np.bool_]) -> list[dict[str, Any]]:
     contacts = []
     for side, foot in enumerate(("left", "right")):
         edges = np.diff(np.r_[False, support[:, side], False].astype(int))
-        for ordinal, (first, last) in enumerate(zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1))):
+        for ordinal, (first, last) in enumerate(
+            zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1))
+        ):
             contacts.append(
                 {
                     "id": f"{foot[0].upper()}{ordinal:03d}",
@@ -168,25 +215,48 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, default=APP / ".cache/openio/source")
     parser.add_argument("--output", type=Path, default=APP / ".cache/openio")
-    parser.add_argument("--model-directory", type=Path, default=REPO / "examples/g1_mjlab/results")
+    parser.add_argument(
+        "--model-directory", type=Path, default=REPO / "examples/g1_mjlab/results"
+    )
     parser.add_argument("--start-seconds", type=float, default=204.0)
     parser.add_argument("--seconds", type=float, default=10.0)
     parser.add_argument("--fps", type=float, default=50.0)
-    parser.add_argument("--full-trajectory", action="store_true", help="Use the entire source duration; pass --fps 5 for the overview")
-    parser.add_argument("--allow-disconnected", action="store_true", help="Retain unsupported samples and connect contact components with weak motion priors")
-    parser.add_argument("--local-floor", action="store_true", help="Use the full-clip rolling floor detector for snippet contact labels")
+    parser.add_argument(
+        "--full-trajectory", action="store_true", help="Use the entire source duration"
+    )
+    parser.add_argument(
+        "--minimum-support-samples",
+        type=int,
+        default=3,
+        help="Minimum stance length on the 50 Hz contact detection grid",
+    )
+    parser.add_argument(
+        "--allow-disconnected",
+        action="store_true",
+        help="Retain unsupported samples and connect contact components with weak motion priors",
+    )
+    parser.add_argument(
+        "--local-floor",
+        action="store_true",
+        help="Use the full-clip rolling floor detector for snippet contact labels",
+    )
     args = parser.parse_args()
     if not (args.start_seconds >= 0 and args.seconds > 0 and 0 < args.fps <= 200):
         parser.error("Require nonnegative start, positive duration, and 0 < fps <= 200")
     source = args.cache / CLIP
     download(source)
-    arrays = {name: np.load(source / f"{name}.npy", allow_pickle=False)
-              for name in ("time_ns", "imus", "pose", "joints")}
+    arrays = {
+        name: np.load(source / f"{name}.npy", allow_pickle=False)
+        for name in ("time_ns", "imus", "pose", "joints")
+    }
     spec = json.loads((source / "spec.json").read_text())
     channels = json.loads((source / "joints.json").read_text())["channels"]
     stamps = arrays["time_ns"]
     times = (stamps - stamps[0]).astype(np.float64) * 1e-9
-    if not all(np.isfinite(a).all() for a in arrays.values()) or not (np.diff(times) > 0).all():
+    if (
+        not all(np.isfinite(a).all() for a in arrays.values())
+        or not (np.diff(times) > 0).all()
+    ):
         raise ValueError("Expected finite measurements with increasing timestamps")
     if spec["names"][0] != "pelvis" or arrays["joints"].shape != (len(times), 29, 3):
         raise ValueError("Unexpected pelvis index or joint shape")
@@ -195,18 +265,29 @@ def main() -> None:
         args.seconds = float(times[-1])
     end = args.start_seconds + args.seconds
     if end > times[-1] or args.seconds * args.fps < 2:
-        raise ValueError("Requested window exceeds recording or has fewer than two samples")
+        raise ValueError(
+            "Requested window exceeds recording or has fewer than two samples"
+        )
     target = args.start_seconds + np.arange(0, args.seconds, 1 / args.fps)
     model = load_model(args.model_directory)
-    addresses = [int(model.jnt_qposadr[model.joint(f"robot/{name}").id]) for name in JOINT_NAMES]
+    addresses = [
+        int(model.jnt_qposadr[model.joint(f"robot/{name}").id]) for name in JOINT_NAMES
+    ]
     imu_offset = model.site("robot/imu_in_pelvis").pos.copy()
     angles = arrays["joints"][:, :, channels["q"][0]]
-    validation = validate_mapping(model, arrays["pose"], angles, spec["names"], addresses, imu_offset)
+    validation = validate_mapping(
+        model, arrays["pose"], angles, spec["names"], addresses, imu_offset
+    )
     qpos = resample_qpos(model, times, target, arrays["pose"], angles, addresses)
 
-    description = json.loads((REPO / "apps/contact-initialization/public/g1-walk.json").read_text())["model"]
+    description = json.loads(
+        (REPO / "apps/contact-initialization/public/g1-walk.json").read_text()
+    )["model"]
     bodies = [model.body("robot/" + name).id for name in description["bodyNames"]]
-    feet = {side: model.body(f"robot/{side}_ankle_roll_link").id for side in ("left", "right")}
+    feet = {
+        side: model.body(f"robot/{side}_ankle_roll_link").id
+        for side in ("left", "right")
+    }
     sole = np.asarray(description["soleOutline"])
     world, local = mujoco.MjData(model), mujoco.MjData(model)
     world_soles = []
@@ -214,45 +295,90 @@ def main() -> None:
     for k, row in enumerate(qpos):
         world.qpos[:] = row
         mujoco.mj_kinematics(model, world)
-        world_soles.append([sole @ world.xmat[b].reshape(3, 3).T + world.xpos[b] for b in feet.values()])
+        world_soles.append(
+            [
+                sole @ world.xmat[b].reshape(3, 3).T + world.xpos[b]
+                for b in feet.values()
+            ]
+        )
         local.qpos[:] = row
         local.qpos[:7] = [0, 0, 0, 1, 0, 0, 0]
         mujoco.mj_kinematics(model, local)
-        samples.append({
-            "index": k, "t": k / args.fps,
-            "jointAngles": [float(row[model.jnt_qposadr[model.joint('robot/' + name).id]]) for name in description["jointNames"]],
-            "bodyPoints": local.xpos[bodies].tolist(),
-            "feet": {side: {"p": local.xpos[b].tolist(), "q": local.xquat[b].tolist()} for side, b in feet.items()},
-        })
+        samples.append(
+            {
+                "index": k,
+                "t": k / args.fps,
+                "jointAngles": [
+                    float(row[model.jnt_qposadr[model.joint("robot/" + name).id]])
+                    for name in description["jointNames"]
+                ],
+                "bodyPoints": local.xpos[bodies].tolist(),
+                "feet": {
+                    side: {"p": local.xpos[b].tolist(), "q": local.xquat[b].tolist()}
+                    for side, b in feet.items()
+                },
+            }
+        )
     soles = np.asarray(world_soles)
     heights = soles[:, :, :, 2].min(axis=2)
-    speeds = np.linalg.norm(np.gradient(soles, 1 / args.fps, axis=0)[:, :, :, :2], axis=3).min(axis=2)
+    speeds = np.linalg.norm(
+        np.gradient(soles, 1 / args.fps, axis=0)[:, :, :, :2], axis=3
+    ).min(axis=2)
     floor = float(np.percentile(heights.min(axis=1), 5))
-    _, support, contacts, handovers = detect_support(heights, speeds, floor, .04, .06, .5, 1., 2, 3)
+    _, support, contacts, handovers = detect_support(
+        heights, speeds, floor, 0.04, 0.06, 0.5, 1.0, 2, 3
+    )
     if args.full_trajectory or args.local_floor:
         # Detect at 50 Hz: 5 Hz is too coarse for sole velocities and touchdown.
         # A local floor tracks reference vertical drift for LABELING only; it
         # never modifies the reference trajectory or the solver's ground plane.
-        detection_times = np.arange(0, times[-1], .02)
-        detection_qpos = resample_qpos(model, times, detection_times, arrays["pose"], angles, addresses)
+        detection_times = np.arange(0, times[-1], 0.02)
+        detection_qpos = resample_qpos(
+            model, times, detection_times, arrays["pose"], angles, addresses
+        )
         dense_soles = []
         for row in detection_qpos:
             world.qpos[:] = row
             mujoco.mj_kinematics(model, world)
-            dense_soles.append([sole @ world.xmat[b].reshape(3, 3).T + world.xpos[b] for b in feet.values()])
+            dense_soles.append(
+                [
+                    sole @ world.xmat[b].reshape(3, 3).T + world.xpos[b]
+                    for b in feet.values()
+                ]
+            )
         dense_soles = np.asarray(dense_soles)
         dense_heights = dense_soles[:, :, :, 2].min(axis=2)
-        dense_speeds = np.linalg.norm(np.gradient(dense_soles, .02, axis=0)[:, :, :, :2], axis=3).min(axis=2)
-        local_floor = percentile_filter(dense_heights.min(axis=1), percentile=5, size=51, mode="nearest")
-        _, dense_support, _, handovers = detect_support(dense_heights - local_floor[:, None], dense_speeds, 0., .04, .06, .5, 1., 2, 3)
-        support = dense_support[np.minimum(np.rint(target * 50).astype(int), len(dense_support) - 1)]
+        dense_speeds = np.linalg.norm(
+            np.gradient(dense_soles, 0.02, axis=0)[:, :, :, :2], axis=3
+        ).min(axis=2)
+        local_floor = percentile_filter(
+            dense_heights.min(axis=1), percentile=5, size=51, mode="nearest"
+        )
+        _, dense_support, _, handovers = detect_support(
+            dense_heights - local_floor[:, None],
+            dense_speeds,
+            0.0,
+            0.04,
+            0.06,
+            0.5,
+            1.0,
+            2,
+            args.minimum_support_samples,
+        )
+        support = dense_support[
+            np.minimum(np.rint(target * 50).astype(int), len(dense_support) - 1)
+        ]
         contacts = support_intervals(support)
         floor = float(np.interp(args.start_seconds, detection_times, local_floor))
     for k, sample in enumerate(samples):
         sample["support"] = {side: bool(support[k, i]) for i, side in enumerate(feet)}
     frames, sampling = sample_frames(samples, contacts)
     components = component_count(frames)
-    if not args.full_trajectory and not args.allow_disconnected and (not support.any(axis=1).all() or components != 1):
+    if (
+        not args.full_trajectory
+        and not args.allow_disconnected
+        and (not support.any(axis=1).all() or components != 1)
+    ):
         raise ValueError("Choose a walking window with continuous connected support")
     translation = -np.array([qpos[0, 0], qpos[0, 1], floor])
     qpos[:, :3] += translation
@@ -268,36 +394,79 @@ def main() -> None:
     )
     metadata = {
         "title": f"G1 · {CLIP} · {args.start_seconds:g}–{end:g} s",
-        "sequenceId": CLIP, "datasetName": "Open-IO G1 Inertial Odometry",
-        "motionKind": "physical robot recording", "contactEvidence": "kinematic",
-        "sourceUrl": f"{DATASET}/tree/{REVISION}/{CLIP}", "datasetUrl": DATASET,
-        "sourceRevision": REVISION, "sourceChecksums": CHECKSUMS,
-        "sourceSampleCount": len(times), "sourceDurationSeconds": float(times[-1]),
-        "sourceSampleRateHz": 200, "sampleCount": len(target), "sampleRateHz": args.fps,
+        "sequenceId": CLIP,
+        "datasetName": "Open-IO G1 Inertial Odometry",
+        "motionKind": "physical robot recording",
+        "contactEvidence": "kinematic",
+        "sourceUrl": f"{DATASET}/tree/{REVISION}/{CLIP}",
+        "datasetUrl": DATASET,
+        "sourceRevision": REVISION,
+        "sourceChecksums": CHECKSUMS,
+        "sourceSampleCount": len(times),
+        "sourceDurationSeconds": float(times[-1]),
+        "sourceSampleRateHz": 200,
+        "sampleCount": len(target),
+        "sampleRateHz": args.fps,
         "stationaryImuCalibration": stationary_imu_calibration(times, arrays["imus"]),
         "samplePeriodSeconds": 1 / args.fps,
         "fullTrajectory": args.full_trajectory,
-        "contactInitialization": {"addBetweenFactors": components > 1,
-                                  "betweenTranslationSigma": 10.0, "betweenRotationSigma": float(np.pi)},
-        "sourceWindow": {"startSeconds": args.start_seconds, "endExclusiveSeconds": end,
-                         "startSample": int(first), "endExclusiveSample": int(last)},
+        "contactInitialization": {
+            "addBetweenFactors": components > 1,
+            "betweenTranslationSigma": 10.0,
+            "betweenRotationSigma": float(np.pi),
+        },
+        "sourceWindow": {
+            "startSeconds": args.start_seconds,
+            "endExclusiveSeconds": end,
+            "startSample": int(first),
+            "endExclusiveSample": int(last),
+        },
         "referenceLabel": "SuperOdom reference",
         "referenceDescription": "SuperOdom LiDAR-inertial reference root trajectory with measured-joint FK; not independent motion-capture ground truth.",
-        "worldTranslationMeters": translation.tolist(), "pelvisImuOffsetMeters": imu_offset.tolist(),
-        "jointNames": JOINT_NAMES, "mappingValidation": validation,
-        "detector": {"floorHeightMeters": floor, "onHeightMeters": .04, "offHeightMeters": .06,
-                     "onSpeedMetersPerSecond": .5, "offSpeedMetersPerSecond": 1.,
-                     "bridgeSamples": 2, "minimumSupportSamples": 3, "handoverCorrections": handovers,
-                     "detectionRateHz": 50 if args.full_trajectory or args.local_floor else args.fps,
-                     "floorEstimate": "rolling 1.02 s fifth percentile for labels only" if args.full_trajectory or args.local_floor else "window fifth percentile",
-                     "unsupportedSamples": int((~support.any(axis=1)).sum()), "contactComponents": components},
-        "imu": {"file": "imu.json", "samples": int(last - first), "physicalPart": "pelvis",
-                "frame": "pelvis", "nominalRateHz": 200, "usedBySmoother": False,
-                "description": "Measured specific force (m/s²) and angular rate (rad/s), without bias correction. Other body-part IMU-format streams are derived and excluded."},
-        "licenseNotes": [{"name": "Open-IO G1 Inertial Odometry", "license": "CC-BY-4.0",
-                          "url": DATASET, "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-                          "creator": "Yuheng Qiu and the SSIO authors / Open-IO",
-                          "changes": changes, "localNotice": "OPENIO_ATTRIBUTION.txt"}],
+        "worldTranslationMeters": translation.tolist(),
+        "pelvisImuOffsetMeters": imu_offset.tolist(),
+        "jointNames": JOINT_NAMES,
+        "mappingValidation": validation,
+        "detector": {
+            "floorHeightMeters": floor,
+            "onHeightMeters": 0.04,
+            "offHeightMeters": 0.06,
+            "onSpeedMetersPerSecond": 0.5,
+            "offSpeedMetersPerSecond": 1.0,
+            "bridgeSamples": 2,
+            "minimumSupportSamples": args.minimum_support_samples,
+            "handoverCorrections": handovers,
+            "detectionRateHz": (
+                50 if args.full_trajectory or args.local_floor else args.fps
+            ),
+            "floorEstimate": (
+                "rolling 1.02 s fifth percentile for labels only"
+                if args.full_trajectory or args.local_floor
+                else "window fifth percentile"
+            ),
+            "unsupportedSamples": int((~support.any(axis=1)).sum()),
+            "contactComponents": components,
+        },
+        "imu": {
+            "file": "imu.json",
+            "samples": int(last - first),
+            "physicalPart": "pelvis",
+            "frame": "pelvis",
+            "nominalRateHz": 200,
+            "usedBySmoother": False,
+            "description": "Measured specific force (m/s²) and angular rate (rad/s), without bias correction. Other body-part IMU-format streams are derived and excluded.",
+        },
+        "licenseNotes": [
+            {
+                "name": "Open-IO G1 Inertial Odometry",
+                "license": "CC-BY-4.0",
+                "url": DATASET,
+                "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+                "creator": "Yuheng Qiu and the SSIO authors / Open-IO",
+                "changes": changes,
+                "localNotice": "OPENIO_ATTRIBUTION.txt",
+            }
+        ],
     }
     args.output.mkdir(parents=True, exist_ok=True)
     mujoco.mj_saveModel(model, str(args.output / "model.mjb"))
@@ -312,20 +481,44 @@ def main() -> None:
         imu_acceleration=arrays["imus"][0, imu_first:imu_last, :3].astype(float),
         imu_angular_rate=arrays["imus"][0, imu_first:imu_last, 3:6].astype(float),
     )
-    write_json(args.output / "walk.json", {"policy_dt": 1 / args.fps, "command_speed_m_s": 0.0, "motionSource": metadata})
-    write_json(args.output / "contacts.json", {
-        "schemaVersion": 1, "metadata": metadata, "model": description, "samples": samples,
-        "contacts": contacts, "frames": frames, "frameSampling": sampling,
-        "reference": {"poses": [{"p": row[:3].tolist(), "q": row[3:7].tolist()} for row in qpos]},
-    })
-    write_json(args.output / "imu.json", {
-        "clip": CLIP, "sourceRevision": REVISION, "frame": "pelvis",
-        "timeOriginNs": str(int(stamps[first])),
-        "timeOffsetNs": (stamps[first:last] - stamps[first]).tolist(),
-        "timeSeconds": (times[first:last] - args.start_seconds).tolist(),
-        "accelerometerMetersPerSecondSquared": arrays["imus"][0, first:last, :3].astype(float).tolist(),
-        "gyroscopeRadiansPerSecond": arrays["imus"][0, first:last, 3:6].astype(float).tolist(),
-    })
+    write_json(
+        args.output / "walk.json",
+        {"policy_dt": 1 / args.fps, "command_speed_m_s": 0.0, "motionSource": metadata},
+    )
+    write_json(
+        args.output / "contacts.json",
+        {
+            "schemaVersion": 1,
+            "metadata": metadata,
+            "model": description,
+            "samples": samples,
+            "contacts": contacts,
+            "frames": frames,
+            "frameSampling": sampling,
+            "reference": {
+                "poses": [
+                    {"p": row[:3].tolist(), "q": row[3:7].tolist()} for row in qpos
+                ]
+            },
+        },
+    )
+    write_json(
+        args.output / "imu.json",
+        {
+            "clip": CLIP,
+            "sourceRevision": REVISION,
+            "frame": "pelvis",
+            "timeOriginNs": str(int(stamps[first])),
+            "timeOffsetNs": (stamps[first:last] - stamps[first]).tolist(),
+            "timeSeconds": (times[first:last] - args.start_seconds).tolist(),
+            "accelerometerMetersPerSecondSquared": arrays["imus"][0, first:last, :3]
+            .astype(float)
+            .tolist(),
+            "gyroscopeRadiansPerSecond": arrays["imus"][0, first:last, 3:6]
+            .astype(float)
+            .tolist(),
+        },
+    )
     (args.output / "OPENIO_ATTRIBUTION.txt").write_text(
         f"Unitree G1 Inertial Odometry Dataset\n{DATASET}\nClip: {CLIP}\nRevision: {REVISION}\n\n"
         "Credit: Yuheng Qiu, Yutian Chen, Carlton Cort, Weison Huang, Shibo Zhao, Pieter Abbeel, "
@@ -336,10 +529,22 @@ def main() -> None:
         "https://creativecommons.org/licenses/by/4.0/\n\n"
         f"Modifications: {changes}\n\nReference: SuperOdom LiDAR-inertial odometry. "
         "Contacts are heuristic labels, not force measurements. Original IMU samples are retained; recording metadata identifies whether IMU aiding was enabled.\n\n"
-        "Source SHA-256 checksums:\n" + "\n".join(f"{value}  {name}" for name, value in CHECKSUMS.items()) + "\n"
+        "Source SHA-256 checksums:\n"
+        + "\n".join(f"{value}  {name}" for name, value in CHECKSUMS.items())
+        + "\n"
     )
-    print(json.dumps({"samples": len(target), "imuSamples": int(last - first), "contacts": len(contacts),
-                      "sourceDurationSeconds": float(times[-1]), "mappingValidation": validation}, indent=2))
+    print(
+        json.dumps(
+            {
+                "samples": len(target),
+                "imuSamples": int(last - first),
+                "contacts": len(contacts),
+                "sourceDurationSeconds": float(times[-1]),
+                "mappingValidation": validation,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

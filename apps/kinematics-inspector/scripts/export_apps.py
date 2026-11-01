@@ -117,9 +117,18 @@ def main() -> None:
                     )
                 )
     if args.only in ("all", "trajectory"):
-        directory = APP / ".cache/openio-full"
+        directory = APP / ".cache/openio-contact-source"
         run(
-            [importer, "--full-trajectory", "--fps", "5", "--output", str(directory)],
+            [
+                importer,
+                "--full-trajectory",
+                "--fps",
+                "50",
+                "--minimum-support-samples",
+                "4",
+                "--output",
+                str(directory),
+            ],
             logs / "import-full.log",
         )
         for sigma in (50, 20, 5):
@@ -138,6 +147,8 @@ def main() -> None:
                         "--methods",
                         "contact",
                         "--smoothing-only",
+                        "--final-only",
+                        "--contact-slices",
                         "--contact-slip-sigma",
                         str(sigma / 1000),
                     ]
@@ -166,7 +177,7 @@ def main() -> None:
         summary = []
         for path in sorted((APP / "public/variants").glob("*/recording.json")):
             record = json.loads(path.read_text())
-            final = record["runs"]["contact"]["smoothing"][-1]
+            final = record["runs"]["contact"]["final"]
             summary.append(
                 {
                     "variant": path.parent.name,

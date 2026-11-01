@@ -15,6 +15,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from time import perf_counter
 from typing import Any
 
 import gtsam
@@ -56,7 +57,7 @@ sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 import kinematic_walk as example
 from mujoco_io import KinematicRecording, load_model, load_recording, pose
 from imu_aiding import BIAS_KEY, build_imu_aiding
-from pack_recordings import write_replay_bundles
+from pack_recordings import write_final_bundle, write_replay_bundles
 
 
 def compressed_json(path: Path, value: Any) -> None:
@@ -213,7 +214,9 @@ class Recorder:
         """
         slips = np.zeros((self.walk.count, 2, 7))
         slips[:, :, 6] = -1
-        for k, _, continuing in example.contact_slices(self.walk.trajectory):
+        for k, _, continuing in example.contact_slices(
+            self.walk.trajectory, self.walk.contact_breaks
+        ):
             for point in continuing:
                 foot = 0 if point.link.name().startswith("left") else 1
                 previous = point.predict(values, k - 1)
@@ -225,7 +228,9 @@ class Recorder:
 
     def frame_metrics(self, values: gtsam.Values) -> dict[str, list[float]]:
         height, slip, joint, root = [], [], [], []
-        for k, points, continuing in example.contact_slices(self.walk.trajectory):
+        for k, points, continuing in example.contact_slices(
+            self.walk.trajectory, self.walk.contact_breaks
+        ):
             heights = [float(p.predict(values, k)[2]) for p in points]
             slips = [
                 float(np.linalg.norm(p.predict(values, k) - p.predict(values, k - 1)))
@@ -324,6 +329,14 @@ def main() -> None:
         help="Do not capture initializer histories",
     )
     parser.add_argument(
+        "--final-only", action="store_true", help="Keep only final results"
+    )
+    parser.add_argument(
+        "--contact-slices",
+        action="store_true",
+        help="Estimate only the contact initializer's slices, with a one-source-slice stance buffer",
+    )
+    parser.add_argument(
         "--imu",
         action="store_true",
         help="Add Gal3 IMU factors, world COM velocities, and one shared bias",
@@ -357,6 +370,13 @@ def main() -> None:
         help="CM-Opt iteration limit for each initialization",
     )
     args = parser.parse_args()
+    if args.final_only:
+        args.methods = ["contact"]
+        args.smoothing_only = True
+    if args.contact_slices and (args.methods != ["contact"] or not args.smoothing_only):
+        parser.error(
+            "--contact-slices requires contact-only smoothing without initializer histories"
+        )
     if args.max_iterations < 1 or (args.max_frames is not None and args.max_frames < 2):
         parser.error("Use positive iterations and at least two frames")
     walk = example.load_walk(args.data, args.contacts, args.max_frames)
@@ -377,6 +397,12 @@ def main() -> None:
     ):
         if name in contact_settings:
             setattr(contact_options, name, contact_settings[name])
+    selected_seed = None
+    selection_info = None
+    if args.contact_slices:
+        walk, selected_seed, selection_info = example.initialize_contact_slices(
+            walk, contact_options, contact_buffer=1
+        )
     model = load_model(args.data)
     recorder = Recorder(walk, model)
     groups: dict[str, gtsam.NonlinearFactorGraph] = {}
@@ -423,14 +449,17 @@ def main() -> None:
             )
             ik_frames[sample].append(state)
 
-        seed, info = example.initialize(
-            walk,
-            method,
-            keys,
-            contact_result,
-            ik_iteration if method == "ik" and not args.smoothing_only else None,
-            contact_options=contact_options,
-        )
+        if selected_seed is not None:
+            seed, info = selected_seed.extract(keys), selection_info
+        else:
+            seed, info = example.initialize(
+                walk,
+                method,
+                keys,
+                contact_result,
+                ik_iteration if method == "ik" and not args.smoothing_only else None,
+                contact_options=contact_options,
+            )
         initializer = []
         sparse_samples: list[int] = []
         if contact_result is not None:
@@ -489,10 +518,28 @@ def main() -> None:
                 )
             )
 
+        started = perf_counter()
         solution, solver = example.solve_cm(
-            costs, constraints, seed, walk.root.id(), args.max_iterations, cm_iteration
+            costs,
+            constraints,
+            seed,
+            walk.root.id(),
+            args.max_iterations,
+            None if args.final_only else cm_iteration,
         )
-        assert len(smoothing) == solver["iterations"] + 2, "Missing CM-Opt iterations"
+        elapsed = perf_counter() - started
+        if args.final_only:
+            # Time the actual solve, with no serialization/error-budget callbacks.
+            solver["elapsedSeconds"] = elapsed
+            solver["timingScope"] = (
+                "CM-Opt manifold setup, optimization, and solution extraction; "
+                "excludes initialization, graph construction, and replay export"
+            )
+            cm_iteration(solver["iterations"], solution)
+        else:
+            assert (
+                len(smoothing) == solver["iterations"] + 2
+            ), "Missing CM-Opt iterations"
         final_metrics = example.evaluate(walk, costs, constraints, solution)
         if final_metrics["kinematic_equality_l2"] >= 1e-5:
             raise RuntimeError(f"{method}: infeasible final state")
@@ -515,7 +562,10 @@ def main() -> None:
         metadata["motionSource"]["imu"]["usedBySmoother"] = args.imu
     data = mujoco.MjData(model)
     transforms = []
-    for qpos in arrays["qpos"][: walk.count]:
+    source_indices = (
+        np.arange(walk.count) if walk.source_indices is None else walk.source_indices
+    )
+    for qpos in arrays["qpos"][source_indices]:
         data.qpos[:] = qpos
         mujoco.mj_forward(model, data)
         transforms.append(
@@ -596,7 +646,20 @@ def main() -> None:
         "samples": walk.count,
         "maxIterations": args.max_iterations,
         "dt": walk.dt,
+        "timestamps": walk.times.tolist(),
+        "sampling": {
+            "mode": "contact-initializer" if args.contact_slices else "uniform",
+            "sourceIndices": source_indices.tolist(),
+            "sourcePeriodSeconds": walk.dt,
+            "contactBuffer": 1 if args.contact_slices else 0,
+            "contactBreaks": sorted(walk.contact_breaks),
+            "intervalSeconds": np.diff(walk.times).tolist(),
+        },
         "bodies": model.nbody,
+        "bodyNames": [
+            mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, i)
+            for i in range(model.nbody)
+        ],
         "rootBody": walk.root.id(),
         "jointNames": [j.name() for j in recorder.joints],
         "phases": phases,
@@ -668,7 +731,10 @@ def main() -> None:
     args.output.joinpath("recording.json").write_text(
         json.dumps(record, separators=(",", ":"), allow_nan=False) + "\n"
     )
-    write_replay_bundles(args.output)
+    if args.final_only:
+        write_final_bundle(args.output)
+    else:
+        write_replay_bundles(args.output)
     print(
         f"Exported {walk.count} samples, {len(phases)} phases to {args.output}",
         flush=True,

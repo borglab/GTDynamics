@@ -10,6 +10,7 @@
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
+    "plotly.js-basic-dist-min": "4.2.0",
     "three": "0.151.3",
     "vue": "^3.5.13"
   },
