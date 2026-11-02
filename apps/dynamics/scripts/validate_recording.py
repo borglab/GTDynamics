@@ -16,11 +16,73 @@ import gtsam
 import gtdynamics as gtd
 import mujoco
 import numpy as np
-from scipy.optimize import linprog
+from numpy.typing import NDArray
 
 from export_recording import REPO
 from g1_model import load_g1_model
 from mujoco_io import import_robot, model_bodies, pose
+
+
+def linear_feasible(
+    equalities: NDArray[np.float64],
+    target: NDArray[np.float64],
+    inequalities: NDArray[np.float64],
+) -> bool:
+    """Check A x = b and C x <= 0 using a GTSAM phase-I LP.
+
+    Keep balance exact and minimize s subject to C x <= s and s >= 0. A zero
+    optimum establishes feasibility. Keeping the equalities exact avoids the
+    dependent positive/negative equality rows of automatic phase-I creation.
+    This check contributes no published forces. Solver failures propagate.
+    """
+    tolerance = 1e-6
+    dimension = equalities.shape[1]
+    if dimension == 0:
+        return bool(np.max(np.abs(target)) <= tolerance)
+    seed = np.linalg.lstsq(equalities, target, rcond=None)[0]
+    if np.max(np.abs(equalities @ seed - target)) > tolerance:
+        return False
+    nonzero = inequalities[np.any(inequalities != 0, axis=1)]
+    if not len(nonzero):
+        return True
+    problem = gtsam.LpProblem()
+    cost = np.zeros((1, dimension + 1))
+    cost[0, -1] = 1
+    problem.addCost(
+        gtsam.JacobianFactor(0, cost, np.zeros(1), gtsam.noiseModel.Unit.Create(1))
+    )
+    problem.addConstraint(
+        gtsam.LinearConstraint.Equal(
+            gtsam.JacobianFactor(
+                0,
+                np.column_stack([equalities, np.zeros(len(target))]),
+                target,
+                gtsam.noiseModel.Unit.Create(len(target)),
+            )
+        )
+    )
+    bounds = np.vstack([np.column_stack([nonzero, -np.ones(len(nonzero))]), -cost])
+    problem.addConstraint(
+        gtsam.LinearConstraint.LessEqual(
+            gtsam.JacobianFactor(
+                0,
+                bounds,
+                np.zeros(len(bounds)),
+                gtsam.noiseModel.Unit.Create(len(bounds)),
+            )
+        )
+    )
+    initial = gtsam.Values()
+    initial.insert(0, np.r_[seed, max(1.0, float(np.max(nonzero @ seed)) + 1.0)])
+    optimum = problem.optimize(initial).atVector(0)
+    solution, slack = optimum[:-1], optimum[-1]
+    if (
+        np.max(np.abs(equalities @ solution - target)) > tolerance
+        or np.any(nonzero @ solution - slack > tolerance)
+        or slack < -tolerance
+    ):
+        raise RuntimeError("The GTSAM LP result violates feasibility tolerances")
+    return bool(slack <= tolerance)
 
 
 def validate(directory: Path) -> dict:
@@ -154,40 +216,25 @@ def validate(directory: Path) -> dict:
         )
         supplied = np.hstack(transforms) @ np.asarray(record["wrenches"][k]).reshape(-1)
         balance_errors.append(required - supplied)
-        bounds = [
-            (None, None) if active else (0, 0)
-            for active in record["contact"][k]
-            for _ in range(6)
-        ]
-        resultant = linprog(
-            np.zeros(12),
-            A_ub=inequalities,
-            b_ub=np.zeros(34),
-            A_eq=np.hstack(transforms),
-            b_eq=required,
-            bounds=bounds,
-            method="highs",
+        active_wrenches = np.repeat(record["contact"][k], 6)
+        resultant = linear_feasible(
+            np.hstack(transforms)[:, active_wrenches],
+            required,
+            inequalities[:, active_wrenches],
         )
-        corner = linprog(
-            np.zeros(32),
-            A_eq=np.hstack(
-                [transform @ ray for transform, ray in zip(transforms, rays)]
-            ),
-            b_eq=required,
-            bounds=[
-                (0, None) if active else (0, 0)
-                for active in record["contact"][k]
-                for _ in range(16)
+        active_rays = np.repeat(record["contact"][k], 16)
+        corner = linear_feasible(
+            np.hstack([transform @ ray for transform, ray in zip(transforms, rays)])[
+                :, active_rays
             ],
-            method="highs",
+            required,
+            -np.eye(np.count_nonzero(active_rays)),
         )
-        if resultant.status not in (0, 2) or corner.status not in (0, 2):
-            raise RuntimeError("An LP check failed without establishing feasibility")
-        if resultant.success != corner.success:
+        if resultant != corner:
             raise AssertionError(
                 "Resultant-wrench and corner-force feasibility disagree"
             )
-        if not resultant.success:
+        if not resultant:
             infeasible.append({"slice": k, "timeSeconds": time})
     errors, balance_errors = np.asarray(errors), np.asarray(balance_errors)
     force_error = float(np.max(np.linalg.norm(errors[:, 3:], axis=1)))

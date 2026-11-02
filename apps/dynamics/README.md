@@ -75,6 +75,15 @@ contact would require further pose/velocity consistency constraints.
 
 ## Regenerate
 
+The Python driver is [scripts/export_recording.py](scripts/export_recording.py).
+Its `export()` function fits the full-trajectory GP, prepares fixed poses and
+velocities with acceleration prior means, constructs the sole contact models,
+and calls `gtd.solveFixedKinematicsDynamics()`. It then writes
+`recording.json.gz` (estimated accelerations, forces, torques, and diagnostics)
+and `model.json.gz` (display geometry) to `--output`, which defaults to
+`apps/dynamics/public`. Computation and browser serialization currently share
+this driver; it is not yet a compact standalone teaching example.
+
 Use the pinned G1 packages and matching GTDynamics/GTSAM Python bindings:
 
 ```bash
@@ -116,8 +125,17 @@ npm run build
 
 The MuJoCo oracle uses the **published optimized accelerations**, disables
 contact constraints and passive damping/friction, and subtracts sole-wrench
-loading when comparing actuator torques. LPs serve only as feasibility checks.
-The native CMC result supplies every published force and torque.
+loading when comparing actuator torques. GTSAM `LpProblem` programs check
+resultant-wrench and nonnegative corner-force feasibility. They keep balance
+exact and minimize a nonnegative slack on the cone inequalities; zero slack
+establishes feasibility. Solver failures propagate separately from infeasible
+loads. The native CMC result supplies every published force and torque.
+
+The support rectangle uses a two-dimensional monotone-chain hull of the sampled
+capsule footprints. This preserves the previous rectangle and 5% margin without
+a SciPy dependency. With the native Python environment active, run
+`npm run test:native --workspace dynamics` from `apps/` for footprint and
+feasible/infeasible-load checks.
 
 The browser selects the nearest retained knot during playback. Connecting lines
 between force/torque samples guide the eye across unsampled intervals. Compiled

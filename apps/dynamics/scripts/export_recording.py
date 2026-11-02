@@ -7,7 +7,6 @@ import argparse
 from dataclasses import replace
 import gzip
 import hashlib
-from importlib.metadata import version
 import json
 from pathlib import Path
 import sys
@@ -18,7 +17,7 @@ import gtsam
 import gtdynamics as gtd
 import mujoco
 import numpy as np
-from scipy.spatial import ConvexHull
+from numpy.typing import NDArray
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
@@ -31,6 +30,29 @@ from interpolate_walk import fit_walk, sample_walk
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def planar_hull(points: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Return counterclockwise vertices of a planar convex hull, in metres.
+
+    Andrew's monotone chain removes duplicates and interior collinear points.
+    The support-patch calculation needs only this two-dimensional boundary.
+    """
+    ordered = np.unique(points, axis=0)
+    boundary = []
+    for sequence in (ordered, ordered[::-1]):
+        half = []
+        for point in sequence:
+            while len(half) >= 2:
+                first, second = half[-1] - half[-2], point - half[-1]
+                if first[0] * second[1] - first[1] * second[0] > 0:
+                    break
+                half.pop()
+            half.append(point)
+        boundary.extend(half[:-1])
+    if len(boundary) < 3:
+        raise ValueError("The support footprint must have nonzero planar area")
+    return np.asarray(boundary)
 
 
 def support_rectangle(model: mujoco.MjModel, side: str) -> tuple[float, float]:
@@ -56,8 +78,15 @@ def support_rectangle(model: mujoco.MjModel, side: str) -> tuple[float, float]:
             points.extend(center[:2] - origin + circle * model.geom_size[geom, 0])
     points = np.asarray(points)
     half = np.minimum(-points.min(axis=0), points.max(axis=0))
-    hull = ConvexHull(points)
-    scale = min(-face[2] / (np.abs(face[:2]) @ half) for face in hull.equations)
+    hull = planar_hull(points)
+    edges = np.roll(hull, -1, axis=0) - hull
+    normals = np.column_stack([edges[:, 1], -edges[:, 0]])
+    # Each CCW hull edge gives an outward normal n and the bound n.x <= n.p.
+    # A symmetric rectangle's support along n is abs(n) @ half.
+    offsets = np.sum(normals * hull, axis=1)
+    if np.any(offsets <= 0) or np.any(half <= 0):
+        raise ValueError("The sole origin must lie inside the support footprint")
+    scale = np.min(offsets / (np.abs(normals) @ half))
     return tuple((half * min(1.0, scale) * 0.95).tolist())
 
 
@@ -364,7 +393,6 @@ def export(args: argparse.Namespace) -> None:
         "diagnostics": diagnostics,
         "provenance": {
             "packages": VERSIONS,
-            "scipyVersion": version("scipy"),
             "modelFingerprint": record.get("modelFingerprint"),
             "kinematicsMetadataSha256": digest(metadata),
             "kinematicsBinarySha256": digest(binary),

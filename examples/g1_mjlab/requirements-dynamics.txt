@@ -1,3 +1,2 @@
 # Native GTSAM/GTDynamics bindings must match the local C++ build.
 -r requirements-model.txt
-scipy==1.18.1
