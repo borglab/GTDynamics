@@ -1,4 +1,7 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+# The SCATE tests (testScate*, testTrajectoryInit, testUr5Collision) use the
+# header-only SCATE code in the example folder.
+include_directories(${CMAKE_SOURCE_DIR}/examples/example_scate_ur5)
 
 if(GTDYNAMICS_WITH_SUITESPARSE)
   set(ROOT_TEST_EXCLUDES

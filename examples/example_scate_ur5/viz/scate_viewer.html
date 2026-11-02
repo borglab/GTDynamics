@@ -1,0 +1,819 @@
+<title>SCATE Replay</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working surface. 3D scene on the left, instrument readouts on the
+   right; transport and the clearance timeline run full width underneath.
+   Stacks to one column on phones. */
+:root {
+  --bg: #f3f5f6;
+  --surface: #fcfcfb;
+  --scene: #eef1f3;
+  --ink: #0f1418;
+  --ink-2: #4a545c;
+  --muted: #7d878f;
+  --rule: #dde2e6;
+  --grid: #e3e7ea;
+  --online: #2a78d6;
+  --blind: #eb6834;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good: #0f8a0f;
+  --robot: #b9c1c8;
+  --obstacle: #6b737a;
+  --focus: #2a78d6;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1113; --surface: #161a1d; --scene: #12161a; --ink: #eef1f3; --ink-2: #b6bfc6;
+    --muted: #7f8a93; --rule: #2a3035; --grid: #232a2f; --online: #3987e5; --blind: #d95926;
+    --serious: #ec835a; --critical: #e05252; --good: #22b022; --robot: #6f7a83; --obstacle: #8a939a;
+    --focus: #3987e5; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1113; --surface: #161a1d; --scene: #12161a; --ink: #eef1f3; --ink-2: #b6bfc6;
+  --muted: #7f8a93; --rule: #2a3035; --grid: #232a2f; --online: #3987e5; --blind: #d95926;
+  --serious: #ec835a; --critical: #e05252; --good: #22b022; --robot: #6f7a83; --obstacle: #8a939a;
+  --focus: #3987e5; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px;
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 28px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: 0.01em; margin: 0; line-height: 1.1; text-wrap: balance; }
+.sub { color: var(--ink-2); margin: 2px 0 0; font-size: 13px; max-width: 72ch; }
+.source { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); }
+.tag { font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--rule); color: var(--ink-2); background: var(--surface); }
+.tag.demo { border-color: var(--serious); color: var(--ink); }
+button, .filebtn, select {
+  font: 500 13px var(--font-body); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 4px; padding: 6px 10px; cursor: pointer; min-height: 32px;
+}
+button:hover, .filebtn:hover, select:hover { border-color: var(--muted); }
+button:focus-visible, .filebtn:focus-within, select:focus-visible, input:focus-visible, .seg label:focus-within {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+.filebtn { display: inline-flex; align-items: center; gap: 6px; }
+.filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { position: relative; background: var(--scene); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; aspect-ratio: 16 / 10; min-height: 300px; }
+@media (max-width: 560px) { .stage { aspect-ratio: 4 / 5; } }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.stage .clock { position: absolute; right: 10px; top: 8px; font-family: var(--font-data); font-size: 12px; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 80%, transparent); padding: 2px 6px; border-radius: 3px; }
+.drop { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 2px dashed var(--online); font: 600 16px var(--font-display); letter-spacing: 0.04em; color: var(--ink); }
+.err { position: absolute; left: 10px; right: 10px; top: 10px; background: var(--surface); border: 1px solid var(--critical); border-radius: 4px; padding: 8px 10px; font-size: 13px; }
+
+aside { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); margin: 0; }
+dl.read { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; align-items: baseline; }
+dl.read dt { color: var(--ink-2); font-size: 12.5px; }
+dl.read dd { margin: 0; font-family: var(--font-data); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font: 600 12px var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip.ok { color: var(--good); } .chip.warn { color: var(--serious); } .chip.bad { color: var(--critical); } .chip.idle { color: var(--muted); }
+.runrow { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+.runname { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.swatch { width: 14px; height: 3px; border-radius: 2px; }
+.layers { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.layers label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg label { position: relative; padding: 5px 10px; font-size: 13px; cursor: pointer; border-right: 1px solid var(--rule); }
+.seg label:last-child { border-right: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--ink); color: var(--surface); }
+.legend { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.legend div { display: flex; align-items: center; gap: 8px; }
+.legend i { flex: none; width: 12px; height: 12px; border-radius: 50%; }
+
+.transport { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.controls .time { font-family: var(--font-data); font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 15ch; }
+#scrub { flex: 1 1 220px; accent-color: var(--online); min-width: 0; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: 170px; }
+.chart .tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); white-space: nowrap; }
+.chart .tip b { font-family: var(--font-data); font-weight: 500; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>SCATE Replay</h1>
+      <p class="sub">UR5 closed loop: the arm discovers a spherical obstacle partway through the sweep and replans around it. Compare with a blind run that never sees it.</p>
+    </div>
+    <div class="source">
+      <span class="tag" id="srcTag">Loading</span>
+      <label class="filebtn" for="file">Open replay.json<input id="file" type="file" accept=".json,application/json"></label>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="stage" id="stage">
+      <canvas id="view" aria-label="3D view of the robot, the obstacle and the trajectories"></canvas>
+      <span class="clock" id="clock">t = 0.00 s</span>
+      <span class="hint">Drag to orbit · scroll to zoom · right-drag to pan</span>
+      <div class="drop" id="drop" hidden>Drop replay.json to load it</div>
+      <div class="err" id="err" hidden></div>
+    </div>
+
+    <aside>
+      <section class="panel" aria-labelledby="h-state">
+        <h2 id="h-state">At this instant</h2>
+        <div class="runrow">
+          <span class="runname"><span class="swatch" style="background:var(--online)"></span><span id="nmOnline">SCATE online</span></span>
+          <span class="chip idle" id="chipOnline">clear</span>
+        </div>
+        <dl class="read">
+          <dt>Obstacle clearance</dt><dd id="rOnClear">–</dd>
+          <dt>Self clearance</dt><dd id="rOnSelf">–</dd>
+        </dl>
+        <div class="runrow" id="blindRow">
+          <span class="runname"><span class="swatch" style="background:var(--blind)"></span><span id="nmBlind">Blind</span></span>
+          <span class="chip idle" id="chipBlind">clear</span>
+        </div>
+        <dl class="read" id="blindRead">
+          <dt>Obstacle clearance</dt><dd id="rBlClear">–</dd>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="h-est">
+        <h2 id="h-est">Obstacle estimate (online)</h2>
+        <dl class="read">
+          <dt>Status</dt><dd id="rSeen">–</dd>
+          <dt>Error vs truth</dt><dd id="rErr">–</dd>
+          <dt>3σ, largest axis</dt><dd id="rSig">–</dd>
+          <dt>Plan step k</dt><dd id="rK">–</dd>
+          <dt>Solve time</dt><dd id="rMs">–</dd>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="h-view">
+        <h2 id="h-view">Show</h2>
+        <div class="seg" role="radiogroup" aria-label="Runs">
+          <label><input type="radio" name="runs" value="both" id="runsBoth" checked>Both</label>
+          <label><input type="radio" name="runs" value="online" id="runsOnline">Online</label>
+          <label><input type="radio" name="runs" value="blind" id="runsBlind">Blind</label>
+        </div>
+        <div class="layers">
+          <label><input type="checkbox" id="lyMesh" checked>Arm meshes</label>
+          <label><input type="checkbox" id="lySph" checked>Collision spheres</label>
+          <label><input type="checkbox" id="lyPlan" checked>Current plan</label>
+          <label><input type="checkbox" id="lyOff">Offline plan</label>
+          <label><input type="checkbox" id="lyEst" checked>Estimate + 3σ</label>
+          <label><input type="checkbox" id="lyRange">Sensor range</label>
+          <label><input type="checkbox" id="lyStand" checked>Standoff shell</label>
+          <label><input type="checkbox" id="lyTrail" checked>Tool trail</label>
+        </div>
+        <div class="legend" aria-label="Sphere colors">
+          <div><i style="background:linear-gradient(90deg, var(--online) 50%, var(--blind) 50%)"></i>Sphere clear of the standoff (run color)</div>
+          <div><i style="background:var(--serious)"></i>Inside the standoff (or self standoff)</div>
+          <div><i style="background:var(--critical)"></i>Penetrating the obstacle or another sphere</div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="transport" aria-label="Playback">
+    <div class="controls">
+      <button id="play" type="button" aria-label="Play">▶ Play</button>
+      <button id="restart" type="button">Restart</button>
+      <select id="speed" aria-label="Playback speed">
+        <option value="0.5">0.5×</option>
+        <option value="1">1×</option>
+        <option value="2" selected>2×</option>
+        <option value="4">4×</option>
+      </select>
+      <input id="scrub" type="range" min="0" max="1000" step="1" value="0" aria-label="Time">
+      <span class="time" id="timeTxt">0.00 / 0.00 s</span>
+    </div>
+    <div class="chart" id="chart">
+      <svg id="chartSvg" role="img" aria-label="Obstacle clearance over time for each run"></svg>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <p class="note" id="note">Clearance is the gap between the closest collision sphere and the true obstacle surface. Click or drag on the chart to scrub.</p>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const MESH_FOR_LINK = {
+    base_link: "base", shoulder_link: "shoulder", upper_arm_link: "upperarm", forearm_link: "forearm",
+    wrist_1_link: "wrist1", wrist_2_link: "wrist2", wrist_3_link: "wrist3",
+  };
+
+  // ---------- theme ----------
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const col = (name) => new THREE.Color(css(name) || "#888888");
+
+  // ---------- binary STL ----------
+  function parseSTL(buf) {
+    const dv = new DataView(buf);
+    const n = dv.getUint32(80, true);
+    if (84 + n * 50 !== buf.byteLength) throw new Error("not a binary STL");
+    const pos = new Float32Array(n * 9);
+    for (let i = 0; i < n; i++) {
+      const o = 84 + i * 50;
+      for (let v = 0; v < 3; v++) {
+        for (let a = 0; a < 3; a++) pos[i * 9 + v * 3 + a] = dv.getFloat32(o + 12 + v * 12 + a * 4, true);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    // The UR5 STLs store all-zero facet normals, so derive them from the triangles.
+    g.computeVertexNormals();
+    return g;
+  }
+
+  // ---------- small math ----------
+  const lerp = (a, b, s) => a + (b - a) * s;
+  const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+  function eigSym3(m) {  // Jacobi; m as 9 numbers row-major -> {vals, vecs (columns)}
+    const a = [[m[0], m[1], m[2]], [m[3], m[4], m[5]], [m[6], m[7], m[8]]];
+    const v = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (let sweep = 0; sweep < 50; sweep++) {
+      let off = Math.abs(a[0][1]) + Math.abs(a[0][2]) + Math.abs(a[1][2]);
+      if (off < 1e-18) break;
+      for (const [p, q] of [[0, 1], [0, 2], [1, 2]]) {
+        if (Math.abs(a[p][q]) < 1e-20) continue;
+        const th = 0.5 * Math.atan2(2 * a[p][q], a[q][q] - a[p][p]);
+        const c = Math.cos(th), s = Math.sin(th);
+        for (let k = 0; k < 3; k++) {
+          const akp = a[k][p], akq = a[k][q];
+          a[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq;
+        }
+        for (let k = 0; k < 3; k++) {
+          const apk = a[p][k], aqk = a[q][k];
+          a[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk;
+        }
+        for (let k = 0; k < 3; k++) {
+          const vkp = v[k][p], vkq = v[k][q];
+          v[k][p] = c * vkp - s * vkq; v[k][q] = s * vkp + c * vkq;
+        }
+      }
+    }
+    return { vals: [a[0][0], a[1][1], a[2][2]], vecs: v };
+  }
+
+  // ---------- scene ----------
+  const canvas = $("view"), stage = $("stage");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1.6, 0.01, 50);
+  camera.up.set(0, 0, 1);
+  camera.position.set(1.35, -1.15, 1.0);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.target.set(0.15, 0.3, 0.3);
+  controls.enableDamping = true;
+  controls.update();
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x8a939a, 0.75);
+  hemi.position.set(0, 0, 1);
+  scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xffffff, 0.8);
+  key.position.set(1.5, -1, 2.5);
+  scene.add(key);
+
+  const floor = new THREE.Group();
+  scene.add(floor);
+  function buildFloor() {
+    floor.clear();
+    const g = new THREE.GridHelper(2, 20, col("--rule"), col("--grid"));
+    g.rotation.x = Math.PI / 2;
+    floor.add(g);
+    const axes = new THREE.AxesHelper(0.15);
+    floor.add(axes);
+  }
+
+  const world = new THREE.Group();
+  scene.add(world);
+
+  // Materials (recolored on theme change).
+  const M = {};
+  function makeMaterials() {
+    M.robot = new THREE.MeshStandardMaterial({ color: col("--robot"), roughness: 0.65, metalness: 0.1 });
+    M.robotGhost = new THREE.MeshStandardMaterial({ color: col("--blind"), roughness: 0.7, transparent: true, opacity: 0.28, depthWrite: false });
+    M.obstacle = new THREE.MeshStandardMaterial({ color: col("--obstacle"), roughness: 0.5 });
+    M.shell = new THREE.MeshBasicMaterial({ color: col("--critical"), wireframe: true, transparent: true, opacity: 0.22 });
+    M.est = new THREE.MeshBasicMaterial({ color: col("--online"), transparent: true, opacity: 0.22, depthWrite: false });
+    M.estDot = new THREE.MeshBasicMaterial({ color: col("--online") });
+    M.range = new THREE.MeshBasicMaterial({ color: col("--online"), wireframe: true, transparent: true, opacity: 0.12 });
+    M.sphOk = new THREE.MeshStandardMaterial({ color: col("--online"), transparent: true, opacity: 0.18, depthWrite: false });
+    M.sphOkBlind = new THREE.MeshStandardMaterial({ color: col("--blind"), transparent: true, opacity: 0.18, depthWrite: false });
+    M.sphWarn = new THREE.MeshStandardMaterial({ color: col("--serious"), transparent: true, opacity: 0.55, depthWrite: false });
+    M.sphBad = new THREE.MeshStandardMaterial({ color: col("--critical"), transparent: true, opacity: 0.7, depthWrite: false });
+    M.lineOnline = new THREE.LineBasicMaterial({ color: col("--online") });
+    M.lineBlind = new THREE.LineBasicMaterial({ color: col("--blind") });
+    M.lineOnlineFaint = new THREE.LineBasicMaterial({ color: col("--online"), transparent: true, opacity: 0.25 });
+    M.lineBlindFaint = new THREE.LineBasicMaterial({ color: col("--blind"), transparent: true, opacity: 0.25 });
+    M.planOnline = new THREE.LineDashedMaterial({ color: col("--online"), dashSize: 0.015, gapSize: 0.01 });
+    M.planOff = new THREE.LineDashedMaterial({ color: col("--muted"), dashSize: 0.02, gapSize: 0.012 });
+  }
+
+  // ---------- data ----------
+  let D = null;        // replay
+  let R = {};          // runs by name
+  let meshGeo = {};    // STL geometry by mesh name
+  let T = 0, Tend = 1; // time
+  let playing = false, speed = 2;
+  let objs = null;     // scene objects for the loaded replay
+
+  // The UR5 collision STLs (GTDynamics models/urdfs/ur5/collision), base64 in one file.
+  // A standalone copy written by plot_scate.py embeds the meshes and the run
+  // as window.SCATE_MESHES / window.SCATE_REPLAY; the hosted page fetches them.
+  async function loadMeshes() {
+    try {
+      let pack = window.SCATE_MESHES;
+      if (!pack) {
+        const r = await fetch("meshes.json");
+        if (!r.ok) return;
+        pack = await r.json();
+      }
+      for (const [name, b64] of Object.entries(pack.meshes || {})) {
+        const bin = atob(b64), bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        meshGeo[name] = parseSTL(bytes.buffer);
+      }
+    } catch (e) { /* no meshes: the arm is drawn from its spheres only */ }
+  }
+
+  function showError(msg) { const e = $("err"); e.textContent = msg; e.hidden = !msg; }
+
+  function setReplay(d) {
+    if (!d || d.format !== "scate-replay" || !Array.isArray(d.runs) || !d.runs.length) {
+      throw new Error("This file is not a SCATE replay (expected the replay.json written by scate_online).");
+    }
+    D = d; R = {};
+    for (const r of d.runs) R[r.name] = r;
+    Tend = (d.num_poses - 1) * d.dt;
+    const demo = /^SANDBOX/i.test(d.source || "");
+    const tag = $("srcTag");
+    tag.textContent = demo ? "Demo data" : "Your run";
+    tag.className = "tag" + (demo ? " demo" : "");
+    tag.title = d.source || "";
+    $("nmOnline").textContent = R.online ? R.online.label : "Online";
+    $("nmBlind").textContent = R.blind ? R.blind.label : "Blind";
+    $("blindRow").hidden = $("blindRead").hidden = !R.blind;
+    $("note").textContent = (d.source ? d.source + ". " : "") +
+      "Clearance is the gap between the closest collision sphere and the true obstacle surface. Click or drag on the chart to scrub.";
+    buildObjects();
+    frameCamera();
+    // Open at the most telling instant: where the blind run comes closest.
+    const ref = R.blind || R.online;
+    let best = 0, bestC = Infinity;
+    ref.frames.forEach((f) => { if (f.clear !== null && f.clear < bestC) { bestC = f.clear; best = f.t; } });
+    setTime(best);
+    drawChart();
+  }
+
+  // Aim at everything the replay touches: every sphere center of every run, and the obstacle.
+  function frameCamera() {
+    const box = new THREE.Box3();
+    for (const r of Object.values(R)) {
+      for (let i = 0; i < r.frames.length; i += 5) r.frames[i].spheres.forEach((c) => box.expandByPoint(v3(c)));
+    }
+    box.expandByPoint(v3(D.obstacle.center));
+    if (box.isEmpty()) return;
+    const c = box.getCenter(new THREE.Vector3());
+    const rad = box.getSize(new THREE.Vector3()).length() / 2;
+    const dist = rad / Math.sin((camera.fov * Math.PI / 180) / 2) * 0.95;
+    controls.target.copy(c);
+    camera.position.copy(c).add(new THREE.Vector3(0.75, -0.95, 0.6).normalize().multiplyScalar(dist));
+    camera.near = dist / 100; camera.far = dist * 20;
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
+  function lineFrom(points, mat, dashed) {
+    const g = new THREE.BufferGeometry().setFromPoints(points.map(v3));
+    const l = new THREE.Line(g, mat);
+    if (dashed) l.computeLineDistances();
+    return l;
+  }
+
+  function buildArm(mat, sphMat, run) {
+    const arm = { links: [], spheres: [], group: new THREE.Group(), sph: new THREE.Group(), sphMat };
+    for (const name of D.links) {
+      const holder = new THREE.Group();
+      const geo = meshGeo[MESH_FOR_LINK[name]];
+      if (geo) holder.add(new THREE.Mesh(geo, mat));
+      arm.group.add(holder);
+      arm.links.push(holder);
+    }
+    const unit = new THREE.SphereGeometry(1, 20, 14);
+    D.sphere_radii.forEach((r) => {
+      const s = new THREE.Mesh(unit, sphMat);
+      s.scale.setScalar(r);
+      arm.sph.add(s);
+      arm.spheres.push(s);
+    });
+    world.add(arm.group, arm.sph);
+    const tool = D.tool_sphere;
+    if (tool >= 0) {
+      arm.trailFull = lineFrom(run.frames.map((f) => f.spheres[tool]),
+        run.name === "online" ? M.lineOnlineFaint : M.lineBlindFaint);
+      const pts = new Float32Array(run.frames.length * 3);
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.BufferAttribute(pts, 3));
+      arm.trail = new THREE.Line(g, run.name === "online" ? M.lineOnline : M.lineBlind);
+      world.add(arm.trailFull, arm.trail);
+    }
+    return arm;
+  }
+
+  function buildObjects() {
+    world.clear();
+    objs = { arms: {} };
+    const o = D.obstacle;
+    const obs = new THREE.Mesh(new THREE.SphereGeometry(o.radius, 40, 28), M.obstacle);
+    obs.position.copy(v3(o.center));
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(o.radius + D.obstacle_standoff, 28, 18), M.shell);
+    shell.position.copy(obs.position);
+    world.add(obs, shell);
+    objs.shell = shell;
+
+    const est = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), M.est);
+    const estDot = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 8), M.estDot);
+    world.add(est, estDot);
+    objs.est = est; objs.estDot = estDot;
+
+    const range = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), M.range);
+    world.add(range);
+    objs.range = range;
+
+    if (R.online) objs.arms.online = buildArm(M.robot, M.sphOk, R.online);
+    if (R.blind) objs.arms.blind = buildArm(R.online ? M.robotGhost : M.robot, M.sphOkBlind, R.blind);
+
+    const off = (R.online || R.blind).steps[0];
+    objs.offline = off && off.plan_tool.length > 1 ? lineFrom(off.plan_tool, M.planOff, true) : null;
+    if (objs.offline) world.add(objs.offline);
+    objs.plan = null;
+    objs.planStep = -1;
+    applyVisibility();
+  }
+
+  // ---------- per-frame state ----------
+  function frameAt(run, t) {
+    const F = run.frames;
+    const step = F.length > 1 ? (F[F.length - 1].t - F[0].t) / (F.length - 1) : 1;
+    const x = Math.max(0, Math.min(F.length - 1, (t - F[0].t) / step));
+    const i = Math.min(F.length - 2, Math.floor(x));
+    return { a: F[i], b: F[i + 1] || F[i], s: x - i, i: Math.round(x) };
+  }
+
+  function stepAt(run, t) {  // latest planner step whose plan is in force at time t
+    const k = Math.min(run.steps.length - 1, Math.floor(t / D.dt + 1e-9));
+    return run.steps[Math.max(0, k)];
+  }
+
+  function sphereStates(centers) {
+    const O = D.obstacle.center, Rr = D.obstacle.radius, rad = D.sphere_radii;
+    const st = rad.map((r, i) => {
+      const c = centers[i];
+      const gap = Math.hypot(c[0] - O[0], c[1] - O[1], c[2] - O[2]) - Rr - r;
+      return gap < 0 ? 2 : gap < D.obstacle_standoff ? 1 : 0;
+    });
+    for (const [a, b] of D.pairs || []) {
+      const ca = centers[a], cb = centers[b];
+      const gap = Math.hypot(ca[0] - cb[0], ca[1] - cb[1], ca[2] - cb[2]) - rad[a] - rad[b];
+      const s = gap < 0 ? 2 : gap < D.self_standoff ? 1 : 0;
+      st[a] = Math.max(st[a], s); st[b] = Math.max(st[b], s);
+    }
+    return st;
+  }
+
+  const q0 = new THREE.Quaternion(), q1 = new THREE.Quaternion();
+  function poseArm(arm, run, t) {
+    const { a, b, s, i } = frameAt(run, t);
+    arm.links.forEach((h, l) => {
+      const A = a.links[l], B = b.links[l];
+      if (!A) return;
+      h.position.set(lerp(A[0], B[0], s), lerp(A[1], B[1], s), lerp(A[2], B[2], s));
+      q0.set(A[3], A[4], A[5], A[6]); q1.set(B[3], B[4], B[5], B[6]);
+      h.quaternion.copy(q0).slerp(q1, s);
+    });
+    const centers = a.spheres.map((c, k) => {
+      const d = b.spheres[k];
+      return [lerp(c[0], d[0], s), lerp(c[1], d[1], s), lerp(c[2], d[2], s)];
+    });
+    const st = sphereStates(centers);
+    arm.spheres.forEach((m, k) => {
+      m.position.set(centers[k][0], centers[k][1], centers[k][2]);
+      m.material = st[k] === 2 ? M.sphBad : st[k] === 1 ? M.sphWarn : arm.sphMat;
+    });
+    if (arm.trail) {
+      const pos = arm.trail.geometry.attributes.position;
+      const tool = D.tool_sphere;
+      const n = Math.min(run.frames.length, i + 1);
+      for (let k = 0; k < n; k++) {
+        const p = k === n - 1 ? centers[tool] : run.frames[k].spheres[tool];
+        pos.setXYZ(k, p[0], p[1], p[2]);
+      }
+      pos.needsUpdate = true;
+      arm.trail.geometry.setDrawRange(0, n);
+    }
+    return { clear: lerp(a.clear, b.clear, s), self: a.self === null ? null : lerp(a.self, b.self, s) };
+  }
+
+  const fmtCm = (m) => (m === null || m === undefined || !isFinite(m)) ? "–" : (100 * m).toFixed(1) + " cm";
+  function chip(el, clear) {
+    if (clear === null || !isFinite(clear)) { el.className = "chip idle"; el.textContent = "–"; return; }
+    if (clear < 0) { el.className = "chip bad"; el.textContent = "collision"; }
+    else if (clear < D.obstacle_standoff) { el.className = "chip warn"; el.textContent = "inside standoff"; }
+    else { el.className = "chip ok"; el.textContent = "clear"; }
+  }
+
+  function setTime(t) {
+    if (!D) return;
+    T = Math.max(0, Math.min(Tend, t));
+    const which = document.querySelector('input[name="runs"]:checked').value;
+    let on = null, bl = null;
+    if (R.online && objs.arms.online) on = poseArm(objs.arms.online, R.online, T);
+    if (R.blind && objs.arms.blind) bl = poseArm(objs.arms.blind, R.blind, T);
+
+    if (on) { $("rOnClear").textContent = fmtCm(on.clear); $("rOnSelf").textContent = fmtCm(on.self); chip($("chipOnline"), on.clear); }
+    if (bl) { $("rBlClear").textContent = fmtCm(bl.clear); chip($("chipBlind"), bl.clear); }
+
+    // Estimate, current plan, sensor range: the online run.
+    const run = R.online;
+    if (run) {
+      const st = stepAt(run, T);
+      $("rK").textContent = String(st.k);
+      $("rMs").textContent = st.solve_ms.toFixed(1) + " ms" + (st.solves > 1 ? " (2 solves)" : "");
+      const seenK = run.summary.first_detection;
+      if (st.l) {
+        const O = D.obstacle.center;
+        const e = Math.hypot(st.l[0] - O[0], st.l[1] - O[1], st.l[2] - O[2]);
+        $("rSeen").textContent = "seen at step " + seenK;
+        $("rErr").textContent = fmtCm(e);
+        objs.estDot.position.copy(v3(st.l));
+        objs.est.position.copy(v3(st.l));
+        if (st.l_cov) {
+          const { vals, vecs } = eigSym3(st.l_cov);
+          const sd = vals.map((x) => Math.sqrt(Math.max(x, 0)));
+          $("rSig").textContent = fmtCm(3 * Math.max(...sd));
+          const basis = new THREE.Matrix4().makeBasis(
+            new THREE.Vector3(vecs[0][0], vecs[1][0], vecs[2][0]),
+            new THREE.Vector3(vecs[0][1], vecs[1][1], vecs[2][1]),
+            new THREE.Vector3(vecs[0][2], vecs[1][2], vecs[2][2]));
+          objs.est.quaternion.setFromRotationMatrix(basis);
+          objs.est.scale.set(3 * sd[0], 3 * sd[1], 3 * sd[2]);
+        } else {
+          $("rSig").textContent = "–";
+          objs.est.scale.setScalar(0.0001);
+        }
+        objs.est.userData.known = true;
+      } else {
+        $("rSeen").textContent = seenK < 0 ? "never seen" : "not yet seen";
+        $("rErr").textContent = "–"; $("rSig").textContent = "–";
+        objs.est.userData.known = false;
+      }
+      if (objs.planStep !== st.k) {
+        if (objs.plan) { world.remove(objs.plan); objs.plan.geometry.dispose(); }
+        objs.plan = st.plan_tool.length > 1 ? lineFrom(st.plan_tool, M.planOnline, true) : null;
+        if (objs.plan) world.add(objs.plan);
+        objs.planStep = st.k;
+      }
+      const lk = objs.arms.online.links[objs.arms.online.links.length - 1];
+      objs.range.position.copy(lk.position);
+      objs.range.scale.setScalar(Math.max(run.sensor_range, 1e-4));
+    }
+    applyVisibility();
+    $("clock").textContent = "t = " + T.toFixed(2) + " s";
+    $("timeTxt").textContent = T.toFixed(2) + " / " + Tend.toFixed(2) + " s";
+    $("scrub").value = String(Math.round(1000 * T / Tend));
+    movePlayhead();
+  }
+
+  function applyVisibility() {
+    if (!objs) return;
+    const which = document.querySelector('input[name="runs"]:checked').value;
+    const showOn = which !== "blind", showBl = which !== "online";
+    const mesh = $("lyMesh").checked, sph = $("lySph").checked, trail = $("lyTrail").checked;
+    for (const [name, arm] of Object.entries(objs.arms)) {
+      const vis = name === "online" ? showOn : showBl;
+      arm.group.visible = vis && mesh;
+      arm.sph.visible = vis && sph;
+      if (arm.trail) { arm.trail.visible = vis && trail; arm.trailFull.visible = vis && trail; }
+      if (name === "blind") {
+        const ghost = showOn && R.online;
+        arm.links.forEach((h) => h.children.forEach((m) => { m.material = ghost ? M.robotGhost : M.robot; }));
+      }
+    }
+    const onVis = showOn && !!R.online;
+    if (objs.plan) objs.plan.visible = onVis && $("lyPlan").checked;
+    if (objs.offline) objs.offline.visible = $("lyOff").checked;
+    const known = objs.est.userData.known;
+    objs.est.visible = objs.estDot.visible = onVis && known && $("lyEst").checked;
+    objs.range.visible = onVis && $("lyRange").checked && R.online && R.online.sensor_range > 0;
+    objs.shell.visible = $("lyStand").checked;
+  }
+
+  // ---------- clearance chart ----------
+  const SVGNS = "http://www.w3.org/2000/svg";
+  let chartScale = null;
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function niceStep(span) {
+    const raw = span / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    for (const m of [1, 2, 2.5, 5, 10]) if (raw <= m * p) return m * p;
+    return 10 * p;
+  }
+  function drawChart() {
+    const svg = $("chartSvg");
+    svg.innerHTML = "";
+    if (!D) return;
+    const W = svg.clientWidth || 800, H = svg.clientHeight || 170;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const m = { l: 44, r: 12, t: 10, b: 24 };
+    const runs = Object.values(R);
+    let lo = 0, hi = D.obstacle_standoff;
+    runs.forEach((r) => r.frames.forEach((f) => { if (f.clear !== null) { lo = Math.min(lo, f.clear); hi = Math.max(hi, f.clear); } }));
+    lo *= 100; hi *= 100;
+    const st = niceStep(hi - lo);
+    lo = Math.floor(lo / st) * st; hi = Math.ceil(hi / st) * st;
+    const x = (t) => m.l + (W - m.l - m.r) * t / Tend;
+    const y = (cm) => m.t + (H - m.t - m.b) * (hi - cm) / (hi - lo);
+    chartScale = { x, y, m, W, H };
+    const ink2 = css("--ink-2"), muted = css("--muted"), grid = css("--grid"), crit = css("--critical");
+    // collision band
+    if (lo < 0) el("rect", { x: m.l, y: y(0), width: W - m.l - m.r, height: y(lo) - y(0), fill: crit, "fill-opacity": 0.08 }, svg);
+    for (let v = lo; v <= hi + 1e-9; v += st) {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: grid, "stroke-width": 1 }, svg);
+      const tx = el("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: muted, "font-family": "IBM Plex Mono, monospace" }, svg);
+      tx.textContent = (Math.round(v * 10) / 10) + "";
+    }
+    const yl = el("text", { x: 4, y: m.t + 8, "font-size": 11, fill: muted }, svg); yl.textContent = "cm";
+    for (let t = 0; t <= Tend + 1e-9; t += niceStep(Tend)) {
+      const tx = el("text", { x: x(t), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: muted, "font-family": "IBM Plex Mono, monospace" }, svg);
+      tx.textContent = t + " s";
+    }
+    el("line", { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: crit, "stroke-width": 1 }, svg);
+    el("line", { x1: m.l, x2: W - m.r, y1: y(100 * D.obstacle_standoff), y2: y(100 * D.obstacle_standoff), stroke: muted, "stroke-width": 1, "stroke-dasharray": "4 3" }, svg);
+    const sl = el("text", { x: m.l + 4, y: y(100 * D.obstacle_standoff) - 4, "text-anchor": "start", "font-size": 11, fill: ink2 }, svg);
+    sl.textContent = "standoff " + (100 * D.obstacle_standoff).toFixed(0) + " cm";
+    if (R.online && R.online.summary.first_detection >= 0) {
+      const td = R.online.summary.first_detection * D.dt;
+      el("line", { x1: x(td), x2: x(td), y1: m.t, y2: H - m.b, stroke: css("--online"), "stroke-width": 1, "stroke-dasharray": "2 3" }, svg);
+      const dt = el("text", { x: x(td) + 4, y: m.t + 10, "font-size": 11, fill: ink2 }, svg);
+      dt.textContent = "obstacle first seen";
+    }
+    for (const r of runs) {
+      const d = r.frames.filter((f) => f.clear !== null).map((f, i) => (i ? "L" : "M") + x(f.t).toFixed(1) + " " + y(100 * f.clear).toFixed(1)).join("");
+      el("path", { d, fill: "none", stroke: css(r.name === "online" ? "--online" : "--blind"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      // direct label at the end of each line
+      const last = r.frames[r.frames.length - 1];
+      const lab = el("text", { x: x(last.t) - 4, y: y(100 * last.clear) + (r.name === "online" ? -6 : 14), "text-anchor": "end", "font-size": 11, fill: ink2 }, svg);
+      lab.textContent = r.name === "online" ? "online" : "blind";
+    }
+    el("line", { id: "playhead", x1: x(T), x2: x(T), y1: m.t, y2: H - m.b, stroke: css("--ink"), "stroke-width": 1.5 }, svg);
+  }
+  function movePlayhead() {
+    const p = document.getElementById("playhead");
+    if (p && chartScale) { const xx = chartScale.x(T); p.setAttribute("x1", xx); p.setAttribute("x2", xx); }
+  }
+  function chartTime(ev) {
+    const svg = $("chartSvg"), r = svg.getBoundingClientRect();
+    const { m, W } = chartScale;
+    const px = (ev.clientX - r.left) * (W / r.width);
+    return Math.max(0, Math.min(Tend, (px - m.l) / (W - m.l - m.r) * Tend));
+  }
+  function showTip(ev) {
+    if (!chartScale || !D) return;
+    const t = chartTime(ev), tip = $("tip");
+    const rows = Object.values(R).map((r) => {
+      const { a, b, s } = frameAt(r, t);
+      return `<div>${r.label}: <b>${fmtCm(lerp(a.clear, b.clear, s))}</b></div>`;
+    }).join("");
+    tip.innerHTML = `<div><b>t = ${t.toFixed(2)} s</b></div>` + rows;
+    tip.hidden = false;
+    const box = $("chart").getBoundingClientRect();
+    let left = ev.clientX - box.left + 12;
+    if (left + tip.offsetWidth > box.width) left = ev.clientX - box.left - tip.offsetWidth - 12;
+    tip.style.left = Math.max(0, left) + "px";
+    tip.style.top = "6px";
+  }
+
+  // ---------- render loop ----------
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(h, 1);
+    camera.updateProjectionMatrix();
+  }
+  let last = performance.now();
+  function tick(now) {
+    const dt = (now - last) / 1000; last = now;
+    if (playing && D) {
+      let t = T + dt * speed;
+      if (t >= Tend) { t = Tend; setPlaying(false); }
+      setTime(t);
+    }
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+  function setPlaying(p) {
+    playing = p;
+    $("play").textContent = p ? "❚❚ Pause" : "▶ Play";
+    $("play").setAttribute("aria-label", p ? "Pause" : "Play");
+  }
+
+  function applyTheme() {
+    scene.background = col("--scene");
+    makeMaterials();
+    buildFloor();
+    if (D) { buildObjects(); setTime(T); drawChart(); }
+  }
+
+  // ---------- wiring ----------
+  $("play").addEventListener("click", () => { if (T >= Tend) setTime(0); setPlaying(!playing); });
+  $("restart").addEventListener("click", () => { setTime(0); setPlaying(true); });
+  $("speed").addEventListener("change", (e) => { speed = parseFloat(e.target.value); });
+  $("scrub").addEventListener("input", (e) => { setPlaying(false); setTime(Tend * e.target.value / 1000); });
+  document.querySelectorAll('input[name="runs"], .layers input').forEach((i) => i.addEventListener("change", () => setTime(T)));
+  const svg = $("chartSvg");
+  let dragging = false;
+  svg.addEventListener("pointerdown", (e) => { if (!chartScale) return; dragging = true; svg.setPointerCapture(e.pointerId); setPlaying(false); setTime(chartTime(e)); });
+  svg.addEventListener("pointermove", (e) => { showTip(e); if (dragging) setTime(chartTime(e)); });
+  svg.addEventListener("pointerup", () => { dragging = false; });
+  svg.addEventListener("pointerleave", () => { $("tip").hidden = true; });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, select, textarea")) return;
+    if (e.code === "Space") { e.preventDefault(); $("play").click(); }
+    if (e.code === "ArrowRight") setTime(T + (D ? D.dt / 4 : 0));
+    if (e.code === "ArrowLeft") setTime(T - (D ? D.dt / 4 : 0));
+  });
+
+  function loadText(text) {
+    try { showError(""); setPlaying(false); setReplay(JSON.parse(text)); }
+    catch (err) { showError("Could not load that file: " + err.message); }
+  }
+  $("file").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) f.text().then(loadText);
+    e.target.value = "";
+  });
+  let dragDepth = 0;
+  window.addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; $("drop").hidden = false; });
+  window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("drop").hidden = true; });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => {
+    e.preventDefault(); dragDepth = 0; $("drop").hidden = true;
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) f.text().then(loadText);
+  });
+
+  new ResizeObserver(() => { resize(); drawChart(); }).observe(stage);
+  window.addEventListener("resize", drawChart);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  makeMaterials();
+  applyTheme();
+  resize();
+  requestAnimationFrame(tick);
+  (async () => {
+    await loadMeshes();
+    try {
+      if (window.SCATE_REPLAY) {
+        setReplay(window.SCATE_REPLAY);
+        return;
+      }
+      const r = await fetch("replay.json");
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      setReplay(await r.json());
+    } catch (err) {
+      $("srcTag").textContent = "No data";
+      showError("The demo replay did not load (" + err.message + "). Open a replay.json written by scate_online.");
+    }
+  })();
+})();
+</script>

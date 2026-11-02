@@ -13,6 +13,7 @@ set(EXAMPLE_SUBDIRS
     example_quadruped_mp
     example_spider_walking
     example_constraint_manifold
+    example_scate_ur5
     # example_talos_walking # In progress
   )
 
