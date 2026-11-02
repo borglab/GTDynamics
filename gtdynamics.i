@@ -254,6 +254,8 @@ class Robot {
 
   std::vector<gtdynamics::Joint*> joints() const;
 
+  std::vector<gtdynamics::Joint*> orderedJoints() const;
+
   @pybind_lambda
   void removeLink(gtdynamics::Link* link);
 
@@ -1416,6 +1418,36 @@ class Trajectory {
   void addIntegrationTimeFactors(gtsam::NonlinearFactorGraph @graph,
                                  double desired_dt, double sigma = 0) const;
   void writeToFile(const gtdynamics::Robot &robot, const string &name, const gtsam::Values &results) const;
+};
+
+#include <gtdynamics/utils/FloatingBaseInterpolator.h>
+class FloatingBaseState {
+  gtsam::Pose3 basePose;
+  gtsam::Vector6 baseTwist;
+  gtsam::Vector jointAngles;
+  gtsam::Vector jointVelocities;
+};
+
+class FloatingBaseInterpolator {
+  FloatingBaseInterpolator(const gtdynamics::Robot& robot,
+      const std::string& baseLink,
+      const gtsam::Vector6& baseProcessSpectralDensity,
+      const gtsam::Vector& jointProcessSpectralDensity,
+      const gtsam::Vector& jointMeasurementSigmas);
+  void addKnot(double time, const gtsam::Pose3& basePose,
+      const gtsam::Vector& jointAngles);
+  void addJointMeasurement(double time, const gtsam::Vector& jointAngles);
+  void addBaseVelocityMeasurement(double time,
+      const gtsam::Vector3& worldLinearVelocity, double sigma);
+  void solve();
+  gtdynamics::FloatingBaseState interpolate(double time) const;
+  gtsam::Values values(double time, size_t k = 0) const;
+  std::vector<std::string> jointNames() const;
+  std::vector<size_t> jointIds() const;
+  std::vector<double> knotTimes() const;
+  double solveSeconds() const;
+  double jointMeasurementRms() const;
+  double processError() const;
 };
 
 /********************** gpmp2  **********************/

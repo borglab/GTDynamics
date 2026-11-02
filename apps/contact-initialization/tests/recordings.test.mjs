@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { gunzipSync } from "node:zlib";
+import { recordingSourceMatches } from '../../shared/recordingProvenance.mjs';
 import {
   composePoses,
   inversePose,
@@ -58,7 +59,7 @@ for (const entry of catalogue.sequences) {
       if (
         path !== recording.source.labelSource
       )
-        assert.equal(hash, sha(source), path);
+        assert(recordingSourceMatches(path, source, hash), path);
     }
     assert.equal(data.model.soleCorners, undefined);
     assert.equal(data.model.soleOutline, undefined);
