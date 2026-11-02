@@ -169,16 +169,17 @@ four-variable transitions, 2,038 per-foot displacement factors, and 2,040 unary
 velocity factors, plus 2,036 duration factors: **8,154 total**. Unchecking velocity replays the 6,114-factor
 graph. The body-forward-velocity plot remains visible for comparison.
 
-**Download factor report (HTML)** provides a paper-style model description:
-state definitions, factorization, transition probabilities, displacement-density
-formulas and units, the four-entry per-foot displacement table and overlap weights, the relative-velocity
-Jacobian, and unary compatibility functions with numerical examples. S and W
-are explicitly defined as density values evaluated at the same displacement,
-not contact indicators or posterior probabilities. There is no sample inspector.
-MathJax 3.2.2 typesets the equations during export into embedded SVG, so the
-standalone document works offline and prints without loading scripts or fonts.
-Install the app npm dependencies before exporting; the report definitions and
-formatting live in `scripts/factor_report.py` and `scripts/typeset_report.mjs`.
+The app contains the mathematical model beside its factor graph: state definitions,
+factorization, transition table, displacement densities and overlap weights,
+relative-velocity Jacobian, duration and hard walking constraints. Numerical
+examples and parameter tables use the selected recording. Pose-landmark equations
+and initialization priors live in Contact Initialization; the shared smoothing
+objective, IMU assumptions and reference alignment live in Kinematics and Contact
+vs IK. There is no separate report to keep synchronized.
+
+MathJax 3.2.2 typesets checked-in equation fragments to inline SVG during the Vite
+build. The app needs no runtime math scripts or fonts and works offline. Shared
+components and source equations live in `apps/shared/paper/`.
 
 Joint-state colors follow navigation lights: L red, R green, double stance
 yellow; neither is blue (unresolved window labels gray). When hard constraints are off, both-swing is an
@@ -227,7 +228,9 @@ The website includes SSIO/Open-IO CC BY 4.0 attribution and the robot model lice
 Raw sensor arrays remain in ignored caches; only consumed compressed recordings,
 compiled geometry, a snippet manifest, and licenses are published. Recordings and
 geometry follow the app Git LFS rules. Native source/module fingerprints and raw
-input checksums accompany every snippet.
+input checksums accompany every snippet. The report-removal update changes only
+provenance metadata: previous exporter/report hashes and a hash of the unchanged
+numerical content are retained in `provenance.maintenance`.
 
 C++ tests cover stationary poses, pivots, nonuniform timestamps, world-frame
 invariance, returning motion, uncertainty, and invalid inputs. Python tests exercise
@@ -235,8 +238,6 @@ the actual wrapper and default/custom options. App data tests independently chec
 saved contact-frame transforms and target consistency. Browser tests cover both deployment
 paths, playback, all snippets/presets, plot zoom, mobile layout, and hub unload/reopen.
 
-The factor report now includes fgz diagrams for the binary support graph and
-shared-stance-pose smoothing graph, the exact slice-selection policy, current
-initializer/smoother priors, Gal3 IMU assumptions, and current default results.
-Editable `.fgz` sources are in `scripts/figures`; the pinned fgz dependency
-renders self-contained SVG images embedded in the downloadable HTML.
+Factor graph diagrams remain interactive in each app: selecting a displayed slice
+updates the demo. Mathematical definitions appear in the formulation section;
+recorded numerical results follow in the results section.

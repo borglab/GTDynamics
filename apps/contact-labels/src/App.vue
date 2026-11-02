@@ -1,4 +1,5 @@
 <script setup>
+import ContactMath from '../../shared/paper/ContactMath.vue';
 import AppAbstract from '../../shared/paper/AppAbstract.vue';
 import AppPaper from '../../shared/paper/AppPaper.vue';
 import {
@@ -400,6 +401,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
       <AppPaper app="contact-labels" :frame="frame" :samples="record.times.length" @select="selectFrame">
+        <template #mathematics><ContactMath :graph="record.supportGraph" :velocity-aiding="velocityAiding" :walking-constraints="enforceWalkingSequence" /></template>
         <p class="scope viewer-caption">
           Dots and trails: black stance, white swing, gray unresolved. Axes:
           sole frames (+X forward, +Y left, +Z up). Dashed line: reference
@@ -466,15 +468,6 @@ onBeforeUnmount(() => {
           {{ (1000 * activeGraph.solveSeconds).toFixed(2) }} ms, offline. Joint-velocity
           factors: {{ velocityAiding ? "on" : "off" }}. Walking constraints:
           {{ enforceWalkingSequence ? "on" : "off" }}.
-        </p>
-        <p>
-          <a href="./contact-factors.html" download
-            >Download factor report (HTML)</a
-          >
-          ·
-          <a href="./contact-factors.html" target="_blank" rel="noopener"
-            >Read factor definitions</a
-          >
         </p>
       </section>
       <div class="foot-cards">

@@ -75,6 +75,13 @@ try {
           node.compareDocumentPosition(document.querySelector('canvas')) & Node.DOCUMENT_POSITION_FOLLOWING)),
         `${app.id}: abstract precedes demo`);
 
+        if (['contact-labels','contact-initialization','contact-vs-ik','kinematics-inspector'].includes(app.id)) {
+          assert(await paper.locator('mjx-container[jax="SVG"]').count() >= 4, `${app.id}: in-app mathematical definitions`);
+          assert.equal(await paper.locator('[data-mml-node="merror"]').count(), 0);
+          assert.equal(await paper.locator('[data-math-parameters]').count(), 1);
+          assert.equal(await frame.locator('a[href*="contact-factors.html"]').count(), 0);
+        }
+
         if (base === '/') {
           for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) {
             await page.setViewportSize(size);

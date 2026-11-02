@@ -31,6 +31,7 @@ const paper = computed(() => papers[props.app]);
           <dd>{{ factor.description }}</dd>
         </template>
       </dl>
+      <slot name="mathematics" />
     </section>
     <section class="paper-section paper-results" data-paper-section="results">
       <h2>Results</h2>

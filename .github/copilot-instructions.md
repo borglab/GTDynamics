@@ -294,6 +294,11 @@ when practical.
   resources, listeners, and animation loops. Snapshot clones can share mesh
   geometry, but only its owner should dispose of those shared buffers.
 
+- Put mathematical definitions in the app's method section, alongside its factor
+  graph, rather than maintaining a separate report. Reuse the build-time MathJax
+  plugin in `apps/shared/paper/` for offline inline SVG; bind parameter tables to
+  the selected recording so descriptions and results stay consistent.
+
 ## Local development and validation
 
 - Use the `py312` conda environment for all Python commands, including scripts

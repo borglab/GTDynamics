@@ -23,6 +23,7 @@
     "test:shared": "node --test shared/tests/*.test.mjs"
   },
   "devDependencies": {
-    "vite": "^6.2.2"
+    "vite": "^6.2.2",
+    "mathjax-full": "3.2.2"
   }
 }

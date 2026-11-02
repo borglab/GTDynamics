@@ -1,0 +1,24 @@
+<h4>One pose landmark per uninterrupted stance</h4>
+<p>Xₖ is the world pose of the pelvis COM, Cₛ a world sole-pose landmark for stance s, L the foot-link COM pose, and A the fixed COM-to-sole transform. Initialization freezes encoder FK as a root-relative pose observation B. Smoothing estimates all link poses and joint angles.</p>
+\[
+ \widehat C_{f,k}=\begin{cases}X_kB_{f,k},&\text{initialization},\\L_{f,k}A_f,&\text{smoothing},\end{cases}
+ \qquad r_{f,k}=\operatorname{Local}_{\widehat C_{f,k}}(C_{s(f,k)}),\qquad
+ E_C=\frac12\sum_{f,k}r_{f,k}^{\mathsf T}\Sigma_C^{-1}r_{f,k}.
+\]
+<p>Both graphs use ContactPoseFactor. Local is GTSAM’s Pose3 local-coordinate chart, ordered rotation then translation. The same landmark persists across phase boundaries while a foot remains in stance; lift-off and recontact create a new landmark. These are observation-to-landmark scales, not displacement noise per adjacent interval.</p>
+\[
+ \Sigma_C=\operatorname{diag}(\sigma_{\theta,\mathrm{rad}}^2 I_3,\sigma_t^2 I_3),
+ \qquad \sigma_{\theta,\mathrm{rad}}=\frac{\pi}{180}\sigma_{\theta,\mathrm{deg}}.
+\]
+<h4>Gauge and optional priors</h4>
+<p>Initialization fixes a root pose in each connected component to set its world gauge; smoothing uses a tight first-root prior. A common vertical shift from initial measured FK sets the starting sole height. This coordinate choice is separate from adding height factors.</p>
+\[
+ r_U(X_k)=R_ke_z-e_z,\qquad
+ r_H(C_s)=e_z^{\mathsf T}t_s-h_0,\qquad
+ r_M(X_k,X_{k+1})=\operatorname{Local}_{I}(X_k^{-1}X_{k+1}).
+\]
+<p>Upright is a three-component direction residual with norm 2 sin(tilt/2); its angular standard deviation is a small-angle scale. It leaves heading and translation free. Height adds one scalar per landmark and leaves XY and orientation free. The weak identity-motion prior regularizes the initializer and is absent from IMU-aided smoothing. Each active Gaussian prior contributes half its squared whitened residual.</p>
+\[
+ r_N(C_s)=R_{C_s}e_z-e_z.
+\]
+<p>Where offered for the non-SSIO clips, sole-normal alignment uses the same direction convention on the landmark. It constrains tilt without fixing yaw or translation. Rotation standard deviations are configured in degrees and converted to radians at the native API boundary.</p>

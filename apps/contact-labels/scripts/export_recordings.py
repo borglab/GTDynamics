@@ -38,7 +38,6 @@ from import_openio import (
 )
 from export_recording import export_model
 from mujoco_io import pose, point_velocity_in_frame
-from factor_report import write_factor_report
 from g1_model import load_g1_model, sole_frame, prepare_model
 
 SNIPPETS = [
@@ -219,8 +218,6 @@ def main() -> None:
         str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in [
             Path(__file__),
-            Path(__file__).with_name("factor_report.py"),
-            Path(__file__).with_name("typeset_report.mjs"),
             REPO / "examples/g1_mjlab/mujoco_io.py",
             REPO / "gtdynamics/utils/ContactMotion.h",
             REPO / "gtdynamics/utils/ContactMotion.cpp",
@@ -398,7 +395,6 @@ def main() -> None:
             f"Exported {snippet['id']}: 1000 frames, native labels for {len(PRESETS)} presets",
             flush=True,
         )
-    write_factor_report(args.output / "contact-factors.html", support_graph)
     (args.output / "snippets.json").write_text(json.dumps(SNIPPETS, indent=2) + "\n")
 
 

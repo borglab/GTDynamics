@@ -1,4 +1,5 @@
 <script setup>
+import ContactPoseMath from '../../shared/paper/ContactPoseMath.vue';
 import AppAbstract from '../../shared/paper/AppAbstract.vue';
 import AppPaper from '../../shared/paper/AppPaper.vue';
 import {
@@ -368,6 +369,7 @@ onBeforeUnmount(() => {
 
       </div>
       <AppPaper app="contact-initialization" :frame="selected" :samples="frames.length" @select="selectFrame">
+        <template #mathematics><ContactPoseMath :graph="graph" /></template>
         <template #graph>
         <PoseContactGraph
           :graph="graph"

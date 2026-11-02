@@ -1,4 +1,5 @@
 <script setup>
+import KinematicsMath from '../../shared/paper/KinematicsMath.vue';
 import AppAbstract from '../../shared/paper/AppAbstract.vue';
 import AppPaper from '../../shared/paper/AppPaper.vue';
 import {computed,markRaw,onBeforeUnmount,onMounted,ref} from 'vue';
@@ -51,6 +52,7 @@ onBeforeUnmount(()=>{controller?.abort();clearRecordingCache();disposeRobotTempl
       <Timeline ref="timeline" :record="data.record" v-model:frame="frame" />
       <div class="comparison"><MethodPanel v-for="method in ['contact','ik']" :key="method" :method="method" :stage="stage" :frame="frame" :show-reference="showReference" :data="data" :joint="joint" /></div>
       <AppPaper app="contact-vs-ik" :frame="frame" :samples="data.record.samples" @select="timeline?.pause();frame=$event">
+        <template #mathematics><KinematicsMath :record="data.record" /></template>
       <p class="snippet-note">{{data.record.samples}} contact-selected slices · maximum {{data.record.sampling.maxSliceIntervalMs}} ms within double-stance phases. Both methods solve the same graph: {{data.record.graph.costFactors.toLocaleString()}} cost factors and {{data.record.graph.equalities.toLocaleString()}} kinematic equalities. CM-Opt limit: {{data.record.maxIterations}} iterations.</p>
         <div class="comparison comparison-results"><div id="contact-results"></div><div id="ik-results"></div></div>
       </AppPaper>
