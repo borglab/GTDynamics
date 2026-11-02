@@ -1,3 +1,13 @@
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+
+## @file test_fixed_kinematics.py
+# @brief Test GP acceleration priors, frame conventions, and source sampling.
+# @author GTDynamics contributors
+
 """Independent motion and frame checks for GP-derived acceleration observations."""
 
 from __future__ import annotations

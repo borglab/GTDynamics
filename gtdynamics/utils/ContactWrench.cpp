@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file ContactWrench.cpp
+ * @brief Construct rectangular sole-wrench cone matrices and constraints.
+ * @author GTDynamics contributors
+ */
+
 #include <gtdynamics/utils/ContactWrench.h>
 #include <gtsam/constrained/LinearConstraint.h>
 

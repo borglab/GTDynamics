@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+
+## @file validate_recording.py
+# @brief Validate dynamics with MuJoCo and independent GTSAM feasibility LPs.
+# @author GTDynamics contributors
+
 """Check the published acceleration/wrench solution against MuJoCo dynamics.
 
 Independent resultant-wrench and four-corner LPs check contact-cone feasibility.
@@ -39,7 +49,22 @@ def linear_feasible(
     dimension = equalities.shape[1]
     if dimension == 0:
         return bool(np.max(np.abs(target)) <= tolerance)
-    seed = np.linalg.lstsq(equalities, target, rcond=None)[0]
+    # Minimize ||x||^2 with exact balance to obtain the LP's initial point.
+    seed_graph = gtsam.GaussianFactorGraph()
+    seed_graph.add(
+        gtsam.JacobianFactor(
+            0,
+            np.eye(dimension),
+            np.zeros(dimension),
+            gtsam.noiseModel.Unit.Create(dimension),
+        )
+    )
+    seed_graph.add(
+        gtsam.JacobianFactor(
+            0, equalities, target, gtsam.noiseModel.Constrained.All(len(target))
+        )
+    )
+    seed = seed_graph.optimize().at(0)
     if np.max(np.abs(equalities @ seed - target)) > tolerance:
         return False
     nonzero = inequalities[np.any(inequalities != 0, axis=1)]

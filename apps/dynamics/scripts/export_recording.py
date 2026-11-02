@@ -1,163 +1,58 @@
 #!/usr/bin/env python3
-"""Solve fixed-kinematics G1 dynamics offline; publish only browser replay data."""
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+
+## @file export_recording.py
+# @brief Serialize the shared dynamics example for offline browser replay.
+# @author GTDynamics contributors
+
+"""Run the shared G1 dynamics example and serialize an offline browser replay."""
 
 from __future__ import annotations
 
 import argparse
 from dataclasses import replace
 import gzip
-import hashlib
 import json
 from pathlib import Path
 import sys
-import time
-from typing import Any
 
-import gtsam
 import gtdynamics as gtd
-import mujoco
 import numpy as np
-from numpy.typing import NDArray
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
-sys.path.insert(0, str(REPO / "apps/kinematics-inspector/scripts"))
-from fixed_kinematics import prepare_fixed_kinematics
+import dynamics_walk as example
 from browser_geometry import browser_geometry
-from g1_model import sole_frame, VERSIONS
-from interpolate_walk import fit_walk, sample_walk
-
-
-def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def planar_hull(points: NDArray[np.float64]) -> NDArray[np.float64]:
-    """Return counterclockwise vertices of a planar convex hull, in metres.
-
-    Andrew's monotone chain removes duplicates and interior collinear points.
-    The support-patch calculation needs only this two-dimensional boundary.
-    """
-    ordered = np.unique(points, axis=0)
-    boundary = []
-    for sequence in (ordered, ordered[::-1]):
-        half = []
-        for point in sequence:
-            while len(half) >= 2:
-                first, second = half[-1] - half[-2], point - half[-1]
-                if first[0] * second[1] - first[1] * second[0] > 0:
-                    break
-                half.pop()
-            half.append(point)
-        boundary.extend(half[:-1])
-    if len(boundary) < 3:
-        raise ValueError("The support footprint must have nonzero planar area")
-    return np.asarray(boundary)
-
-
-def support_rectangle(model: mujoco.MjModel, side: str) -> tuple[float, float]:
-    """Inscribed symmetric rectangle in the projected capsule support hull.
-
-    A 5% margin avoids replacing rounded capsule footprints by an optimistic
-    bounding box. This is a planar conservative support-patch assumption.
-    """
-    body = model.body(f"robot/{side}_ankle_roll_link").id
-    origin = sole_frame(model, side)[:2, 3]
-    points = []
-    angles = np.linspace(0, 2 * np.pi, 128, endpoint=False)
-    circle = np.column_stack([np.cos(angles), np.sin(angles)])
-    for geom in range(model.ngeom):
-        if (
-            model.geom_bodyid[geom] != body
-            or model.geom_type[geom] != mujoco.mjtGeom.mjGEOM_CAPSULE
-        ):
-            continue
-        axis = gtsam.Rot3.Quaternion(*model.geom_quat[geom]).matrix()[:, 2]
-        for sign in (-1, 1):
-            center = model.geom_pos[geom] + sign * axis * model.geom_size[geom, 1]
-            points.extend(center[:2] - origin + circle * model.geom_size[geom, 0])
-    points = np.asarray(points)
-    half = np.minimum(-points.min(axis=0), points.max(axis=0))
-    hull = planar_hull(points)
-    edges = np.roll(hull, -1, axis=0) - hull
-    normals = np.column_stack([edges[:, 1], -edges[:, 0]])
-    # Each CCW hull edge gives an outward normal n and the bound n.x <= n.p.
-    # A symmetric rectangle's support along n is abs(n) @ half.
-    offsets = np.sum(normals * hull, axis=1)
-    if np.any(offsets <= 0) or np.any(half <= 0):
-        raise ValueError("The sole origin must lie inside the support footprint")
-    scale = np.min(offsets / (np.abs(normals) @ half))
-    return tuple((half * min(1.0, scale) * 0.95).tolist())
+from g1_model import VERSIONS
+from interpolate_walk import checksum, sample_walk
 
 
 def export(args: argparse.Namespace) -> None:
-    """Fit GP velocities, estimate accelerations and wrenches, and save replay."""
-    gp_settings = {
-        "joint_process_sigma_degrees": 100.0,
-        "joint_measurement_sigma_degrees": 0.5,
-        "base_angular_process_sigma_degrees": 90.0,
-        "base_linear_process_sigma": 3.0,
-        "base_velocity_sigma": 0.5,
-    }
-    walk = fit_walk(args.kinematics, args.dense_data, **gp_settings)
+    """Call the dynamics example and serialize its solution for browser replay."""
+    solution = example.solve_walk(
+        args.kinematics,
+        args.dense_data,
+        start=args.start,
+        end=args.end,
+        friction=args.friction,
+        acceleration_step_seconds=args.acceleration_step_ms / 1000,
+        options=example.options_from_arguments(args),
+    )
+    walk, fixed, result = solution.walk, solution.fixed, solution.result
+    options, rectangles = solution.options, solution.support_rectangles
+    elapsed = solution.elapsed_seconds
     model, record = walk.model, walk.record
     metadata = args.kinematics / "variants" / walk.variant / "final.json.gz"
     binary = metadata.with_name("final.bin.gz")
-    fixed = prepare_fixed_kinematics(
-        walk,
-        args.start,
-        args.end,
-        args.acceleration_step_ms / 1000,
-    )
     samples = sample_walk(replace(walk, dense_times=fixed.times))
-    j = len(record["jointNames"])
-    print("Prepared fixed kinematics:", fixed.diagnostics, flush=True)
-    rectangles = [support_rectangle(model, side) for side in ("left", "right")]
-    contacts = [
-        gtd.fixed_dynamics.Contact(fixed.contacts[side], *rectangle, args.friction)
-        for side, rectangle in zip(("left", "right"), rectangles)
-    ]
-    options = gtd.fixed_dynamics.Options()
-    options.baseAngularAccelerationSigmaDegrees = (
-        args.base_angular_acceleration_sigma_degrees
-    )
-    options.baseLinearAccelerationSigma = args.base_linear_acceleration_sigma
-    options.jointAccelerationSigmaDegrees = args.joint_acceleration_sigma_degrees
-    options.maxIterations = args.max_iterations
-    options.softDynamics = args.soft_base_balance
-    options.balanceForceSigma = args.base_force_sigma
-    options.balanceMomentSigma = args.base_moment_sigma
-    start = time.perf_counter()
-    result = gtd.solveFixedKinematicsDynamics(
-        fixed.robot,
-        fixed.trajectory,
-        fixed.slices,
-        fixed.times.tolist(),
-        fixed.values,
-        fixed.acceleration_priors,
-        contacts,
-        fixed.armature,
-        options,
-    )
-    elapsed = time.perf_counter() - start
-    print(
-        "Solved:",
-        {
-            "seconds": elapsed,
-            "iterations": result.iterations,
-            "feasible": result.feasible,
-            "maxForceResidual": result.maxForceResidual,
-            "maxMomentResidual": result.maxMomentResidual,
-        },
-        flush=True,
-    )
-    count = len(fixed.times)
-    wrenches = np.array(
-        [result.values.atVector(key) for key in result.contactKeys]
-    ).reshape(count, 2, 6)
-    torques = np.array(
-        [result.values.atDouble(key) for key in result.torqueKeys]
-    ).reshape(count, -1)
+    arrays = example.solution_arrays(solution)
+    print(json.dumps(example.summarize(solution), indent=2), flush=True)
+    count, j = len(fixed.times), len(record["jointNames"])
+    wrenches, torques = arrays["wrenches"], arrays["joint_torques"]
     joint_by_name = {joint.name(): joint.id() for joint in fixed.robot.joints()}
     joint_ids = [joint_by_name[name.split("/")[-1]] for name in record["jointNames"]]
     columns = [list(result.jointIds).index(identifier) for identifier in joint_ids]
@@ -306,7 +201,7 @@ def export(args: argparse.Namespace) -> None:
                 fixed.indices
             ].tolist(),
             "retainedFullTrajectoryIndices": fixed.indices.tolist(),
-            "kinematicFullRecordingSha256": digest(metadata),
+            "kinematicFullRecordingSha256": checksum(metadata),
         },
         "times": fixed.times.tolist(),
         "bodyNames": record["bodyNames"],
@@ -325,32 +220,12 @@ def export(args: argparse.Namespace) -> None:
             :, interpolation_columns
         ].tolist(),
         "baseTwists": samples["baseTwists"].tolist(),
-        "baseTwistAccelerations": [
-            gtd.TwistAccel(
-                result.values, fixed.robot.link("pelvis").id(), slice_.k
-            ).tolist()
-            for slice_ in fixed.slices
-        ],
-        "baseAccelerationPriors": [
-            gtd.TwistAccel(
-                fixed.acceleration_priors, fixed.robot.link("pelvis").id(), slice_.k
-            ).tolist()
-            for slice_ in fixed.slices
-        ],
-        "jointAccelerations": [
-            [
-                gtd.JointAccel(result.values, joint_id, slice_.k)
-                for joint_id in joint_ids
-            ]
-            for slice_ in fixed.slices
-        ],
-        "jointAccelerationPriors": [
-            [
-                gtd.JointAccel(fixed.acceleration_priors, joint_id, slice_.k)
-                for joint_id in joint_ids
-            ]
-            for slice_ in fixed.slices
-        ],
+        "baseTwistAccelerations": arrays["base_twist_accelerations"].tolist(),
+        "baseAccelerationPriors": arrays["base_twist_acceleration_priors"].tolist(),
+        "jointAccelerations": arrays["joint_accelerations"][:, columns].tolist(),
+        "jointAccelerationPriors": arrays["joint_acceleration_priors"][
+            :, columns
+        ].tolist(),
         "linkTwistAccelerations": [
             [
                 (
@@ -379,7 +254,7 @@ def export(args: argparse.Namespace) -> None:
             "balanceForceSigmaN": options.balanceForceSigma,
             "torqueLimitsEnforced": False,
             "kinematicsFixed": True,
-            "interpolation": gp_settings,
+            "interpolation": example.GP_SETTINGS,
             "accelerationsEstimated": True,
             "baseAngularAccelerationSigmaDegreesPerSecondSquared": options.baseAngularAccelerationSigmaDegrees,
             "baseLinearAccelerationSigmaMetersPerSecondSquared": options.baseLinearAccelerationSigma,
@@ -394,15 +269,17 @@ def export(args: argparse.Namespace) -> None:
         "provenance": {
             "packages": VERSIONS,
             "modelFingerprint": record.get("modelFingerprint"),
-            "kinematicsMetadataSha256": digest(metadata),
-            "kinematicsBinarySha256": digest(binary),
-            "exporterSha256": digest(Path(__file__)),
-            "nativeSolverSha256": digest(
+            "kinematicsMetadataSha256": checksum(metadata),
+            "kinematicsBinarySha256": checksum(binary),
+            "exporterSha256": checksum(Path(__file__)),
+            "nativeSolverSha256": checksum(
                 REPO / "gtdynamics/dynamics/FixedKinematicsDynamics.cpp"
             ),
             "sourceSha256": {
-                name: digest(REPO / name)
+                name: checksum(REPO / name)
                 for name in (
+                    "examples/g1_mjlab/dynamics_walk.py",
+                    "examples/g1_mjlab/sole_support.py",
                     "examples/g1_mjlab/fixed_kinematics.py",
                     "examples/g1_mjlab/interpolate_walk.py",
                     "gtdynamics/utils/FloatingBaseInterpolator.cpp",
@@ -459,45 +336,10 @@ def export(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--kinematics",
-        type=Path,
-        default=REPO / "apps/kinematics-inspector/public",
-    )
-    parser.add_argument(
-        "--dense-data",
-        type=Path,
-        default=REPO / "apps/kinematics-inspector/.cache/openio-contact-source",
-    )
-    parser.add_argument("--acceleration-step-ms", type=float, default=20.0)
-    parser.add_argument(
-        "--base-angular-acceleration-sigma-degrees", type=float, default=90.0
-    )
-    parser.add_argument("--base-linear-acceleration-sigma", type=float, default=3.0)
-    parser.add_argument("--joint-acceleration-sigma-degrees", type=float, default=100.0)
+    """Export the example's solution in the static browser recording format."""
+    parser = example.argument_parser()
+    parser.description = __doc__
     parser.add_argument("--output", type=Path, default=REPO / "apps/dynamics/public")
-    parser.add_argument("--start", type=float, default=78.0)
-    parser.add_argument("--end", type=float, default=98.0)
-    parser.add_argument("--friction", type=float, default=0.8)
-    parser.add_argument("--max-iterations", type=int, default=50)
-    parser.add_argument(
-        "--base-force-sigma",
-        type=float,
-        default=5.0,
-        help="Soft-mode base force balance standard deviation, N",
-    )
-    parser.add_argument(
-        "--base-moment-sigma",
-        type=float,
-        default=1.0,
-        help="Soft-mode base moment balance standard deviation, N m",
-    )
-    parser.add_argument(
-        "--soft-base-balance",
-        action="store_true",
-        help="Explicitly soften only floating-root Newton–Euler balance and publish residuals",
-    )
     export(parser.parse_args())
 
 

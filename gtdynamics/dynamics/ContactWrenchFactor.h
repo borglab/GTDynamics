@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file ContactWrenchFactor.h
+ * @brief Transform material sole wrenches into link-COM wrench factors.
+ * @author GTDynamics contributors
+ */
+
 #pragma once
 
 #include <gtsam/geometry/Pose3.h>
@@ -34,7 +41,7 @@ inline gtsam::Vector6 contactWrenchToCom(const gtsam::Pose3& comTcontact,
 
 /** Affine consistency between a sole wrench and an external link-COM wrench.
  * The six-dimensional residual is comWrench - T*contactWrench, ordered torque
- * (N m) then force (N); use corresponding rotational and force noise scales.
+ * (N m) then force (N); use corresponding moment and force noise scales.
  * comTcontact is fixed. Analytic Jacobians with respect to the sole and COM
  * Vector6 variables are the constant matrices -T and I. A constrained noise
  * model makes this an exact mapping for fixed-kinematics dynamics inference.
@@ -44,6 +51,11 @@ class ContactWrenchFactor
   gtsam::Matrix6 transform_;
 
  public:
+  /** Construct a fixed sole-to-COM wrench mapping for the two supplied keys.
+   * comTcontact maps sole coordinates into COM coordinates. The noise model
+   * orders moment (N m) before force (N). A constrained model enforces exact
+   * consistency. Throws std::invalid_argument for a null or non-6D model.
+   */
   ContactWrenchFactor(gtsam::Key contactWrenchKey, gtsam::Key comWrenchKey,
                       const gtsam::Pose3& comTcontact,
                       const gtsam::SharedNoiseModel& model)
@@ -54,10 +66,15 @@ class ContactWrenchFactor
       throw std::invalid_argument("ContactWrenchFactor needs 6D noise");
   }
 
+  /// Copy this factor, retaining its keys, fixed transform, and noise model.
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return std::make_shared<ContactWrenchFactor>(*this);
   }
 
+  /** Return comWrench - transform * contactWrench, in COM axes.
+   * Both optional Jacobians are 6x6, with rows/columns ordered moment then
+   * force. They are constant: HContact = -transform and HCom = I.
+   */
   gtsam::Vector evaluateError(
       const gtsam::Vector6& contactWrench, const gtsam::Vector6& comWrench,
       gtsam::OptionalMatrixType HContact = nullptr,

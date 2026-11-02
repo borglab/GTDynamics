@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file FixedKinematicsDynamics.cpp
+ * @brief Assemble and solve affine trajectory dynamics with native CMC-Opt.
+ * @author GTDynamics contributors
+ */
+
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 #include <gtdynamics/dynamics/ContactWrenchFactor.h>

@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file testContactWrench.cpp
+ * @brief Test sole-wrench cones, frame transforms, and factor Jacobians.
+ * @author GTDynamics contributors
+ */
+
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/ContactWrenchFactor.h>
 #include <gtdynamics/utils/ContactWrench.h>

@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file testRobustQp.cpp
+ * @brief Test dependent-face CMC quadratic subproblem solves.
+ * @author GTDynamics contributors
+ */
+
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/RobustQp.h>
 #include <gtdynamics/utils/ContactWrench.h>

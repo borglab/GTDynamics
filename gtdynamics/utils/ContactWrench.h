@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file ContactWrench.h
+ * @brief Rectangular sole support patches and affine resultant-wrench cones.
+ * @author GTDynamics contributors
+ */
+
 #pragma once
 
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
@@ -34,6 +41,10 @@ class RectangularContactWrench {
   double halfLength_, halfWidth_, frictionCoefficient_;
 
  public:
+  /** Construct a centered sole support patch in metres with Coulomb friction.
+   * Throws std::invalid_argument for nonfinite or nonpositive dimensions or
+   * friction coefficient.
+   */
   RectangularContactWrench(double halfLength, double halfWidth,
                            double frictionCoefficient);
 

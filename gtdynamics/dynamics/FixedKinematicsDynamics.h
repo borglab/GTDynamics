@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file FixedKinematicsDynamics.h
+ * @brief Estimate accelerations and wrenches with fixed poses and velocities.
+ * @author GTDynamics contributors
+ */
+
 #pragma once
 
 #include <gtdynamics/universal_robot/Robot.h>
@@ -25,7 +32,12 @@ struct Contact {
   double halfLength = 0.10;
   double halfWidth = 0.035;
   double frictionCoefficient = 0.6;
+  /// Default-construct a contact for subsequent assignment of its sole frame.
   Contact() = default;
+  /** Associate a material sole frame with its rectangular support patch.
+   * Half extents are metres and frictionCoefficient is dimensionless. Patch
+   * dimensions and friction must be positive and finite when solving dynamics.
+   */
   Contact(const PoseOnLink& pose, double halfLength, double halfWidth,
           double frictionCoefficient)
       : pose(pose),
@@ -45,11 +57,17 @@ struct Contact {
  * length to convert moments into force-equivalent residuals.
  */
 struct Options {
+  /// Maximum outer CMC iterations.
   size_t maxIterations = 50;
+  /// Gravity acceleration in world axes, m/s^2.
   gtsam::Vector3 gravity = gtsam::Vector3(0, 0, -9.81);
+  /// Per-actuator torque prior standard deviation, N m.
   double effortSigma = 100.0;
+  /// Force-equivalent wrench sigma, N; moments scale by patch length.
   double wrenchSigma = 500.0;
+  /// Torque temporal-difference scale, N m / sqrt(s).
   double torqueSmoothSigma = 100.0;
+  /// Force-equivalent wrench temporal-difference scale, N / sqrt(s).
   double wrenchSmoothSigma = 500.0;
   /// Root body-twist derivative prior scales: degrees/s^2 and m/s^2 per axis.
   double baseAngularAccelerationSigmaDegrees = 90.0;
@@ -60,7 +78,9 @@ struct Options {
   /// Configurations/velocities stay fixed. Acceleration kinematics, other link
   /// balances, and wrench transmissions remain exact. Residuals are reported.
   bool softDynamics = false;
+  /// Per-axis soft root moment-balance standard deviation, N m.
   double balanceMomentSigma = 10.0;
+  /// Per-axis soft root force-balance standard deviation, N.
   double balanceForceSigma = 100.0;
   /// Optional symmetric torque limits, indexed by joint id. Empty disables.
   gtsam::Vector torqueLimits;
@@ -72,6 +92,8 @@ struct Options {
  * never altered. baseResiduals contains one
  * unwhitened [moment; force] Newton-Euler residual per slice in root COM axes.
  * It is zero to numerical precision in strict mode.
+ * Error fields are half the sum of squared whitened residuals. Timing fields
+ * are seconds; dimension fields count scalar coordinates or constraint rows.
  */
 struct Result {
   gtsam::Values values;

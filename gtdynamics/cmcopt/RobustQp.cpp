@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file RobustQp.cpp
+ * @brief Handle dependent active faces in CMC quadratic subproblems.
+ * @author GTDynamics contributors
+ */
+
 #include <gtdynamics/cmcopt/RobustQp.h>
 #include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
 

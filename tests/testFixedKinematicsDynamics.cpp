@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file testFixedKinematicsDynamics.cpp
+ * @brief Test fixed-configuration trajectory dynamics and acceleration priors.
+ * @author GTDynamics contributors
+ */
+
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>

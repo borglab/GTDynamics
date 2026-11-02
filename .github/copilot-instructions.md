@@ -4,6 +4,40 @@ Follow these conventions when writing code and reviewing pull requests. Keep
 changes focused and follow the surrounding code. Prefer small functions with
 clear responsibilities over long functions or unnecessary abstractions.
 
+## Choosing numerical functionality
+
+- Use existing GTSAM and GTDynamics algorithms instead of SciPy or another
+  external numerical library when they provide the required functionality.
+  Inspect the C++ APIs, Python bindings, examples, and tests before adding a
+  dependency or implementing an alternative solver, interpolator, or geometry
+  algorithm.
+- A missing Python binding is a reason to expose the existing native API,
+  rather than substitute a different numerical backend. Extend the appropriate
+  `.i` declaration directly; keep wrapper and C++ signatures synchronized.
+- Use external libraries for capabilities that GTSAM/GTDynamics do not provide,
+  such as model loading or independent physics validation. Explain the concrete
+  capability gap when introducing a dependency. NumPy arrays and ordinary
+  array operations remain appropriate at the Python boundary.
+
+## Source file headers
+
+GTDynamics convention, following the copyright and Doxygen file-header layout
+used in GTSAM source files:
+
+- New first-party C++ and Python files, including examples and tests, should
+  carry the repository's copyright/license notice. Preserve existing notices,
+  creation years, and author attribution when modifying or moving files.
+- Follow the notice in C++ headers and source files with a Doxygen file block
+  containing `@file` with the actual filename and a concise `@brief` describing
+  the file's responsibility. Retain known `@author` attribution; use project
+  contributors when an individual author is not specified.
+- In Python, retain a shebang or encoding declaration at the top, then use the
+  Python comment form of the notice and file metadata (`## @file`, `# @brief`,
+  and `# @author`). Keep a useful module docstring before imports; preserve the
+  required placement of `from __future__` imports after that docstring.
+- Add missing file/API documentation to the files in the current change.
+  Avoid unrelated repository-wide header or copyright rewrites.
+
 ## Object construction and results
 
 - Prefer mostly functional classes: once inputs are constructed, operations
@@ -59,10 +93,17 @@ below. Preserve established identifiers outside the scope of a change.
 
 ### Public APIs and documentation
 
-- Document functions declared in headers with Doxygen-style `/** */` comments.
-  Small functions such as getters can use single-line `///` comments. There is
-  no need for `@brief`, `@param`, or similar tags when the prose is already clear.
-- Use `///` for single-line documentation rather than a one-line `/** */`.
+The following two rules are copied from GTSAM's
+[Public C++ APIs guidance](https://github.com/borglab/gtsam/blob/develop/.github/copilot-instructions.md#public-c-apis):
+
+- All functions in header files should have Doxygen-style API documentation
+  using `/** */`, except small functions such as getters, which can use a
+  single-line `///` comment. There is no need for `@brief`, `@param`, or similar
+  tags when the prose is already clear.
+- Use `///` for single-line documentation comments rather than `/** */`.
+
+Additional GTDynamics API conventions:
+
 - Document public types and fields where their meaning is not obvious. State
   coordinate frames, transform direction, units, index/key conventions, input
   requirements, defaults, return semantics, and relevant exceptions. For

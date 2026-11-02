@@ -1,3 +1,13 @@
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+
+## @file test_fixed_dynamics.py
+# @brief Test direct Python bindings for sole-wrench trajectory dynamics.
+# @author GTDynamics contributors
+
 """Direct bindings for material sole wrenches and fixed-kinematics dynamics."""
 
 import unittest

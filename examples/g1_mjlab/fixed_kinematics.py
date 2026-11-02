@@ -1,3 +1,13 @@
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+
+## @file fixed_kinematics.py
+# @brief Prepare fixed GP states and local acceleration prior means.
+# @author GTDynamics contributors
+
 """Prepare fixed GP configurations/velocities and soft acceleration observations.
 
 The interpolation is fitted once over the complete saved trajectory with dense

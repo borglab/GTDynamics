@@ -75,14 +75,19 @@ contact would require further pose/velocity consistency constraints.
 
 ## Regenerate
 
-The Python driver is [scripts/export_recording.py](scripts/export_recording.py).
-Its `export()` function fits the full-trajectory GP, prepares fixed poses and
+The computational Python example is
+[`dynamics_walk.py`](../../examples/g1_mjlab/dynamics_walk.py). Start with
+`solve_walk()`: it fits the full-trajectory GP, prepares fixed poses and
 velocities with acceleration prior means, constructs the sole contact models,
-and calls `gtd.solveFixedKinematicsDynamics()`. It then writes
-`recording.json.gz` (estimated accelerations, forces, torques, and diagnostics)
-and `model.json.gz` (display geometry) to `--output`, which defaults to
-`apps/dynamics/public`. Computation and browser serialization currently share
-this driver; it is not yet a compact standalone teaching example.
+and calls `gtd.solveFixedKinematicsDynamics()`. Its runnable `main()` prints
+convergence diagnostics and optionally saves `dynamics.npz` and `summary.json`.
+The [example README](../../examples/g1_mjlab/README.md#walking-dynamics-example)
+documents that command and the saved arrays' units and ordering.
+
+The browser adapter is [scripts/export_recording.py](scripts/export_recording.py).
+It calls the same example and writes `recording.json.gz` (the solution and
+browser diagnostics) and `model.json.gz` (display geometry) to `--output`, which
+defaults to `apps/dynamics/public`.
 
 Use the pinned G1 packages and matching GTDynamics/GTSAM Python bindings:
 
@@ -117,6 +122,7 @@ With the same Python environment and `PYTHONPATH`:
 ```bash
 make -C build -j6 testFixedKinematicsDynamics.run testFloatingBaseInterpolator.run
 python -m unittest discover -s examples/g1_mjlab -p test_fixed_kinematics.py -v
+python -m unittest discover -s examples/g1_mjlab -p test_sole_support.py -v
 python apps/dynamics/scripts/validate_recording.py
 cd apps
 npm test --workspace dynamics
@@ -133,9 +139,9 @@ loads. The native CMC result supplies every published force and torque.
 
 The support rectangle uses a two-dimensional monotone-chain hull of the sampled
 capsule footprints. This preserves the previous rectangle and 5% margin without
-a SciPy dependency. With the native Python environment active, run
-`npm run test:native --workspace dynamics` from `apps/` for footprint and
-feasible/infeasible-load checks.
+a SciPy dependency. Footprint tests live alongside the example. With the native
+Python environment active, run `npm run test:native --workspace dynamics` from
+`apps/` for feasible/infeasible-load checks.
 
 The browser selects the nearest retained knot during playback. Connecting lines
 between force/torque samples guide the eye across unsampled intervals. Compiled

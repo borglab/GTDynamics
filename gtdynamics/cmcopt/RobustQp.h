@@ -3,6 +3,13 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+
+/**
+ * @file RobustQp.h
+ * @brief Solve CMC quadratic subproblems with native GTSAM backends.
+ * @author GTDynamics contributors
+ */
+
 #pragma once
 
 #include <gtsam/constrained/ActiveSetSolver.h>
