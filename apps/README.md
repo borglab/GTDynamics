@@ -13,6 +13,7 @@ be opened directly.
 - [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets.
 
 - [Interpolation](interpolation/README.md): inspect Pose3 and joint-vector Gaussian process interpolation, dense encoder measurements, and estimated velocities. This follows Kinematics.
+- [Dynamics](dynamics/README.md): CMC-Opt inference of sole-frame contact wrenches and all 29 G1 joint torques on the SSIO 78–98 s clip. This follows Interpolation.
 
 ## Local preview
 

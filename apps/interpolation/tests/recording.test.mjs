@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { createHash } from 'node:crypto';
+import { recordingSourceMatches } from '../../shared/recordingProvenance.mjs';
 import { decodeStates } from '../../shared/kinematics/recording.js';
 import { validateRecording, frameAtTime } from '../src/recording.js';
 
@@ -11,11 +11,11 @@ const record = JSON.parse(gunzipSync(readFileSync(new URL('../public/recording.j
 const bytes = gunzipSync(readFileSync(new URL('../public/states.bin.gz', import.meta.url)));
 const floats = decodeStates(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), record.storage);
 
-test('Interpolation follows Kinematics independently of Dynamics', () => {
+test('Interpolation follows Kinematics and supplies the following Dynamics app', () => {
   const apps = json('../../registry.json');
-  assert.equal(apps.at(-1).id, 'interpolation');
-  assert.equal(apps.at(-2).id, 'kinematics-inspector');
-  assert(!apps.some(app => app.id === 'dynamics'));
+  const interpolation = apps.findIndex(app => app.id === 'interpolation');
+  assert.equal(apps[interpolation - 1].id, 'kinematics-inspector');
+  assert.equal(apps[interpolation + 1].id, 'dynamics');
 });
 
 test('one offline recording uses the actual comparison winner and original knots', () => {
@@ -31,7 +31,7 @@ test('one offline recording uses the actual comparison winner and original knots
   assert(record.source.checksums.denseJointSource.match(/^[0-9a-f]{64}$/));
   for (const [path, expected] of Object.entries(record.provenance.sources)) {
     const bytes = readFileSync(new URL(`../../../${path}`, import.meta.url));
-    assert.equal(createHash('sha256').update(bytes).digest('hex'), expected, path);
+    assert(recordingSourceMatches(path, bytes, expected), path);
   }
   assert(record.diagnostics.mujocoOracle.maxBodyPoseError < 1e-8);
   assert(record.diagnostics.mujocoOracle.maxSoleTwistError < 1e-8);
