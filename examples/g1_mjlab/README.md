@@ -22,7 +22,8 @@ with the commands below. Build and timing logs are not checked in.
 
 [The student walkthrough](KINEMATIC_WALK.md) accompanies
 [`kinematic_walk.py`](kinematic_walk.py). It builds a single contact-aligned
-`Trajectory` graph for all 800 walking samples and runs an equality-only CM-Opt
+`Trajectory` graph at contact-selected slices with a default 200 ms maximum
+within-phase interval, and runs an equality-only CM-Opt
 solve with `--initializer contact` or `ik`.
 [`compare_kinematic_walk.py`](compare_kinematic_walk.py) calls those example
 functions to compare the initialization and solve timings (`--repeats 3`).
@@ -115,31 +116,35 @@ Rigid/no-slip contact is not substituted for MuJoCo's compliant law.
 ## Reproduce
 
 Requirements: GTDynamics' build dependencies, a current GTSAM constrained module,
-Boost.JSON, and an existing MJLab Python environment. GPU timings require an
+Boost.JSON, and a Python 3.12 environment with the pinned model packages.
+Install a CUDA-capable PyTorch build for recording and GPU timings, then
+`python -m pip install -r examples/g1_mjlab/requirements-model.txt`.
+The canonical G1 is supplied by the Menagerie package and MJLab public factory;
+no model source checkout is required. Historical dynamics results retain the
+original recorded binary as their numerical oracle. GPU timings require an
 NVIDIA GPU. Commands run from the repository root.
 
 ```bash
-MJLAB=/path/to/mjlab
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGTDYNAMICS_BUILD_G1_MJLAB=ON
 cmake --build build --target g1_full_dynamics -j4
 build/examples/g1_mjlab/g1_full_dynamics --build-info
 build/examples/g1_mjlab/g1_full_dynamics --self-test
 
 # Reuse model.mjb, walk.npz and walk.json if already recorded.
-uv run --project "$MJLAB" --no-sync python examples/g1_mjlab/download_policy.py examples/g1_mjlab/assets
-uv run --project "$MJLAB" --no-sync python examples/g1_mjlab/record_walk.py \
+python examples/g1_mjlab/download_policy.py examples/g1_mjlab/assets
+python examples/g1_mjlab/record_walk.py \
   --checkpoint examples/g1_mjlab/assets/model_final.pt \
   --output examples/g1_mjlab/results --seconds 8 --speed 0.5
 
-OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 uv run --project "$MJLAB" --no-sync python \
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 python \
   examples/g1_mjlab/validate_full.py --data examples/g1_mjlab/results \
   --solver build/examples/g1_mjlab/g1_full_dynamics \
   --output examples/g1_mjlab/results/four-way-validation.json
-OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 uv run --project "$MJLAB" --no-sync python \
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 python \
   examples/g1_mjlab/compare.py --data examples/g1_mjlab/results \
   --solver build/examples/g1_mjlab/g1_full_dynamics --gtsam-source /path/to/gtsam \
   --samples 24 --repeats 3 --timeout 30
-uv run --project "$MJLAB" --no-sync python examples/g1_mjlab/report.py examples/g1_mjlab/results
+python examples/g1_mjlab/report.py examples/g1_mjlab/results
 ```
 
 Use `--skip-warp` for CPU-only work, `--output /tmp/g1-probe` to keep trial results

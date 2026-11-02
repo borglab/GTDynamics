@@ -19,7 +19,8 @@ import gtdynamics as gtd
 import numpy as np
 from numpy.typing import NDArray
 
-from mujoco_io import KinematicRecording, load_model, load_recording, pose
+from g1_model import load_g1_model
+from mujoco_io import KinematicRecording, load_recording, pose
 
 BIAS_KEY: int = gtsam.symbol("b", 0)
 
@@ -107,7 +108,7 @@ def build_imu_aiding(walk: KinematicRecording, directory: Path) -> ImuAiding:
     calibration = recording_metadata.get("motionSource", {}).get(
         "stationaryImuCalibration"
     )
-    model = load_model(directory)
+    model = load_g1_model()
     root = model.body("robot/pelvis").id
     site = model.site("robot/imu_in_pelvis")
     # Open-IO has already re-expressed the vectors in pelvis axes. The site

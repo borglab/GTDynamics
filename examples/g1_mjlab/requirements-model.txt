@@ -1,0 +1,4 @@
+# Python 3.12; install a suitable torch>=2.7 build before these requirements.
+mujoco-menagerie==2026.10.6
+mjlab==1.6.0
+mujoco==3.11.0

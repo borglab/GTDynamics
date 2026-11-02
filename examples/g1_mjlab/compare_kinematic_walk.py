@@ -30,9 +30,18 @@ from mujoco_io import KinematicRecording
 
 
 def compare(
-    walk: KinematicRecording, repeats: int = 1, max_iterations: int = 50
+    walk: KinematicRecording,
+    repeats: int = 1,
+    max_iterations: int = 50,
+    max_slice_interval_ms: float = 200.0,
 ) -> dict[str, Any]:
     """Alternate run order; time preparation once, then init and CM-Opt separately."""
+    start = perf_counter()
+    source = walk
+    walk, _, _ = walk_example.initialize_contact_slices(
+        source, max_slice_interval_ms=max_slice_interval_ms
+    )
+    selection_seconds = perf_counter() - start
     start = perf_counter()
     costs, constraints, keys = walk_example.build_problem(walk)
     graph_seconds = perf_counter() - start
@@ -41,7 +50,13 @@ def compare(
         order = ("contact", "ik") if repeat % 2 == 0 else ("ik", "contact")
         for method in order:
             start = perf_counter()
-            seed, initialization = walk_example.initialize(walk, method, keys)
+            if method == "contact":
+                _, seed, initialization = walk_example.initialize_contact_slices(
+                    source, max_slice_interval_ms=max_slice_interval_ms
+                )
+                seed = walk_example.seed_contact_landmarks(walk, seed).extract(keys)
+            else:
+                seed, initialization = walk_example.initialize(walk, method, keys)
             init_seconds = perf_counter() - start
             initial_metrics = walk_example.evaluate(walk, costs, constraints, seed)
             start = perf_counter()
@@ -71,11 +86,15 @@ def compare(
             )
     return {
         "samples": walk.count,
-        "duration_seconds": (walk.count - 1) * walk.dt,
+        "duration_seconds": float(walk.times[-1] - walk.times[0]),
+        "max_slice_interval_ms": max_slice_interval_ms,
+        "source_indices": walk.source_indices.tolist(),
+        "timestamps": walk.times.tolist(),
         "phases": walk.trajectory.numPhases(),
         "equality_constraints": constraints.size(),
         "inequality_constraints": 0,
         "cost_factors": costs.size(),
+        "slice_selection_seconds": selection_seconds,
         "graph_build_seconds": graph_seconds,
         "max_iterations": max_iterations,
         "input_sha256": walk.provenance,
@@ -103,6 +122,7 @@ def main() -> None:
         "--repeats", type=int, default=3, help="Number of paired contact/IK repetitions"
     )
     parser.add_argument("--max-iterations", type=int, default=50)
+    parser.add_argument("--max-slice-interval-ms", type=float, default=200.0)
     parser.add_argument(
         "--max-frames",
         type=int,
@@ -123,7 +143,9 @@ def main() -> None:
         f"One trajectory: {walk.count} samples, {walk.trajectory.numPhases()} contact-aligned phases",
         flush=True,
     )
-    result = compare(walk, args.repeats, args.max_iterations)
+    result = compare(
+        walk, args.repeats, args.max_iterations, args.max_slice_interval_ms
+    )
     result["recorded_utc"] = datetime.now(timezone.utc).isoformat()
     result["platform"] = platform.platform()
     result["revision"] = subprocess.check_output(
@@ -134,6 +156,9 @@ def main() -> None:
         for p in (
             Path(__file__),
             Path(walk_example.__file__),
+            Path(__file__).with_name("contact_phases.py"),
+            Path(__file__).with_name("kinematic_initialization.py"),
+            Path(__file__).with_name("kinematic_smoothing.py"),
             Path(__file__).with_name("mujoco_io.py"),
             walk_example.REPO / "gtdynamics.i",
             walk_example.REPO / "gtdynamics/kinematics/KinematicsTrajectory.cpp",

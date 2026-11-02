@@ -3,27 +3,35 @@
 # Atlanta, Georgia 30332-0415. All Rights Reserved.
 # See LICENSE for the license information.
 # ----------------------------------------------------------------------------
-"""Fit the complete G1 walk with CM-Opt and a contact or IK initializer.
+"""Fit a complete G1 walk with CM-Opt and contact or IK initialization.
 
 Read load_walk -> build_problem -> initialize -> solve_cm -> evaluate.
-The graph is assembled here using the native Slice/Phase/Trajectory API.
+Phase inference, initialization, and smoothing live in their named modules.
 Run one fit with --initializer contact (default) or --initializer ik.
-See compare_kinematic_walk.py for the timing comparison that calls this example.
+The separate compare_kinematic_walk.py timing driver calls this example.
 """
 
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable, Iterator, Sequence
-from dataclasses import replace
 import json
 from pathlib import Path
 
-import gtsam
-import gtdynamics as gtd
 import numpy as np
-from numpy.typing import NDArray
 
+# Direct imports also expose the example's steps to comparison/export drivers.
+from contact_phases import infer_contact_phases
+from kinematic_initialization import (
+    initialize,
+    initialize_contact_slices,
+    seed_contact_landmarks,
+)
+from kinematic_smoothing import (
+    CONTACT_ROTATION_SIGMA_DEGREES,
+    build_problem,
+    evaluate,
+    solve_cm,
+)
 from mujoco_io import KinematicRecording, load_kinematic_recording
 
 REPO = Path(__file__).resolve().parents[2]
@@ -36,440 +44,30 @@ def load_walk(
     return load_kinematic_recording(data, contacts_path, max_frames)
 
 
-def initialize_contact_slices(
-    source: KinematicRecording,
-    options: gtd.contact_init.Options | None = None,
-    contact_buffer: int = 1,
-) -> tuple[KinematicRecording, gtsam.Values, dict[str, int | float | bool]]:
-    """Initialize on buffered contacts and retain exactly those slices for fitting.
-
-    The native result supplies the source indices; no second sampling schedule
-    is constructed. Solver keys are renumbered 0..N-1, while times and source
-    indices retain their original meaning. Source contact specifications are
-    preserved for smoothing (the initializer filters its own observations).
-    The first retained slice uses the supplied initial gauge, as documented by
-    InitializeSolutionContacts; no later reference pose enters initialization.
-    """
-    if source.timestamps is not None or source.source_indices is not None:
-        raise ValueError("Contact selection requires the original uniform recording")
-    diagnostics = gtd.contact_init.Result()
-    values: gtsam.Values = gtd.Initializer().InitializeSolutionContacts(
-        source.robot,
-        source.root.name(),
-        source.anchor,
-        source.measured,
-        source.trajectory,
-        source.dt,
-        options if options is not None else gtd.contact_init.Options(),
-        diagnostics,
-        contact_buffer,
-    )
-    indices = np.array([s.k for s in diagnostics.slices()], dtype=np.int64)
-    if len(indices) < 2:
-        raise ValueError("Estimation requires at least two retained contact slices")
-    measured = gtsam.Values()
-    seed = gtsam.Values()
-    for k, original in enumerate(indices):
-        for joint in source.robot.joints():
-            key = gtd.JointAngleKey(joint.id(), k)
-            angle = source.measured.atDouble(
-                gtd.JointAngleKey(joint.id(), int(original))
-            )
-            measured.insert(key, angle)
-            seed.insert(key, angle)
-        for link in source.robot.links():
-            key = gtd.PoseKey(link.id(), int(original))
-            if values.exists(key):
-                seed.insert(gtd.PoseKey(link.id(), k), values.atPose3(key))
-    phases: list[gtd.Phase] = []
-    for phase in source.trajectory.phases():
-        first, stop = np.searchsorted(indices, [phase.k_start, phase.k_end + 1])
-        if first < stop:
-            phases.append(gtd.Phase(int(first), int(stop - 1), phase.constraintSpec()))
-    # Record discontinuities hidden by sparse sampling. A foot may lift and
-    # touch down between selected slices; do not constrain those as one stance.
-    source_contacts = list(contact_slices(source.trajectory))
-    breaks: set[tuple[int, int]] = set()
-    for k, (left, right) in enumerate(zip(indices, indices[1:]), start=1):
-        for point in source_contacts[right][1]:
-            if any(point.equals(p, 0.0) for p in source_contacts[left][1]):
-                if any(
-                    not any(point.equals(p, 0.0) for p in source_contacts[j][1])
-                    for j in range(left + 1, right)
-                ):
-                    breaks.add((k, point.link.id()))
-    walk = replace(
-        source,
-        trajectory=gtd.Trajectory(gtd.WalkCycle(phases), 1),
-        measured=measured,
-        count=len(indices),
-        timestamps=source.times[indices],
-        source_indices=indices,
-        contact_breaks=frozenset(breaks),
-        reference_root_positions=source.reference_root_positions[indices],
-    )
-    return (
-        walk,
-        seed,
-        {
-            "sparse_frames": len(indices),
-            "source_frames": source.count,
-            "contact_buffer": contact_buffer,
-            "iterations": diagnostics.iterations,
-            "contact_rms_m": diagnostics.residualRms,
-            "converged": diagnostics.converged,
-        },
-    )
-
-
-def contact_slices(
-    trajectory: gtd.Trajectory,
-    contact_breaks: frozenset[tuple[int, int]] = frozenset(),
-) -> Iterator[tuple[int, gtd.PointOnLinks, list[gtd.PointOnLink]]]:
-    """Visit disjoint phase slices, retaining ground contacts across boundaries."""
-    previous: Sequence[gtd.PointOnLink] = []
-    previous_k: int | None = None
-    phases: Sequence[gtd.Phase] = trajectory.phases()
-    for phase in phases:
-        spec: gtd.ConstraintSpec = phase.constraintSpec()
-        points: gtd.PointOnLinks = spec.groundContactPoints()
-        for k in range(phase.k_start, phase.k_end + 1):
-            continuing = [
-                p
-                for p in points
-                if (k, p.link.id()) not in contact_breaks
-                and previous_k == k - 1
-                and any(p.equals(q, 0.0) for q in previous)
-            ]
-            yield k, points, continuing
-            previous, previous_k = points, k
-
-
-def build_problem(
-    walk: KinematicRecording,
-    contact_slip_sigma: float = 0.005,
-    objective_groups: dict[str, gtsam.NonlinearFactorGraph] | None = None,
-) -> tuple[gtsam.NonlinearFactorGraph, gtd.NonlinearEqualityConstraints, list[int]]:
-    """Build one full trajectory problem for either initializer.
-
-    Hard equalities: each link/joint pose relation, via Kinematics.constraints.
-    Costs: measured q, level stance soles, soft contact slip, weak root
-    smoothness, and a common first-pose gauge. Contact observations are soft
-    because stance feet may slip. contact_slip_sigma is the per-axis standard
-    deviation of point displacement in metres per adjacent slice interval.
-    It is not a velocity sigma and is not automatically scaled with sample rate.
-    If supplied, objective_groups receives the native graphs by objective type
-    for reporting counts and error budgets; their union is the returned cost.
-    There are no inequalities, dynamics variables, or per-frame final solves.
-    """
-    if not np.isfinite(contact_slip_sigma) or contact_slip_sigma <= 0:
-        raise ValueError("contact_slip_sigma must be finite and positive")
-    parameters = gtd.KinematicsParameters()
-    parameters.p_cost_model = gtsam.noiseModel.Isotropic.Sigma(6, 1.0)
-    parameters.prior_q_cost_model = gtsam.noiseModel.Isotropic.Sigma(1, 0.03)
-    parameters.cp_cost_model = gtsam.noiseModel.Isotropic.Sigma(1, 0.01)
-    kinematics = gtd.Kinematics(parameters)
-    constraints: gtd.NonlinearEqualityConstraints = kinematics.constraints(
-        walk.trajectory, walk.robot
-    )
-    joint_costs: gtsam.NonlinearFactorGraph = kinematics.jointAngleObjectives(
-        walk.trajectory, walk.robot, walk.measured
-    )
-    height_costs: gtsam.NonlinearFactorGraph = kinematics.contactHeightObjectives(
-        walk.trajectory, np.array([0.0, 0.0, -9.81])
-    )
-    # Penalize displacement of each continuing ground contact point, including
-    # across phase boundaries where the other foot changes contact.
-    stationary_costs: gtsam.NonlinearFactorGraph = kinematics.contactEqualityFactors(
-        walk.trajectory, gtsam.noiseModel.Isotropic.Sigma(3, contact_slip_sigma)
-    )
-    if walk.contact_breaks:
-        # The native phase builder uses adjacent solver indices. Remove edges
-        # across source-time lift-offs that disappeared during slice selection.
-        broken_keys = {gtd.PoseKey(link, k) for k, link in walk.contact_breaks}
-        continuous = gtsam.NonlinearFactorGraph()
-        for i in range(stationary_costs.size()):
-            factor = stationary_costs.at(i)
-            if factor.keys()[1] not in broken_keys:
-                continuous.add(factor)
-        stationary_costs = continuous
-    root_costs = gtsam.NonlinearFactorGraph()
-    for k in range(walk.count - 1):
-        root_costs.add(
-            gtsam.BetweenFactorPose3(
-                gtd.PoseKey(walk.root.id(), k),
-                gtd.PoseKey(walk.root.id(), k + 1),
-                gtsam.Pose3(),
-                gtsam.noiseModel.Diagonal.Sigmas(np.array([0.3] * 3 + [0.1] * 3)),
-            )
-        )
-    first = gtd.Slice(0)
-    anchor_cost = gtsam.NonlinearFactorGraph()
-    anchor_cost.add(
-        gtsam.PriorFactorPose3(
-            gtd.PoseKey(walk.root.id(), first.k),
-            walk.anchor,
-            gtsam.noiseModel.Isotropic.Sigma(6, 1e-5),
-        )
-    )
-    groups = {
-        "joint": joint_costs,
-        "height": height_costs,
-        "stationary": stationary_costs,
-        "root": root_costs,
-        "anchor": anchor_cost,
-    }
-    costs = gtsam.NonlinearFactorGraph()
-    for group in groups.values():
-        costs.push_back(group)
-    if objective_groups is not None:
-        objective_groups.update(groups)
-    keys = sorted(set(costs.keyVector()) | set(constraints.keyVector()))
-    return costs, constraints, keys
-
-
-def nominal_root(walk: KinematicRecording, k: int) -> gtsam.Pose3:
-    """A commanded straight-line path for IK, not the recorded root trajectory."""
-    matrix: NDArray[np.float64] = walk.anchor.matrix()
-    matrix[0, 3] += walk.speed * (walk.times[k] - walk.times[0])
-    return gtsam.Pose3(matrix)
-
-
-def initialize(
-    walk: KinematicRecording,
-    method: str,
-    keys: Sequence[int],
-    contact_diagnostics: gtd.contact_init.Result | None = None,
-    ik_iteration: Callable[[int, int, float, gtsam.Values], None] | None = None,
-    contact_options: gtd.contact_init.Options | None = None,
-) -> tuple[gtsam.Values, dict[str, int | float | bool]]:
-    """Call the native initializers; optional observers support offline inspection.
-
-    Contact diagnostics retain the sparse solve history when supplied. The IK
-    observer receives each slice's initial state and completed LM iterations,
-    with global trajectory keys. Ordinary timing runs leave observers disabled.
-    """
-    if walk.timestamps is not None:
-        raise ValueError(
-            "Use the seed returned by initialize_contact_slices for irregular slices"
-        )
-    initializer = gtd.Initializer()
-    if method == "contact":
-        options = (
-            contact_options
-            if contact_options is not None
-            else gtd.contact_init.Options()
-        )
-        options.recordHistory = contact_diagnostics is not None
-        diagnostics = (
-            contact_diagnostics
-            if contact_diagnostics is not None
-            else gtd.contact_init.Result()
-        )
-        values: gtsam.Values = initializer.InitializeSolutionContacts(
-            walk.robot,
-            walk.root.name(),
-            walk.anchor,
-            walk.measured,
-            walk.trajectory,
-            walk.dt,
-            options,
-            diagnostics,
-        )
-        info = {
-            "sparse_frames": len(diagnostics.poses),
-            "iterations": diagnostics.iterations,
-            "contact_rms_m": diagnostics.residualRms,
-            "converged": diagnostics.converged,
-        }
-        return values.extract(keys), info
-    if method != "ik":
-        raise ValueError(f"Unknown initialization: {method}")
-    values = gtsam.Values()
-    for phase in walk.trajectory.phases():
-        spec: gtd.ConstraintSpec = phase.constraintSpec()
-        # The legacy IK initializer uses local indices starting at zero and a
-        # fixed contact set, so call it once per phase, then map to global keys.
-        steps = max(1, phase.k_end - phase.k_start)
-
-        def report_ik(
-            sample: int, iteration: int, error: float, state: gtsam.Values
-        ) -> None:
-            if ik_iteration is None or phase.k_start + sample > phase.k_end:
-                return
-            # The observer receives global trajectory keys, like the final seed.
-            global_state = gtsam.Values()
-            for link in walk.robot.links():
-                global_state.insert(
-                    gtd.PoseKey(link.id(), phase.k_start + sample),
-                    state.atPose3(gtd.PoseKey(link.id(), sample)),
-                )
-            for joint in walk.robot.joints():
-                global_state.insert(
-                    gtd.JointAngleKey(joint.id(), phase.k_start + sample),
-                    state.atDouble(gtd.JointAngleKey(joint.id(), sample)),
-                )
-            ik_iteration(phase.k_start + sample, iteration, error, global_state)
-
-        local: gtsam.Values = initializer.InitializeSolutionInverseKinematics(
-            walk.robot,
-            walk.root.name(),
-            nominal_root(walk, phase.k_start),
-            [nominal_root(walk, phase.k_start + steps)],
-            [steps * walk.dt],
-            walk.dt,
-            0.0,
-            spec.contactPoints(),
-            report_ik if ik_iteration is not None else None,
-        )
-        for k in range(phase.k_start, phase.k_end + 1):
-            for link in walk.robot.links():
-                values.insert(
-                    gtd.PoseKey(link.id(), k),
-                    local.atPose3(gtd.PoseKey(link.id(), k - phase.k_start)),
-                )
-            for joint in walk.robot.joints():
-                values.insert(
-                    gtd.JointAngleKey(joint.id(), k),
-                    local.atDouble(gtd.JointAngleKey(joint.id(), k - phase.k_start)),
-                )
-    return values.extract(keys), {"phase_calls": walk.trajectory.numPhases()}
-
-
-def evaluate(
-    walk: KinematicRecording,
-    costs: gtsam.NonlinearFactorGraph,
-    constraints: gtd.NonlinearEqualityConstraints,
-    values: gtsam.Values,
-) -> dict[str, float]:
-    """Report physical residuals separately from solver stopping criteria."""
-    heights, slips, joint_errors, reference_errors = [], [], [], []
-    for k, points, continuing in contact_slices(walk.trajectory, walk.contact_breaks):
-        for point in points:
-            position: NDArray[np.float64] = point.predict(values, k)
-            heights.append(position[2])
-        for point in continuing:
-            current: NDArray[np.float64] = point.predict(values, k)
-            previous: NDArray[np.float64] = point.predict(values, k - 1)
-            slips.append(np.linalg.norm(current - previous))
-    for joint in walk.robot.joints():
-        for k in range(walk.count):
-            key = gtd.JointAngleKey(joint.id(), k)
-            joint_errors.append(values.atDouble(key) - walk.measured.atDouble(key))
-    for k, reference in enumerate(walk.reference_root_positions):
-        reference_errors.append(
-            np.linalg.norm(
-                values.atPose3(gtd.PoseKey(walk.root.id(), k)).translation() - reference
-            )
-        )
-
-    def rms(samples: Sequence[float]) -> float:
-        return float(np.sqrt(np.mean(np.square(samples))))
-
-    return {
-        "cost": costs.error(values),
-        "kinematic_equality_l2": float(constraints.violationNorm(values)),
-        "joint_measurement_rms_rad": rms(joint_errors),
-        "stance_height_rms_m": rms(heights),
-        "stance_step_slip_rms_m": rms(slips),
-        "reference_root_translation_rms_m": rms(reference_errors),
-    }
-
-
-def solve_cm(
-    costs: gtsam.NonlinearFactorGraph,
-    constraints: gtd.NonlinearEqualityConstraints,
-    initial: gtsam.Values,
-    root_id: int,
-    max_iterations: int = 50,
-    on_iteration: Callable[[int, gtsam.Values], None] | None = None,
-) -> tuple[gtsam.Values, dict[str, int]]:
-    """Solve the entire trajectory; optionally observe feasible start and iterates.
-
-    Observer Values contain recovered full robot states, not reduced coordinates.
-    History capture adds overhead, so the timing driver leaves it disabled.
-    """
-
-    def basis_keys(keys: Sequence[int]) -> list[int]:
-        return [
-            key
-            for key in keys
-            if gtd.DynamicsSymbol(key).label() == "q"
-            or key == gtd.PoseKey(root_id, gtd.DynamicsSymbol(key).time())
-        ]
-
-    parameters = gtd.ManifoldOptimizerParameters()
-    parameters.constraintManifoldParams.basisCreator = gtd.EliminationBasisCreator(
-        basis_keys
-    )
-    retraction = gtd.RetractionParams()
-    retraction.lmParams.setMaxIterations(30)
-    retraction.lmParams.setAbsoluteErrorTol(1e-18)
-    retraction.lmParams.setRelativeErrorTol(1e-10)
-    retraction.feasibleThreshold = 1e-20
-    parameters.constraintManifoldParams.retractorCreator = gtd.BasisRetractorCreator(
-        basis_keys, retraction
-    )
-    lm = gtsam.LevenbergMarquardtParams()
-    lm.setMaxIterations(max_iterations)
-    lm.setRelativeErrorTol(1e-7)
-    lm.setAbsoluteErrorTol(1e-8)
-
-    # Install the observer before constructing CM-Opt, which copies LM settings.
-    observer: (
-        tuple[
-            gtd.NonlinearManifoldOptimizer,
-            gtd.ManifoldOptimizationProblem,
-            gtsam.NonlinearOptimizer,
-        ]
-        | None
-    ) = None
-
-    def report_iteration(iteration: int, before: float, after: float) -> None:
-        if on_iteration is not None and observer is not None:
-            owner, manifold, solver = observer
-            on_iteration(iteration, owner.baseValues(manifold, solver.values()))
-
-    if on_iteration is not None:
-        lm.iterationHook = report_iteration
-    cm = gtd.NonlinearManifoldOptimizer(parameters, lm)
-    problem: gtd.ManifoldOptimizationProblem = cm.initializeManifoldOptimizationProblem(
-        costs, constraints, initial
-    )
-    optimizer: gtsam.NonlinearOptimizer = cm.constructNonlinearOptimizer(problem)
-    try:
-        if on_iteration is not None:
-            observer = (cm, problem, optimizer)
-            on_iteration(0, cm.baseValues(problem, optimizer.values()))
-        manifold_values: gtsam.Values = optimizer.optimize()
-        solution: gtsam.Values = cm.baseValues(problem, manifold_values)
-    finally:
-        # The native optimizer owns the callback. Release its references back to
-        # the optimizer/problem even if a recording callback raises an exception.
-        observer = None
-    return solution, {
-        "iterations": optimizer.iterations(),
-        "components": len(problem.components),
-        "ambient_dimension": initial.dim(),
-        "reduced_dimension": problem.values.dim(),
-    }
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--upright-prior", action="store_true")
+    parser.add_argument("--height-prior", action="store_true")
     parser.add_argument("--data", type=Path, default=Path(__file__).parent / "results")
     parser.add_argument(
         "--contacts",
         type=Path,
         default=REPO / "apps/contact-initialization/public/g1-walk.json",
     )
+    parser.add_argument(
+        "--double-support-slices",
+        action="store_true",
+        default=True,
+        help="Infer contact phases, initialize and solve only selected double-stance slices",
+    )
     parser.add_argument("--initializer", choices=("contact", "ik"), default="contact")
+    parser.add_argument("--max-slice-interval-ms", type=float, default=200.0)
     parser.add_argument("--max-iterations", type=int, default=50)
     parser.add_argument(
-        "--contact-slip-sigma",
+        "--contact-translation-sigma",
         type=float,
-        default=0.005,
-        help="Contact displacement sigma in metres per slice interval",
+        default=0.01,
+        help="Contact-to-landmark translation sigma in metres per observation",
     )
     parser.add_argument(
         "--max-frames",
@@ -484,8 +82,27 @@ def main() -> None:
         parser.error("--max-iterations must be positive and --max-frames at least two")
 
     walk = load_walk(args.data, args.contacts, args.max_frames)
-    costs, constraints, keys = build_problem(walk, args.contact_slip_sigma)
-    seed, initialization = initialize(walk, args.initializer, keys)
+    selected_seed = None
+    phase_info = None
+    if args.double_support_slices:
+        if np.isclose(walk.dt, 0.02):
+            walk, phase_info = infer_contact_phases(walk, args.data)
+        walk, selected_seed, initialization = initialize_contact_slices(
+            walk,
+            double_support_only=True,
+            rotation_sigma_degrees=CONTACT_ROTATION_SIGMA_DEGREES,
+            max_slice_interval_ms=args.max_slice_interval_ms,
+        )
+    costs, constraints, keys = build_problem(
+        walk,
+        args.contact_translation_sigma,
+        upright_prior=args.upright_prior,
+        height_prior=args.height_prior,
+    )
+    if selected_seed is None or args.initializer == "ik":
+        seed, initialization = initialize(walk, args.initializer, keys)
+    else:
+        seed = seed_contact_landmarks(walk, selected_seed).extract(keys)
     initial_metrics = evaluate(walk, costs, constraints, seed)
     solution, solver = solve_cm(
         costs, constraints, seed, walk.root.id(), args.max_iterations
@@ -497,8 +114,13 @@ def main() -> None:
         "samples": walk.count,
         "phases": walk.trajectory.numPhases(),
         "initializer": args.initializer,
-        "contact_slip_sigma_m": args.contact_slip_sigma,
+        "contact_translation_sigma_m": args.contact_translation_sigma,
         "initialization": initialization,
+        "contact_phase_inference": phase_info,
+        "source_indices": (
+            walk.source_indices.tolist() if walk.source_indices is not None else None
+        ),
+        "timestamps": walk.times.tolist(),
         "solver": solver,
         "initial": initial_metrics,
         "final": metrics,

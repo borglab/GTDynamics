@@ -6,7 +6,8 @@ import numpy as np
 import gtsam
 import gtdynamics as gtd
 
-from kinematic_walk import build_problem, contact_slices, solve_cm
+from contact_phases import contact_slices
+from kinematic_smoothing import build_problem, solve_cm
 from mujoco_io import KinematicRecording, import_robot, contact_phases
 
 
@@ -45,10 +46,10 @@ class ContactPhaseTests(unittest.TestCase):
     def test_continuity_crosses_phase_boundaries_but_not_flight(self):
         left = gtd.Link(1, "left", 1.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
         right = gtd.Link(2, "right", 1.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
-        l = gtd.PointOnLink(left, np.zeros(3))
-        r = gtd.PointOnLink(right, np.zeros(3))
+        l = gtd.PoseOnLink(left, gtsam.Pose3())
+        r = gtd.PoseOnLink(right, gtsam.Pose3())
         phases = [
-            gtd.Phase(a, b, gtd.FootContactConstraintSpec(gtd.PointOnLinks(points)))
+            gtd.Phase(a, b, gtd.PoseContactConstraintSpec(points))
             for a, b, points in (
                 (0, 1, [l]),
                 (2, 3, [r, l]),
@@ -64,13 +65,13 @@ class ContactPhaseTests(unittest.TestCase):
             [sorted(p.link.id() for p in continuing) for _, _, continuing in slices],
             [[], [1], [1], [1, 2], [1], [1], [], []],
         )
-        graph = gtd.Kinematics().contactEqualityFactors(
-            trajectory, gtsam.noiseModel.Isotropic.Sigma(3, 0.005)
+        graph = gtd.Kinematics().contactPoseEqualityFactors(
+            trajectory, gtsam.noiseModel.Isotropic.Sigma(6, 0.005)
         )
         self.assertEqual(graph.size(), 6)
         self.assertTrue(
             all(
-                isinstance(graph.at(i), gtd.ContactEqualityFactor)
+                isinstance(graph.at(i), gtd.ContactPoseEqualityFactor)
                 for i in range(graph.size())
             )
         )
@@ -107,7 +108,7 @@ class NativeTrajectoryTests(unittest.TestCase):
         measured = gtsam.Values()
         for k in range(4):
             measured.insert(gtd.JointAngleKey(1, k), 0.1 * k)
-        spec = gtd.FootContactConstraintSpec(gtd.PointOnLinks([]))
+        spec = gtd.PoseContactConstraintSpec([])
         phases = [gtd.Phase(0, 1, spec), gtd.Phase(2, 3, spec)]
         walk = KinematicRecording(
             robot=robot,
