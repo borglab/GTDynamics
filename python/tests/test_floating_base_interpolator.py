@@ -56,31 +56,56 @@ class TestFloatingBaseInterpolator(unittest.TestCase):
         gp.addBaseVelocityMeasurement(
             time=0.0, worldLinearVelocity=np.zeros(3), sigma=0.1
         )
-        gp.solve()
-        state: gtd.FloatingBaseState = gp.interpolate(time=0.6)
+        result: gtd.FloatingBaseInterpolation = gp.solve()
+        state: gtd.FloatingBaseState = result.interpolate(time=0.6)
         np.testing.assert_allclose(state.jointAngles, [0.12, 0.24], atol=1e-9)
         np.testing.assert_allclose(state.jointVelocities, [0.2, 0.4], atol=1e-9)
-        self.assertEqual([7, 18], gp.jointIds())
-        self.assertEqual(["hinge", "slider"], gp.jointNames())
-        values: gtsam.Values = gp.values(0.6)
+        self.assertEqual([7, 18], result.jointIds())
+        self.assertEqual(["hinge", "slider"], result.jointNames())
+        values: gtsam.Values = result.values(0.6)
         self.assertTrue(values.exists(gtd.PoseKey(12, 0)))
         np.testing.assert_allclose(gtd.Twist(values, 3, 0), np.zeros(6), atol=1e-9)
-        self.assertLess(gp.jointMeasurementRms(), 1e-9)
-        self.assertGreaterEqual(gp.solveSeconds(), 0)
+        self.assertLess(result.jointMeasurementRms(), 1e-9)
+        self.assertGreaterEqual(result.solveSeconds(), 0)
+        self.assertGreater(result.graphConstructionSeconds(), 0)
 
-    def test_validation_and_invalidation(self) -> None:
-        """Invalid inputs and stale solutions fail through the actual wrapper."""
+    def test_validation_and_independent_results(self) -> None:
+        """Input mutation and later solves preserve previous result snapshots."""
         gp = self.make_interpolator()
         with self.assertRaises(ValueError):
             gp.addKnot(0.0, gtsam.Pose3(), np.zeros(1))
         for time in (0.0, 1.0):
             gp.addKnot(time, gtsam.Pose3(), np.zeros(2))
-        gp.solve()
+        result: gtd.FloatingBaseInterpolation = gp.solve()
         with self.assertRaises(IndexError):
-            gp.interpolate(2.0)
-        gp.addJointMeasurement(0.5, np.zeros(2))
-        with self.assertRaises(RuntimeError):
-            gp.interpolate(0.5)
+            result.interpolate(2.0)
+        gp.addJointMeasurement(0.5, np.array([0.2, 0.1]))
+        newer: gtd.FloatingBaseInterpolation = gp.solve()
+        self.assertGreater(newer.interpolate(0.5).jointAngles[0], 0.0)
+        np.testing.assert_array_equal(result.interpolate(0.5).jointAngles, [0.0, 0.0])
+        gp.addKnot(2.0, gtsam.Pose3(), np.zeros(2))
+        self.assertEqual([0.0, 1.0], result.knotTimes())
+        self.assertEqual([0.0, 1.0], newer.knotTimes())
+        self.assertEqual([0.0, 1.0, 2.0], gp.solve().knotTimes())
+        del gp
+        self.assertTrue(result.values(time=0.5, k=3).exists(gtd.PoseKey(12, 3)))
+        self.assertEqual(0.0, result.jointMeasurementRms())
+
+    def test_result_outlives_problem(self) -> None:
+        """The returned object has no Python lifetime dependency on the builder."""
+
+        def fit() -> gtd.FloatingBaseInterpolation:
+            problem = self.make_interpolator()
+            problem.addKnot(0.0, gtsam.Pose3(), np.zeros(2))
+            problem.addKnot(1.0, gtsam.Pose3(), np.array([0.2, 0.4]))
+            return problem.solve()
+
+        result = fit()
+        np.testing.assert_allclose(result.interpolate(0.5).jointAngles, [0.1, 0.2])
+        self.assertTrue(result.values(0.5).exists(gtd.PoseKey(12, 0)))
+        self.assertEqual([7, 18], result.jointIds())
+        with self.assertRaises(TypeError):
+            gtd.FloatingBaseInterpolation()
 
 
 if __name__ == "__main__":

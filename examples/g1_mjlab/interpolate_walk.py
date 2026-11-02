@@ -27,7 +27,7 @@ from mujoco_io import contact_frames, import_robot, load_recording, model_bodies
 class InterpolatedWalk:
     """An offline GP fit with its exact source and named model mappings."""
 
-    gp: gtd.FloatingBaseInterpolator
+    interpolation: gtd.FloatingBaseInterpolation
     model: mujoco.MjModel
     record: dict[str, Any]
     variant: str
@@ -105,7 +105,7 @@ def fit_walk(
         raise ValueError("Kinematics timestamps do not match the dense source")
     dense_indices = np.flatnonzero((all_times >= knots[0]) & (all_times <= knots[-1]))
     dense_angles = arrays["qpos"][dense_indices][:, addresses]
-    gp = gtd.FloatingBaseInterpolator(
+    problem = gtd.FloatingBaseInterpolator(
         robot,
         "pelvis",
         np.r_[
@@ -123,15 +123,17 @@ def fit_walk(
         world_body = gtsam.Pose3(
             gtsam.Rot3.Quaternion(*quaternion[[3, 0, 1, 2]]), row[:3]
         )
-        gp.addKnot(float(time), world_body * body_to_com, saved_angles[index, columns])
-        gp.addBaseVelocityMeasurement(
+        problem.addKnot(
+            float(time), world_body * body_to_com, saved_angles[index, columns]
+        )
+        problem.addBaseVelocityMeasurement(
             float(time), world_velocities[index], base_velocity_sigma
         )
     for time, angles in zip(all_times[dense_indices], dense_angles):
-        gp.addJointMeasurement(float(time), angles)
-    gp.solve()
+        problem.addJointMeasurement(float(time), angles)
+    interpolation: gtd.FloatingBaseInterpolation = problem.solve()
     return InterpolatedWalk(
-        gp,
+        interpolation,
         model,
         record,
         variant,
@@ -153,7 +155,8 @@ def fit_walk(
 def sample_walk(walk: InterpolatedWalk) -> dict[str, NDArray[np.float64]]:
     """Evaluate dense FK and sole world twists; browser output is body xyz/xyzw.
 
-    Joint angles/rates follow gp.jointNames(). No accelerations are estimated.
+    Joint angles/rates follow interpolation.jointNames(). Accelerations are not
+    estimated.
     Sole twists are angular-first and rotated into WORLD axes at the sole origin.
     """
     model = walk.model
@@ -174,8 +177,8 @@ def sample_walk(walk: InterpolatedWalk) -> dict[str, NDArray[np.float64]]:
         )
     }
     for time in walk.dense_times:
-        state: gtd.FloatingBaseState = walk.gp.interpolate(float(time))
-        values: gtsam.Values = walk.gp.values(float(time))
+        state: gtd.FloatingBaseState = walk.interpolation.interpolate(float(time))
+        values: gtsam.Values = walk.interpolation.values(float(time))
         bodies = np.zeros((model.nbody, 7))
         bodies[:, 6] = 1
         for body, transform in com_to_body.items():
@@ -229,10 +232,12 @@ def validate_model_frames(
     root_joint = int(model.body_jntadr[root])
     root_qpos, root_qvel = model.jnt_qposadr[root_joint], model.jnt_dofadr[root_joint]
     joint_qpos = [
-        model.joint(f"robot/{name}").qposadr[0] for name in walk.gp.jointNames()
+        model.joint(f"robot/{name}").qposadr[0]
+        for name in walk.interpolation.jointNames()
     ]
     joint_qvel = [
-        model.joint(f"robot/{name}").dofadr[0] for name in walk.gp.jointNames()
+        model.joint(f"robot/{name}").dofadr[0]
+        for name in walk.interpolation.jointNames()
     ]
     body_to_com = pose(model.body_ipos[root], model.body_iquat[root])
     pose_error, twist_error = 0.0, 0.0

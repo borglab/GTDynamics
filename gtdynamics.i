@@ -1428,6 +1428,18 @@ class FloatingBaseState {
   gtsam::Vector jointVelocities;
 };
 
+class FloatingBaseInterpolation {
+  gtdynamics::FloatingBaseState interpolate(double time) const;
+  gtsam::Values values(double time, size_t k = 0) const;
+  std::vector<std::string> jointNames() const;
+  std::vector<size_t> jointIds() const;
+  std::vector<double> knotTimes() const;
+  double graphConstructionSeconds() const;
+  double solveSeconds() const;
+  double jointMeasurementRms() const;
+  double processError() const;
+};
+
 class FloatingBaseInterpolator {
   FloatingBaseInterpolator(const gtdynamics::Robot& robot,
       const std::string& baseLink,
@@ -1439,15 +1451,7 @@ class FloatingBaseInterpolator {
   void addJointMeasurement(double time, const gtsam::Vector& jointAngles);
   void addBaseVelocityMeasurement(double time,
       const gtsam::Vector3& worldLinearVelocity, double sigma);
-  void solve();
-  gtdynamics::FloatingBaseState interpolate(double time) const;
-  gtsam::Values values(double time, size_t k = 0) const;
-  std::vector<std::string> jointNames() const;
-  std::vector<size_t> jointIds() const;
-  std::vector<double> knotTimes() const;
-  double solveSeconds() const;
-  double jointMeasurementRms() const;
-  double processError() const;
+  gtdynamics::FloatingBaseInterpolation solve() const;
 };
 
 /********************** gpmp2  **********************/
