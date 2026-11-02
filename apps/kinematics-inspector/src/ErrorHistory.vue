@@ -43,7 +43,7 @@ onBeforeUnmount(()=>{disposed=true;ready=false;observer?.disconnect();if(Plotly&
       <label>Horizontal axis <select v-model="axis" aria-label="Error history horizontal axis"><option value="iteration">Iteration</option><option value="time">Elapsed solve time</option></select></label>
       <label><input v-model="logScale" type="checkbox"> Logarithmic error scale</label>
     </div></div>
-    <p class="scope">Each curve sums ½‖whitened residual‖² for one factor type over the entire trajectory. Total sums all types. Iteration 0 is the feasible starting estimate. Click legend entries to toggle curves; drag or scroll to zoom.<span v-if="logScale"> Zero errors are omitted on the logarithmic scale.</span></p>
+    <p class="scope">Each curve sums ½‖whitened residual‖² for one factor type over the entire trajectory. The total sums all types. Iteration 0 is the feasible starting estimate. Legend entries toggle curves, and dragging or scrolling zooms.<span v-if="logScale"> The logarithmic scale displays positive errors only.</span></p>
     <div v-if="error" role="alert">{{error}}</div>
     <div ref="element" class="error-history-chart" role="img" aria-label="Optimization objective error by factor type and total"></div>
   </section>

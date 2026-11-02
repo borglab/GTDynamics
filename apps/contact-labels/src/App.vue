@@ -448,26 +448,24 @@ onBeforeUnmount(() => {
           >
         </div>
         <p class="scope">
-          Agreement ({{
+          The {{
             velocityAiding ? "FG + velocity" : "FG displacement"
-          }}
-          vs window): {{ agreement.matches }} /
-          {{ agreement.resolved }} resolved window-model samples{{
+          }} model agrees with the window model on {{ agreement.matches }} of
+          {{ agreement.resolved }} resolved samples{{
             agreement.resolved
               ? ` (${((100 * agreement.matches) / agreement.resolved).toFixed(1)}%)`
               : ""
-          }}. {{ record.times.length - agreement.resolved }} unresolved samples
-          excluded.
+          }}. The comparison excludes {{ record.times.length - agreement.resolved }} unresolved samples.
         </p>
         <p class="scope">
-          Discrete FG: {{ record.supportGraph.variableCount }} binary
-          variables on {{ record.supportGraph.sliceCount }} slices,
-          {{ activeGraph.factorCount }} factors, including
+          The discrete graph contains {{ record.supportGraph.variableCount }} binary
+          variables on {{ record.supportGraph.sliceCount }} slices and
+          {{ activeGraph.factorCount }} factors. Inference includes
           {{ record.supportGraph.contextSamplesPerEnd }} context samples at each
-          end. Max-product solve:
-          {{ (1000 * activeGraph.solveSeconds).toFixed(2) }} ms, offline. Joint-velocity
-          factors: {{ velocityAiding ? "on" : "off" }}. Walking constraints:
-          {{ enforceWalkingSequence ? "on" : "off" }}.
+          end. The offline max-product solve took
+          {{ (1000 * activeGraph.solveSeconds).toFixed(2) }} ms. Joint-velocity
+          factors are {{ velocityAiding ? "enabled" : "disabled" }}, and walking constraints
+          are {{ enforceWalkingSequence ? "enabled" : "disabled" }}.
         </p>
       </section>
       <div class="foot-cards">
@@ -522,7 +520,7 @@ onBeforeUnmount(() => {
                 (record.feet[side].motion.angularExcursion[frame] * 180) /
                 Math.PI
               ).toFixed(2)
-            }}°. One material contact frame per foot.
+            }}°. Each foot uses one material contact frame.
           </p>
         </section>
       </div>
@@ -539,11 +537,11 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <p class="scope">
-          Left: teal. Right: purple. Dashed thresholds: stationary / moving
-          bounds. Drag or scroll to zoom; time ranges are linked. Click a curve
-          to select a sample. Plots always show raw motion evidence. Scores are
-          stationarity threshold margins, not contact probabilities; the walking
-          prior does not change them.
+          The plots show raw motion evidence for the left foot in teal and the
+          right foot in purple. Dashed lines mark stationary and moving
+          thresholds. Scores express margins relative to these thresholds and
+          remain unchanged by the walking prior. The plots share a time range;
+          dragging or scrolling zooms, and clicking a curve selects a sample.
         </p>
         <MotionPlot
           :times="record.times"
@@ -638,16 +636,17 @@ onBeforeUnmount(() => {
       <footer>
       <p class="scope target-definition">
         Targets use SuperOdom LiDAR-inertial poses and measured-joint FK. Window
-        labels indicate stationarity; graph labels infer support. Neither
-        measures contact force. A stationary foot held in the air can also pass
-        this test. The later classifier will use onboard measurements only.
+        labels indicate stationarity, and graph labels infer support. Their
+        motion-based evidence can also classify a foot held stationary in the air.
+        Independent force measurements would be needed to validate physical
+        contact. A future classifier would use onboard measurements only.
       </p>
       <p class="scope support-definition">
-        Walking support prior: if one contact origin clearly translates and the
-        other does not, the other foot is likely in contact. Inferred support
-        includes rocking; it does not establish a stationary sole. Both feet
-        translating, rotation alone, or incomplete windows produce no inference.
-        Uncheck the prior to inspect raw motion labels.
+        The walking support prior favors contact for the less-translating foot
+        when the other contact origin clearly translates. This support category
+        includes rocking. Both feet translating, rotation alone, or incomplete
+        windows leave the raw motion labels unchanged. Disabling the prior
+        displays the raw labels throughout.
       </p>
       <section class="threshold-note">
         <strong>{{ record.windowSeconds * 1000 }} ms centered window</strong
@@ -673,13 +672,15 @@ onBeforeUnmount(() => {
         ><small
           >Speed uses window endpoints. Excursion checks every sample against
           the central pose, catching motion that returns to its starting point.
-          No gap filling; source context is included outside each
-          snippet.</small
+          Windows use the available source samples, including context outside
+          each snippet. Gaps remain unfilled.</small
         >
       </section>
         <p class="scope">
-          The reported agreement compares models; it is not accuracy against
-          measured contact. No rotation or window statistics enter the graph.
+          The reported agreement measures consistency between the two models.
+          Graph measurements use consecutive translation differences and optional
+          joint-derived forward velocities. Rotation and window statistics belong
+          to the window model.
         </p>
         <p>
           <a :href="record.source.sourceUrl"
@@ -691,8 +692,8 @@ onBeforeUnmount(() => {
           <a href="./MODEL_LICENSE.txt">Robot model license</a>.
         </p>
         <p>
-          SuperOdom is a LiDAR-inertial reference, not independent motion
-          capture. Reference error and finite-difference noise affect these
+          SuperOdom provides the LiDAR-inertial odometry reference. Its estimation
+          error and finite-difference noise affect these
           derived targets. Uncertain samples should be masked when training.
           Target generation and future classifier evaluation require separate
           recordings or held-out intervals.

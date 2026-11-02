@@ -5,15 +5,15 @@ const contact = {
 };
 const upright = {
   id: 'upright', name: 'Upright prior · optional',
-  description: 'A root-orientation prior penalizes pelvis tilt relative to the world vertical. It leaves heading free. The rotation standard deviation is specified in degrees; it is a modeling assumption rather than an IMU measurement.',
+  description: 'A root-orientation prior penalizes pelvis tilt relative to the world vertical. It leaves heading free. The rotation standard deviation, specified in degrees, sets the strength of this modeling assumption.',
 };
 const height = {
   id: 'height', name: 'Contact-height prior · optional',
-  description: 'A scalar ContactHeightFactor on each sole landmark penalizes its vertical distance from the selected ground height. Horizontal position and yaw remain free. This is a soft prior, not a nonpenetration inequality.',
+  description: 'A scalar ContactHeightFactor on each sole landmark penalizes its vertical distance from the selected ground height. Horizontal position and yaw remain free. The Gaussian prior assigns a finite cost to height errors, including penetration below the ground.',
 };
 const motion = {
   id: 'motion', name: 'Weak motion prior · optional in initialization',
-  description: 'A BetweenFactor<Pose3> with identity relative motion weakly discourages large changes between consecutive root poses. It regularizes poorly constrained contact chains; it does not measure robot motion or replace inertial integration.',
+  description: 'A BetweenFactor<Pose3> with identity relative motion weakly discourages large changes between consecutive root poses. It regularizes poorly constrained contact chains. Inertial measurements enter through separate factors when enabled.',
 };
 const normal = {
   id: 'normal', name: 'Sole-normal alignment · sequence dependent',
@@ -33,15 +33,15 @@ const imu = {
 };
 const inertialPriors = {
   id: 'inertial-priors', name: 'Velocity and shared-bias priors · with IMU',
-  description: 'A prior on the first world-frame COM velocity anchors the velocity chain. One ConstantBias prior regularizes the shared sensor-axis bias; the gyro mean comes from the initial stationary interval. There is no bias random-walk chain. Noise assumptions are recorded below with the numerical results.',
+  description: 'A prior on the first world-frame COM velocity anchors the velocity chain. One ConstantBias prior regularizes the shared sensor-axis bias; the gyro mean comes from the initial stationary interval. The bias remains constant throughout the recording. Noise assumptions are recorded below with the numerical results.',
 };
 const loop = {
   id: 'loop', name: 'Final-position prior · optional',
-  description: 'PoseTranslationPrior3D places the final root COM near the start anchor, with position standard deviations of 30 cm horizontally and 5 cm vertically. It adds no orientation constraint and preserves the chain structure. This is an assumed return-to-start observation, not detected LiDAR loop closure.',
+  description: 'PoseTranslationPrior3D places the final root COM near the start anchor, with position standard deviations of 30 cm horizontally and 5 cm vertically. Orientation remains free, and the graph retains its chain structure. The measurement expresses an assumed return to the starting position.',
 };
 const gauge = {
   id: 'gauge', name: 'World-frame gauge',
-  description: 'The first root pose fixes the otherwise arbitrary world frame. Initialization fixes that pose; smoothing uses a tight first-root prior. Subsequent LiDAR-inertial reference poses are used for evaluation rather than added as trajectory pose measurements.',
+  description: 'The first root pose fixes the otherwise arbitrary world frame. Initialization fixes that pose; smoothing uses a tight first-root prior. Subsequent LiDAR-inertial reference poses are reserved for evaluation.',
 };
 
 export const papers = {
@@ -55,43 +55,43 @@ export const papers = {
       { id: 'velocity', name: 'Per-foot unary joint-velocity measurement · optional', description: 'The sole’s forward velocity relative to the pelvis, computed from measured joint velocities, gives stance/swing weights through a bounded logistic potential. Backward motion favors stance; forward motion favors swing. Each factor is agnostic about the other foot. This heuristic is most appropriate for forward walking.' },
       { id: 'support', name: 'Within-slice support coupling', description: 'A binary factor on the left and right variables penalizes simultaneous swing while remaining neutral between the three supported configurations. Its soft form permits both-swing assignments when other evidence dominates.' },
       { id: 'transition', name: 'Four-variable transition prior', description: 'One factor connects both feet at slices k and k+1. Its table assigns relative weights to the sixteen possible transitions between joint configurations (WW, WS, SW, SS); W means swing and S means stance, with the left foot listed first.' },
-      { id: 'duration', name: 'Per-foot three-slice duration prior', description: 'A factor on three consecutive labels penalizes an isolated one-slice stance or swing event. At 50 Hz this discourages 20 ms flicker. It is a soft prior, not a hard minimum phase duration.' },
-      { id: 'walking', name: 'Hard walking constraints · optional, enabled by default', description: 'Additional zero/one factors forbid simultaneous swing and forbid direct left-only ↔ right-only exchanges. A support exchange must pass through at least one double-stance slice. These constraints multiply with the soft factors rather than modifying their tables.' },
+      { id: 'duration', name: 'Per-foot three-slice duration prior', description: 'A factor on three consecutive labels penalizes an isolated one-slice stance or swing event. At 50 Hz this discourages 20 ms flicker. Short phases remain possible when measurement evidence outweighs the finite penalty.' },
+      { id: 'walking', name: 'Hard walking constraints · optional, enabled by default', description: 'Additional zero/one factors forbid simultaneous swing and forbid direct left-only ↔ right-only exchanges. A support exchange must pass through at least one double-stance slice. These constraints multiply with the existing soft factors, whose tables remain unchanged.' },
       { id: 'initial', name: 'Initial configuration prior', description: 'A uniform prior on the first left/right pair supplies no preference among the four joint configurations. Context samples outside the displayed snippet reduce boundary effects.' },
     ],
-    discussion: 'The graph estimates support under stated walking assumptions; it does not measure contact force. Agreement with the window model is not labeled-contact accuracy. The next app uses these phases to connect root poses through shared sole-pose landmarks.',
+    discussion: 'The inferred support sequence depends on the motion evidence and walking assumptions. Agreement with the window model measures consistency between two inference methods; validating contact accuracy would require independent contact measurements. Contact Initialization uses these phases to connect root poses through shared sole-pose landmarks.',
     next: 'contact-initialization', nextTitle: 'Contact Initialization',
   },
   'contact-initialization': {
     abstract: 'Given contact phases, this app initializes a walking trajectory with a continuous pose factor graph. Root-relative sole observations connect pelvis poses to shared stance landmarks; independently selectable priors show how regularization affects the estimate.',
-    motivation: 'Independent inverse kinematics does not exploit the fact that a stance foot is observed from multiple root poses. A shared landmark couples those poses and can initialize global motion without integrating inertial data. Weakly constrained directions still need a gauge and carefully chosen priors.',
-    approach: 'Measured joint configurations provide root-relative sole poses. The graph estimates one root pose at each retained slice and one world-frame contact pose per uninterrupted stance. Short double-stance phases contribute a central slice; long phases retain buffered endpoints and evenly distributed slices with at most 200 ms between them. The browser selects recorded native solves rather than optimizing online.',
+    motivation: 'A stance foot provides observations of the same foothold from multiple root poses. A shared landmark couples those poses and can initialize global motion from contact and encoder observations. Weakly constrained directions still need a gauge and carefully chosen priors.',
+    approach: 'Measured joint configurations provide root-relative sole poses. The graph estimates one root pose at each retained slice and one world-frame contact pose per uninterrupted stance. Short double-stance phases contribute a central slice; long phases retain buffered endpoints and evenly distributed slices with at most 200 ms between them. The browser selects results from recorded native solves.',
     graph: 'initialization',
     factors: [contact, gauge, motion, height, upright, normal],
-    discussion: 'Small contact residuals do not guarantee an accurate trajectory: contact schedules, sole rocking, pose noise, and priors affect the result. The next app compares this joint contact initialization with independent inverse kinematics before applying the same smoothing graph.',
+    discussion: 'Trajectory accuracy depends on contact timing, sole rocking, pose noise, and the chosen priors. Contact residuals report how well the estimate fits those assumptions. Contact vs IK compares this joint contact initialization with independent inverse kinematics before applying the same smoothing graph.',
     next: 'contact-vs-ik', nextTitle: 'Contact vs IK',
   },
   'contact-vs-ik': {
-    abstract: 'Contact and inverse-kinematics initializers feed the same G1 smoothing factor graph. Compare recorded iterations, constraint violations, and residuals on identical walking snippets to inspect the effect of initialization.',
+    abstract: 'Contact and inverse-kinematics initializers feed the same G1 smoothing factor graph. Recorded iterations, constraint violations, and residuals on identical walking snippets show how initialization affects convergence.',
     motivation: 'A nonlinear smoother can depend strongly on its starting point. Per-slice IK is simple, while shared contact landmarks couple observations over time. Comparing both on identical slices and objectives isolates the effect of initialization.',
     approach: 'The contact initializer jointly estimates root and stance poses; IK solves retained slices independently. CM-Opt then smooths both trajectories using exact articulated kinematics, encoder measurements, and stance landmarks. The IMU switch selects an inertially aided graph. The two viewers share time selection and expose their own recorded optimizer iterations.',
     graph: 'smoothing',
     factors: [kinematics, encoders, contact, gauge, imu, inertialPriors,
-      { ...motion, name: 'Contact-initializer motion prior', description: `${motion.description} This belongs to initialization, not the subsequent smoothing graph.` },
+      { ...motion, name: 'Contact-initializer motion prior', description: `${motion.description} This prior is active only during initialization.` },
       { ...height, name: 'Contact-initializer height prior' },
       { ...upright, name: 'Contact-initializer upright prior' },
-      { id: 'ik', name: 'IK initialization objectives', description: 'Each retained slice uses a nominal root-pose prior, joint-angle measurements, articulated kinematic factors, active sole-height and sole-normal objectives, and a foot-link pose prior toward a stance target frozen at its first observation. Root guesses follow a commanded nominal path rather than the LiDAR trajectory. The stance targets are fixed inputs, not jointly estimated landmark variables; the subsequent smoother estimates shared landmarks for both methods.' },
+      { id: 'ik', name: 'IK initialization objectives', description: 'Each retained slice uses a nominal root-pose prior, joint-angle measurements, articulated kinematic factors, active sole-height and sole-normal objectives, and a foot-link pose prior toward a stance target frozen at its first observation. Root guesses follow a commanded nominal path. The IK stance targets remain fixed at their input values. The subsequent smoother estimates shared landmarks for both methods.' },
     ],
-    discussion: 'Compare equality violation, physical residuals, reference disagreement, and stopping conditions together; objective values alone do not establish accuracy. The next app extends contact-initialized smoothing to the full recording and compares prior combinations.',
+    discussion: 'Trajectory quality is assessed through equality violation, physical residuals, reference disagreement, and stopping conditions. The objective measures the fit of the weighted factors. Kinematics extends contact-initialized smoothing to the full recording and compares prior combinations.',
     next: 'kinematics-inspector', nextTitle: 'Kinematics',
   },
   'kinematics-inspector': {
     abstract: 'This app estimates the full G1 trajectory with a factor graph combining articulated kinematics, shared stance poses, and optional IMU aiding. Recorded prior combinations expose convergence, contact slip, and disagreement with the LiDAR-inertial reference.',
-    motivation: 'Frame-by-frame reconstruction cannot accumulate all contact and inertial evidence consistently. Smoothing couples the trajectory while retaining each sensor’s uncertainty and keeping exact robot kinematics separate from soft measurements.',
-    approach: 'Initialization and smoothing use exactly the same contact-selected slices, with a default maximum spacing of 200 ms inside long double-stance phases. ContactPoseFactor observations share landmarks across each stance. Gal3 pims span the actual irregular intervals. CM-Opt enforces articulated kinematics; display interpolation adds no estimation states. Reference alignment changes evaluation and overlays only.',
+    motivation: 'Contact and inertial observations constrain motion across multiple slices. Smoothing combines this evidence over the trajectory while representing sensor uncertainty and enforcing exact robot kinematics.',
+    approach: 'Initialization and smoothing use exactly the same contact-selected slices, with a default maximum spacing of 200 ms inside long double-stance phases. ContactPoseFactor observations share landmarks across each stance. Gal3 pims span the actual irregular intervals. CM-Opt enforces articulated kinematics. Interpolation is confined to playback, and reference alignment changes evaluation and overlays only.',
     graph: 'smoothing',
     factors: [kinematics, encoders, contact, gauge, imu, inertialPriors, loop, upright, height],
-    discussion: 'The reference is SuperOdom LiDAR-inertial odometry, not independent motion capture. Contact inference uses privileged reference motion, and IMU noise assumptions are not calibrated sensor specifications. Inspect error budgets and stopping conditions alongside aligned position error. Interpolation fits velocities using this saved kinematic trajectory and dense encoder measurements before Dynamics estimates accelerations and forces.',
+    discussion: 'SuperOdom LiDAR-inertial odometry supplies the reference trajectory and privileged motion used for contact inference. IMU noise scales are chosen modeling parameters whose calibration remains to be established. Error budgets, stopping conditions, and aligned position error describe different aspects of the solution. Interpolation fits velocities using this saved kinematic trajectory and dense encoder measurements before Dynamics estimates accelerations and forces.',
     next: 'interpolation', nextTitle: 'Interpolation',
   },
   dynamics: {
@@ -115,19 +115,19 @@ export const papers = {
   },
   'motion-planning': {
     abstract: 'This app optimizes a Franka arm trajectory between two hand poses using a kinematic factor graph. Robot states and temporal factors expose how the same GTDynamics formulation can describe desired motion after the estimation examples.',
-    motivation: 'Interpolating endpoint configurations does not ensure the hand follows its requested poses or that angles and velocities describe one consistent trajectory. Trajectory optimization introduces those requirements explicitly and uses regularization to resolve redundant arm motion.',
+    motivation: 'A motion plan must satisfy requested hand poses while keeping joint angles and velocities consistent over time. Trajectory optimization expresses these requirements as factors and uses regularization to resolve redundant arm motion.',
     approach: 'Each slice contains joint angles q, joint velocities q̇, link COM poses T, and link twists V. Within-slice factors express articulated kinematics; temporal factors discretize integration and smooth joint velocity. GTSAM Levenberg–Marquardt minimizes their weighted residuals. The browser replays a recorded native solve; a local backend enables endpoint editing and new solves.',
     graph: 'planning',
     factors: [
-      { id: 'kinematics', name: 'Position and velocity kinematics', description: 'qFactors and vFactors relate joint coordinates and rates to link COM poses and twists, including the fixed-base relationships. In this LM example they are strongly weighted soft factors, not CM-Opt equality constraints.' },
+      { id: 'kinematics', name: 'Position and velocity kinematics', description: 'qFactors and vFactors relate joint coordinates and rates to link COM poses and twists, including the fixed-base relationships. This LM example represents those relationships as strongly weighted soft factors.' },
       { id: 'endpoint', name: 'Endpoint hand-pose priors', description: 'Pose3 priors fit the start and goal hand frames. Translation and rotation residuals are tightly weighted; displayed endpoint residuals report metres and degrees independently.' },
       { id: 'rest', name: 'Endpoint rest priors', description: 'Unary joint-velocity priors impose near-zero velocity at the first and last slices, encouraging the arm to start and finish at rest.' },
       { id: 'joint-integration', name: 'Joint trapezoidal integration', description: 'A four-variable factor penalizes qₖ₊₁ − qₖ − Δt(q̇ₖ + q̇ₖ₊₁)/2, coupling joint angles and velocities at consecutive slices.' },
       { id: 'pose-integration', name: 'Pose trapezoidal integration', description: 'A four-variable pose/twist factor compares the relative link COM pose with the motion predicted by the two endpoint body twists, transporting them into a common tangent frame.' },
       { id: 'smoothness', name: 'Joint-velocity smoothness', description: 'Between factors penalize consecutive joint-velocity differences with variance proportional to Δt. The summed cost approximates an integral of squared joint acceleration.' },
       { id: 'posture', name: 'Weak posture priors', description: 'Joint-angle priors toward the home configuration select among redundant arm solutions. Their strength scales with the number of slices so changing discretization does not simply multiply the posture preference.' },
-      { id: 'limits', name: 'Joint-angle limit costs', description: 'Limit factors penalize angles outside the configured joint range. This example does not include collision avoidance, wrench feasibility, or full dynamic trajectory optimization.' },
+      { id: 'limits', name: 'Joint-angle limit costs', description: 'Limit factors penalize angles outside the configured joint range. Collision avoidance, wrench feasibility, and full dynamic trajectory optimization remain extensions to this kinematic example.' },
     ],
-    discussion: 'The optimized trajectory is kinematic; MuJoCo playback uses position control and can show tracking error. This Franka demonstration does not consume the G1 estimate or constitute a G1 controller. Extending estimation toward dynamic motion planning requires contact consistency, actuator limits, and collision constraints in the optimization problem.',
+    discussion: 'MuJoCo tracks the optimized kinematic trajectory with position control, which introduces execution error. The Franka problem uses its own robot model and endpoint targets. Extending the G1 estimation pipeline toward dynamic motion planning requires contact consistency, actuator limits, and collision constraints in the optimization problem.',
   },
 };

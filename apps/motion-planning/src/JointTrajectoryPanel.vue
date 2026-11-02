@@ -121,14 +121,14 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
 <template>
   <section ref="panel" class="joint-panel" aria-labelledby="joint-panel-title" :data-iteration="snapshot?.iteration ?? ''">
     <div class="joint-header">
-      <div><span class="section-kicker">JOINT TRAJECTORIES</span><h2 id="joint-panel-title">See how each joint moves.</h2>
-        <p>One plot per joint, synchronized in trajectory time and optimizer iteration.</p></div>
+      <div><span class="section-kicker">JOINT TRAJECTORIES</span><h2 id="joint-panel-title">Joint angles and velocities</h2>
+        <p>Each joint has a plot synchronized to trajectory time and the selected optimizer iteration.</p></div>
       <div class="joint-options">
         <label>Units <select v-model="angleUnit" aria-label="Joint plot angle units"><option value="degrees">Degrees</option><option value="radians">Radians</option></select></label>
         <span class="joint-iteration">ITERATION <strong>{{ snapshot?.iteration ?? '—' }}</strong></span>
       </div>
     </div>
-    <p v-if="!curves.length" class="joint-empty">Build the factor graph to inspect joint angles and velocities. Solve to watch the time series evolve.</p>
+    <p v-if="!curves.length" class="joint-empty">Joint-angle and velocity plots become available after graph construction. Each optimizer iteration updates the plotted trajectory.</p>
     <template v-else>
       <div class="joint-legend">
         <span v-for="quantity in quantities" :key="quantity.key" :style="{ color: quantity.color }">
