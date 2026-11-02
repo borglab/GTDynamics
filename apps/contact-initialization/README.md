@@ -1,276 +1,165 @@
 # Contact Initialization
 
-A reusable **C++ GTSAM alternative to inverse-kinematics initialization**,
-illustrated with Unitree G1 motion. Measured joint geometry is frozen at contact
-boundaries and supplemental samples so frame gaps are at most one second.
-GTSAM estimates only the selected root poses and shared stance landmarks.
+Inspect the native `Initializer.InitializeSolutionContactPoses` solve on the same
+three SSIO snippets as Contact Labels: 24–44 s, 78–98 s, and 198–218 s.
+The policy walk and retargeted step-touch use the same sampling policy. Each foot has one fixed sole frame; each uninterrupted stance has one
+world `Pose3` landmark. The app has no point/patch selector or point-landmark solve.
 
-The browser loads recorded native iterations and timings. It performs no graph
-initialization or optimization. Both the 8-second policy walk from [PR #446](https://github.com/borglab/GTDynamics/pull/446)
-and a downloaded 30-second [G1 Moves step-touch capture](https://huggingface.co/datasets/exptech/g1-moves)
-are selectable. The latter is retargeted human motion, with explicitly heuristic
-contact labels and two contact components separated by a short hop.
+The browser replays native iterations, timings, factor budgets and reference
+errors. It performs no optimization. Its MuJoCo FK positions the canonical model
+from measured joint angles; saved root COM poses are converted to pelvis body
+poses explicitly for display. RGB axes show estimated sole frames. Origin dots
+are visual markers, not separate point variables.
 
-![G1 contact initialization app](docs/preview.jpg)
+## SSIO experiments
 
-## Run the app
+`export_ssio_recordings.py` consumes the exact saved max-product `supportGraph.states`
+from Contact Labels, including joint-velocity unaries, duration priors, and hard
+walking constraints. It does not infer another schedule. These are privileged
+labels derived partly from SuperOdom LiDAR-inertial motion, not independent contact
+measurements. The first selected root pose also fixes the gauge from that reference;
+subsequent reference poses are used only to evaluate the result.
 
-With Node.js 22 or newer, from the repository root:
+`initialization_slices` reuses native double-support selection: one central slice
+from phases up to 200 ms, or evenly spaced slices between one-sample-buffered
+endpoints for longer phases, with no within-phase gap above 200 ms. This is the
+default for all five recordings; `--max-slice-interval-ms` sets the limit. Only these slices
+are optimized; there is no dense expansion. The full snippet phases still determine
+stance continuity. The strip shows the saved support states and selected slices.
+
+Before solving, one constant vertical translation is applied to the gauge and
+reference poses so the mean sole height at the first selected slice is zero. The
+translation is recorded in `metadata.snippetWorldTranslation`; joint FK and labels
+are unchanged. This avoids imposing a zero-height prior in the full recording's
+unrelated vertical frame.
+
+All configurations use `initializeUpright=true`. Starting values propagate only
+the yaw component of relative-root observations, preserve the anchor's initial
+tilt, and translate each root to match the continuing contact origin. This option
+is independent of the upright prior: it adds no factors or sensors, and the solve
+still estimates unrestricted six-dimensional poses. Original full-pose starting
+values remain the native default for other clients.
+
+All eight combinations of three priors are saved; all three are enabled by default:
+
+- Pelvis upright: **15°** small-angle scale; uses the existing point-contact
+  initializer's `contact_init::UprightFactor`. Position and yaw are free.
+- Weak zero-motion: **10 m / 180°** per selected-pose interval, using the existing
+  identity `BetweenFactor<Pose3>`. These are fixed per-edge sigmas, not measured
+  velocity or IMU factors, and are not scaled by elapsed time.
+- Contact height: **zero ± 10 cm**, using `ContactHeightFactor` on each sole landmark.
+  Sole-normal alignment is disabled independently; this prior constrains only Z.
+
+Contact observation standard deviations are **1 cm / 90°**. Rotation configuration
+is specified in degrees and explicitly converted at the native API boundary. The
+fixed gauge has no upright factor because its contribution would be constant.
+Each configuration records up to 200 LM iterations, convergence status, factor
+errors, reference errors, and timings (11 calls after 2 warmups; history recorded
+in a separate untimed call). A no-decrease LM return is labeled **stalled**, rather
+than converged, unless the gradient norm is at most 1e-6. Positive but small
+objective improvements retain the usual stopping criterion. A smaller objective is not necessarily a more accurate
+reference trajectory. The full-trajectory Kinematics recordings are unchanged by
+this experiment.
+
+With the model packages and native bindings available:
+
+```sh
+python apps/contact-initialization/scripts/export_ssio_recordings.py
+```
+
+The input defaults to the existing ignored `openio-contact-source` cache. The
+exporter records source indices, saved-label fingerprints, and native/exporter
+source hashes. The app loads only the selected snippet's compressed data and runs.
+All calculations are offline; the browser replays iterations and compares priors.
+The dataset attribution is linked alongside the label interpretation.
+
+## Legacy model and graph
+
+The shared Python pipeline uses pinned Menagerie `g1_mjlab`, MJLab and MuJoCo
+packages. It defines +X forward, +Y left, +Z up sole frames on the foot capsule
+lower envelope. `mujoco_io.contact_frames` converts these body-frame transforms
+to the link COM frames used by GTDynamics. All FK and model geometry are derived
+from that pipeline, independent of another recording's embedded geometry.
+
+The existing contact schedules are preserved. Phases carry
+`PoseContactConstraintSpec`; the initializer returns the selected source slices,
+actual times, frozen root-relative contact poses, and native stance indices.
+The app does not maintain a second association or graph-building algorithm.
+The current policy recording selects 148 slices and 38 stance poses; the capture
+selects 86 slices and 19 stance poses. Supported phase boundaries and supplemental
+samples are selected by the native API, with `contactBuffer=0` for this app.
+
+For frozen FK `Z_ij = rootCOM_T_sole(q_i)`, the pose observation relates root pose
+`X_i` to stance pose `C_j` through `X_i Z_ij = C_j`. The native six-dimensional
+pose residual has rotation sigma 90° and translation sigma 0.01 m. The first
+root COM pose is fixed exactly; its corresponding pelvis body pose is identity.
+No reference or IMU factors enter this graph. Continuing stance landmarks persist
+across phases; lift-off creates a fresh landmark on recontact.
+
+## Shared priors and evaluation
+
+Both exporters use `prior_configurations()` for the same three checkboxes and
+noise settings: weak motion **10 m / 180°**, pelvis upright **15°**, and contact
+height **10 cm**. Contact observations use **1 cm / 90°**, upright starting values
+are enabled, and sole-normal alignment is disabled. The non-SSIO ground level is
+derived from initial-gauge FK; it need not be zero in the solve frame. The viewer
+subtracts that level for display. Reference poses do not determine this level.
+
+Policy walk has eight saved combinations. Step-touch has four: its hop separates
+support components, so the weak motion prior stays on to connect them under one
+fixed gauge. Height and upright remain independently selectable. All three priors
+are enabled by default, without choosing defaults using reference accuracy.
+
+Reference poses are held out until evaluation and aligned to the fixed first
+pose. The app reports translation/orientation RMSE, unwhitened contact RMS, and
+per-family factor errors. These are different motion sources, not an initializer
+accuracy benchmark. Capture provenance and the retained candidate-support
+heuristic are documented in [DATA.md](DATA.md).
+
+Recordings are compressed `.json.gz` bundles stored in Git LFS. Regeneration removes
+the superseded uncompressed recording for each selected clip. The SSIO bundles
+were retained byte-for-byte when the legacy configurations were unified; their
+source fingerprints still describe their original export, before the shared-settings
+refactor. Native code and input-data fingerprints remain checked.
+
+## Timings and reproduction
+
+Every valid configuration has two warmups and eleven timed calls, with history
+disabled. A separate call records native LM snapshots. The cap is 200 iterations. The app reports all timing samples plus
+median, minimum and nearest-rank p95.
+
+Native `graphBuildMs` includes measured-joint FK, seed propagation and graph
+construction; `optimizationMs` measures LM. Native total excludes dense FK
+expansion. The separately measured full-call wall time includes dense expansion
+and binding overhead. Reference evaluation and JSON packaging are outside all
+measured scopes. The pose initializer is the same native API used by Kinematics;
+there is no separate C++ JSON solver or Python optimizer.
+
+Install `examples/g1_mjlab/requirements-model.txt` in a Python 3.12 environment
+with matching GTSAM/GTDynamics bindings. From the repository root:
 
 ```bash
+cmake --build build --target gtdynamics_py testPoseContacts.run -j6
+export PYTHONPATH="$PWD/build/python:/path/to/gtsam/build/python"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 python \
+  apps/contact-initialization/scripts/export_native_recordings.py \
+  --sequence g1-policy-8s --sequence g1-steptouch-30s
+python apps/contact-initialization/backend/test_exporter.py
 cd apps
 npm ci
 npm run models
-npm run dev --workspace contact-initialization
-```
-
-Open <http://127.0.0.1:3003/>. For the shared app site, run `npm run dev` from
-`apps` and open <http://127.0.0.1:3000/>. The model bootstrap downloads the pinned
-MuJoCo Menagerie assets; the build includes them in the static site. Playback
-requires WebGL, but no native server or Python process. All production asset
-URLs are relative.
-
-The viewer uses `mujoco-js` and the detailed 29-joint Unitree G1 model from the
-pinned Menagerie checkout maintained by `scripts/bootstrap_mujoco_models.py`.
-It shares the compiled-model mesh renderer with Motion Planning. Measured joint angles drive MuJoCo forward
-kinematics; recorded GTSAM event poses place the robot, snapshots, and reference
-overlay. The browser replays these configurations without advancing physics.
-Contact footprints and solver recordings retain their original geometry.
-
-The [G1 visual model](https://github.com/google-deepmind/mujoco_menagerie/tree/a03e87bf13502b0b48ebbf2808928fd96ebf9cf3/unitree_g1)
-is distributed under Unitree's BSD-3-Clause license, included at
-`assets/unitree_g1/LICENSE`. Large model assets remain outside Git.
-
-## Reusable initialization API
-
-The GTSAM-only core is
-[`gtdynamics/utils/ContactInitializer.h`](../../gtdynamics/utils/ContactInitializer.h).
-It accepts `ContactMeasurements` containing the existing `Slice` context,
-the sample timestamp, and frozen FK observations with persistent stance IDs.
-`slice.k` preserves the original sample index; selected measurements need not
-be consecutive. The core returns poses,
-landmarks, `gtsam::Values`, diagnostics, and phase timings, and supports caller
-anchors and key conventions. Its implementation has no JSON or reference-data
-dependency.
-
-The GTDynamics adapter is:
-
-```cpp
-gtsam::Values seeds = initializer.InitializeSolutionContacts(
-    robot, rootLinkName, initialRootCOMPose,
-    measuredJoints, trajectory, dt, options, &diagnostics);
-```
-
-It matches the robot/root/initial-pose arguments and `Values` return type of
-`InitializeSolutionInverseKinematics`. The measured joints and a `Trajectory`
-of contact phases are the additional inputs. The adapter derives landmark continuity
-from each specification's `contactPoints()`, using link identity and fixed
-COM-frame points. It includes non-ground contacts; height objectives separately
-use `groundContactPoints()` and the contacts' `isGround` flags.
-A new contact after an absence gets a fresh landmark; no episode schedule or
-touchdown IDs are required. Supported phase boundaries and supplemental frames
-feed the sparse solve, then root interpolation and FK expand every trajectory
-slice. Unsupported prefix/suffix poses are held constant; internal flight is
-interpolated. Measured joint angles and velocities are preserved, using normal
-GTDynamics `PoseKey(link_id, sample)` keys.
-
-An estimator that accepts a root pose seed can consume those poses while keeping
-its own IMU twists, velocities, and bias initialization. The C++ adapter rejects
-disconnected schedules rather than silently joining unrelated gauges. This is
-a compatible pose-seeding workflow, not a literal replacement for IK's desired
-pose inputs. The same API is exposed in the standard `gtdynamics` Python package.
-
-See [the integration example and API contract](docs/initializer-api.md).
-
-## Factor graph and native solve
-
-For a fixed sole point `a_j`, FK at event `i` supplies a fixed measurement
-`p_ij = root_T_foot(q_i) a_j`. Each touchdown creates a fresh stance landmark
-set; all events within that stance share it. The objective is
-
-```text
-minimize sum_(i,j) || R_i p_ij + t_i - c_j ||²
-```
-
-Joint angles and individual link poses are not optimization variables. The
-first pose of each connected component is held constant by excluding its key
-from the optimized state; its contact factors become unary landmark factors.
-The default adds no motion or attitude prior. Optional factors are described below; IMU and reference factors are never added.
-
-The initializer first traverses the contact graph, registering frames against
-already placed contacts using a small rigid SVD fit. For 3D patches it also
-tries a traversal using the centroid of each patch's contact points, retaining the
-seed with lower contact cost on the full patch observations. This avoids
-accumulating foot-rocking tilt in the seed without adding height or attitude
-constraints. If the set of contact points changes between frames, it skips the
-centroid candidate. Then
-`gtsam::LevenbergMarquardtOptimizer` jointly updates all free event `Pose3` and
-contact variables, with analytic Jacobians and multifrontal Cholesky. Numerical
-LM diagonal damping permits point-mode solves but adds no measured attitude
-information. The recorded cap is 100 LM iterations; stopping tolerances are
-relative objective improvement `1e-8` or absolute improvement `1e-12`.
-
-The app offers two contact models, both with free `Point3` landmark heights:
-
-| Mode | Contact variables | Assumption |
-| --- | --- | --- |
-| Contact-only sole patch | Three `Point3` landmarks per stance | Stationary rigid sole, with no terrain constraint |
-| One contact point | One `Point3` per stance | Point support; rotations remain ambiguous |
-
-Landmark heights are constrained only when the height-prior checkbox is enabled.
-The native API and recording archive also retain the hard-floor `Model::Ground`
-experiment, but the app does not expose it. Given fixed world landmarks, one point provides pose rank 3, two distinct points rank
-5, and three noncollinear points rank 6. Local ranks do not certify global graph
-observability or physical validity of the no-slip assumption.
-
-G1 rocks its feet about 11 degrees per stance on median in the original rollout.
-That model mismatch accumulates through contact-only rigid soles. A small
-contact residual is not a guarantee of trajectory accuracy.
-
-## Explore optional factors
-
-The contact selector and checkboxes inside the animation window select all
-eight saved combinations of weak motion, upright, and landmark-height priors
-for each of the two contact models, for both sequences (32 selectable native
-configurations). Every solve, timing measurement,
-and held-out error calculation runs in C++; the browser selects saved results.
-Large timing and error cards appear above the viewer. The comparison table
-appears below the animation.
-
-`Options::addBetweenFactors` adds an identity `BetweenFactor<Pose3>` between
-consecutive event poses. Its diagonal covariance is
-`diag(pi², pi², pi², 100, 100, 100)` in GTSAM's rotation-radian/translation-metre
-tangent order: standard deviations are 180 degrees and 10 metres. These weak
-motion assumptions connect separate contact components, and only the first
-pose then remains fixed. No relative motion is taken from the reference.
-
-`Options::addUprightFactors` adds the residual `R_i * Z - Z` on every pose,
-with a 15-degree small-angle standard deviation. It constrains tilt while
-leaving heading and translation free, and also penalizes upside-down poses.
-Fixed gauge poses retain their constant upright cost.
-
-`Options::addGroundFactors` adds one scalar residual `c_j.z - h` for each
-unique `Point3` landmark, with `groundSigma = 0.02` metres. The factor leaves
-XY unconstrained and does not reparameterize landmarks or project their seeds.
-By default, `h` is the mean height of the first stance's points transformed by
-the fixed first pose. The caller can instead supply `groundPriorHeight` in
-world coordinates. Reference poses never determine this height. Without this
-factor, landmark Z coordinates remain optimization variables with no floor
-constraint.
-
-All optional priors are off by default in the C++ API. The app initially selects
-3D sole landmarks and automatically selects the prior combination with the
-lowest saved translation RMSE among configurations matching the current
-height-prior checkbox when the sequence or contact model changes. Height starts
-off and changes only through an explicit checkbox or table-row selection.
-Manual checkbox changes still select any saved combination. All three standard
-deviations can be set through the native API.
-
-Contact RMS always uses contact residuals alone. The recorded weighted objective
-separately reports contact, between, upright, and ground-height costs. Reference pose errors
-are evaluated after solving, outside the timed scopes. Each independent graph
-component has one reference alignment; enabling weak motion changes this to
-one global alignment. The table labels this distinction for the longer clip.
-
-## Native timings and accuracy
-
-The checked-in measurements were regenerated on **October 31, 2026**, using
-**Intel Core i7-14700F, Linux x86_64, Ubuntu Clang 18.1.3, Release, GTSAM 4.3.2**,
-one Eigen thread, and `MULTIFRONTAL_CHOLESKY`. Each model has 2 warmups and
-11 fresh runs. The app reports medians, minima, p95, all raw samples, iteration
-counts, build details, and exact source/data hashes. The p95 is the empirical
-nearest-rank quantile; with 11 repetitions it is the maximum sample.
-
-| Sequence / mode | Native LM median | Initializer total median | LM iterations | 3D contact RMS |
-| --- | ---: | ---: | ---: | ---: |
-| 8 s policy / contact-only patch | 267.24 ms | 267.80 ms | 100, cap reached | 10.85 mm |
-| 8 s policy / one point | 5.49 ms | 5.61 ms | 7 | 1.89 mm |
-| 30 s capture / contact-only patch | 65.24 ms | 65.62 ms | 68 | 17.67 mm |
-| 30 s capture / one point | 6.12 ms | 6.22 ms | 10 | 15.34 mm |
-
-The table above shows the configurations without optional priors. All eight combinations
-are saved in the recording files and compared in the UI. The archive includes
-24 configurations per sequence (three contact models × eight prior combinations);
-the UI exposes the patch and point models.
-
-The longer capture has fewer selected frames (55 versus 75), different motion and
-contact evidence, and disconnected components; its shorter solve time is not a
-duration-scaling benchmark. These measurements do not establish a speedup over
-an IK initializer.
-
-The core timer separates rigid registration seed, graph construction, and LM.
-Optimization includes LM construction, linearization, damping, and sparse solves.
-Repeated timing runs disable history capture; a separate run records snapshots.
-FK extraction, dataset adaptation, reference evaluation, dense adapter expansion,
-file IO, JSON, network, and rendering are excluded. Total time covers the sparse
-initializer, not an end-to-end estimator initialization. Individual phase
-medians need not sum exactly to the total median.
-
-The 8-second contact-only patch result has root position RMSE 1.168 m and
-orientation RMSE 85.45 degrees, after aligning only the first event, and reaches
-the iteration cap. With only the height prior enabled, patch RMSE is 0.229 m /
-13.48 degrees; with motion and height it is 0.195 m / 8.11 degrees. The point-mode displayed
-solution gives 0.285 m / 7.58 degrees, but its attitude remains underconstrained.
-Recorded root poses are supplied separately for post-solve C++ evaluation and
-display. They never enter the initializer or its optimization graph.
-
-For the 30-second capture, each support component is aligned independently at
-its first event. The contact-only patch component-relative RMSE is 0.316 m / 17.84 degrees;
-this is not accuracy of one globally recovered 30-second trajectory. No factor
-or rendered trajectory line connects the independent components in contacts-only
-mode. Enabling weak motion explicitly connects them using a prior.
-
-## Build C++ and reproduce recordings
-
-The benchmark builds on its own with GTSAM and Boost 1.75 or newer:
-
-```bash
-cmake -S apps/contact-initialization/backend -B /tmp/contact-init-build \
-  -DCMAKE_BUILD_TYPE=Release -DGTSAM_DIR=/path/to/lib/cmake/GTSAM
-cmake --build /tmp/contact-init-build -j2
-ctest --test-dir /tmp/contact-init-build --output-on-failure
-python3 apps/contact-initialization/scripts/export_native_recordings.py \
-  --optimizer /tmp/contact-init-build/contact_initializer
-```
-
-On hosts with multiple CUDA installations, an installed GTSAM may require
-`-DCUDAToolkit_ROOT=/matching/cuda/path` for its transitive dependencies. The
-initializer and measured solves use the CPU.
-
-Alternatively enable `GTDYNAMICS_BUILD_CONTACT_INITIALIZATION_WEBDEMO=ON` in a
-normal GTDynamics build. The core and adapter are always included in the
-GTDynamics library; this option adds the benchmark executable and app tests.
-`testContactTrajectoryInitializer` exercises the installed-library API's COM
-frames, original sample keys, measured joints/velocities, dense expansion,
-input checks, and disconnected-schedule rejection.
-
-The native executable reads one JSON request from stdin or an input filename.
-It writes graph metadata, actual LM iterations, benchmark statistics, and build
-details. The Python exporter only orchestrates native runs and packages them;
-it does not solve the graph or evaluate pose errors. It strips reference and
-metadata from the solver dataset, supplies a separate `evaluationReference`
-field used only after solving, and records exact C++ source, binary, and dataset
-SHA-256 hashes. The baseline runs are in `models`; the seven additional factor
-combinations per contact model are in `variants`.
-
-Dataset generation, pinned downloads, contact thresholds, attribution, and
-licenses are documented in [DATA.md](DATA.md). The longer capture's height/speed
-heuristic does not create force measurements or establish no-slip contact.
-
-## App verification
-
-```bash
-cd apps
-npm test
+npm test --workspace contact-initialization
 npm run build
-PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
-  node contact-initialization/tests/app.browser.mjs
+npm run preview
 ```
 
-The app tests verify that MuJoCo visual FK matches the recorded body frames in
-both sequences, including reordered joint names. They independently recompute
-recorded residuals, verify native source
-and data hashes, anchors, hard floor constraints, history, and timing statistics.
-Browser regression covers both sequences, all modes and prior combinations,
-replay, top-level timing/error display,
-JSON export, camera/overlays, mobile layout, and `/GTDynamics/` asset URLs.
+Open `/#contact-initialization` in the app hub. The exporter preserves joint
+measurements, references and schedules, refreshes canonical display FK in the
+datasets, and replaces old point recordings with pose-only archives. Only the
+selected sequence is downloaded. Export initialization JSON includes full pose
+landmarks, native observations, frame conventions and timing provenance.
+
+The original point-contact library APIs and their C++ regression tests remain
+available to other clients. The legacy `backend/CMakeLists.txt` now builds only
+those point-core tests; it is not an app backend. See
+[the pose API contract](docs/initializer-api.md) for library integration.

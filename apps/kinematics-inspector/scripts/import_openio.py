@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parents[3]
 APP = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 sys.path.insert(0, str(REPO / "apps/contact-initialization/scripts"))
-from mujoco_io import load_model
+from g1_model import load_g1_model, model_description
 from export_g1_moves import detect_support
 from contact_discovery import component_count, sample_frames
 
@@ -215,9 +215,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, default=APP / ".cache/openio/source")
     parser.add_argument("--output", type=Path, default=APP / ".cache/openio")
-    parser.add_argument(
-        "--model-directory", type=Path, default=REPO / "examples/g1_mjlab/results"
-    )
     parser.add_argument("--start-seconds", type=float, default=204.0)
     parser.add_argument("--seconds", type=float, default=10.0)
     parser.add_argument("--fps", type=float, default=50.0)
@@ -269,7 +266,7 @@ def main() -> None:
             "Requested window exceeds recording or has fewer than two samples"
         )
     target = args.start_seconds + np.arange(0, args.seconds, 1 / args.fps)
-    model = load_model(args.model_directory)
+    model = load_g1_model()
     addresses = [
         int(model.jnt_qposadr[model.joint(f"robot/{name}").id]) for name in JOINT_NAMES
     ]
@@ -280,9 +277,15 @@ def main() -> None:
     )
     qpos = resample_qpos(model, times, target, arrays["pose"], angles, addresses)
 
-    description = json.loads(
-        (REPO / "apps/contact-initialization/public/g1-walk.json").read_text()
-    )["model"]
+    # Preserve measured joint rates for the example's contact-graph unaries.
+    qvel = np.zeros((len(target), model.nv))
+    for column, name in enumerate(JOINT_NAMES):
+        address = model.jnt_dofadr[model.joint("robot/" + name).id]
+        qvel[:, address] = np.interp(
+            target, times, arrays["joints"][:, column, channels["dq"][0]]
+        )
+
+    description = model_description(model)
     bodies = [model.body("robot/" + name).id for name in description["bodyNames"]]
     feet = {
         side: model.body(f"robot/{side}_ankle_roll_link").id
@@ -477,6 +480,7 @@ def main() -> None:
     np.savez_compressed(
         args.output / "walk.npz",
         qpos=qpos,
+        qvel=qvel,
         imu_time=times[imu_first:imu_last] - args.start_seconds,
         imu_acceleration=arrays["imus"][0, imu_first:imu_last, :3].astype(float),
         imu_angular_rate=arrays["imus"][0, imu_first:imu_last, 3:6].astype(float),

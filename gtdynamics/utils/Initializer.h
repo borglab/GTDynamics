@@ -15,8 +15,9 @@
 
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/universal_robot/Robot.h>
-#include <gtdynamics/utils/PointOnLink.h>
 #include <gtdynamics/utils/ContactInitializer.h>
+#include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -42,6 +43,32 @@ class Initializer {
   const Kinematics kinematics_;
 
  public:
+  /** Initialize from FK contact poses and phase association. Buffer each entire
+   * stance by contactBuffer source slices; return the exact selected indices in
+   * diagnostics. dt is the uniform source period; selected intervals may vary.
+   * Options can supply explicit selectedSlices (with contactBuffer=0) and
+   * disable dense interpolation via interpolateOutput=false. Stance IDs always
+   * come from the original complete trajectory, including unselected phases.
+   * Disconnected support requires explicit motion priors or is rejected. */
+  gtsam::Values InitializeSolutionContactPoses(
+      const Robot& robot, const std::string& rootLinkName,
+      const gtsam::Pose3& initialPose, const gtsam::Values& measuredJoints,
+      const Trajectory& trajectory, double dt = 1.0,
+      const pose_contact_init::Options& options = {},
+      pose_contact_init::Result* diagnostics = nullptr,
+      size_t contactBuffer = 0) const;
+
+  /** Per-slice IK using the same material contact frames as the contact
+   * initializer. rootGuesses follows trajectory slices and sets root priors;
+   * measured joint angles supply soft priors. Each stance target is frozen at
+   * its first FK observation. The callback receives global slice keys. */
+  gtsam::Values InitializeSolutionPoseIK(
+      const Robot& robot, const std::string& rootLinkName,
+      const std::vector<gtsam::Pose3>& rootGuesses,
+      const gtsam::Values& measuredJoints, const Trajectory& trajectory,
+      size_t maxIterations = 10,
+      const InitializationIterationCallback& iterationCallback = nullptr) const;
+
   // Default Constructor
   Initializer();
 

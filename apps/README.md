@@ -8,6 +8,7 @@ be opened directly.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [Contact Initialization](contact-initialization/README.md): replay C++ GTSAM walking initialization, inspect native timings, and switch between two G1 motion sequences.
 
+- [Contact Labels](contact-labels/README.md): inspect privileged stationarity targets derived from SSIO reference-world sole motion.
 - [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
 - [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets. This is the last tab.
 
@@ -38,6 +39,7 @@ From the repository root:
 ```bash
 cd apps
 npm ci
+python -m pip install -r ../examples/g1_mjlab/requirements-model.txt
 npm run models
 npm run dev
 ```

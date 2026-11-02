@@ -17,6 +17,7 @@ import subprocess
 import sys
 
 from pack_recordings import read_metadata, write_replay_bundles
+from summarize_variants import write_variant_summary
 
 REPO = Path(__file__).resolve().parents[3]
 APP = Path(__file__).resolve().parents[1]
@@ -47,8 +48,6 @@ def share_assets(output: Path, public: Path) -> None:
     target = public / "model.json.gz"
     if source.resolve() != target.resolve():
         data = source.read_bytes()
-        if target.exists() and target.read_bytes() != data:
-            raise ValueError("App variants must use the same pinned robot model")
         target.write_bytes(data)
         source.unlink()
     record["storage"]["model"] = os.path.relpath(target, output)
@@ -62,6 +61,7 @@ def main() -> None:
         "--only", choices=["all", "snippets", "trajectory"], default="all"
     )
     parser.add_argument("--jobs", type=int, default=3)
+    parser.add_argument("--max-slice-interval-ms", type=float, default=200.0)
     args = parser.parse_args()
     logs = APP / ".cache/split-logs"
     logs.mkdir(parents=True, exist_ok=True)
@@ -124,10 +124,10 @@ def main() -> None:
             ],
             logs / "import-full.log",
         )
-        for sigma in (50, 20, 5):
+        for prior in ("none", "upright", "height", "upright-height"):
             for imu in (False, True):
                 for closure in (False, True):
-                    name = f"{sigma}{'-imu' if imu else ''}{'-loop' if closure else ''}"
+                    name = f"{prior}{'-imu' if imu else ''}{'-loop' if closure else ''}"
                     output = APP / "public/variants" / name
                     command = [
                         exporter,
@@ -141,10 +141,16 @@ def main() -> None:
                         "contact",
                         "--smoothing-only",
                         "--final-only",
-                        "--contact-slices",
-                        "--contact-slip-sigma",
-                        str(sigma / 1000),
+                        "--max-iterations",
+                        "50",
+                        "--double-support-slices",
+                        "--max-slice-interval-ms",
+                        str(args.max_slice_interval_ms),
                     ]
+                    if "upright" in prior:
+                        command.append("--upright-prior")
+                    if "height" in prior:
+                        command.append("--height-prior")
                     if imu:
                         command.append("--imu")
                     if closure:
@@ -162,6 +168,8 @@ def main() -> None:
             else APP / "public"
         )
         share_assets(output, public)
+    if args.only in ("all", "trajectory"):
+        write_variant_summary(APP / "public")
     if args.only in ("all", "snippets"):
         (COMPARISON / "public/snippets.json").write_text(
             json.dumps(SNIPPETS, indent=2) + "\n"

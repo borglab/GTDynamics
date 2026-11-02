@@ -6,9 +6,15 @@
     "tag": "Trajectory optimization"
   },
   {
+    "id": "contact-labels",
+    "title": "Contact Labels",
+    "description": "Inspect reference-derived stationary-contact training targets from world-frame sole motion on three SSIO G1 snippets.",
+    "tag": "Privileged training labels"
+  },
+  {
     "id": "contact-initialization",
     "title": "Contact Initialization",
-    "description": "Explore a C++ GTSAM alternative to IK initialization. Replay native solves and timings, compare contact models, and switch between G1 walking and a longer captured motion.",
+    "description": "Inspect contact-pose initialization on three SSIO snippets using max-product support labels and independently selectable upright, motion, and height priors.",
     "tag": "Walking initialization"
   },
   {

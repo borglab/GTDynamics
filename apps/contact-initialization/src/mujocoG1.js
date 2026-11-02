@@ -50,7 +50,7 @@ export class MujocoG1 {
       const begin = model.name_jntadr[i];
       let end = begin;
       while (end < names.length && names[end]) end += 1;
-      this.joints.set(decoder.decode(names.subarray(begin, end)), model.jnt_qposadr[i]);
+      this.joints.set(decoder.decode(names.subarray(begin, end)).replace(/^robot\//, ''), model.jnt_qposadr[i]);
     }
     // The event transform is applied by ContactScene. FK stays pelvis-local.
     this.data.qpos.fill(0);

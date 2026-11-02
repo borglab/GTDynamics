@@ -36,7 +36,10 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(1)
+    from g1_model import robot_cfg
+
     cfg = unitree_g1_flat_env_cfg(play=True)
+    cfg.scene.entities["robot"] = robot_cfg()
     cfg.seed = 42
     cfg.scene.num_envs = 1
     cfg.decimation = 2

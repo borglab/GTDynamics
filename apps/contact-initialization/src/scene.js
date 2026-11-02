@@ -5,7 +5,6 @@ import { MujocoG1 } from './mujocoG1.js';
 // Everything in this viewer stays in the robot's native, Z-up coordinate system.
 const COLORS = { ink: '#243438', silver: '#94a4a3', left: '#13836e', right: '#df785c', paper: '#f0f2ed', path: '#778b87', reference: '#a6a7b6' };
 const vec = (a) => new THREE.Vector3(...(a ?? [0, 0, 0]));
-const mean = (points) => points.reduce((a, b) => a.add(vec(b)), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, points.length));
 
 function material(color, opacity = 1, extras = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.12,
@@ -65,32 +64,15 @@ function caption(value, color = COLORS.ink, scale = 0.22) {
   return result;
 }
 
-function contactPoints(contact) {
-  if (contact.points?.length) return contact.points.map((p) => p.position ?? p.point ?? p);
-  if (contact.position || contact.p) return [contact.position ?? contact.p];
-  return [];
-}
-
-function footprint(contact, active = false, projectToFloor = true) {
-  const points = contactPoints(contact);
-  if (!points.length) return null;
+function footprint(contact, active = false) {
+  if (!contact.pose) return null;
   const group = new THREE.Group();
-  const color = COLORS[contact.foot ?? contact.side] ?? COLORS.left;
-  const center = mean(points);
-  // Markers stay visible on the floor; the actual 3D landmarks are small dots.
-  const outline = points.length > 2 ? points.map((p) => [p[0], p[1], projectToFloor ? 0.006 : p[2]])
-    : [[center.x - 0.08, center.y - 0.035, 0.006], [center.x + 0.10, center.y - 0.035, 0.006], [center.x + 0.10, center.y + 0.035, 0.006], [center.x - 0.08, center.y + 0.035, 0.006]];
-  // The graph needs only three noncollinear sole landmarks. Complete their
-  // parallelogram for the footprint while retaining exactly three point dots.
-  if (outline.length === 3) outline.push(outline[0].map((v,i)=>v+outline[2][i]-outline[1][i]));
-  // Corner order is geometrical, so graph point IDs can be in any order.
-  if(projectToFloor) {
-    const shape = new THREE.Shape(outline.map((p) => new THREE.Vector2(p[0], p[1])));
-    const patch = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: active ? 0.23 : 0.09, depthWrite: false, side: THREE.DoubleSide }));
-    patch.position.z = 0.004; group.add(patch);
-  }
-  group.add(line([...outline, outline[0]], color, active ? 1 : 0.55));
-  for (const point of points) group.add(sphere(projectToFloor?vec(point).setZ(Math.max(0.009,point[2])):vec(point), active ? 0.013 : 0.008, material(color, active ? 1 : 0.65)));
+  group.applyMatrix4(poseMatrix(contact.pose));
+  const color = COLORS[contact.foot] ?? COLORS.left;
+  const axes = new THREE.AxesHelper(active ? .16 : .10);
+  axes.material.depthTest = false; axes.renderOrder = 5;
+  group.add(axes);
+  group.add(sphere(new THREE.Vector3(), active ? .014 : .008, material(color, active ? 1 : .65)));
   return group;
 }
 
@@ -99,14 +81,14 @@ function footprint(contact, active = false, projectToFloor = true) {
  *  model: {jointNames}; samples: [{jointAngles}]
  *  frames: [{sampleIndex, observations:[{local,contactId}]}]
  *  poses: solver {translation, rotation:rowMajor9}; referencePoses: same, or {p,q:wxyz}
- *  contacts: [{id,foot,points:[[x,y,z],...]}]; selectedIndex indexes frames.
+ *  contacts: [{id,foot,pose:{rotation,translation}}]; selectedIndex indexes frames.
  */
 export class ContactScene {
   constructor(container, { onSelect } = {}) {
     this.container = container; this.onSelect = onSelect; this.state = {}; this.disposed = false;
     this.assetController = new AbortController();
     this.viewport = new RobotViewport(container, {
-      background: COLORS.paper, fog: [9, 24], far: 60, shadows: true, exposure: .95,
+      background: COLORS.paper, far: 60, shadows: true, exposure: .95,
       controls: {minDistance: .8, maxDistance: 18, maxPolarAngle: Math.PI * .488, screenSpacePanning: false},
       ariaLabel: 'Interactive 3D reconstruction of the G1 walking sequence',
     });
@@ -121,7 +103,8 @@ export class ContactScene {
     this.pointerUp = (event) => this.pick(event);
     this.renderer.domElement.addEventListener('pointerdown', this.pointerDown);
     this.renderer.domElement.addEventListener('pointerup', this.pointerUp);
-    this.bounds = { center: new THREE.Vector3(0, 0, 0.6), span: 2 }; this.reset(); this.resize();
+    this.bounds = new THREE.Box3(new THREE.Vector3(-1, -1, 0), new THREE.Vector3(1, 1, 1.2));
+    this.reset(); this.resize();
   }
 
   async init() {
@@ -158,10 +141,18 @@ export class ContactScene {
     const { frames = [], poses = [], contacts = [], model } = this.state;
     const positions = poses.map((p) => new THREE.Vector3().setFromMatrixPosition(poseMatrix(p)));
     if (!positions.length) return;
-    const box = new THREE.Box3().setFromPoints(positions); const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    center.z = this.state.floorConstrained === false ? center.z + 0.4 : 0.55;
-    this.bounds = { center, span: Math.max(1.7, size.x, size.y, size.z+1.1) };
+    // Fit the actual trajectory envelope, including robot height and visible
+    // reference poses. A cube based on the longest axis zooms out excessively.
+    const box = new THREE.Box3().setFromPoints(positions);
+    this.bounds = box.clone();
+    for (const contact of contacts)
+      this.bounds.expandByPoint(new THREE.Vector3().setFromMatrixPosition(poseMatrix(contact.pose)));
+    if (this.state.showReference !== false)
+      frames.forEach((frame, i) => {
+        const pose = this.referencePose(frame, i);
+        if (pose) this.bounds.expandByPoint(new THREE.Vector3().setFromMatrixPosition(poseMatrix(pose)));
+      });
+    this.bounds.expandByVector(new THREE.Vector3(.35, .35, .8));
     this.ground.visible=this.state.floorConstrained!==false;
     if (!this.hasData) { this.hasData = true; this.reset(); }
     const components=this.state.components||[positions.map((_,i)=>i)];
@@ -220,8 +211,7 @@ export class ContactScene {
     for (const contact of contacts) {
       if (!active.has(contact.id)) continue;
       const patch = footprint(contact, true,this.state.floorConstrained!==false); if (patch) this.selectedGroup.add(patch);
-      const points = contactPoints(contact); if (!points.length) continue;
-      const center = mean(points); if(this.state.floorConstrained!==false)center.z = Math.max(0.025, center.z);
+      const center = vec(contact.pose.translation);
       const side = contact.foot ?? contact.side; const color = COLORS[side] ?? COLORS.left;
       this.selectedGroup.add(line([root, center], color, 0.55, true));
       const note = caption(`${side === 'right' ? 'R' : 'L'}${String(contact.id).replace(/^[LRlr]/, '')}`, color, 0.12);
@@ -249,10 +239,15 @@ export class ContactScene {
 
   reset() { this.setView('perspective'); }
 
+  /** Explicitly frame the current clip without changing the viewing direction. */
+  fit() {
+    const direction = this.camera.position.clone().sub(this.controls.target);
+    this.cameraController.fit(this.bounds, {direction});
+    this.render();
+  }
+
   setView(view) {
-    const {center, span} = this.bounds;
-    const bounds = new THREE.Box3().setFromCenterAndSize(center, new THREE.Vector3(span, span, span));
-    this.cameraController.fit(bounds, {view});
+    this.cameraController.fit(this.bounds, {view});
     this.render();
   }
 

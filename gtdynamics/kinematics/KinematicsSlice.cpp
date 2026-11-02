@@ -13,14 +13,17 @@
 
 #include <gtdynamics/kinematics/ContactHeightFactor.h>
 #include <gtdynamics/kinematics/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
 #include <gtdynamics/kinematics/JointLimitFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/kinematics/PointGoalFactor.h>
-#include <gtdynamics/kinematics/endEffGoalFactor.h>
 #include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtdynamics/kinematics/TwistFactor.h>
+#include <gtdynamics/kinematics/endEffGoalFactor.h>
+#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/linear/Sampler.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/expressions.h>
@@ -436,5 +439,32 @@ gtsam::Values Kinematics::inverse<Slice>(
       this->initialValues(slice, robot, 0.1, joint_priors, true);
 
   return this->optimize(graph, constraints, initial_values);
+}
+
+NonlinearFactorGraph Kinematics::contactPoseGroundObjectives(
+    const Slice& slice, const std::vector<PoseOnLink>& contacts,
+    const gtsam::Vector3& gravity, double height, double heightSigma,
+    double normalSigma) const {
+  if (!gravity.allFinite() || gravity.norm() == 0 || !std::isfinite(height) ||
+      !std::isfinite(heightSigma) || heightSigma <= 0 ||
+      !std::isfinite(normalSigma) || normalSigma <= 0)
+    throw std::invalid_argument("Invalid contact ground parameters");
+  NonlinearFactorGraph graph;
+  const gtsam::Vector3 up = -gravity.normalized();
+  for (const auto& contact : contacts) {
+    if (!contact.isGround) continue;
+    const auto key = PoseKey(contact.link->id(), slice.k);
+    // Preserve signs for tilted ground; the legacy point-height helper uses
+    // absolute gravity components and describes a different plane in that case.
+    const auto worldContact = gtsam::transformFrom(
+        gtsam::Pose3_(key), gtsam::Point3_(contact.comTcontact.translation()));
+    graph.emplace_shared<gtsam::ExpressionFactor<double>>(
+        gtsam::noiseModel::Isotropic::Sigma(1, heightSigma), height,
+        gtsam::dot(worldContact, gtsam::Point3_(up)));
+    graph.emplace_shared<ContactNormalFactor>(
+        key, contact.comTcontact, up,
+        gtsam::noiseModel::Isotropic::Sigma(3, normalSigma));
+  }
+  return graph;
 }
 }  // namespace gtdynamics

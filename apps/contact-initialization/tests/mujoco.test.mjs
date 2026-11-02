@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import loadMujoco from 'mujoco-js';
+import { gunzipSync } from 'node:zlib';
 import { MujocoG1 } from '../src/mujocoG1.js';
 
 const publicRoot = new URL('../public/', import.meta.url);
@@ -21,7 +22,7 @@ before(async () => {
     const begin = robot.model.name_bodyadr[i];
     let end = begin;
     while (names[end]) end += 1;
-    return [decoder.decode(names.subarray(begin, end)), i];
+    return [decoder.decode(names.subarray(begin, end)).replace(/^robot\//, ''), i];
   }));
 });
 
@@ -31,9 +32,10 @@ function disposeMaterials(root) {
   root.traverse(object => object.material?.dispose());
 }
 
-for (const file of ['g1-walk.json', 'g1-steptouch-30s.json']) {
+for (const file of ['g1-walk.json', 'g1-steptouch-30s.json', ...['onset', 'middle', 'return'].map(id => `snippets/ssio-${id}.json.gz`)]) {
   test(`${file}: MuJoCo visual FK agrees with the recorded body frames`, async () => {
-    const dataset = JSON.parse(await readFile(new URL(file, publicRoot)));
+    const bytes = await readFile(new URL(file, publicRoot));
+    const dataset = JSON.parse(file.endsWith('.gz') ? gunzipSync(bytes) : bytes);
     for (const index of [0, 24, Math.floor(dataset.samples.length / 2), dataset.samples.length - 1]) {
       const sample = dataset.samples[index];
       const snapshot = robot.create(sample, dataset.model);

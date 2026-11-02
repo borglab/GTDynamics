@@ -124,6 +124,50 @@ def position_plots(
     return series
 
 
+def reference_alignment(plots: dict[str, Any]) -> dict[str, Any]:
+    """Fit estimate_T_reference to paired pelvis body origins, with unit scale.
+
+    Every retained slice has equal weight, including irregularly timed slices.
+    Kabsch's determinant correction excludes reflections. With rank-deficient
+    paths the minimizing rotation may not be unique; the singular values are
+    retained so that such a fit is not mistaken for a fully observed attitude.
+    This is display alignment only, using already exported positions in metres.
+    """
+    reference = np.asarray(plots["pelvisWorld"]["reference"], dtype=float)
+    estimate = np.asarray(plots["pelvisWorld"]["estimate"], dtype=float)
+    if (
+        reference.ndim != 2
+        or reference.shape[1] != 3
+        or estimate.shape != reference.shape
+        or len(reference) < 3
+        or not np.isfinite(reference).all()
+        or not np.isfinite(estimate).all()
+    ):
+        raise ValueError("Alignment needs at least three finite paired 3D positions")
+    reference_mean, estimate_mean = reference.mean(axis=0), estimate.mean(axis=0)
+    covariance = (reference - reference_mean).T @ (estimate - estimate_mean)
+    left, singular_values, right = np.linalg.svd(covariance)
+    correction = np.diag([1.0, 1.0, np.linalg.det(right.T @ left.T)])
+    rotation = right.T @ correction @ left.T
+    translation = estimate_mean - rotation @ reference_mean
+    aligned = reference @ rotation.T + translation
+    return {
+        "method": "SE(3) least squares; equally weighted retained pelvis body positions",
+        "direction": "estimate_T_reference",
+        "rotation": rotation.tolist(),
+        "translation": translation.tolist(),
+        "scale": 1.0,
+        "samples": len(reference),
+        "singularValues": singular_values.tolist(),
+        "rmsBeforeMeters": float(
+            np.sqrt(np.mean(np.sum((reference - estimate) ** 2, axis=1)))
+        ),
+        "rmsAfterMeters": float(
+            np.sqrt(np.mean(np.sum((aligned - estimate) ** 2, axis=1)))
+        ),
+    }
+
+
 def write_snapshot_bundle(
     output: Path,
     source: dict[str, Any],
@@ -137,10 +181,15 @@ def write_snapshot_bundle(
     state.pop("frameMetrics", None)
     state["label"] = "Initial estimate" if stage == "initial" else "Final CM-Opt result"
     record["runs"] = {
-        "contact": {"solver": source["runs"]["contact"]["solver"], stage: state}
+        "contact": {
+            "solver": source["runs"]["contact"]["solver"],
+            "errorHistory": source["runs"]["contact"].get("errorHistory", []),
+            stage: state,
+        }
     }
     record["availableStages"] = [stage]
     record["positionPlots"] = position_plots(record, chunks, stage)
+    record["referenceAlignment"] = reference_alignment(record["positionPlots"])
     selected: list[NDArray[np.int32]] = []
     offset = 0
     for snapshot in (record["reference"], state):
@@ -200,6 +249,7 @@ def write_final_bundle(output: Path) -> None:
         # Asset sharing moves model.json.gz to the app root after export.
         initial = json.loads(gzip.decompress((output / "initial.json.gz").read_bytes()))
         initial["storage"]["model"] = record["storage"]["model"]
+        initial["referenceAlignment"] = reference_alignment(initial["positionPlots"])
         encoded = json.dumps(initial, separators=(",", ":"), allow_nan=False).encode()
         (output / "initial.json.gz").write_bytes(gzip.compress(encoded, mtime=0))
     final = run["final"] if "final" in run else run["smoothing"][-1]

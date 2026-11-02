@@ -1,0 +1,8 @@
+SSIO / Open-IO G1 Inertial Odometry
+https://huggingface.co/datasets/Open-IO/humanoid-g1-odometry
+Clip: 10871_humanoid_20260520_223451
+Revision: db621c57833e08a812b2ec8491aa0ca81f0ecb33
+Creators: Yuheng Qiu and the SSIO authors / Open-IO
+License: Creative Commons Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+Changes: selected three 20-second windows; resampled reference poses and encoders to 50 Hz; applied one constant world translation per window for display; derived contact-frame motion and stationarity targets, walking support inferences, and discrete max-product support labels with GTDynamics. Added pelvis-relative sole velocities from measured joint dq and unary support factors. World displacement targets use privileged LiDAR-inertial reference poses; they are not measured force/contact ground truth. Raw source files remain in an ignored cache.

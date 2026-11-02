@@ -5,8 +5,8 @@ import {readRecording} from '../../shared/kinematics/recordingTestUtils.mjs';
 import {validateRecording,historyFor,bodyOffset,sliceTime,frameAtTime} from '../../shared/kinematics/recording.js';
 import {Quaternion,Vector3} from 'three';
 const variants=new Map();
-for(const sigma of [50,20,5])for(const imu of [false,true])for(const loop of [false,true]){
- const name=`${sigma}${imu?'-imu':''}${loop?'-loop':''}`;
+for(const prior of ['none','upright','height','upright-height'])for(const imu of [false,true])for(const loop of [false,true]){
+ const name=`${prior}${imu?'-imu':''}${loop?'-loop':''}`;
  variants.set(name,readRecording(new URL(`../public/variants/${name}/`,import.meta.url),'final'));
 }
 test('Kinematics is last, and Contact vs IK is a separate tab',()=>{
@@ -14,16 +14,78 @@ test('Kinematics is last, and Contact vs IK is a separate tab',()=>{
  assert.equal(apps.at(-1).id,'kinematics-inspector');assert.equal(apps.at(-1).title,'Kinematics');
  assert.equal(apps.at(-2).title,'Contact vs IK');
 });
+test('comparison includes every configuration and ranks actual saved errors',()=>{
+ const summary=JSON.parse(readFileSync(new URL('../public/comparison.json',import.meta.url)));
+ assert.equal(summary.variants.length,16);
+ assert.deepEqual(new Set(summary.variants.map(row=>row.id)),new Set(variants.keys()));
+ assert.equal(summary.bestVariant,summary.variants[0].id);
+ for(const [index,row]of summary.variants.entries()){
+  const r=variants.get(row.id).record,final=r.runs.contact.final;
+  if(index)assert(row.alignedRmsMeters>=summary.variants[index-1].alignedRmsMeters);
+  assert.equal(row.alignedRmsMeters,r.referenceAlignment.rmsAfterMeters);
+  assert.equal(row.referenceRmsMeters,r.referenceAlignment.rmsBeforeMeters);
+  assert.deepEqual(row.metrics,final.metrics);assert.deepEqual(row.factorErrors,final.factorErrors);
+  assert.deepEqual(row.factorCounts,Object.fromEntries(r.graph.factorGroups.map(g=>[g.id,g.count])));
+  assert.deepEqual(row.closurePositionErrorWorld,final.closurePositionErrorWorld);
+  assert.equal(row.upright,r.graph.uprightPrior);assert.equal(row.height,r.graph.heightPrior);
+  assert.equal(row.imu,r.imuAiding.enabled);assert.equal(row.loop,r.loopClosure.enabled);
+  assert.equal(row.samples,r.samples);
+  assert.equal(row.iterations,r.runs.contact.solver.iterations);
+  assert.equal(row.elapsedSeconds,r.runs.contact.solver.elapsedSeconds);
+ }
+ assert.equal(summary.variants[0].alignedRmsMeters,Math.min(...[...variants.values()].map(({record:r})=>r.referenceAlignment.rmsAfterMeters)));
+});
 for(const [name,data]of variants){
  test(`complete contact-only graph, factor budget, and slip data: ${name}`,()=>{
   const {record:r,floats}=data,run=r.runs.contact;
   assert.deepEqual(Object.keys(r.runs),['contact']);assert.deepEqual(r.availableStages,['final']);
-  assert.equal(r.samples,1135);assert.equal(r.dt,.02);assert.equal(r.maxIterations,10);
-  assert.equal(r.sampling.mode,'contact-initializer');assert.equal(r.sampling.contactBuffer,1);
+  assert(r.samples>2&&r.samples<r.contactPhaseInference.sourceSlices);assert.equal(r.dt,.02);assert.equal(r.maxIterations,50);
+  assert.equal(r.sampling.mode,'double-support');assert.equal(r.sampling.interpolatedSolveStates,false);assert.equal(r.sampling.contactBuffer,1);
+  assert.equal(r.contactInitialization.rotation_sigma_degrees,90);
+  assert.equal(r.contactInitialization.translation_sigma_m,.01);
+  assert(r.contactInitialization.initialize_upright);
+  assert(r.contactInitialization.upright_prior&&r.contactInitialization.height_prior&&r.contactInitialization.motion_prior);
+  assert.equal(r.contactInitialization.normal_prior,false);
+  assert.equal(r.contactInitialization.height_sigma_m,.1);
+  assert.equal(r.contactInitialization.ground_height_m,0);
+  assert(Math.abs(r.contactInitialization.upright_sigma_degrees-15)<1e-12);
+  assert.equal(r.contactInitialization.motion_rotation_sigma_degrees,180);
+  assert.equal(r.contactInitialization.motion_translation_sigma_m,10);
+  assert.equal(typeof r.contactInitialization.stalled,'boolean');
+  if(r.contactInitialization.stalled)assert.equal(r.contactInitialization.converged,false);
+  assert.equal(r.initializationFrame.anchorSourceIndex,r.sampling.sourceIndices[0]);
+  assert(r.initializationFrame.worldTranslationMeters.every(Number.isFinite));
+  for(let axis=0;axis<3;axis++)assert(Math.abs(r.motionSource.worldTranslationMeters[axis]-(r.initializationFrame.inputWorldTranslationMeters[axis]+r.initializationFrame.worldTranslationMeters[axis]))<1e-12);
+  assert(Number.isFinite(r.contactInitialization.rotation_rms_degrees));
   assert.equal(r.timestamps.length,r.samples);assert.equal(r.sampling.sourceIndices.length,r.samples);
   assert.equal(r.timestamps[0],.02);assert(Math.abs(r.timestamps.at(-1)-219.92)<1e-10);
   const intervals=r.timestamps.slice(1).map((time,i)=>time-r.timestamps[i]);
-  assert(Math.abs(Math.min(...intervals)-.02)<1e-10);assert.equal(Math.max(...intervals),1);
+  assert(Math.min(...intervals)>0);assert(new Set(intervals.map(t=>Math.round(t/r.dt))).size>1);
+  assert.equal(r.sampling.maxSliceIntervalMs,200);
+  const inferred=r.contactPhaseInference,phases=inferred.phases;
+  assert.equal(inferred.method,'binary-foot max-product');assert(inferred.velocityAiding&&inferred.enforceWalkingSequence);
+  assert.equal(phases[0].start,0);assert.equal(phases.at(-1).end,inferred.sourceSlices-1);
+  const selected=[];
+  for(let i=0;i<phases.length;i++){
+   const p=phases[i];assert(p.contacts.length===1||p.contacts.length===2);
+   if(i){assert.equal(p.start,phases[i-1].end+1);assert(p.contacts.length===2||phases[i-1].contacts.length===2);}
+   const retained=r.sampling.sourceIndices.filter(k=>k>=p.start&&k<=p.end);
+   if(p.contacts.length!==2){assert.equal(retained.length,0);continue;}
+   const count=p.end-p.start+1;
+   if(count*r.dt<=r.sampling.longPhaseSeconds+1e-12)assert.deepEqual(retained,[p.start+Math.floor((count-1)/2)]);
+   else{
+    assert.equal(retained[0],p.start+1);assert.equal(retained.at(-1),p.end-1);
+    const gaps=retained.slice(1).map((k,j)=>k-retained[j]);
+    assert(Math.max(...gaps)*r.dt<=r.sampling.maxSliceIntervalMs/1000+1e-12);
+    assert(Math.max(...gaps)-Math.min(...gaps)<=1);
+    assert.equal(gaps.length,Math.ceil((p.end-p.start-2)/Math.floor(r.sampling.maxSliceIntervalMs/1000/r.dt+1e-12)));
+   }
+   selected.push(...retained);
+  }
+  assert.deepEqual(r.sampling.sourceIndices,[...new Set(selected)]);
+  assert.equal(r.graph.factorGroups.find(g=>g.id==='contact').count,2*r.samples);
+  assert.equal(r.graph.stanceLandmarks,2+r.sampling.contactBreaks.length);
+  for(const p of r.phases)assert.equal(p.contacts.length,2);
   for(let k=0;k<r.samples;k++)assert(Math.abs(r.timestamps[k]-r.sampling.sourceIndices[k]*r.dt)<1e-10);
   if(r.imuAiding.enabled)for(let k=0;k<intervals.length;k++)assert(Math.abs(r.imuAiding.intervalSeconds[k]-intervals[k])<1e-10);
   const badTimes=structuredClone(r);badTimes.timestamps[1]=badTimes.timestamps[0];
@@ -32,12 +94,39 @@ for(const [name,data]of variants){
   assert.equal(r.motionSource.fullTrajectory,true);assert.equal(r.graph.equalities,29*r.samples);
   assert.equal(r.graph.equalityDimension,6*r.graph.equalities);
   assert.equal(r.graph.factorGroups.reduce((n,g)=>n+g.count,0),r.graph.costFactors);
-  assert.equal(r.graph.factorGroups.length,5+(r.imuAiding.enabled?3:0)+(r.loopClosure.enabled?1:0));
-  assert.equal(r.graph.contactSlipSigmaMeters,Number(name.split('-')[0])/1000);
+  assert.equal(r.graph.factorGroups.length,3+(r.graph.heightPrior?1:0)+(r.graph.uprightPrior?1:0)+(r.imuAiding.enabled?3:0)+(r.loopClosure.enabled?1:0));
+  assert.equal(r.graph.contactTranslationSigmaMeters,.01);
+  assert.equal(r.graph.contactRotationSigmaDegrees,90);
+  assert.equal(r.graph.motionPrior,false);
+  assert.equal(r.graph.heightPrior,name.includes('height'));
+  assert.equal(r.graph.uprightPrior,name.includes('upright'));
+  const ground=r.graph.factorGroups.find(group=>group.id==='height');
+  if(r.graph.heightPrior){assert.equal(ground.dimension,1);assert.equal(ground.count,r.graph.stanceLandmarks);assert.equal(ground.residualDimension,ground.count);}
+  else assert.equal(ground,undefined);
+  const upright=r.graph.factorGroups.find(group=>group.id==='upright');
+  if(r.graph.uprightPrior)assert.equal(upright.count,r.samples-1);
+  else assert.equal(upright,undefined);
+  assert(!r.graph.factorGroups.some(g=>g.id==='root'||g.factorType==='ContactPoseEqualityFactor'||g.factorType.includes('ContactNormalFactor')));
+  assert.match(r.graph.factorGroups.find(group=>group.id==='contact').noise,/rotation 90°/);
   assert.equal(run.initializer,undefined);assert.equal(run.ikFrames,undefined);assert.equal(run.smoothing,undefined);
-  assert(run.solver.iterations>0&&run.solver.iterations<=10);
+  assert(run.solver.iterations>0&&run.solver.iterations<=50);
   assert(Number.isFinite(run.solver.elapsedSeconds)&&run.solver.elapsedSeconds>0);
   assert.match(run.solver.timingScope,/excludes initialization/);
+  const history=run.errorHistory;
+  assert.equal(history.length,run.solver.iterations+1);
+  assert.equal(history[0].iteration,0);
+  const ids=r.graph.factorGroups.map(group=>group.id).sort();
+  for(let i=0;i<history.length;i++){
+   const row=history[i];assert.equal(row.iteration,i);
+   assert.deepEqual(Object.keys(row.factorErrors).sort(),ids);
+   assert(Object.values(row.factorErrors).every(value=>Number.isFinite(value)&&value>=0));
+   assert(Math.abs(Object.values(row.factorErrors).reduce((a,b)=>a+b,0)-row.total)<Math.max(1,row.total)*1e-10);
+   assert(row.elapsedSeconds>=0&&row.elapsedSeconds<=run.solver.elapsedSeconds);
+   if(i){assert(row.elapsedSeconds>history[i-1].elapsedSeconds);assert(row.total<=history[i-1].total+Math.max(1,row.total)*1e-8);}
+   assert.equal(row.poseOffset,undefined);
+  }
+  for(const id of ids)assert(Math.abs(history.at(-1).factorErrors[id]-run.final.factorErrors[id])<Math.max(1,run.final.factorErrors[id])*1e-9);
+  assert(Math.abs(history.at(-1).total-run.final.metrics.cost)<Math.max(1,run.final.metrics.cost)*1e-9);
   assert(run.final.metrics.kinematic_equality_l2<1e-5);
   assert.equal(r.storage.states,'final.bin.gz');assert(floats.byteLength<3*1024*1024);
   assert.deepEqual(r.phases.flatMap(p=>Array.from({length:p.end-p.start+1},(_,i)=>p.start+i)),Array.from({length:r.samples},(_,i)=>i));
@@ -74,12 +163,16 @@ for(const [name,data]of variants){
 
  });
 }
-test('tightening only stationary displacement weights reduces measured slip in all four modes',()=>{
+test('prior experiments share exactly the same initialization and sampling',()=>{
  for(const imu of [false,true])for(const loop of [false,true]){
-  const get=sigma=>variants.get(`${sigma}${imu?'-imu':''}${loop?'-loop':''}`).record;
-  const records=[50,20,5].map(get),errors=records.map(r=>r.runs.contact.final.metrics.stance_step_slip_rms_m);
-  assert(errors[2]<errors[1]&&errors[1]<errors[0]);
-  for(const r of records){assert.deepEqual(r.phases,records[0].phases);assert.deepEqual(r.graph.factorGroups.map(g=>[g.id,g.count,g.dimension]),records[0].graph.factorGroups.map(g=>[g.id,g.count,g.dimension]));}
+  const records=['none','upright','height','upright-height'].map(prior=>readRecording(new URL(`../public/variants/${prior}${imu?'-imu':''}${loop?'-loop':''}/`,import.meta.url),'initial').record);
+  for(const r of records){
+   assert.deepEqual(r.phases,records[0].phases);
+   assert.deepEqual(r.sampling,records[0].sampling);
+   assert.deepEqual(r.positionPlots.pelvisWorld.estimate,records[0].positionPlots.pelvisWorld.estimate);
+   assert.deepEqual(r.contactInitialization,records[0].contactInitialization);
+   assert.equal(r.runs.contact.initial.factorErrors.contact,records[0].runs.contact.initial.factorErrors.contact);
+  }
  }
 });
 
@@ -96,6 +189,7 @@ for(const [name,finalData] of variants){
   const run=r.runs.contact,initial=run.initial,final=finalData.record.runs.contact.final;
   assert.deepEqual(r.availableStages,['initial']);assert.equal(run.final,undefined);assert.equal(run.smoothing,undefined);
   assert.deepEqual(run.solver,finalData.record.runs.contact.solver);
+  assert.deepEqual(run.errorHistory,finalData.record.runs.contact.errorHistory);
   assert.deepEqual(r.timestamps,finalData.record.timestamps);assert.deepEqual(r.graph,finalData.record.graph);
   assert.equal(r.storage.states,'initial.bin.gz');assert(floats.byteLength<3*1024*1024);
   assert.equal(initial.iteration,null);assert.equal(initial.frames,r.samples);

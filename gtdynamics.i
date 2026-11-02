@@ -3,6 +3,7 @@
 virtual class gtsam::NonlinearFactor;
 virtual class gtsam::NoiseModelFactor;
 virtual class gtsam::NonlinearFactorGraph;
+virtual class gtsam::DiscreteFactorGraph;
 virtual class gtsam::Values;
 class gtsam::PreintegratedImuMeasurementsG;
 
@@ -304,11 +305,44 @@ class PointOnLink {
 
 // PointOnLinks defined in specializations.h
 
+#include <gtdynamics/utils/PoseOnLink.h>
+class PoseOnLink {
+  PoseOnLink();
+  PoseOnLink(const gtdynamics::LinkSharedPtr& link, const gtsam::Pose3& comTcontact, bool isGround = true);
+  gtdynamics::LinkSharedPtr link;
+  gtsam::Pose3 comTcontact;
+  bool isGround;
+  gtsam::Pose3 predict(const gtsam::Values& values, size_t k = 0) const;
+  bool equals(const gtdynamics::PoseOnLink& other, double tol = 1e-9) const;
+};
+
 #include <gtdynamics/utils/ConstraintSpec.h>
 virtual class ConstraintSpec {
+  const std::vector<gtdynamics::PoseOnLink>& contactPoses() const;
   const gtdynamics::PointOnLinks &contactPoints() const;
   gtdynamics::PointOnLinks groundContactPoints() const;
   void print(const string &s) const;
+};
+
+#include <gtdynamics/utils/PoseContactConstraintSpec.h>
+class PoseContactConstraintSpec : gtdynamics::ConstraintSpec {
+  PoseContactConstraintSpec();
+  PoseContactConstraintSpec(const std::vector<gtdynamics::PoseOnLink>& contacts);
+  const std::vector<gtdynamics::PoseOnLink>& contactPoses() const;
+};
+#include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
+class ContactPoseFactor : gtsam::NoiseModelFactor {
+  ContactPoseFactor(gtsam::Key link_pose_key, gtsam::Key contact_pose_key,
+      const std::shared_ptr<gtsam::noiseModel::Base>& cost_model,
+      const gtsam::Pose3& comTcontact);
+};
+class ContactPoseEqualityFactor : gtsam::NoiseModelFactor {
+  ContactPoseEqualityFactor(const gtdynamics::PoseOnLink& contact,
+      const std::shared_ptr<gtsam::noiseModel::Base>& model, size_t first, size_t second);
+};
+class ContactNormalFactor : gtsam::NoiseModelFactor {
+  ContactNormalFactor(gtsam::Key key, const gtsam::Pose3& comTcontact,
+      const gtsam::Vector3& worldNormal, const std::shared_ptr<gtsam::noiseModel::Base>& model);
 };
 
 #include <gtdynamics/utils/FootContactConstraintSpec.h>
@@ -468,6 +502,20 @@ class KinematicsParameters : gtdynamics::OptimizationParameters {
 };
 
 class Kinematics {
+  gtsam::NonlinearFactorGraph contactPoseEqualityFactors(
+      const gtdynamics::Trajectory& trajectory,
+      const std::shared_ptr<gtsam::noiseModel::Base>& model) const;
+  gtsam::NonlinearFactorGraph contactPoseGroundObjectives(
+      const gtdynamics::Slice& slice, const std::vector<gtdynamics::PoseOnLink>& contacts,
+      const gtsam::Vector3& gravity, double height = 0.0,
+      double heightSigma = 0.01, double normalSigma = 0.05) const;
+  gtsam::NonlinearFactorGraph contactPoseGroundObjectives(
+      const gtdynamics::Phase& phase, const gtsam::Vector3& gravity,
+      double height = 0.0, double heightSigma = 0.01, double normalSigma = 0.05) const;
+  gtsam::NonlinearFactorGraph contactPoseGroundObjectives(
+      const gtdynamics::Trajectory& trajectory, const gtsam::Vector3& gravity,
+      double height = 0.0, double heightSigma = 0.01, double normalSigma = 0.05) const;
+
   Kinematics(gtdynamics::KinematicsParameters parameters =
                  gtdynamics::KinematicsParameters());
   gtdynamics::NonlinearEqualityConstraints constraints(
@@ -888,8 +936,80 @@ std::vector<gtsam::Point3> SimpleSwingTrajectory(const gtsam::Point3 &start,
                                                  size_t num_steps);
 
 /********************** Value Initialization **********************/
+#include <gtdynamics/utils/ContactMotion.h>
+class ContactMotionParams {
+  ContactMotionParams();
+  double windowSeconds;
+  double stationarySpeed;
+  double movingSpeed;
+  double stationaryExcursion;
+  double movingExcursion;
+};
+class ContactMotionSample {
+  ContactMotionSample();
+  int label;
+  double score;
+  bool completeWindow;
+  double maxSpeed;
+  double maxExcursion;
+  double angularSpeed;
+  double angularExcursion;
+  std::vector<double> pointSpeeds;
+  std::vector<double> pointExcursions;
+};
+std::vector<gtdynamics::ContactMotionSample> contactMotionLabels(
+    const std::vector<double>& times,
+    const std::vector<gtsam::Pose3>& worldTfoot,
+    const std::vector<gtsam::Point3>& points,
+    const gtdynamics::ContactMotionParams& params = gtdynamics::ContactMotionParams());
+
+class ContactPoseMotionParams {
+  ContactPoseMotionParams();
+  double windowSeconds;
+  double stationarySpeed;
+  double movingSpeed;
+  double stationaryExcursion;
+  double movingExcursion;
+  double stationaryAngularSpeed;
+  double movingAngularSpeed;
+  double stationaryAngularExcursion;
+  double movingAngularExcursion;
+};
+std::vector<gtdynamics::ContactMotionSample> contactPoseMotionLabels(
+    const std::vector<double>& times, const std::vector<gtsam::Pose3>& worldTcontact,
+    const gtdynamics::ContactPoseMotionParams& params = gtdynamics::ContactPoseMotionParams());
+
+std::vector<int> walkingContactLabels(
+    const std::vector<gtdynamics::ContactMotionSample>& foot,
+    const std::vector<gtdynamics::ContactMotionSample>& otherFoot,
+    const gtdynamics::ContactPoseMotionParams& params = gtdynamics::ContactPoseMotionParams());
+
+class ContactSupportParams {
+  ContactSupportParams();
+  double supportSigma;
+  double swingSigma;
+  double noSupportWeight;
+  double singleSliceWeight;
+  gtsam::Matrix4 transition;
+};
+gtsam::DiscreteFactorGraph contactSupportGraph(
+    const std::vector<double>& leftDisplacements,
+    const std::vector<double>& rightDisplacements,
+    const gtdynamics::ContactSupportParams& params = gtdynamics::ContactSupportParams());
+
+gtsam::DiscreteFactorGraph contactWalkingConstraints(size_t sliceCount);
+
+gtsam::DiscreteFactorGraph contactVelocityFactors(
+    const std::vector<double>& leftForwardVelocities,
+    const std::vector<double>& rightForwardVelocities,
+    double velocityScale = 0.1, double minimumProbability = 0.02);
+
 #include <gtdynamics/utils/ContactInitializer.h>
 namespace contact_init {
+#include <gtdynamics/utils/ContactInitializationFactors.h>
+class UprightFactor : gtsam::NoiseModelFactor {
+  UprightFactor(gtsam::Key pose, double sigma);
+};
 enum class Model { Ground, Patch, Point };
 class Options {
   Options();
@@ -950,9 +1070,86 @@ class Result {
 };
 } // namespace contact_init
 
+#include <gtdynamics/utils/PoseContactInitializer.h>
+std::vector<gtdynamics::Slice> doubleSupportSlices(
+    const gtdynamics::Trajectory& trajectory, double dt,
+    double longPhaseSeconds = 0.2, size_t contactBuffer = 1);
+
+namespace pose_contact_init {
+class Options {
+  Options();
+  size_t maxIterations;
+  bool recordHistory;
+  std::vector<gtdynamics::Slice> selectedSlices;
+  bool interpolateOutput;
+  bool initializeUpright;
+  bool addBetweenFactors;
+  bool addUprightFactors;
+  double uprightSigma;
+  double rotationSigma;
+  double translationSigma;
+  double betweenTranslationSigma;
+  double betweenRotationSigma;
+  bool addGroundFactors;
+  bool addNormalFactors;
+  double groundSigma;
+  double normalSigma;
+  std::optional<double> groundHeight;
+};
+class Snapshot {
+  Snapshot();
+  size_t iteration;
+  double objective;
+  double rms;
+  std::vector<gtsam::Pose3> poses;
+  std::vector<gtsam::Pose3> contactPoses;
+};
+class Observation {
+  Observation();
+  size_t poseIndex;
+  size_t contactIndex;
+  gtsam::Pose3 rootTcontact;
+};
+class Result {
+  Result();
+  std::vector<gtdynamics::Slice> slices() const;
+  std::vector<gtdynamics::pose_contact_init::Observation> observations;
+  std::vector<gtdynamics::PoseOnLink> contactFrames;
+  std::vector<double> times;
+  std::vector<gtdynamics::pose_contact_init::Snapshot> history;
+  gtsam::Values values;
+  gtsam::NonlinearFactorGraph graph;
+  std::vector<gtsam::Pose3> poses;
+  std::vector<gtsam::Pose3> contactPoses;
+  gtdynamics::contact_init::Timings timings;
+  size_t iterations;
+  bool converged;
+  bool stalled;
+  double objectiveInitial;
+  double objectiveFinal;
+  double residualRms;
+  double rotationRms;
+};
+} // namespace pose_contact_init
+
 #include <gtdynamics/utils/Initializer.h>
 class Initializer {
   Initializer();
+  gtsam::Values InitializeSolutionPoseIK(
+      const gtdynamics::Robot& robot, const string& rootLinkName,
+      const std::vector<gtsam::Pose3>& rootGuesses,
+      const gtsam::Values& measuredJoints, const gtdynamics::Trajectory& trajectory,
+      size_t maxIterations = 10,
+      const gtdynamics::InitializationIterationCallback& iterationCallback = nullptr) const;
+
+  gtsam::Values InitializeSolutionContactPoses(
+      const gtdynamics::Robot& robot, const string& rootLinkName,
+      const gtsam::Pose3& initialPose, const gtsam::Values& measuredJoints,
+      const gtdynamics::Trajectory& trajectory, double dt = 1.0,
+      const gtdynamics::pose_contact_init::Options& options = gtdynamics::pose_contact_init::Options(),
+      gtdynamics::pose_contact_init::Result @diagnostics = nullptr,
+      size_t contactBuffer = 0) const;
+
 
   gtsam::Values InitializeSolutionInverseKinematics(
       const gtdynamics::Robot& robot, const string& link_name,

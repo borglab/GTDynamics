@@ -1,3 +1,7 @@
+Unitree G1 g1_mjlab, supplied by mujoco-menagerie 2026.10.6.
+Model revision ad24af3fa9bc1a99e37291e656fb85e445da6158.
+https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1
+
 Copyright (c) 2016-2023 HangZhou YuShu TECHNOLOGY CO.,LTD. ("Unitree Robotics")
 All rights reserved.
 

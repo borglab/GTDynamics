@@ -14,7 +14,8 @@ provenance are retained in the JSON metadata.
 
 Native MuJoCo replay sums foot/terrain normal forces. Support turns on at 20 N
 and off below 10 N; bridging bounded one-sample gaps joins 15 isolated 10 ms
-dropouts. This yields 38 stance episodes and 75 event frames. The initial saved
+dropouts. This yields 38 stances. The historical point exporter selected 75 event frames;
+the current native phase/pose initializer selects 148 source slices. The initial saved
 sample has no support and is excluded, so the graph spans source samples 1–799.
 It has one support component, 328 double-support samples and 471 single-support
 samples. Local FK replaces the recorded root with the identity before computing
@@ -156,3 +157,19 @@ license at `assets/unitree_g1/LICENSE`. Node tests compare its pelvis-relative
 FK with the recorded body positions in both sequences. Rendering uses measured
 joint angles and the recorded event root poses; it does not change the solver's
 measurements or benchmark timings.
+
+## Canonical pose replay
+
+Run `scripts/export_native_recordings.py` after either raw data importer. It
+preserves the schedule, joint samples and evaluation reference, but regenerates
+all local display FK from the pinned canonical model. Published model metadata
+contains one `contactFrames` transform per foot, with no sole-point graph model.
+The step-touch initializer now selects 86 supported phase slices rather than the
+historical 55 point-exporter events. Native result observations define all
+pose/stance associations. Original annotation statistics describe the source
+schedule and remain in metadata; they do not override native slice selection.
+
+The schedule detector's sole-corner height/speed heuristic is intentionally
+retained as contact evidence. Those corners are not estimator variables or
+pose-initializer observations. The separate Contact Labels app can inspect
+pose-based stationarity targets for future schedule-estimation work.

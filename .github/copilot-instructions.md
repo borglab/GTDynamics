@@ -52,6 +52,9 @@ below. Preserve established identifiers outside the scope of a change.
 - Explain gauges, observability limitations, hard constraints versus soft
   priors, and the exact definitions of reported costs and timing scopes. Keep
   implementation comments focused on the algorithm and non-obvious choices.
+- Specify rotation standard deviations in degrees, including in configuration
+  code and user-facing descriptions. Convert explicitly to radians at APIs that
+  require radians; name degree-valued parameters accordingly.
 - Review Windows exports for public out-of-line classes and free functions;
   use the export macro belonging to the library that owns their definitions.
   Inline functions, header-only classes, and unspecialized templates normally
@@ -167,7 +170,9 @@ when practical.
   `apps/contact-initialization/src/mujocoG1.js` for configuration replay and
   `apps/motion-planning/src/viewer.js` for physics playback.
 - Bootstrap model assets through the existing scripts and `npm run models`.
-  Reuse pinned checkouts, keep downloaded meshes and generated manifests out
+  For G1, use the pinned Menagerie/MuJoCo/MJLab Python APIs and the shared
+  `g1_model.py` factory; do not clone model repositories or fetch raw XML.
+  Keep downloaded meshes and generated manifests out
   of Git, retain model licenses and provenance, and include the actual assets
   in the production build.
 - Keep MuJoCo's Z-up coordinate system and metre units. Convert quaternion

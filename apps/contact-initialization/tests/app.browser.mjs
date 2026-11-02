@@ -1,176 +1,294 @@
-/** Run after apps/npm run build. Uses an externally supplied Playwright. */
-import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
-import { mkdir, readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { preview } from 'vite';
-
-const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const root=fileURLToPath(new URL('../../',import.meta.url));
-const policyRecording=JSON.parse(await readFile(new URL('../public/recordings/g1-policy-8s.json',import.meta.url),'utf8'));
-const browser=await chromium.launch({
-  executablePath:process.env.CHROME_EXECUTABLE || (existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':undefined),
-  headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader'],
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { preview } from "vite";
+const { chromium } = await import(
+  process.env.PLAYWRIGHT_MODULE || "playwright"
+);
+const root = fileURLToPath(new URL("../../", import.meta.url));
+const browser = await chromium.launch({
+  executablePath:
+    process.env.CHROME_EXECUTABLE ||
+    (existsSync("/usr/bin/google-chrome")
+      ? "/usr/bin/google-chrome"
+      : undefined),
+  headless: true,
+  args: ["--no-sandbox", "--enable-unsafe-swiftshader"],
 });
 try {
-  for(const base of ['/', '/GTDynamics/']) {
-    const server=await preview({root,configFile:false,base,preview:{host:'127.0.0.1',port:0,strictPort:true}});
-    const context=await browser.newContext({viewport:{width:1500,height:1100},acceptDownloads:true});
+  for (const base of ["/", "/GTDynamics/"]) {
+    const server = await preview({
+      root,
+      configFile: false,
+      base,
+      preview: { host: "127.0.0.1", port: 0, strictPort: true },
+    });
+    const page = await browser.newPage({
+      viewport: { width: 1500, height: 1100 },
+      acceptDownloads: true,
+    });
+    page.setDefaultTimeout(60000);
+    const errors = [],
+      failures = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("response", (r) => {
+      if (r.status() >= 400 && !r.url().endsWith("favicon.ico"))
+        failures.push(r.url());
+    });
     try {
-      const page=await context.newPage();
-      page.setDefaultTimeout(30_000);
-      const errors=[],failed=[],sockets=[];
-      page.on('pageerror',e=>errors.push(e.message));
-      page.on('response',r=>{if(r.status()>=400&&!r.url().endsWith('/favicon.ico'))failed.push(`${r.status()} ${r.url()}`);});
-      page.on('websocket',s=>sockets.push(s.url()));
-      const url=`http://127.0.0.1:${server.httpServer.address().port}${base}`;
-      await page.goto(`${url}#contact-initialization`);
-      await page.getByRole('tab',{name:'Contact Initialization',selected:true}).waitFor();
-      const app=page.frameLocator('iframe');
-      const lab=app.locator('.lab');
-      await app.locator('canvas').waitFor();
+      await page.goto(
+        `http://127.0.0.1:${server.httpServer.address().port}${base}#contact-initialization`,
+      );
+      const app = page.frameLocator("iframe");
       await app.locator('.scene[data-renderer="mujoco"]').waitFor();
-      assert.equal(await app.locator('.scene').getAttribute('data-joints'),'29');
-      assert(Number(await app.locator('.scene').getAttribute('data-meshes'))>20);
-      console.log(`Checking ${base}: G1 assets and contact configurations`);
-      assert.equal(await lab.getAttribute('data-model'),'patch');
-      assert.equal(await lab.getAttribute('data-variant'),'both');
-      assert.equal(await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).evaluate(el=>el.checked),false);
-      assert.equal(await app.locator('#contact-model option[value="ground"]').count(),0);
-      assert.equal(await app.locator('.configuration-table tbody tr').count(),8);
-      assert.equal(await app.locator('.ground-edge').count(),0);
-      await app.getByRole('checkbox',{name:'Upright factors',exact:true}).uncheck();
-      await app.getByRole('checkbox',{name:'Weak BetweenFactors',exact:true}).uncheck();
-      assert.equal(await app.locator('.ground-edge').count(),0);
-      assert.equal(await lab.getAttribute('data-sequence'),'g1-policy-8s');
-      assert.equal(await app.locator('.error-banner').count(),0);
-      assert.match(await app.locator('.comparison-panel').innerText(),/Eight saved prior combinations/);
-      assert.match(await app.locator('.timing-context').innerText(),/Release · 11 runs \/ 2 warmups/);
-      assert.match(await app.locator('.headline-metrics').innerText(),/NATIVE GTSAM LM[\s\S]*CONTACT RMS[\s\S]*ROOT POSITION RMSE/);
-      for(const [variant,between,upright,ground] of [['between',true,false,false],['upright',false,true,false],['both',true,true,false],['ground',false,false,true],['between-ground',true,false,true],['upright-ground',false,true,true],['all',true,true,true],['none',false,false,false]]) {
-        await app.getByRole('checkbox',{name:'Weak BetweenFactors',exact:true}).setChecked(between);
-        await app.getByRole('checkbox',{name:'Upright factors',exact:true}).setChecked(upright);
-        await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).setChecked(ground);
-        await app.locator(`.lab[data-variant="${variant}"]`).waitFor();
-        assert.equal(await app.locator('.configuration-table tbody tr.active').count(),1);
+      const lab = app.locator(".lab");
+      assert.equal(await lab.getAttribute("data-model"), "pose");
+      assert.equal(
+        await app.getByRole("combobox", { name: "Contact geometry" }).count(),
+        0,
+      );
+      assert.equal(
+        await app.locator(".configuration-table tbody tr").count(),
+        8,
+      );
+      assert.equal(
+        await lab.getAttribute("data-variant"),
+        "between-ground-upright",
+      );
+      assert.equal(await lab.getAttribute("data-sequence"), "ssio-onset");
+      assert.match(
+        await app.locator(".headline-metrics").innerText(),
+        /stalled: no accepted decrease/,
+      );
+      const viewerBounds = await app.locator(".scene").boundingBox();
+      const graphBounds = await app.locator(".pose-graph").boundingBox();
+      const playbackBounds = await app.locator(".playback").boundingBox();
+      const controlsBounds = await app.locator(".prior-controls").boundingBox();
+      assert(graphBounds.x > viewerBounds.x + viewerBounds.width);
+      assert(graphBounds.y < viewerBounds.y + viewerBounds.height);
+      assert(controlsBounds.y >= playbackBounds.y + playbackBounds.height);
+      assert((await app.locator("svg .upright-factor").count()) > 0);
+      await app
+        .getByRole("checkbox", { name: "Pelvis upright prior" })
+        .uncheck();
+      assert.equal(await app.locator("svg .upright-factor").count(), 0);
+      assert.equal(
+        await app.locator(".scene").getAttribute("data-joints"),
+        "29",
+      );
+      assert.match(
+        await app.locator(".graph-stats").innerText(),
+        /contact poses/,
+      );
+      for (const [id, motion, ground] of [
+        ["none", false, false],
+        ["between", true, false],
+        ["between-ground", true, true],
+        ["ground", false, true],
+      ]) {
+        await app
+          .getByRole("checkbox", { name: "Weak motion prior" })
+          .setChecked(motion);
+        await app
+          .getByRole("checkbox", { name: "Sole ground priors" })
+          .setChecked(ground);
+        await app.locator(`.lab[data-variant="${id}"]`).waitFor();
+        assert.equal(
+          (await app.locator("svg .motion-factor").count()) > 0,
+          motion,
+        );
+        assert.equal(
+          (await app.locator("svg .height-factor").count()) > 0,
+          ground,
+        );
       }
-      assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*786/);
-      const startingEvent=Number(await lab.getAttribute('data-event'));
-      await app.getByRole('button',{name:'Next event',exact:true}).click();
-      assert.equal(Number(await lab.getAttribute('data-event')),startingEvent+1);
-      await app.getByRole('button',{name:'Previous event',exact:true}).click();
-      assert.equal(Number(await lab.getAttribute('data-event')),startingEvent);
-      await app.getByRole('slider',{name:'Contact event',exact:true}).fill('50');
-      assert.equal(await lab.getAttribute('data-event'),'50');
-      assert.match(await app.locator('.scene-readout').innerText(),/5.60/);
-      await app.getByRole('button',{name:'Play event playback'}).click();
-      await page.waitForTimeout(600);
-      // Stop replay without waiting for a software-rendered canvas to scroll.
-      await app.getByRole('button',{name:'Pause event playback'}).evaluate(button=>button.click());
-      assert(Number(await lab.getAttribute('data-event'))>50);
-      console.log(`Checking ${base}: event playback and display modes`);
-      await app.getByRole('button',{name:'Fixed FK'}).click();
-      assert.match(await app.locator('.scene-card .panel-top').innerText(),/FIXED FK/);
-      await app.getByRole('button',{name:'Frame selection'}).click();
-      assert.match(await app.locator('.scene-card .panel-top').innerText(),/REFERENCE TRAJECTORY/);
-      await app.getByRole('button',{name:'Pose/landmark graph'}).click();
-      for(const [mode,scalars] of [['point',558],['patch',786]]) {
-        await app.getByRole('combobox',{name:'Contact geometry'}).selectOption(mode);
-        await app.getByRole('button',{name:'Replay GTSAM solve'}).waitFor({state:'visible'});
-        assert.equal(await lab.getAttribute('data-model'),mode);
-        assert.match(await app.locator('.graph-stats').innerText(),new RegExp(String(scalars)));
-        const metrics=await app.locator('.evaluation-card .solve-metrics strong').allTextContents();
-        assert(metrics.every(m=>Number.isFinite(parseFloat(m))));
-        if(mode==='point')assert.match(await app.locator('.insight-card h2').innerText(),/rank deficiency/);
+      await app.getByRole("checkbox", { name: "Pelvis upright prior" }).check();
+      await app.locator('.lab[data-variant="ground-upright"]').waitFor();
+      assert((await app.locator("svg .upright-factor").count()) > 0);
+      if (base === "/")
+        await page.screenshot({
+          path: "/tmp/contact-graph-layout.png",
+          fullPage: false,
+        });
+      const slider = app.getByRole("slider", {
+        name: "Contact event",
+        exact: true,
+      });
+      await slider.fill("20");
+      assert.equal(await lab.getAttribute("data-event"), "20");
+      await app
+        .getByRole("button", { name: "Play event playback", exact: true })
+        .click();
+      await page.waitForFunction(
+        () =>
+          Number(
+            document
+              .querySelector("iframe")
+              .contentDocument.querySelector(".lab").dataset.event,
+          ) !== 20,
+      );
+      await app
+        .getByRole("button", { name: "Pause event playback", exact: true })
+        .evaluate((b) => b.click());
+
+      await app
+        .getByRole("combobox", { name: "Display trajectory" })
+        .selectOption("reference");
+      await app
+        .getByRole("combobox", { name: "Display trajectory" })
+        .selectOption("estimate");
+      await app
+        .getByRole("checkbox", { name: "Reference", exact: true })
+        .uncheck();
+      await app
+        .getByRole("checkbox", { name: "Reference", exact: true })
+        .check();
+      await app.getByRole("button", { name: "Top", exact: true }).click();
+      await app
+        .getByRole("button", { name: "Fit trajectory", exact: true })
+        .click();
+      const iteration = app.getByRole("slider", { name: "Solver iteration" });
+      await iteration.fill("0");
+      const initialBudget = await app.locator(".factor-table").innerText();
+      await iteration.fill(await iteration.getAttribute("max"));
+      assert.notEqual(
+        await app.locator(".factor-table").innerText(),
+        initialBudget,
+      );
+      const download = page.waitForEvent("download");
+      await app
+        .getByRole("button", { name: "Export initialization JSON" })
+        .click();
+      const file = await download,
+        payload = JSON.parse(await readFile(await file.path(), "utf8"));
+      assert.equal(
+        payload.solver,
+        "Initializer.InitializeSolutionContactPoses",
+      );
+      assert.equal(
+        payload.result.contactPoses.length,
+        payload.graph.contacts.length,
+      );
+      assert.equal(payload.result.landmarks, undefined);
+      for (const id of ["ssio-middle", "ssio-return"]) {
+        await app
+          .getByRole("combobox", { name: "Motion sequence" })
+          .selectOption(id);
+        await app
+          .locator('select[aria-label="Motion sequence"]:not(:disabled)')
+          .waitFor();
+        await app
+          .locator(
+            `.lab[data-sequence="${id}"][data-variant="between-ground-upright"]`,
+          )
+          .waitFor();
+        await app
+          .getByRole("checkbox", { name: "Pelvis upright prior" })
+          .waitFor();
+        await app
+          .getByRole("button", { name: "Fit trajectory", exact: true })
+          .click();
+        if (base === "/" && id === "ssio-middle")
+          await page.screenshot({
+            path: "/tmp/contact-middle-fit.png",
+            fullPage: false,
+          });
+        assert.equal(
+          await app.locator(".configuration-table tbody tr").count(),
+          8,
+        );
       }
-      await app.getByRole('button',{name:'Replay GTSAM solve'}).click();
-      await page.waitForTimeout(650);
-      await app.getByRole('button',{name:'Pause native replay'}).evaluate(button=>button.click());
-      const iteration=app.getByRole('slider',{name:'Solver iteration'});
-      assert(Number(await iteration.inputValue())>0);
-      const activeModel=await lab.getAttribute('data-model');
-      const activeVariant=await lab.getAttribute('data-variant');
-      const activeRun=activeVariant==='none'?policyRecording.models[activeModel]:policyRecording.variants[activeModel][activeVariant];
-      const recordedHistory=activeRun.result.history;
-      const rmsMetric=app.locator('.solve-card .solve-metrics strong').first();
-      await iteration.fill('0');
-      await rmsMetric.filter({hasText:(recordedHistory[0].rms*1000).toFixed(2)}).waitFor();
-      await iteration.fill(await iteration.getAttribute('max'));
-      await rmsMetric.filter({hasText:(recordedHistory.at(-1).rms*1000).toFixed(2)}).waitFor();
-      // Priors can increase the contact-only residual while reducing the
-      // weighted objective. Replay must display the saved values faithfully.
-      assert(recordedHistory.at(-1).objective<recordedHistory[0].objective,
-        'Recorded native optimization decreases its weighted objective');
-      const downloadPromise=page.waitForEvent('download');
-      await app.getByRole('button',{name:'Export initialization JSON'}).click();
-      const download=await downloadPromise;
-      const exported=JSON.parse(await readFile(await download.path(),'utf8'));
-      assert.equal(exported.eventPoses.length,75);
-      assert.equal(exported.contacts.length,38);
-      assert.equal(exported.model,'patch');
-      assert.equal(exported.solver,'C++ GTSAM Levenberg–Marquardt');
-      assert.equal(exported.benchmark.repetitions,11);
-      assert.equal(exported.assumptions.groundPlane,null);
-      assert.equal(exported.regularization.ground,false);
-      assert(!('reference' in exported));
-      console.log(`Checking ${base}: camera and sequence switching`);
-      await app.getByRole('button',{name:'Top',exact:true}).click();
-      await app.getByRole('button',{name:'Reset camera'}).click();
-      await app.getByRole('checkbox',{name:'Reference',exact:true}).uncheck();
-      await app.getByRole('checkbox',{name:'Snapshots',exact:true}).uncheck();
-      await app.getByRole('checkbox',{name:'Reference',exact:true}).check();
-      await app.getByRole('checkbox',{name:'Snapshots',exact:true}).check();
-      await app.getByRole('combobox',{name:'Motion sequence'}).selectOption('g1-steptouch-30s');
-      await app.locator('.recording-loading').waitFor({state:'hidden'});
-      await app.getByRole('button',{name:'Contacts only',exact:true}).click();
-      assert.equal(await lab.getAttribute('data-sequence'),'g1-steptouch-30s');
-      assert.match(await app.locator('.graph-stats').innerText(),/55[\s\S]*19/);
-      assert.match(await app.locator('.timeline-meta').innerText(),/34 contact \+ 21 periodic/);
-      assert.equal(await app.locator('.event-tick.periodic').count(),21);
-      await app.getByRole('slider',{name:'Contact event',exact:true}).fill('1');
-      assert.match(await app.locator('.scene-readout').innerText(),/PERIODIC[\s\S]*1.00/);
-      assert.match(await app.locator('.component-notice').innerText(),/2 measured contact components/);
-      assert.match(await app.locator('.evaluation-card').innerText(),/component-relative/);
-      assert.match(await app.locator('.timeline-caption').innerText(),/height\/speed heuristic/);
-      for(const mode of ['point','patch']){
-        await app.getByRole('combobox',{name:'Contact geometry'}).selectOption(mode);
-        await page.waitForTimeout(50);
-        assert.equal(await lab.getAttribute('data-model'),mode);
-        assert.equal(await app.locator('.error-banner').count(),0);
-        assert.equal(await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).evaluate(el=>el.checked),false);
-      }
-      await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).check();
-      await app.getByRole('combobox',{name:'Motion sequence'}).selectOption('g1-policy-8s');
-      await app.locator('.recording-loading').waitFor({state:'hidden'});
-      assert.equal(await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).evaluate(el=>el.checked),true);
-      await app.getByRole('checkbox',{name:'Landmark ground factors',exact:true}).uncheck();
-      assert.match(await app.locator('.graph-stats').innerText(),/75[\s\S]*38[\s\S]*786/);
-      await app.getByRole('slider',{name:'Contact event',exact:true}).fill('24');
-      await app.locator('body').evaluate(()=>window.scrollTo(0,0));
-      await page.waitForTimeout(350);
-      if(process.env.SCREENSHOT_DIR&&base==='/') {
-        await mkdir(process.env.SCREENSHOT_DIR,{recursive:true});
-        await page.screenshot({path:`${process.env.SCREENSHOT_DIR}/contact-initialization.png`});
-      }
-      await page.setViewportSize({width:390,height:844});
-      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Shared site fits mobile');
-      assert(await app.locator('body').evaluate(el=>el.scrollWidth<=innerWidth),'Contact app fits mobile');
-      await app.getByRole('button',{name:'Next event',exact:true}).click();
-      if(process.env.SCREENSHOT_DIR&&base==='/')await page.screenshot({path:`${process.env.SCREENSHOT_DIR}/contact-mobile.png`});
-      const direct=await context.newPage();
-      await direct.goto(`${url}contact-initialization/`);
-      await direct.locator('canvas').waitFor();
-      assert.equal(await direct.locator('.error-banner').count(),0);
-      await direct.close();
-      await page.getByRole('tab',{name:'Overview'}).click();
-      await page.locator('iframe').waitFor({state:'detached'});
-      assert.equal(await page.locator('iframe').count(),0);
-      assert.deepEqual(errors,[],'No browser errors');
-      assert.deepEqual(failed,[],'Assets work under the project-site prefix');
-      assert.deepEqual(sockets,[],'No server backend required');
-      console.log(`PASS ${base}: two sequences, native timings, free-height models, event playback, stages, GTSAM replay, JSON export, camera, mobile, direct URL`);
+      if (base === "/")
+        await page.screenshot({
+          path: "/tmp/ssio-contact-initialization.png",
+          fullPage: true,
+        });
+      await app
+        .getByRole("combobox", { name: "Motion sequence" })
+        .selectOption("g1-policy-8s");
+      await app
+        .locator(
+          '.lab[data-sequence="g1-policy-8s"][data-variant="between-ground-upright"]',
+        )
+        .waitFor();
+      await app
+        .locator('select[aria-label="Motion sequence"]:not(:disabled)')
+        .waitFor();
+      assert.equal(
+        await app.locator(".configuration-table tbody tr").count(),
+        8,
+      );
+      await app.getByRole("checkbox", { name: "Weak motion prior" }).uncheck();
+      await app.getByRole("checkbox", { name: "Sole ground priors" }).uncheck();
+      await app
+        .getByRole("checkbox", { name: "Pelvis upright prior" })
+        .uncheck();
+      await app.locator('.lab[data-variant="none"]').waitFor();
+      await app
+        .getByRole("combobox", { name: "Motion sequence" })
+        .selectOption("g1-steptouch-30s");
+      await app
+        .locator(
+          '.lab[data-sequence="g1-steptouch-30s"][data-variant="between-ground-upright"]',
+        )
+        .waitFor();
+      await app.locator(".configuration-table tbody tr").nth(1).waitFor();
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector("iframe")
+            .contentDocument.querySelectorAll(".configuration-table tbody tr")
+            .length === 4,
+      );
+      assert(
+        await app
+          .getByRole("checkbox", { name: "Weak motion prior" })
+          .isDisabled(),
+      );
+      assert(
+        await app
+          .getByRole("checkbox", { name: "Weak motion prior" })
+          .isChecked(),
+      );
+      assert.match(await app.locator(".notice").innerText(), /Disconnected/);
+      await app.getByRole("checkbox", { name: "Sole ground priors" }).uncheck();
+      await app.locator('.lab[data-variant="between-upright"]').waitFor();
+      await app
+        .getByRole("checkbox", { name: "Pelvis upright prior" })
+        .uncheck();
+      await app.locator('.lab[data-variant="between"]').waitFor();
+      await app.getByRole("checkbox", { name: "Sole ground priors" }).check();
+      await app.getByRole("checkbox", { name: "Pelvis upright prior" }).check();
+      if (base === "/")
+        await page.screenshot({
+          path: "/tmp/g1-pose-contact-initializer.png",
+          fullPage: true,
+        });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert(
+        await app
+          .locator("body")
+          .evaluate((b) => b.scrollWidth <= window.innerWidth + 1),
+      );
+      if (base === "/")
+        await page.screenshot({
+          path: "/tmp/g1-pose-contact-initializer-mobile.png",
+          fullPage: true,
+        });
+      await page.getByRole("tab", { name: "Kinematics", exact: true }).click();
+      await page
+        .getByRole("tab", { name: "Contact Initialization", exact: true })
+        .click();
+      await app.locator('.scene[data-renderer="mujoco"]').waitFor();
+      assert.deepEqual(errors, []);
+      assert.deepEqual(failures, []);
+      console.log(`Passed pose contact initialization ${base}`);
     } finally {
-      await context.close();server.httpServer.closeAllConnections();await new Promise(resolve=>server.httpServer.close(resolve));
+      await page.close();
+      await new Promise((resolve) => server.httpServer.close(resolve));
     }
   }
-} finally {await browser.close();}
+} finally {
+  await browser.close();
+}

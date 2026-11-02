@@ -24,6 +24,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from g1_model import load_g1_model, sole_frame, prepare_model
+
 import mujoco
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -51,6 +53,43 @@ def load_recording(
     with np.load(directory / "walk.npz") as archive:
         recording = {name: archive[name] for name in archive.files}
     return recording, json.loads((directory / "walk.json").read_text())
+
+
+def point_velocity_in_frame(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    body_id: int,
+    point_in_body: NDArray[np.float64],
+    reference_body_id: int,
+) -> NDArray[np.float64]:
+    """Derivative of a material point's coordinates in a moving body frame, m/s.
+
+    The point is in the owning MuJoCo body frame (not its COM frame). Call
+    mj_kinematics and mj_comPos, or mj_forward, after setting qpos; set qvel to
+    measured generalized velocities. MuJoCo Jacobians include the point offset.
+    Subtract reference translation AND rotational transport before rotating to
+    reference axes. A common floating-base motion cancels for a pelvis reference;
+    setting base qvel to zero therefore uses joint velocities only.
+    """
+    point_world = data.xpos[body_id] + data.xmat[body_id].reshape(3, 3) @ point_in_body
+    point_jacobian = np.zeros((3, model.nv))
+    reference_jacobian = np.zeros((3, model.nv))
+    reference_rotation_jacobian = np.zeros((3, model.nv))
+    mujoco.mj_jac(model, data, point_jacobian, None, point_world, body_id)
+    mujoco.mj_jac(
+        model,
+        data,
+        reference_jacobian,
+        reference_rotation_jacobian,
+        data.xpos[reference_body_id],
+        reference_body_id,
+    )
+    relative_world_velocity = (point_jacobian - reference_jacobian) @ data.qvel
+    relative_world_velocity -= np.cross(
+        reference_rotation_jacobian @ data.qvel,
+        point_world - data.xpos[reference_body_id],
+    )
+    return data.xmat[reference_body_id].reshape(3, 3).T @ relative_world_velocity
 
 
 def model_bodies(model: mujoco.MjModel) -> list[dict[str, Any]]:
@@ -194,6 +233,23 @@ class KinematicRecording:
         )
 
 
+def contact_frames(
+    model: mujoco.MjModel, robot: gtd.Robot
+) -> dict[str, gtd.PoseOnLink]:
+    """Canonical sole poses, converted from ankle body coordinates to COM axes."""
+    import gtsam
+    import gtdynamics as gtd
+
+    contacts: dict[str, gtd.PoseOnLink] = {}
+    for foot in ("left", "right"):
+        link = robot.link(f"{foot}_ankle_roll_link")
+        body = model.body("robot/" + link.name()).id
+        body_to_com = pose(model.body_ipos[body], model.body_iquat[body])
+        body_to_contact = gtsam.Pose3(sole_frame(model, foot))
+        contacts[foot] = gtd.PoseOnLink(link, body_to_com.inverse() * body_to_contact)
+    return contacts
+
+
 def load_kinematic_recording(
     directory: Path, contacts_path: Path, max_frames: int | None = None
 ) -> KinematicRecording:
@@ -205,7 +261,7 @@ def load_kinematic_recording(
     import gtsam
     import gtdynamics as gtd
 
-    model = load_model(directory)
+    model = load_g1_model()
     recording, metadata = load_recording(directory)
     labels = json.loads(contacts_path.read_text())
     qpos = recording["qpos"]
@@ -234,29 +290,18 @@ def load_kinematic_recording(
     root_id = body_ids["pelvis"]
     body_to_com = pose(model.body_ipos[root_id], model.body_iquat[root_id])
     reference = [pose(q[:3], q[3:7]) * body_to_com for q in qpos[:count]]
-    points = {}
-    for foot in ("left", "right"):
-        link = robot.link(f"{foot}_ankle_roll_link")
-        body = body_ids[link.name()]
-        com = pose(model.body_ipos[body], model.body_iquat[body])
-        points[foot] = gtd.PointOnLinks(
-            [
-                gtd.PointOnLink(link, com.transformTo(np.asarray(p)))
-                for p in labels["model"]["soleCorners"]
-            ]
-        )
+    contacts = contact_frames(model, robot)
     # Convert the recording's labels once. Phases are the only schedule kept
     # by the example; touchdown IDs are not inputs to the initializer.
     phases = []
     for first, last, active in contact_phases(labels["contacts"], count):
-        support = gtd.PointOnLinks([p for foot in active for p in points[foot]])
-        spec = gtd.FootContactConstraintSpec(support)
+        spec = gtd.PoseContactConstraintSpec([contacts[foot] for foot in active])
         phases.append(gtd.Phase(first, last, spec))
     trajectory = gtd.Trajectory(gtd.WalkCycle(phases), 1)
     provenance = {
         p.name: hashlib.sha256(p.read_bytes()).hexdigest()
         for p in [
-            directory / "model.mjb",
+            prepare_model() / "provenance.json",
             directory / "walk.npz",
             directory / "walk.json",
             contacts_path,

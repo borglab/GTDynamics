@@ -12,16 +12,16 @@
  */
 
 #pragma once
-
 #include <gtdynamics/kinematics/KinematicsParameters.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Interval.h>
 #include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/PoseOnLink.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
-#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/navigation/GalileanImuFactor.h>
+#include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 
 namespace gtdynamics {
 
@@ -127,6 +127,25 @@ class Kinematics : public Optimizer {
   const KinematicsParameters p_;  // overrides Base::p_
 
  public:
+  /** Soft material-frame stationarity across continuing contacts. Noise order:
+   * rotation in radians, translation in metres per adjacent slice interval. */
+  gtsam::NonlinearFactorGraph contactPoseEqualityFactors(
+      const Trajectory& trajectory, const gtsam::SharedNoiseModel& model) const;
+  /** Ground height and normal alignment for ground-role contact frames.
+   * Gravity defines down; height is measured along its opposite unit vector.
+   * Sigmas are metres and small-angle radians. XY and yaw remain free. */
+  gtsam::NonlinearFactorGraph contactPoseGroundObjectives(
+      const Slice& slice, const std::vector<PoseOnLink>& contacts,
+      const gtsam::Vector3& gravity, double height = 0.0,
+      double heightSigma = 0.01, double normalSigma = 0.05) const;
+  gtsam::NonlinearFactorGraph contactPoseGroundObjectives(
+      const Phase& phase, const gtsam::Vector3& gravity, double height = 0.0,
+      double heightSigma = 0.01, double normalSigma = 0.05) const;
+  gtsam::NonlinearFactorGraph contactPoseGroundObjectives(
+      const Trajectory& trajectory, const gtsam::Vector3& gravity,
+      double height = 0.0, double heightSigma = 0.01,
+      double normalSigma = 0.05) const;
+
   /**
    * @fn Constructor.
    */

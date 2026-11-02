@@ -66,6 +66,31 @@ class ImuAidingTests(unittest.TestCase):
                     bias,
                 )
 
+    def test_long_double_stance_and_short_step_intervals(self) -> None:
+        """One pim covers a long pause without adding intermediate solve states."""
+        times = np.arange(0.0, 26.005, 0.005)
+        boundaries = np.array([0.013, 0.073, 25.653, 25.773])
+        bias = gtsam.imuBias.ConstantBias()
+        pims = preintegrate_intervals(
+            times,
+            np.tile([0.0, 0.0, 9.81], (len(times), 1)),
+            np.zeros((len(times), 3)),
+            boundaries,
+            gtsam.PreintegrationParams.MakeSharedU(9.81),
+            bias,
+        )
+        np.testing.assert_allclose(
+            [pim.deltaTij() for pim in pims], [0.06, 25.58, 0.12], atol=1e-12
+        )
+        velocity = np.array([0.2, -0.4, 0.1])
+        state = gtsam.NavState(gtsam.Pose3(), velocity)
+        for pim in pims:
+            state = pim.predict(state, bias)
+        np.testing.assert_allclose(
+            state.position(), (boundaries[-1] - boundaries[0]) * velocity, atol=1e-8
+        )
+        np.testing.assert_allclose(state.velocity(), velocity, atol=1e-9)
+
 
 if __name__ == "__main__":
     unittest.main()
