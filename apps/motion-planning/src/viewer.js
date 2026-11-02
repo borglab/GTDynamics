@@ -109,7 +109,7 @@ export class MotionPlanningViewer {
     this.disposed = false;
     this.lastUiUpdate = 0;
     this.viewport = new RobotViewport(container, {
-      background: '#101b25', fog: [4, 9], fov: 38, near: .01, far: 30,
+      background: '#f1f3ef', fog: [4, 9], fov: 38, near: .01, far: 30,
       shadows: true, exposure: .9,
       controls: {enableDamping: true, maxDistance: 5, maxPolarAngle: Math.PI * .48},
     });
@@ -117,17 +117,17 @@ export class MotionPlanningViewer {
     Object.assign(this, {scene, camera, renderer, controls, cameraController});
     this.cameraController.lookAt(new THREE.Vector3(.25, 0, .45), new THREE.Vector3(1.55, -2.1, 1.1));
     this.viewport.addStage({
-      hemisphere: [0xcfe7ff, 0x33444b, .5],
+      hemisphere: [0xffffff, 0x788679, 1.1],
       key: {color: 0xffffff, intensity: 1, position: [2, -3, 5]},
       fill: {color: 0x83adff, intensity: .3, position: [-2, 1, 2]},
       shadow: {left: -1.6, right: 1.6, top: 1.6, bottom: -1.6, near: .1, far: 10, bias: -.0003},
-      ground: {size: 20, color: 0x15232f, z: -.002},
-      grid: {size: 4, divisions: 40, colors: [0x51616b, 0x293d4d]},
+      ground: {size: 20, color: 0xe9eee7, z: -.002},
+      grid: {size: 4, divisions: 40, colors: [0xbac7bb, 0xdce2d9]},
     });
     const worldAxes = new THREE.AxesHelper(0.2);
     worldAxes.position.set(-0.36, -0.36, 0.002);
     this.scene.add(worldAxes);
-    this.frames = { start: frame('#ff5e66', 'start'), goal: frame('#52d997', 'goal') };
+    this.frames = { start: frame('#c93838', 'start'), goal: frame('#16884b', 'goal') };
     this.scene.add(this.frames.start, this.frames.goal);
     this.transform = new TransformControls(this.camera, this.renderer.domElement);
     this.transform.setSize(0.8);
@@ -299,11 +299,11 @@ export class MotionPlanningViewer {
     this.ghostGroup.clear();
     const points = snapshot.states.map((state) => vec(state.ee.position));
     const path = new THREE.BufferGeometry().setFromPoints(points);
-    this.trajectoryGroup.add(new THREE.Line(path, new THREE.LineBasicMaterial({ color: '#64d9eb' })));
+    this.trajectoryGroup.add(new THREE.Line(path, new THREE.LineBasicMaterial({ color: '#087f71' })));
     const positions = new THREE.BufferGeometry().setFromPoints(points);
     const colors = new Float32Array(points.length * 3);
     points.forEach((_, i) => {
-      new THREE.Color('#ff5e66').lerp(new THREE.Color('#52d997'), i / Math.max(1, points.length - 1))
+      new THREE.Color('#c93838').lerp(new THREE.Color('#16884b'), i / Math.max(1, points.length - 1))
         .toArray(colors, 3 * i);
     });
     positions.setAttribute('color', new THREE.BufferAttribute(colors, 3));
