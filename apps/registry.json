@@ -2,7 +2,7 @@
   {
     "id": "motion-planning",
     "title": "Motion Planning",
-    "description": "Follow a Franka arm\u2019s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
+    "description": "Follow a Franka arm’s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
     "tag": "Trajectory optimization"
   },
   {
@@ -34,5 +34,11 @@
     "title": "Interpolation",
     "description": "Inspect floating-base GP interpolation of the best Kinematics trajectory, dense joint measurements, estimated velocities, and stance-foot motion.",
     "tag": "Gaussian process interpolation"
+  },
+  {
+    "id": "dynamics",
+    "title": "Dynamics",
+    "description": "Inspect ground reaction forces and joint torques from fixed G1 kinematics using sole-contact wrenches and CMC-Opt.",
+    "tag": "Contact-wrench estimation"
   }
 ]

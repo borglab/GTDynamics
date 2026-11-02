@@ -11,8 +11,8 @@ for(const prior of ['none','upright','height','upright-height'])for(const imu of
 }
 test('Interpolation follows Kinematics, with Contact vs IK separate',()=>{
  const apps=JSON.parse(readFileSync(new URL('../../registry.json',import.meta.url)));
- assert.equal(apps.at(-1).id,'interpolation');assert.equal(apps.at(-2).title,'Kinematics');
- assert.equal(apps.at(-3).title,'Contact vs IK');
+ assert.equal(apps.at(-1).id,'dynamics');assert.equal(apps.at(-2).id,'interpolation');assert.equal(apps.at(-3).title,'Kinematics');
+ assert.equal(apps.at(-4).title,'Contact vs IK');
 });
 test('comparison includes every configuration and ranks actual saved errors',()=>{
  const summary=JSON.parse(readFileSync(new URL('../public/comparison.json',import.meta.url)));
