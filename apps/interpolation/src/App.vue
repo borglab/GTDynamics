@@ -175,7 +175,7 @@ onBeforeUnmount(() => { pause(); controller.abort(); scene?.dispose(); });
             <tr><th>Base velocity factors</th><td>{{ record.knots.times.length }}</td><td>Three-dimensional observations at every knot</td></tr>
             <tr><th>Knot interval</th><td>{{ number(Math.min(...knotIntervals)) }}–{{ number(Math.max(...knotIntervals)) }} s</td><td>Actual timestamps, including short contact phases</td></tr>
             <tr><th>GP process error</th><td>{{ number(record.diagnostics.processError, 2) }}</td><td>½ Σ eᵀ Q⁻¹ e for base and joint process factors; excludes measurement costs</td></tr>
-            <tr><th>Native solve / export</th><td>{{ number(record.diagnostics.solveSeconds, 3) }} / {{ number(record.diagnostics.exportSeconds, 2) }} s</td><td>Solve includes factor assembly and diagnostics; export timer ends before writing metadata and geometry</td></tr>
+            <tr><th>Graph assembly / solve / export</th><td>{{ number(record.diagnostics.graphConstructionSeconds, 3) }} / {{ number(record.diagnostics.solveSeconds, 3) }} / {{ number(record.diagnostics.exportSeconds, 2) }} s</td><td>Assembly accumulates successful add calls; solve covers elimination, result construction, and diagnostics. Export timer ends before writing metadata and geometry.</td></tr>
             <tr><th>MuJoCo FK / sole-twist discrepancy</th><td>{{ record.diagnostics.mujocoOracle.maxBodyPoseError.toExponential(2) }} / {{ record.diagnostics.mujocoOracle.maxSoleTwistError.toExponential(2) }}</td><td>Maximum component differences at 12 samples: body translation (m) / rotation matrix, and sole angular (rad/s) / linear velocity (m/s)</td></tr>
           </tbody>
         </table></div>

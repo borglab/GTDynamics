@@ -11,6 +11,29 @@ dimension (`2 * traits<T>::dimension`), so the single runtime-sized joint-vector
 GP reuses GTDynamics' existing `GPLinearPrior` and `GPLinearInterpolator`.
 There is no G1 joint-count specialization or separate Python implementation.
 
+Each problem `add…` call immediately adds its factors to a Gaussian graph; raw
+measurement vectors are not kept separately. Its const `solve()` returns a separate
+`FloatingBaseInterpolation` with interpolation, native FK, joint-order, knot-time,
+and diagnostic queries:
+
+```python
+problem = gtd.FloatingBaseInterpolator(robot, base_link, base_psd, joint_psd, sigmas)
+problem.addKnot(time, world_T_base_COM, joint_angles)
+# Add further knots, dense encoders, and optional base-velocity observations.
+result = problem.solve()
+state = result.interpolate(query_time)
+values = result.values(query_time)
+```
+
+Graph assembly time (successful add calls) and solve time (elimination, result
+construction, and diagnostics) are reported separately.
+
+Each result owns its numerical snapshot and remains valid after adding inputs
+to, solving again, or destroying the problem. Measurements and solver factors
+are not retained in the result. The fixed robot model is shared for FK, without
+an additional cached joint list; its links, joints, IDs, names, and geometry
+must not be changed while a problem or result uses it.
+
 The original irregular knot configurations are held **exactly fixed**. The
 remaining velocity problem is Gaussian: the implementation substitutes zero
 configuration increments into the existing GP factors and solves once. Dense
@@ -94,4 +117,5 @@ npm run build
 and both deployment prefixes against a built preview. Native tests cover
 irregular times, noncontiguous IDs, constant motion, exact knot configurations,
 Pose3 mean derivatives and twist continuity, dense measurements, world/body
-velocity conversion, invalid inputs, and stale-solution rejection.
+velocity conversion, invalid inputs, independent repeated solves, and result
+lifetime after problem destruction.

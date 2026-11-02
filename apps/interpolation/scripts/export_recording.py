@@ -43,7 +43,7 @@ def export(args: argparse.Namespace) -> None:
         args.base_velocity_sigma,
     )
     print(
-        f"GP solve: {walk.gp.solveSeconds():.3f} s; encoder RMS {np.rad2deg(walk.gp.jointMeasurementRms()):.3f} deg",
+        f"GP solve: {walk.interpolation.solveSeconds():.3f} s; encoder RMS {np.rad2deg(walk.interpolation.jointMeasurementRms()):.3f} deg",
         flush=True,
     )
     arrays = sample_walk(walk)
@@ -91,8 +91,8 @@ def export(args: argparse.Namespace) -> None:
         "schemaVersion": 1,
         "title": "Interpolation",
         "times": walk.dense_times.tolist(),
-        "jointNames": walk.gp.jointNames(),
-        "jointIds": walk.gp.jointIds(),
+        "jointNames": walk.interpolation.jointNames(),
+        "jointIds": walk.interpolation.jointIds(),
         "bodies": walk.model.nbody,
         "rootBody": root,
         "contactBodies": [
@@ -122,17 +122,18 @@ def export(args: argparse.Namespace) -> None:
         },
         "diagnostics": {
             "mujocoOracle": oracle,
-            "solveSeconds": walk.gp.solveSeconds(),
+            "graphConstructionSeconds": walk.interpolation.graphConstructionSeconds(),
+            "solveSeconds": walk.interpolation.solveSeconds(),
             "exportSeconds": time.perf_counter() - started,
             "jointMeasurementRmsDegrees": float(
-                np.rad2deg(walk.gp.jointMeasurementRms())
+                np.rad2deg(walk.interpolation.jointMeasurementRms())
             ),
             "jointRmsDegrees": np.rad2deg(
                 np.sqrt(
                     np.mean((arrays["jointAngles"] - walk.dense_angles) ** 2, axis=0)
                 )
             ).tolist(),
-            "processError": walk.gp.processError(),
+            "processError": walk.interpolation.processError(),
             "stance": stance,
             "knotIntervalsSeconds": np.diff(walk.knot_times).tolist(),
         },

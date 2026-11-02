@@ -27,6 +27,7 @@ test('one offline recording uses the actual comparison winner and original knots
   assert.equal(new Set(record.jointNames).size, 29);
   assert(record.times.length > 10000);
   assert(record.diagnostics.solveSeconds > 0);
+  assert(record.diagnostics.graphConstructionSeconds > 0);
   assert(record.source.checksums.denseJointSource.match(/^[0-9a-f]{64}$/));
   for (const [path, expected] of Object.entries(record.provenance.sources)) {
     const bytes = readFileSync(new URL(`../../../${path}`, import.meta.url));
