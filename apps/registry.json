@@ -28,5 +28,11 @@
     "title": "Kinematics",
     "description": "Inspect a full G1 trajectory with contact initialization, Gal3 IMU aiding, loop closure, stationary-contact weights, factor errors, and foot slip.",
     "tag": "Kinematics smoothing"
+  },
+  {
+    "id": "interpolation",
+    "title": "Interpolation",
+    "description": "Inspect floating-base GP interpolation of the best Kinematics trajectory, dense joint measurements, estimated velocities, and stance-foot motion.",
+    "tag": "Gaussian process interpolation"
   }
 ]

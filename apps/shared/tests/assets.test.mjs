@@ -36,6 +36,8 @@ test('every published, checked-in app asset has a replay or attribution consumer
   for(const prior of ['none','upright','height','upright-height'])for(const imu of ['', '-imu'])for(const loop of ['', '-loop'])for(const stage of ['initial','final']){
     replay(`${kinematics}variants/${prior}${imu}${loop}/${stage}.json.gz`);
   }
+  const interpolation='apps/interpolation/public/';
+  for(const name of ['recording.json.gz','states.bin.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt'])add(interpolation+name);
   for(const name of ['recording.json','architecture.html'])add(`apps/motion-planning/public/${name}`);
   const published=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z','apps'],{cwd:root,encoding:'utf8'})
     .split('\0').filter(path=>/^apps\/[^/]+\/public\//.test(path)&&existsSync(resolve(root,path)));

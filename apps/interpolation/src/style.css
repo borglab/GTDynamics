@@ -1,0 +1,39 @@
+@import '../../shared/kinematics/style.css';
+
+.interpolation-app { max-width: 1600px; margin: 0 auto; padding: 32px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.page-header h1 { margin: 8px 0; }
+.page-header p { color: #617269; }
+.summary { display: flex; flex-wrap: wrap; gap: 12px 28px; padding: 18px 0; font-size: 13px; }
+.summary strong { color: #243b32; }
+.viewer-panel { border: 1px solid #dce3dc; border-radius: 10px; overflow: hidden; background: white; }
+.viewer-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; font-size: 12px; }
+.viewer-tools button { margin-right: 8px; }
+.knot-legend { color: #ad5c28; }
+.interpolation-scene { height: 530px; width: 100%; }
+.interpolation-scene canvas { width: 100%; height: 100%; }
+.timeline { padding: 14px 18px; }
+.timeline > input { width: 100%; margin: 14px 0; }
+.time-row, .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; }
+.time-row > span { margin-left: auto; color: #65756d; font-size: 12px; }
+.controls label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.section-tools { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin: 24px 0 14px; }
+.section-tools label { font-size: 13px; }
+.section-tools span { margin-left: auto; color: #617269; font-size: 12px; }
+.section-tools h2 { margin: 0; }
+.plot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.signal-plot { margin: 0 0 16px; min-width: 0; padding: 14px 12px 2px; background: white; border: 1px solid #dce3dc; border-radius: 8px; }
+.signal-plot figcaption { padding: 0 8px 8px; font-size: 13px; font-weight: 600; }
+.plotly-chart { min-height: 260px; width: 100%; }
+.diagnostics table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.diagnostics th, .diagnostics td { padding: 12px; text-align: left; border-bottom: 1px solid #dce3dc; }
+footer { margin-top: 32px; color: #68796e; font-size: 12px; line-height: 1.65; }
+footer pre { overflow-x: auto; font-size: 11px; }
+@media (max-width: 800px) {
+  .interpolation-app { padding: 18px 12px; }
+  .page-header { align-items: flex-start; flex-direction: column; }
+  .interpolation-scene { height: 430px; }
+  .plot-grid { grid-template-columns: 1fr; }
+  .viewer-tools { flex-wrap: wrap; }
+  .section-tools span { margin-left: 0; }
+}
