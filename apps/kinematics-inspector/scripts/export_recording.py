@@ -8,6 +8,7 @@ The browser reads float32 body poses and joint angles; it runs no robot solver.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import gzip
 import hashlib
 import json
@@ -28,18 +29,10 @@ REPO = Path(__file__).resolve().parents[3]
 APP = Path(__file__).resolve().parents[1]
 FACTOR_TYPES = {
     "joint": ("Joint measurements", "PriorFactor<double>", "0.03 rad"),
-    "height": ("Ground contact height", "ContactHeightFactor", "0.01 m"),
-    "stationary": (
-        "Stationary contacts",
-        "ContactEqualityFactor",
-        "per-axis displacement",
-    ),
-    "root": (
-        "Root motion regularization",
-        "BetweenFactor<Pose3>",
-        "rotation 0.3 rad; translation 0.1 m",
-    ),
-    "anchor": ("Initial root pose", "PriorFactor<Pose3>", "1e-5 rad / m"),
+    "height": ("Stance landmark height", "ContactHeightFactor", "0.1 m; world Z=0"),
+    "contact": ("Stance pose observations", "ContactPoseFactor", "10 mm / 90°"),
+    "upright": ("Root upright", "UprightFactor", "15°; yaw free"),
+    "anchor": ("Initial root pose", "PriorFactor<Pose3>", "0.000573° / 1e-5 m"),
     "imu": (
         "IMU preintegration",
         "GalileanImuFactor",
@@ -55,9 +48,16 @@ FACTOR_TYPES = {
 }
 sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 import kinematic_walk as example
-from mujoco_io import KinematicRecording, load_model, load_recording, pose
+from contact_phases import contact_slices, initialization_slices, stance_observations
+from kinematic_initialization import align_contact_ground
+from g1_model import load_g1_model
+from mujoco_io import KinematicRecording, load_recording, pose
 from imu_aiding import BIAS_KEY, build_imu_aiding
 from pack_recordings import write_final_bundle, write_replay_bundles
+
+# Use precisely the same calibrated prior preset as Contact Initialization.
+sys.path.insert(0, str(REPO / "apps/contact-initialization/scripts"))
+from export_native_recordings import prior_configurations
 
 
 def compressed_json(path: Path, value: Any) -> None:
@@ -206,7 +206,7 @@ class Recorder:
         return state
 
     def contact_slip(self, values: gtsam.Values) -> NDArray[np.float64]:
-        """Record the largest continuing-corner displacement per foot and slice.
+        """Record the continuing contact-frame origin displacement per foot and slice.
 
         Each row stores previous XYZ, current XYZ, and displacement in metres.
         A displacement of -1 means no continuing contact. Frames are world axes;
@@ -214,13 +214,13 @@ class Recorder:
         """
         slips = np.zeros((self.walk.count, 2, 7))
         slips[:, :, 6] = -1
-        for k, _, continuing in example.contact_slices(
+        for k, _, continuing in contact_slices(
             self.walk.trajectory, self.walk.contact_breaks
         ):
             for point in continuing:
                 foot = 0 if point.link.name().startswith("left") else 1
-                previous = point.predict(values, k - 1)
-                current = point.predict(values, k)
+                previous = point.predict(values, k - 1).translation()
+                current = point.predict(values, k).translation()
                 distance = float(np.linalg.norm(current - previous))
                 if distance > slips[k, foot, 6]:
                     slips[k, foot] = np.r_[previous, current, distance]
@@ -228,12 +228,17 @@ class Recorder:
 
     def frame_metrics(self, values: gtsam.Values) -> dict[str, list[float]]:
         height, slip, joint, root = [], [], [], []
-        for k, points, continuing in example.contact_slices(
+        for k, points, continuing in contact_slices(
             self.walk.trajectory, self.walk.contact_breaks
         ):
-            heights = [float(p.predict(values, k)[2]) for p in points]
+            heights = [float(p.predict(values, k).translation()[2]) for p in points]
             slips = [
-                float(np.linalg.norm(p.predict(values, k) - p.predict(values, k - 1)))
+                float(
+                    np.linalg.norm(
+                        p.predict(values, k).translation()
+                        - p.predict(values, k - 1).translation()
+                    )
+                )
                 for p in continuing
             ]
             height.append(
@@ -259,30 +264,17 @@ class Recorder:
         return {"height": height, "slip": slip, "joint": joint, "root": root}
 
 
-def dense_contact_state(
+def contact_iteration_values(
     walk: KinematicRecording,
     seed: gtsam.Values,
-    samples: list[int],
     poses: list[gtsam.Pose3],
 ) -> gtsam.Values:
-    """Apply the adapter's SE(3) interpolation to saved sparse root poses.
-
-    Seed FK provides the fixed root-relative geometry from measured joints.
-    Verify the final reconstruction against the adapter before publishing data.
-    """
+    """Replay root poses at exactly the selected slices, using measured-joint FK."""
+    if len(poses) != walk.count:
+        raise ValueError("Contact iterations must use the retained solve slices")
     result = gtsam.Values(seed)
-    interval = 0
     for k in range(walk.count):
-        while interval + 1 < len(samples) and samples[interval + 1] < k:
-            interval += 1
-        root_pose = poses[interval]
-        if k > samples[0] and interval + 1 < len(samples):
-            fraction = (k - samples[interval]) / (
-                samples[interval + 1] - samples[interval]
-            )
-            root_pose = root_pose * gtsam.Pose3.Expmap(
-                fraction * gtsam.Pose3.Logmap(root_pose.between(poses[interval + 1]))
-            )
+        root_pose = poses[k]
         correction = root_pose * seed.atPose3(gtd.PoseKey(walk.root.id(), k)).inverse()
         for link in walk.robot.links():
             key = gtd.PoseKey(link.id(), k)
@@ -332,6 +324,12 @@ def main() -> None:
         "--final-only", action="store_true", help="Keep only final results"
     )
     parser.add_argument(
+        "--double-support-slices",
+        action="store_true",
+        default=True,
+        help="Infer binary contact phases and solve only representative double-stance slices",
+    )
+    parser.add_argument(
         "--contact-slices",
         action="store_true",
         help="Estimate only the contact initializer's slices, with a one-source-slice stance buffer",
@@ -347,10 +345,10 @@ def main() -> None:
         help="Close full-trajectory root COM positions: world XYZ sigmas 0.30, 0.30, 0.05 m",
     )
     parser.add_argument(
-        "--contact-slip-sigma",
+        "--contact-translation-sigma",
         type=float,
-        default=0.05,
-        help="Contact displacement sigma in metres per slice interval (default: 0.05)",
+        default=0.01,
+        help="Contact observation translation sigma in metres (default: 0.01)",
     )
     parser.add_argument(
         "--contacts",
@@ -369,45 +367,82 @@ def main() -> None:
         default=10,
         help="CM-Opt iteration limit for each initialization",
     )
+    parser.add_argument("--upright-prior", action="store_true")
+    parser.add_argument("--height-prior", action="store_true")
+    parser.add_argument("--max-slice-interval-ms", type=float, default=200.0)
     args = parser.parse_args()
+    if args.double_support_slices:
+        args.contact_slices = True
     if args.final_only:
         args.methods = ["contact"]
         args.smoothing_only = True
-    if args.contact_slices and (args.methods != ["contact"] or not args.smoothing_only):
-        parser.error(
-            "--contact-slices requires contact-only smoothing without initializer histories"
-        )
     if args.max_iterations < 1 or (args.max_frames is not None and args.max_frames < 2):
         parser.error("Use positive iterations and at least two frames")
     walk = example.load_walk(args.data, args.contacts, args.max_frames)
-    _, input_metadata = load_recording(args.data)
+    input_arrays, input_metadata = load_recording(args.data)
     if args.loop_closure and (
         not input_metadata.get("motionSource", {}).get("fullTrajectory")
         or args.max_frames is not None
     ):
         parser.error("Loop closure requires the entire recording, without --max-frames")
-    contact_settings = input_metadata.get("motionSource", {}).get(
-        "contactInitialization", {}
+    _, between, ground, contact_options = next(
+        preset
+        for preset in prior_configurations()
+        if preset[0] == "between-ground-upright"
     )
-    contact_options = gtd.contact_init.Options()
-    for name in (
-        "addBetweenFactors",
-        "betweenTranslationSigma",
-        "betweenRotationSigma",
-    ):
-        if name in contact_settings:
-            setattr(contact_options, name, contact_settings[name])
+    contact_options.addBetweenFactors = between
+    contact_options.addGroundFactors = ground
+    contact_options.maxIterations = 200
+    contact_options.groundHeight = 0.0
+    phase_info = None
+    if args.double_support_slices:
+        walk, phase_info = example.infer_contact_phases(walk, args.data)
+    model = load_g1_model()
+    anchor_slice = 0
+    if args.double_support_slices:
+        selected = initialization_slices(
+            walk.trajectory, walk.dt, args.max_slice_interval_ms
+        )
+        if not selected:
+            raise ValueError("No double-support slice for the initial gauge")
+        anchor_slice = selected[0].k
+        qpos = input_arrays["qpos"][anchor_slice]
+        body = model.body("robot/pelvis").id
+        anchor = pose(qpos[:3], qpos[3:7]) * pose(
+            model.body_ipos[body], model.body_iquat[body]
+        )
+        walk = replace(walk, anchor=anchor)
+    walk, world_translation = align_contact_ground(walk, anchor_slice)
+    initialization_frame = {
+        "anchorSourceIndex": anchor_slice,
+        "worldTranslationMeters": world_translation.tolist(),
+        "inputWorldTranslationMeters": list(
+            input_metadata["motionSource"]["worldTranslationMeters"]
+        ),
+        "groundSource": "Mean active sole height from measured FK at the first initialized slice",
+    }
     selected_seed = None
     selection_info = None
+    selected_diagnostics = (
+        gtd.pose_contact_init.Result() if not args.smoothing_only else None
+    )
     if args.contact_slices:
         walk, selected_seed, selection_info = example.initialize_contact_slices(
-            walk, contact_options, contact_buffer=1
+            walk,
+            contact_options,
+            contact_buffer=1,
+            double_support_only=args.double_support_slices,
+            max_slice_interval_ms=args.max_slice_interval_ms,
+            contact_diagnostics=selected_diagnostics,
         )
-    model = load_model(args.data)
     recorder = Recorder(walk, model)
     groups: dict[str, gtsam.NonlinearFactorGraph] = {}
     costs, constraints, keys = example.build_problem(
-        walk, args.contact_slip_sigma, groups
+        walk,
+        args.contact_translation_sigma,
+        groups,
+        upright_prior=args.upright_prior,
+        height_prior=args.height_prior,
     )
     kinematic_costs = gtsam.NonlinearFactorGraph(costs)
     aiding = build_imu_aiding(walk, args.data) if args.imu else None
@@ -433,11 +468,7 @@ def main() -> None:
         # Initializer histories solve the same kinematic problem in both modes.
         recorder.costs = kinematic_costs
         recorder.factor_groups = {}
-        contact_result = (
-            gtd.contact_init.Result()
-            if method == "contact" and not args.smoothing_only
-            else None
-        )
+        contact_result = selected_diagnostics if method == "contact" else None
         ik_frames: list[list[dict[str, Any]]] = [[] for _ in range(walk.count)]
 
         def ik_iteration(
@@ -449,8 +480,9 @@ def main() -> None:
             )
             ik_frames[sample].append(state)
 
-        if selected_seed is not None:
-            seed, info = selected_seed.extract(keys), selection_info
+        if selected_seed is not None and method == "contact":
+            seed = example.seed_contact_landmarks(walk, selected_seed).extract(keys)
+            info = selection_info
         else:
             seed, info = example.initialize(
                 walk,
@@ -463,11 +495,9 @@ def main() -> None:
         initializer = []
         sparse_samples: list[int] = []
         if contact_result is not None:
-            sparse_samples = [
-                measurement.slice.k for measurement in contact_result.graph.measurements
-            ]
+            sparse_samples = list(range(walk.count))
             for snapshot in contact_result.history:
-                dense = dense_contact_state(walk, seed, sparse_samples, snapshot.poses)
+                dense = contact_iteration_values(walk, seed, snapshot.poses)
                 state = recorder.trajectory(
                     dense,
                     iteration=snapshot.iteration,
@@ -475,11 +505,13 @@ def main() -> None:
                     error=snapshot.objective / 2,
                     contactRms=snapshot.rms,
                 )
-                state["landmarks"] = [list(p) for p in snapshot.landmarks]
+                state["landmarks"] = [
+                    p.translation().tolist() for p in snapshot.contactPoses
+                ]
                 initializer.append(state)
             if not dense.equals(seed, 1e-7):
                 raise RuntimeError(
-                    "Contact history interpolation differs from the native adapter"
+                    "Contact history differs from the selected native solution"
                 )
             assert len(initializer) == contact_result.iterations + 1
         elif method == "ik" and not args.smoothing_only:
@@ -505,41 +537,70 @@ def main() -> None:
             recorder.trajectory(seed, iteration=None, label="Initializer output")
         ]
 
-        def cm_iteration(iteration: int, values: gtsam.Values) -> None:
-            smoothing.append(
-                recorder.trajectory(
-                    values,
-                    iteration=iteration,
-                    label=(
-                        "CM-Opt feasible start"
-                        if iteration == 0
-                        else f"CM-Opt iteration {iteration}"
-                    ),
-                )
-            )
-
+        error_history: list[dict[str, Any]] = []
         started = perf_counter()
+
+        def cm_iteration(iteration: int, values: gtsam.Values) -> None:
+            # Retain scalar objective histories even when intermediate robot
+            # poses are omitted. All groups are evaluated at the same Values.
+            errors = {name: graph.error(values) for name, graph in groups.items()}
+            error_history.append(
+                {
+                    "iteration": iteration,
+                    "elapsedSeconds": perf_counter() - started,
+                    "factorErrors": errors,
+                    "total": sum(errors.values()),
+                }
+            )
+            if not args.final_only:
+                smoothing.append(
+                    recorder.trajectory(
+                        values,
+                        iteration=iteration,
+                        label=(
+                            "CM-Opt feasible start"
+                            if iteration == 0
+                            else f"CM-Opt iteration {iteration}"
+                        ),
+                    )
+                )
+
         solution, solver = example.solve_cm(
             costs,
             constraints,
             seed,
             walk.root.id(),
             args.max_iterations,
-            None if args.final_only else cm_iteration,
+            cm_iteration,
         )
         elapsed = perf_counter() - started
-        if args.final_only:
-            # Time the actual solve, with no serialization/error-budget callbacks.
-            solver["elapsedSeconds"] = elapsed
-            solver["timingScope"] = (
-                "CM-Opt manifold setup, optimization, and solution extraction; "
-                "excludes initialization, graph construction, and replay export"
+        solver["elapsedSeconds"] = elapsed
+        solver["timingScope"] = (
+            "CM-Opt manifold setup, optimization, solution extraction, and "
+            "per-iteration factor-error evaluation; excludes initialization "
+            "and graph construction"
+            + (
+                " and robot replay serialization"
+                if args.final_only
+                else "; includes intermediate replay serialization"
             )
-            cm_iteration(solver["iterations"], solution)
+        )
+        assert len(error_history) == solver["iterations"] + 1
+        if args.final_only:
+            smoothing.append(
+                recorder.trajectory(
+                    solution,
+                    iteration=solver["iterations"],
+                    label=f"CM-Opt iteration {solver['iterations']}",
+                )
+            )
         else:
             assert (
                 len(smoothing) == solver["iterations"] + 2
             ), "Missing CM-Opt iterations"
+        np.testing.assert_allclose(
+            error_history[-1]["total"], costs.error(solution), rtol=1e-9
+        )
         final_metrics = example.evaluate(walk, costs, constraints, solution)
         if final_metrics["kinematic_equality_l2"] >= 1e-5:
             raise RuntimeError(f"{method}: infeasible final state")
@@ -550,14 +611,45 @@ def main() -> None:
         runs[method] = {
             "initialization": info,
             "solver": solver,
+            "errorHistory": error_history,
             "smoothing": smoothing,
             "initializer": initializer,
             "ikFrames": ik_frames if method == "ik" and not args.smoothing_only else [],
             "sparseSamples": sparse_samples,
         }
 
-    # Reference is rendered solely as an optional overlay, never fed to estimation.
-    arrays, metadata = load_recording(args.data)
+    # Reference poses are an overlay, not pose measurements in the smoother.
+    # The optional privileged contact graph has already used them for labels.
+    arrays, metadata = input_arrays, input_metadata
+    if phase_info is not None:
+        motion = metadata["motionSource"]
+        motion["detector"] = {
+            "method": phase_info["method"],
+            "details": "contactPhaseInference",
+            "privilegedReference": True,
+        }
+        for credit in motion.get("licenseNotes", []):
+            credit["changes"] += (
+                " For this replay, replaced the imported height/speed schedule "
+                "with binary-foot max-product labels and retained only "
+                "double-stance slices for initialization and smoothing."
+            )
+    metadata["motionSource"]["contactInitialization"] = {
+        "addBetweenFactors": True,
+        "addUprightFactors": True,
+        "addGroundFactors": True,
+        "addNormalFactors": False,
+        "initializeUpright": True,
+        "frame": initialization_frame,
+    }
+    metadata["motionSource"]["worldTranslationMeters"] = (
+        np.asarray(metadata["motionSource"]["worldTranslationMeters"])
+        + world_translation
+    ).tolist()
+    for credit in metadata["motionSource"].get("licenseNotes", []):
+        credit[
+            "changes"
+        ] += " Applied one constant vertical shift from the first initialized sole frames to both estimation and reference replay."
     if metadata.get("motionSource", {}).get("imu"):
         metadata["motionSource"]["imu"]["usedBySmoother"] = args.imu
         metadata["motionSource"]["imu"].pop("file", None)
@@ -568,6 +660,7 @@ def main() -> None:
     )
     for qpos in arrays["qpos"][source_indices]:
         data.qpos[:] = qpos
+        data.qpos[:3] += world_translation
         mujoco.mj_forward(model, data)
         transforms.append(
             np.concatenate([data.xpos, data.xquat[:, [1, 2, 3, 0]]], axis=1)
@@ -593,7 +686,7 @@ def main() -> None:
             "contacts": sorted(
                 {
                     point.link.name().replace("_ankle_roll_link", "")
-                    for point in p.constraintSpec().contactPoints()
+                    for point in p.constraintSpec().contactPoses()
                 }
             ),
         }
@@ -602,10 +695,17 @@ def main() -> None:
     source_files = [
         Path(__file__),
         Path(example.__file__),
+        REPO / "examples/g1_mjlab/contact_phases.py",
+        REPO / "examples/g1_mjlab/kinematic_initialization.py",
+        REPO / "examples/g1_mjlab/kinematic_smoothing.py",
+        REPO / "apps/contact-initialization/scripts/export_native_recordings.py",
         REPO / "examples/g1_mjlab/mujoco_io.py",
         REPO / "gtdynamics.i",
         REPO / "gtdynamics/utils/Initializer.cpp",
-        REPO / "gtdynamics/utils/ContactTrajectoryInitializer.cpp",
+        REPO / "gtdynamics/utils/PoseContactInitializer.cpp",
+        REPO / "gtdynamics/utils/PoseContactInitializer.h",
+        REPO / "gtdynamics/utils/ContactMotion.cpp",
+        REPO / "examples/g1_mjlab/g1_model.py",
         REPO / "gtdynamics/utils/ContactInitializer.cpp",
         REPO / "gtdynamics/kinematics/KinematicsTrajectory.cpp",
         REPO / "gtdynamics/kinematics/Kinematics.h",
@@ -632,6 +732,11 @@ def main() -> None:
         ),
         "title": "G1 walking · kinematics smoothing",
         "motionSource": metadata.get("motionSource"),
+        "contactPhaseInference": phase_info,
+        "contactInitialization": (
+            runs["contact"]["initialization"] if "contact" in runs else None
+        ),
+        "initializationFrame": initialization_frame,
         "imuAiding": aiding.metadata if aiding is not None else {"enabled": False},
         "loopClosure": {
             "enabled": args.loop_closure,
@@ -649,10 +754,23 @@ def main() -> None:
         "dt": walk.dt,
         "timestamps": walk.times.tolist(),
         "sampling": {
-            "mode": "contact-initializer" if args.contact_slices else "uniform",
+            "mode": (
+                "double-support"
+                if args.double_support_slices
+                else "contact-initializer" if args.contact_slices else "uniform"
+            ),
+            "longPhaseSeconds": (
+                min(0.2, args.max_slice_interval_ms / 1000.0)
+                if args.double_support_slices
+                else None
+            ),
+            "interpolatedSolveStates": False,
             "sourceIndices": source_indices.tolist(),
             "sourcePeriodSeconds": walk.dt,
             "contactBuffer": 1 if args.contact_slices else 0,
+            "maxSliceIntervalMs": (
+                args.max_slice_interval_ms if args.double_support_slices else None
+            ),
             "contactBreaks": sorted(walk.contact_breaks),
             "intervalSeconds": np.diff(walk.times).tolist(),
         },
@@ -668,7 +786,12 @@ def main() -> None:
         "runs": runs,
         "graph": {
             "costFactors": costs.size(),
-            "contactSlipSigmaMeters": args.contact_slip_sigma,
+            "contactTranslationSigmaMeters": args.contact_translation_sigma,
+            "contactRotationSigmaDegrees": example.CONTACT_ROTATION_SIGMA_DEGREES,
+            "stanceLandmarks": len({key for _, _, key in stance_observations(walk)}),
+            "uprightPrior": args.upright_prior,
+            "heightPrior": args.height_prior,
+            "motionPrior": False,
             "equalities": constraints.size(),
             "inequalities": 0,
             "factorGroups": [
@@ -677,12 +800,16 @@ def main() -> None:
                     "label": FACTOR_TYPES[name][0],
                     "factorType": FACTOR_TYPES[name][1],
                     "noise": (
-                        f"{args.contact_slip_sigma:g} m per axis per slice interval"
-                        if name == "stationary"
+                        f"translation {args.contact_translation_sigma:g} m; "
+                        f"rotation {example.CONTACT_ROTATION_SIGMA_DEGREES:g}° per observation"
+                        if name == "contact"
                         else FACTOR_TYPES[name][2]
                     ),
                     "count": graph.size(),
                     "dimension": graph.at(0).dim() if graph.size() else 0,
+                    "residualDimension": sum(
+                        graph.at(i).dim() for i in range(graph.size())
+                    ),
                 }
                 for name, graph in groups.items()
             ],

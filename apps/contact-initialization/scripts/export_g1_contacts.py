@@ -358,7 +358,6 @@ def main():
                 if model.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE
             ],
             "footBodies": {side: body_map[body] for side, body in feet.items()},
-            "soleCorners": rounded(outline[:3]),
             "soleOutline": rounded(outline),
             "soleCenter": rounded(np.mean(outline, axis=0)),
             "soleDefinition": "Three fixed sole points on a rectangular approximation of the capsule collision sole lower envelope, expressed in ankle-roll body coordinates; not changing collision centroids.",

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "onset",
+    "label": "First turn and walking \u00b7 24\u201344 s",
+    "start": 24
+  },
+  {
+    "id": "middle",
+    "label": "Mid-clip turns \u00b7 78\u201398 s",
+    "start": 78
+  },
+  {
+    "id": "return",
+    "label": "Return turn \u00b7 198\u2013218 s",
+    "start": 198
+  }
+]

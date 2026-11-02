@@ -98,7 +98,29 @@ export class ReplayScene {
       body.position.fromArray(this.floats, offset); body.quaternion.fromArray(this.floats, offset + 3);
     });
   }
+  setReferenceTransform(alignment) {
+    if(this.referenceAlignment===alignment)return;
+    this.referenceAlignment=alignment;
+    const transform=new THREE.Matrix4();
+    if(alignment){
+      const r=alignment.rotation,t=alignment.translation;
+      transform.set(r[0][0],r[0][1],r[0][2],t[0],r[1][0],r[1][1],r[1][2],t[1],r[2][0],r[2][1],r[2][2],t[2],0,0,0,1);
+    }
+    this.reference.root.position.setFromMatrixPosition(transform);
+    this.reference.root.quaternion.setFromRotationMatrix(transform);
+    // Transform full world XYZ before projecting the path onto the display grid.
+    const points=Array.from({length:this.record.samples},(_,k)=>{
+      const offset=bodyOffset(this.record,this.record.reference,k,this.record.rootBody);
+      const point=new THREE.Vector3().fromArray(this.floats,offset).applyMatrix4(transform);
+      point.z=.014;return point;
+    });
+    this.referencePath.geometry.dispose();
+    this.referencePath.geometry=new THREE.BufferGeometry().setFromPoints(points);
+    this.referencePath.computeLineDistances();
+    this.container.dataset.referenceAligned=String(Boolean(alignment));
+  }
   update(state, frame, showReference, pathState, options = {}) {
+    this.setReferenceTransform(options.referenceAlignment);
     this.currentState = state; this.currentFrame = frame;
     const offset = bodyOffset(this.record, state, frame, this.record.rootBody);
     const focus = new THREE.Vector3().fromArray(this.floats, offset);

@@ -46,7 +46,7 @@ onBeforeUnmount(()=>{controller?.abort();clearRecordingCache();disposeRobotTempl
     <div v-if="error" role="alert" class="error-banner">{{error}}</div>
     <div v-else-if="!data" role="status" class="loading">Loading {{stage==='smoothing'?'smoothing iterations':'initializer histories'}}…</div>
     <template v-else>
-      <p class="snippet-note">{{data.record.samples}} slices at {{1/data.record.dt}} Hz. Both methods solve the same graph: {{data.record.graph.costFactors.toLocaleString()}} cost factors and {{data.record.graph.equalities.toLocaleString()}} kinematic equalities. CM-Opt limit: {{data.record.maxIterations}} iterations.</p>
+      <p class="snippet-note">{{data.record.samples}} contact-selected slices · maximum {{data.record.sampling.maxSliceIntervalMs}} ms within double-stance phases. Both methods solve the same graph: {{data.record.graph.costFactors.toLocaleString()}} cost factors and {{data.record.graph.equalities.toLocaleString()}} kinematic equalities. CM-Opt limit: {{data.record.maxIterations}} iterations.</p>
       <Timeline ref="timeline" :record="data.record" v-model:frame="frame" />
       <div class="comparison"><MethodPanel v-for="method in ['contact','ik']" :key="method" :method="method" :stage="stage" :frame="frame" :show-reference="showReference" :data="data" :joint="joint" /></div>
       <Attribution :record="data.record" :directory="directory" />

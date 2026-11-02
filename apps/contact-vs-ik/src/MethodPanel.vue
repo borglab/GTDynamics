@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ReplayScene } from '../../shared/kinematics/scene.js';
-import { historyFor, jointValue, referenceLabel } from '../../shared/kinematics/recording.js';
+import { historyFor, jointValue, referenceLabel, sliceTime } from '../../shared/kinematics/recording.js';
 import TracePlot from '../../shared/kinematics/TracePlot.vue';
 import BiasTable from '../../shared/kinematics/BiasTable.vue';
 const props = defineProps({ method: String, stage: String, frame: Number, showReference: Boolean, data: Object, joint: Number });
@@ -45,14 +45,14 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
   <article class="method-panel" :class="method" :data-method="method" :data-iteration="index">
     <header class="panel-heading"><div><span class="eyebrow">{{ method === 'contact' ? 'CONTACT' : 'IK' }}</span><h2>{{ title }}</h2></div><div><button class="quiet" @click="scene?.fitPaths()">Fit paths</button><button class="quiet" @click="scene?.reset()">Reset view</button></div></header>
     <div ref="sceneElement" class="scene"><p v-if="sceneError" role="alert" class="error-banner">{{ sceneError }}</p></div>
-    <div class="scene-caption"><span>{{ state.label }}</span><span>{{ (frame * data.record.dt).toFixed(2) }} s · frame {{ frame }}</span></div>
+    <div class="scene-caption"><span>{{ state.label }}</span><span>{{ sliceTime(data.record,frame).toFixed(2) }} s · slice {{ frame }}</span></div>
     <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{referenceLabel}} path</span><span>XY ground projection</span></div>
     <section class="iteration-controls">
       <div class="row"><h3>{{ stage === 'smoothing' ? 'Whole-trajectory smoothing' : method === 'ik' ? `IK solve · frame ${frame}` : 'Sparse contact solve' }}</h3><span class="mono">Iteration {{ state.iteration }} / {{ history.at(-1).iteration }}</span></div>
       <input type="range" min="0" :max="history.length-1" :value="index" :aria-label="`${title} iteration`" @input="select($event.target.value)">
       <div class="row"><div class="button-group"><button @click="select(Math.max(0,index-1))" :disabled="index===0" aria-label="Previous iteration">←</button><button @click="replay">{{ replaying ? 'Pause iterations' : 'Replay iterations' }}</button><button @click="select(Math.min(history.length-1,index+1))" :disabled="index===history.length-1" aria-label="Next iteration">→</button></div><button class="quiet" @click="final">Last iteration</button></div>
-      <p class="scope" v-if="stage==='initializer'">{{ method==='ik' ? 'Each walking frame has its own LM history. Scrub time to inspect another solve.' : `${data.record.runs.contact.sparseSamples.length} supported samples solved jointly. Intermediate poses are interpolated offline.` }}</p>
-      <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.converged ? 'Converged.' : 'Stopped at the iteration limit; convergence criterion not met.' }}</p>
+      <p class="scope" v-if="stage==='initializer'">{{ method==='ik' ? 'Each retained slice has its own LM history. Scrub time to inspect another solve.' : `${data.record.runs.contact.sparseSamples.length} retained slices solved jointly. No interpolated solve states.` }}</p>
+      <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.stalled ? 'Stalled: no accepted decrease.' : data.record.runs.contact.initialization.converged ? 'Stopping criterion reached.' : 'Iteration limit reached.' }}</p>
       <p class="scope" v-if="stage==='smoothing'">Iteration 0: feasible initial guess. CM-Opt limit: {{ data.record.maxIterations }} iterations.</p>
     </section>
     <BiasTable :bias="bias" :aiding="data.record.imuAiding" :caption="stage==='smoothing'?'Estimated IMU bias · selected iteration':'Estimated IMU bias · final smoothing iteration'" />
@@ -72,12 +72,12 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
     <div v-if="data.record.loopClosure?.enabled && state.closurePositionErrorWorld" class="metrics"><div><span>Final COM − start anchor · world [x, y, z] · m</span><strong>{{state.closurePositionErrorWorld.map(x=>number(x,3)).join(', ')}}</strong></div></div>
     <section class="plot-block">
       <div class="row"><h3>{{ data.record.jointNames[joint].replaceAll('_',' ') }}</h3><span class="mono">{{ number(currentAngle) }} rad</span></div>
-      <TracePlot :values="jointAngles" :secondary="measuredAngles" :selected="frame" label="Joint angle over walking time, with source reference" />
-      <div class="plot-foot"><span>0 s</span><span>Solid: {{state.frames===1 ? 'completed IK trajectory' : 'selected iteration'}} · dashed: source</span><span>{{ ((data.record.samples-1)*data.record.dt).toFixed(2) }} s</span></div>
+      <TracePlot :values="jointAngles" :secondary="measuredAngles" :selected="frame" :timestamps="data.record.timestamps" label="Joint angle over walking time, with source reference" />
+      <div class="plot-foot"><span>{{sliceTime(data.record,0).toFixed(2)}} s</span><span>Solid: {{state.frames===1 ? 'completed IK trajectory' : 'selected iteration'}} · dashed: source</span><span>{{sliceTime(data.record,data.record.samples-1).toFixed(2)}} s</span></div>
     </section>
     <section v-if="frameMetrics && state.frames!==1" class="plot-block">
       <div class="row"><h3>Contact height over time</h3><span class="mono">{{ number(frameMetrics.height[frame]*1000) }} mm</span></div>
-      <TracePlot :values="frameMetrics.height.map(x=>x*1000)" :selected="frame" label="Ground contact height RMS by frame in millimetres" />
+      <TracePlot :values="frameMetrics.height.map(x=>x*1000)" :selected="frame" :timestamps="data.record.timestamps" label="Ground contact height RMS by frame in millimetres" />
       <p class="scope">Global RMS above; this curve shows each frame. No-contact frames show zero.</p>
     </section>
   </article>

@@ -1,17 +1,58 @@
 export const factorVariants = [
-  {id:'none', title:'Contacts only', between:false, upright:false, ground:false},
-  {id:'between', title:'Weak motion', between:true, upright:false, ground:false},
-  {id:'upright', title:'Upright', between:false, upright:true, ground:false},
-  {id:'both', title:'Motion + upright', between:true, upright:true, ground:false},
-  {id:'ground', title:'Landmark height', between:false, upright:false, ground:true},
-  {id:'between-ground', title:'Motion + height', between:true, upright:false, ground:true},
-  {id:'upright-ground', title:'Upright + height', between:false, upright:true, ground:true},
-  {id:'all', title:'All three priors', between:true, upright:true, ground:true},
+  {
+    id: "none",
+    title: "Contact poses only",
+    between: false,
+    ground: false,
+    upright: false,
+  },
+  {
+    id: "between",
+    title: "Weak motion",
+    between: true,
+    ground: false,
+    upright: false,
+  },
+  {
+    id: "ground",
+    title: "Sole ground",
+    between: false,
+    ground: true,
+    upright: false,
+  },
+  {
+    id: "between-ground",
+    title: "Motion + ground",
+    between: true,
+    ground: true,
+    upright: false,
+  },
+  {
+    id: "upright",
+    title: "Upright",
+    between: false,
+    ground: false,
+    upright: true,
+  },
+  {
+    id: "between-upright",
+    title: "Motion + upright",
+    between: true,
+    ground: false,
+    upright: true,
+  },
+  {
+    id: "ground-upright",
+    title: "Ground + upright",
+    between: false,
+    ground: true,
+    upright: true,
+  },
+  {
+    id: "between-ground-upright",
+    title: "Motion + ground + upright",
+    between: true,
+    ground: true,
+    upright: true,
+  },
 ];
-
-// Automatic selection preserves the user's height-prior choice. Only an
-// explicit checkbox or table-row selection may change that assumption.
-export function bestTranslationRow(rows, ground) {
-  return rows.filter(row=>row.ground===ground).reduce((best,row)=>
-    !best||row.run.evaluation.positionRmseMeters<best.run.evaluation.positionRmseMeters?row:best,null);
-}

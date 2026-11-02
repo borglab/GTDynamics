@@ -12,6 +12,10 @@ import argparse
 import json
 import urllib.request
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "examples/g1_mjlab"))
+from g1_model import load_g1_model, model_description as describe_model, prepare_model
 
 import mujoco
 import numpy as np
@@ -108,10 +112,6 @@ def main():
         type=Path,
         help="Also save model.mjb, walk.npz and walk.json for the kinematics example",
     )
-    parser.add_argument(
-        "--model", type=Path, default=app.parents[1] / "models/mujoco/unitree_g1/g1.xml"
-    )
-    parser.add_argument("--template", type=Path, default=app / "public/g1-walk.json")
     parser.add_argument("--cache", type=Path, default=app / ".cache/g1-moves")
     parser.add_argument(
         "--output", type=Path, default=app / "public/g1-steptouch-30s.json"
@@ -157,12 +157,8 @@ def main():
     qpos = all_rows[first:last].copy()
     qpos[:, 3:7] = qpos[:, [6, 3, 4, 5]]
     qpos[:, 3:7] /= np.linalg.norm(qpos[:, 3:7], axis=1)[:, None]
-    model_description = json.loads(args.template.read_text())["model"]
-    model = (
-        mujoco.MjModel.from_binary_path(str(args.model))
-        if args.model.suffix == ".mjb"
-        else mujoco.MjModel.from_xml_path(str(args.model))
-    )
+    model = load_g1_model()
+    model_description = describe_model(model)
     prefix = (
         "robot/"
         if mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "robot/pelvis") >= 0
@@ -292,7 +288,7 @@ def main():
         "sourceFile": csv_path,
         "sourceSha256": checksum,
         "recordingSha256": checksum,
-        "modelSha256": digest(args.model),
+        "modelSha256": digest(prepare_model() / "provenance.json"),
         "sourceSampleCount": len(all_rows),
         "sourceSampleRateHz": FPS,
         "sourceDurationSeconds": len(all_rows) / FPS,
@@ -349,16 +345,9 @@ def main():
             },
             (
                 {
-                    "name": "MJLab G1 model source",
-                    "license": "Apache-2.0",
-                    "url": "https://github.com/mujocolab/mjlab/blob/main/LICENSE",
-                    "localNotice": "THIRD_PARTY_LICENSES.txt",
-                }
-                if args.model.suffix == ".mjb"
-                else {
-                    "name": "Unitree G1 model from MuJoCo Menagerie",
+                    "name": "Unitree G1 g1_mjlab from MuJoCo Menagerie",
                     "license": "BSD-3-Clause",
-                    "url": "https://github.com/google-deepmind/mujoco_menagerie/blob/a03e87bf13502b0b48ebbf2808928fd96ebf9cf3/unitree_g1/LICENSE",
+                    "url": "https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_g1",
                     "localNotice": "assets/unitree_g1/LICENSE",
                 }
             ),

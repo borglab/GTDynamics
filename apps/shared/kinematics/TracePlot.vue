@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-const props = defineProps({ values: Array, secondary: Array, selected: Number, label: String, interactive: Boolean });
+const props = defineProps({ values: Array, secondary: Array, selected: Number, label: String, interactive: Boolean, timestamps: Array });
 const emit = defineEmits(['select']);
 const width = 440, height = 105, pad = 12;
 const bounds = computed(() => {
@@ -8,7 +8,7 @@ const bounds = computed(() => {
   const lo = Math.min(...all), hi = Math.max(...all);
   return { lo, span: Math.max(hi - lo, Math.abs(hi) * .01, 1e-9) };
 });
-const x = i => pad + i * (width - 2 * pad) / Math.max(1, props.values.length - 1);
+const x = i => pad + (props.timestamps ? (props.timestamps[i]-props.timestamps[0])/Math.max(1e-12,props.timestamps.at(-1)-props.timestamps[0]) : i/Math.max(1,props.values.length-1)) * (width-2*pad);
 const y = v => height - pad - (v - bounds.value.lo) * (height - 2 * pad) / bounds.value.span;
 const points = values => values.map((v, i) => `${x(i)},${y(v)}`).join(' ');
 function select(event) {

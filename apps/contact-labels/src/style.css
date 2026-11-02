@@ -1,0 +1,286 @@
+.labels-app {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 30px 36px 60px;
+}
+.labels-app .recording-controls,
+.labels-app .toolbar {
+  flex-wrap: wrap;
+}
+.labels-app .recording-controls label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.target-definition {
+  margin: 14px 4px 20px;
+  line-height: 1.7;
+}
+.label-viewer,
+.foot-card,
+.plots {
+  background: #fff;
+  border: 1px solid #dbe2d7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.viewer-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 17px;
+  font-size: 12px;
+}
+.label-scene {
+  height: clamp(440px, 58vh, 700px);
+}
+.label-scene canvas {
+  width: 100%;
+  height: 100%;
+}
+.viewer-caption {
+  padding: 10px 20px;
+  margin: 0;
+}
+.time-controls {
+  padding: 16px 20px;
+  border-top: 1px solid #e1e7e0;
+}
+.time-controls .row {
+  gap: 15px;
+}
+.time-controls small {
+  font-weight: 400;
+  color: #77877d;
+}
+.label-band {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 9px 0;
+  font-size: 11px;
+}
+.label-band > strong {
+  width: 35px;
+}
+.label-band > div {
+  position: relative;
+  display: flex;
+  flex: 1;
+  height: 19px;
+  gap: 0;
+}
+.label-band button {
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  border-radius: 0;
+  opacity: 0.8;
+}
+.label-band button:hover {
+  opacity: 1;
+}
+.label-band i {
+  position: absolute;
+  top: -3px;
+  height: 25px;
+  width: 2px;
+  background: #253d31;
+  pointer-events: none;
+}
+.threshold-note {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 22px 4px;
+  color: #53695c;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.threshold-note small {
+  color: #74877b;
+}
+.foot-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 22px 0;
+}
+.foot-card {
+  padding: 20px;
+}
+.foot-card h2,
+.plots h2 {
+  font-size: 17px;
+}
+.foot-motion {
+  font-variant-numeric: tabular-nums;
+  margin: 16px 0;
+  font-size: 16px;
+  color: #435e4e;
+}
+.durations {
+  display: flex;
+  gap: 13px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  margin-bottom: 18px;
+}
+.foot-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.foot-card th,
+.foot-card td {
+  text-align: right;
+  border-bottom: 1px solid #edf1eb;
+  padding: 9px 4px;
+}
+.foot-card th:first-child {
+  text-align: left;
+}
+.plots {
+  padding: 22px;
+  margin: 24px 0;
+}
+.motion-plot {
+  margin: 26px 0 15px;
+}
+.motion-plot figcaption {
+  font-size: 12px;
+  font-weight: 600;
+  color: #345344;
+  margin-bottom: 15px;
+}
+.chart {
+  height: 205px;
+  width: 100%;
+  overflow: hidden;
+}
+.labels-app footer {
+  font-size: 12px;
+  color: #718477;
+  line-height: 1.7;
+}
+.labels-app pre {
+  overflow: auto;
+  font-size: 10px;
+}
+.labels-app .row {
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .labels-app {
+    padding: 20px 14px;
+  }
+  .foot-cards {
+    grid-template-columns: 1fr;
+  }
+  .label-scene {
+    height: 470px;
+  }
+  .plots {
+    padding: 16px;
+  }
+  .toolbar select {
+    max-width: 260px;
+  }
+  .viewer-tools {
+    padding: 12px;
+  }
+  .time-controls {
+    padding: 12px;
+  }
+  .legend {
+    gap: 10px;
+    font-size: 11px;
+  }
+  .labels-app .page-header {
+    gap: 12px;
+  }
+  .recorded-badge {
+    font-size: 9px;
+  }
+}
+
+.support-definition {
+  line-height: 1.7;
+  margin: 0 4px 20px;
+}
+.raw-label {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #53695c;
+}
+
+.graph-comparison {
+  margin: 24px 0;
+  padding: 22px;
+  border: 1px solid #dbe2d7;
+  border-radius: 10px;
+  background: white;
+}
+.graph-comparison h2 {
+  font-size: 17px;
+}
+.graph-comparison p {
+  line-height: 1.7;
+}
+.comparison-band > strong {
+  width: 92px;
+  flex-shrink: 0;
+}
+.comparison-band > span {
+  width: 80px;
+  flex-shrink: 0;
+}
+.transition-table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.transition-table td,
+.transition-table th {
+  padding: 8px 18px;
+  border: 1px solid #dbe2d7;
+}
+@media (max-width: 760px) {
+  .graph-comparison {
+    padding: 12px;
+  }
+  .comparison-band > strong {
+    width: 72px;
+  }
+  .comparison-band > span {
+    width: 55px;
+  }
+}
+
+.contact-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #222;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.label-band:not(.comparison-band) button {
+  box-shadow: none;
+  opacity: 1;
+}
+.comparison-band > strong {
+  width: 105px;
+}
+
+.label-band:not(.comparison-band) > div {
+  outline: 1px solid #000;
+}
