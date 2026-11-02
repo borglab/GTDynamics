@@ -1,4 +1,7 @@
 <script setup>
+import ContactMath from '../../shared/paper/ContactMath.vue';
+import AppAbstract from '../../shared/paper/AppAbstract.vue';
+import AppPaper from '../../shared/paper/AppPaper.vue';
 import {
   computed,
   markRaw,
@@ -240,7 +243,7 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <main
+  <main id="demo"
     class="labels-app"
     :data-frame="frame"
     :data-snippet="selection"
@@ -254,7 +257,7 @@ onBeforeUnmount(() => {
       <div>
         <span class="eyebrow">GTDYNAMICS / SSIO G1</span>
         <h1>Contact Labels</h1>
-        <p>Reference-derived foot motion and inferred walking contact.</p>
+        <AppAbstract app="contact-labels" />
       </div>
       <span class="recorded-badge">PRIVILEGED LABELS</span>
     </header>
@@ -352,12 +355,7 @@ onBeforeUnmount(() => {
           </div>
         </header>
         <div ref="sceneElement" class="label-scene"></div>
-        <p class="scope viewer-caption">
-          Dots and trails: black stance, white swing, gray unresolved. Axes:
-          sole frames (+X forward, +Y left, +Z up). Dashed line: reference
-          pelvis path. Geometry and motion are recorded; no browser
-          optimization.
-        </p>
+
         <div class="time-controls">
           <div class="row">
             <button @click="play">{{ playing ? "Pause" : "Play" }}</button
@@ -402,6 +400,14 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
+      <AppPaper app="contact-labels" :frame="frame" :samples="record.times.length" @select="selectFrame">
+        <template #mathematics><ContactMath :graph="record.supportGraph" :velocity-aiding="velocityAiding" :walking-constraints="enforceWalkingSequence" /></template>
+        <p class="scope viewer-caption">
+          Dots and trails: black stance, white swing, gray unresolved. Axes:
+          sole frames (+X forward, +Y left, +Z up). Dashed line: reference
+          pelvis path. Geometry and motion are recorded; no browser
+          optimization.
+        </p>
       <section class="graph-comparison">
         <h2>Support sequence comparison</h2>
         <p class="scope">
@@ -462,15 +468,6 @@ onBeforeUnmount(() => {
           {{ (1000 * activeGraph.solveSeconds).toFixed(2) }} ms, offline. Joint-velocity
           factors: {{ velocityAiding ? "on" : "off" }}. Walking constraints:
           {{ enforceWalkingSequence ? "on" : "off" }}.
-        </p>
-        <p>
-          <a href="./contact-factors.html" download
-            >Download factor report (HTML)</a
-          >
-          ·
-          <a href="./contact-factors.html" target="_blank" rel="noopener"
-            >Read factor definitions</a
-          >
         </p>
       </section>
       <div class="foot-cards">
@@ -637,6 +634,7 @@ onBeforeUnmount(() => {
           @select="selectFrame"
         />
       </section>
+      </AppPaper>
       <footer>
       <p class="scope target-definition">
         Targets use SuperOdom LiDAR-inertial poses and measured-joint FK. Window

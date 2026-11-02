@@ -1,4 +1,7 @@
 <script setup>
+import KinematicsMath from '../../shared/paper/KinematicsMath.vue';
+import AppAbstract from '../../shared/paper/AppAbstract.vue';
+import AppPaper from '../../shared/paper/AppPaper.vue';
 import {computed,markRaw,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue';
 import {clearRecordingCache,loadRecording,referenceLabel} from '../../shared/kinematics/recording.js';
 import {disposeRobotTemplates,ReplayScene} from '../../shared/kinematics/scene.js';
@@ -74,8 +77,8 @@ onMounted(initialize);
 onBeforeUnmount(()=>{comparisonController.abort();controller?.abort();scene?.dispose();scene=null;clearRecordingCache();disposeRobotTemplates();});
 </script>
 <template>
-  <main class="kinematics-app" :data-frame="frame" :data-imu="useImu" :data-loop-closure="useLoop" :data-prior="prior" :data-estimate="estimate">
-    <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / G1</span><h1>Kinematics</h1><p>Full-trajectory contact-initialized smoothing · buffered contact slices.</p></div><span class="recorded-badge">OFFLINE RECORDING</span></header>
+  <main id="demo" class="kinematics-app" :data-frame="frame" :data-imu="useImu" :data-loop-closure="useLoop" :data-prior="prior" :data-estimate="estimate">
+    <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / G1</span><h1>Kinematics</h1><AppAbstract app="kinematics-inspector" /></div><span class="recorded-badge">OFFLINE RECORDING</span></header>
     <section class="toolbar"><div class="recording-controls">
       <label>Estimate <select v-model="estimate" aria-label="Estimate" @change="load"><option value="final">Final</option><option value="initial">Initial</option></select></label>
       <label><input type="checkbox" v-model="useUpright" @change="load"> Upright prior</label>
@@ -85,14 +88,16 @@ onBeforeUnmount(()=>{comparisonController.abort();controller?.abort();scene?.dis
     <div v-if="error" role="alert" class="error-banner">{{error}}</div>
     <div v-else-if="!data" role="status" class="loading">Loading {{estimate}} trajectory…</div>
     <template v-else>
-      <section class="optimization-summary" aria-label="Optimization statistics"><strong>CM-Opt: {{number(data.record.runs.contact.solver.elapsedSeconds,2)}} s · {{data.record.runs.contact.solver.iterations}} iterations</strong><span v-if="data.record.runs.contact.solver.iterations>=data.record.maxIterations">Iteration limit reached ({{data.record.maxIterations}}).</span><small :title="data.record.runs.contact.solver.timingScope">Recorded wall time includes manifold setup, solve, and factor-error recording; initialization and robot replay export excluded.</small></section>
       <section class="trajectory-viewer">
         <header class="viewer-controls"><div class="button-group"><button :aria-pressed="view==='trajectory'" @click="camera('trajectory')">Fit trajectory</button><button :aria-pressed="view==='robot'" @click="camera('robot')">Follow robot</button></div><label v-if="showSlip">Slip threshold <input type="range" min="1" max="50" v-model.number="slipThreshold" aria-label="Slip threshold"> {{slipThreshold}} mm / interval</label></header>
         <div ref="sceneElement" class="scene large-scene"><p v-if="sceneError" role="alert" class="error-banner">{{sceneError}}</p></div>
+        <Timeline ref="timeline" :record="data.record" v-model:frame="frame" />
         <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{referenceName}}</span><span v-if="showSlip" class="slip-legend">Yellow → red: continuing-contact displacement above {{slipThreshold}} mm per selected slice interval</span></div>
         <div v-if="showSlip" class="slip-readout"><span v-for="(distance,foot) in contactSlip" :key="foot">{{foot===0?'Left':'Right'}} foot: {{distance>=0?`${number(distance*1000,2)} mm`:'no continuing contact'}}</span><span>Arrows show displacement direction, enlarged for visibility.</span></div>
-        <Timeline ref="timeline" :record="data.record" v-model:frame="frame" />
       </section>
+      <AppPaper app="kinematics-inspector" :frame="frame" :samples="data.record.samples" @select="timeline?.pause();frame=$event">
+        <template #mathematics><KinematicsMath :record="data.record" /></template>
+      <section class="optimization-summary" aria-label="Optimization statistics"><strong>CM-Opt: {{number(data.record.runs.contact.solver.elapsedSeconds,2)}} s · {{data.record.runs.contact.solver.iterations}} iterations</strong><span v-if="data.record.runs.contact.solver.iterations>=data.record.maxIterations">Iteration limit reached ({{data.record.maxIterations}}).</span><small :title="data.record.runs.contact.solver.timingScope">Recorded wall time includes manifold setup, solve, and factor-error recording; initialization and robot replay export excluded.</small></section>
       <p v-if="data.record.sampling?.mode==='double-support'" class="model-note">{{data.record.samples.toLocaleString()}} double-stance slices from the binary contact graph: one central slice per short yellow phase (≤ {{data.record.sampling.longPhaseSeconds*1000}} ms), otherwise evenly spaced slices between inward-buffered endpoints (maximum {{data.record.sampling.maxSliceIntervalMs}} ms within each phase). Initialization and smoothing use exactly these slices, without interpolated solve states. IMU pims use the actual intervals, from {{Math.min(...data.record.sampling.intervalSeconds).toFixed(2)}} to {{Math.max(...data.record.sampling.intervalSeconds).toFixed(2)}} s.</p>
       <p v-if="data.record.contactInitialization" class="initializer-settings">Contact initializer: rotation σ={{number(data.record.contactInitialization.rotation_sigma_degrees,0)}}° per axis; translation σ={{number(data.record.contactInitialization.translation_sigma_m*1000,0)}} mm per axis. Upright σ={{number(data.record.contactInitialization.upright_sigma_degrees,0)}}°; height σ={{number(data.record.contactInitialization.height_sigma_m*100,0)}} cm; motion σ={{number(data.record.contactInitialization.motion_translation_sigma_m,0)}} m / {{number(data.record.contactInitialization.motion_rotation_sigma_degrees,0)}}°. {{data.record.contactInitialization.iterations}} iterations · {{data.record.contactInitialization.stalled?'stalled: no accepted decrease':data.record.contactInitialization.converged?'stopping criterion reached':'iteration limit reached'}}.</p>
       <VariantComparison v-if="comparison" :summary="comparison" :selected="directory.split('/')[1]" @select="selectVariant" />
@@ -103,6 +108,7 @@ onBeforeUnmount(()=>{comparisonController.abort();controller?.abort();scene?.dis
       <p v-if="alignReference" class="model-note">Reference aligned by one SE(3) least-squares fit to the displayed estimate’s pelvis positions over all {{data.record.samples}} retained slices, with equal weight per slice and no scale change. This affects display and reference-position RMS only.</p>
       <PositionPlots :plots="positionPlots" :reference-label="referenceName" :frame="frame" :dt="data.record.dt" :timestamps="data.record.timestamps" @select="timeline?.pause();frame=$event" />
       <BiasTable :bias="state.bias" :aiding="data.record.imuAiding" :caption="estimate==='initial'?'IMU bias · initial prior mean':'Estimated IMU bias · final result'" />
+      </AppPaper>
       <Attribution :record="data.record" :directory="directory" />
     </template>
   </main>

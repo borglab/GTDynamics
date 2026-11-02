@@ -78,3 +78,12 @@ From `apps`, `npm run test:shared` checks camera fitting, following, resizing,
 and resource ownership. Run the apps' browser checks after migration or display
 changes, including both root and project-prefix URLs, portrait resizing,
 playback, switching models/recordings, overlays, and leaving/reopening an app.
+
+## In-app mathematical methods
+
+`paper/AppPaper.vue` provides a `mathematics` slot beside the interactive graph.
+Reusable contact and smoothing definitions are in `paper/equations/*.math.html`.
+The shared `paper/mathPlugin.mjs` typesets these trusted fragments through pinned
+MathJax at build time (`?math` imports); `MathTypeset.vue` displays inline SVG.
+Use this instead of a separate report or a runtime CDN. Keep numerical parameters
+in Vue tables bound to the selected recording, not embedded in equation images.

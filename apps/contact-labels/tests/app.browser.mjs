@@ -163,44 +163,15 @@ try {
         await constraints.uncheck();
       }
       await constraints.check();
-      const downloadPromise = page.waitForEvent("download");
-      await page
-        .getByRole("link", {
-          name: "Download factor report (HTML)",
-          exact: true,
-        })
-        .click();
-      const download = await downloadPromise;
-      assert.equal(download.suggestedFilename(), "contact-factors.html");
-      const reportPage = await browser.newPage({
-        viewport: { width: 1280, height: 1000 },
-      });
-      reportPage.on("pageerror", (e) => errors.push(e.message));
-      await reportPage.goto(
-        `http://127.0.0.1:${server.httpServer.address().port}${base}contact-factors.html`,
-      );
-      assert(
-        (await reportPage.locator('mjx-container[jax="SVG"]').count()) > 10,
-      );
-      assert.equal(
-        await reportPage.locator('[data-mml-node="merror"]').count(),
-        0,
-      );
-      assert.equal(await reportPage.locator("figure img").count(), 2);
-      await reportPage.locator("figure img").evaluateAll(images => Promise.all(images.map(image => image.decode())));
-      assert.equal(await reportPage.locator("input,select,button").count(), 0);
-      assert.equal(await reportPage.locator("table").count(), 4);
-      assert.equal(await reportPage.locator("script[src]").count(), 0);
-      assert.match(
-        await reportPage.locator("body").innerText(),
-        /density values evaluated at the same observed displacement/,
-      );
-      if (base === "/")
-        await reportPage.screenshot({
-          path: "/tmp/gtd-contact-factor-report.png",
-          fullPage: true,
-        });
-      await reportPage.close();
+      assert((await page.locator('.contact-mathematics mjx-container[jax="SVG"]').count()) >= 10);
+      assert.equal(await page.locator('[data-mml-node="merror"]').count(), 0);
+      assert.equal(await page.locator('a[href*="contact-factors.html"]').count(), 0);
+      assert.equal(await page.locator('[data-math-parameters="contact"] table').count(), 4);
+      const parameters = await page.locator('[data-math-parameters="contact"]').innerText();
+      assert(parameters.includes(`${record.supportGraph.supportSigma} m`));
+      assert(parameters.includes(`${record.supportGraph.factorCount} factors`));
+      assert.match(await page.locator('.contact-mathematics').innerText(), /density values evaluated at the same observed displacement/);
+      assert(!requests.some(url => /mathjax|cdn\./i.test(new URL(url).hostname)));
       assert.equal(await page.locator(".graph-comparison details").count(), 0);
       if (base === "/")
         await page

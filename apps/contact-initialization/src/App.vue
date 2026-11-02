@@ -1,4 +1,7 @@
 <script setup>
+import ContactPoseMath from '../../shared/paper/ContactPoseMath.vue';
+import AppAbstract from '../../shared/paper/AppAbstract.vue';
+import AppPaper from '../../shared/paper/AppPaper.vue';
 import {
   computed,
   nextTick,
@@ -228,7 +231,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main
+  <main id="demo"
     class="lab"
     data-model="pose"
     :data-sequence="sequenceId"
@@ -237,6 +240,7 @@ onBeforeUnmount(() => {
   >
     <header>
       <h1>Contact Initialization</h1>
+      <AppAbstract app="contact-initialization" />
     </header>
     <div class="toolbar">
       <label
@@ -362,12 +366,17 @@ onBeforeUnmount(() => {
             >
           </div>
         </section>
+
+      </div>
+      <AppPaper app="contact-initialization" :frame="selected" :samples="frames.length" @select="selectFrame">
+        <template #mathematics><ContactPoseMath :graph="graph" /></template>
+        <template #graph>
         <PoseContactGraph
           :graph="graph"
           :selected="selected"
           @select="selectFrame"
         />
-      </div>
+        </template>
       <div class="headline-metrics">
         <div>
           <span>Native LM median</span
@@ -643,6 +652,7 @@ onBeforeUnmount(() => {
           }}</pre>
         </details>
       </section>
+      </AppPaper>
       <footer>
         <p>
           All solves use

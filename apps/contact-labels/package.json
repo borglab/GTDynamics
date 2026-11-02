@@ -15,8 +15,6 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.3",
-    "fgz": "git+https://github.com/dellaert/fgz.git#51fdc784d8217542ae2b34179ce698e397972441",
-    "mathjax-full": "3.2.2",
     "vite": "^6.2.2"
   }
 }

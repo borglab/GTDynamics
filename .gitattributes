@@ -3,7 +3,6 @@ apps/*/public/**/*.gz filter=lfs diff=lfs merge=lfs -text
 apps/contact-initialization/public/g1-*.json filter=lfs diff=lfs merge=lfs -text
 apps/contact-initialization/public/recordings/*.json filter=lfs diff=lfs merge=lfs -text
 apps/motion-planning/public/recording.json filter=lfs diff=lfs merge=lfs -text
-apps/contact-labels/public/contact-factors.html filter=lfs diff=lfs merge=lfs -text
 # PR and documentation screenshots share the same LFS storage policy.
 apps/kinematics-inspector/docs/*.png filter=lfs diff=lfs merge=lfs -text
 apps/interpolation/docs/*.png filter=lfs diff=lfs merge=lfs -text

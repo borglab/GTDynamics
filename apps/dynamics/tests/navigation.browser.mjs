@@ -14,7 +14,7 @@ try{
       const page=await context.newPage(),errors=[];page.setDefaultTimeout(60000);
       page.on('pageerror',error=>errors.push(error.message));
       await page.goto(`http://127.0.0.1:${server.httpServer.address().port}${base}`);
-      assert.equal(await page.getByRole('tab').last().innerText(),'Dynamics');
+      assert.equal(await page.getByRole('tab').last().innerText(),'Motion Planning');
       assert.equal(await page.locator('iframe').count(),0);
       await page.getByRole('tab',{name:'Dynamics',exact:true}).click();
       await page.frameLocator('iframe').locator('.dynamics-scene[data-ready="true"]').waitFor();
@@ -25,7 +25,7 @@ try{
       await page.getByRole('tab',{name:'Dynamics',exact:true}).click();
       await page.frameLocator('iframe').locator('.dynamics-scene[data-ready="true"]').waitFor();
       assert.deepEqual(errors,[]);
-      console.log(`PASS ${base}: Dynamics last, lazy replay iframe, unload/reopen`);
+      console.log(`PASS ${base}: Motion Planning last, lazy Dynamics iframe, unload/reopen`);
     }finally{await context.close();server.httpServer.closeAllConnections();await new Promise(resolve=>server.httpServer.close(resolve));}
   }
 }finally{await browser.close();}

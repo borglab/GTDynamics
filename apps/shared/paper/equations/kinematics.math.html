@@ -1,0 +1,41 @@
+<h4>Constrained kinematic smoothing</h4>
+<p>At the retained contact-selected slices, CM-Opt estimates link COM poses, joint angles, stance landmarks and, with IMU aiding, world COM velocities and one shared sensor bias. Kinematic equalities K enforce the articulated model. Encoder priors, landmark observations and the selected priors form the cost.</p>
+\[
+ \min_{L,q,C,v,b}\left[
+ \frac12\sum_{j,k}\frac{(q_{j,k}-q^{\mathrm{enc}}_{j,k})^2}{\sigma_q^2}
+ +E_C+E_{\mathrm{gauge}}+E_{\mathrm{selected\ priors}}+E_{\mathrm{IMU}}\right],
+ \qquad K_{j,k}(L_{p(j),k},L_{c(j),k},q_{j,k})=0.
+\]
+<p>The graph uses the same slices and actual timestamps as initialization. Short double-stance phases contribute a central slice; longer phases use buffered endpoints and evenly distributed interior slices with at most the configured interval within a phase (200 ms by default). Single-stance gaps can be longer. Interpolation is only for playback. No adjacent no-slip, weak motion or sole-normal factors are added to this smoothing graph.</p>
+<h4>Gal3 IMU aiding and coordinate frames</h4>
+<p>Each pim integrates native IMU samples between the exact retained timestamps, including fractional boundaries. A five-variable GalileanImuFactor connects two pelvis COM poses, their world linear velocities, and one constant bias b shared over the clip; there is no bias random walk.</p>
+\[
+ \mathcal I_{ij}=(X_i,v_i,X_j,v_j,b),\qquad
+ \Delta t_{ij}=t_j-t_i,\qquad
+ \widehat n_j=\operatorname{pim}_{ij}.\operatorname{predict}(n_i,b,g),\qquad n_k=(X_k,v_k).
+\]
+<p>The native Gal3 factor uses GTSAM’s NavState logarithmic chart to compare the estimated next state with its prediction. The nine tangent components are ordered rotation, position, velocity; the logarithm couples these components through rotation.</p>
+\[
+ r_I=\operatorname{Log}_{n_j}(\widehat n_j),\qquad
+ E_{\mathrm{IMU}}=\frac12\sum_{(i,j)}r_I^{\mathsf T}\Sigma_{\mathrm{pim},ij}^{-1}r_I.
+\]
+<p>Poses map COM coordinates into the Z-up world. Velocities are linear velocities of that COM in world axes. Biases are in the recorded pelvis-IMU axes. The recorded COM-to-sensor transform rotates measurements and applies GTSAM’s centripetal lever-arm correction; the tangential angular-acceleration term is omitted. Gravity is in world axes. Sensor-frame correction must not be applied twice.</p>
+<p>The accelerometer and gyro assumptions are continuous-time white-noise densities. A pim propagates them to a correlated 9×9 covariance using the actual integration intervals; they are not independent per-pose standard deviations. These strengths and the integration covariance are provisional manual assumptions, not sensor-specification or Allan-variance calibration. The bias prior uses a stationary gyro mean and zero accelerometer bias mean; the stationary accelerometer average includes gravity and is not used as an accelerometer bias estimate.</p>
+<h4>Bias, initial velocity and return-to-start priors</h4>
+\[
+ E_b=\tfrac12\|b-\bar b\|_{\Sigma_b^{-1}}^2,\qquad
+ E_v=\tfrac12\|v_0\|_{\Sigma_v^{-1}}^2,\qquad
+ E_{\mathrm{return}}=\tfrac12\|t(X_{N-1})-p_{\mathrm{start}}\|_{\Sigma_{\mathrm{return}}^{-1}}^2.
+\]
+<p>The optional return observation is PoseTranslationPrior3D: a unary position prior with no orientation constraint, keeping the graph chain structure. It is a manually supplied return-to-start assumption, not an inferred LiDAR loop closure. Upright and landmark-height priors remain independent switches.</p>
+<h4>Error units and reference alignment</h4>
+\[
+ E_g=\tfrac12\sum_{a\in g}\|r_a\|_{\Sigma_a^{-1}}^2,\qquad
+ \operatorname{RMS}_{g,\mathrm{whitened}}=\sqrt{\frac{2E_g}{\sum_{a\in g}\dim r_a}}.
+\]
+<p>Tables and error histories report dimensionless half-squared whitened errors; hard kinematic equalities are reported separately. A large group total should be interpreted together with its residual dimension and noise assumptions.</p>
+\[
+ (R^*,t^*)=\operatorname*{arg\,min}_{R\in\mathrm{SO}(3),\,t\in\mathbb R^3}
+ \sum_k\|p_k^{\mathrm{estimate}}-(Rp_k^{\mathrm{reference}}+t)\|_2^2.
+\]
+<p>Aligned reference fits one proper SE(3) transform to the paired pelvis body positions, with equal weight per retained slice and no scale change. It changes the overlay, world-coordinate plots and reference-position RMS; estimates, factor costs and foot-in-pelvis coordinates stay unchanged. The reference is SuperOdom LiDAR-inertial odometry.</p>

@@ -46,15 +46,18 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
     <header class="panel-heading"><div><span class="eyebrow">{{ method === 'contact' ? 'CONTACT' : 'IK' }}</span><h2>{{ title }}</h2></div><div><button class="quiet" @click="scene?.fitPaths()">Fit paths</button><button class="quiet" @click="scene?.reset()">Reset view</button></div></header>
     <div ref="sceneElement" class="scene"><p v-if="sceneError" role="alert" class="error-banner">{{ sceneError }}</p></div>
     <div class="scene-caption"><span>{{ state.label }}</span><span>{{ sliceTime(data.record,frame).toFixed(2) }} s · slice {{ frame }}</span></div>
-    <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{referenceLabel}} path</span><span>XY ground projection</span></div>
     <section class="iteration-controls">
       <div class="row"><h3>{{ stage === 'smoothing' ? 'Whole-trajectory smoothing' : method === 'ik' ? `IK solve · frame ${frame}` : 'Sparse contact solve' }}</h3><span class="mono">Iteration {{ state.iteration }} / {{ history.at(-1).iteration }}</span></div>
       <input type="range" min="0" :max="history.length-1" :value="index" :aria-label="`${title} iteration`" @input="select($event.target.value)">
       <div class="row"><div class="button-group"><button @click="select(Math.max(0,index-1))" :disabled="index===0" aria-label="Previous iteration">←</button><button @click="replay">{{ replaying ? 'Pause iterations' : 'Replay iterations' }}</button><button @click="select(Math.min(history.length-1,index+1))" :disabled="index===history.length-1" aria-label="Next iteration">→</button></div><button class="quiet" @click="final">Last iteration</button></div>
+    </section>
+    <Teleport defer :to="`#${method}-results`">
+    <article class="method-results" :class="method" :data-result-iteration="index">
+    <header class="panel-heading"><h3>{{ title }} · numerical results</h3></header>
       <p class="scope" v-if="stage==='initializer'">{{ method==='ik' ? 'Each retained slice has its own LM history. Scrub time to inspect another solve.' : `${data.record.runs.contact.sparseSamples.length} retained slices solved jointly. No interpolated solve states.` }}</p>
       <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.stalled ? 'Stalled: no accepted decrease.' : data.record.runs.contact.initialization.converged ? 'Stopping criterion reached.' : 'Iteration limit reached.' }}</p>
       <p class="scope" v-if="stage==='smoothing'">Iteration 0: feasible initial guess. CM-Opt limit: {{ data.record.maxIterations }} iterations.</p>
-    </section>
+    <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{referenceLabel}} path</span><span>XY ground projection</span></div>
     <BiasTable :bias="bias" :aiding="data.record.imuAiding" :caption="stage==='smoothing'?'Estimated IMU bias · selected iteration':'Estimated IMU bias · final smoothing iteration'" />
     <section class="plot-block">
       <div class="row"><h3>{{ stage==='smoothing' ? 'Smoothing objective' : 'Initializer objective' }}</h3><strong class="mono">{{ number(errors[index], 5) }}</strong></div>
@@ -80,5 +83,7 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
       <TracePlot :values="frameMetrics.height.map(x=>x*1000)" :selected="frame" :timestamps="data.record.timestamps" label="Ground contact height RMS by frame in millimetres" />
       <p class="scope">Global RMS above; this curve shows each frame. No-contact frames show zero.</p>
     </section>
+    </article>
+    </Teleport>
   </article>
 </template>

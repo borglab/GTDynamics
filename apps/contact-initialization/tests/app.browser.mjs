@@ -65,8 +65,8 @@ try {
       const graphBounds = await app.locator(".pose-graph").boundingBox();
       const playbackBounds = await app.locator(".playback").boundingBox();
       const controlsBounds = await app.locator(".prior-controls").boundingBox();
-      assert(graphBounds.x > viewerBounds.x + viewerBounds.width);
-      assert(graphBounds.y < viewerBounds.y + viewerBounds.height);
+      assert(graphBounds.y > viewerBounds.y + viewerBounds.height);
+      assert.equal(await app.locator('[data-paper-section="approach"] .pose-graph').count(), 1);
       assert(controlsBounds.y >= playbackBounds.y + playbackBounds.height);
       assert((await app.locator("svg .upright-factor").count()) > 0);
       await app
