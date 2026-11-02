@@ -28,5 +28,11 @@
     "title": "Kinematics",
     "description": "Inspect a full G1 trajectory with contact initialization, Gal3 IMU aiding, loop closure, stationary-contact weights, factor errors, and foot slip.",
     "tag": "Kinematics smoothing"
+  },
+  {
+    "id": "scate/ur5",
+    "title": "SCATE UR5",
+    "description": "Replay SCATE on a UR5: an obstacle discovered online is avoided by re-solving after every step, beside a blind run that hits it. Inspect the replanned paths, the obstacle estimate, and clearances.",
+    "tag": "Online planning"
   }
 ]

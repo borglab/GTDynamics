@@ -14,7 +14,6 @@ as encoder readings and obstacle measurements arrive (the paper's Algorithm 1).
 | `scate_online.h` | `CollisionModel` interface, `ObstacleMeasurementFactor`, `OnlinePlanner`, closed-loop simulation |
 | `ur5_collision.h` | UR5 collision spheres with `ObstacleSDFFactorGP` and `SelfCollisionSphereFactorGP` |
 | `scate_replay.h` | Writes a run to `replay.json` |
-| `plot_scate.py`, `viz/` | Plots and a 3D replay page from `replay.json` (numpy, matplotlib) |
 
 ## Running
 
@@ -24,11 +23,16 @@ From the GTDynamics build folder:
 make -j6 scate_init.run      # offline plan, writes initial/optimized_trajectory.csv
 make -j6 scate_online.run    # closed loop and blind control, writes replay.json
 make scate_online.plot       # PNG plots and scate_replay.html
+make scate_online.export     # copy replay.json into the SCATE app
 ```
 
 Outputs land in `build/examples/example_scate_ur5`. Both programs load
 `models/urdfs/ur5/ur5.urdf` unless given another robot file as the first
 argument; `scate_online` takes a random seed as the second.
+
+The 3D viewer and the plot script live in the SCATE app,
+[`apps/scate/ur5`](../../apps/scate/ur5/README.md), which replays the
+checked-in run in the GTDynamics apps site.
 
 The tests are in `tests/`: `testTrajectoryInit`, `testScateGraph`,
 `testScateInit`, `testUr5Collision` and `testScateOnline`

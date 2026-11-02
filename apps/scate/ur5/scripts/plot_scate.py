@@ -5,9 +5,10 @@ Reads the replay.json written by scate_online (scate_replay.h) and writes:
   scate_dashboard.png  clearances, obstacle estimate, tool path, solver stats
   scate_joints.png     joint angles per joint: online, blind, offline plan
   scate_controls.png   executed controls per joint, with the limits
-  scate_replay.html    the 3D replay viewer with this run built in; opened in
-                       your browser unless --no-open (needs viz/ next to this
-                       script; three.js loads from a CDN, so it needs internet)
+  scate_replay.html    the 3D replay viewer with this run built in, as one file;
+                       opened in your browser unless --no-open (the viewer is
+                       this app's index.html; three.js loads from a CDN, so it
+                       needs internet)
 
 Usage:  python3 plot_scate.py [replay.json] [--out DIR] [--no-open] [--no-html] [--show]
 Needs numpy and matplotlib only.
@@ -317,18 +318,9 @@ def per_joint(d, runs, out, what):
     plt.close(fig)
 
 
-VIZ_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "viz")
-
-# The skeleton the hosted artifact gets at publish time; the template is the body.
-PAGE_HEAD = """<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-</head>
-<body>
-"""
+# The app folder (apps/scate/ur5): its index.html is the viewer, and the
+# arm meshes are its public/meshes.json.
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _inline_json(name, obj):
@@ -338,22 +330,30 @@ def _inline_json(name, obj):
 
 
 def write_viewer(replay_path, d, out_html):
-    template = os.path.join(VIZ_DIR, "scate_viewer.html")
-    meshes = os.path.join(VIZ_DIR, "ur5_meshes.json")
+    """Write the app's viewer as one standalone file, with the run (and the
+    meshes, if present) built in, so it opens without a server."""
+    template = os.path.join(APP_DIR, "index.html")
+    meshes = os.path.join(APP_DIR, "public", "meshes.json")
     if not os.path.isfile(template):
-        print(f"skipped the 3D page: {template} not found (copy the viz/ folder next to plot_scate.py)")
+        print(f"skipped the 3D page: {template} not found")
         return None
     with open(template) as f:
-        body = f.read()
-    parts = [PAGE_HEAD, _inline_json("SCATE_REPLAY", d)]
+        page = f.read()
+    data = [_inline_json("SCATE_REPLAY", d)]
     if os.path.isfile(meshes):
         with open(meshes) as f:
-            parts.append(_inline_json("SCATE_MESHES", json.load(f)))
+            data.append(_inline_json("SCATE_MESHES", json.load(f)))
     else:
         print(f"note: {meshes} not found; the arm will be drawn from its spheres only")
-    parts += [body, "\n</body>\n</html>\n"]
+    # The viewer uses window.SCATE_REPLAY / SCATE_MESHES when they are set, so
+    # they go right at the start of the body, before its own scripts.
+    marker = "<body>\n"
+    if marker not in page:
+        print(f"skipped the 3D page: no <body> in {template}")
+        return None
+    page = page.replace(marker, marker + "".join(data), 1)
     with open(out_html, "w") as f:
-        f.write("".join(parts))
+        f.write(page)
     return out_html
 
 

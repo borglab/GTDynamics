@@ -10,7 +10,8 @@ be opened directly.
 
 - [Contact Labels](contact-labels/README.md): inspect privileged stationarity targets derived from SSIO reference-world sole motion.
 - [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
-- [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets. This is the last tab.
+- [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets.
+- [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run. This is the last tab.
 
 ## Local preview
 
