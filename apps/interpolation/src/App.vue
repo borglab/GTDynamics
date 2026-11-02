@@ -101,7 +101,7 @@ onBeforeUnmount(() => { pause(); controller.abort(); scene?.dispose(); });
 </script>
 
 <template>
-  <main class="interpolation-app" :data-frame="frame">
+  <main id="demo" class="interpolation-app" :data-frame="frame">
     <header class="page-header">
       <div><span class="eyebrow">GTDYNAMICS / SSIO G1</span><h1>Interpolation</h1>
         <p class="abstract">The <a :href="previousHref" target="_parent">{{ previousApp.title }}</a> solution supplies sparse robot configurations;
@@ -135,14 +135,14 @@ onBeforeUnmount(() => { pause(); controller.abort(); scene?.dispose(); });
           </div>
         </div>
       </section>
-      <section class="paper-section" aria-labelledby="motivation-title">
+      <section class="paper-section" data-paper-section="motivation" aria-labelledby="motivation-title">
         <h2 id="motivation-title">From sparse configurations to velocities</h2>
         <p>The preceding solve estimates configurations at selected contact-phase slices. Finite differences
           depend strongly on slice spacing; independent curve fits can ignore the dense encoders and mix
           incompatible pose and velocity conventions. Here, a white-noise-on-acceleration (WNOA) model relates
           configuration and velocity at each retained slice, while intermediate encoders constrain joint motion.</p>
       </section>
-      <section class="paper-section" aria-labelledby="approach-title">
+      <section class="paper-section" data-paper-section="approach" aria-labelledby="approach-title">
         <h2 id="approach-title">Approach</h2>
         <p>At knot k, the unknowns are the pelvis COM body twist ν<sub>k</sub> ∈ ℝ⁶ and the
           joint-rate vector r<sub>k</sub> ∈ ℝ²⁹. The saved pose T<sub>k</sub> = world_T_COM
@@ -155,7 +155,7 @@ onBeforeUnmount(() => { pause(); controller.abort(); scene?.dispose(); });
         <FactorGraph :record="record" :time="time" @select="selectTime" />
       </section>
       <FactorDefinitions />
-      <section class="paper-section results" aria-labelledby="results-title">
+      <section class="paper-section results" data-paper-section="results" aria-labelledby="results-title">
         <h2 id="results-title">Recorded results</h2>
         <section class="summary" aria-label="Interpolation statistics">
           <span>Source <strong>{{ record.source.variant }}</strong></span>
@@ -222,7 +222,7 @@ onBeforeUnmount(() => { pause(); controller.abort(); scene?.dispose(); });
             </tr></tbody></table>
         </section>
       </section>
-      <section class="paper-section" aria-labelledby="discussion-title">
+      <section class="paper-section" data-paper-section="discussion" aria-labelledby="discussion-title">
         <h2 id="discussion-title">Discussion</h2>
         <p>The fit keeps the upstream solution intact and supplies velocities with explicit frames and units.
           Dense encoders constrain the interpolated joint motion, but fixed sparse knots can still cause overshoot
@@ -234,6 +234,7 @@ onBeforeUnmount(() => { pause(); controller.abort(); scene?.dispose(); });
           approximated as independent factors. The saved Kinematics velocities are derived observations, not
           independent sensor readings. Accelerations and dynamic consistency remain for a subsequent dynamics
           solve; this app estimates first derivatives only.</p>
+        <p><a href="../#dynamics" target="_top">Next: Dynamics →</a></p>
       </section>
       <footer class="paper-section">
         <h2>Data, model, and downloads</h2>

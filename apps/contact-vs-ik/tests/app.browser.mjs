@@ -27,9 +27,9 @@ try{
     assert.match(await page.locator('.method-panel.ik .iteration-controls').innerText(),/IK solve · frame 2/);
     assert.match(await page.locator('.method-panel.contact .iteration-controls').innerText(),/Sparse contact solve/);
     await page.getByRole('button',{name:'CM-Opt smoothing',exact:true}).click();
-    assert.match(await page.locator('.method-panel.contact .bias-values').innerText(),/Gyroscope prior/);
+    assert.match(await page.locator('.method-results.contact .bias-values').innerText(),/Gyroscope prior/);
    }
-   await aiding.uncheck();await ready();assert.match(await page.locator('.method-panel.contact .bias-values').innerText(),/not estimated/);
+   await aiding.uncheck();await ready();assert.match(await page.locator('.method-results.contact .bias-values').innerText(),/not estimated/);
    await aiding.check();await ready();
    const iteration=page.getByRole('slider',{name:'Contact initialization iteration',exact:true});await iteration.fill('0');assert.equal(await page.locator('.method-panel.contact').getAttribute('data-iteration'),'0');
    await page.locator('.method-panel.contact').getByRole('button',{name:'Last iteration',exact:true}).click();
