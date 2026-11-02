@@ -4,6 +4,24 @@ Follow these conventions when writing code and reviewing pull requests. Keep
 changes focused and follow the surrounding code. Prefer small functions with
 clear responsibilities over long functions or unnecessary abstractions.
 
+## Object construction and results
+
+- Prefer mostly functional classes: once inputs are constructed, operations
+  should query them or return new values without changing the object's logical
+  state. Apply this pattern especially to builders, estimators, and batch solves.
+- Treat `add...` methods as part of construction, even when called after the
+  constructor returns. They may mutate the object and incrementally assemble
+  factors; avoid retaining duplicate inputs just to reconstruct those factors
+  during a later solve.
+- Prefer a const `solve()` that returns a separate result object. Put fitted
+  data, diagnostics, and const evaluation or interpolation methods on the result.
+  Avoid combining input collection and mutable solved/stale state in one object.
+- Results should own their numerical data and remain valid after the construction
+  object is modified or destroyed. Share fixed model data where appropriate and
+  document its lifetime and immutability requirements.
+- Internal caches are acceptable when they preserve observable behavior; avoid
+  mutable result caches and invalidation flags when a separate result suffices.
+
 ## C++ style
 
 ### Naming conventions

@@ -161,6 +161,9 @@ We recommend going through the examples to get a better understanding of how to 
 
 - [Apps overview and local preview](apps/README.md): a shared tabbed site, built
   and published to GitHub Pages with all browser apps.
+- [Interpolation](apps/interpolation/README.md): estimate floating-base and
+  joint velocities with Gaussian processes fitted to the best Kinematics
+  trajectory and dense encoder observations.
 - [Motion Planning](apps/motion-planning/README.md): edit six-DOF endpoint
   frames, build kinematic slice factor graphs, watch native C++/GTSAM optimization
   iterations, and replay or interactively replan the trajectory in MuJoCo.
