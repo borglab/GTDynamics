@@ -1,11 +1,5 @@
 [
   {
-    "id": "motion-planning",
-    "title": "Motion Planning",
-    "description": "Follow a Franka arm’s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
-    "tag": "Trajectory optimization"
-  },
-  {
     "id": "contact-labels",
     "title": "Contact Labels",
     "description": "Inspect reference-derived stationary-contact training targets from world-frame sole motion on three SSIO G1 snippets.",
@@ -40,5 +34,11 @@
     "title": "Dynamics",
     "description": "Inspect ground reaction forces and joint torques from fixed G1 kinematics using sole-contact wrenches and CMC-Opt.",
     "tag": "Contact-wrench estimation"
+  },
+  {
+    "id": "motion-planning",
+    "title": "Motion Planning",
+    "description": "Follow a Franka arm’s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
+    "tag": "Trajectory optimization"
   }
 ]

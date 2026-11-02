@@ -209,6 +209,34 @@ when practical.
 
 ## Browser apps and robot visualization
 
+- Present each app as a compact technical paper around an interactive demo.
+  Keep the existing visual theme unless a redesign is explicitly requested;
+  prioritize content order and readable technical prose over decorative changes.
+  Use this order:
+  1. A two- or three-line abstract stating what the app shows, why it matters,
+     and how factor graphs express the problem. Build on the preceding tab
+     where appropriate. Avoid slogans and promotional copy.
+  2. The 3D demo, playback, selectors, and primary controls. Aim to show the
+     complete interaction area in one MacBook-sized browser viewport, including
+     the shared navigation; retain a usable responsive layout on smaller screens.
+  3. A short motivation describing the problem and usual alternatives, without
+     a literature review or reference list.
+  4. The approach, including a factor graph visualization. Distinguish variables,
+     factor scopes, hard constraints, and soft objectives. Prefer diagrams that
+     select or highlight the same slices as the demo; label schematic grouping
+     and optional factors explicitly rather than implying they are active.
+  5. Definitions of every factor type: what variables it connects, its measurement
+     or prior, residual or potential, and relevant frames, units, or assumptions.
+     Keep recorded numerical settings and error budgets with the results.
+  6. Additional results: existing plots, numerical tables, timings, convergence,
+     diagnostics, and downloads. Do not discard results to shorten the page.
+  7. A short discussion of the result and its limitations, linking to the next
+     app when it continues the argument. Retain dataset/model attribution and
+     licenses; a compressed paper format does not remove credit requirements.
+- Treat tab order as the technical progression. Keep Motion Planning last,
+  after kinematic and dynamic estimation; use `apps/registry.json` as the source
+  of truth for navigation and overview links. Preserve standalone app URLs and
+  deployment prefixes in cross-app links.
 - Put browser apps under `apps/`. Register new apps in `apps/registry.json` and
   the npm workspaces in `apps/package.json`, and use the shared navigation.
 - **Start robot viewers with `apps/shared/RobotViewport.js` and

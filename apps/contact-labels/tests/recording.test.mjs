@@ -34,8 +34,10 @@ test("three distinct 20-second SSIO windows, attribution, and registered app", (
   );
   const apps = JSON.parse(readFileSync(new URL("apps/registry.json", root)));
   assert(apps.some((a) => a.id === "contact-labels"));
-  assert.equal(apps.at(-3).title, "Kinematics");
-  assert.equal(apps.at(-2).title, "Interpolation");
+  assert.equal(apps.at(-4).title, "Kinematics");
+  assert.equal(apps.at(-3).title, "Interpolation");
+  assert.equal(apps.at(-2).title, "Dynamics");
+  assert.equal(apps.at(-1).title, "Motion Planning");
 });
 for (const r of records) {
   test(`${r.id}: labels, windows, contact frames, and privileged provenance`, () => {
