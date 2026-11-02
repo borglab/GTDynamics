@@ -38,6 +38,17 @@ sole origin. Joint measurements are mapped by name. Storage is radians/SI;
 rotational configuration parameters and plots use degrees. Rendering uses
 world body xyz/xyzw transforms from native FK and canonical MuJoCo geometry.
 
+## Page structure
+
+The page follows a compact technical-paper sequence: abstract, complete replay
+and controls, motivation, approach and a synchronized reduced factor graph,
+factor definitions, recorded results/noise settings/plots, discussion, and
+attribution/downloads. Clicking a displayed graph slice moves playback. Factor
+scopes distinguish exact fixed configurations from the soft velocity factors;
+encoder factors sharing a scope are explicitly grouped in the drawing.
+Cross-app links derive their destination from `apps/registry.json` and preserve
+standalone URLs, embedded navigation, and deployment prefixes.
+
 ## Regenerate
 
 Build the direct `gtdynamics.i` Python bindings, activate `py312`, and expose the
