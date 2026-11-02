@@ -17,7 +17,7 @@ option(GTDYNAMICS_BUILD_PANDA_ROBOT "Build Panda Robot" OFF)
 option(GTDYNAMICS_BUILD_PYTHON "Build Python wrapper" ON)
 option(GTDYNAMICS_BUILD_EXAMPLES "Build all examples" ON)
 option(GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO "Build interactive motion planning teaching demo backend" OFF)
-option(GTDYNAMICS_BUILD_CONTACT_INITIALIZATION_WEBDEMO "Build GTSAM contact-initialization benchmark and app exporter" OFF)
+option(GTDYNAMICS_BUILD_CONTACT_INITIALIZATION_WEBDEMO "Build legacy point-contact initializer regression tests" OFF)
 option(GTDYNAMICS_BUILD_G1_MJLAB "Build G1 CMC friction comparison" OFF)
 mark_as_advanced(CLEAR
   GTDYNAMICS_ENABLE_BOOST_SERIALIZATION

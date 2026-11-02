@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gtdynamics/utils/PointOnLink.h>
+#include <gtdynamics/utils/PoseOnLink.h>
 
 #include <string>
 
@@ -27,6 +28,13 @@ class ConstraintSpec {
  public:
   /// All active contacts, including contacts away from the ground plane.
   virtual const PointOnLinks& contactPoints() const = 0;
+
+  /// Optional material contact frames; existing point specifications are
+  /// unchanged.
+  virtual const std::vector<PoseOnLink>& contactPoses() const {
+    static const std::vector<PoseOnLink> empty;
+    return empty;
+  }
 
   /// Active contacts selected for ground-height objectives.
   PointOnLinks groundContactPoints() const {

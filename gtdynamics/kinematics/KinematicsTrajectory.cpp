@@ -12,7 +12,9 @@
  */
 
 #include <gtdynamics/factors/ContactEqualityFactor.h>
+#include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
+#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -256,4 +258,30 @@ Values Kinematics::interpolate<Trajectory>(
   return results;
 }
 
+NonlinearFactorGraph Kinematics::contactPoseGroundObjectives(
+    const Trajectory& trajectory, const gtsam::Vector3& gravity, double height,
+    double heightSigma, double normalSigma) const {
+  NonlinearFactorGraph graph;
+  for (const auto& phase : trajectory.phases())
+    graph.add(contactPoseGroundObjectives(phase, gravity, height, heightSigma,
+                                          normalSigma));
+  return graph;
+}
+
+NonlinearFactorGraph Kinematics::contactPoseEqualityFactors(
+    const Trajectory& trajectory, const gtsam::SharedNoiseModel& model) const {
+  const auto frames = contactPoseFrames(trajectory);
+  NonlinearFactorGraph graph;
+  for (auto current = frames.begin(); current != frames.end(); ++current) {
+    if (current == frames.begin()) continue;
+    const auto previous = std::prev(current);
+    if (current->first != previous->first + 1) continue;
+    for (const auto& contact : current->second)
+      for (const auto& before : previous->second)
+        if (contact.stance == before.stance)
+          graph.emplace_shared<ContactPoseEqualityFactor>(
+              contact.contact, model, previous->first, current->first);
+  }
+  return graph;
+}
 }  // namespace gtdynamics

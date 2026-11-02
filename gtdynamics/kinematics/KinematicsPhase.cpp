@@ -11,9 +11,11 @@
  * @author: Dan Barladeanu, Frank Dellaert
  */
 
+#include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/ContextUtils.h>
 #include <gtdynamics/utils/Phase.h>
+#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -60,4 +62,13 @@ NonlinearFactorGraph Kinematics::contactHeightObjectives(
   });
 }
 
+NonlinearFactorGraph Kinematics::contactPoseGroundObjectives(
+    const Phase& phase, const gtsam::Vector3& gravity, double height,
+    double heightSigma, double normalSigma) const {
+  return collectFactors(phase, [&](const Slice& slice) {
+    return contactPoseGroundObjectives(
+        slice, phase.constraintSpec()->contactPoses(), gravity, height,
+        heightSigma, normalSigma);
+  });
+}
 }  // namespace gtdynamics
