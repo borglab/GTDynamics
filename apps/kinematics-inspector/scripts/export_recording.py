@@ -50,6 +50,7 @@ sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 import kinematic_walk as example
 from contact_phases import contact_slices, initialization_slices, stance_observations
 from kinematic_initialization import align_contact_ground
+from browser_geometry import browser_geometry
 from g1_model import load_g1_model
 from mujoco_io import KinematicRecording, load_recording, pose
 from imu_aiding import BIAS_KEY, build_imu_aiding
@@ -283,30 +284,7 @@ def contact_iteration_values(
 
 
 def export_model(model: mujoco.MjModel, output: Path) -> None:
-    # Same compiled-model contract consumed by apps/shared/mujocoRobot.js.
-    fields = (
-        "geom_group",
-        "geom_type",
-        "geom_size",
-        "geom_dataid",
-        "geom_matid",
-        "geom_rgba",
-        "geom_pos",
-        "geom_quat",
-        "geom_bodyid",
-        "mat_rgba",
-        "mesh_vertadr",
-        "mesh_vertnum",
-        "mesh_faceadr",
-        "mesh_facenum",
-        "mesh_vert",
-        "mesh_face",
-    )
-    data: dict[str, Any] = {"nbody": model.nbody, "ngeom": model.ngeom}
-    data.update(
-        {key: np.asarray(getattr(model, key)).ravel().tolist() for key in fields}
-    )
-    compressed_json(output / "model.json.gz", data)
+    compressed_json(output / "model.json.gz", browser_geometry(model))
 
 
 def main() -> None:
