@@ -13,6 +13,7 @@
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
+#include <gtdynamics/cmcopt/RobustQp.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
@@ -568,20 +569,10 @@ void IELMTrial::LinearUpdate::refineIQPStep(
   }
   Values initial;
   for (const auto &[key, value] : delta) initial.insert(key, value);
-  auto qpParams = std::make_shared<ActiveSetSolverParams>();
-  qpParams->maxIterations = maxIterations;
-  // This objective is in manifold coordinates (plus unconstrained variables).
-  // Factor it once and solve dense Schur systems as the working set changes.
-  qpParams->qpSubproblemSolver = ActiveSetSolverParams::QpSubproblemSolver::Dense;
-  // The supplied objective already includes LM damping. Additional QP
-  // regularization would change the trial step we are trying to compute.
-  qpParams->regularization = 0.0;
-
   try {
-    const ActiveSetSolver solver(problem, qpParams);
-    const auto [values, qpState] =
-        solver.optimizeWithState(initial, workingSet);
-    for (auto &[key, value] : delta) value = values.at<Vector>(key);
+    const auto qpState =
+        internal::robustQp(problem, initial, workingSet, maxIterations);
+    for (auto &[key, value] : delta) value = qpState.values.at<Vector>(key);
     numSolves += qpState.iterations;
     blockingIndices =
         fullyActiveConstraintIndices(constraints, qpState.activeInequalityRows);

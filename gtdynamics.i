@@ -641,6 +641,98 @@ class OptimizerSetting : gtdynamics::KinematicsParameters {
                    double sigma_collocation = 0.001, double sigma_time = 0.001);
 };
 
+#include <gtdynamics/utils/ContactWrench.h>
+class RectangularContactWrench {
+  RectangularContactWrench(double halfLength, double halfWidth, double frictionCoefficient);
+  gtsam::Matrix matrix() const;
+  double halfLength() const;
+  double halfWidth() const;
+  double frictionCoefficient() const;
+  double pyramidCoefficient() const;
+};
+
+#include <gtdynamics/dynamics/ContactWrenchFactor.h>
+gtsam::Matrix6 contactWrenchTransform(const gtsam::Pose3& comTcontact);
+gtsam::Vector6 contactWrenchToCom(const gtsam::Pose3& comTcontact, const gtsam::Vector6& contactWrench);
+class ContactWrenchFactor : gtsam::NoiseModelFactor {
+  ContactWrenchFactor(gtsam::Key contactWrenchKey, gtsam::Key comWrenchKey,
+                     const gtsam::Pose3& comTcontact, const gtsam::SharedNoiseModel& model);
+};
+
+#include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
+namespace fixed_dynamics {
+class Contact {
+  Contact();
+  Contact(const gtdynamics::PoseOnLink& pose, double halfLength, double halfWidth,
+          double frictionCoefficient);
+  gtdynamics::PoseOnLink pose;
+  double halfLength;
+  double halfWidth;
+  double frictionCoefficient;
+};
+class Options {
+  Options();
+  size_t maxIterations;
+  gtsam::Vector3 gravity;
+  double effortSigma;
+  double wrenchSigma;
+  double torqueSmoothSigma;
+  double wrenchSmoothSigma;
+  double baseAngularAccelerationSigmaDegrees;
+  double baseLinearAccelerationSigma;
+  double jointAccelerationSigmaDegrees;
+  bool softDynamics;
+  double balanceMomentSigma;
+  double balanceForceSigma;
+  gtsam::Vector torqueLimits;
+};
+class Result {
+  Result();
+  gtsam::Values values;
+  std::vector<gtsam::Key> contactKeys;
+  std::vector<gtsam::Key> torqueKeys;
+  std::vector<size_t> jointIds;
+  std::vector<gtsam::Vector6> baseResiduals;
+  std::vector<double> objectiveHistory;
+  double objectiveInitial;
+  double objectiveFinal;
+  double effortError;
+  double wrenchError;
+  double torqueSmoothError;
+  double wrenchSmoothError;
+  double balanceError;
+  double accelerationError;
+  double equalityL2;
+  double inequalityL2;
+  double maxForceResidual;
+  double maxMomentResidual;
+  double projectedGradientNorm;
+  double assemblySeconds;
+  double initializationSeconds;
+  double manifoldSeconds;
+  double optimizationSeconds;
+  size_t iterations;
+  size_t variableDimension;
+  size_t equalityDimension;
+  size_t inequalityDimension;
+  size_t reducedDimension;
+  size_t numALSolves;
+  size_t numFeasibleTrials;
+  size_t numFeasibleProjections;
+  size_t wrenchSmoothFactors;
+  bool softDynamics;
+  bool feasible;
+  bool stationary;
+};
+} // namespace fixed_dynamics
+gtdynamics::fixed_dynamics::Result solveFixedKinematicsDynamics(
+    const gtdynamics::Robot& robot, const gtdynamics::Trajectory& trajectory,
+    const std::vector<gtdynamics::Slice>& slices, const std::vector<double>& times,
+    const gtsam::Values& fixedValues,
+    const gtsam::Values& accelerationPriors,
+    const std::vector<gtdynamics::fixed_dynamics::Contact>& contacts,
+    const gtsam::Vector& armature, const gtdynamics::fixed_dynamics::Options& options);
+
 #include <gtdynamics/dynamics/Dynamics.h>
 class Dynamics {
   Dynamics(gtdynamics::DynamicsParameters parameters =
