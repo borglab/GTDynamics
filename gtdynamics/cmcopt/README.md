@@ -9,6 +9,10 @@ CMC-Opt extends equality-only CM-Opt to manifolds with inequality boundaries and
 - a projection step that respects that cone, and
 - a retraction that can promote blocking inequalities to temporary equalities.
 
+[Component coordinates for the linear step](ComponentCoordinates.md) explains
+the previous global constrained formulation, the local-elimination architecture,
+and the fixed-working-set equivalence proof, including numerical qualifications.
+
 ## Source Note
 
 Equation references below are from Yetong Zhang's June 2024 thesis, *Constraint Manifold Optimization for Robotic Inference and Planning with Constraints*. The CMC-Opt material is primarily Chapter 4; metric-aware and approximate retraction variants are in Chapter 5.
@@ -205,15 +209,38 @@ Pointers:
 
 How the code matches the math:
 
-- `linearizeIConstraints()` builds the linearized inequality constraints at the current state.
+- `linearizeIConstraints()` caches unary, homogeneous cone rows in
+  `TangentConeLinearization`, in equality-manifold component coordinates.
 - `LinearUpdate(...)` builds the damped LM system.
 - `initialEstimate(...)` seeds the IQP with blocking constraints coming from the negative gradient.
-- Cone projection and LM refinement construct a GTSAM `QpProblem` and invoke
-  its sparse `ActiveSetSolver` directly. The LM solve preserves the damped
-  objective, warm-starts the blocking rows, enforces `iqpMaxIterations`, and
-  marks the trial unsuccessful if GTSAM cannot converge. No extra QP
-  regularization is added. Only blocks whose rows are all active are passed
-  to retraction as equalities.
+- Each selected face matrix $A_i$ defines a component-local kernel $N_i$.
+  `ComponentTangentSpace` substitutes $\delta_i=N_i\eta_i$ into the soft
+  objective, including the already-added damping. GTSAM solves an
+  **unconstrained** Gaussian graph in $\eta$, then the component increments
+  are recovered. The global solve receives no face equations, KKT system,
+  constrained noise, or constrained-solver fallback.
+- With `iqpMaxIterations=0`, the original add-blocks-until-feasible approximation
+  is retained. Optional refinement uses row-level primal active-set steps:
+  boundary line search adds rows, and component-local KKT multiplier solves
+  release rows. Each working-set subproblem uses the same local kernels and
+  unconstrained global solve. Iteration exhaustion or numerical failure rejects
+  the trial. Only fully active blocks become equalities during retraction.
+- Component-local gradient projection still uses GTSAM's QP machinery through
+  `TangentCone::project`. Nonlinear component retractions retain their own
+  feasibility solvers. Neither operation assembles a trajectory-wide QP.
+
+For a fixed working set, the reduced LM problem is
+
+$$
+\min_\eta \frac12\|JN\eta+r\|^2
+          +\frac\lambda2\|DN\eta\|^2,
+\qquad N=\operatorname{diag}(N_1,\ldots,N_m).
+$$
+
+Cross-component objective factors remain coupled through $JN$. Replacing
+$DN$ with identity would change LM's metric and is deliberately avoided.
+See [ComponentTangentSpace.h](ComponentTangentSpace.h) and
+[TangentConeLinearization.h](TangentConeLinearization.h).
 
 Thesis reference: Eq. (4.44) is the CMC Levenberg-Marquardt quadratic subproblem, constrained by the cone coordinates for each CMC.
 
