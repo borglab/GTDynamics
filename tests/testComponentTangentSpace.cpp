@@ -164,6 +164,23 @@ TEST(ComponentTangentSpace, FaceScalingAndEmptyRows) {
   EXPECT(assert_equal(referenceSolution(cost, reference), actual, 1e-8));
 }
 
+// Recovery must ignore arbitrary row scaling without accepting off-face steps.
+TEST(ComponentTangentSpace, ScaledRecoveryChecks) {
+  // The second row is numerically dependent at the rank threshold. Ordinary
+  // increments violate it only by roundoff; very large increments expose a
+  // real residual that recovery must reject even when rows are scaled down.
+  for (double scale : {1e-12, 1.0, 1e12}) {
+    const Matrix22 rows{{1.0, 0.0}, {1.0, 1e-16}};
+    const ComponentTangentSpace space({{1, scale * rows}});
+    VectorValues reduced;
+    reduced.insert(1, Vector1(1.0));
+    const auto actual = space.recover(reduced, {{1, 2}});
+    EXPECT((rows * actual.at(1)).norm() < 1e-7);
+    reduced.at(1) = Vector1(1e12);
+    CHECK_EXCEPTION(space.recover(reduced, {{1, 2}}), std::runtime_error);
+  }
+}
+
 // Verifies unconstrained and empty problems preserve their original semantics.
 TEST(ComponentTangentSpace, NoConstraints) {
   const auto cost = dampedCost();

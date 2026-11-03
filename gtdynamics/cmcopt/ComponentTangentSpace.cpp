@@ -25,15 +25,12 @@ namespace {
 using namespace gtsam;
 using Bases = std::map<Key, Matrix>;
 
-// Row normalization makes rank detection independent of a face's positive
-// scale. FullPivLU::kernel is also used by GTDynamics' dense tangent bases.
-Bases localBases(const std::map<Key, Matrix>& blocks) {
-  Bases bases;
-  for (const auto& [key, block] : blocks) {
-    if (!block.allFinite() || block.cols() == 0)
+// Use the same unit rows for rank detection and recovery checks. Otherwise a
+// large arbitrary face scale can amplify roundoff into a false violation.
+Bases normalizedFaces(Bases blocks) {
+  for (auto& [key, rows] : blocks) {
+    if (!rows.allFinite() || rows.cols() == 0)
       throw std::invalid_argument("ComponentTangentSpace: invalid face matrix");
-    if (block.rows() == 0) continue;
-    Matrix rows = block;
     for (Eigen::Index i = 0; i < rows.rows(); ++i) {
       const double maximum = rows.row(i).cwiseAbs().maxCoeff();
       if (maximum > 0) {
@@ -41,6 +38,15 @@ Bases localBases(const std::map<Key, Matrix>& blocks) {
         rows.row(i).normalize();
       }
     }
+  }
+  return blocks;
+}
+
+// FullPivLU::kernel is also used by GTDynamics' dense tangent bases.
+Bases localBases(const Bases& blocks) {
+  Bases bases;
+  for (const auto& [key, rows] : blocks) {
+    if (rows.rows() == 0) continue;
     const Eigen::FullPivLU<Matrix> factorization(rows);
     // Eigen returns a single zero column for a trivial kernel. Represent that
     // case explicitly as zero DOF rather than an unconstrained dummy variable.
@@ -144,7 +150,7 @@ gtsam::GaussianFactorGraph compactGaussianCosts(
 
 ComponentTangentSpace::ComponentTangentSpace(
     const std::map<gtsam::Key, gtsam::Matrix>& faces)
-    : bases_(localBases(faces)), faces_(faces) {}
+    : faces_(normalizedFaces(faces)), bases_(localBases(faces_)) {}
 
 gtsam::GaussianFactorGraph ComponentTangentSpace::reduce(
     const gtsam::GaussianFactorGraph& cost) const {

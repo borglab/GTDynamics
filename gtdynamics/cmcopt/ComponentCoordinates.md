@@ -270,6 +270,7 @@ for every degenerate active set. The following differences are explicit:
 | Detail | Scope of the claim |
 | --- | --- |
 | Kernel construction | Full-pivot LU with row normalization spans the same kernel in exact arithmetic; numerical rank decisions can differ from constrained elimination. |
+| Coordinate recovery | The $10^{-7}$ residual check uses the same unit-normalized rows as kernel construction, so arbitrary row scaling cannot amplify roundoff into a false rejection. |
 | Sparse basis multiplication | Every nonzero coefficient is retained, including tiny entries; there is no sparsification threshold approximation. |
 | Dependent selected rows | The primal feasible space is unchanged. Multipliers can be nonunique, so local pivoting can choose a different row to release. |
 | Optional QP refinement | The same convex objective and cone are solved, but iteration order, degenerate face choices, and convergence within a finite budget can differ. |

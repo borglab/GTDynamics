@@ -47,7 +47,8 @@ class ComponentTangentSpace {
       const gtsam::GaussianFactorGraph& cost) const;
 
   /** Recover original component increments, including exact zero-DOF blocks.
-   * Reject nonfinite results or face residuals exceeding 1e-7. Dimensions
+   * Reject nonfinite results or unit-row face residuals exceeding 1e-7.
+   * This tolerance is independent of the supplied row scales. Dimensions
    * describe the original cost graph, before this additional reduction.
    */
   gtsam::VectorValues recover(
@@ -64,8 +65,9 @@ class ComponentTangentSpace {
       const gtsam::NonlinearOptimizerParams& params) const;
 
  private:
-  std::map<gtsam::Key, gtsam::Matrix> bases_;
+  /// Unit-normalized face rows; identically zero rows remain zero.
   std::map<gtsam::Key, gtsam::Matrix> faces_;
+  std::map<gtsam::Key, gtsam::Matrix> bases_;
 };
 }  // namespace internal
 }  // namespace gtdynamics
