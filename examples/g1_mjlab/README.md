@@ -28,6 +28,30 @@ solve with `--initializer contact` or `ik`.
 [`compare_kinematic_walk.py`](compare_kinematic_walk.py) calls those example
 functions to compare the initialization and solve timings (`--repeats 3`).
 
+## Coupled 50 Hz kinodynamics example
+
+[`kinodynamic_walk.py`](kinodynamic_walk.py) solves the SSIO mid-clip turns
+(78–98 s) in one coupled CMC-Opt optimization. Every original 20 ms slice has
+free configuration, velocity, acceleration, sole/reaction wrench and torque
+variables. Native articulated constraints and rectangular sole-wrench cones
+are exact; root/joint trapezoidal collocation factors couple adjacent slices.
+The initial configurations come from the shared contact initializer; all other
+state variables, including the shared IMU bias, start at zero.
+
+```bash
+python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
+python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
+```
+
+Use the same pinned packages and Python paths as the dynamics example below.
+`--max-iterations` defaults to 5; `--start 78 --end 79` gives a small development
+run. The example saves `kinodynamics.npz` and `summary.json`, separating contact
+initialization, measurement preparation, graph assembly, initial feasibility,
+and coupled optimization. The [Kinodynamics app](../../apps/kinodynamics/README.md)
+replays the saved initial/final states, forces, velocities, torques and error
+history. Neither the saved Kinematics result nor GP interpolation initializes
+this solve. Support labels remain privileged, as described in the app.
+
 ## Walking dynamics example
 
 [`dynamics_walk.py`](dynamics_walk.py) estimates accelerations, two sole-frame
