@@ -11,11 +11,8 @@ for(const prior of ['none','upright','height','upright-height'])for(const imu of
 }
 test('Kinematics, Interpolation, and Dynamics precede Motion Planning',()=>{
  const apps=JSON.parse(readFileSync(new URL('../../registry.json',import.meta.url)));
- assert.equal(apps.at(-1).id,'motion-planning');
- assert.equal(apps.at(-2).id,'dynamics');assert.equal(apps.at(-2).title,'Dynamics');
- assert.equal(apps.at(-3).id,'interpolation');
- assert.equal(apps.at(-4).id,'kinematics-inspector');assert.equal(apps.at(-4).title,'Kinematics');
- assert.equal(apps.at(-5).title,'Contact vs IK');
+ const k=apps.findIndex(app=>app.id==='kinematics-inspector');
+ assert.deepEqual(apps.slice(k-1).map(app=>app.id),['contact-vs-ik','kinematics-inspector','interpolation','dynamics','kinodynamics','motion-planning']);
 });
 test('comparison includes every configuration and ranks actual saved errors',()=>{
  const summary=JSON.parse(readFileSync(new URL('../public/comparison.json',import.meta.url)));

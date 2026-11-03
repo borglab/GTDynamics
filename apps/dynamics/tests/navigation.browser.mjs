@@ -16,16 +16,22 @@ try{
       await page.goto(`http://127.0.0.1:${server.httpServer.address().port}${base}`);
       assert.equal(await page.getByRole('tab').last().innerText(),'Motion Planning');
       assert.equal(await page.locator('iframe').count(),0);
-      await page.getByRole('tab',{name:'Dynamics',exact:true}).click();
-      await page.frameLocator('iframe').locator('.dynamics-scene[data-ready="true"]').waitFor();
-      assert.equal(await page.getByRole('tab',{name:'Dynamics',exact:true}).getAttribute('aria-selected'),'true');
-      await page.getByRole('tab',{name:'Overview',exact:true}).click();
-      await page.locator('iframe').waitFor({state:'detached'});
-      assert.equal(await page.locator('iframe').count(),0);
-      await page.getByRole('tab',{name:'Dynamics',exact:true}).click();
-      await page.frameLocator('iframe').locator('.dynamics-scene[data-ready="true"]').waitFor();
+      for(const app of ['Dynamics','Kinodynamics']) {
+        await page.getByRole('tab',{name:app,exact:true}).click();
+        await page.getByRole('tab',{name:app,exact:true,selected:true}).waitFor();
+        await page.frameLocator('iframe').getByRole('heading',{name:app,exact:true}).waitFor();
+        await page.frameLocator('iframe').locator('.dynamics-scene[data-ready="true"]').waitFor();
+        assert.equal(await page.getByRole('tab',{name:app,exact:true}).getAttribute('aria-selected'),'true');
+        await page.getByRole('tab',{name:'Overview',exact:true}).click();
+        await page.locator('iframe').waitFor({state:'detached'});
+        assert.equal(await page.locator('iframe').count(),0);
+        await page.getByRole('tab',{name:app,exact:true}).click();
+        await page.getByRole('tab',{name:app,exact:true,selected:true}).waitFor();
+        await page.frameLocator('iframe').getByRole('heading',{name:app,exact:true}).waitFor();
+        await page.frameLocator('iframe').locator('.dynamics-scene[data-ready="true"]').waitFor();
+      }
       assert.deepEqual(errors,[]);
-      console.log(`PASS ${base}: Motion Planning last, lazy Dynamics iframe, unload/reopen`);
+      console.log(`PASS ${base}: Dynamics and Kinodynamics lazy replay, unload/reopen`);
     }finally{await context.close();server.httpServer.closeAllConnections();await new Promise(resolve=>server.httpServer.close(resolve));}
   }
 }finally{await browser.close();}
