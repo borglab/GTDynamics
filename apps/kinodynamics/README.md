@@ -53,6 +53,15 @@ Feasibility restoration changes the raw zero dynamics and is included in total.
 A feasible result or an objective-change stopping condition does not establish
 that the objective is globally optimal.
 
+The page follows the shared technical-paper layout. Its abstract and complete
+replay controls fit together on a laptop screen. Motivation, a synchronized
+factor-graph schematic and native factor definitions precede the recorded
+timings, force/velocity/torque plots, error budget and numerical settings.
+Equations use the shared build-time MathJax plugin and work offline. Parameter
+tables read the selected recording, including the sole support rectangles,
+collocation weights, IMU assumptions and gauge. The Discussion links to Motion
+Planning, which remains the final tab.
+
 The support schedule is privileged: it uses saved max-product labels derived
 from SuperOdom LiDAR-inertial foot motion and measured joint velocities. Reference
 poses after the gauge do not enter the coupled estimation graph. The inferred

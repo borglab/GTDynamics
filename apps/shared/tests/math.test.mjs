@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { typesetMath } from '../paper/mathPlugin.mjs';
 
-for (const [name, minimum] of [['contact-labels', 10], ['contact-pose', 4], ['kinematics', 6]]) {
+for (const [name, minimum] of [['contact-labels', 10], ['contact-pose', 4], ['kinematics', 6], ['kinodynamics', 8]]) {
   test(`${name}: equations build to self-contained SVG without TeX errors`, () => {
     const source = readFileSync(new URL(`../paper/equations/${name}.math.html`, import.meta.url), 'utf8');
     const html = typesetMath(source);

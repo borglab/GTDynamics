@@ -92,3 +92,9 @@ in Vue tables bound to the selected recording, not embedded in equation images.
 force arrows. `dynamics/` contains its shared recording validation, playback
 lookup, signal plot, and layout styles. Dynamics and Kinodynamics use these
 components with their own independently generated recording/model assets.
+
+Kinodynamics also uses `paper/AppPaper.vue`, with a coupled-state graph motif
+in `paper/graph.js` and offline equations in
+`paper/equations/kinodynamics.math.html`. Its recording-bound parameter tables
+stay with the results, while the method distinguishes hard mechanics constraints
+from soft measurements and temporal collocation.

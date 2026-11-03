@@ -15,6 +15,7 @@ const ready = {
   'kinematics-inspector': '.scene canvas',
   interpolation: '.interpolation-scene canvas',
   dynamics: '.dynamics-scene[data-ready="true"]',
+  kinodynamics: '.kinodynamics-scene[data-ready="true"]',
   'motion-planning': '.robot-canvas canvas',
 };
 const controls = {
@@ -24,6 +25,7 @@ const controls = {
   'kinematics-inspector': '.trajectory-viewer .timeline',
   interpolation: '.viewer-panel .timeline',
   dynamics: '.display-options',
+  kinodynamics: '.display-options',
   'motion-planning': '.playback-controls',
 };
 async function fitsWidth(frame) {
@@ -75,7 +77,7 @@ try {
           node.compareDocumentPosition(document.querySelector('canvas')) & Node.DOCUMENT_POSITION_FOLLOWING)),
         `${app.id}: abstract precedes demo`);
 
-        if (['contact-labels','contact-initialization','contact-vs-ik','kinematics-inspector'].includes(app.id)) {
+        if (['contact-labels','contact-initialization','contact-vs-ik','kinematics-inspector','kinodynamics'].includes(app.id)) {
           assert(await paper.locator('mjx-container[jax="SVG"]').count() >= 4, `${app.id}: in-app mathematical definitions`);
           assert.equal(await paper.locator('[data-mml-node="merror"]').count(), 0);
           assert.equal(await paper.locator('[data-math-parameters]').count(), 1);
@@ -113,7 +115,7 @@ try {
           await frame.getByRole('button', { name: /^Show slice 1 in demo/ }).first().click();
           if (app.id !== 'motion-planning') assert.equal(await frame.locator('main').getAttribute('data-frame'), '1');
         }
-        if (app.id === 'dynamics') {
+        if (['dynamics', 'kinodynamics'].includes(app.id)) {
           await frame.getByRole('checkbox', { name: 'All joint torques', exact: true }).check();
           await frame.getByRole('link', { name: 'View torque plots' }).click();
           await frame.locator('.torque-section .signal-plot[data-ready="true"]').first().waitFor();

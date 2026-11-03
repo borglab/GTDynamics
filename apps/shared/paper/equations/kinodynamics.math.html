@@ -1,0 +1,79 @@
+<h4>State, frames and objective</h4>
+<p>Each slice k has link COM poses T, angular-first body twists ν = [ω; u], their ordinary body-coordinate derivatives a = [α; u̇], joint angles/rates/accelerations, reaction wrenches, actuator torques τ, and sole wrenches λ. Root world COM velocity v, stance-pose landmarks C and one sensor-axis IMU bias b complete the state. Poses map COM coordinates to a Z-up world; translations use metres. Physical COM acceleration in body axes is u̇ + ω × u.</p>
+\[
+ \min_{T,q,\nu,\dot q,a,\ddot q,W,\tau,\lambda,v,C,b}
+ E_{\mathrm{encoder}}+E_{\mathrm{contact}}+E_{\mathrm{IMU}}
+ +E_{\mathrm{collocation}}+E_{\mathrm{stance\ speed}}+E_{\mathrm{regularization}}
+ \quad\text{subject to}\quad h(\cdot)=0,\quad A_f\lambda_{f,k}\le0.
+\]
+<p>Every soft factor contributes one half of its squared whitened residual. The equality set h contains articulated pose/velocity/acceleration consistency, body-to-world COM velocity, link mechanics, reaction and contact-wrench transforms, zero swing wrenches, and one root-pose gauge. Collocation belongs to the soft objective. Broad acceleration regularization has zero means; it does not import the earlier GP result.</p>
+<h4>Encoder, sole-pose and inertial observations</h4>
+\[
+ r_{q,j,k}=q_{j,k}-q^{\mathrm{enc}}_{j,k},\qquad
+ r_{C,f,k}=\operatorname{Local}_{T_{f,k}F_f}(C_{s(f,k)}).
+\]
+<p>F maps the canonical sole frame into its foot-link COM. A ContactPoseFactor connects the estimated foot-link COM pose to the world sole landmark for that uninterrupted stance. Local is the compiled GTSAM Pose3 local-coordinate chart, with rotation and translation noise scales specified separately. Lift-off ends a landmark and recontact creates a new one. Encoder observations are scalar joint-angle priors.</p>
+\[
+ r_{I,k}=\operatorname{Local}_{n_{k+1}}\!\left(
+    \operatorname{pim}_{k,k+1}.\operatorname{predict}(n_k,b)\right),
+ \quad n_k=(X_k,v_k),\qquad
+ E_I=\tfrac12\sum_k r_{I,k}^{\mathsf T}\Sigma_{\mathrm{pim},k}^{-1}r_{I,k}.
+\]
+<p>The Gal3 factor connects two root COM poses, two world-frame linear velocities and the shared constant bias. Native IMU samples are integrated to the exact slice boundaries. The nine-dimensional NavState chart couples rotation, position and velocity; each pim supplies its propagated covariance. The recorded COM-to-sensor transform applies GTSAM's rotation and centripetal correction. Tangential angular-acceleration lever-arm correction is omitted. Additional priors penalize b − b̄ and the first world velocity v₀. The gyro component of b̄ comes from the stationary interval.</p>
+<h4>Trapezoidal collocation and stance speed</h4>
+\[
+ \widehat X_{k+1}=X_k\operatorname{Exp}\!\left(
+     \tfrac{\Delta t_k}{2}(\nu_k+\nu_{k+1})\right),\qquad
+ r_{X,k}=\operatorname{Local}_{X_{k+1}}(\widehat X_{k+1}),\qquad
+ r_{\nu,k}=\nu_k+\tfrac{\Delta t_k}{2}(a_k+a_{k+1})-\nu_{k+1}.
+\]
+\[
+ r_{q,k}^{\mathrm{trap}}=q_k+\tfrac{\Delta t_k}{2}(\dot q_k+\dot q_{k+1})-q_{k+1},\qquad
+ r_{\dot q,k}^{\mathrm{trap}}=\dot q_k+\tfrac{\Delta t_k}{2}(\ddot q_k+\ddot q_{k+1})-\dot q_{k+1}.
+\]
+<p>The existing native root factors average endpoint body-coordinate components directly in these discrete formulas. Each factor has four variable arguments, with the time interval fixed. Scalar factors apply the same trapezoidal rule to each joint. These finite-noise discretizations permit nonzero integration residuals.</p>
+\[
+ h_{v,k}=R_k u_k-v_k=0,\qquad
+ r_{\mathrm{stance},f,k}=\left[\operatorname{Ad}_{F_f^{-1}}\nu_{f,k}\right]_{\mathrm{linear}}.
+\]
+<p>The exact WorldVelocityFactor ties the root body linear velocity to the world velocity used by the IMU. The stance objective penalizes linear speed at the sole origin in sole axes. Its isotropic three-dimensional noise permits slip and leaves sole angular velocity free.</p>
+<h4>Articulated mechanics and sole-wrench feasibility</h4>
+<p>Native joint pose, twist and twist-acceleration constraints connect each parent/child pair to their joint angle, rate and acceleration. Link force and moment balance use the same estimated motion. In COM axes, the equations have the following physical form, with all external and reaction wrenches acting on the link.</p>
+\[
+ \sum F=m(\dot u+\omega\times u-R^{\mathsf T}g),\qquad
+ \sum M=J\alpha+\omega\times(J\omega),\qquad
+ \tau_j=S_j^{\mathsf T}W_{\mathrm{child},j}+I_{a,j}\ddot q_j.
+\]
+<p>Adjacent reaction wrenches satisfy their action/reaction transform. S is the joint screw axis in the child COM convention, and Iₐ is the configured rotor armature. A fixed contact transform F = (R, p) maps a sole wrench to the foot COM, including its moment lever arm.</p>
+\[
+ \lambda=[m_c;f_c],\qquad
+ W_{\mathrm{COM}}=
+ \begin{bmatrix}R m_c+p\times R f_c\\R f_c\end{bmatrix},\qquad
+ h_{\mathrm{contact}}=W_{\mathrm{COM}}-\operatorname{Ad}_{F^{-1}}^{\mathsf T}\lambda=0.
+\]
+<p>Each stance sole uses the exact resultant cone of four rectangular-patch corner forces with an inscribed square friction pyramid. If a and b are the patch half-length and half-width, η = μ/√2 is the axis-wise pyramid coefficient. The following normal, tangential, center-of-pressure and yaw inequalities give all seventeen rows. Each choice sₓ, sᵧ ∈ {−1, +1} contributes one upper and one lower yaw row.</p>
+\[
+ f_z\ge0,\quad |f_x|,|f_y|\le\eta f_z,\quad
+ |m_x|\le b f_z,\quad |m_y|\le a f_z,
+\]
+\[
+ \begin{aligned}
+ m_z+s_x(bf_x+\eta m_x)+s_y(af_y+\eta m_y)&\le\eta(a+b)f_z,\\
+ -m_z+s_x(bf_x-\eta m_x)+s_y(af_y-\eta m_y)&\le\eta(a+b)f_z.
+ \end{aligned}
+\]
+<p>Swing sole wrenches are exactly zero. Actuator effort limits remain diagnostic. One root COM pose fixes the world-frame gauge at the first selected double-support initialization slice; all other configurations remain free.</p>
+<h4>Magnitude and temporal regularization</h4>
+\[
+ r_{\mathrm{effort}}=\tau_j,\qquad r_{\mathrm{wrench}}=D_f^{-1}\lambda_f,
+ \qquad D_f=\operatorname{diag}(\ell_f,\ell_f,\ell_f,1,1,1),
+ \quad\ell_f=\sqrt{a_f b_f},\qquad
+ r_{\mathrm{acceleration}}=a_{\mathrm{root}}\ \text{or}\ \ddot q_j.
+\]
+\[
+ r_{\Delta\tau,k}=\tau_{k+1}-\tau_k,\quad
+ \sigma_{\Delta\tau,k}=\sigma_{\dot\tau}\sqrt{\Delta t_k},\qquad
+ r_{\Delta\lambda,k}=D_f^{-1}(\lambda_{k+1}-\lambda_k),\quad
+ \sigma_{\Delta\lambda,k}=\sigma_{\dot\lambda}\sqrt{\Delta t_k}.
+\]
+<p>Separate unary costs regularize each motor torque, sole wrench and independent root/joint acceleration. The characteristic patch length gives wrench moment and force components comparable force-equivalent scales. Temporal wrench factors connect only consecutive observations within the same uninterrupted stance. Torque-rate factors connect all adjacent slices. Recorded scales, counts and final half-squared whitened errors appear in Results.</p>

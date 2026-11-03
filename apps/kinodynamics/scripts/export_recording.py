@@ -14,6 +14,7 @@ Then run this script --result /tmp/kinodynamics. MuJoCo FK fills display-only
 bodies; estimated massive-link poses are copied from the actual solution.
 """
 from __future__ import annotations
+
 import argparse
 import gzip
 import hashlib

@@ -11,13 +11,15 @@ be opened directly.
 - [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets.
 - [Interpolation](interpolation/README.md): inspect Pose3 and joint-vector Gaussian process interpolation, dense encoder measurements, and estimated velocities.
 - [Dynamics](dynamics/README.md): CMC-Opt inference of sole-frame contact wrenches and all 29 G1 joint torques on the SSIO 78–98 s clip.
+- [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback. This is the last tab.
 
 Each app starts with a short technical abstract and its interactive demo, then
 continues with motivation, a factor graph formulation and factor definitions,
 existing numerical results, and a discussion. Read the tabs in order: inferred
 contact phases support initialization, initialization supports smoothing, and
-Gaussian-process interpolation supplies velocities for the dynamics example. Motion Planning illustrates a
+Gaussian-process interpolation supplies velocities for the dynamics example.
+Kinodynamics then estimates motion and forces together. Motion Planning illustrates a
 separate desired-motion problem. It does not currently plan from the G1 estimate.
 The shared paper components live in `shared/paper/`; solver code and recorded
 numerical results remain owned by their apps.

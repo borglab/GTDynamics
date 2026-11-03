@@ -10,7 +10,7 @@ test('explanatory graph selections stay inside short and endpoint recordings', (
 });
 
 test('every schematic edge has a variable and clickable slices match the demo', () => {
-  for (const kind of ['labels', 'initialization', 'smoothing', 'dynamics', 'planning']) {
+  for (const kind of ['labels', 'initialization', 'smoothing', 'dynamics', 'kinodynamics', 'planning']) {
     for (const indices of [[0], [0, 1], [17, 18, 19]]) {
       const graph = paperGraph(kind, indices);
       const ids = new Set(graph.nodes.map(node => node.id));
@@ -41,4 +41,15 @@ test('smoothing diagram gives each IMU factor two poses, two velocities and shar
   assert.deepEqual(factors.filter(f => f.code === 'I').map(f => f.keys), [
     ['z0', 'v0', 'z1', 'v1', 'b'], ['z1', 'v1', 'z2', 'v2', 'b'],
   ]);
+});
+
+test('coupled diagram separates free motion, acceleration, wrench and shared variables', () => {
+  const { nodes, factors, caption } = paperGraph('kinodynamics', [0, 1, 2]);
+  assert(nodes.some(node => node.id === 'b'));
+  assert(nodes.some(node => node.id === 'c'));
+  assert.equal(factors.filter(factor => factor.code === 'T').length, 2);
+  assert(factors.filter(factor => factor.code === 'T').every(factor => factor.keys.length === 4));
+  assert(factors.filter(factor => factor.code === 'I').every(factor => factor.keys.includes('b')));
+  assert.match(caption, /hard constraints/);
+  assert.match(caption, /free link COM poses/);
 });

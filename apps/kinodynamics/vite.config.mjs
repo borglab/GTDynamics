@@ -1,3 +1,4 @@
 import Vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
-export default defineConfig({ base: './', plugins: [Vue()] });
+import paperMath from '../shared/paper/mathPlugin.mjs';
+export default defineConfig({ base: './', plugins: [paperMath(), Vue()] });
