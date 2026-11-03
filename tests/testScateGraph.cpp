@@ -15,6 +15,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
+
 #include <iostream>
 #include <stdexcept>
 
@@ -39,6 +40,7 @@ GraphSpec makeSpec() {
   spec.q_lower = Vector::Constant(6, -kPi);
   spec.q_upper = Vector::Constant(6, kPi);
   spec.u_limit = Vector::Constant(6, 1.0);
+  spec.v_limit = Vector::Constant(6, 1.0);
   return spec;
 }
 
@@ -66,7 +68,8 @@ gtsam::Values toValues(const JointTrajectory& trajectory) {
 TEST(ScateGraph, hasTheExpectedNumberOfFactors) {
   const GraphSpec spec = makeSpec();
   const auto graph = buildScateGraph(spec);
-  EXPECT_LONGS_EQUAL(65, graph.size());  // 4 priors + 20 dynamics + 20 control limits + 21 joint limits
+  // 4 priors + 20 dynamics + 20 control limits + 21 joint limits + 21 velocity limits
+  EXPECT_LONGS_EQUAL(86, graph.size());
   EXPECT_LONGS_EQUAL(expectedFactorCount(spec.num_poses), graph.size());
 }
 

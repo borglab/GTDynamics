@@ -15,9 +15,11 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <iostream>
+
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
+#include <iostream>
 #include <set>
 #include <string>
 
@@ -283,6 +285,7 @@ TEST(ScateInit, graphSpecUsesTheRobotsJointLimitsInChainOrder) {
   EXPECT_LONGS_EQUAL(numJoints(), spec.q_lower.size());
   EXPECT_LONGS_EQUAL(numJoints(), spec.q_upper.size());
   EXPECT_LONGS_EQUAL(numJoints(), spec.u_limit.size());
+  EXPECT_LONGS_EQUAL(numJoints(), spec.v_limit.size());
   const auto order = jointIdsInChainOrder(robot());
   for (auto&& joint : robot().joints()) {
     const size_t p = chainIndex(order, joint->id());
@@ -292,6 +295,9 @@ TEST(ScateInit, graphSpecUsesTheRobotsJointLimitsInChainOrder) {
     EXPECT(spec.q_lower(p) < spec.q_upper(p));
     EXPECT(spec.q_start(p) >= spec.q_lower(p) && spec.q_start(p) <= spec.q_upper(p));
     EXPECT(spec.q_goal(p) >= spec.q_lower(p) && spec.q_goal(p) <= spec.q_upper(p));
+    // The planning velocity limit, capped by the model's (3.15 rad/s on the UR5).
+    EXPECT_DOUBLES_EQUAL(std::min(kVelocityLimit, joint->parameters().velocity_limit),
+                         spec.v_limit(p), 0.0);
   }
 }
 

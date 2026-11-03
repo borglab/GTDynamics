@@ -141,6 +141,7 @@ GraphSpec toySpec() {
   spec.q_lower = Vector::Constant(3, -2.0);
   spec.q_upper = Vector::Constant(3, 2.0);
   spec.u_limit = Vector::Constant(3, 1.0);
+  spec.v_limit = Vector::Constant(3, 1.0);
   spec.num_poses = 21;
   spec.dt = 1.0;
   return spec;
@@ -163,7 +164,8 @@ gtsam::Values toyInitialValues(const GraphSpec& spec) {
 
 SimulationConfig toySimulation(unsigned seed) {
   SimulationConfig simulation;
-  simulation.obstacle_center = Point3(0.0, 0.02, 0.4);
+  // On the straight path from start to goal, so the blind robot must hit it.
+  simulation.obstacle_center = Point3(0.0, 0.0, 0.4);
   simulation.obstacle_radius = 0.08;
   simulation.sensor_range = 0.4;
   simulation.seed = seed;
@@ -342,7 +344,7 @@ TEST(OnlinePlanner, outdatedFactorsAreRemoved) {
   auto robot = std::make_shared<ToyPointRobot>();
   OnlinePlanner planner(spec, toyConfig(), robot, toyInitialValues(spec));
   planner.planOffline();
-  const Point3 obstacle(0.0, 0.02, 0.4);
+  const Point3 obstacle(0.0, 0.0, 0.4);
   int detections = 0;
   for (int k = 1; k <= 8; ++k) {
     const Vector q = planner.values().at<Vector>(QKey(k));
@@ -359,14 +361,53 @@ TEST(OnlinePlanner, outdatedFactorsAreRemoved) {
     EXPECT(planner.count("measurement_q") == static_cast<size_t>(k));
     EXPECT(planner.count("measurement_l") == static_cast<size_t>(detections));
     if (k >= 4) {
-      // 3 checks per future interval, minus tau = 0 on the current one.
-      const size_t expected = 3 * static_cast<size_t>(planner.numIntervals() - k) - 1;
+      // checks per future interval, minus tau = 0 on the current one (the
+      // state is measured), plus tau = dt on the last one (the final state).
+      const size_t checks = toyConfig().tau_fractions.size();
+      const size_t expected = checks * static_cast<size_t>(planner.numIntervals() - k);
       EXPECT(planner.count("obstacle") == expected);
       EXPECT((planner.obstacleEstimate() - obstacle).norm() < 1e-6);
     } else {
       EXPECT(planner.count("obstacle") == 0);
     }
   }
+}
+
+// Every state, executed or ahead, keeps its velocity limit.
+TEST(OnlinePlanner, everyStateHasAVelocityLimit) {
+  const GraphSpec spec = toySpec();
+  OnlinePlanner planner(spec, toyConfig(), std::make_shared<ToyPointRobot>(),
+                        toyInitialValues(spec));
+  EXPECT(planner.count("velocity_limit") == static_cast<size_t>(spec.num_poses));
+  for (int i = 0; i < spec.num_poses; ++i) EXPECT(planner.has("velocity_limit", i));
+}
+
+TEST(OnlinePlanner, rejectsEffortSigmasOfTheWrongSize) {
+  const GraphSpec spec = toySpec();
+  OnlineConfig config = toyConfig();
+  config.effort_sigmas = Vector::Constant(2, 0.5);  // the toy robot has 3 joints
+  bool threw = false;
+  try {
+    OnlinePlanner planner(spec, config, std::make_shared<ToyPointRobot>(), toyInitialValues(spec));
+  } catch (const std::invalid_argument&) {
+    threw = true;
+  }
+  EXPECT(threw);
+}
+
+// An obstacle placed on the goal is reported: no plan can avoid it.
+TEST(OnlinePlanner, reportsAGoalInsideTheObstacle) {
+  const GraphSpec spec = toySpec();
+  auto robot = std::make_shared<ToyPointRobot>();
+  OnlinePlanner planner(spec, toyConfig(), robot, toyInitialValues(spec));
+  const StepInfo offline = planner.planOffline();
+  EXPECT(!offline.goal_clearance.has_value());  // no obstacle yet
+  const Vector q = planner.values().at<Vector>(QKey(1));
+  const Vector v = planner.values().at<Vector>(VKey(1));
+  const Point3 on_goal(spec.q_goal);
+  const StepInfo step = planner.update(1, q, v, robot->sensorPose(q).transformTo(on_goal));
+  EXPECT(step.goal_clearance.has_value());
+  EXPECT(*step.goal_clearance < 0.0);
 }
 
 TEST(OnlinePlanner, rejectsOutOfOrderUpdate) {
@@ -381,6 +422,30 @@ TEST(OnlinePlanner, rejectsOutOfOrderUpdate) {
     threw = true;
   }
   EXPECT(threw);
+}
+
+// ============================================================
+// Noise
+// ============================================================
+
+// The same seed gives the same samples on every platform (unlike
+// std::normal_distribution). Reference values from an independent Python
+// implementation on numpy's MT19937, which matches std::mt19937.
+TEST(GaussianNoise, matchesReferenceValuesOnEveryPlatform) {
+  GaussianNoise noise(0);
+  EXPECT_DOUBLES_EQUAL(-0.914274096437681, noise.standardNormal(), 1e-12);
+  EXPECT_DOUBLES_EQUAL(0.457098685713743, noise.standardNormal(), 1e-12);
+  EXPECT_DOUBLES_EQUAL(0.631322460741121, noise.standardNormal(), 1e-12);
+  EXPECT_DOUBLES_EQUAL(0.632239184594120, noise.standardNormal(), 1e-12);
+}
+
+TEST(GaussianNoise, hasUnitVariance) {
+  GaussianNoise noise(7);
+  const Vector samples = noise.sample(20000, 2.0);
+  const double mean = samples.mean();
+  const double std_dev = std::sqrt((samples.array() - mean).square().mean());
+  EXPECT_DOUBLES_EQUAL(0.0, mean, 0.05);
+  EXPECT_DOUBLES_EQUAL(2.0, std_dev, 0.05);
 }
 
 // ============================================================

@@ -2,7 +2,7 @@
 
 Replay of SCATE (simultaneous control and trajectory estimation) on a UR5. The
 arm sweeps toward its goal; an obstacle on its path comes into sensor range at
-step 5, and the planner re-solves after every executed step to avoid it. A
+step 6, and the planner re-solves after every executed step to avoid it. A
 blind run with the same noise, which never sees the obstacle, hits it.
 
 ![SCATE dashboard](docs/dashboard.png)

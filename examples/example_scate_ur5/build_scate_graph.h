@@ -21,9 +21,11 @@
  *   dynamics      x_{i+1} = Fx x_i + Fu u_i,  i = 0..N-1          (paper eq. 15)
  *   control limit hinge on u_i,                i = 0..N-1          (paper eq. 17)
  *   joint limit   hinge on q_i,                i = 0..N            (kinematic validity)
+ *   velocity limit hinge on v_i,               i = 0..N
  *
- * The dynamics factor is gtdynamics::DoubleIntegratorFactor and both hinges
- * are gtdynamics::JointLimitFactorVector (a vector hinge with a standoff
+ * The dynamics factor is gtdynamics::DoubleIntegratorFactor; the control and
+ * joint hinges are gtdynamics::JointLimitFactorVector and the velocity hinge
+ * gtdynamics::VelocityLimitFactorVector (vector hinges with a standoff
  * `threshold` inside each limit, the paper's eqs. 16-17).
  *
  * Obstacle and self-collision factors and the online loop are in scate_online.h.
@@ -43,6 +45,7 @@
 
 #include <gtdynamics/factors/DoubleIntegratorFactor.h>
 #include <gtdynamics/factors/JointLimitFactorVector.h>
+#include <gtdynamics/factors/VelocityLimitFactorVector.h>
 
 #include "scate_keys.h"
 #include "trajectory_init.h"
@@ -56,22 +59,28 @@ struct GraphSpec {
   Vector q_lower;  ///< joint position lower limits
   Vector q_upper;  ///< joint position upper limits
   Vector u_limit;  ///< symmetric acceleration limit per joint: |u_j| <= u_limit_j
+  Vector v_limit;  ///< symmetric velocity limit per joint: |v_j| <= v_limit_j
   int num_poses = 21;  ///< N+1
   double dt = 1.0;     ///< time between states
 
   // Noise sigmas: smaller = higher priority.
   double sigma_endpoint = 1e-3;  ///< start / goal priors
   double sigma_dynamics = 1e-2;  ///< dynamics
-  double sigma_limit = 1e-1;     ///< limit hinges
+  /**
+   * Limit hinges (joint, velocity, control). Much tighter than the collision
+   * hinges, so the optimizer cannot trade a limit violation for clearance.
+   */
+  double sigma_limit = 1e-3;
 
   // Hinge margins: cost starts this far INSIDE each limit (paper's threshold).
   double u_margin = 0.1;   ///< rad/s^2
   double q_margin = 0.05;  ///< rad
+  double v_margin = 0.05;  ///< rad/s
 
   // Pass/fail tolerances for evaluateSolution (all constraints are soft).
   double tolerance_endpoint = 1e-3;  ///< start and goal state error
   double tolerance_dynamics = 1e-3;  ///< dynamics residual
-  double tolerance_limit = 1e-3;     ///< control and joint limit excess
+  double tolerance_limit = 1e-3;     ///< control, velocity and joint limit excess
 };
 
 /// Check that a GraphSpec is consistent; throws std::invalid_argument if not.
@@ -79,8 +88,9 @@ inline void validateSpec(const GraphSpec& spec) {
   const long n = spec.q_start.size();
   if (n == 0) throw std::invalid_argument("GraphSpec: q_start is empty");
   if (spec.q_goal.size() != n || spec.q_lower.size() != n || spec.q_upper.size() != n ||
-      spec.u_limit.size() != n) {
-    throw std::invalid_argument("GraphSpec: q_start, q_goal, q_lower, q_upper, u_limit must all have the same size");
+      spec.u_limit.size() != n || spec.v_limit.size() != n) {
+    throw std::invalid_argument(
+        "GraphSpec: q_start, q_goal, q_lower, q_upper, u_limit, v_limit must all have the same size");
   }
   if (spec.num_poses < 3) throw std::invalid_argument("GraphSpec: need at least 3 poses");
   if (!(spec.dt > 0.0)) throw std::invalid_argument("GraphSpec: dt must be positive");
@@ -88,11 +98,12 @@ inline void validateSpec(const GraphSpec& spec) {
 
 /**
  * Number of factors buildScateGraph adds for a given horizon:
- * 4 priors + (N dynamics + N control limits) + (N+1 joint limits).
+ * 4 priors + (N dynamics + N control limits) + (N+1 joint limits) +
+ * (N+1 velocity limits).
  */
 inline size_t expectedFactorCount(int num_poses) {
   const size_t num_intervals = static_cast<size_t>(num_poses - 1);
-  return 4 + 2 * num_intervals + (num_intervals + 1);
+  return 4 + 2 * num_intervals + 2 * (num_intervals + 1);
 }
 
 /// Isotropic noise model of dimension `dimension`.
@@ -124,6 +135,14 @@ inline gtsam::NonlinearFactor::shared_ptr jointLimitFactor(const GraphSpec& spec
       Vector::Constant(n, spec.q_margin));
 }
 
+/// Hinge keeping the joint velocities v_i within +-v_limit, v_margin inside it.
+inline gtsam::NonlinearFactor::shared_ptr velocityLimitFactor(const GraphSpec& spec, int i) {
+  const int n = static_cast<int>(spec.q_start.size());
+  return std::make_shared<gtdynamics::VelocityLimitFactorVector>(
+      VKey(i), isotropicNoise(n, spec.sigma_limit), spec.v_limit,
+      Vector::Constant(n, spec.v_margin));
+}
+
 /// Build the offline factor graph: endpoint priors, dynamics and limit hinges.
 inline gtsam::NonlinearFactorGraph buildScateGraph(const GraphSpec& spec) {
   validateSpec(spec);
@@ -143,7 +162,10 @@ inline gtsam::NonlinearFactorGraph buildScateGraph(const GraphSpec& spec) {
     graph.add(dynamicsFactor(spec, i));
     graph.add(controlLimitFactor(spec, i));
   }
-  for (int i = 0; i <= last; ++i) graph.add(jointLimitFactor(spec, i));
+  for (int i = 0; i <= last; ++i) {
+    graph.add(jointLimitFactor(spec, i));
+    graph.add(velocityLimitFactor(spec, i));
+  }
   return graph;
 }
 
@@ -176,6 +198,7 @@ struct SolutionMetrics {
   double dynamics_residual = 0.0;  ///< max dynamics residual over all steps
   double control_violation = 0.0;  ///< how far any |u| exceeds its limit
   double joint_violation = 0.0;    ///< how far any q is outside [lower, upper]
+  double velocity_violation = 0.0;  ///< how far any |v| exceeds its limit
   double max_control = 0.0;        ///< peak |u|
   bool passed = false;             ///< every metric is within its tolerance
 };
@@ -203,13 +226,17 @@ inline SolutionMetrics computeSolutionMetrics(const JointTrajectory& trajectory,
     metrics.joint_violation = std::max(
         {metrics.joint_violation, (spec.q_lower - trajectory.q[i]).maxCoeff(),
          (trajectory.q[i] - spec.q_upper).maxCoeff()});
+    metrics.velocity_violation = std::max(
+        metrics.velocity_violation, (trajectory.v[i].cwiseAbs() - spec.v_limit).maxCoeff());
   }
+  metrics.velocity_violation = std::max(0.0, metrics.velocity_violation);
 
   metrics.passed = metrics.start_error <= spec.tolerance_endpoint &&
                    metrics.goal_error <= spec.tolerance_endpoint &&
                    metrics.dynamics_residual <= spec.tolerance_dynamics &&
                    metrics.control_violation <= spec.tolerance_limit &&
-                   metrics.joint_violation <= spec.tolerance_limit;
+                   metrics.joint_violation <= spec.tolerance_limit &&
+                   metrics.velocity_violation <= spec.tolerance_limit;
   return metrics;
 }
 
@@ -225,6 +252,7 @@ inline void printSolutionMetrics(const SolutionMetrics& metrics, const GraphSpec
   line("dynamics residual     ", metrics.dynamics_residual, spec.tolerance_dynamics);
   line("control limit excess  ", metrics.control_violation, spec.tolerance_limit);
   line("joint limit excess    ", metrics.joint_violation, spec.tolerance_limit);
+  line("velocity limit excess ", metrics.velocity_violation, spec.tolerance_limit);
   std::cout << "peak |u| = " << metrics.max_control << ", overall: "
             << (metrics.passed ? "PASS" : "FAIL") << "\n";
 }

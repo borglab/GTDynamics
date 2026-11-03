@@ -69,6 +69,14 @@ inline constexpr double kBumpAmplitude = 0.0;
  */
 inline constexpr double kAccelerationLimit = 1.0;
 
+/**
+ * Joint velocity limit (rad/s) for the velocity-limit factors, capped by each
+ * joint's limit in the robot model (3.15 rad/s on the UR5). Like
+ * kAccelerationLimit, a planning choice: it bounds how far the arm can move
+ * between two collision checks.
+ */
+inline constexpr double kVelocityLimit = 0.5;
+
 /// How close IK must get to the goal pose (translation in m, rotation in rad).
 inline constexpr double kIkTolerance = 1e-3;
 
@@ -501,6 +509,20 @@ inline void jointPositionLimits(const gtdynamics::Robot& robot, Vector* lower,
   }
 }
 
+/**
+ * Velocity limit per joint in chain order: kVelocityLimit, or the robot
+ * model's limit where that is lower.
+ */
+inline Vector jointVelocityLimits(const gtdynamics::Robot& robot) {
+  const auto order = jointIdsInChainOrder(robot);
+  Vector limits = Vector::Constant(order.size(), kVelocityLimit);
+  for (auto&& joint : robot.joints()) {
+    const size_t p = chainIndex(order, joint->id());
+    limits(p) = std::min(limits(p), joint->parameters().velocity_limit);
+  }
+  return limits;
+}
+
 /// Everything build_scate_graph.h needs, taken from the robot and the problem.
 inline GraphSpec makeGraphSpec(const gtdynamics::Robot& robot,
                                const InitialProblem& problem) {
@@ -509,6 +531,7 @@ inline GraphSpec makeGraphSpec(const gtdynamics::Robot& robot,
   spec.q_goal = problem.q_goal;
   jointPositionLimits(robot, &spec.q_lower, &spec.q_upper);
   spec.u_limit = Vector::Constant(problem.q_start.size(), kAccelerationLimit);
+  spec.v_limit = jointVelocityLimits(robot);
   spec.num_poses = kNumPoses;
   spec.dt = kDt;
   return spec;

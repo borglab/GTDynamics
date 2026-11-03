@@ -236,6 +236,14 @@ class ObstacleMeasurementFactor : public gtsam::NoiseModelFactorN<Vector, gtsam:
 // 4. Planner
 // ============================================================
 
+/// The fractions 0, 1/count, ..., (count-1)/count of an interval, for tau_fractions.
+inline std::vector<double> evenlySpacedFractions(int count) {
+  if (count < 1) throw std::invalid_argument("evenlySpacedFractions: count must be >= 1");
+  std::vector<double> fractions;
+  for (int c = 0; c < count; ++c) fractions.push_back(static_cast<double>(c) / count);
+  return fractions;
+}
+
 /// Settings of the online planner.
 struct OnlineConfig {
   // State measurements (paper eq. 11): encoder priors on q_k and v_k.
@@ -246,10 +254,16 @@ struct OnlineConfig {
   /// Weak prior pulling each control toward zero (rad/s^2); 0 turns it off (paper).
   double sigma_effort = 1.0;
   /**
-   * Obstacle and self-collision checks per interval, as fractions of dt in
-   * [0, 1). A fraction of 1 would duplicate the next interval's 0.
+   * Per-joint sigmas of the effort prior (rad/s^2), overriding sigma_effort
+   * when non-empty. A smaller sigma makes that joint's motion more expensive.
    */
-  std::vector<double> tau_fractions = {0.0, 1.0 / 3.0, 2.0 / 3.0};
+  Vector effort_sigmas;
+  /**
+   * Obstacle and self-collision checks per interval, as fractions of dt in
+   * [0, 1). A fraction of 1 would duplicate the next interval's 0; the final
+   * state gets its own check at tau = dt on the last interval.
+   */
+  std::vector<double> tau_fractions = evenlySpacedFractions(3);
   bool self_collision = true;  ///< add self-collision factors
   /// Assumed obstacle radius (m); the paper estimates the location only.
   double obstacle_radius = 0.08;
@@ -277,6 +291,12 @@ struct StepInfo {
   std::vector<Vector> plan_q, plan_v;
   /// Marginal covariance of l, if requested and l exists.
   std::optional<gtsam::Matrix3> l_covariance;
+  /**
+   * Gap between the goal configuration and the estimated obstacle (m), if l
+   * exists. Negative: the goal itself is in collision, which no plan can fix
+   * (the goal prior holds q_N there).
+   */
+  std::optional<double> goal_clearance;
 };
 
 /**
@@ -303,6 +323,10 @@ class OnlinePlanner {
       if (fraction < 0.0 || fraction >= 1.0) {
         throw std::invalid_argument("OnlinePlanner: tau fractions must be in [0, 1)");
       }
+    }
+    if (config_.effort_sigmas.size() != 0 &&
+        config_.effort_sigmas.size() != spec_.q_start.size()) {
+      throw std::invalid_argument("OnlinePlanner: effort_sigmas must be empty or one per joint");
     }
     addBaseFactors();
   }
@@ -466,16 +490,29 @@ class OnlinePlanner {
   void addBaseFactors() {
     addEndpointPriors();
     const Vector zero = Vector::Zero(numJoints());
+    const gtsam::SharedNoiseModel effort_noise = effortNoise();
     for (int i = 0; i < numIntervals(); ++i) {
       add("dynamics", i, dynamicsFactor(spec_, i));
       add("control_limit", i, controlLimitFactor(spec_, i));
-      if (config_.sigma_effort > 0.0) {
+      if (effort_noise) {
         add("effort", i,
-            gtsam::NonlinearFactor::shared_ptr(new gtsam::PriorFactor<Vector>(
-                UKey(i), zero, isotropicNoise(numJoints(), config_.sigma_effort))));
+            gtsam::NonlinearFactor::shared_ptr(
+                new gtsam::PriorFactor<Vector>(UKey(i), zero, effort_noise)));
       }
     }
-    for (int i = 0; i <= numIntervals(); ++i) add("joint_limit", i, jointLimitFactor(spec_, i));
+    for (int i = 0; i <= numIntervals(); ++i) {
+      add("joint_limit", i, jointLimitFactor(spec_, i));
+      add("velocity_limit", i, velocityLimitFactor(spec_, i));
+    }
+  }
+
+  /// Noise model of the effort prior: per-joint, isotropic, or null (off).
+  gtsam::SharedNoiseModel effortNoise() const {
+    if (config_.effort_sigmas.size() != 0) {
+      return gtsam::noiseModel::Diagonal::Sigmas(config_.effort_sigmas);
+    }
+    if (config_.sigma_effort > 0.0) return isotropicNoise(numJoints(), config_.sigma_effort);
+    return nullptr;
   }
 
 
@@ -535,11 +572,18 @@ class OnlinePlanner {
     for (int i = k_; i < numIntervals(); ++i) {
       for (double fraction : config_.tau_fractions) {
         if (i == k_ && fraction == 0.0) continue;
-        const double tau = fraction * spec_.dt;
-        if (haveObstacle()) add("obstacle", i, model_->obstacleFactor(i, tau));
-        if (config_.self_collision) add("self_collision", i, model_->selfCollisionFactor(i, tau));
+        addCollisionChecks(i, fraction * spec_.dt);
       }
     }
+    // The final state is the start of no interval, so check it at the end of
+    // the last one.
+    if (k_ < numIntervals()) addCollisionChecks(numIntervals() - 1, spec_.dt);
+  }
+
+  /// Obstacle (once l exists) and self-collision factors at time tau of interval i.
+  void addCollisionChecks(int i, double tau) {
+    if (haveObstacle()) add("obstacle", i, model_->obstacleFactor(i, tau));
+    if (config_.self_collision) add("self_collision", i, model_->selfCollisionFactor(i, tau));
   }
 
   /// Re-solve from the current solution and record the result in info.
@@ -555,7 +599,11 @@ class OnlinePlanner {
     info->graph_error = current_graph.error(values_);
     info->num_factors = current_graph.size();
     info->have_obstacle = haveObstacle();
-    if (info->have_obstacle) info->l_estimate = obstacleEstimate();
+    if (info->have_obstacle) {
+      info->l_estimate = obstacleEstimate();
+      info->goal_clearance =
+          model_->obstacleClearance(spec_.q_goal, info->l_estimate, config_.obstacle_radius);
+    }
     recordPlan(info);
     recordObstacleCovariance(current_graph, info);
   }
@@ -616,22 +664,40 @@ struct ClosedLoopResult {
   bool collided() const { return min_obstacle_clearance < 0.0 || min_self_clearance < 0.0; }
 };
 
-/// Zero-mean Gaussian noise vectors from one seeded generator.
+/**
+ * Zero-mean Gaussian noise vectors from one seeded generator, identical on
+ * every platform. std::mt19937's output is fixed by the C++ standard, but
+ * std::normal_distribution is not (libc++ and libstdc++ give different
+ * samples for the same seed), so the samples are made here with Box-Muller
+ * from the raw 32-bit output. Every sample uses exactly two generator outputs.
+ */
 class GaussianNoise {
  public:
   /// Seed the generator.
-  explicit GaussianNoise(unsigned seed) : generator_(seed), standard_normal_(0.0, 1.0) {}
+  explicit GaussianNoise(unsigned seed) : generator_(seed) {}
+
+  /// One standard normal sample.
+  double standardNormal() {
+    constexpr double kTwoPi = 6.283185307179586476925286766559;
+    const double u1 = uniformOpenClosed();
+    const double u2 = uniformOpenClosed();
+    return std::sqrt(-2.0 * std::log(u1)) * std::cos(kTwoPi * u2);
+  }
 
   /// A vector of n independent samples with standard deviation sigma.
   Vector sample(long n, double sigma) {
     Vector noise(n);
-    for (long j = 0; j < n; ++j) noise(j) = sigma * standard_normal_(generator_);
+    for (long j = 0; j < n; ++j) noise(j) = sigma * standardNormal();
     return noise;
   }
 
  private:
   std::mt19937 generator_;
-  std::normal_distribution<double> standard_normal_;
+
+  /// Uniform in (0, 1], from one 32-bit output (never 0, so log() is finite).
+  double uniformOpenClosed() {
+    return (static_cast<double>(generator_()) + 1.0) / 4294967296.0;
+  }
 };
 
 /**
@@ -663,15 +729,13 @@ inline std::optional<gtsam::Point3> measureObstacle(const CollisionModel& truth,
                                                     const SimulationConfig& simulation,
                                                     const Vector& q, GaussianNoise* noise) {
   const gtsam::Pose3 wTs = truth.sensorPose(q);
-  const Vector measurementNoise =
-      noise->sample(3, simulation.sigma_l_measurement);
   if (simulation.sensor_range <= 0.0 ||
       (simulation.obstacle_center - wTs.translation()).norm() >
           simulation.sensor_range) {
     return std::nullopt;
   }
   return gtsam::Point3(wTs.transformTo(simulation.obstacle_center) +
-                       measurementNoise);
+                       noise->sample(3, simulation.sigma_l_measurement));
 }
 
 /**

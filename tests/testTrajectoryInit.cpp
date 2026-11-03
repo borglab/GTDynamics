@@ -13,8 +13,9 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <iostream>
+
 #include <algorithm>
+#include <iostream>
 #include <stdexcept>
 
 #include "trajectory_init.h"

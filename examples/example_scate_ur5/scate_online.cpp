@@ -51,6 +51,18 @@ constexpr int kObstacleState = 12;        ///< put the obstacle where the plan h
 constexpr double kObstacleLift = 0.03;    ///< m above that tool position (breaks symmetry)
 constexpr double kObstacleRadius = 0.08;  ///< m
 constexpr double kSensorRange = 0.4;      ///< m, wrist_3 to obstacle center
+constexpr int kChecksPerInterval = 6;     ///< obstacle and self-collision checks per interval
+
+/**
+ * Effort-prior sigmas per joint (rad/s^2): accelerating the elbow and wrists
+ * costs 4x more than the shoulder, so avoidance prefers moving the whole arm
+ * over swinging the wrist.
+ */
+scate::Vector effortSigmas() {
+  scate::Vector sigmas(6);
+  sigmas << 1.0, 1.0, 0.5, 0.5, 0.5, 0.5;
+  return sigmas;
+}
 
 /// Robot file: the first argument, else the UR5 model that ships with GTDynamics.
 std::string robotFilePath(int argc, char** argv) {
@@ -146,6 +158,13 @@ void printEvaluation(const scate::ClosedLoopResult& result,
                      const scate::Ur5CollisionParams& collision_params) {
   std::cout << "\n--- Closed-loop evaluation ---\n";
   std::cout << "first detection at state " << result.first_detection << "\n";
+  for (const scate::StepInfo& step : result.steps) {
+    if (step.goal_clearance && *step.goal_clearance < 0.0) {
+      std::cout << "WARNING: at step " << step.k << " the goal is inside the estimated obstacle ("
+                << *step.goal_clearance << " m); no plan can reach it without collision\n";
+      break;
+    }
+  }
   std::cout << "obstacle estimate error " << l_error << " m\n";
   std::cout << "[diag] min obstacle clearance " << result.min_obstacle_clearance
             << " m (standoff " << collision_params.obstacle_epsilon << "), blind robot "
@@ -170,6 +189,9 @@ std::shared_ptr<scate::Ur5CollisionModel> makeCollisionModel(
             << " m, at goal " << model->selfClearance(spec.q_goal) << " m\n";
   if (model->selfClearance(spec.q_start) < collision_params.self_epsilon) {
     std::cout << "  WARNING: the start already violates the self-collision standoff\n";
+  }
+  if (model->selfClearance(spec.q_goal) < collision_params.self_epsilon) {
+    std::cout << "  WARNING: the goal violates the self-collision standoff; no plan can avoid it\n";
   }
   return model;
 }
@@ -205,6 +227,8 @@ int main(int argc, char** argv) {
     scate::OnlineConfig config;
     config.obstacle_radius = kObstacleRadius;
     config.compute_l_covariance = true;  // for the replay; not part of the timing
+    config.tau_fractions = scate::evenlySpacedFractions(kChecksPerInterval);
+    config.effort_sigmas = effortSigmas();
 
     // ---- 2-3. Offline plan, and an obstacle on its path -------------------
     const gtsam::Point3 obstacle =
