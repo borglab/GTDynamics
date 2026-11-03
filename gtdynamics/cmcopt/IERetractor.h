@@ -24,6 +24,8 @@
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
+#include <stdexcept>
+
 namespace gtdynamics {
 using namespace gtsam;
 

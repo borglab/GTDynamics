@@ -75,15 +75,19 @@ class ArticulatedRetractor : public IERetractor {
     // conditioned projection of the same small affine AD manifold.
     params_->useVaryingSigma = true;
     params_->metricSigmas = std::make_shared<VectorValues>();
+    const double rootAccelerationSigmaDegrees = 90.0;
+    const double jointAccelerationSigmaDegrees = 1000.0;
     for (const auto& [key, dimension] : manifold.values().dims()) {
       if (!independentAD_.exists(key)) continue;
       priorKeys_.push_back(key);
       Vector sigmas;
       if (key == TwistAccelKey(root_->id(), slice_)) {
-        sigmas = Vector6::Constant(90.0 * std::acos(-1.0) / 180.0);
+        sigmas = Vector6::Constant(rootAccelerationSigmaDegrees *
+                                   std::acos(-1.0) / 180.0);
         sigmas.tail<3>().setConstant(3.0);
       } else if (DynamicsSymbol(key).label() == "a") {
-        sigmas = Vector1(1000.0 * std::acos(-1.0) / 180.0);
+        sigmas =
+            Vector1(jointAccelerationSigmaDegrees * std::acos(-1.0) / 180.0);
       } else {
         sigmas = Vector6::Constant(500.0);
         sigmas.head<3>().setConstant(30.0);
@@ -191,6 +195,36 @@ class ArticulatedRetractorCreator : public IERetractorCreator {
                                                   independentAD_, params_);
   }
 };
+// Retire each stance landmark at its final observation, keeping a shared bias
+// until its last factor. Time-block elimination preserves the chain structure.
+Ordering chronologicalOrdering(const NonlinearFactorGraph& cost,
+                               const IEManifoldValues& manifolds,
+                               const Values& unconstrained, size_t firstSlice) {
+  const auto ownership = IEOptimizer::varToManifoldKeyMap(manifolds);
+  std::map<Key, size_t> lastSlice;
+  for (Key key : unconstrained.keys()) lastSlice[key] = firstSlice;
+  for (const auto& factor : cost) {
+    size_t last = firstSlice;
+    for (Key key : factor->keys()) {
+      const auto owner = ownership.find(key);
+      if (owner != ownership.end())
+        last = std::max(last, DynamicsSymbol(owner->second).time());
+    }
+    for (Key key : factor->keys())
+      if (unconstrained.exists(key))
+        lastSlice[key] = std::max(lastSlice[key], last);
+  }
+  std::map<size_t, Key> chronological;
+  for (const auto& [key, manifold] : manifolds)
+    chronological.emplace(DynamicsSymbol(key).time(), key);
+  Ordering ordering;
+  for (const auto& [k, key] : chronological) {
+    ordering.push_back(key);
+    for (const auto& [freeKey, last] : lastSlice)
+      if (last == k) ordering.push_back(freeKey);
+  }
+  return ordering;
+}
 }  // namespace
 
 kinodynamics::Result solveKinodynamics(
@@ -391,30 +425,8 @@ kinodynamics::Result solveKinodynamics(
   // front when active cone faces are present. Retire each stance landmark at
   // its final observation, keeping only the shared bias until the end.
   params.lmParams.setLinearSolverType("SEQUENTIAL_CHOLESKY");
-  const auto ownership = IEOptimizer::varToManifoldKeyMap(manifolds);
-  std::map<Key, size_t> lastSlice;
-  for (Key key : unconstrained.keys()) lastSlice[key] = slices.front().k;
-  for (const auto& factor : cost) {
-    size_t last = slices.front().k;
-    for (Key key : factor->keys()) {
-      const auto owner = ownership.find(key);
-      if (owner != ownership.end())
-        last = std::max(last, DynamicsSymbol(owner->second).time());
-    }
-    for (Key key : factor->keys())
-      if (unconstrained.exists(key))
-        lastSlice[key] = std::max(lastSlice[key], last);
-  }
-  std::map<size_t, Key> chronological;
-  for (const auto& [key, manifold] : manifolds)
-    chronological.emplace(DynamicsSymbol(key).time(), key);
-  Ordering ordering;
-  for (const auto& [k, key] : chronological) {
-    ordering.push_back(key);
-    for (const auto& [freeKey, last] : lastSlice)
-      if (last == k) ordering.push_back(freeKey);
-  }
-  params.lmParams.ordering = ordering;
+  params.lmParams.ordering =
+      chronologicalOrdering(cost, manifolds, unconstrained, slices.front().k);
   params.lmParams.verbosityLM = LevenbergMarquardtParams::SUMMARY;
   const auto optimizeStart = Clock::now();
   params.iterationCallback = [&](const IELMState& state) {

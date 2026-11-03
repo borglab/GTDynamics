@@ -20,13 +20,13 @@ class WorldVelocityFactor
     : public gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Vector6,
                                       gtsam::Vector3> {
  public:
-  /** Relate a COM pose, its body twist and world linear velocity. */
+  /// Relate a COM pose, its angular-first body twist and world linear velocity.
   WorldVelocityFactor(gtsam::Key poseKey, gtsam::Key twistKey,
                       gtsam::Key velocityKey,
                       const gtsam::SharedNoiseModel& model)
       : gtsam::NoiseModelFactor3<gtsam::Pose3, gtsam::Vector6, gtsam::Vector3>(
             model, poseKey, twistKey, velocityKey) {}
-  /** Evaluate the frame-consistency residual and optional Jacobians. */
+  /// Evaluate R_world_COM * twist.tail<3>() - velocity and optional Jacobians.
   gtsam::Vector evaluateError(
       const gtsam::Pose3& pose, const gtsam::Vector6& twist,
       const gtsam::Vector3& velocity, gtsam::OptionalMatrixType H1 = nullptr,
@@ -44,7 +44,7 @@ class WorldVelocityFactor
     if (H3) *H3 = -gtsam::Matrix3::Identity();
     return rotation * twist.tail<3>() - velocity;
   }
-  /** Copy this immutable factor. */
+  /// Copy this immutable factor, retaining its keys and noise model.
   gtsam::NonlinearFactor::shared_ptr clone() const override {
     return std::make_shared<WorldVelocityFactor>(*this);
   }

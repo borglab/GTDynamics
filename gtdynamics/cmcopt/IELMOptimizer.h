@@ -21,6 +21,8 @@
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
 
+#include <functional>
+
 namespace gtdynamics {
 using namespace gtsam;
 

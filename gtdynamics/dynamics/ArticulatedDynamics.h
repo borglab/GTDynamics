@@ -30,7 +30,12 @@ struct ArticulatedDynamicsProblem {
   gtsam::KeySet independentKeys;
   fixed_dynamics::Result result;
 
-  /** Build the same mechanics for both fixed and optimized q/v. */
+  /** Build the same mechanics for both fixed and optimized q/v.
+   * Input variables and units follow solveFixedKinematicsDynamics. With
+   * fixKinematics=false, fixedValues supplies starting q/v values instead of
+   * substitutions; callers must also add pose/twist kinematic constraints.
+   * The assembled graphs own their factors and numerical values.
+   */
   ArticulatedDynamicsProblem(
       const Robot& robot, const Trajectory& trajectory,
       const std::vector<Slice>& slices, const std::vector<double>& times,

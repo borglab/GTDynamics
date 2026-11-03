@@ -28,8 +28,7 @@ namespace velocity_frames {
 // under a nonidentity rotation, with nonzero angular and linear body velocity.
 TEST(Kinodynamics, WorldVelocityJacobians) {
   const Pose3 pose(Rot3::RzRyRx(.2, -.3, .5), Point3(2, 3, 4));
-  Vector6 twist;
-  twist << .2, .3, -.1, .8, -.4, .5;
+  const Vector6 twist{.2, .3, -.1, .8, -.4, .5};
   const Vector3 world = pose.rotation() * twist.tail<3>();
   const WorldVelocityFactor factor(1, 2, 3, noiseModel::Unit::Create(3));
   Matrix H1, H2, H3;
@@ -51,8 +50,7 @@ TEST(Kinodynamics, WorldVelocityJacobians) {
 // cone; projection must preserve both its solution and its blocking faces.
 TEST(Kinodynamics, ScaledConeProjection) {
   LinearInequalityConstraints constraints;
-  Matrix A(2, 2);
-  A << 1e6, -2e6, -2e-6, 1e-6;
+  const Matrix22 A{{1e6, -2e6}, {-2e-6, 1e-6}};
   constraints.emplace_shared<JacobianLinearInequalityConstraint>(
       std::make_shared<JacobianFactor>(1, A, Vector2::Zero()));
   const auto [active, result] =
@@ -136,16 +134,28 @@ TEST(Kinodynamics, StaticSupportFromZero) {
   Values initial;
   NonlinearFactorGraph measurements;
   const Pose3 pose(Rot3(), Point3(0, 0, .5));
+  const double poseRotationSigmaDegrees = .05;
+  const double angularVelocitySigmaDegrees = .05;
+  const double jointPositionSigmaDegrees = .5;
+  const double radiansPerDegree = std::acos(-1.0) / 180.0;
+  Vector6 poseSigmas = Vector6::Constant(.001);
+  poseSigmas.head<3>().setConstant(poseRotationSigmaDegrees * radiansPerDegree);
+  Vector6 twistSigmas = Vector6::Constant(.001);
+  twistSigmas.head<3>().setConstant(angularVelocitySigmaDegrees *
+                                    radiansPerDegree);
   for (size_t k = 0; k < 3; ++k) {
     initial.insert(PoseKey(0, k), pose);
     initial.insert(PoseKey(1, k), pose);
     initial.insert(JointAngleKey(0, k), 0.);
     measurements.emplace_shared<PriorFactor<Pose3>>(
-        PoseKey(0, k), pose, noiseModel::Isotropic::Sigma(6, .001));
+        PoseKey(0, k), pose, noiseModel::Diagonal::Sigmas(poseSigmas));
     measurements.emplace_shared<PriorFactor<Vector6>>(
-        TwistKey(0, k), Vector6::Zero(), noiseModel::Isotropic::Sigma(6, .001));
+        TwistKey(0, k), Vector6::Zero(),
+        noiseModel::Diagonal::Sigmas(twistSigmas));
     measurements.emplace_shared<PriorFactor<double>>(
-        JointAngleKey(0, k), 0., noiseModel::Isotropic::Sigma(1, .01));
+        JointAngleKey(0, k), 0.,
+        noiseModel::Isotropic::Sigma(
+            1, jointPositionSigmaDegrees * radiansPerDegree));
   }
   const Values before = initial;
   kinodynamics::Options options;

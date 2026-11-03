@@ -22,7 +22,7 @@ here and in the library; the app exporter only serializes these results.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 import gzip
 import json
 from pathlib import Path
@@ -34,16 +34,16 @@ import gtdynamics as gtd
 import numpy as np
 from numpy.typing import NDArray
 
-from contact_phases import initialization_slices, stance_observations, contact_slices
+from contact_phases import contact_slices, initialization_slices, stance_observations
 from g1_model import load_g1_model
-from imu_aiding import BIAS_KEY, build_imu_aiding
+from imu_aiding import BIAS_KEY, ImuAiding, build_imu_aiding
 from kinematic_initialization import align_contact_ground, seed_contact_landmarks
 from mujoco_io import (
     KinematicRecording,
     contact_frames,
     import_robot,
-    model_bodies,
     load_recording,
+    model_bodies,
     pose,
 )
 from sole_support import support_rectangle
@@ -86,7 +86,7 @@ def prepare_walk(
     model = load_g1_model()
     robot: gtd.Robot = import_robot(model_bodies(model))
     root: gtd.Link = robot.link("pelvis")
-    frames = contact_frames(model, robot)
+    frames: dict[str, gtd.PoseOnLink] = contact_frames(model, robot)
     measured = gtsam.Values()
     for joint in robot.joints():
         address = model.jnt_qposadr[model.joint("robot/" + joint.name()).id]
@@ -117,10 +117,12 @@ def prepare_walk(
         )
         first = stop
     trajectory: gtd.Trajectory = gtd.Trajectory(gtd.WalkCycle(phases), 1)
-    retained = initialization_slices(trajectory, 0.02)
+    retained: list[gtd.Slice] = initialization_slices(trajectory, 0.02)
     if not retained:
         raise ValueError("Contact initialization requires double support")
-    body_to_com = pose(model.body_ipos[root.id()], model.body_iquat[root.id()])
+    body_to_com: gtsam.Pose3 = pose(
+        model.body_ipos[root.id()], model.body_iquat[root.id()]
+    )
     references = [pose(q[:3], q[3:7]) * body_to_com for q in arrays["qpos"][indices]]
     walk = KinematicRecording(
         robot,
@@ -159,26 +161,36 @@ def solve_walk(
     max_iterations: int = 5,
     retraction_threads: int = 8,
 ) -> KinodynamicSolution:
-    """Contact-init poses, zero other variables, then one coupled dense solve."""
+    """Run contact initialization and a coupled solve on original 50 Hz samples.
+
+    start/end crop dataset seconds. Configurations use COM-to-world poses and
+    measured joint angles; all velocities, accelerations, wrenches, torques and
+    the shared IMU bias start at zero. The result owns its numerical Values.
+    Timings include contact initialization, measurement setup and the native
+    solve separately; output-array extraction and serialization are excluded.
+    """
     prepared = time.perf_counter()
     walk, metadata = prepare_walk(directory, labels_path, start, end)
     metadata["preparationSeconds"] = time.perf_counter() - prepared
-    settings = gtd.pose_contact_init.Options()
+    settings: gtd.pose_contact_init.Options = gtd.pose_contact_init.Options()
     settings.selectedSlices = [gtd.Slice(k) for k in metadata["initializationSlices"]]
     settings.interpolateOutput = True
     settings.recordHistory = False
     settings.initializeUpright = True
-    settings.rotationSigma = float(np.deg2rad(90.0))
+    contact_rotation_sigma_degrees = 90.0
+    upright_sigma_degrees = 15.0
+    motion_rotation_sigma_degrees = 180.0
+    settings.rotationSigma = float(np.deg2rad(contact_rotation_sigma_degrees))
     settings.addUprightFactors = True
-    settings.uprightSigma = float(np.deg2rad(15.0))
+    settings.uprightSigma = float(np.deg2rad(upright_sigma_degrees))
     settings.addBetweenFactors = True
-    settings.betweenRotationSigma = float(np.deg2rad(180.0))
+    settings.betweenRotationSigma = float(np.deg2rad(motion_rotation_sigma_degrees))
     settings.betweenTranslationSigma = 10.0
     settings.addGroundFactors = True
     settings.addNormalFactors = False
     settings.groundHeight = 0.0
     settings.groundSigma = 0.1
-    diagnostics = gtd.pose_contact_init.Result()
+    diagnostics: gtd.pose_contact_init.Result = gtd.pose_contact_init.Result()
     contact_started = time.perf_counter()
     started = contact_started
     initial: gtsam.Values = gtd.Initializer().InitializeSolutionContactPoses(
@@ -210,7 +222,7 @@ def solve_walk(
                 gtsam.PriorFactorDouble(key, walk.measured.atDouble(key), encoder_noise)
             )
     contact_noise = gtsam.noiseModel.Diagonal.Sigmas(
-        np.array([np.deg2rad(90.0)] * 3 + [0.01] * 3)
+        np.array([np.deg2rad(contact_rotation_sigma_degrees)] * 3 + [0.01] * 3)
     )
     for k, contact, key in stance_observations(walk):
         contacts.add(
@@ -221,12 +233,12 @@ def solve_walk(
                 contact.comTcontact,
             )
         )
-    imu = build_imu_aiding(walk, directory)
+    imu: ImuAiding = build_imu_aiding(walk, directory)
     # Bias is also zero at the raw start. Its calibrated prior is a measurement,
     # not a warm start; the native solver creates all body/world v/a entries.
     initial.insert(BIAS_KEY, gtsam.imuBias.ConstantBias())
     model = load_g1_model()
-    frames = contact_frames(model, walk.robot)
+    frames: dict[str, gtd.PoseOnLink] = contact_frames(model, walk.robot)
     patches: list[gtd.fixed_dynamics.Contact] = [
         gtd.fixed_dynamics.Contact(frames[side], *support_rectangle(model, side), 0.8)
         for side in ("left", "right")
@@ -235,7 +247,7 @@ def solve_walk(
     for actuator in range(model.nu):
         joint_id = int(model.actuator_trnid[actuator, 0])
         armature[joint_id] = model.dof_armature[model.jnt_dofadr[joint_id]]
-    options = gtd.kinodynamics.Options()
+    options: gtd.kinodynamics.Options = gtd.kinodynamics.Options()
     # The sparse initializer's gauge belongs to its first selected DS slice.
     # Dense output holds that pose before the selection starts; those earlier
     # configurations are guesses and must remain free in the coupled solve.
@@ -317,7 +329,15 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
 
 
 def solution_arrays(solution: KinodynamicSolution) -> dict[str, NDArray[Any]]:
-    """Extract COM configurations and angular-first body state, sole wrenches."""
+    """Extract slice-major arrays for offline replay, without changing the solve.
+
+    Poses have shape (N, L, 4, 4), mapping each link COM into world coordinates.
+    Link twists and their ordinary body-coordinate derivatives have shape
+    (N, L, 6), angular first, in rad/s and m/s (or their time derivatives).
+    Joint arrays have shape (N, J), in radians, rad/s, rad/s² and N m. Sole
+    wrenches have shape (N, 2, 6), moment then force, in sole axes, N m and N.
+    Contact and joint axis order follows contact_link_ids and joint_ids.
+    """
     walk, result = solution.walk, solution.result
     joints = list(result.jointIds)
     return {
