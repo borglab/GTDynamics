@@ -46,7 +46,7 @@ const gauge = {
 
 export const papers = {
   'contact-labels': {
-    abstract: 'This app infers left, right, and double support from G1 foot motion using a discrete factor graph. Max-product combines displacement and joint-velocity evidence with walking priors; the resulting phases supply the contact schedule for initialization.',
+    abstract: 'This app infers left, right, and double support from G1 foot motion using a discrete factor graph. Max-product combines displacement and joint-velocity evidence with walking priors; the resulting phases supply the contact schedule for initialization. For the default 24–44 s clip with velocity aiding and walking constraints, recorded max-product inference took 0.113 s.',
     motivation: 'A velocity threshold alone can produce isolated labels or contradictory support assignments. Contact timing matters because it determines which observations share a stationary foothold. Combining local measurements with temporal and cross-foot assumptions makes that timing explicit and inspectable.',
     approach: 'At each 50 Hz slice k, each foot has its own binary stance/swing variable. Measurement potentials and discrete priors multiply, and exact max-product returns the joint MAP sequence. The alternative window model labels stationarity from translation and rotation. These are privileged labels: SuperOdom LiDAR-inertial poses contribute to world-frame foot motion.',
     graph: 'labels',
@@ -63,7 +63,7 @@ export const papers = {
     next: 'contact-initialization', nextTitle: 'Contact Initialization',
   },
   'contact-initialization': {
-    abstract: 'Given contact phases, this app initializes a walking trajectory with a continuous pose factor graph. Root-relative sole observations connect pelvis poses to shared stance landmarks; independently selectable priors show how regularization affects the estimate.',
+    abstract: 'Given contact phases, this app initializes a walking trajectory with a continuous pose factor graph. Root-relative sole observations connect pelvis poses to shared stance landmarks; independently selectable priors show how regularization affects the estimate. For the default 24–44 s clip with motion, height, and upright priors, native graph construction and optimization took a median 36.49 ms over eleven timed runs, excluding dense replay expansion.',
     motivation: 'A stance foot provides observations of the same foothold from multiple root poses. A shared landmark couples those poses and can initialize global motion from contact and encoder observations. Weakly constrained directions still need a gauge and carefully chosen priors.',
     approach: 'Measured joint configurations provide root-relative sole poses. The graph estimates one root pose at each retained slice and one world-frame contact pose per uninterrupted stance. Short double-stance phases contribute a central slice; long phases retain buffered endpoints and evenly distributed slices with at most 200 ms between them. The browser selects results from recorded native solves.',
     graph: 'initialization',
@@ -72,7 +72,7 @@ export const papers = {
     next: 'contact-vs-ik', nextTitle: 'Contact vs IK',
   },
   'contact-vs-ik': {
-    abstract: 'Contact and inverse-kinematics initializers feed the same G1 smoothing factor graph. Recorded iterations, constraint violations, and residuals on identical walking snippets show how initialization affects convergence.',
+    abstract: 'Contact and inverse-kinematics initializers feed the same G1 smoothing factor graph. Recorded iterations, constraint violations, and residuals on identical walking snippets show how initialization affects convergence. On the recorded 204–214 s turn with IMU aiding, smoothing took 0.389 s from contact initialization and 1.066 s from IK, including diagnostic and replay capture but excluding initialization and graph construction.',
     motivation: 'A nonlinear smoother can depend strongly on its starting point. Per-slice IK is simple, while shared contact landmarks couple observations over time. Comparing both on identical slices and objectives isolates the effect of initialization.',
     approach: 'The contact initializer jointly estimates root and stance poses; IK solves retained slices independently. CM-Opt then smooths both trajectories using exact articulated kinematics, encoder measurements, and stance landmarks. The IMU switch selects an inertially aided graph. The two viewers share time selection and expose their own recorded optimizer iterations.',
     graph: 'smoothing',
@@ -86,7 +86,7 @@ export const papers = {
     next: 'kinematics-inspector', nextTitle: 'Kinematics',
   },
   'kinematics-inspector': {
-    abstract: 'This app estimates the full G1 trajectory with a factor graph combining articulated kinematics, shared stance poses, and optional IMU aiding. Recorded prior combinations expose convergence, contact slip, and disagreement with the LiDAR-inertial reference.',
+    abstract: 'This app estimates the full G1 trajectory with a factor graph combining articulated kinematics, shared stance poses, and optional IMU aiding. Recorded prior combinations expose convergence, contact slip, and disagreement with the LiDAR-inertial reference. For the full 220 s clip with IMU aiding and loop closure, the recorded solve took 105.83 s for 715 slices and reached the 50-iteration limit. This includes manifold setup and factor-error recording, but excludes initialization, graph construction, and replay export.',
     motivation: 'Contact and inertial observations constrain motion across multiple slices. Smoothing combines this evidence over the trajectory while representing sensor uncertainty and enforcing exact robot kinematics.',
     approach: 'Initialization and smoothing use exactly the same contact-selected slices, with a default maximum spacing of 200 ms inside long double-stance phases. ContactPoseFactor observations share landmarks across each stance. Gal3 pims span the actual irregular intervals. CM-Opt enforces articulated kinematics. Interpolation is confined to playback, and reference alignment changes evaluation and overlays only.',
     graph: 'smoothing',
@@ -95,7 +95,7 @@ export const papers = {
     next: 'interpolation', nextTitle: 'Interpolation',
   },
   dynamics: {
-    abstract: 'This app estimates accelerations, ground reaction wrenches, and joint torques from GP-fitted G1 motion over 78–98 s. A constrained factor graph combines native link dynamics with one wrench per sole and acceleration observations.',
+    abstract: 'This app estimates accelerations, ground reaction wrenches, and joint torques from GP-fitted G1 motion over 78–98 s. A constrained factor graph combines native link dynamics with one wrench per sole and acceleration observations. For the 57 recorded knots, native graph construction and solving took 0.745 s; GP graph construction and solving took another 0.177 s, excluding data loading, FK sampling, and export.',
     motivation: 'Inverse dynamics needs both motion derivatives and a contact-force allocation. Double support leaves that allocation underdetermined. A factor graph combines the dynamics equations with contact-wrench feasibility and explicit effort and temporal regularization.',
     approach: 'The full-trajectory Gaussian-process fit supplies configurations and velocities, fixed using ConstVarFactor. The unknowns are link body-twist derivatives, joint accelerations, internal link wrenches, actuator torques, and sole-frame contact wrenches. Acceleration observations come from local differences of GP velocities. CMC-Opt enforces exact articulated acceleration kinematics, force/moment balance, and linear wrench inequalities using the affine ReducedAL retraction. The recording retains the original double-support knots; intervening single-support intervals remain unsampled.',
     graph: 'dynamics',
@@ -114,7 +114,7 @@ export const papers = {
     next: 'kinodynamics', nextTitle: 'Kinodynamics',
   },
   kinodynamics: {
-    abstract: 'This app jointly estimates G1 motion, velocities, accelerations, sole wrenches, and joint torques over the 78–98 s turns at 50 Hz. A constrained factor graph couples contact and inertial observations to articulated mechanics and temporal collocation, starting from contact-initialized configurations and zero dynamic variables.',
+    abstract: 'This app jointly estimates G1 motion, velocities, accelerations, sole wrenches, and joint torques over the 78–98 s turns at 50 Hz. A constrained factor graph couples contact and inertial observations to articulated mechanics and temporal collocation, starting from contact-initialized configurations and zero dynamic variables. The recorded five-iteration run took 78.03 s in optimization and 87.89 s from contact initialization through the coupled solve, excluding model/data loading and export; it stopped at the iteration limit.',
     motivation: 'A sequential pipeline fixes earlier motion estimates before calculating forces, so the dynamics cannot correct those estimates. A coupled trajectory solve allows the motion and contact-force allocation to adjust together. Its runtime from a simple initial estimate measures the computational cost of that additional freedom.',
     approach: 'Each original slice contains free link COM poses, body twists and their derivatives, joint angles/rates/accelerations, reaction wrenches, actuator torques, and sole wrenches. Shared stance-pose landmarks and one IMU bias connect slices. CMC-Opt enforces articulated mechanics and contact-wrench feasibility exactly; encoder/contact/IMU observations, trapezoidal collocation, and regularization form the soft objective. Contact initialization supplies configurations only. Unit-standard-deviation translation and wrapped-yaw costs choose the world frame at the first selected double-support slice. All six root-pose coordinates remain adjustable; gravity and IMU observations estimate roll and pitch.',
     graph: 'kinodynamics',
@@ -138,7 +138,7 @@ export const papers = {
     next: 'motion-planning', nextTitle: 'Motion Planning',
   },
   'motion-planning': {
-    abstract: 'This app optimizes a Franka arm trajectory between two hand poses using a kinematic factor graph. Robot states and temporal factors expose how the same GTDynamics formulation can describe desired motion after the estimation examples.',
+    abstract: 'This app optimizes a Franka arm trajectory between two hand poses using a kinematic factor graph. Robot states and temporal factors expose how the same GTDynamics formulation can describe desired motion after the estimation examples. The recorded 12-state problem took 25.0 ms for graph construction and eight optimizer iterations, including snapshot serialization and IPC but excluding process startup, model loading, and browser playback delays.',
     motivation: 'A motion plan must satisfy requested hand poses while keeping joint angles and velocities consistent over time. Trajectory optimization expresses these requirements as factors and uses regularization to resolve redundant arm motion.',
     approach: 'Each slice contains joint angles q, joint velocities q̇, link COM poses T, and link twists V. Within-slice factors express articulated kinematics; temporal factors discretize integration and smooth joint velocity. GTSAM Levenberg–Marquardt minimizes their weighted residuals. The browser replays a recorded native solve; a local backend enables endpoint editing and new solves.',
     graph: 'planning',
