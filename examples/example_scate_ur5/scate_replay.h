@@ -96,13 +96,15 @@ class JsonWriter {
   /// A quoted string with quotes, backslashes and newlines escaped.
   void writeString(const std::string& text) {
     stream << '"';
-    for (char c : text) {
-      if (c == '"' || c == '\\') stream << '\\';
-      if (c == '\n') {
-        stream << "\\n";
-        continue;
+    for (unsigned char c : text) {
+      if (c == '"' || c == '\\') {
+        stream << '\\' << static_cast<char>(c);
+      } else if (c < 0x20) {
+        constexpr char hex[] = "0123456789abcdef";
+        stream << "\\u00" << hex[c >> 4] << hex[c & 0x0f];
+      } else {
+        stream << static_cast<char>(c);
       }
-      stream << c;
     }
     stream << '"';
   }
