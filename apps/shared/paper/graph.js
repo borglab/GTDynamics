@@ -55,6 +55,33 @@ export function paperGraph(kind, indices) {
     return { nodes, factors, height: 405, caption: 'Each circle groups variables of one type in a slice: Z fixed configurations/velocities, a link and joint accelerations, W internal link wrenches, τ actuator torques, λ the two sole wrenches. A groups acceleration observations; K groups articulated acceleration equalities; N groups exact balance and joint-wrench constraints. R groups separate unary priors. The motif shows continuing stance: Δλ connections end at lift-off. Inactive-contact zero constraints and optional actuator bounds are omitted.' };
   }
 
+  if (kind === 'kinodynamics') {
+    node('b', 'b', 820, 65);
+    node('c', 'C', 820, 510);
+    indices.forEach((k, i) => {
+      node(`z${i}`, `Z${k}`, x(i), 145, k);
+      node(`a${i}`, `a${k}`, x(i) - 45, 280, k);
+      node(`w${i}`, `W${k}`, x(i) + 45, 375, k);
+      node(`l${i}`, `λ${k}`, x(i), 475, k);
+      factor('K', 'Exact articulated pose/velocity and body-to-world velocity equalities', [`z${i}`], x(i) - 60, 85);
+      factor('J', 'Unary encoder measurements', [`z${i}`], x(i) + 65, 145);
+      factor('F', 'Sole-pose observation to uninterrupted-stance landmark', [`z${i}`, 'c'], x(i) + 90, 230);
+      factor('S', 'Zero sole-origin velocity cost in stance', [`z${i}`], x(i) - 70, 190);
+      factor('A', 'Broad root/joint acceleration priors', [`a${i}`], x(i) - 95, 280);
+      factor('N', 'Exact acceleration kinematics, Newton–Euler balance and actuator-wrench equalities', [`z${i}`, `a${i}`, `w${i}`, `l${i}`], x(i), 335);
+      factor('H', 'Exact stance wrench inequalities or zero swing wrench', [`l${i}`], x(i) - 70, 475);
+      factor('R', 'Separate unary torque and sole-wrench regularization', [`w${i}`, `l${i}`], x(i) + 65, 450);
+      if (i) {
+        factor('I', 'Gal3 IMU factor: two root poses, two world velocities, shared bias', [`z${i - 1}`, `z${i}`, 'b'], x(i) - 135, 65);
+        factor('T', 'Separate configuration and velocity trapezoidal collocation factors', [`z${i - 1}`, `z${i}`, `a${i - 1}`, `a${i}`], x(i) - 135, 240);
+        factor('Δτ', 'Consecutive actuator torque differences', [`w${i - 1}`, `w${i}`], x(i) - 90, 400);
+        factor('Δλ', 'Sole-wrench differences within a continuing stance', [`l${i - 1}`, `l${i}`], x(i) - 135, 520);
+      }
+    });
+    factor('Pb', 'Shared sensor-bias prior', ['b'], 820, 15);
+    return { nodes, factors, height: 565, caption: 'Z groups free link COM poses, joint angles, body twists, joint rates and world root velocity; a groups link/joint accelerations; W groups internal reaction wrenches and actuator torques; λ groups both sole wrenches. C groups the current stance landmarks; b is one shared IMU bias. K, N and H are hard constraints; J, F, S, A, R, I, T, Δτ, Δλ and Pb are soft factors. T and R group separate native factors; each IMU factor still has two poses and two velocities inside the Z groups. This motif shows continuing double stance; contact observations and wrench-rate edges end at lift-off. The translation/yaw gauge costs and initial-velocity prior are omitted.' };
+  }
+
   if (kind === 'planning') {
     indices.forEach((k, i) => {
       node(`q${i}`, `q${k}`, x(i), 80, k);

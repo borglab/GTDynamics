@@ -14,6 +14,7 @@
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/RobustQp.h>
+#include <gtdynamics/cmcopt/IndependentComponents.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
@@ -204,7 +205,24 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
   }
 
   // Compute nonlinear update and nonlinear cost change
-  nonlinearUpdate = NonlinearUpdate(state, linearUpdate, graph);
+  try {
+    nonlinearUpdate =
+        NonlinearUpdate(state, linearUpdate, graph, params.retractionThreads);
+  } catch (const RetractionFailure &failure) {
+    // A failed projection is not a candidate state. Retry at a smaller LM step;
+    // do not let stopping tests accept an uncomputed nonlinear error or delta.
+    linearUpdate.solveSuccessful = false;
+    nonlinearUpdate.newError = std::numeric_limits<double>::infinity();
+    nonlinearUpdate.costChange = -std::numeric_limits<double>::infinity();
+    modelFidelity = -std::numeric_limits<double>::infinity();
+    trialTime = std::chrono::duration<double>(
+                    std::chrono::high_resolution_clock::now() - start)
+                    .count();
+    if (params.lmParams.verbosityLM == LevenbergMarquardtParams::SUMMARY)
+      std::cout << "Retraction rejected at lambda " << lambda << ": "
+                << failure.what() << std::endl;
+    return;
+  }
 
   // Decide if accept or reject trial
   modelFidelity = nonlinearUpdate.costChange / linearUpdate.costChange;
@@ -215,10 +233,9 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
   }
 
   auto end = std::chrono::high_resolution_clock::now();
-  trialTime =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count() /
-      1e6;
+  trialTime = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                  .count() /
+              1e6;
 }
 
 /* ************************************************************************* */
@@ -782,28 +799,41 @@ VectorValues IELMTrial::LinearUpdate::computeTangentVector(
 /* ************************************************************************* */
 IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
                                             const LinearUpdate &linearUpdate,
-                                            const NonlinearFactorGraph &graph) {
-
-  // retract for ie-manifolds
+                                            const NonlinearFactorGraph &graph,
+                                            size_t retractionThreads) {
+  // Each retractor may update its own cached ConstVarFactors. A worker owns
+  // exactly one component; map insertion, diagnostics and delta assembly stay
+  // ordered on this thread after all workers have completed successfully.
+  const KeyVector keys = state.manifolds.keys();
+  std::vector<std::optional<IEConstraintManifold>> projected(keys.size());
+  std::vector<IERetractionInfo> information(keys.size());
+  internal::forIndependentComponents(
+      keys.size(), retractionThreads, [&](size_t i) {
+        const Key key = keys[i];
+        const auto &manifold = state.manifolds.at(key);
+        const auto tangent =
+            SubValues(linearUpdate.tangentVector, manifold.values().keys());
+        const auto blocking = linearUpdate.blockingIndicesMap.find(key);
+        projected[i] =
+            manifold.retract(tangent,
+                             blocking == linearUpdate.blockingIndicesMap.end()
+                                 ? std::optional<IndexSet>{}
+                                 : blocking->second,
+                             &information[i]);
+      });
   numRetractionIterations = 0;
   VectorValues retract_delta;
-  for (const auto &[key, manifold] : state.manifolds) {
-    VectorValues tv =
+  for (size_t i = 0; i < keys.size(); ++i) {
+    const Key key = keys[i];
+    const auto &manifold = state.manifolds.at(key);
+    newManifolds.emplace(key, std::move(*projected[i]));
+    numRetractionIterations += information[i].numLMIterations;
+    const auto tangent =
         SubValues(linearUpdate.tangentVector, manifold.values().keys());
-    const auto &blockingIndicesMap = linearUpdate.blockingIndicesMap;
-    IERetractionInfo retract_info;
-    if (blockingIndicesMap.find(key) != blockingIndicesMap.end()) {
-      const auto &blocking_indices = blockingIndicesMap.at(key);
-      newManifolds.emplace(
-          key, manifold.retract(tv, blocking_indices, &retract_info));
-    } else {
-      newManifolds.emplace(key, manifold.retract(tv, {}, &retract_info));
-    }
-    numRetractionIterations += retract_info.numLMIterations;
-    auto [manifold_retract_delta, retract_deviation_rate] =
-        evaluateRetractionDeviation(manifold, newManifolds.at(key), tv);
-    retractionDeviationRates.push_back(retract_deviation_rate);
-    retract_delta.insert(manifold_retract_delta);
+    auto [difference, deviation] =
+        evaluateRetractionDeviation(manifold, newManifolds.at(key), tangent);
+    retractionDeviationRates.push_back(deviation);
+    retract_delta.insert(difference);
   }
 
   // retract for unconstrained variables

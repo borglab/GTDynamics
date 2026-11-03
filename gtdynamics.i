@@ -733,6 +733,11 @@ gtdynamics::fixed_dynamics::Result solveFixedKinematicsDynamics(
     const std::vector<gtdynamics::fixed_dynamics::Contact>& contacts,
     const gtsam::Vector& armature, const gtdynamics::fixed_dynamics::Options& options);
 
+#include <gtdynamics/dynamics/WorldVelocityFactor.h>
+class WorldVelocityFactor : gtsam::NoiseModelFactor {
+  WorldVelocityFactor(gtsam::Key poseKey, gtsam::Key twistKey,
+                      gtsam::Key velocityKey, const gtsam::SharedNoiseModel& model);
+};
 #include <gtdynamics/dynamics/Dynamics.h>
 class Dynamics {
   Dynamics(gtdynamics::DynamicsParameters parameters =

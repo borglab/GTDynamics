@@ -28,6 +28,44 @@ solve with `--initializer contact` or `ik`.
 [`compare_kinematic_walk.py`](compare_kinematic_walk.py) calls those example
 functions to compare the initialization and solve timings (`--repeats 3`).
 
+## Coupled 50 Hz kinodynamics example
+
+[`kinodynamic_walk.py`](kinodynamic_walk.py) solves the SSIO mid-clip turns
+(78–98 s) in one coupled CMC-Opt optimization. Every original 20 ms slice has
+free configuration, velocity, acceleration, sole/reaction wrench and torque
+variables. Native articulated constraints and rectangular sole-wrench cones
+are exact; root/joint trapezoidal collocation factors couple adjacent slices.
+The initial configurations come from the shared contact initializer; all other
+state variables, including the shared IMU bias, start at zero.
+
+```bash
+python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
+python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
+```
+
+Enable `GTDYNAMICS_BUILD_G1_MJLAB` and `GTDYNAMICS_BUILD_PYTHON`,
+then build `_g1_kinodynamics` and add `build/examples/g1_mjlab` to `PYTHONPATH`.
+Use the same pinned packages and other Python paths as the dynamics example below.
+The private module composes existing library builders; its settings live in
+[`kinodynamic_settings.py`](kinodynamic_settings.py). It adds no experiment API
+to the main package. `ArticulatedRetractor` and the reusable factor/builder
+extensions remain in GTDynamics.
+
+The coupled solve adds translation and wrapped-yaw gauge costs (1 m and 1 rad
+standard deviations) at the selected initialization slice. Roll and pitch are
+free: initializer tilt is a starting guess, not an enforced observation. No
+upright or ground-height factors enter this solve.
+Run `test_kinodynamics.py` to check tilt recovery and
+`validate_kinodynamics.py --result /tmp/kinodynamics` for the independent
+MuJoCo inverse-dynamics and contact-feasibility checks.
+`--max-iterations` defaults to 5; `--start 78 --end 79` gives a small development
+run. The example saves `kinodynamics.npz` and `summary.json`, separating contact
+initialization, measurement preparation, graph assembly, initial feasibility,
+and coupled optimization. The [Kinodynamics app](../../apps/kinodynamics/README.md)
+replays the saved initial/final states, forces, velocities, torques and error
+history. Neither the saved Kinematics result nor GP interpolation initializes
+this solve. Support labels remain privileged, as described in the app.
+
 ## Walking dynamics example
 
 [`dynamics_walk.py`](dynamics_walk.py) estimates accelerations, two sole-frame

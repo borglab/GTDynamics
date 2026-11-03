@@ -36,6 +36,12 @@
     "tag": "Contact-wrench estimation"
   },
   {
+    "id": "kinodynamics",
+    "title": "Kinodynamics",
+    "description": "Inspect a coupled 50 Hz G1 trajectory solve from contact-initialized configurations and zero velocities, accelerations, wrenches and torques.",
+    "tag": "Coupled state and dynamics estimation"
+  },
+  {
     "id": "motion-planning",
     "title": "Motion Planning",
     "description": "A kinematic factor graph optimizes a Franka arm trajectory between two hand poses. Playback shows the solver iterations and resulting joint motion.",

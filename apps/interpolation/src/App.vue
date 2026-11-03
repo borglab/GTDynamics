@@ -106,7 +106,8 @@ onBeforeUnmount(() => { pause(); controller.abort(); scene?.dispose(); });
       <div><span class="eyebrow">GTDYNAMICS / SSIO G1</span><h1>Interpolation</h1>
         <p class="abstract">The <a :href="previousHref" target="_parent">{{ previousApp.title }}</a> solution supplies sparse robot configurations;
           dynamics also needs velocities between them. This demo fits base and joint motion to those configurations
-          and dense encoders using Gaussian-process factors, then inspects the resulting velocities and stance motion.</p>
+          and dense encoders using Gaussian-process factors, then inspects the resulting velocities and stance motion.
+          For the full 220 s clip, recorded GP graph construction took 0.131 s and the solve took 0.038 s, excluding replay export.</p>
       </div>
       <span class="recorded-badge">OFFLINE RECORDING</span>
     </header>

@@ -4,7 +4,7 @@ import AppPaper from '../../shared/paper/AppPaper.vue';
 import {computed,markRaw,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue';
 import {frameAtTime,jointGroups,loadRecording} from './recording.js';
 import {DynamicsScene} from './scene.js';
-import SignalPlot from './SignalPlot.vue';
+import SignalPlot from '../../shared/dynamics/SignalPlot.vue';
 
 const data=ref(null),error=ref(''),frame=ref(0),playing=ref(false);
 const sceneElement=ref(null),showForces=ref(true),forceScale=ref(.002),showTorques=ref(false),view=ref('robot');

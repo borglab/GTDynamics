@@ -39,7 +39,7 @@ test('every published, checked-in app asset has a replay or attribution consumer
   const interpolation='apps/interpolation/public/';
   for(const name of ['recording.json.gz','states.bin.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt'])add(interpolation+name);
   for(const name of ['recording.json','architecture.html'])add(`apps/motion-planning/public/${name}`);
-  for(const name of ['recording.json.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt'])add(`apps/dynamics/public/${name}`);
+  for(const name of ['recording.json.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt']){add(`apps/dynamics/public/${name}`);add(`apps/kinodynamics/public/${name}`);}
   const published=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z','apps'],{cwd:root,encoding:'utf8'})
     .split('\0').filter(path=>/^apps\/[^/]+\/public\//.test(path)&&existsSync(resolve(root,path)));
   assert.deepEqual(published.filter(path=>!used.has(path)),[],'Unused public assets would be uploaded');

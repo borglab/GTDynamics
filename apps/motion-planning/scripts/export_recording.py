@@ -4,6 +4,7 @@ import argparse
 import json
 import subprocess
 from pathlib import Path
+from time import perf_counter
 
 
 def main():
@@ -33,14 +34,18 @@ def main():
 
     try:
         description = send("describe")
+        build_start = perf_counter()
         snapshot = send("build", intermediate_states=10, duration=4,
                         start=description["start"], goal=description["goal"])
+        build_seconds = perf_counter() - build_start
         snapshots = [snapshot]
+        solve_start = perf_counter()
         for _ in range(80):
             if snapshot.get("done") or snapshot.get("converged"):
                 break
             snapshot = send("iterate")
             snapshots.append(snapshot)
+        solve_seconds = perf_counter() - solve_start
         if not snapshot.get("converged"):
             raise RuntimeError("The recorded solve did not converge")
         revision = subprocess.check_output(
@@ -49,6 +54,15 @@ def main():
             "schema_version": 1,
             "source_revision": revision,
             "solver": "Native GTDynamics / GTSAM Levenberg–Marquardt",
+            "timing": {
+                "graphBuildSeconds": build_seconds,
+                "optimizationSeconds": solve_seconds,
+                "totalSeconds": build_seconds + solve_seconds,
+                "scope": "Wall time for graph construction and all optimizer "
+                         "steps, including native snapshot serialization and "
+                         "Python IPC; excludes process startup, model loading, "
+                         "file writing, and browser playback delays.",
+            },
             "description": description,
             "snapshots": snapshots,
         }
