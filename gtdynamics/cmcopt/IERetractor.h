@@ -88,6 +88,15 @@ struct IERetractorParams {
   }
 };
 
+/** A numerically unsuccessful feasibility projection. LM may reject this trial
+ * and retry with stronger damping. Invalid inputs and programming errors use
+ * their usual exception types and must still propagate to the caller.
+ */
+class RetractionFailure : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
+};
+
 struct IERetractionInfo {
   size_t numLMIterations = 0;
   size_t numALSolveCalls = 0;
@@ -115,16 +124,15 @@ public:
 
   /// Retract the ambient variables back to h(x)=0, g(x)<=0, optionally with
   /// selected blocking inequalities promoted to equalities.
-  virtual IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractionInfo *retract_info = nullptr) const = 0;
+  virtual IEConstraintManifold retract(
+      const IEConstraintManifold *manifold, const VectorValues &delta,
+      const std::optional<IndexSet> &blocking_indices = {},
+      IERetractionInfo *retract_info = nullptr) const = 0;
 
   /// Zero-step retraction that lands directly on the requested boundary face.
-  virtual IEConstraintManifold
-  moveToBoundary(const IEConstraintManifold *manifold,
-                 const IndexSet &blocking_indices,
-                 IERetractionInfo *retract_info = nullptr) const;
+  virtual IEConstraintManifold moveToBoundary(
+      const IEConstraintManifold *manifold, const IndexSet &blocking_indices,
+      IERetractionInfo *retract_info = nullptr) const;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };

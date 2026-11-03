@@ -43,6 +43,8 @@ Values IELMOptimizer::optimizeManifolds(
   IELMState state(manifolds, unconstrainedValues, graph, manifold_graph,
                   lmParams.lambdaInitial, lmParams.lambdaFactor, 0);
 
+  if (ielm_params_.iterationCallback) ielm_params_.iterationCallback(state);
+
   // check if we're already close enough
   if (state.error <= lmParams.errorTol) {
     details_->emplace_back(state);
@@ -62,6 +64,10 @@ Values IELMOptimizer::optimizeManifolds(
     state = IELMState::fromLastIteration(iter_details, graph, manifold_graph,
                                          lmParams);
     details_->push_back(iter_details);
+    if (ielm_params_.historyWindow &&
+        details_->size() > ielm_params_.historyWindow)
+      details_->erase(details_->begin());
+    if (ielm_params_.iterationCallback) ielm_params_.iterationCallback(state);
   } while (state.iterations < lmParams.maxIterations &&
            !checkConvergence(prev_state, state) &&
            checkLambdaWithinLimits(state.lambda) && std::isfinite(state.error));

@@ -733,6 +733,61 @@ gtdynamics::fixed_dynamics::Result solveFixedKinematicsDynamics(
     const std::vector<gtdynamics::fixed_dynamics::Contact>& contacts,
     const gtsam::Vector& armature, const gtdynamics::fixed_dynamics::Options& options);
 
+#include <gtdynamics/dynamics/WorldVelocityFactor.h>
+class WorldVelocityFactor : gtsam::NoiseModelFactor {
+  WorldVelocityFactor(gtsam::Key poseKey, gtsam::Key twistKey,
+                      gtsam::Key velocityKey, const gtsam::SharedNoiseModel& model);
+};
+#include <gtdynamics/dynamics/Kinodynamics.h>
+namespace kinodynamics {
+class Options {
+  Options();
+  size_t maxIterations;
+  size_t gaugeSlice;
+  size_t retractionThreads;
+  double poseRotationSigmaDegrees;
+  double poseTranslationSigma;
+  double twistAngularSigmaDegrees;
+  double twistLinearSigma;
+  double jointPositionSigmaDegrees;
+  double jointVelocitySigmaDegrees;
+  double stanceVelocitySigma;
+};
+class Result {
+  Result();
+  gtsam::Values initialValues;
+  gtsam::Values values;
+  std::vector<gtsam::Key> contactKeys;
+  std::vector<gtsam::Key> torqueKeys;
+  std::vector<size_t> jointIds;
+  std::vector<std::string> errorNames;
+  std::vector<gtsam::Vector> errorHistory;
+  std::vector<double> wallSeconds;
+  double assemblySeconds;
+  double initializationSeconds;
+  double optimizationSeconds;
+  double initialEqualityL2;
+  double equalityL2;
+  double inequalityL2;
+  double objectiveInitial;
+  double objectiveFinal;
+  size_t iterations;
+  size_t variableDimension;
+  size_t reducedDimension;
+  size_t equalityDimension;
+  size_t inequalityDimension;
+  bool feasible;
+};
+} // namespace kinodynamics
+gtdynamics::kinodynamics::Result solveKinodynamics(
+    const gtdynamics::Robot& robot, const gtdynamics::Trajectory& trajectory,
+    const std::vector<gtdynamics::Slice>& slices, const std::vector<double>& times,
+    const gtsam::Values& initialValues,
+    const std::vector<gtsam::NonlinearFactorGraph>& measurementGroups,
+    const std::vector<std::string>& measurementNames,
+    const std::vector<gtdynamics::fixed_dynamics::Contact>& contacts,
+    const gtsam::Vector& armature, const gtdynamics::kinodynamics::Options& options);
+
 #include <gtdynamics/dynamics/Dynamics.h>
 class Dynamics {
   Dynamics(gtdynamics::DynamicsParameters parameters =
