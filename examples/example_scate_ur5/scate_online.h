@@ -642,6 +642,10 @@ class GaussianNoise {
 inline double scoreInterval(const CollisionModel& truth, const SimulationConfig& simulation,
                             const Vector& q, const Vector& v, const Vector& u, double dt,
                             ClosedLoopResult* result) {
+  if (simulation.clearance_samples < 1) {
+    throw std::invalid_argument(
+        "scoreInterval: clearance_samples must be at least 1");
+  }
   double interval_min = std::numeric_limits<double>::infinity();
   for (int s = 0; s <= simulation.clearance_samples; ++s) {
     const double t = dt * s / simulation.clearance_samples;
