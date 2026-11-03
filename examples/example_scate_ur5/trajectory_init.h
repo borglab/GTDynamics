@@ -117,6 +117,10 @@ inline JointTrajectory makeInitialTrajectory(const Vector& q_start,
   const int num_poses = config.num_poses;
   if (q_goal.size() != n) throw std::invalid_argument("q_start/q_goal size mismatch");
   if (num_poses < 3) throw std::invalid_argument("need at least 3 poses");
+  if (!std::isfinite(config.dt) || config.dt <= 0.0) {
+    throw std::invalid_argument(
+        "makeInitialTrajectory: dt must be finite and positive");
+  }
   if (config.bump_direction.size() != 0 && config.bump_direction.size() != n)
     throw std::invalid_argument("bump_direction must be empty or size n");
 
