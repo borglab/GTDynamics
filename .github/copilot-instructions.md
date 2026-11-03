@@ -237,6 +237,11 @@ when practical.
   after kinematic and dynamic estimation; use `apps/registry.json` as the source
   of truth for navigation and overview links. Preserve standalone app URLs and
   deployment prefixes in cross-app links.
+- Begin explanatory paragraphs with a complete, declarative topic sentence.
+  State what the model, measurement, or result means directly. Avoid slogans,
+  strings of imperatives, and rhetorical contrasts such as "not X, but Y" or
+  "this is not X; it is Y". Explain limitations through specific assumptions
+  and consequences. Keep headings, controls, and legends concise.
 - Put browser apps under `apps/`. Register new apps in `apps/registry.json` and
   the npm workspaces in `apps/package.json`, and use the shared navigation.
 - **Start robot viewers with `apps/shared/RobotViewport.js` and

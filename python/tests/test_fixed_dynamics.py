@@ -18,8 +18,8 @@ import numpy as np
 
 
 class TestFixedDynamics(unittest.TestCase):
-    def test_static_support_and_determined_trajectory(self) -> None:
-        """An entirely determined trajectory has no LM variables to optimize."""
+    def test_static_support_trajectory(self) -> None:
+        """Acceleration priors recover static support with fixed poses and twists."""
         body = gtd.Link(0, "body", 10.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
         robot = gtd.Robot({"body": body}, {})
         sole = gtd.PoseOnLink(
@@ -30,33 +30,49 @@ class TestFixedDynamics(unittest.TestCase):
             1,
         )
         fixed = gtsam.Values()
+        acceleration_priors = gtsam.Values()
         for k in range(3):
             fixed.insert(
                 gtd.PoseKey(0, k),
                 gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, 0.5])),
             )
             fixed.insert(gtd.TwistKey(0, k), np.zeros(6))
-            fixed.insert(gtd.TwistAccelKey(0, k), np.zeros(6))
+            acceleration_priors.insert(gtd.TwistAccelKey(0, k), np.zeros(6))
+        fixed_before = gtsam.Values(fixed)
+        priors_before = gtsam.Values(acceleration_priors)
+        options = gtd.fixed_dynamics.Options()
+        options.baseAngularAccelerationSigmaDegrees = 0.01
+        options.baseLinearAccelerationSigma = 0.001
         result = gtd.solveFixedKinematicsDynamics(
             robot,
             trajectory,
             [gtd.Slice(k) for k in range(3)],
             [0.0, 0.08, 0.3],
             fixed,
+            acceleration_priors,
             [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.6)],
             np.empty(0),
-            gtd.fixed_dynamics.Options(),
+            options,
         )
         self.assertTrue(result.feasible)
         self.assertTrue(result.stationary)
         self.assertFalse(result.softDynamics)
-        self.assertEqual(result.reducedDimension, 0)
-        self.assertEqual(result.iterations, 0)
+        # Six root-acceleration coordinates per slice remain free. Exact
+        # Newton-Euler balance determines the single supporting sole wrench.
+        self.assertEqual(result.reducedDimension, 18)
+        self.assertTrue(fixed.equals(fixed_before, 1e-12))
+        self.assertTrue(acceleration_priors.equals(priors_before, 1e-12))
         self.assertEqual(len(result.contactKeys), 3)
         for key in result.contactKeys:
             np.testing.assert_allclose(
-                result.values.atVector(key), [0, 0, 0, 0, 0, 98.1], atol=1e-10
+                result.values.atVector(key), [0, 0, 0, 0, 0, 98.1], atol=1e-6
             )
+        for k in range(3):
+            np.testing.assert_allclose(
+                result.values.atVector(gtd.TwistAccelKey(0, k)), 0, atol=1e-8
+            )
+        self.assertLess(result.maxForceResidual, 1e-8)
+        self.assertLess(result.maxMomentResidual, 1e-8)
 
     def test_contact_wrench_frames_and_cone(self) -> None:
         """The public factor and utility use the same torque-first convention."""

@@ -14,8 +14,8 @@ const showLimits = ref(true)
 const unitScale = computed(() => angleUnit.value === 'degrees' ? 180 / Math.PI : 1)
 const unitLabel = computed(() => angleUnit.value === 'degrees' ? '°' : 'rad')
 const quantities = computed(() => [
-  { key: 'q', title: 'Angle', unit: unitLabel.value, color: '#8abfff' },
-  { key: 'v', title: 'Velocity', unit: `${unitLabel.value}/s`, color: '#f2ba72' },
+  { key: 'q', title: 'Angle', unit: unitLabel.value, color: '#087f71' },
+  { key: 'v', title: 'Velocity', unit: `${unitLabel.value}/s`, color: '#7955a5' },
 ])
 function limitsFor(index) {
   const limits = props.jointLimits[index]
@@ -121,14 +121,14 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
 <template>
   <section ref="panel" class="joint-panel" aria-labelledby="joint-panel-title" :data-iteration="snapshot?.iteration ?? ''">
     <div class="joint-header">
-      <div><span class="section-kicker">JOINT TRAJECTORIES</span><h2 id="joint-panel-title">See how each joint moves.</h2>
-        <p>One plot per joint, synchronized in trajectory time and optimizer iteration.</p></div>
+      <div><span class="section-kicker">JOINT TRAJECTORIES</span><h2 id="joint-panel-title">Joint angles and velocities</h2>
+        <p>Each joint has a plot synchronized to trajectory time and the selected optimizer iteration.</p></div>
       <div class="joint-options">
         <label>Units <select v-model="angleUnit" aria-label="Joint plot angle units"><option value="degrees">Degrees</option><option value="radians">Radians</option></select></label>
         <span class="joint-iteration">ITERATION <strong>{{ snapshot?.iteration ?? '—' }}</strong></span>
       </div>
     </div>
-    <p v-if="!curves.length" class="joint-empty">Build the factor graph to inspect joint angles and velocities. Solve to watch the time series evolve.</p>
+    <p v-if="!curves.length" class="joint-empty">Joint-angle and velocity plots become available after graph construction. Each optimizer iteration updates the plotted trajectory.</p>
     <template v-else>
       <div class="joint-legend">
         <span v-for="quantity in quantities" :key="quantity.key" :style="{ color: quantity.color }">
@@ -188,7 +188,7 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
 </template>
 
 <style scoped>
-.joint-panel { margin-top: 20px; padding: 25px; border: 1px solid var(--border); border-radius: 11px; background: var(--panel); }
+.joint-panel { margin-top: 20px; padding: 25px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
 .joint-header { display: flex; justify-content: space-between; align-items: start; gap: 20px; }
 .joint-header h2 { font-size: 20px; font-weight: 500; margin-top: 7px; }
 .joint-header p, .joint-empty, .joint-note { color: var(--muted); font-size: 11px; line-height: 1.8; margin-top: 10px; }
@@ -205,11 +205,11 @@ function tick(value) { return Math.abs(value) < 0.00001 ? '0' : Number(value.toP
 figure { margin: 0; min-width: 0; border-top: 1px solid var(--border); padding-top: 12px; }
 figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 24px; font: 11px var(--mono); margin-bottom: 4px; }
 figcaption strong { color: var(--text); font-weight: 500; }
-.joint-limit-readout { margin-right: auto; color: #e49a9d; font-size: 10px; }
-.joint-limit-toggle { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: #e49a9d; font-size: 11px; }
+.joint-limit-readout { margin-right: auto; color: var(--red); font-size: 10px; }
+.joint-limit-toggle { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--red); font-size: 11px; }
 .joint-limit-toggle span { color: var(--muted); }
-.joint-limit { stroke: #ee7276; stroke-width: 1; stroke-dasharray: 3 4; }
-.joint-limit-bands { fill: #ee7276; opacity: .08; }
+.joint-limit { stroke: var(--red); stroke-width: 1; stroke-dasharray: 3 4; }
+.joint-limit-bands { fill: var(--red); opacity: .08; }
 figcaption span { white-space: nowrap; }
 .joint-value { display: inline-block; min-width: 48px; text-align: right; }
 svg { display: block; width: 100%; cursor: crosshair; }
@@ -217,7 +217,7 @@ svg { display: block; width: 100%; cursor: crosshair; }
 .joint-axis text { font: 10px var(--mono); }
 .joint-time-axis { fill: var(--muted); }
 .joint-time-label { color: var(--muted); font: 11px var(--mono); text-align: center; margin-top: 6px; }
-.joint-cursor { stroke: #dce5eb; stroke-width: 1; stroke-dasharray: 4 4; opacity: .7; }
+.joint-cursor { stroke: var(--text); stroke-width: 1; stroke-dasharray: 4 4; opacity: .7; }
 .joint-inspector { display: flex; align-items: center; gap: 18px; margin: 20px 0; font-size: 11px; }
 .joint-inspector label { color: var(--muted); white-space: nowrap; }
 .joint-inspector strong { display: inline-block; min-width: 58px; margin-left: 6px; font-family: var(--mono); color: var(--text); }

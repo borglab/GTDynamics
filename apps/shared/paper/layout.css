@@ -22,7 +22,7 @@
   .comparison-app > .toolbar { padding-block: 10px; gap: 10px 20px; }
   .labels-app .label-scene { height: clamp(180px, calc(100dvh - 465px), 480px); }
   .labels-app .time-controls { padding-block: 10px; }
-  .kinematics-app .large-scene { height: clamp(200px, calc(100dvh - 465px), 520px); }
+  .kinematics-app .large-scene { aspect-ratio: auto; height: clamp(200px, calc(100dvh - 465px), 520px); }
   .kinematics-app .viewer-controls { padding-block: 9px; }
   .kinematics-app .slip-readout { padding-block: 6px; }
   .kinematics-app .timeline { padding-block: 10px; }
@@ -53,6 +53,6 @@
   .comparison-app .iteration-controls input { margin: 0; }
   .lab-shell .masthead { height: 44px; }
   .lab-shell .intro { padding: 14px 0 18px; }
-  .lab-shell .canvas-wrap { min-height: 220px; height: clamp(220px, calc(100dvh - 360px), 550px); }
+  .lab-shell .canvas-wrap { aspect-ratio: auto; min-height: 220px; height: clamp(220px, calc(100dvh - 360px), 550px); }
   .lab-shell .playback-panel { padding-block: 12px; }
 }

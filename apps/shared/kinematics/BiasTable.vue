@@ -11,9 +11,9 @@ const number = value => Math.abs(value) < 1e-4 && value !== 0 ? value.toExponent
         <tr><th scope="row">Gyroscope · rad/s</th><td v-for="(value,axis) in bias.slice(3)" :key="axis">{{number(value)}}</td></tr>
         <tr v-if="aiding?.stationaryCalibration"><th scope="row">Gyroscope prior · rad/s</th><td v-for="(value,axis) in aiding.biasPriorMean.slice(3)" :key="axis">{{number(value)}}</td></tr>
       </tbody></table>
-      <p class="scope">Pelvis IMU measurement axes. One constant bias shared by all slices.</p>
-      <p v-if="aiding?.stationaryCalibration" class="scope">Gyro prior from 0–25 s stationary data; σ={{aiding.biasPriorSigmas[3]}} rad/s per axis.</p>
+      <p class="scope">Bias components use the pelvis IMU measurement axes. All slices share one constant bias.</p>
+      <p v-if="aiding?.stationaryCalibration" class="scope">The gyroscope prior uses stationary data from 0–25 s, with σ={{aiding.biasPriorSigmas[3]}} rad/s per axis.</p>
     </template>
-    <p v-else class="scope">Bias is not estimated without IMU aiding.</p>
+    <p v-else class="scope">Bias estimation requires IMU aiding.</p>
   </section>
 </template>

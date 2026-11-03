@@ -54,9 +54,9 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
     <Teleport defer :to="`#${method}-results`">
     <article class="method-results" :class="method" :data-result-iteration="index">
     <header class="panel-heading"><h3>{{ title }} · numerical results</h3></header>
-      <p class="scope" v-if="stage==='initializer'">{{ method==='ik' ? 'Each retained slice has its own LM history. Scrub time to inspect another solve.' : `${data.record.runs.contact.sparseSamples.length} retained slices solved jointly. No interpolated solve states.` }}</p>
-      <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.stalled ? 'Stalled: no accepted decrease.' : data.record.runs.contact.initialization.converged ? 'Stopping criterion reached.' : 'Iteration limit reached.' }}</p>
-      <p class="scope" v-if="stage==='smoothing'">Iteration 0: feasible initial guess. CM-Opt limit: {{ data.record.maxIterations }} iterations.</p>
+      <p class="scope" v-if="stage==='initializer'">{{ method==='ik' ? 'Each retained slice has its own LM history. The time selection determines which solve is displayed.' : `The contact graph jointly solves ${data.record.runs.contact.sparseSamples.length} retained slices. Interpolation is confined to visualization.` }}</p>
+      <p class="scope" v-if="stage==='initializer' && method==='contact'">{{ data.record.runs.contact.initialization.stalled ? 'The initializer stalled after failing to accept a decrease.' : data.record.runs.contact.initialization.converged ? 'The initializer reached its stopping criterion.' : 'The initializer reached its iteration limit.' }}</p>
+      <p class="scope" v-if="stage==='smoothing'">Iteration 0 is the feasible initial guess. CM-Opt is limited to {{ data.record.maxIterations }} iterations.</p>
     <div class="path-legend"><span class="estimated-path">Solid: estimated root path</span><span v-if="showReference" class="superodom-path">Dashed: {{referenceLabel}} path</span><span>XY ground projection</span></div>
     <BiasTable :bias="bias" :aiding="data.record.imuAiding" :caption="stage==='smoothing'?'Estimated IMU bias · selected iteration':'Estimated IMU bias · final smoothing iteration'" />
     <section class="plot-block">
@@ -81,7 +81,7 @@ onBeforeUnmount(() => { stop(); scene?.dispose(); });
     <section v-if="frameMetrics && state.frames!==1" class="plot-block">
       <div class="row"><h3>Contact height over time</h3><span class="mono">{{ number(frameMetrics.height[frame]*1000) }} mm</span></div>
       <TracePlot :values="frameMetrics.height.map(x=>x*1000)" :selected="frame" :timestamps="data.record.timestamps" label="Ground contact height RMS by frame in millimetres" />
-      <p class="scope">Global RMS above; this curve shows each frame. No-contact frames show zero.</p>
+      <p class="scope">The curve shows contact-height RMS at each frame; the summary above reports RMS over the trajectory. Frames without active contacts are displayed as zero.</p>
     </section>
     </article>
     </Teleport>

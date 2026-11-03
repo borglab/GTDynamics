@@ -2,25 +2,25 @@
   {
     "id": "contact-labels",
     "title": "Contact Labels",
-    "description": "Inspect reference-derived stationary-contact training targets from world-frame sole motion on three SSIO G1 snippets.",
+    "description": "World-frame sole motion provides contact labels for three SSIO G1 snippets. A discrete factor graph combines motion evidence with walking priors.",
     "tag": "Privileged training labels"
   },
   {
     "id": "contact-initialization",
     "title": "Contact Initialization",
-    "description": "Inspect contact-pose initialization on three SSIO snippets using max-product support labels and independently selectable upright, motion, and height priors.",
+    "description": "Shared sole-pose landmarks initialize three SSIO walking snippets from max-product support labels. Selectable priors expose their effects on the estimate.",
     "tag": "Walking initialization"
   },
   {
     "id": "contact-vs-ik",
     "title": "Contact vs IK",
-    "description": "Compare contact and inverse-kinematics initialization and recorded CM-Opt iterations on three ten-second G1 walking snippets.",
+    "description": "Contact and inverse-kinematics initializers feed the same smoothing graph on three ten-second G1 snippets. Recorded iterations show how the starting point affects convergence.",
     "tag": "Initialization comparison"
   },
   {
     "id": "kinematics-inspector",
     "title": "Kinematics",
-    "description": "Inspect a full G1 trajectory with contact initialization, Gal3 IMU aiding, loop closure, stationary-contact weights, factor errors, and foot slip.",
+    "description": "Full-trajectory G1 smoothing combines contact landmarks with optional Gal3 IMU aiding and a return-to-start position prior. Recorded results include factor errors and foot slip.",
     "tag": "Kinematics smoothing"
   },
   {
@@ -32,13 +32,13 @@
   {
     "id": "dynamics",
     "title": "Dynamics",
-    "description": "Inspect ground reaction forces and joint torques from fixed G1 kinematics using sole-contact wrenches and CMC-Opt.",
+    "description": "CMC-Opt estimates ground reaction forces and joint torques from fixed G1 kinematics using one wrench per sole.",
     "tag": "Contact-wrench estimation"
   },
   {
     "id": "motion-planning",
     "title": "Motion Planning",
-    "description": "Follow a Franka arm’s path from endpoint poses to an optimized trajectory. Inspect the factor graph, solver iterations, and joint motion.",
+    "description": "A kinematic factor graph optimizes a Franka arm trajectory between two hand poses. Playback shows the solver iterations and resulting joint motion.",
     "tag": "Trajectory optimization"
   }
 ]

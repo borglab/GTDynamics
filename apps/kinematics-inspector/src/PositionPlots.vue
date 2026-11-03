@@ -13,10 +13,10 @@ function reset(){timeRange.value=null;resetVersion.value++;}
 <template>
   <section class="position-section">
     <div class="row"><h2>Position comparison</h2><div class="position-tools"><button @click="reset">Reset plot zoom</button><label>Foot <select v-model="foot" aria-label="Foot to plot"><option value="left">Left</option><option value="right">Right</option></select></label></div></div>
-    <p class="scope"><span class="position-estimate-key">Solid: estimate</span> · <span class="position-reference-key">Dashed: {{referenceLabel}} + measured joints</span>. Drag or scroll to zoom; use the plot toolbar to pan. Time zoom is linked across plots. Click a curve to select time.</p>
+    <p class="scope">The curves compare the <span class="position-estimate-key">estimated positions (solid)</span> with <span class="position-reference-key">{{referenceLabel}} and measured-joint positions (dashed)</span>. The plots share a time range. Dragging or scrolling zooms, the toolbar enables panning, and clicking a curve selects time.</p>
     <div class="position-groups">
-      <div class="position-group"><h3>Pelvis · world frame</h3><p>MuJoCo pelvis body origin, in metres.</p><PositionPlot label="Pelvis world z" v-bind="pelvis" :frame="frame" :dt="dt" :timestamps="timestamps" :time-range="timeRange" :reset-version="resetVersion" @range="timeRange=$event" @select="emit('select',$event)" /></div>
-      <div class="position-group"><h3>{{footLabel}} · pelvis body frame</h3><p>Ankle-roll body origin; each trajectory uses its own pelvis frame.</p><PositionPlot v-for="(name,i) in ['x','y','z']" :key="name" :label="`${footLabel} body ${name}`" v-bind="feet[i]" :frame="frame" :dt="dt" :timestamps="timestamps" :time-range="timeRange" :reset-version="resetVersion" @range="timeRange=$event" @select="emit('select',$event)" /></div>
+      <div class="position-group"><h3>Pelvis · world frame</h3><p>The height is measured at the MuJoCo pelvis body origin, in metres.</p><PositionPlot label="Pelvis world z" v-bind="pelvis" :frame="frame" :dt="dt" :timestamps="timestamps" :time-range="timeRange" :reset-version="resetVersion" @range="timeRange=$event" @select="emit('select',$event)" /></div>
+      <div class="position-group"><h3>{{footLabel}} · pelvis body frame</h3><p>The ankle-roll body origin is expressed in each trajectory's own pelvis frame.</p><PositionPlot v-for="(name,i) in ['x','y','z']" :key="name" :label="`${footLabel} body ${name}`" v-bind="feet[i]" :frame="frame" :dt="dt" :timestamps="timestamps" :time-range="timeRange" :reset-version="resetVersion" @range="timeRange=$event" @select="emit('select',$event)" /></div>
     </div>
   </section>
 </template>
