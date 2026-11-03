@@ -1,7 +1,7 @@
 <script setup>
 import {nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue';
 import {frameAtTime} from './recording.js';
-const props=defineProps({title:String,unit:String,times:Array,series:Array,frame:Number});
+const props=defineProps({title:String,unit:String,times:Array,series:Array,frame:Number,xTitle:{type:String,default:'Dataset time (s)'}});
 const emit=defineEmits(['select']);
 const element=ref(null);
 let Plotly,observer,alive=true;
@@ -12,7 +12,7 @@ async function draw(){
   await Plotly.react(element.value,traces,{
     height:260,margin:{l:60,r:22,t:18,b:64},paper_bgcolor:'transparent',plot_bgcolor:'#fff',
     font:{family:'Inter,system-ui,sans-serif',color:'#42574e',size:11},
-    xaxis:{title:{text:'Dataset time (s)'},gridcolor:'#edf0e9',zeroline:false},
+    xaxis:{title:{text:props.xTitle},gridcolor:'#edf0e9',zeroline:false},
     yaxis:{title:{text:props.unit},gridcolor:'#edf0e9',zerolinecolor:'#bac7bb'},
     legend:{orientation:'h',x:0,y:-.28,font:{size:10}},
     shapes:[{type:'line',xref:'x',x0:time,x1:time,yref:'paper',y0:0,y1:1,line:{color:'#86958b',width:1,dash:'dot'}}],

@@ -87,3 +87,8 @@ The shared `paper/mathPlugin.mjs` typesets these trusted fragments through pinne
 MathJax at build time (`?math` imports); `MathTypeset.vue` displays inline SVG.
 Use this instead of a separate report or a runtime CDN. Keep numerical parameters
 in Vue tables bound to the selected recording, not embedded in equation images.
+
+`RecordedDynamicsScene.js` composes the viewport with saved sole poses and world
+force arrows. `dynamics/` contains its shared recording validation, playback
+lookup, signal plot, and layout styles. Dynamics and Kinodynamics use these
+components with their own independently generated recording/model assets.
