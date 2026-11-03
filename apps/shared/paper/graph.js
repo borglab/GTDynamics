@@ -79,7 +79,7 @@ export function paperGraph(kind, indices) {
       }
     });
     factor('Pb', 'Shared sensor-bias prior', ['b'], 820, 15);
-    return { nodes, factors, height: 565, caption: 'Z groups free link COM poses, joint angles, body twists, joint rates and world root velocity; a groups link/joint accelerations; W groups internal reaction wrenches and actuator torques; λ groups both sole wrenches. C groups the current stance landmarks; b is one shared IMU bias. K, N and H are hard constraints; J, F, S, A, R, I, T, Δτ, Δλ and Pb are soft factors. T and R group separate native factors; each IMU factor still has two poses and two velocities inside the Z groups. This motif shows continuing double stance; contact observations and wrench-rate edges end at lift-off. The one root-pose gauge and initial-velocity prior are omitted.' };
+    return { nodes, factors, height: 565, caption: 'Z groups free link COM poses, joint angles, body twists, joint rates and world root velocity; a groups link/joint accelerations; W groups internal reaction wrenches and actuator torques; λ groups both sole wrenches. C groups the current stance landmarks; b is one shared IMU bias. K, N and H are hard constraints; J, F, S, A, R, I, T, Δτ, Δλ and Pb are soft factors. T and R group separate native factors; each IMU factor still has two poses and two velocities inside the Z groups. This motif shows continuing double stance; contact observations and wrench-rate edges end at lift-off. The translation/yaw gauge costs and initial-velocity prior are omitted.' };
   }
 
   if (kind === 'planning') {

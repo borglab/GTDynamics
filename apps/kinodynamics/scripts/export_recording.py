@@ -154,7 +154,10 @@ def export(result_path: Path, output: Path) -> None:
         29 * (len(poses) - 1),
         int(np.logical_and(arrays["contact"][1:], arrays["contact"][:-1]).sum()),
         30 * len(poses),
+        2,  # Translation and wrapped-yaw gauge costs.
     ]
+    if len(factor_counts) != len(report["errorNames"]):
+        raise ValueError("Update factor counts to match the example error groups")
     record = {
         "schemaVersion": 1,
         "title": "SSIO G1 mid-clip turns · full 50 Hz kinodynamics",

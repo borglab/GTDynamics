@@ -3,10 +3,10 @@
 \[
  \min_{T,q,\nu,\dot q,a,\ddot q,W,\tau,\lambda,v,C,b}
  E_{\mathrm{encoder}}+E_{\mathrm{contact}}+E_{\mathrm{IMU}}
- +E_{\mathrm{collocation}}+E_{\mathrm{stance\ speed}}+E_{\mathrm{regularization}}
+ +E_{\mathrm{collocation}}+E_{\mathrm{stance\ speed}}+E_{\mathrm{regularization}}+E_{\mathrm{gauge}}
  \quad\text{subject to}\quad h(\cdot)=0,\quad A_f\lambda_{f,k}\le0.
 \]
-<p>Every soft factor contributes one half of its squared whitened residual. The equality set h contains articulated pose/velocity/acceleration consistency, body-to-world COM velocity, link mechanics, reaction and contact-wrench transforms, zero swing wrenches, and one root-pose gauge. Collocation belongs to the soft objective. Broad acceleration regularization has zero means; it does not import the earlier GP result.</p>
+<p>Every soft factor contributes one half of its squared whitened residual. The equality set h contains articulated pose/velocity/acceleration consistency, body-to-world COM velocity, link mechanics, reaction and contact-wrench transforms, and zero swing wrenches. Collocation belongs to the soft objective. Broad acceleration regularization has zero means; it does not import the earlier GP result.</p>
 <h4>Encoder, sole-pose and inertial observations</h4>
 \[
  r_{q,j,k}=q_{j,k}-q^{\mathrm{enc}}_{j,k},\qquad
@@ -62,7 +62,7 @@
  -m_z+s_x(bf_x-\eta m_x)+s_y(af_y-\eta m_y)&\le\eta(a+b)f_z.
  \end{aligned}
 \]
-<p>Swing sole wrenches are exactly zero. Actuator effort limits remain diagnostic. One root COM pose fixes the world-frame gauge at the first selected double-support initialization slice; all other configurations remain free.</p>
+<p>Swing sole wrenches are exactly zero. Actuator effort limits remain diagnostic. Translation and wrapped-yaw costs choose the world frame at the first selected double-support initialization slice. Their standard deviations are 1 m and 1 rad. All six root-pose coordinates remain in the tangent basis. Roll and pitch are estimated from gravity and IMU observations; the initializer’s tilt and height are only a starting guess. No upright or ground-height observations enter the coupled solve.</p>
 <h4>Magnitude and temporal regularization</h4>
 \[
  r_{\mathrm{effort}}=\tau_j,\qquad r_{\mathrm{wrench}}=D_f^{-1}\lambda_f,

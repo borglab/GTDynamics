@@ -12,7 +12,8 @@
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
-#include <gtdynamics/dynamics/ArticulatedDynamics.h>
+#include <gtdynamics/dynamics/Dynamics.h>
+#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/dynamics/ContactWrenchFactor.h>
 #include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
 #include <gtdynamics/dynamics/TwistAccelFactor.h>
@@ -42,34 +43,6 @@ using Clock = std::chrono::steady_clock;
 double seconds(Clock::time_point start) {
   return std::chrono::duration<double>(Clock::now() - start).count();
 }
-
-// Rotor torque varies with the joint acceleration being estimated. Keep that
-// acceleration in the same affine equality as the transmitted link wrench.
-class MotorTorqueFactor : public NoiseModelFactor3<Vector6, double, double> {
-  Vector6 axis_;
-  double armature_;
-
- public:
-  MotorTorqueFactor(const JointSharedPtr& joint, size_t k, double armature)
-      : NoiseModelFactor3<Vector6, double, double>(
-            noiseModel::Unit::Create(1),
-            WrenchKey(joint->child()->id(), joint->id(), k),
-            JointAccelKey(joint->id(), k), TorqueKey(joint->id(), k)),
-        axis_(joint->cScrewAxis()),
-        armature_(armature) {}
-  Vector evaluateError(const Vector6& wrench, const double& acceleration,
-                       const double& torque, OptionalMatrixType H1 = nullptr,
-                       OptionalMatrixType H2 = nullptr,
-                       OptionalMatrixType H3 = nullptr) const override {
-    if (H1) *H1 = axis_.transpose();
-    if (H2) *H2 = Matrix11::Constant(armature_);
-    if (H3) *H3 = Matrix11::Constant(-1);
-    return Vector1(axis_.dot(wrench) + armature_ * acceleration - torque);
-  }
-  NonlinearFactor::shared_ptr clone() const override {
-    return std::make_shared<MotorTorqueFactor>(*this);
-  }
-};
 
 // Retain the projection backend itself, including its affine caches, while
 // collecting lightweight diagnostics across initialization and all LM trials.
@@ -113,265 +86,272 @@ Values equalityAnchor(const NonlinearFactorGraph& cost,
   return zero.retract(linear->optimize(EliminateQR));
 }
 
-}  // namespace
-namespace internal {
-ArticulatedDynamicsProblem::ArticulatedDynamicsProblem(
-    const Robot& robot, const Trajectory& trajectory,
-    const std::vector<Slice>& slices, const std::vector<double>& times,
-    const Values& fixedValues, const Values& accelerationPriors,
-    const std::vector<fixed_dynamics::Contact>& contacts,
-    const Vector& armature, const fixed_dynamics::Options& options,
-    bool fixKinematics) {
-  const auto start = Clock::now();
-  if (slices.empty() || slices.size() != times.size() || contacts.empty())
-    throw std::invalid_argument(
-        "Dynamics requires matching slices/times and contacts");
-  if (!options.gravity.allFinite() || options.maxIterations == 0)
-    throw std::invalid_argument("Invalid gravity or dynamics iteration limit");
-  if (!armature.allFinite() || !options.torqueLimits.allFinite())
-    throw std::invalid_argument("Armature and torque limits must be finite");
-  for (double sigma :
-       {options.effortSigma, options.wrenchSigma, options.torqueSmoothSigma,
-        options.wrenchSmoothSigma, options.balanceMomentSigma,
-        options.balanceForceSigma, options.baseAngularAccelerationSigmaDegrees,
-        options.baseLinearAccelerationSigma,
-        options.jointAccelerationSigmaDegrees})
-    if (!(sigma > 0) || !std::isfinite(sigma))
-      throw std::invalid_argument(
-          "Dynamics sigmas must be positive and finite");
-  for (size_t i = 0; i < slices.size(); ++i)
-    if (!std::isfinite(times[i]) ||
-        (i && (times[i] <= times[i - 1] || slices[i].k <= slices[i - 1].k)))
-      throw std::invalid_argument(
-          "Dynamics slices and times must increase strictly");
+struct Problem {
+  Values zero;
+  NonlinearFactorGraph cost, effort, wrench, torqueSmooth, wrenchSmooth,
+      balance, acceleration;
+  NonlinearFactorGraph rootBalance;
+  NonlinearEqualityConstraints equalities;
+  NonlinearInequalityConstraints inequalities;
+  KeySet independentKeys;
+  fixed_dynamics::Result result;
 
-  auto joints = robot.joints();
-  std::sort(joints.begin(), joints.end(),
-            [](const auto& a, const auto& b) { return a->id() < b->id(); });
-  std::set<int> children;
-  for (const auto& joint : joints) {
-    children.insert(joint->child()->id());
-    result.jointIds.push_back(joint->id());
-    if ((armature.size() &&
-         (joint->id() >= armature.size() || armature(joint->id()) < 0)) ||
-        (options.torqueLimits.size() &&
-         (joint->id() >= options.torqueLimits.size() ||
-          !(options.torqueLimits(joint->id()) > 0))))
+  Problem(const Robot& robot, const Trajectory& trajectory,
+          const std::vector<Slice>& slices, const std::vector<double>& times,
+          const Values& fixedValues, const Values& accelerationPriors,
+          const std::vector<fixed_dynamics::Contact>& contacts,
+          const Vector& armature, const fixed_dynamics::Options& options) {
+    const auto start = Clock::now();
+    if (slices.empty() || slices.size() != times.size() || contacts.empty())
       throw std::invalid_argument(
-          "Armature/torque limits must be indexed by joint id");
-  }
-  LinkSharedPtr root;
-  for (const auto& link : robot.links())
-    if (!children.count(link->id())) {
-      if (root)
-        throw std::invalid_argument("Dynamics requires one floating tree root");
-      root = link;
-    }
-  if (!root || root->isFixed())
-    throw std::invalid_argument("Dynamics requires a floating tree root");
-  std::set<const Link*> robotLinks;
-  for (const auto& link : robot.links()) robotLinks.insert(link.get());
-  for (const auto& contact : contacts) {
-    if (!contact.pose.link || !contact.pose.isGround)
-      throw std::invalid_argument(
-          "Dynamics contacts require a ground material frame");
-    if (!robotLinks.count(contact.pose.link.get()))
-      throw std::invalid_argument(
-          "Dynamics contact link must belong to the robot");
-    if (!contact.pose.comTcontact.matrix().allFinite())
-      throw std::invalid_argument("Dynamics contact transform must be finite");
-  }
-
-  const auto tracked = contactPoseFrames(trajectory);
-  const double radiansPerDegree = std::acos(-1.0) / 180.0;
-  Vector6 baseAccelerationSigmas;
-  baseAccelerationSigmas << Vector3::Constant(
-      options.baseAngularAccelerationSigmaDegrees * radiansPerDegree),
-      Vector3::Constant(options.baseLinearAccelerationSigma);
-  const auto baseAccelerationNoise =
-      noiseModel::Diagonal::Sigmas(baseAccelerationSigmas);
-  const auto jointAccelerationNoise = noiseModel::Isotropic::Sigma(
-      1, options.jointAccelerationSigmaDegrees * radiansPerDegree);
-  Values prescribed;
-  NonlinearFactorGraph exact;
-  for (size_t i = 0; i < slices.size(); ++i) {
-    const size_t k = slices[i].k;
-    std::map<int, std::vector<Key>> external;
-    std::vector<size_t> active;
-    const auto frames = tracked.find(k);
-    for (size_t c = 0; c < contacts.size(); ++c) {
-      const auto& contact = contacts[c];
-      const int id = contact.pose.link->id();
-      // ContactWrenchKey is the public sole wrench. The separate material
-      // transform factor connects it to the wrench used by COM dynamics.
-      const Key soleKey = ContactWrenchKey(id, c, k);
-      const Key comKey = DynamicsSymbol::LinkJointSymbol("ec", id, c, k);
-      result.contactKeys.push_back(soleKey);
-      zero.insert(soleKey, Vector(Vector6::Zero()));
-      zero.insert(comKey, Vector(Vector6::Zero()));
-      external[id].push_back(comKey);
-      exact.emplace_shared<ContactWrenchFactor>(soleKey, comKey,
-                                                contact.pose.comTcontact,
-                                                noiseModel::Unit::Create(6));
-      std::optional<size_t> stance;
-      if (frames != tracked.end())
-        for (const auto& frame : frames->second)
-          if (frame.contact.equals(contact.pose)) stance = frame.stance;
-      if (stance) {
-        active.push_back(c);
-        const auto cone = RectangularContactWrench(
-            contact.halfLength, contact.halfWidth, contact.frictionCoefficient);
-        for (const auto& inequality : cone.constraints(soleKey))
-          inequalities.push_back(inequality);
-      } else {
-        exact.emplace_shared<PriorFactor<Vector6>>(soleKey, Vector6::Zero(),
-                                                   noiseModel::Unit::Create(6));
-      }
-      const double length = std::sqrt(contact.halfLength * contact.halfWidth);
-      Vector6 sigmas;
-      sigmas << Vector3::Constant(options.wrenchSigma * length),
-          Vector3::Constant(options.wrenchSigma);
-      wrench.emplace_shared<PriorFactor<Vector6>>(
-          soleKey, Vector6::Zero(), noiseModel::Diagonal::Sigmas(sigmas));
-      bool sameStance = false;
-      if (i && stance) {
-        const auto previous = tracked.find(slices[i - 1].k);
-        if (previous != tracked.end())
-          for (const auto& frame : previous->second)
-            if (frame.contact.equals(contact.pose) && frame.stance == *stance)
-              sameStance = true;
-      }
-      if (sameStance) {
-        sigmas *= options.wrenchSmoothSigma / options.wrenchSigma *
-                  std::sqrt(times[i] - times[i - 1]);
-        wrenchSmooth.emplace_shared<BetweenFactor<Vector6>>(
-            ContactWrenchKey(id, c, slices[i - 1].k), soleKey, Vector6::Zero(),
-            noiseModel::Diagonal::Sigmas(sigmas));
-        ++result.wrenchSmoothFactors;
-      }
-    }
-    if (active.empty() && !options.softDynamics)
-      throw std::invalid_argument(
-          "Strict fixed dynamics requires support at every slice");
-
-    // Root Newton-Euler balance determines one active six-axis contact
-    // wrench. All other active contact wrenches are independent coordinates.
-    // Removing that one root equality in the explicit soft mode gives every
-    // active sole wrench its six coordinates without changing internal
-    // physics.
-    for (size_t a = options.softDynamics ? 0 : 1; a < active.size(); ++a)
-      independentKeys.insert(
-          ContactWrenchKey(contacts[active[a]].pose.link->id(), active[a], k));
-
-    for (const auto& link : robot.links()) {
-      std::vector<Key> wrenchKeys = external[link->id()];
-      for (const auto& joint : link->joints()) {
-        const Key key = WrenchKey(link->id(), joint->id(), k);
-        wrenchKeys.push_back(key);
-        zero.insert(key, Vector(Vector6::Zero()));
-      }
-      // Missing values fail here with the actual DynamicsSymbol key.
-      prescribed.insert(PoseKey(link->id(), k),
-                        fixedValues.at<Pose3>(PoseKey(link->id(), k)));
-      prescribed.insert(TwistKey(link->id(), k),
-                        fixedValues.at<Vector6>(TwistKey(link->id(), k)));
-      const Key accelerationKey = TwistAccelKey(link->id(), k);
-      if (fixedValues.exists(accelerationKey))
+          "Dynamics requires matching slices/times and contacts");
+    if (!options.gravity.allFinite() || options.maxIterations == 0)
+      throw std::invalid_argument("Invalid gravity or dynamics iteration limit");
+    if (!armature.allFinite() || !options.torqueLimits.allFinite())
+      throw std::invalid_argument("Armature and torque limits must be finite");
+    for (double sigma :
+         {options.effortSigma, options.wrenchSigma, options.torqueSmoothSigma,
+          options.wrenchSmoothSigma, options.balanceMomentSigma,
+          options.balanceForceSigma, options.baseAngularAccelerationSigmaDegrees,
+          options.baseLinearAccelerationSigma,
+          options.jointAccelerationSigmaDegrees})
+      if (!(sigma > 0) || !std::isfinite(sigma))
         throw std::invalid_argument(
-            "Acceleration means belong in accelerationPriors, not "
-            "fixedValues");
-      zero.insert(accelerationKey, Vector(Vector6::Zero()));
-      if (link == root) {
-        const Vector6 mean = accelerationPriors.at<Vector6>(accelerationKey);
-        if (!mean.allFinite())
-          throw std::invalid_argument("Root acceleration prior must be finite");
-        independentKeys.insert(accelerationKey);
-        acceleration.emplace_shared<PriorFactor<Vector6>>(
-            accelerationKey, mean, baseAccelerationNoise);
-        rootBalance.add(WrenchFactor(noiseModel::Unit::Create(6), link,
-                                     wrenchKeys, k, options.gravity));
-        if (options.softDynamics) {
-          Vector6 sigmas;
-          sigmas << Vector3::Constant(options.balanceMomentSigma),
-              Vector3::Constant(options.balanceForceSigma);
-          balance.add(WrenchFactor(noiseModel::Diagonal::Sigmas(sigmas), link,
-                                   wrenchKeys, k, options.gravity));
-        } else {
-          exact.add(rootBalance.back());
-        }
-      } else {
-        exact.add(WrenchFactor(noiseModel::Unit::Create(6), link, wrenchKeys, k,
-                               options.gravity));
-      }
-    }
+            "Dynamics sigmas must be positive and finite");
+    for (size_t i = 0; i < slices.size(); ++i)
+      if (!std::isfinite(times[i]) ||
+          (i && (times[i] <= times[i - 1] || slices[i].k <= slices[i - 1].k)))
+        throw std::invalid_argument(
+            "Dynamics slices and times must increase strictly");
+
+    auto joints = robot.joints();
+    std::sort(joints.begin(), joints.end(),
+              [](const auto& a, const auto& b) { return a->id() < b->id(); });
+    std::set<int> children;
     for (const auto& joint : joints) {
-      const int id = joint->id();
-      prescribed.insert(JointAngleKey(id, k),
-                        fixedValues.at<double>(JointAngleKey(id, k)));
-      prescribed.insert(JointVelKey(id, k),
-                        fixedValues.at<double>(JointVelKey(id, k)));
-      const Key accelerationKey = JointAccelKey(id, k);
-      if (fixedValues.exists(accelerationKey))
+      children.insert(joint->child()->id());
+      result.jointIds.push_back(joint->id());
+      if ((armature.size() &&
+           (joint->id() >= armature.size() || armature(joint->id()) < 0)) ||
+          (options.torqueLimits.size() &&
+           (joint->id() >= options.torqueLimits.size() ||
+            !(options.torqueLimits(joint->id()) > 0))))
         throw std::invalid_argument(
-            "Acceleration means belong in accelerationPriors, not "
-            "fixedValues");
-      const double mean = accelerationPriors.at<double>(accelerationKey);
-      if (!std::isfinite(mean))
-        throw std::invalid_argument("Joint acceleration prior must be finite");
-      zero.insert(accelerationKey, 0.0);
-      independentKeys.insert(accelerationKey);
-      acceleration.emplace_shared<PriorFactor<double>>(accelerationKey, mean,
-                                                       jointAccelerationNoise);
-      exact.add(TwistAccelFactor(noiseModel::Unit::Create(6), joint, k));
-      const Key torqueKey = TorqueKey(id, k);
-      result.torqueKeys.push_back(torqueKey);
-      zero.insert(torqueKey, 0.0);
-      exact.emplace_shared<ExpressionFactor<Vector6>>(
-          noiseModel::Unit::Create(6), Vector6::Zero(),
-          joint->wrenchEquivalenceConstraint(k));
-      exact.emplace_shared<MotorTorqueFactor>(
-          joint, k, armature.size() ? armature(id) : 0.0);
-      effort.emplace_shared<PriorFactor<double>>(
-          torqueKey, 0.0, noiseModel::Isotropic::Sigma(1, options.effortSigma));
-      if (i)
-        torqueSmooth.emplace_shared<BetweenFactor<double>>(
-            TorqueKey(id, slices[i - 1].k), torqueKey, 0.0,
-            noiseModel::Isotropic::Sigma(
-                1, options.torqueSmoothSigma *
-                       std::sqrt(times[i] - times[i - 1])));
-      if (options.torqueLimits.size()) {
-        const Double_ torque(torqueKey), limit(options.torqueLimits(id));
-        inequalities.push_back(
-            ScalarExpressionInequalityConstraint::LeqZero(torque - limit, 1));
-        inequalities.push_back(ScalarExpressionInequalityConstraint::LeqZero(
-            Double_(0.0) - torque - limit, 1));
+            "Armature/torque limits must be indexed by joint id");
+    }
+    LinkSharedPtr root;
+    for (const auto& link : robot.links())
+      if (!children.count(link->id())) {
+        if (root)
+          throw std::invalid_argument("Dynamics requires one floating tree root");
+        root = link;
+      }
+    if (!root || root->isFixed())
+      throw std::invalid_argument("Dynamics requires a floating tree root");
+    std::set<const Link*> robotLinks;
+    for (const auto& link : robot.links()) robotLinks.insert(link.get());
+    for (const auto& contact : contacts) {
+      if (!contact.pose.link || !contact.pose.isGround)
+        throw std::invalid_argument(
+            "Dynamics contacts require a ground material frame");
+      if (!robotLinks.count(contact.pose.link.get()))
+        throw std::invalid_argument(
+            "Dynamics contact link must belong to the robot");
+      if (!contact.pose.comTcontact.matrix().allFinite())
+        throw std::invalid_argument("Dynamics contact transform must be finite");
+    }
+
+    const auto tracked = contactPoseFrames(trajectory);
+    const double radiansPerDegree = std::acos(-1.0) / 180.0;
+    Vector6 baseAccelerationSigmas;
+    baseAccelerationSigmas << Vector3::Constant(
+        options.baseAngularAccelerationSigmaDegrees * radiansPerDegree),
+        Vector3::Constant(options.baseLinearAccelerationSigma);
+    const auto baseAccelerationNoise =
+        noiseModel::Diagonal::Sigmas(baseAccelerationSigmas);
+    const auto jointAccelerationNoise = noiseModel::Isotropic::Sigma(
+        1, options.jointAccelerationSigmaDegrees * radiansPerDegree);
+    DynamicsParameters parameters(1.0);
+    parameters.gravity = options.gravity;
+    const Dynamics dynamics(parameters);
+    const Mechanics mechanics(parameters);
+    Values prescribed;
+    NonlinearFactorGraph exact;
+    for (size_t i = 0; i < slices.size(); ++i) {
+      const size_t k = slices[i].k;
+      std::map<int, std::vector<Key>> external;
+      std::vector<size_t> active;
+      const auto frames = tracked.find(k);
+      for (size_t c = 0; c < contacts.size(); ++c) {
+        const auto& contact = contacts[c];
+        const int id = contact.pose.link->id();
+        // ContactWrenchKey is the public sole wrench. The separate material
+        // transform factor connects it to the wrench used by COM dynamics.
+        const Key soleKey = ContactWrenchKey(id, c, k);
+        const Key comKey = DynamicsSymbol::LinkJointSymbol("ec", id, c, k);
+        result.contactKeys.push_back(soleKey);
+        zero.insert(soleKey, Vector(Vector6::Zero()));
+        zero.insert(comKey, Vector(Vector6::Zero()));
+        external[id].push_back(comKey);
+        exact.emplace_shared<ContactWrenchFactor>(soleKey, comKey,
+                                                  contact.pose.comTcontact,
+                                                  noiseModel::Unit::Create(6));
+        std::optional<size_t> stance;
+        if (frames != tracked.end())
+          for (const auto& frame : frames->second)
+            if (frame.contact.equals(contact.pose)) stance = frame.stance;
+        if (stance) {
+          active.push_back(c);
+          const auto cone = RectangularContactWrench(
+              contact.halfLength, contact.halfWidth, contact.frictionCoefficient);
+          for (const auto& inequality : cone.constraints(soleKey))
+            inequalities.push_back(inequality);
+        } else {
+          exact.emplace_shared<PriorFactor<Vector6>>(soleKey, Vector6::Zero(),
+                                                     noiseModel::Unit::Create(6));
+        }
+        const double length = std::sqrt(contact.halfLength * contact.halfWidth);
+        Vector6 sigmas;
+        sigmas << Vector3::Constant(options.wrenchSigma * length),
+            Vector3::Constant(options.wrenchSigma);
+        wrench.emplace_shared<PriorFactor<Vector6>>(
+            soleKey, Vector6::Zero(), noiseModel::Diagonal::Sigmas(sigmas));
+        bool sameStance = false;
+        if (i && stance) {
+          const auto previous = tracked.find(slices[i - 1].k);
+          if (previous != tracked.end())
+            for (const auto& frame : previous->second)
+              if (frame.contact.equals(contact.pose) && frame.stance == *stance)
+                sameStance = true;
+        }
+        if (sameStance) {
+          sigmas *= options.wrenchSmoothSigma / options.wrenchSigma *
+                    std::sqrt(times[i] - times[i - 1]);
+          wrenchSmooth.emplace_shared<BetweenFactor<Vector6>>(
+              ContactWrenchKey(id, c, slices[i - 1].k), soleKey, Vector6::Zero(),
+              noiseModel::Diagonal::Sigmas(sigmas));
+          ++result.wrenchSmoothFactors;
+        }
+      }
+      if (active.empty() && !options.softDynamics)
+        throw std::invalid_argument(
+            "Strict fixed dynamics requires support at every slice");
+
+      // Root Newton-Euler balance determines one active six-axis contact
+      // wrench. All other active contact wrenches are independent coordinates.
+      // Removing that one root equality in the explicit soft mode gives every
+      // active sole wrench its six coordinates without changing internal
+      // physics.
+      for (size_t a = options.softDynamics ? 0 : 1; a < active.size(); ++a)
+        independentKeys.insert(
+            ContactWrenchKey(contacts[active[a]].pose.link->id(), active[a], k));
+
+      for (const auto& link : robot.links()) {
+        for (const auto& joint : link->joints()) {
+          const Key key = WrenchKey(link->id(), joint->id(), k);
+          zero.insert(key, Vector(Vector6::Zero()));
+        }
+        // Missing values fail here with the actual DynamicsSymbol key.
+        prescribed.insert(PoseKey(link->id(), k),
+                          fixedValues.at<Pose3>(PoseKey(link->id(), k)));
+        prescribed.insert(TwistKey(link->id(), k),
+                          fixedValues.at<Vector6>(TwistKey(link->id(), k)));
+        const Key accelerationKey = TwistAccelKey(link->id(), k);
+        if (fixedValues.exists(accelerationKey))
+          throw std::invalid_argument(
+              "Acceleration means belong in accelerationPriors, not "
+              "fixedValues");
+        zero.insert(accelerationKey, Vector(Vector6::Zero()));
+        if (link == root) {
+          const Vector6 mean = accelerationPriors.at<Vector6>(accelerationKey);
+          if (!mean.allFinite())
+            throw std::invalid_argument("Root acceleration prior must be finite");
+          independentKeys.insert(accelerationKey);
+          acceleration.emplace_shared<PriorFactor<Vector6>>(
+              accelerationKey, mean, baseAccelerationNoise);
+        }
+      }
+      for (const auto& factor :
+           dynamics.wrenchBalanceFactors(Slice(k), robot, external)) {
+        if (std::find(factor->keys().begin(), factor->keys().end(),
+                      TwistAccelKey(root->id(), k)) == factor->keys().end()) {
+          exact.add(factor);
+        } else {
+          rootBalance.add(factor);
+          if (options.softDynamics) {
+            Vector6 sigmas;
+            sigmas << Vector3::Constant(options.balanceMomentSigma),
+                Vector3::Constant(options.balanceForceSigma);
+            balance.add(std::dynamic_pointer_cast<NoiseModelFactor>(factor)
+                            ->cloneWithNewNoiseModel(
+                                noiseModel::Diagonal::Sigmas(sigmas)));
+          } else {
+            exact.add(factor);
+          }
+        }
+      }
+      exact.add(dynamics.aFactors(Slice(k), robot));
+      exact.add(mechanics.wrenchEquivalenceFactors(Slice(k), robot));
+      exact.add(mechanics.torqueFactors(Slice(k), robot, armature));
+      for (const auto& joint : joints) {
+        const int id = joint->id();
+        prescribed.insert(JointAngleKey(id, k),
+                          fixedValues.at<double>(JointAngleKey(id, k)));
+        prescribed.insert(JointVelKey(id, k),
+                          fixedValues.at<double>(JointVelKey(id, k)));
+        const Key accelerationKey = JointAccelKey(id, k);
+        if (fixedValues.exists(accelerationKey))
+          throw std::invalid_argument(
+              "Acceleration means belong in accelerationPriors, not "
+              "fixedValues");
+        const double mean = accelerationPriors.at<double>(accelerationKey);
+        if (!std::isfinite(mean))
+          throw std::invalid_argument("Joint acceleration prior must be finite");
+        zero.insert(accelerationKey, 0.0);
+        independentKeys.insert(accelerationKey);
+        acceleration.emplace_shared<PriorFactor<double>>(accelerationKey, mean,
+                                                         jointAccelerationNoise);
+        const Key torqueKey = TorqueKey(id, k);
+        result.torqueKeys.push_back(torqueKey);
+        zero.insert(torqueKey, 0.0);
+        effort.emplace_shared<PriorFactor<double>>(
+            torqueKey, 0.0, noiseModel::Isotropic::Sigma(1, options.effortSigma));
+        if (i)
+          torqueSmooth.emplace_shared<BetweenFactor<double>>(
+              TorqueKey(id, slices[i - 1].k), torqueKey, 0.0,
+              noiseModel::Isotropic::Sigma(
+                  1, options.torqueSmoothSigma *
+                         std::sqrt(times[i] - times[i - 1])));
+        if (options.torqueLimits.size()) {
+          const Double_ torque(torqueKey), limit(options.torqueLimits(id));
+          inequalities.push_back(
+              ScalarExpressionInequalityConstraint::LeqZero(torque - limit, 1));
+          inequalities.push_back(ScalarExpressionInequalityConstraint::LeqZero(
+              Double_(0.0) - torque - limit, 1));
+        }
       }
     }
-  }
-  // Substitute configurations and velocities only. Native acceleration
-  // kinematics and Newton-Euler balance stay affine in the free
-  // accelerations, reaction wrenches, sole wrenches, and motor torques.
-  if (fixKinematics) {
+    // Substitute configurations and velocities only. Native acceleration
+    // kinematics and Newton-Euler balance stay affine in the free
+    // accelerations, reaction wrenches, sole wrenches, and motor torques.
     exact = ConstVarGraph(exact, prescribed);
     rootBalance = ConstVarGraph(rootBalance, prescribed);
     balance = ConstVarGraph(balance, prescribed);
-  } else {
-    zero.insert(prescribed);
+    equalities = NonlinearEqualityConstraints::FromCostGraph(exact);
+    cost.add(effort);
+    cost.add(wrench);
+    cost.add(torqueSmooth);
+    cost.add(wrenchSmooth);
+    cost.add(balance);
+    cost.add(acceleration);
+    result.softDynamics = options.softDynamics;
+    result.variableDimension = zero.dim();
+    result.equalityDimension = equalities.dim();
+    result.inequalityDimension = inequalities.dim();
+    result.assemblySeconds = seconds(start);
   }
-  equalities = NonlinearEqualityConstraints::FromCostGraph(exact);
-  cost.add(effort);
-  cost.add(wrench);
-  cost.add(torqueSmooth);
-  cost.add(wrenchSmooth);
-  cost.add(balance);
-  cost.add(acceleration);
-  result.softDynamics = options.softDynamics;
-  result.variableDimension = zero.dim();
-  result.equalityDimension = equalities.dim();
-  result.inequalityDimension = inequalities.dim();
-  result.assemblySeconds = seconds(start);
-}
-}  // namespace internal
+};
+}  // namespace
 
 fixed_dynamics::Result solveFixedKinematicsDynamics(
     const Robot& robot, const Trajectory& trajectory,
@@ -380,9 +360,8 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
     const std::vector<fixed_dynamics::Contact>& contacts,
     const gtsam::Vector& armature, const fixed_dynamics::Options& options) {
   using namespace gtsam;
-  internal::ArticulatedDynamicsProblem problem(robot, trajectory, slices, times,
-                                               fixedValues, accelerationPriors,
-                                               contacts, armature, options);
+  Problem problem(robot, trajectory, slices, times, fixedValues,
+                  accelerationPriors, contacts, armature, options);
   auto start = Clock::now();
   Values initial =
       equalityAnchor(problem.cost, problem.equalities, problem.zero);

@@ -34,7 +34,7 @@ const collocationRows = computed(() => {
           <tr><th>Torque rate / force-equivalent wrench rate</th><td>{{number(settings.torqueRateSigmaNmPerSqrtSecond)}} Nm/√s / {{number(settings.wrenchRateSigmaNPerSqrtSecond)}} N/√s</td></tr>
           <tr><th>Root angular / body-linear acceleration</th><td>{{number(settings.baseAngularAccelerationSigmaDegrees)}} °/s² / {{number(settings.baseLinearAccelerationSigma)}} m/s²</td></tr>
           <tr><th>Joint acceleration</th><td>{{number(settings.jointAccelerationSigmaDegrees)}} °/s²</td></tr>
-          <tr><th>One fixed root-pose gauge</th><td>Slice {{record.diagnostics.gaugeSlice}} · {{number(record.diagnostics.gaugeTimeSeconds)}} s</td></tr>
+          <tr><th>Translation / yaw gauge costs</th><td>Slice {{record.diagnostics.gaugeSlice}} · {{number(record.diagnostics.gaugeTimeSeconds)}} s · σ {{number(record.diagnostics.gauge.translationSigmaMeters)}} m / {{number(record.diagnostics.gauge.yawSigmaRadians)}} rad; roll and pitch free</td></tr>
           <tr><th>Friction μ / pyramid coefficient μ/√2</th><td>{{number(settings.friction)}} / {{number(settings.friction/Math.sqrt(2))}}</td></tr>
           <tr v-for="(patch,foot) in settings.supportRectangles" :key="foot"><th>{{foot?'Right':'Left'}} sole half-length / half-width</th><td>{{vector(patch)}} m</td></tr>
           <tr><th>Actuator effort limits</th><td>{{settings.torqueLimitsEnforced?'Enforced':'Diagnostic only'}}</td></tr>

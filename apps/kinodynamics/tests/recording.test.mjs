@@ -40,3 +40,16 @@ test('the measured run reduces cost and satisfies the exact mechanics and sole c
   }));
   assert.equal(new Set(jointGroups(record.jointNames).flatMap(g=>g.indices)).size,29);
 });
+
+
+test('the recorded gauge is a translation/yaw cost and leaves tilt free',()=>{
+  const d=record.diagnostics;
+  assert.deepEqual(d.gauge.coordinates,['world_x','world_y','world_z','yaw']);
+  assert.deepEqual(d.gauge.rotationFree,['roll','pitch']);
+  assert.equal(d.gauge.translationSigmaMeters,1);
+  assert.equal(d.gauge.yawSigmaRadians,1);
+  assert(d.errorNames.includes('Translation/yaw gauge'));
+  assert(d.factors.some(f=>f.type==='Translation/yaw gauge'&&f.count===2));
+  assert.equal(d.solverSettings.historyWindow,1);
+  assert.equal(d.iterations,d.maxIterations);
+});

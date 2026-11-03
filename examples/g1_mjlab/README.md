@@ -43,7 +43,21 @@ python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
 python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
 ```
 
-Use the same pinned packages and Python paths as the dynamics example below.
+Enable `GTDYNAMICS_BUILD_G1_MJLAB` and `GTDYNAMICS_BUILD_PYTHON`,
+then build `_g1_kinodynamics` and add `build/examples/g1_mjlab` to `PYTHONPATH`.
+Use the same pinned packages and other Python paths as the dynamics example below.
+The private module composes existing library builders; its settings live in
+[`kinodynamic_settings.py`](kinodynamic_settings.py). It adds no experiment API
+to the main package. `ArticulatedRetractor` and the reusable factor/builder
+extensions remain in GTDynamics.
+
+The coupled solve adds translation and wrapped-yaw gauge costs (1 m and 1 rad
+standard deviations) at the selected initialization slice. Roll and pitch are
+free: initializer tilt is a starting guess, not an enforced observation. No
+upright or ground-height factors enter this solve.
+Run `test_kinodynamics.py` to check tilt recovery and
+`validate_kinodynamics.py --result /tmp/kinodynamics` for the independent
+MuJoCo inverse-dynamics and contact-feasibility checks.
 `--max-iterations` defaults to 5; `--start 78 --end 79` gives a small development
 run. The example saves `kinodynamics.npz` and `summary.json`, separating contact
 initialization, measurement preparation, graph assembly, initial feasibility,

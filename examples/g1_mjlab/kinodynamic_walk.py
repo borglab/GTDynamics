@@ -17,8 +17,9 @@ and included in the solve time. No saved smoothing or GP solution is loaded.
 
 Run: python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
 Use --end 79 --max-iterations 2 for a small development run. Computation lives
-here and in the library; the app exporter only serializes these results.
+here and in the private example helper; the app exporter serializes the results.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,6 +48,7 @@ from mujoco_io import (
     pose,
 )
 from sole_support import support_rectangle
+from kinodynamic_settings import solver_settings
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -56,7 +58,7 @@ class KinodynamicSolution:
     """Full dense solution, initial pose estimate, physical model and timings."""
 
     walk: KinematicRecording
-    result: gtd.kinodynamics.Result
+    result: dict[str, Any]
     contacts: list[gtd.fixed_dynamics.Contact]
     initial: gtsam.Values
     metadata: dict[str, Any]
@@ -70,8 +72,8 @@ def prepare_walk(
 ) -> tuple[KinematicRecording, dict[str, Any]]:
     """Crop the original 50 Hz encoders and saved support labels by timestamp.
 
-    LiDAR reference poses only provide the first selected root gauge and
-    evaluation overlays. Privileged LiDAR motion also supplied contact labels.
+    LiDAR reference poses provide the initial root guess and evaluation
+    overlays. Only translation/yaw from that guess enter the coupled gauge. Privileged LiDAR motion also supplied contact labels.
     Joint indices are mapped by name through the canonical compiled model.
     """
     arrays, metadata = load_recording(directory)
@@ -143,7 +145,7 @@ def prepare_walk(
         "source": metadata,
         "groundTranslation": shift.tolist(),
         "initializationSlices": [s.k for s in retained],
-        "referenceUsage": "Privileged support labels and first selected root gauge only; later poses are evaluation data",
+        "referenceUsage": "Privileged support labels; initial root translation/yaw choose coordinates, tilt only initializes; later poses are evaluation data",
         "labels": (
             str(labels_path.relative_to(REPO))
             if labels_path.is_relative_to(REPO)
@@ -247,22 +249,33 @@ def solve_walk(
     for actuator in range(model.nu):
         joint_id = int(model.actuator_trnid[actuator, 0])
         armature[joint_id] = model.dof_armature[model.jnt_dofadr[joint_id]]
-    options: gtd.kinodynamics.Options = gtd.kinodynamics.Options()
-    # The sparse initializer's gauge belongs to its first selected DS slice.
+    options = solver_settings()
+    from _g1_kinodynamics import solve
+
+    # Translation and yaw choose coordinates at the first selected DS slice.
+    # The initializer's roll/pitch are starting guesses, not observations.
     # Dense output holds that pose before the selection starts; those earlier
     # configurations are guesses and must remain free in the coupled solve.
-    options.gaugeSlice = metadata["initializationSlices"][0]
-    metadata["gaugeSlice"] = options.gaugeSlice
-    metadata["gaugeTimeSeconds"] = float(walk.times[options.gaugeSlice])
-    options.maxIterations = max_iterations
+    options["gaugeSlice"] = metadata["initializationSlices"][0]
+    metadata["gauge"] = {
+        "coordinates": ["world_x", "world_y", "world_z", "yaw"],
+        "rotationFree": ["roll", "pitch"],
+        "translationSigmaMeters": 1.0,
+        "yawSigmaRadians": 1.0,
+        "initialTilt": "Initializer guess only; estimated from observations",
+    }
+    metadata["gaugeSlice"] = options["gaugeSlice"]
+    metadata["gaugeTimeSeconds"] = float(walk.times[options["gaugeSlice"]])
+    options["maxIterations"] = max_iterations
     metadata["maxIterations"] = max_iterations
-    options.retractionThreads = retraction_threads
+    options["retractionThreads"] = retraction_threads
     metadata["retractionThreads"] = retraction_threads
+    metadata["solverSettings"] = options.copy()
     metadata["measurementPreparationSeconds"] = (
         time.perf_counter() - measurement_started
     )
     started = time.perf_counter()
-    result: gtd.kinodynamics.Result = gtd.solveKinodynamics(
+    result: dict[str, Any] = solve(
         walk.robot,
         walk.trajectory,
         [gtd.Slice(k) for k in range(walk.count)],
@@ -280,7 +293,7 @@ def solve_walk(
     )
     metadata["imu"] = imu.metadata
     metadata["collocation"] = {
-        name: getattr(options, name)
+        name: options[name]
         for name in (
             "poseRotationSigmaDegrees",
             "poseTranslationSigma",
@@ -302,9 +315,9 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
         "samples": solution.walk.count,
         "sampleRateHz": 50,
         "initialization": "Contact poses/joint angles; zero v/a/wrenches/torques/bias",
-        "estimatedBias": result.values.atConstantBias(BIAS_KEY).vector().tolist(),
+        "estimatedBias": result["values"].atConstantBias(BIAS_KEY).vector().tolist(),
         **{
-            name: getattr(result, name)
+            name: result[name]
             for name in (
                 "iterations",
                 "assemblySeconds",
@@ -322,9 +335,9 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
                 "feasible",
             )
         },
-        "errorNames": list(result.errorNames),
-        "errorHistory": [v.tolist() for v in result.errorHistory],
-        "wallSeconds": list(result.wallSeconds),
+        "errorNames": list(result["errorNames"]),
+        "errorHistory": [v.tolist() for v in result["errorHistory"]],
+        "wallSeconds": list(result["wallSeconds"]),
     }
 
 
@@ -339,7 +352,7 @@ def solution_arrays(solution: KinodynamicSolution) -> dict[str, NDArray[Any]]:
     Contact and joint axis order follows contact_link_ids and joint_ids.
     """
     walk, result = solution.walk, solution.result
-    joints = list(result.jointIds)
+    joints = list(result["jointIds"])
     return {
         "times": walk.times,
         "source_indices": walk.source_indices,
@@ -348,7 +361,7 @@ def solution_arrays(solution: KinodynamicSolution) -> dict[str, NDArray[Any]]:
         "poses": np.array(
             [
                 [
-                    result.values.atPose3(gtd.PoseKey(link.id(), k)).matrix()
+                    result["values"].atPose3(gtd.PoseKey(link.id(), k)).matrix()
                     for link in walk.robot.links()
                 ]
                 for k in range(walk.count)
@@ -392,14 +405,17 @@ def solution_arrays(solution: KinodynamicSolution) -> dict[str, NDArray[Any]]:
         "root_id": np.array(walk.root.id()),
         "body_twists": np.array(
             [
-                [gtd.Twist(result.values, link.id(), k) for link in walk.robot.links()]
+                [
+                    gtd.Twist(result["values"], link.id(), k)
+                    for link in walk.robot.links()
+                ]
                 for k in range(walk.count)
             ]
         ),
         "body_twist_accelerations": np.array(
             [
                 [
-                    gtd.TwistAccel(result.values, link.id(), k)
+                    gtd.TwistAccel(result["values"], link.id(), k)
                     for link in walk.robot.links()
                 ]
                 for k in range(walk.count)
@@ -407,27 +423,27 @@ def solution_arrays(solution: KinodynamicSolution) -> dict[str, NDArray[Any]]:
         ),
         "joint_angles": np.array(
             [
-                [gtd.JointAngle(result.values, j, k) for j in joints]
+                [gtd.JointAngle(result["values"], j, k) for j in joints]
                 for k in range(walk.count)
             ]
         ),
         "joint_velocities": np.array(
             [
-                [gtd.JointVel(result.values, j, k) for j in joints]
+                [gtd.JointVel(result["values"], j, k) for j in joints]
                 for k in range(walk.count)
             ]
         ),
         "joint_accelerations": np.array(
             [
-                [gtd.JointAccel(result.values, j, k) for j in joints]
+                [gtd.JointAccel(result["values"], j, k) for j in joints]
                 for k in range(walk.count)
             ]
         ),
         "wrenches": np.array(
-            [result.values.atVector(key) for key in result.contactKeys]
+            [result["values"].atVector(key) for key in result["contactKeys"]]
         ).reshape(walk.count, 2, 6),
         "joint_torques": np.array(
-            [result.values.atDouble(key) for key in result.torqueKeys]
+            [result["values"].atDouble(key) for key in result["torqueKeys"]]
         ).reshape(walk.count, len(joints)),
     }
 

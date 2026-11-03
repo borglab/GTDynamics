@@ -9,7 +9,11 @@ states start at zero, including the shared IMU bias.
 The computation is the student-facing example
 [`kinodynamic_walk.py`](../../examples/g1_mjlab/kinodynamic_walk.py). Run from the
 repository root with the built GTDynamics/GTSAM Python packages and pinned G1
-model packages on `PYTHONPATH`:
+model packages on `PYTHONPATH`. Enable `GTDYNAMICS_BUILD_G1_MJLAB` and
+`GTDYNAMICS_BUILD_PYTHON`, then build `_g1_kinodynamics`. Add
+`build/examples/g1_mjlab` alongside `build/python` and the matching GTSAM Python
+path. The private extension is built with the standard wrapper’s pybind11
+provider and is not installed into the GTDynamics package:
 
 ```bash
 python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
@@ -30,8 +34,11 @@ cones are exact constraints. Encoder, stance-pose landmark, Gal3 IMU, stance
 velocity, trapezoidal configuration/velocity collocation, effort/rate and broad
 acceleration terms are costs. No point contacts or GP/spline warm start are used.
 No upright or ground-height costs remain in the coupled solve. The initializer
-uses its shared upright/motion/height priors; the root pose at the first selected
-double-support slice fixes the gauge.
+uses its shared upright/motion/height priors. At the first selected double-support
+slice, translation and wrapped-yaw costs choose the world frame with unit
+standard deviations (1 m and 1 rad). All six root-pose coordinates remain free
+in the articulated tangent basis, allowing gravity/IMU observations to correct
+the initial roll and pitch.
 Earlier dense output from the initializer is a held pose guess and stays free
 in the coupled solve.
 
@@ -41,8 +48,8 @@ and projects the remaining affine acceleration/wrench equations with Gaussian QR
 and ReducedALRetractor. Time blocks are eliminated chronologically, retiring each
 stance landmark after its last observation and the shared bias at the end.
 Per-slice projections run in a bounded TBB arena when available; serial and
-parallel results are checked against each other. One previous iteration is
-retained for mode detection; full trajectories are not retained for every optimizer trial. The app stores scalar per-factor error
+parallel results are checked against each other. One previous iteration is retained for diagnostics. Compact boundary residuals
+and active sets track the mode independently of diagnostic-history retention. The app stores scalar per-factor error
 histories instead.
 
 Timing separates contact initialization, graph assembly, initial feasibility,
@@ -64,6 +71,6 @@ Planning, which remains the final tab.
 
 The support schedule is privileged: it uses saved max-product labels derived
 from SuperOdom LiDAR-inertial foot motion and measured joint velocities. Reference
-poses after the gauge do not enter the coupled estimation graph. The inferred
+poses after initialization do not enter the coupled estimation graph. The inferred
 forces and torques are model-based estimates. Dataset/model attribution is
 available in the app and accompanying notices.
