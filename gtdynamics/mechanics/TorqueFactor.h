@@ -21,8 +21,10 @@
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 
+#include <cmath>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 namespace gtdynamics {
@@ -42,10 +44,27 @@ namespace gtdynamics {
  * @param joint JointConstSharedPtr to the joint
  */
 inline gtsam::NoiseModelFactor::shared_ptr TorqueFactor(
-    const gtsam::noiseModel::Base::shared_ptr &cost_model,
-    const JointConstSharedPtr &joint, size_t k = 0) {
+    const gtsam::noiseModel::Base::shared_ptr& cost_model,
+    const JointConstSharedPtr& joint, size_t k = 0) {
   return std::make_shared<gtsam::ExpressionFactor<double>>(
       cost_model, 0.0, joint->torqueConstraint(k));
+}
+
+/** Include rotor inertia: transmitted screw-axis torque + armature*qddot.
+ * Armature is nonnegative and finite, in kg m^2, and zero preserves the
+ * original factor without introducing an acceleration key.
+ */
+inline gtsam::NoiseModelFactor::shared_ptr TorqueFactor(
+    const gtsam::SharedNoiseModel& model, const JointConstSharedPtr& joint,
+    size_t k, double armature) {
+  if (!std::isfinite(armature) || armature < 0)
+    throw std::invalid_argument("Armature must be finite and nonnegative");
+  if (armature == 0) return TorqueFactor(model, joint, k);
+  return std::make_shared<gtsam::ExpressionFactor<double>>(
+      model, 0.0,
+      joint->torqueConstraint(k) +
+          gtsam::Double_(armature) *
+              gtsam::Double_(JointAccelKey(joint->id(), k)));
 }
 
 }  // namespace gtdynamics

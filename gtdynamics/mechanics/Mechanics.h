@@ -53,6 +53,10 @@ class Mechanics {
   gtsam::NonlinearFactorGraph torqueFactors(const CONTEXT& context,
                                             const Robot& robot) const;
 
+  /// Rotor inertias indexed by joint id; empty means zero armature.
+  gtsam::NonlinearFactorGraph torqueFactors(
+      const Slice& slice, const Robot& robot, const gtsam::Vector& armature) const;
+
   /**
    * Build planar wrench factors for all joints.
    * No factors are added when no planar axis is configured.

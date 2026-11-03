@@ -50,6 +50,9 @@ gtsam::ActiveSetSolverState robustQp(
   al->absoluteViolationTolerance = 1e-9;
   al->absoluteStationarityTolerance = 1e-7;
   al->bclBetaOmega = .1;
+  // Large penalty jumps can leave a nearly dependent face system feasible
+  // but stall its inner solve above the stationarity tolerance.
+  al->bclPenaltyIncreaseRate = 10.;
   al->lmParams.maxIterations = 200;
   al->lmParams.absoluteErrorTol = al->lmParams.relativeErrorTol = 0;
   al->lmParams.lambdaUpperBound = 1e12;
@@ -84,7 +87,8 @@ gtsam::ActiveSetSolverState robustQp(
     std::ostringstream message;
     message << "CMC QP AL fallback did not converge: stationarity="
             << state.augmentedLagrangianStationarity
-            << ", violation=" << state.generalizedConstraintViolation;
+            << ", violation=" << state.generalizedConstraintViolation
+            << ", iterations=" << state.iteration;
     throw std::runtime_error(message.str());
   }
   ActiveSetSolverState result;

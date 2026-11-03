@@ -22,6 +22,8 @@
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <map>
+#include <vector>
 
 namespace gtdynamics {
 
@@ -75,6 +77,14 @@ class Dynamics {
   gtsam::NonlinearFactorGraph aFactors(
       const CONTEXT& context, const Robot& robot,
       const std::optional<PointOnLinks>& contact_points = {}) const;
+
+  /** Newton-Euler balance for each nonfixed link. External wrench keys
+   * store COM-frame wrenches; contact transforms/cones are composed separately.
+   * Uses fa_cost_model and gravity, and adds internal joint wrench keys.
+   */
+  gtsam::NonlinearFactorGraph wrenchBalanceFactors(
+      const Slice& slice, const Robot& robot,
+      const std::map<int, std::vector<gtsam::Key>>& externalWrenches = {}) const;
 
   /**
    * Return dynamic-only wrench factors for a context.

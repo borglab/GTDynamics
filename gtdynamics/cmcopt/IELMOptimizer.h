@@ -34,7 +34,7 @@ struct IELMParams {
   /// Strict GTSAM active-set iteration limit; zero skips QP refinement.
   size_t iqpMaxIterations = 0;
   /** Bound retained full iteration states for long trajectories; zero retains
-   * all. A finite window also bounds the history used by mode-change detection.
+   * all. This does not affect the state used by mode-change detection.
    * Scalar convergence data can be collected through iterationCallback.
    */
   size_t historyWindow = 0;
@@ -56,6 +56,14 @@ class IELMOptimizer : public IEOptimizer {
  protected:
   const IELMParams ielm_params_;
   std::shared_ptr<IELMOptimizationDetails> details_;
+
+ private:
+  // Only scalar boundary residuals and active sets are needed across a mode.
+  // Keeping them separate makes diagnostic retention algorithm-independent.
+  mutable std::optional<IndexSetMap> mode_;
+  mutable std::map<Key, Vector> modeStartResiduals_;
+  mutable std::optional<IndexSetMap> lastFailedMode_;
+  void rememberMode(const IELMIterationDetails& iteration) const;
 
  public:
   typedef std::shared_ptr<IELMOptimizer> shared_ptr;
