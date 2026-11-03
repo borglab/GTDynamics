@@ -663,12 +663,15 @@ inline std::optional<gtsam::Point3> measureObstacle(const CollisionModel& truth,
                                                     const SimulationConfig& simulation,
                                                     const Vector& q, GaussianNoise* noise) {
   const gtsam::Pose3 wTs = truth.sensorPose(q);
+  const Vector measurementNoise =
+      noise->sample(3, simulation.sigma_l_measurement);
   if (simulation.sensor_range <= 0.0 ||
-      (simulation.obstacle_center - wTs.translation()).norm() > simulation.sensor_range) {
+      (simulation.obstacle_center - wTs.translation()).norm() >
+          simulation.sensor_range) {
     return std::nullopt;
   }
   return gtsam::Point3(wTs.transformTo(simulation.obstacle_center) +
-                       noise->sample(3, simulation.sigma_l_measurement));
+                       measurementNoise);
 }
 
 /**
