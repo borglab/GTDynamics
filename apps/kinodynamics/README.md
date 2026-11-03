@@ -60,6 +60,22 @@ Feasibility restoration changes the raw zero dynamics and is included in total.
 A feasible result or an objective-change stopping condition does not establish
 that the objective is globally optimal.
 
+The regenerated recording (2026-11-03, Release build, eight retraction threads)
+took **78.03 s** in coupled optimization and **87.89 s** from contact
+initialization through the solve. It completed five iterations, reducing the
+objective from 28,986,857.82 to 9,120.02; it stopped at the iteration limit.
+The final equality/inequality violation norms are 4.16e-12 and
+1.29e-07. Across 21 evenly spaced slices, independent MuJoCo inverse
+dynamics agrees within 8.24e-13 N in root force, 1.85e-12 Nm in root moment,
+and 2.83e-12 Nm in joint torque. Every slice passes the sole-cone check
+(maximum violation 9.33e-08); swing wrenches are zero. These are equation
+consistency checks. Full-recording stance-origin speed RMS is
+0.185 m/s, so the finite-noise stance objective still permits slip.
+Reproduce the oracle with `python examples/g1_mjlab/validate_kinodynamics.py
+--result /tmp/kinodynamics`. The replay includes source/binary fingerprints,
+the projection metric, gauge metadata, and the separate gauge error group.
+The [screenshot](docs/kinodynamics.png) shows the regenerated replay.
+
 The page follows the shared technical-paper layout. Its abstract and complete
 replay controls fit together on a laptop screen. Motivation, a synchronized
 factor-graph schematic and native factor definitions precede the recorded
