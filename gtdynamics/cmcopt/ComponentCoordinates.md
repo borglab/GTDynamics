@@ -1,5 +1,10 @@
 # Component coordinates for the CMC-Opt linear step
 
+The current component-ownership simplification is evaluated against `f71c907d`
+in the [downloadable HTML report](ComponentRefactorReport.html). The historical
+timings below describe the earlier move to unconstrained component-coordinate
+solves; they are separate experiments.
+
 ## Understanding of the previous implementation
 
 This note describes the previous CMC-Opt linear step and its replacement by
@@ -78,25 +83,28 @@ $$
 \eta_i \xrightarrow{N_i} \delta_i \xrightarrow{B_i} \Delta x_i.
 $$
 
-- `ComponentTangentSpace` constructs a basis $N_i$ for the kernel of each
-  selected face matrix. It substitutes these bases into the already-damped
-  soft costs, calls GTSAM's ordinary Gaussian solver, and recovers $\delta_i$.
 - Each `IEConstraintManifold` owns one immutable `IEManifoldLinearization`.
-  It caches active ambient Jacobians, their equality-tangent rows and noise
-  scaling, and the mapping to original nonlinear constraint indices. Cone
-  projection, directional checks, and selected-face row assembly use this
-  state-owned geometry. Compatibility APIs re-key cached factors without
-  evaluating nonlinear derivatives again.
-- `TangentConeLinearization` coordinates shared references to these local
-  objects. Its optional refinement manages row-level working sets around the
-  same unconstrained global solve; it does not relinearize constraints.
-- `IELMState` stores that coordinator across damping trials. Ordinary manifold
-  copies share their geometry. A new manifold state rebuilds inequality
-  geometry even when its equality basis is affine and reusable.
-- `IELMTrial` no longer appends constrained factors or constructs a global
-  `QpProblem`. An invalid or unsuccessful reduced solve is rejected; it cannot
-  fall back to global constrained elimination.
+  It owns active ambient Jacobians, equality-tangent rows, local cone projection,
+  original nonlinear block indices, and local working-face construction. It also
+  answers boundary-step and dual-multiplier queries for optional QP refinement.
+- `WorkingFace` represents **one** component's selected-face chart $N_i$.
+  Stateless functions substitute these charts into already-damped soft costs,
+  invoke GTSAM's Gaussian solver, and recover $\delta_i$.
+- `IELMState` owns the manifolds directly. There is no global tangent-cone
+  coordinator or flat constraint-index translation. Working sets use component
+  keys and original constraint indices throughout the LM trial and retraction.
+- `IELMWorkingSet.cpp` coordinates optional row additions and releases. The
+  coupled cost determines the global step and gradient; each component computes
+  its own boundary intersections and multiplier candidates. This code owns no
+  constraint geometry and constructs no global inequality graph.
+- Ordinary manifold copies share their geometry. A new manifold state rebuilds
+  inequality geometry even when its equality basis is affine and reusable.
+- Failed reduced solves reject the LM trial. Local cone projection and nonlinear
+  retraction retain their existing implementations and numerical policies.
 
+The former `ComponentTangentSpace`, `TangentConeLinearization`,
+`IndexSetMapTranslator`, and cached-factor re-export APIs have been removed.
+Repository consumers and tests use the new APIs directly.
 All trajectory-wide quadratic minimizations therefore receive soft Gaussian
 costs. Local cone projection and nonlinear component retraction keep their
 existing constrained numerical methods. Their constraints remain inside their
@@ -292,21 +300,21 @@ empirical timing result as a proof of full algorithmic identity.
 
 ## Validation and performance
 
-`testComponentTangentSpace` compares recovered solutions with the previous
+`testWorkingFace` compares recovered solutions with the previous
 constrained Gaussian QR formulation. It covers cross-component costs, nonunit
 noise, anisotropic damping, redundant and scaled rows, tiny kernel coefficients, zero-DOF
 components, ordering, native Hessian costs, and rejection of constrained noise
 in the reduced objective. It also checks quadratic-cost equivalence and the
 unconstrained-factor contract directly.
 
-`testTangentConeLinearization` checks 64 coupled QP cases against an exhaustive
+`testIELMWorkingSet` checks 64 coupled QP cases against an exhaustive
 working-set oracle using constrained QR. Additional cases cover opposing and
 dependent rows, row release, partially active multirow blocks, iteration
 exhaustion, multiple blocks on one component, and invalid component assembly.
 The native regression targets for the rebased implementation are:
 
 ```text
-testComponentTangentSpace   testTangentConeLinearization
+testWorkingFace   testIELMWorkingSet
 testIEManifoldOptimizer     testIEConstraintManifold
 testTangentCone             testReducedALRetractor
 testFixedKinematicsDynamics testArticulatedRetractor
@@ -340,11 +348,11 @@ optional QP refinement on the complete trajectory.
 The [undergraduate explanation and benchmark report](../../examples/g1_mjlab/cmcopt_architecture_undergrad.md)
 gives the timing scopes, numerical comparisons, and reproduction command.
 For review, the key correspondence is between equations (2)–(5),
-[`ComponentTangentSpace`](ComponentTangentSpace.cpp), and the working-set
-orchestration in [`TangentConeLinearization`](TangentConeLinearization.cpp).
+[`WorkingFace`](WorkingFace.cpp), and the working-set
+orchestration in [`IELMWorkingSet`](IELMWorkingSet.cpp).
 
 
-## Evaluation of state-owned component linearizations
+## Earlier checkpoint: state-owned component linearizations
 
 The encapsulation comparison uses commit `45172046` as its baseline. The G1 inputs, free-tilt gauge, constraints, solver tolerances, thread
 counts, and working-set policy are unchanged. Each manifold now owns one
@@ -392,3 +400,13 @@ short check. Saved comparisons are `/tmp/cmc-local-comparison.json`; numerical
 outputs are `/tmp/cmc-local-{before,after}-{1,2,3}` and
 `/tmp/cmc-local-short-{before,after}`. Timing scopes match the earlier report:
 input/model loading and browser export are excluded from the reported total.
+
+
+## Component-ownership refactor validation
+
+The current refactor is compared with checkpoint `f71c907d`. The downloadable
+[HTML report](ComponentRefactorReport.html) contains the complete case inventory,
+numerical comparisons, timing scopes, and unresolved baseline failures.
+Reproduction scripts live in [`examples/cmc_benchmarks`](../../examples/cmc_benchmarks).
+The earlier measurements above describe earlier changes and are not evidence
+for the current refactor.
