@@ -12,11 +12,11 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/scenarios/CartPoleWithLimitsRetractor.h>
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include <cmath>
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/scenarios/CartPoleWithLimitsRetractor.h>
+#include <gtdynamics/scenarios/IECartPoleWithLimits.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -29,90 +29,106 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/scenarios/IECartPoleWithLimits.h>
-#include <gtdynamics/cmcopt/IEGDOptimizer.h>
-#include <gtdynamics/cmcopt/IELMOptimizer.h>
-
+#include <cmath>
 #include <iomanip>
 #include <string>
+
+#include "CmcBenchmark.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
 
 
 int main(int argc, char **argv) {
-  // Setting
-  IECartPoleWithLimits cp;
-  size_t num_steps = 20;
-  double dt = 0.1;
+  cmc_benchmark::configure(argc, argv);
+  try {
+    // Setting
+    IECartPoleWithLimits cp;
+    size_t num_steps = 20;
+    double dt = 0.1;
 
-  // Constraints
-  EqualityConstraints e_constraints;
-  InequalityConstraints i_constraints;
-  for (size_t k = 0; k <= num_steps; k++) {
-    auto e_constraints_k = cp.eConstraints(k);
-    auto i_constraints_k = cp.iConstraints(k);
-    e_constraints.add(e_constraints_k);
-    i_constraints.add(i_constraints_k);
+    // Constraints
+    EqualityConstraints e_constraints;
+    InequalityConstraints i_constraints;
+    for (size_t k = 0; k <= num_steps; k++) {
+      auto e_constraints_k = cp.eConstraints(k);
+      auto i_constraints_k = cp.iConstraints(k);
+      e_constraints.add(e_constraints_k);
+      i_constraints.add(i_constraints_k);
+    }
+    e_constraints.add(cp.initStateConstraints());
+
+    // Costs
+    NonlinearFactorGraph graph;
+    NonlinearFactorGraph collocation_costs = cp.collocationCosts(num_steps, dt);
+    NonlinearFactorGraph final_state_graph = cp.finalStateCosts(num_steps);
+    NonlinearFactorGraph min_torque_costs = cp.minTorqueCosts(num_steps);
+    graph.add(final_state_graph);
+    graph.add(collocation_costs);
+    graph.add(min_torque_costs);
+    auto EvaluateCosts = [=](const Values &values) {
+      std::cout << "collocation costs:\t" << collocation_costs.error(values)
+                << "\n";
+      std::cout << "final state costs:\t" << final_state_graph.error(values)
+                << "\n";
+      std::cout << "min torque costs:\t" << min_torque_costs.error(values)
+                << "\n";
+    };
+
+    // Initial Values
+    Values initial_values = cp.getInitValuesZero(num_steps);
+    EvaluateCosts(initial_values);
+
+    // Problem
+    IEConsOptProblem problem(graph, e_constraints, i_constraints,
+                             initial_values);
+
+    // Parameters
+    auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
+    iecm_params->equalityManifoldParams->basisCreator =
+        std::make_shared<EliminationBasisCreator>(cp.getBasisKeyFunction());
+    iecm_params->retractorCreator =
+        std::make_shared<UniversalIERetractorCreator>(
+            std::make_shared<CartPoleWithLimitsRetractor>(cp));
+    iecm_params->equalityBasisCreator =
+        iecm_params->equalityManifoldParams->basisCreator;
+    iecm_params->equalityBasisBuildFromScratch = false;
+
+    // optimize IELM
+    IELMParams ie_params;
+    auto lm_result = cmc_benchmark::measure(problem, "LM", [&] {
+      return OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+    });
+    Values result_values = lm_result.second.back().state.baseValues();
+    for (const auto &iter_details : lm_result.second) {
+      IEOptimizer::printIterationDetails(
+          iter_details, num_steps, false, IECartPoleWithLimits::PrintValues,
+          IECartPoleWithLimits::PrintDelta, GTDKeyFormatter);
+    }
+    IECartPoleWithLimits::PrintValues(result_values, num_steps);
+    EvaluateCosts(result_values);
+    IECartPoleWithLimits::ExportValues(
+        result_values, num_steps,
+        "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/"
+        "ineq_cartpole_traj.csv");
+
+    // Optimize Barrier
+    auto barrier_params = std::make_shared<PenaltyParameters>();
+    barrier_params->initial_mu = 1e0;
+    barrier_params->num_iterations = 20;
+    auto barrier_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_Penalty(problem, barrier_params); });
+    EvaluateCosts(barrier_result.second.rbegin()->values);
+    barrier_result.first.exportFile(
+        "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/"
+        "ineq_cartpole_barrier.txt");
+    barrier_result.first.printLatex(std::cout);
+    lm_result.first.printLatex(std::cout);
+
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
   }
-  e_constraints.add(cp.initStateConstraints());
-
-  // Costs
-  NonlinearFactorGraph graph;
-  NonlinearFactorGraph collocation_costs = cp.collocationCosts(num_steps, dt);
-  NonlinearFactorGraph final_state_graph = cp.finalStateCosts(num_steps);
-  NonlinearFactorGraph min_torque_costs = cp.minTorqueCosts(num_steps);
-  graph.add(final_state_graph);
-  graph.add(collocation_costs);
-  graph.add(min_torque_costs);
-  auto EvaluateCosts = [=](const Values &values) {
-    std::cout << "collocation costs:\t" << collocation_costs.error(values)
-              << "\n";
-    std::cout << "final state costs:\t" << final_state_graph.error(values)
-              << "\n";
-    std::cout << "min torque costs:\t" << min_torque_costs.error(values)
-              << "\n";
-  };
-
-  // Initial Values
-  Values initial_values = cp.getInitValuesZero(num_steps);
-  EvaluateCosts(initial_values);
-
-  // Problem
-  IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
-
-  // Parameters
-  auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityManifoldParams->basisCreator = std::make_shared<EliminationBasisCreator>(cp.getBasisKeyFunction());
-  iecm_params->retractorCreator =
-      std::make_shared<UniversalIERetractorCreator>(
-          std::make_shared<CartPoleWithLimitsRetractor>(cp));
-  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
-  iecm_params->equalityBasisBuildFromScratch = false;
-
-  // optimize IELM
-  IELMParams ie_params;
-  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
-  Values result_values = 
-      lm_result.second.back().state.baseValues();
-  for (const auto &iter_details : lm_result.second) {
-    IEOptimizer::printIterationDetails(
-        iter_details, num_steps, false, IECartPoleWithLimits::PrintValues,
-        IECartPoleWithLimits::PrintDelta, GTDKeyFormatter);
-  }
-  IECartPoleWithLimits::PrintValues(result_values, num_steps);
-  EvaluateCosts(result_values);
-  IECartPoleWithLimits::ExportValues(result_values, num_steps, "/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_cartpole_traj.csv");
-  
-  // Optimize Barrier
-  auto barrier_params = std::make_shared<PenaltyParameters>();
-  barrier_params->initial_mu = 1e0;
-  barrier_params->num_iterations = 20;
-  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
-  EvaluateCosts(barrier_result.second.rbegin()->values);
-  barrier_result.first.exportFile("/Users/yetongzhang/packages/noboost/GTD_ineq/GTDynamics/data/ineq_cartpole_barrier.txt");
-  barrier_result.first.printLatex(std::cout);
-  lm_result.first.printLatex(std::cout);
-  
-  return 0;
 }

@@ -12,9 +12,11 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/scenarios/HalfSphereRetractor.h>
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include <gtdynamics/cmcopt/IEGDOptimizer.h>
+#include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/scenarios/HalfSphereRetractor.h>
+#include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -26,9 +28,8 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/cmcopt/IEGDOptimizer.h>
-#include <gtdynamics/scenarios/IEHalfSphere.h>
-#include <gtdynamics/cmcopt/IELMOptimizer.h>
+#include "CmcBenchmark.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -78,106 +79,119 @@ using namespace gtdynamics;
 // }
 
 int main(int argc, char **argv) {
-  IEHalfSphere half_sphere;
-  size_t num_steps = 10;
-  Point3 attractor_point(0.0, 0.0, -2.0);
+  cmc_benchmark::configure(argc, argv);
+  try {
+    IEHalfSphere half_sphere;
+    size_t num_steps = 10;
+    Point3 attractor_point(0.0, 0.0, -2.0);
 
-  // graph
-  NonlinearFactorGraph graph;
-  auto prior_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
-  auto between_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
-  auto attractor_noise = noiseModel::Isotropic::Sigma(3, 5e-1);
-  Key first_point_key = PointKey(0);
-  Key last_point_key = PointKey(num_steps);
-  graph.addPrior<Point3>(first_point_key, Point3(0.8, 0, 0.6), prior_noise);
-  graph.addPrior<Point3>(last_point_key, Point3(0, 0.8, 0.6), prior_noise);
-  for (size_t k = 0; k <= num_steps; k++) {
-    Key point_key = PointKey(k);
-    graph.addPrior<Point3>(point_key, attractor_point, attractor_noise);
-    if (k > 0) {
-      Key prev_point_key = PointKey(k - 1);
-      graph.emplace_shared<BetweenFactor<Point3>>(
-          prev_point_key, point_key, Point3(0, 0, 0), between_noise);
+    // graph
+    NonlinearFactorGraph graph;
+    auto prior_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
+    auto between_noise = noiseModel::Isotropic::Sigma(3, 1e-1);
+    auto attractor_noise = noiseModel::Isotropic::Sigma(3, 5e-1);
+    Key first_point_key = PointKey(0);
+    Key last_point_key = PointKey(num_steps);
+    graph.addPrior<Point3>(first_point_key, Point3(0.8, 0, 0.6), prior_noise);
+    graph.addPrior<Point3>(last_point_key, Point3(0, 0.8, 0.6), prior_noise);
+    for (size_t k = 0; k <= num_steps; k++) {
+      Key point_key = PointKey(k);
+      graph.addPrior<Point3>(point_key, attractor_point, attractor_noise);
+      if (k > 0) {
+        Key prev_point_key = PointKey(k - 1);
+        graph.emplace_shared<BetweenFactor<Point3>>(
+            prev_point_key, point_key, Point3(0, 0, 0), between_noise);
+      }
     }
+
+    // constraints
+    EqualityConstraints e_constraints;
+    InequalityConstraints i_constraints;
+    for (size_t k = 0; k <= num_steps; k++) {
+      e_constraints.add(half_sphere.eConstraints(k));
+      i_constraints.add(half_sphere.iConstraints(k));
+    }
+
+    // init values
+    Values initial_values;
+    for (size_t k = 0; k <= num_steps; k++) {
+      double theta = M_PI_2 * k / num_steps;
+      initial_values.insert(PointKey(k),
+                            Point3(0.8 * cos(theta), 0.8 * sin(theta), 0.6));
+    }
+
+    auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
+    iecm_params->retractorCreator =
+        std::make_shared<UniversalIERetractorCreator>(
+            std::make_shared<HalfSphereRetractor>(half_sphere));
+    iecm_params->equalityBasisCreator =
+        std::make_shared<OrthonormalBasisCreator>();
+
+    IEConsOptProblem problem(graph, e_constraints, i_constraints,
+                             initial_values);
+
+    LevenbergMarquardtParams lmParams;
+    auto soft_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_Soft(problem, lmParams, 100); });
+
+    auto barrier_params = std::make_shared<PenaltyParameters>();
+    barrier_params->num_iterations = 15;
+    auto barrier_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_Penalty(problem, barrier_params); });
+
+    GradientDescentParams gd_params;
+    auto gd_result = cmc_benchmark::measure(problem, "GD", [&] {
+      return OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
+    });
+
+    IELMParams ie_params;
+    ie_params.lmParams.minModelFidelity = 0.5;
+    auto lm_result = cmc_benchmark::measure(problem, "LM", [&] {
+      return OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+    });
+
+    soft_result.first.printLatex(std::cout);
+    barrier_result.first.printLatex(std::cout);
+    gd_result.first.printLatex(std::cout);
+    lm_result.first.printLatex(std::cout);
+
+    // // Run LM optimization
+    // {
+    //   LevenbergMarquardtParams params;
+    //   params.setVerbosityLM("SUMMARY");
+    //   params.minModelFidelity = 0.5;
+    //   IELMOptimizer lm_optimizer(params);
+    //   auto lm_result = lm_optimizer.optimize(graph, e_constraints,
+    //   i_constraints,
+    //                                          initial_values, iecm_params);
+
+    //   const auto &details = lm_optimizer.details();
+    //   for (const auto &iter_details : details) {
+    //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
+    //                                   IEHalfSphere::PrintValues,
+    //                                   IEHalfSphere::PrintDelta);
+    //   }
+    // }
+
+    // // Run GD optimization
+    // {
+    //   GradientDescentParams params;
+    //   params.maxIterations = 30;
+    //   IEGDOptimizer gd_optimizer(params);
+    //   auto gd_result = gd_optimizer.optimize(graph, e_constraints,
+    //   i_constraints,
+    //                                          initial_values, iecm_params);
+
+    //   const auto &details = gd_optimizer.details();
+    //   for (const auto &iter_details : details) {
+    //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
+    //                                   IEHalfSphere::PrintValues,
+    //                                   IEHalfSphere::PrintDelta);
+    //   }
+    // }
+
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
   }
-
-  // constraints
-  EqualityConstraints e_constraints;
-  InequalityConstraints i_constraints;
-  for (size_t k = 0; k <= num_steps; k++) {
-    e_constraints.add(half_sphere.eConstraints(k));
-    i_constraints.add(half_sphere.iConstraints(k));
-  }
-
-  // init values
-  Values initial_values;
-  for (size_t k = 0; k <= num_steps; k++) {
-    double theta = M_PI_2 * k / num_steps;
-    initial_values.insert(PointKey(k),
-                          Point3(0.8 * cos(theta), 0.8 * sin(theta), 0.6));
-  }
-
-  auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractorCreator =
-      std::make_shared<UniversalIERetractorCreator>(
-          std::make_shared<HalfSphereRetractor>(half_sphere));
-  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
-
-  IEConsOptProblem problem(graph, e_constraints, i_constraints, initial_values);
-
-  LevenbergMarquardtParams lmParams;
-  auto soft_result = OptimizeIE_Soft(problem, lmParams, 100);
-
-  auto barrier_params = std::make_shared<PenaltyParameters>();
-  barrier_params->num_iterations = 15;
-  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
-
-  GradientDescentParams gd_params;
-  auto gd_result = OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
-
-  IELMParams ie_params;
-  ie_params.lmParams.minModelFidelity = 0.5;
-  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
-
-  soft_result.first.printLatex(std::cout);
-  barrier_result.first.printLatex(std::cout);
-  gd_result.first.printLatex(std::cout);
-  lm_result.first.printLatex(std::cout);
-
-  // // Run LM optimization
-  // {
-  //   LevenbergMarquardtParams params;
-  //   params.setVerbosityLM("SUMMARY");
-  //   params.minModelFidelity = 0.5;
-  //   IELMOptimizer lm_optimizer(params);
-  //   auto lm_result = lm_optimizer.optimize(graph, e_constraints,
-  //   i_constraints,
-  //                                          initial_values, iecm_params);
-
-  //   const auto &details = lm_optimizer.details();
-  //   for (const auto &iter_details : details) {
-  //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
-  //                                   IEHalfSphere::PrintValues,
-  //                                   IEHalfSphere::PrintDelta);
-  //   }
-  // }
-
-  // // Run GD optimization
-  // {
-  //   GradientDescentParams params;
-  //   params.maxIterations = 30;
-  //   IEGDOptimizer gd_optimizer(params);
-  //   auto gd_result = gd_optimizer.optimize(graph, e_constraints,
-  //   i_constraints,
-  //                                          initial_values, iecm_params);
-
-  //   const auto &details = gd_optimizer.details();
-  //   for (const auto &iter_details : details) {
-  //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
-  //                                   IEHalfSphere::PrintValues,
-  //                                   IEHalfSphere::PrintDelta);
-  //   }
-  // }
-
-  return 0;
 }
