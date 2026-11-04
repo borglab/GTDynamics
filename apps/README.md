@@ -12,7 +12,8 @@ be opened directly.
 - [Interpolation](interpolation/README.md): inspect Pose3 and joint-vector Gaussian process interpolation, dense encoder measurements, and estimated velocities.
 - [Dynamics](dynamics/README.md): CMC-Opt inference of sole-frame contact wrenches and all 29 G1 joint torques on the SSIO 78–98 s clip.
 - [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
-- [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback. This is the last tab.
+- [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
+- [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run. This is the last tab.
 
 Each app starts with a short technical abstract and its interactive demo, then
 continues with motivation, a factor graph formulation and factor definitions,

@@ -36,8 +36,9 @@ test("three distinct 20-second SSIO windows, attribution, and registered app", (
   assert(apps.some((a) => a.id === "contact-labels"));
   const kinematics = apps.findIndex((app) => app.title === "Kinematics");
   assert.equal(apps[kinematics + 1].title, "Interpolation");
-  assert.equal(apps.at(-2).title, "Kinodynamics");
-  assert.equal(apps.at(-1).title, "Motion Planning");
+  assert.equal(apps.at(-3).title, "Kinodynamics");
+  assert.equal(apps.at(-2).title, "Motion Planning");
+  assert.equal(apps.at(-1).title, "SCATE UR5");
 });
 for (const r of records) {
   test(`${r.id}: labels, windows, contact frames, and privileged provenance`, () => {

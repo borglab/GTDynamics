@@ -233,8 +233,8 @@ when practical.
   7. A short discussion of the result and its limitations, linking to the next
      app when it continues the argument. Retain dataset/model attribution and
      licenses; a compressed paper format does not remove credit requirements.
-- Treat tab order as the technical progression. Keep Motion Planning last,
-  after kinematic and dynamic estimation; use `apps/registry.json` as the source
+- Treat tab order as the technical progression. Keep Motion Planning after
+  kinematic and dynamic estimation, followed by SCATE UR5 as the last tab; use `apps/registry.json` as the source
   of truth for navigation and overview links. Preserve standalone app URLs and
   deployment prefixes in cross-app links.
 - Begin explanatory paragraphs with a complete, declarative topic sentence.

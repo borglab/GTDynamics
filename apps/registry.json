@@ -46,5 +46,11 @@
     "title": "Motion Planning",
     "description": "A kinematic factor graph optimizes a Franka arm trajectory between two hand poses. Playback shows the solver iterations and resulting joint motion.",
     "tag": "Trajectory optimization"
+  },
+  {
+    "id": "scate/ur5",
+    "title": "SCATE UR5",
+    "description": "Replay SCATE on a UR5: an obstacle discovered online is avoided by re-solving after every step, beside a blind run that hits it. Inspect the replanned paths, the obstacle estimate, and clearances.",
+    "tag": "Online planning"
   }
 ]
