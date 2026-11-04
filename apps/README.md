@@ -25,6 +25,15 @@ separate desired-motion problem. It does not currently plan from the G1 estimate
 The shared paper components live in `shared/paper/`; solver code and recorded
 numerical results remain owned by their apps.
 
+## Appearance
+
+The Light/Dark button in the shared header switches every app, including robot
+stages and numerical plots. Light is the initial default; the browser remembers
+an explicit choice across reloads and app changes. Direct app URLs on the same
+origin use that preference too. Changing themes preserves playback and camera
+state. The preference remains usable for the current page if browser storage is
+disabled.
+
 ## Local preview
 
 Use **Node.js 22+**, npm, Python 3, Git, and [Git LFS](https://git-lfs.com/).

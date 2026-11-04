@@ -1,4 +1,5 @@
 <script setup>
+import { themeColor, onThemeChange } from '../../shared/theme.js';
 import {computed,onBeforeUnmount,onMounted,ref,watch} from 'vue';
 const props=defineProps({estimate:Array,reference:Array,frame:Number,dt:Number,timestamps:Array,label:String,timeRange:Array,resetVersion:Number});
 const emit=defineEmits(['select','range']);
@@ -19,11 +20,11 @@ function draw(){
     {x:time.value,y:props.reference,type:'scatter',mode:'lines',name:'Reference',line:{color:'#7b8fa7',width:1.7,dash:'dash'},hovertemplate:'%{y:.4f} m<extra>Reference</extra>'},
   ],{
     autosize:true,height:210,margin:{l:64,r:20,t:28,b:43},
-    font:{family:'ui-sans-serif, system-ui, sans-serif',size:11,color:'#6b7971'},
-    paper_bgcolor:'#fff',plot_bgcolor:'#fff',showlegend:false,dragmode:'zoom',hovermode:'x unified',
+    font:{family:'ui-sans-serif, system-ui, sans-serif',size:11,color:themeColor('muted')},
+    paper_bgcolor:themeColor('panel'),plot_bgcolor:themeColor('panel'),showlegend:false,dragmode:'zoom',hovermode:'x unified',
     uirevision:props.label,
-    xaxis:{title:{text:'Time (s)',standoff:8},range:props.timeRange||fullRange(),autorange:false,gridcolor:'#e5eae3',zeroline:false},
-    yaxis:{title:{text:'m',standoff:8},gridcolor:'#e5eae3',zeroline:false,autorange:true},
+    xaxis:{title:{text:'Time (s)',standoff:8},range:props.timeRange||fullRange(),autorange:false,gridcolor:themeColor('grid'),zeroline:false},
+    yaxis:{title:{text:'m',standoff:8},gridcolor:themeColor('grid'),zeroline:false,autorange:true},
     shapes:[cursor()],
   },{scrollZoom:true,responsive:false,displayModeBar:true,displaylogo:false,modeBarButtonsToRemove:['select2d','lasso2d']});
 }
@@ -38,6 +39,8 @@ function onRange(update){
   const range=update['xaxis.range']||[update['xaxis.range[0]'],update['xaxis.range[1]']];
   if(range.every(Number.isFinite)&&!sameRange(range,props.timeRange||fullRange()))emit('range',range);
 }
+const stopTheme = onThemeChange(() => { if (Plotly && ready && !disposed && element.value) draw(); });
+onBeforeUnmount(stopTheme);
 onMounted(async()=>{
   const target=element.value;
   try{

@@ -19,8 +19,8 @@
 .label-viewer,
 .foot-card,
 .plots {
-  background: #fff;
-  border: 1px solid #dbe2d7;
+  background: var(--dark-panel, #fff);
+  border: 1px solid var(--dark-border, #dbe2d7);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -51,14 +51,14 @@
 }
 .time-controls {
   padding: 16px 20px;
-  border-top: 1px solid #e1e7e0;
+  border-top: 1px solid var(--dark-border, #e1e7e0);
 }
 .time-controls .row {
   gap: 15px;
 }
 .time-controls small {
   font-weight: 400;
-  color: #77877d;
+  color: var(--dark-muted, #77877d);
 }
 .label-band {
   display: flex;
@@ -100,12 +100,12 @@
   flex-direction: column;
   gap: 8px;
   margin: 22px 4px;
-  color: #53695c;
+  color: var(--dark-secondary, #53695c);
   font-size: 12px;
   line-height: 1.6;
 }
 .threshold-note small {
-  color: #74877b;
+  color: var(--dark-muted, #74877b);
 }
 .foot-cards {
   display: grid;
@@ -124,7 +124,7 @@
   font-variant-numeric: tabular-nums;
   margin: 16px 0;
   font-size: 16px;
-  color: #435e4e;
+  color: var(--dark-secondary, #435e4e);
 }
 .durations {
   display: flex;
@@ -142,7 +142,7 @@
 .foot-card th,
 .foot-card td {
   text-align: right;
-  border-bottom: 1px solid #edf1eb;
+  border-bottom: 1px solid var(--dark-border, #edf1eb);
   padding: 9px 4px;
 }
 .foot-card th:first-child {
@@ -158,7 +158,7 @@
 .motion-plot figcaption {
   font-size: 12px;
   font-weight: 600;
-  color: #345344;
+  color: var(--dark-text, #345344);
   margin-bottom: 15px;
 }
 .chart {
@@ -168,7 +168,7 @@
 }
 .labels-app footer {
   font-size: 12px;
-  color: #718477;
+  color: var(--dark-muted, #718477);
   line-height: 1.7;
 }
 .labels-app pre {
@@ -219,15 +219,15 @@
 .raw-label {
   font-size: 12px;
   line-height: 1.6;
-  color: #53695c;
+  color: var(--dark-secondary, #53695c);
 }
 
 .graph-comparison {
   margin: 24px 0;
   padding: 22px;
-  border: 1px solid #dbe2d7;
+  border: 1px solid var(--dark-border, #dbe2d7);
   border-radius: 10px;
-  background: white;
+  background: var(--dark-panel, white);
 }
 .graph-comparison h2 {
   font-size: 17px;
@@ -250,7 +250,7 @@
 .transition-table td,
 .transition-table th {
   padding: 8px 18px;
-  border: 1px solid #dbe2d7;
+  border: 1px solid var(--dark-border, #dbe2d7);
 }
 @media (max-width: 760px) {
   .graph-comparison {
@@ -268,7 +268,7 @@
   display: inline-block;
   width: 10px;
   height: 10px;
-  border: 1px solid #222;
+  border: 1px solid var(--dark-border, #222);
   border-radius: 50%;
   vertical-align: middle;
   margin-right: 4px;
@@ -282,5 +282,5 @@
 }
 
 .label-band:not(.comparison-band) > div {
-  outline: 1px solid #000;
+  outline: 1px solid var(--dark-border, #000);
 }

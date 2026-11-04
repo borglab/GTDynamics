@@ -13,6 +13,24 @@ export function paperGraph(kind, indices) {
     id: `f${factors.length}`, code, title, keys, x: px, y,
   });
 
+  if (kind === 'scate') {
+    node('l', 'ℓ', 820, 110);
+    indices.forEach((k, i) => {
+      node(`q${i}`, `q${k}`, x(i), 120, k);
+      node(`v${i}`, `v${k}`, x(i), 235, k);
+      factor('Mq/Lq', 'Separate encoder and joint-limit unary factors', [`q${i}`], x(i) - 70, 75);
+      factor('Mv/Lv', 'Separate velocity-observation and velocity-limit unary factors', [`v${i}`], x(i) - 70, 270);
+      factor('Ml', 'Tool-frame landmark observation when detected', [`q${i}`, 'l'], x(i) + 45, 40);
+      if (i + 1 < indices.length) {
+        node(`u${i}`, `u${k}`, x(i) + 135, 355, k);
+        factor('Lu/E', 'Separate acceleration-limit and optional effort unary factors', [`u${i}`], x(i) + 135, 415);
+        factor('D', 'Double integrator on two states and one acceleration control', [`q${i}`, `v${i}`, `q${i + 1}`, `v${i + 1}`, `u${i}`], x(i) + 135, 230);
+        factor('O/S', 'GP obstacle and self-collision factors on a future interval', [`q${i}`, `v${i}`, `q${i + 1}`, `v${i + 1}`], x(i) + 135, 155);
+      }
+    });
+    return { nodes, factors, height: 450, caption: 'q and v are six-dimensional joint states; u is a six-dimensional acceleration control; ℓ is one world-frame obstacle centre. All factors are soft. Mq/Lq, Mv/Lv, Lu/E and O/S group separate factors with matching scopes. Ml exists only after a detection; O/S applies only to future intervals, and Lu/E is removed after execution. O uses a fixed estimated centre and has no edge to ℓ. Endpoint priors are omitted.' };
+  }
+
   if (kind === 'labels') {
     indices.forEach((k, i) => {
       node(`l${i}`, `L${k}`, x(i), 100, k);
