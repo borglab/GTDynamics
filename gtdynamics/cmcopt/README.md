@@ -100,7 +100,7 @@ Pointers:
 - [IEConstraintManifold](IEConstraintManifold.h#L25)
 - [IEConstraintManifold::activeIndices](IEConstraintManifold.h#L98)
 - [IEConstraintManifold::identifyActiveConstraints](IEConstraintManifold.cpp#L181)
-- [IEConstraintManifold::constructTangentCone](IEConstraintManifold.cpp#L205)
+- [IEConstraintManifold::constructLinearization](IEConstraintManifold.cpp)
 - [TangentCone](TangentCone.h#L25)
 
 Implementation detail:
@@ -144,11 +144,11 @@ where $B_x$ is the equality tangent basis and $Dg_{\mathcal{A}}(x)$ is the Jacob
 
 Pointers:
 
-- [IEConstraintManifold::constructTangentCone](IEConstraintManifold.cpp#L205)
+- [IEConstraintManifold::constructLinearization](IEConstraintManifold.cpp)
 - [IEConstraintManifold::linearActiveManifoldInequalityConstraints](IEConstraintManifold.cpp#L235)
 - [IEConstraintManifold::linearActiveBaseInequalityConstraints](IEConstraintManifold.cpp#L263)
 
-This is exactly where the code turns active nonlinear inequalities into linearized cone constraints in either manifold coordinates or base-variable coordinates.
+The manifold constructs one [immutable local linearization](IEManifoldLinearization.h) per state. Cone projection and LM working-face checks share its active inequality derivatives. The compatibility methods return cached constraints in manifold or base-variable coordinates.
 
 Thesis reference: Eqs. (4.14)-(4.16) define the tangent cone as `v = B theta` with `K theta >= 0`, where `K = Dg_A(x) B`.
 

@@ -15,10 +15,12 @@
 
 #pragma once
 
+#include <gtdynamics/cmcopt/IEManifoldLinearization.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/cmcopt/TangentCone.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/cmopt/TangentSpaceMetric.h>
+
 #include <mutex>
 
 namespace gtdynamics {
@@ -65,53 +67,60 @@ protected:
     TangentSpaceMetric::shared_ptr metric;
   };
   std::shared_ptr<MetricCache> metric_cache_;
-  TangentCone::shared_ptr i_cone_;
+  std::shared_ptr<const IEManifoldLinearization> linearization_;
   IERetractor::shared_ptr retractor_;
 
 public:
   /// Bundle one constraint-connected component as the feasible set from thesis
   /// Eq. (4.34), M_IE = {x | h(x)=0, g(x)<=0}, plus its active set.
-  IEConstraintManifold(
-      const Params::shared_ptr &params,
-      const NonlinearEqualityConstraints::shared_ptr &e_constraints,
-      const NonlinearInequalityConstraints::shared_ptr &i_constraints,
-      const Values &values, const std::optional<IndexSet> &active_indices = {})
-      : params_(params), e_constraints_(e_constraints),
-        i_constraints_(i_constraints), values_(values),
-        active_indices_(
-            identifyActiveConstraints(*i_constraints, values, active_indices)),
-        embedding_dim_(values.dim()), e_constraints_dim_(e_constraints_->dim()),
-        dim_(embedding_dim_ - e_constraints_dim_),
-        affine_equalities_(params->affineEqualities),
-        e_basis_(params->equalityBasisCreator->create(e_constraints_, values_)),
-        metric_cache_(std::make_shared<MetricCache>()),
-        i_cone_(constructTangentCone(*i_constraints, values, active_indices_,
-                                     e_basis_)),
-        retractor_(params->retractorCreator->create(*this)) {}
+ IEConstraintManifold(
+     const Params::shared_ptr &params,
+     const NonlinearEqualityConstraints::shared_ptr &e_constraints,
+     const NonlinearInequalityConstraints::shared_ptr &i_constraints,
+     const Values &values, const std::optional<IndexSet> &active_indices = {})
+     : params_(params),
+       e_constraints_(e_constraints),
+       i_constraints_(i_constraints),
+       values_(values),
+       active_indices_(
+           identifyActiveConstraints(*i_constraints, values, active_indices)),
+       embedding_dim_(values.dim()),
+       e_constraints_dim_(e_constraints_->dim()),
+       dim_(embedding_dim_ - e_constraints_dim_),
+       affine_equalities_(params->affineEqualities),
+       e_basis_(params->equalityBasisCreator->create(e_constraints_, values_)),
+       metric_cache_(std::make_shared<MetricCache>()),
+       linearization_(constructLinearization(*i_constraints, values,
+                                             active_indices_, e_basis_)),
+       retractor_(params->retractorCreator->create(*this)) {}
 
-  /** constructor from other manifold but update the values. */
-  IEConstraintManifold(const IEConstraintManifold &other, const Values &values,
-                       const std::optional<IndexSet> &active_indices = {})
-      : params_(other.params_), e_constraints_(other.e_constraints_),
-        i_constraints_(other.i_constraints_), values_(values),
-        active_indices_(
-            identifyActiveConstraints(*i_constraints_, values, active_indices)),
-        embedding_dim_(other.embedding_dim_),
-        e_constraints_dim_(other.e_constraints_dim_), dim_(other.dim_),
-        affine_equalities_(other.affine_equalities_),
-        e_basis_(affine_equalities_ ? other.e_basis_
-                                   : other.e_basis_->createWithNewValues(values_)),
-        metric_cache_(affine_equalities_ ? other.metric_cache_
+ /** constructor from other manifold but update the values. */
+ IEConstraintManifold(const IEConstraintManifold &other, const Values &values,
+                      const std::optional<IndexSet> &active_indices = {})
+     : params_(other.params_),
+       e_constraints_(other.e_constraints_),
+       i_constraints_(other.i_constraints_),
+       values_(values),
+       active_indices_(
+           identifyActiveConstraints(*i_constraints_, values, active_indices)),
+       embedding_dim_(other.embedding_dim_),
+       e_constraints_dim_(other.e_constraints_dim_),
+       dim_(other.dim_),
+       affine_equalities_(other.affine_equalities_),
+       e_basis_(affine_equalities_
+                    ? other.e_basis_
+                    : other.e_basis_->createWithNewValues(values_)),
+       metric_cache_(affine_equalities_ ? other.metric_cache_
                                         : std::make_shared<MetricCache>()),
-        i_cone_(constructTangentCone(*i_constraints_, values_, active_indices_,
-                                     e_basis_)),
-        retractor_(other.retractor_) {}
+       linearization_(constructLinearization(*i_constraints_, values_,
+                                             active_indices_, e_basis_)),
+       retractor_(other.retractor_) {}
 
-  IEConstraintManifold createWithNewValues(
-      const Values &values,
-      const std::optional<IndexSet> &active_indices = {}) const {
-    return IEConstraintManifold(*this, values, active_indices);
-  }
+ IEConstraintManifold createWithNewValues(
+     const Values &values,
+     const std::optional<IndexSet> &active_indices = {}) const {
+   return IEConstraintManifold(*this, values, active_indices);
+ }
 
   virtual ~IEConstraintManifold() {}
 
@@ -134,7 +143,32 @@ public:
       const std::optional<KeyVector> &priorKeys = {}) const;
 
   /// Tangent cone C_x induced by thesis Eqs. (4.14)-(4.16).
-  const TangentCone::shared_ptr &tangentCone() const { return i_cone_; }
+  const TangentCone::shared_ptr &tangentCone() const {
+    return linearization_->tangentCone();
+  }
+
+  /** Immutable active-constraint geometry for this state. Ordinary copies share
+   * it; createWithNewValues rebuilds it even when the equality basis is affine,
+   * because inequality derivatives and active membership may have changed.
+   */
+  const std::shared_ptr<const IEManifoldLinearization> &linearization() const {
+    return linearization_;
+  }
+
+  /// Map equality-manifold coordinates to the original variable tangents.
+  VectorValues toAmbient(const Vector &delta) const {
+    return e_basis_->computeTangentVector(delta);
+  }
+
+  /// Map original variable tangents to equality-manifold coordinates.
+  Vector toCoordinates(const VectorValues &tangent) const {
+    return e_basis_->computeXi(tangent);
+  }
+
+  /// Raw expression of one inequality block, including inactive constraints.
+  Vector inequalityResidual(size_t index) const {
+    return i_constraints_->at(index)->unwhitenedExpr(values_);
+  }
 
   const IERetractor::shared_ptr &retractor() const { return retractor_; }
 
@@ -211,10 +245,10 @@ protected:
 
   /// Construct the tangent cone in thesis Eqs. (4.14)-(4.16) by forming the
   /// active Jacobian Dg_A(x) and projecting it through the equality basis B_x.
-  static TangentCone::shared_ptr
-  constructTangentCone(const NonlinearInequalityConstraints &i_constraints,
-                       const Values &values, const IndexSet &active_indices,
-                       const TangentSpaceBasis::shared_ptr &t_basis);
+  static std::shared_ptr<const IEManifoldLinearization> constructLinearization(
+      const NonlinearInequalityConstraints &i_constraints, const Values &values,
+      const IndexSet &active_indices,
+      const TangentSpaceBasis::shared_ptr &t_basis);
 };
 
 class IEManifoldValues : public std::map<Key, IEConstraintManifold> {

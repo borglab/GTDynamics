@@ -69,54 +69,70 @@ size_t leavingFace(const std::vector<FaceRow>& rows,
 }
 }  // namespace
 
+TangentConeLinearization::TangentConeLinearization(const Components& components)
+    : components_(components) {
+  for (const auto& [key, local] : components_) {
+    for (size_t index : local->indices()) {
+      globalIndices_[key].emplace(index, blocks_.size());
+      blocks_.push_back({key, index});
+    }
+  }
+}
+
 TangentConeLinearization::TangentConeLinearization(
     const LinearInequalityConstraints& constraints) {
-  for (const auto& constraint : constraints) {
+  std::map<Key, LinearIConstraintMap> grouped;
+  for (size_t index = 0; index < constraints.size(); ++index) {
+    const auto& constraint = constraints[index];
     const auto factor = constraint->createL2Factor();
-    if (factor->size() != 1 || !factor->getb().isZero(0.0) ||
-        factor->isConstrained())
-      throw std::invalid_argument(
-          "CMC tangent inequalities must be unary, homogeneous, and "
-          "soft-scaled");
-    const auto whitened = factor->whiten();
-    Block block{factor->front(), factor->getA(factor->begin()),
-                whitened.getA(whitened.begin())};
-    if (!block.rows.allFinite() || !block.whitenedRows.allFinite())
-      throw std::invalid_argument("CMC tangent inequality has nonfinite rows");
-    blocks_.push_back(std::move(block));
+    if (factor->size() != 1)
+      throw std::invalid_argument("CMC tangent inequalities must be unary");
+    const Key key = factor->front();
+    grouped[key].emplace(index, constraint);
+    globalIndices_[key].emplace(index, index);
+    blocks_.push_back({key, index});
   }
+  for (const auto& [key, local] : grouped)
+    components_.emplace(key,
+                        std::make_shared<const IEManifoldLinearization>(local));
+}
+
+std::map<Key, IndexSet> TangentConeLinearization::selectedBlocks(
+    const IndexSet& indices) const {
+  std::map<Key, IndexSet> result;
+  for (size_t index : indices) {
+    const auto& block = blocks_.at(index);
+    result[block.key].insert(block.index);
+  }
+  return result;
 }
 
 ComponentTangentSpace TangentConeLinearization::workingSpace(
     const IndexSet& blockingIndices) const {
-  std::map<gtsam::Key, gtsam::Matrix> faces;
-  for (size_t index : blockingIndices) {
-    const auto& block = blocks_.at(index);
-    appendRows(faces, block.key, block.rows);
-  }
+  std::map<Key, Matrix> faces;
+  for (const auto& [key, indices] : selectedBlocks(blockingIndices))
+    faces.emplace(key, components_.at(key)->workingRows(indices));
   return ComponentTangentSpace(faces);
 }
 
-IndexSet TangentConeLinearization::violated(const gtsam::VectorValues& delta,
+IndexSet TangentConeLinearization::violated(const VectorValues& delta,
                                             double tolerance) const {
   IndexSet indices;
-  for (size_t index = 0; index < blocks_.size(); ++index) {
-    const auto& block = blocks_[index];
-    if (block.rows.rows() &&
-        (block.rows * delta.at(block.key)).maxCoeff() > tolerance)
-      indices.insert(index);
+  for (const auto& [key, local] : components_) {
+    // Components with no active constraints need no supplied tangent value.
+    if (local->indices().empty()) continue;
+    for (size_t index : local->violated(delta.at(key), tolerance))
+      indices.insert(globalIndices_.at(key).at(index));
   }
   return indices;
 }
 
-bool TangentConeLinearization::active(const gtsam::VectorValues& delta,
+bool TangentConeLinearization::active(const VectorValues& delta,
                                       const IndexSet& indices,
                                       double tolerance) const {
-  for (size_t index : indices) {
-    const auto& block = blocks_.at(index);
-    if ((block.whitenedRows * delta.at(block.key)).norm() > tolerance)
+  for (const auto& [key, selected] : selectedBlocks(indices))
+    if (!components_.at(key)->active(delta.at(key), selected, tolerance))
       return false;
-  }
   return true;
 }
 
@@ -129,8 +145,9 @@ TangentConeLinearization::Result TangentConeLinearization::refine(
   std::vector<bool> active;
   for (size_t index = 0; index < blocks_.size(); ++index) {
     const auto& block = blocks_[index];
-    for (Eigen::Index row = 0; row < block.rows.rows(); ++row) {
-      rows.push_back({block.key, block.whitenedRows.row(row)});
+    const auto& localRows = components_.at(block.key)->rows(block.index, true);
+    for (Eigen::Index row = 0; row < localRows.rows(); ++row) {
+      rows.push_back({block.key, localRows.row(row)});
       active.push_back(blockingIndices.exists(index));
       const double value = rows.back().row.dot(initial.at(block.key));
       if (value > 1e-7 || (active.back() && std::abs(value) > 1e-7))
@@ -186,7 +203,8 @@ TangentConeLinearization::Result TangentConeLinearization::refine(
   // must retain its inequality semantics at the nonlinear level.
   size_t offset = 0;
   for (size_t index = 0; index < blocks_.size(); ++index) {
-    const size_t count = blocks_[index].rows.rows();
+    const auto& block = blocks_[index];
+    const size_t count = components_.at(block.key)->rows(block.index).rows();
     if (count &&
         std::all_of(active.begin() + offset, active.begin() + offset + count,
                     [](bool value) { return value; }))

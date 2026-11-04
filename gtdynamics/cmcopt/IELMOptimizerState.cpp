@@ -113,19 +113,15 @@ void IELMState::construct(const NonlinearFactorGraph &graph,
 
 /* ************************************************************************* */
 void IELMState::linearizeIConstraints() {
-  LinearInequalityConstraints componentConstraints;
+  internal::TangentConeLinearization::Components components;
   size_t index = 0;
   for (const auto &[key, manifold] : manifolds) {
-    auto manifoldConstraints =
-        manifold.linearActiveManifoldInequalityConstraints(key);
-    for (const auto &[constraintIndex, constraint] : manifoldConstraints) {
-      componentConstraints.push_back(constraint);
-      linearInequalityIndexTranslator.insert(index, key, constraintIndex);
-      index++;
-    }
+    components.emplace(key, manifold.linearization());
+    for (size_t constraintIndex : manifold.linearization()->indices())
+      linearInequalityIndexTranslator.insert(index++, key, constraintIndex);
   }
-  tangentCone = std::make_shared<const internal::TangentConeLinearization>(
-      componentConstraints);
+  tangentCone =
+      std::make_shared<const internal::TangentConeLinearization>(components);
 }
 
 /* ************************************************************************* */
@@ -733,7 +729,7 @@ VectorValues IELMTrial::LinearUpdate::computeTangentVector(
       tangentVector.insert(key, delta.at(key));
     } else {
       const auto &manifold = state.manifolds.at(key);
-      VectorValues tv = manifold.eBasis()->computeTangentVector(xi);
+      VectorValues tv = manifold.toAmbient(xi);
       tangentVector.insert(tv);
     }
   }

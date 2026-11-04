@@ -81,12 +81,18 @@ $$
 - `ComponentTangentSpace` constructs a basis $N_i$ for the kernel of each
   selected face matrix. It substitutes these bases into the already-damped
   soft costs, calls GTSAM's ordinary Gaussian solver, and recovers $\delta_i$.
-- `TangentConeLinearization` caches the homogeneous inequality rows and their
-  original component keys. It checks directional feasibility and constructs
-  working-face parameterizations. Its optional refinement manages row-level
-  working sets around the same unconstrained global solve.
-- `IELMState` stores this immutable cone linearization across damping trials.
-  It no longer stores a second ambient-space constraint graph.
+- Each `IEConstraintManifold` owns one immutable `IEManifoldLinearization`.
+  It caches active ambient Jacobians, their equality-tangent rows and noise
+  scaling, and the mapping to original nonlinear constraint indices. Cone
+  projection, directional checks, and selected-face row assembly use this
+  state-owned geometry. Compatibility APIs re-key cached factors without
+  evaluating nonlinear derivatives again.
+- `TangentConeLinearization` coordinates shared references to these local
+  objects. Its optional refinement manages row-level working sets around the
+  same unconstrained global solve; it does not relinearize constraints.
+- `IELMState` stores that coordinator across damping trials. Ordinary manifold
+  copies share their geometry. A new manifold state rebuilds inequality
+  geometry even when its equality basis is affine and reusable.
 - `IELMTrial` no longer appends constrained factors or constructs a global
   `QpProblem`. An invalid or unsuccessful reduced solve is rejected; it cannot
   fall back to global constrained elimination.
@@ -336,3 +342,53 @@ gives the timing scopes, numerical comparisons, and reproduction command.
 For review, the key correspondence is between equations (2)–(5),
 [`ComponentTangentSpace`](ComponentTangentSpace.cpp), and the working-set
 orchestration in [`TangentConeLinearization`](TangentConeLinearization.cpp).
+
+
+## Evaluation of state-owned component linearizations
+
+The encapsulation comparison uses commit `45172046` as its baseline. The G1 inputs, free-tilt gauge, constraints, solver tolerances, thread
+counts, and working-set policy are unchanged. Each manifold now owns one
+immutable active-constraint linearization; LM stores shared references to it.
+The local object handles cone projection, directional feasibility, working-face
+row assembly, original block indices, and compatibility constraint exports.
+Coordinate conversion and inequality residual evaluation go through manifold
+methods. The coupled solve and working-set coordination remain in the optimizer;
+optional refinement's dual and boundary-step orchestration are unchanged.
+
+The full 78–98 s clip completes one iteration in both versions. Its requested
+five-iteration baseline fails after the first accepted iteration in the existing
+local cone QP fallback: stationarity is `1.18637e-6`, violation is `3.4788e-12`,
+and the fallback reports 19 iterations. This failure predates the refactor and reproduces with the same diagnostics
+after it. Consequently, the full-clip timing comparison below uses one iteration. A
+separate 78–79 s clip completes all five iterations in both versions.
+
+Three sequential full-clip runs per version used Release Clang, eight retraction
+workers, and `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1` on the same machine:
+
+| Measurement | Before, median (range) | After, median (range) |
+| --- | ---: | ---: |
+| Optimization | 7.343 s (7.282–7.861) | 7.331 s (7.248–7.870) |
+| Total from contact initialization | 16.717 s (16.609–17.309) | 16.878 s (16.735–17.341) |
+
+The measured optimization ratio is 1.002× and total runtime is about 1% higher.
+These differences do not establish a useful speedup. The short five-iteration
+check took 1.377 s before and 1.361 s after in optimization, from one run each;
+this is a correctness check rather than a repeated performance measurement.
+The ownership change removes redundant derivative evaluation, but the added
+local bookkeeping and the rest of the solve dominate the observed timings.
+
+All 20 saved numerical arrays and all error-history entries are exactly equal
+for every paired full-clip run and the short five-iteration run. The new
+`testIEManifoldLinearization` counts Jacobian evaluations: cone projection,
+compatibility exports, working-face construction, and directional checks reuse
+one evaluation. It also verifies original constraint indices, noise scaling,
+copy sharing, snapshot lifetime, and fresh inequality geometry at a new state
+even when the equality basis is affine. Eight relevant native suites and four
+Python integration tests pass.
+
+For local reproduction, run `examples/g1_mjlab/kinodynamic_walk.py` with
+`--max-iterations 1` for the full clip, or `--end 79 --max-iterations 5` for the
+short check. Saved comparisons are `/tmp/cmc-local-comparison.json`; numerical
+outputs are `/tmp/cmc-local-{before,after}-{1,2,3}` and
+`/tmp/cmc-local-short-{before,after}`. Timing scopes match the earlier report:
+input/model loading and browser export are excluded from the reported total.

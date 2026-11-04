@@ -11,6 +11,7 @@
 #pragma once
 
 #include <gtdynamics/cmcopt/ComponentTangentSpace.h>
+#include <gtdynamics/cmcopt/IEManifoldLinearization.h>
 #include <gtdynamics/constraints/LinearInequalityConstraint.h>
 
 namespace gtdynamics {
@@ -23,6 +24,14 @@ namespace internal {
  */
 class TangentConeLinearization {
  public:
+  using Components =
+      std::map<gtsam::Key, std::shared_ptr<const IEManifoldLinearization>>;
+
+  /** Coordinate existing per-manifold geometry without copying or relinearizing
+   * constraints. Global block order follows component key and original index.
+   */
+  explicit TangentConeLinearization(const Components& components);
+
   /** A bounded working-set refinement returns its best feasible point.
    * A result is usable as an LM solution only when converged is true.
    */
@@ -70,10 +79,15 @@ class TangentConeLinearization {
  private:
   struct Block {
     gtsam::Key key;
-    gtsam::Matrix rows;
-    gtsam::Matrix whitenedRows;
+    size_t index;
   };
   std::vector<Block> blocks_;
+  Components components_;
+  std::map<gtsam::Key, std::map<size_t, size_t>> globalIndices_;
+
+  /// Translate global selected blocks to original indices within each
+  /// component.
+  std::map<gtsam::Key, IndexSet> selectedBlocks(const IndexSet& indices) const;
 };
 }  // namespace internal
 }  // namespace gtdynamics
