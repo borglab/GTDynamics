@@ -191,6 +191,15 @@ def summarize(name: str, before: list[dict], after: list[dict]) -> dict:
                 if run not in good
             )
         )
+        failed = [run for run in runs if run not in good]
+        if failed:
+            timings = [run["seconds"] for run in failed]
+            record[label + "_failure_wall_seconds"] = dict(
+                median=statistics.median(timings),
+                minimum=min(timings),
+                maximum=max(timings),
+                samples=timings,
+            )
         if good:
             timings = [run["time"] for run in good]
             record[label + "_seconds"] = dict(
@@ -295,7 +304,21 @@ def main() -> None:
                 else "within tolerance" if case["solutions"]["close"] else "DIFF"
             )
             if "solutions" in case
-            else "failed / incomplete"
+            else (
+                "Timeout in both versions; no solution comparison"
+                if case["before_status"]
+                and case["after_status"]
+                and all(
+                    value == "timeout"
+                    for value in case["before_status"] + case["after_status"]
+                )
+                else (
+                    "Same failure in both versions; no solution comparison"
+                    if case["before_failures"]
+                    and case["before_failures"] == case["after_failures"]
+                    else "Different failures or incomplete results; inspect details"
+                )
+            )
         )
         rows.append(
             "<tr>"
@@ -304,19 +327,23 @@ def main() -> None:
                 for item in [
                     case["case"],
                     f"{case['before_successful']}/5 → {case['after_successful']}/5",
+                    status,
                     (
-                        (
-                            "paired warmup timeout"
-                            if case["before_status"]
-                            == case["after_status"]
-                            == ["timeout"]
-                            else "warmup failure"
-                        )
-                        if case["warmup_only"]
-                        else status
+                        "solver"
+                        if "solutions" in case
+                        else "process wall time to failure/timeout"
                     ),
-                    number(case.get("before_seconds", {}).get("median")),
-                    number(case.get("after_seconds", {}).get("median")),
+                    number(
+                        case.get(
+                            "before_seconds",
+                            case.get("before_failure_wall_seconds", {}),
+                        ).get("median")
+                    ),
+                    number(
+                        case.get(
+                            "after_seconds", case.get("after_failure_wall_seconds", {})
+                        ).get("median")
+                    ),
                     number(case.get("time_ratio")),
                     number(b.get("cost")),
                     number(a.get("cost")),
@@ -387,6 +414,7 @@ def main() -> None:
         )
         page += f"<tr><td>{title}</td><td>{len(completed)} / {len(group)}</td><td>{number(ratio)}</td></tr>"
     page += "</tbody></table><p>Each case contributes equally within its family. Ratios below one indicate shorter runtime. Censored and incomplete cases are excluded from these aggregates; all outcomes are listed below.</p>"
+    page += "<p>Failed cases show median process wall time to failure or timeout, including setup and loading. Completed cases retain their solver timing scope. Matching failures do not establish solution equivalence; failure timings are excluded from speedup aggregates.</p>"
     page += "<p>Detailed observations:</p><pre>" + html.escape(notes) + "</pre>"
     page += """<button id="download-report">Download report (HTML)</button> <button id="download">Download comparison data (JSON)</button><br><input id="filter" placeholder="Filter cases"><section class="scroll"><table id="cases"><thead><tr>"""
     page += "".join(
@@ -394,7 +422,8 @@ def main() -> None:
         for title in [
             "Case",
             "Completed trials",
-            "Solution",
+            "Outcome",
+            "Timing scope",
             "Before s",
             "After s",
             "After / before",

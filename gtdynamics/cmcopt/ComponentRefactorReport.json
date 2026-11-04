@@ -422,10 +422,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00769294681959,
+        "minimum": 30.00691104005091,
+        "maximum": 30.008614995051175,
+        "samples": [
+          30.00823973189108,
+          30.008614995051175,
+          30.00691104005091,
+          30.00739637389779,
+          30.00769294681959
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00742652802728,
+        "minimum": 30.006779019953683,
+        "maximum": 30.00906957895495,
+        "samples": [
+          30.00906957895495,
+          30.006779019953683,
+          30.0068617220968,
+          30.00742652802728,
+          30.00774928694591
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-252",
@@ -581,10 +605,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.008794666966423,
+        "minimum": 30.008661919040605,
+        "maximum": 30.00925600202754,
+        "samples": [
+          30.008661919040605,
+          30.008794666966423,
+          30.008739777142182,
+          30.008948602946475,
+          30.00925600202754
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00888692191802,
+        "minimum": 30.008741057943553,
+        "maximum": 30.009084152057767,
+        "samples": [
+          30.008741057943553,
+          30.008805559016764,
+          30.008891202043742,
+          30.009084152057767,
+          30.00888692191802
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-304",
@@ -607,10 +655,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00901300087571,
+        "minimum": 30.008707168977708,
+        "maximum": 30.009136129170656,
+        "samples": [
+          30.00887695606798,
+          30.008707168977708,
+          30.009136129170656,
+          30.00909710000269,
+          30.00901300087571
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.008933626115322,
+        "minimum": 30.00879658595659,
+        "maximum": 30.009094686014578,
+        "samples": [
+          30.008933626115322,
+          30.00879658595659,
+          30.009094686014578,
+          30.008807219099253,
+          30.00905971089378
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-330",
@@ -633,10 +705,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009021281963214,
+        "minimum": 30.008925894042477,
+        "maximum": 30.00926675577648,
+        "samples": [
+          30.009021281963214,
+          30.009052996058017,
+          30.00895009888336,
+          30.008925894042477,
+          30.00926675577648
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.008982400177047,
+        "minimum": 30.00879969703965,
+        "maximum": 30.009149570949376,
+        "samples": [
+          30.009072376182303,
+          30.008982400177047,
+          30.00879969703965,
+          30.008979910984635,
+          30.009149570949376
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-356",
@@ -925,10 +1021,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009564473992214,
+        "minimum": 30.00943763786927,
+        "maximum": 30.010004593990743,
+        "samples": [
+          30.009564473992214,
+          30.0095372449141,
+          30.00943763786927,
+          30.009782531065866,
+          30.010004593990743
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00961078191176,
+        "minimum": 30.009343256941065,
+        "maximum": 30.00992464600131,
+        "samples": [
+          30.00992464600131,
+          30.009343256941065,
+          30.009915350936353,
+          30.00961078191176,
+          30.009553192183375
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-434",
@@ -951,10 +1071,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009681599913165,
+        "minimum": 30.009204896865413,
+        "maximum": 30.009895706083626,
+        "samples": [
+          30.009681599913165,
+          30.009204896865413,
+          30.009620779193938,
+          30.009750304976478,
+          30.009895706083626
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009397231042385,
+        "minimum": 30.00920971808955,
+        "maximum": 30.00970579497516,
+        "samples": [
+          30.009293887065724,
+          30.009397231042385,
+          30.00970579497516,
+          30.00963209802285,
+          30.00920971808955
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-460",
@@ -1110,10 +1254,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009395139059052,
+        "minimum": 30.009329064982012,
+        "maximum": 30.009878299897537,
+        "samples": [
+          30.009878299897537,
+          30.009329064982012,
+          30.009395139059052,
+          30.009405782911927,
+          30.0093474870082
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009526045061648,
+        "minimum": 30.00932400696911,
+        "maximum": 30.009587031090632,
+        "samples": [
+          30.00932400696911,
+          30.00933445012197,
+          30.009587031090632,
+          30.009526045061648,
+          30.00952894706279
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-512",
@@ -1136,10 +1304,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009219652041793,
+        "minimum": 30.009160016896203,
+        "maximum": 30.009771324926987,
+        "samples": [
+          30.009204832836986,
+          30.009271408896893,
+          30.009771324926987,
+          30.009160016896203,
+          30.009219652041793
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009420204907656,
+        "minimum": 30.009252772899345,
+        "maximum": 30.009691810933873,
+        "samples": [
+          30.009372189175338,
+          30.00954061700031,
+          30.009420204907656,
+          30.009252772899345,
+          30.009691810933873
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-538",
@@ -1162,10 +1354,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009496016893536,
+        "minimum": 30.009183028014377,
+        "maximum": 30.009610997978598,
+        "samples": [
+          30.009610997978598,
+          30.009496016893536,
+          30.009183028014377,
+          30.009240630082786,
+          30.009509751107544
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00943242595531,
+        "minimum": 30.00922997901216,
+        "maximum": 30.009637030074373,
+        "samples": [
+          30.009637030074373,
+          30.00943242595531,
+          30.0095417201519,
+          30.00922997901216,
+          30.009330990025774
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-564",
@@ -1188,10 +1404,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009299042169005,
+        "minimum": 30.00897622993216,
+        "maximum": 30.00941867590882,
+        "samples": [
+          30.00897622993216,
+          30.008998824981973,
+          30.009299042169005,
+          30.00931653706357,
+          30.00941867590882
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009246598929167,
+        "minimum": 30.009145272895694,
+        "maximum": 30.009429974947125,
+        "samples": [
+          30.00915181497112,
+          30.009246598929167,
+          30.00931930099614,
+          30.009145272895694,
+          30.009429974947125
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-590",
@@ -1613,10 +1853,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009483763948083,
+        "minimum": 30.009431046200916,
+        "maximum": 30.009740301873535,
+        "samples": [
+          30.009740301873535,
+          30.009432981023565,
+          30.009483763948083,
+          30.009600710123777,
+          30.009431046200916
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00941339111887,
+        "minimum": 30.009178339038044,
+        "maximum": 30.009645072044805,
+        "samples": [
+          30.00941339111887,
+          30.00952658802271,
+          30.009645072044805,
+          30.00931561901234,
+          30.009178339038044
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-694",
@@ -1764,10 +2028,26 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.01057678111829,
+        "minimum": 30.01057678111829,
+        "maximum": 30.01057678111829,
+        "samples": [
+          30.01057678111829
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00956673291512,
+        "minimum": 30.00956673291512,
+        "maximum": 30.00956673291512,
+        "samples": [
+          30.00956673291512
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-746",
@@ -1782,10 +2062,26 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00944734783843,
+        "minimum": 30.00944734783843,
+        "maximum": 30.00944734783843,
+        "samples": [
+          30.00944734783843
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00987532711588,
+        "minimum": 30.00987532711588,
+        "maximum": 30.00987532711588,
+        "samples": [
+          30.00987532711588
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-772",
@@ -1805,10 +2101,31 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009597694966942,
+        "minimum": 30.009195410180837,
+        "maximum": 30.010029663797468,
+        "samples": [
+          30.010029663797468,
+          30.00986351398751,
+          30.009195410180837,
+          30.009331875946373
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009524853900075,
+        "minimum": 30.009349804138765,
+        "maximum": 30.010392124997452,
+        "samples": [
+          30.010392124997452,
+          30.009524853900075,
+          30.009349804138765
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-ambient_barrier-799",
@@ -1823,10 +2140,26 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009559449972585,
+        "minimum": 30.009559449972585,
+        "maximum": 30.009559449972585,
+        "samples": [
+          30.009559449972585
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.0096166129224,
+        "minimum": 30.0096166129224,
+        "maximum": 30.0096166129224,
+        "samples": [
+          30.0096166129224
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_al-200",
@@ -5174,10 +5507,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.1642654719762504,
+        "minimum": 0.16424074489623308,
+        "maximum": 0.1642844609450549,
+        "samples": [
+          0.16426794207654893,
+          0.164254039991647,
+          0.1642844609450549,
+          0.16424074489623308,
+          0.1642654719762504
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16425600508227944,
+        "minimum": 0.16425137990154326,
+        "maximum": 0.16431725909933448,
+        "samples": [
+          0.16425137990154326,
+          0.16425600508227944,
+          0.16425360599532723,
+          0.1642815200611949,
+          0.16431725909933448
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-252",
@@ -5333,10 +5690,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16406921320594847,
+        "minimum": 0.16405703104101121,
+        "maximum": 0.16462047211825848,
+        "samples": [
+          0.16406921320594847,
+          0.16405703104101121,
+          0.16405878611840308,
+          0.16462047211825848,
+          0.16409576893784106
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16407691687345505,
+        "minimum": 0.1640581740066409,
+        "maximum": 0.1640822880435735,
+        "samples": [
+          0.16405968996696174,
+          0.1640581740066409,
+          0.16408027708530426,
+          0.16407691687345505,
+          0.1640822880435735
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-304",
@@ -5359,10 +5740,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.1644971282221377,
+        "minimum": 0.1643661791458726,
+        "maximum": 0.16492236801423132,
+        "samples": [
+          0.164444575086236,
+          0.1643661791458726,
+          0.16451243800111115,
+          0.1644971282221377,
+          0.16492236801423132
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16437948495149612,
+        "minimum": 0.16433653607964516,
+        "maximum": 0.16474904003553092,
+        "samples": [
+          0.16437948495149612,
+          0.16474904003553092,
+          0.1643480909988284,
+          0.16433653607964516,
+          0.16455624485388398
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-330",
@@ -5385,10 +5790,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.164074522908777,
+        "minimum": 0.16402653604745865,
+        "maximum": 0.16410536179319024,
+        "samples": [
+          0.16408608597703278,
+          0.164074522908777,
+          0.16402653604745865,
+          0.16405954398214817,
+          0.16410536179319024
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16406540106981993,
+        "minimum": 0.16405321401543915,
+        "maximum": 0.1640819520689547,
+        "samples": [
+          0.16406540106981993,
+          0.16407062485814095,
+          0.16405385290272534,
+          0.1640819520689547,
+          0.16405321401543915
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-356",
@@ -5677,10 +6106,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.1651451790239662,
+        "minimum": 0.1647616650443524,
+        "maximum": 0.1652056979946792,
+        "samples": [
+          0.1647616650443524,
+          0.16477443696931005,
+          0.16514657787047327,
+          0.1652056979946792,
+          0.1651451790239662
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16482299682684243,
+        "minimum": 0.16468948684632778,
+        "maximum": 0.16515941196121275,
+        "samples": [
+          0.16508911782875657,
+          0.16482299682684243,
+          0.16475840006023645,
+          0.16515941196121275,
+          0.16468948684632778
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-434",
@@ -5703,10 +6156,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.2140971829649061,
+        "minimum": 0.21396005619317293,
+        "maximum": 0.21420356002636254,
+        "samples": [
+          0.21396005619317293,
+          0.21420356002636254,
+          0.21406645304523408,
+          0.2140971829649061,
+          0.21416160301305354
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21410326985642314,
+        "minimum": 0.2139935737941414,
+        "maximum": 0.2145358028355986,
+        "samples": [
+          0.2145358028355986,
+          0.21410326985642314,
+          0.2140371350105852,
+          0.2141563028562814,
+          0.2139935737941414
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-460",
@@ -5862,10 +6339,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16450628195889294,
+        "minimum": 0.16437397385016084,
+        "maximum": 0.16452327300794423,
+        "samples": [
+          0.16445260681211948,
+          0.16452327300794423,
+          0.1645152010023594,
+          0.16450628195889294,
+          0.16437397385016084
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16453248681500554,
+        "minimum": 0.16450779419392347,
+        "maximum": 0.16454581008292735,
+        "samples": [
+          0.16454581008292735,
+          0.16450779419392347,
+          0.16454107989557087,
+          0.16451566177420318,
+          0.16453248681500554
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-512",
@@ -5888,10 +6389,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16459490009583533,
+        "minimum": 0.1645060961600393,
+        "maximum": 0.1647636799607426,
+        "samples": [
+          0.16458113212138414,
+          0.1645060961600393,
+          0.16459490009583533,
+          0.16474444209598005,
+          0.1647636799607426
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16464893613010645,
+        "minimum": 0.16446481505408883,
+        "maximum": 0.16488332697190344,
+        "samples": [
+          0.1645641380455345,
+          0.16446481505408883,
+          0.16464893613010645,
+          0.16481942706741393,
+          0.16488332697190344
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-538",
@@ -5914,10 +6439,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16462912294082344,
+        "minimum": 0.16444102092646062,
+        "maximum": 0.16508164117112756,
+        "samples": [
+          0.16462912294082344,
+          0.16494110692292452,
+          0.16444102092646062,
+          0.16449029208160937,
+          0.16508164117112756
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16459676204249263,
+        "minimum": 0.16443900601007044,
+        "maximum": 0.164835519855842,
+        "samples": [
+          0.1647627039346844,
+          0.164835519855842,
+          0.16459676204249263,
+          0.1644608359783888,
+          0.16443900601007044
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-564",
@@ -5940,10 +6489,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16463341005146503,
+        "minimum": 0.16439766879193485,
+        "maximum": 0.16488463920541108,
+        "samples": [
+          0.16476564179174602,
+          0.16463341005146503,
+          0.16439766879193485,
+          0.16488463920541108,
+          0.16442242986522615
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.164546170970425,
+        "minimum": 0.1643408490344882,
+        "maximum": 0.16457998915575445,
+        "samples": [
+          0.16456999513320625,
+          0.16457998915575445,
+          0.164546170970425,
+          0.1643408490344882,
+          0.16437852196395397
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-590",
@@ -6365,10 +6938,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16410776297561824,
+        "minimum": 0.16406323900446296,
+        "maximum": 0.1644478370435536,
+        "samples": [
+          0.16410557483322918,
+          0.16410776297561824,
+          0.16406323900446296,
+          0.16423242283053696,
+          0.1644478370435536
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16409239103086293,
+        "minimum": 0.16403313190676272,
+        "maximum": 0.16466101491823792,
+        "samples": [
+          0.16408451600000262,
+          0.16409239103086293,
+          0.16403313190676272,
+          0.16453452804125845,
+          0.16466101491823792
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-694",
@@ -6524,10 +7121,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.21465463913045824,
+        "minimum": 0.21455798717215657,
+        "maximum": 0.21476558805443347,
+        "samples": [
+          0.21465463913045824,
+          0.21476558805443347,
+          0.21463432791642845,
+          0.21455798717215657,
+          0.21467279503121972
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21457428601570427,
+        "minimum": 0.21448525181040168,
+        "maximum": 0.21491770003922284,
+        "samples": [
+          0.21473512798547745,
+          0.21491770003922284,
+          0.21453225309960544,
+          0.21457428601570427,
+          0.21448525181040168
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-746",
@@ -6550,10 +7171,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16426442004740238,
+        "minimum": 0.16399862593971193,
+        "maximum": 0.16483501717448235,
+        "samples": [
+          0.16483501717448235,
+          0.16413320018909872,
+          0.16399862593971193,
+          0.16426442004740238,
+          0.1645554390270263
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16429521003738046,
+        "minimum": 0.16409919993020594,
+        "maximum": 0.16447990201413631,
+        "samples": [
+          0.16447990201413631,
+          0.16409919993020594,
+          0.16414116509258747,
+          0.16429521003738046,
+          0.16436087992042303
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-772",
@@ -6576,10 +7221,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16486662509851158,
+        "minimum": 0.16463343682698905,
+        "maximum": 0.16493278602138162,
+        "samples": [
+          0.16493278602138162,
+          0.16486656293272972,
+          0.16486662509851158,
+          0.16463343682698905,
+          0.1649051709100604
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.16474393289536238,
+        "minimum": 0.16465272894129157,
+        "maximum": 0.16499593411572278,
+        "samples": [
+          0.16465272894129157,
+          0.1647590019274503,
+          0.16499593411572278,
+          0.16474393289536238,
+          0.16473207413218915
+        ]
+      }
     },
     {
       "case": "full-elliptic_norm-reduced_barrier-799",
@@ -6602,10 +7271,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.16437717201188207,
+        "minimum": 0.16429908899590373,
+        "maximum": 0.16489195311442018,
+        "samples": [
+          0.16489195311442018,
+          0.16429908899590373,
+          0.16443409794010222,
+          0.16437717201188207,
+          0.16432047495618463
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.1642870008945465,
+        "minimum": 0.16425093705765903,
+        "maximum": 0.1643220721744001,
+        "samples": [
+          0.1642870008945465,
+          0.16427981783635914,
+          0.16425093705765903,
+          0.16431574104353786,
+          0.1643220721744001
+        ]
+      }
     },
     {
       "case": "full-friction_factor-ambient_barrier-200",
@@ -25913,10 +26606,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.008050322066993,
+        "minimum": 30.00765580777079,
+        "maximum": 30.008828743128106,
+        "samples": [
+          30.008050322066993,
+          30.008112551877275,
+          30.00765580777079,
+          30.007963926065713,
+          30.008828743128106
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00807681400329,
+        "minimum": 30.007426689146087,
+        "maximum": 30.008178655058146,
+        "samples": [
+          30.007426689146087,
+          30.008178655058146,
+          30.00785004813224,
+          30.008148341905326,
+          30.00807681400329
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-252",
@@ -26072,10 +26789,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009156513027847,
+        "minimum": 30.008995587937534,
+        "maximum": 30.009466814808547,
+        "samples": [
+          30.009419737150893,
+          30.009466814808547,
+          30.008995587937534,
+          30.009061399148777,
+          30.009156513027847
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009381680050865,
+        "minimum": 30.008944885106757,
+        "maximum": 30.009864103980362,
+        "samples": [
+          30.009864103980362,
+          30.009381680050865,
+          30.009503409964964,
+          30.00906104198657,
+          30.008944885106757
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-304",
@@ -26098,10 +26839,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00936678610742,
+        "minimum": 30.009318249998614,
+        "maximum": 30.009579245001078,
+        "samples": [
+          30.00936678610742,
+          30.009455311112106,
+          30.009318249998614,
+          30.009579245001078,
+          30.009332607034594
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009460527915508,
+        "minimum": 30.00927021703683,
+        "maximum": 30.009807263035327,
+        "samples": [
+          30.009460527915508,
+          30.00975654600188,
+          30.009807263035327,
+          30.009425909956917,
+          30.00927021703683
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-330",
@@ -26124,10 +26889,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009287020890042,
+        "minimum": 30.008976391982287,
+        "maximum": 30.009620520984754,
+        "samples": [
+          30.00941713200882,
+          30.009620520984754,
+          30.009061412885785,
+          30.008976391982287,
+          30.009287020890042
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00953142903745,
+        "minimum": 30.008991326903924,
+        "maximum": 30.009834927041084,
+        "samples": [
+          30.009663063799962,
+          30.009834927041084,
+          30.00953142903745,
+          30.008991326903924,
+          30.00915452488698
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-356",
@@ -26416,10 +27205,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00928736687638,
+        "minimum": 30.008886981988326,
+        "maximum": 30.010082776192576,
+        "samples": [
+          30.00981344585307,
+          30.00928736687638,
+          30.010082776192576,
+          30.008886981988326,
+          30.009161430876702
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009341344004497,
+        "minimum": 30.0084572408814,
+        "maximum": 30.00980946305208,
+        "samples": [
+          30.009341344004497,
+          30.00980946305208,
+          30.009716608095914,
+          30.0087749408558,
+          30.0084572408814
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-434",
@@ -26442,10 +27255,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00962303299457,
+        "minimum": 30.00917228194885,
+        "maximum": 30.010105543071404,
+        "samples": [
+          30.00917228194885,
+          30.009344957070425,
+          30.00964582315646,
+          30.00962303299457,
+          30.010105543071404
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00923635903746,
+        "minimum": 30.009045322891325,
+        "maximum": 30.00941316015087,
+        "samples": [
+          30.009045322891325,
+          30.009231601143256,
+          30.00941316015087,
+          30.009294205112383,
+          30.00923635903746
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-460",
@@ -26601,10 +27438,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009499636944383,
+        "minimum": 30.00902078091167,
+        "maximum": 30.00989547604695,
+        "samples": [
+          30.00902078091167,
+          30.009598365984857,
+          30.00989547604695,
+          30.009499636944383,
+          30.009325749939308
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009563447907567,
+        "minimum": 30.009308013832197,
+        "maximum": 30.0097724001389,
+        "samples": [
+          30.009308013832197,
+          30.0097724001389,
+          30.009701950009912,
+          30.0095262338873,
+          30.009563447907567
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-512",
@@ -26627,10 +27488,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009411760838702,
+        "minimum": 30.009215018944815,
+        "maximum": 30.009972816100344,
+        "samples": [
+          30.009524061111733,
+          30.009215018944815,
+          30.00933712697588,
+          30.009972816100344,
+          30.009411760838702
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009181380970404,
+        "minimum": 30.008472971152514,
+        "maximum": 30.00951147498563,
+        "samples": [
+          30.009411433013156,
+          30.00912196119316,
+          30.009181380970404,
+          30.008472971152514,
+          30.00951147498563
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-538",
@@ -26650,10 +27535,31 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009318370488472,
+        "minimum": 30.009260463062674,
+        "maximum": 30.009671427076682,
+        "samples": [
+          30.009671427076682,
+          30.009260463062674,
+          30.009353442117572,
+          30.009283298859373
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009410134982318,
+        "minimum": 30.009318388067186,
+        "maximum": 30.009635630063713,
+        "samples": [
+          30.009635630063713,
+          30.009410134982318,
+          30.009318388067186
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-564",
@@ -26676,10 +27582,34 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00936970883049,
+        "minimum": 30.009222107939422,
+        "maximum": 30.009483851958066,
+        "samples": [
+          30.00936970883049,
+          30.009457587031648,
+          30.009259844897315,
+          30.009483851958066,
+          30.009222107939422
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.00925872498192,
+        "minimum": 30.00907861092128,
+        "maximum": 30.00950120203197,
+        "samples": [
+          30.00914460606873,
+          30.00907861092128,
+          30.00950120203197,
+          30.00925872498192,
+          30.009466166840866
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-590",
@@ -27100,10 +28030,33 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.00966390047688,
+        "minimum": 30.009420515038073,
+        "maximum": 30.009893156122416,
+        "samples": [
+          30.009886923944578,
+          30.009893156122416,
+          30.009440877009183,
+          30.009420515038073
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009819818893448,
+        "minimum": 30.00936820707284,
+        "maximum": 30.009950060863048,
+        "samples": [
+          30.009950060863048,
+          30.009837616002187,
+          30.009819818893448,
+          30.009369218023494,
+          30.00936820707284
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-694",
@@ -27253,10 +28206,28 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009364841505885,
+        "minimum": 30.009320537094027,
+        "maximum": 30.009409145917743,
+        "samples": [
+          30.009409145917743,
+          30.009320537094027
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009114927379414,
+        "minimum": 30.009070599917322,
+        "maximum": 30.009159254841506,
+        "samples": [
+          30.009070599917322,
+          30.009159254841506
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-746",
@@ -27271,10 +28242,26 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.008832941995934,
+        "minimum": 30.008832941995934,
+        "maximum": 30.008832941995934,
+        "samples": [
+          30.008832941995934
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.008099914062768,
+        "minimum": 30.008099914062768,
+        "maximum": 30.008099914062768,
+        "samples": [
+          30.008099914062768
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-772",
@@ -27289,10 +28276,26 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.007379761897027,
+        "minimum": 30.007379761897027,
+        "maximum": 30.007379761897027,
+        "samples": [
+          30.007379761897027
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009007575921714,
+        "minimum": 30.009007575921714,
+        "maximum": 30.009007575921714,
+        "samples": [
+          30.009007575921714
+        ]
+      }
     },
     {
       "case": "full-signed_square-ambient_barrier-799",
@@ -27307,10 +28310,26 @@
       "before_failures": [
         "timeout: no completed solve within 30.0 seconds"
       ],
+      "before_failure_wall_seconds": {
+        "median": 30.009567029075697,
+        "minimum": 30.009567029075697,
+        "maximum": 30.009567029075697,
+        "samples": [
+          30.009567029075697
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout: no completed solve within 30.0 seconds"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 30.009755197912455,
+        "minimum": 30.009755197912455,
+        "maximum": 30.009755197912455,
+        "samples": [
+          30.009755197912455
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_al-200",
@@ -30658,10 +31677,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.3652220368385315,
+        "minimum": 0.3650126149877906,
+        "maximum": 0.36529855406843126,
+        "samples": [
+          0.36529159895144403,
+          0.36529855406843126,
+          0.36519048595800996,
+          0.3652220368385315,
+          0.3650126149877906
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.3651309439446777,
+        "minimum": 0.36496576108038425,
+        "maximum": 0.3652651230804622,
+        "samples": [
+          0.36508363601751626,
+          0.36519654793664813,
+          0.36496576108038425,
+          0.3651309439446777,
+          0.3652651230804622
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-252",
@@ -30817,10 +31860,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.1645019007846713,
+        "minimum": 0.16419489681720734,
+        "maximum": 0.16464878199622035,
+        "samples": [
+          0.16419489681720734,
+          0.16464878199622035,
+          0.16449535288847983,
+          0.1645019007846713,
+          0.16450391104444861
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.1644431680906564,
+        "minimum": 0.16442296793684363,
+        "maximum": 0.16500425315462053,
+        "samples": [
+          0.1644431680906564,
+          0.16442296793684363,
+          0.16500425315462053,
+          0.1644329079426825,
+          0.16454240796156228
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-304",
@@ -30843,10 +31910,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.3652334329672158,
+        "minimum": 0.36481074802577496,
+        "maximum": 0.3652814528904855,
+        "samples": [
+          0.36481074802577496,
+          0.36526955501176417,
+          0.3652334329672158,
+          0.3651830549351871,
+          0.3652814528904855
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.36505735688842833,
+        "minimum": 0.3648497259709984,
+        "maximum": 0.36515557602979243,
+        "samples": [
+          0.3648497259709984,
+          0.36505735688842833,
+          0.3649232881143689,
+          0.36515557602979243,
+          0.3650682799052447
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-330",
@@ -30869,10 +31960,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.2146799210458994,
+        "minimum": 0.21460096398368478,
+        "maximum": 0.2149823650252074,
+        "samples": [
+          0.21463292301632464,
+          0.21460096398368478,
+          0.2146799210458994,
+          0.2149823650252074,
+          0.21471619210205972
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21463958593085408,
+        "minimum": 0.21441412600688636,
+        "maximum": 0.21467537409625947,
+        "samples": [
+          0.21441412600688636,
+          0.21458575990982354,
+          0.21467537409625947,
+          0.21463958593085408,
+          0.2146609420888126
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-356",
@@ -30895,10 +32010,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.21504484303295612,
+        "minimum": 0.21483118808828294,
+        "maximum": 0.21505904709920287,
+        "samples": [
+          0.21504484303295612,
+          0.21505367383360863,
+          0.21505904709920287,
+          0.21483118808828294,
+          0.21483994903974235
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21512183896265924,
+        "minimum": 0.21486696391366422,
+        "maximum": 0.21515768696554005,
+        "samples": [
+          0.21497359592467546,
+          0.21486696391366422,
+          0.21512183896265924,
+          0.21515768696554005,
+          0.21513486793264747
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-382",
@@ -31054,10 +32193,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.21441969322040677,
+        "minimum": 0.21439242805354297,
+        "maximum": 0.21473099291324615,
+        "samples": [
+          0.21473099291324615,
+          0.21442673006094992,
+          0.21441969322040677,
+          0.21439242805354297,
+          0.2143975831568241
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.2145637278445065,
+        "minimum": 0.2144728060811758,
+        "maximum": 0.21480656205676496,
+        "samples": [
+          0.21480656205676496,
+          0.21460753004066646,
+          0.21453211596235633,
+          0.2145637278445065,
+          0.2144728060811758
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-434",
@@ -31080,10 +32243,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.2146391710266471,
+        "minimum": 0.21444344404153526,
+        "maximum": 0.21470215707086027,
+        "samples": [
+          0.21466195699758828,
+          0.21470215707086027,
+          0.21444344404153526,
+          0.21458942000754178,
+          0.2146391710266471
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21455211704596877,
+        "minimum": 0.21449896390549839,
+        "maximum": 0.21485762111842632,
+        "samples": [
+          0.21455211704596877,
+          0.21479710098356009,
+          0.21485762111842632,
+          0.21449896390549839,
+          0.21453311596997082
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-460",
@@ -31239,10 +32426,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.31493861484341323,
+        "minimum": 0.31470894697122276,
+        "maximum": 0.3150556390173733,
+        "samples": [
+          0.31493861484341323,
+          0.31470894697122276,
+          0.3148734709247947,
+          0.3150556390173733,
+          0.3149790382012725
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.31501293694600463,
+        "minimum": 0.3144324109889567,
+        "maximum": 0.31508755194954574,
+        "samples": [
+          0.31501293694600463,
+          0.3144324109889567,
+          0.3144972091540694,
+          0.31504875305108726,
+          0.31508755194954574
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-512",
@@ -31265,10 +32476,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.21424784092232585,
+        "minimum": 0.21410346892662346,
+        "maximum": 0.21463280892930925,
+        "samples": [
+          0.21410346892662346,
+          0.2141387709416449,
+          0.21424784092232585,
+          0.21463280892930925,
+          0.2146049242001027
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21416962705552578,
+        "minimum": 0.21411067922599614,
+        "maximum": 0.21451258403249085,
+        "samples": [
+          0.21414434490725398,
+          0.21411067922599614,
+          0.21416962705552578,
+          0.21451258403249085,
+          0.21450406988151371
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-538",
@@ -31291,10 +32526,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.2144624199718237,
+        "minimum": 0.16443221806548536,
+        "maximum": 0.21465464192442596,
+        "samples": [
+          0.16446231910958886,
+          0.2145886248908937,
+          0.16443221806548536,
+          0.2144624199718237,
+          0.21465464192442596
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21438885596580803,
+        "minimum": 0.16423412691801786,
+        "maximum": 0.21475259494036436,
+        "samples": [
+          0.1643832679837942,
+          0.21438885596580803,
+          0.2145532590802759,
+          0.16423412691801786,
+          0.21475259494036436
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-564",
@@ -31317,10 +32576,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.3143370330799371,
+        "minimum": 0.3142672600224614,
+        "maximum": 0.31535802595317364,
+        "samples": [
+          0.31512092985212803,
+          0.31535802595317364,
+          0.3143370330799371,
+          0.3142672600224614,
+          0.3142886890564114
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.314417835092172,
+        "minimum": 0.3142085480503738,
+        "maximum": 0.36507190903648734,
+        "samples": [
+          0.3152241490315646,
+          0.36507190903648734,
+          0.314417835092172,
+          0.3142085480503738,
+          0.3142245418857783
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-590",
@@ -31742,10 +33025,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.31509645096957684,
+        "minimum": 0.3148850370198488,
+        "maximum": 0.315119381994009,
+        "samples": [
+          0.315112252952531,
+          0.31498501799069345,
+          0.31509645096957684,
+          0.3148850370198488,
+          0.315119381994009
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.3149989149533212,
+        "minimum": 0.314861869905144,
+        "maximum": 0.31510657793842256,
+        "samples": [
+          0.3149989149533212,
+          0.31504766014404595,
+          0.31495569716207683,
+          0.31510657793842256,
+          0.314861869905144
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-694",
@@ -31901,10 +33208,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.3151801328640431,
+        "minimum": 0.2649418660439551,
+        "maximum": 0.315596133004874,
+        "samples": [
+          0.315596133004874,
+          0.2649418660439551,
+          0.26550153992138803,
+          0.3151945930439979,
+          0.3151801328640431
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.31508467509411275,
+        "minimum": 0.31495210505090654,
+        "maximum": 0.3160273008979857,
+        "samples": [
+          0.31495210505090654,
+          0.31508467509411275,
+          0.31518963910639286,
+          0.3160273008979857,
+          0.31495360285043716
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-746",
@@ -31927,10 +33258,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.2648534670006484,
+        "minimum": 0.2646149699576199,
+        "maximum": 0.26501558092422783,
+        "samples": [
+          0.2648598039522767,
+          0.2646149699576199,
+          0.2646909218747169,
+          0.26501558092422783,
+          0.2648534670006484
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.26480299793183804,
+        "minimum": 0.2647314730565995,
+        "maximum": 0.2650798491667956,
+        "samples": [
+          0.2647314730565995,
+          0.264811686007306,
+          0.2650798491667956,
+          0.26480299793183804,
+          0.26479092705994844
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-772",
@@ -31953,10 +33308,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.2146575548686087,
+        "minimum": 0.21455250191502273,
+        "maximum": 0.21469573909416795,
+        "samples": [
+          0.2146575548686087,
+          0.21455250191502273,
+          0.21466282499022782,
+          0.21469573909416795,
+          0.21456560608930886
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.2149024938698858,
+        "minimum": 0.2145055530127138,
+        "maximum": 0.21504790196195245,
+        "samples": [
+          0.2149024938698858,
+          0.21463527996093035,
+          0.21504790196195245,
+          0.21492404118180275,
+          0.2145055530127138
+        ]
+      }
     },
     {
       "case": "full-signed_square-reduced_barrier-799",
@@ -31979,10 +33358,34 @@
       "before_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
       ],
+      "before_failure_wall_seconds": {
+        "median": 0.21459727990441024,
+        "minimum": 0.2145501128397882,
+        "maximum": 0.21467643091455102,
+        "samples": [
+          0.2145501128397882,
+          0.21467643091455102,
+          0.21462658420205116,
+          0.21459727990441024,
+          0.21455441182479262
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "0: Reduced projection result violates original constraints or blocking faces"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 0.21470186510123312,
+        "minimum": 0.21456219186075032,
+        "maximum": 0.21526203118264675,
+        "samples": [
+          0.21456274879164994,
+          0.21526203118264675,
+          0.21456219186075032,
+          0.21470186510123312,
+          0.2151958839967847
+        ]
+      }
     },
     {
       "case": "kinodynamics-full",
@@ -32005,10 +33408,34 @@
       "before_failures": [
         "1: RuntimeError: Tangent-cone projection failed: CMC QP AL fallback did not converge: stationarity=1.18637e-06, violation=3.4788e-12, iterations=19"
       ],
+      "before_failure_wall_seconds": {
+        "median": 62.38891313993372,
+        "minimum": 57.344206008827314,
+        "maximum": 62.98351514083333,
+        "samples": [
+          62.98351514083333,
+          62.60653342609294,
+          62.38891313993372,
+          57.53801121399738,
+          57.344206008827314
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "1: RuntimeError: Tangent-cone projection failed: CMC QP AL fallback did not converge: stationarity=1.18637e-06, violation=3.4788e-12, iterations=19"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 62.079603051999584,
+        "minimum": 56.236306820996106,
+        "maximum": 64.67152464087121,
+        "samples": [
+          64.67152464087121,
+          62.079603051999584,
+          62.35700638405979,
+          57.12166431196965,
+          56.236306820996106
+        ]
+      }
     },
     {
       "case": "kinodynamics-one",
@@ -33095,10 +34522,34 @@
       "before_failures": [
         "-11: no completed solve"
       ],
+      "before_failure_wall_seconds": {
+        "median": 1.8164445948787034,
+        "minimum": 1.8159392380621284,
+        "maximum": 1.8686291819904,
+        "samples": [
+          1.8159392380621284,
+          1.8164445948787034,
+          1.8686291819904,
+          1.8190210319589823,
+          1.8163865730166435
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "-11: no completed solve"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 1.816343514015898,
+        "minimum": 1.8158728119451553,
+        "maximum": 1.8659584019333124,
+        "samples": [
+          1.816343514015898,
+          1.8659584019333124,
+          1.8658841068390757,
+          1.8158728119451553,
+          1.8162154890596867
+        ]
+      }
     },
     {
       "case": "rss04_quad_jump-LM",
@@ -33121,10 +34572,34 @@
       "before_failures": [
         "-11: no completed solve"
       ],
+      "before_failure_wall_seconds": {
+        "median": 1.8167084730230272,
+        "minimum": 1.815988030983135,
+        "maximum": 1.8188928479794413,
+        "samples": [
+          1.8188928479794413,
+          1.817839662078768,
+          1.8163826430682093,
+          1.815988030983135,
+          1.8167084730230272
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "-11: no completed solve"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 1.8169249340426177,
+        "minimum": 1.8163375079166144,
+        "maximum": 1.8667810219340026,
+        "samples": [
+          1.8180432871449739,
+          1.8163375079166144,
+          1.8667810219340026,
+          1.8169249340426177,
+          1.8167899309191853
+        ]
+      }
     },
     {
       "case": "yetong01_dome_estimation-GD",
@@ -34602,10 +36077,26 @@
       "before_failures": [
         "timeout"
       ],
+      "before_failure_wall_seconds": {
+        "median": 600.0375741559546,
+        "minimum": 600.0375741559546,
+        "maximum": 600.0375741559546,
+        "samples": [
+          600.0375741559546
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 600.0408943281509,
+        "minimum": 600.0408943281509,
+        "maximum": 600.0408943281509,
+        "samples": [
+          600.0408943281509
+        ]
+      }
     },
     {
       "case": "yetong08_retractor_benchmark_quadvert-basis-retractor",
@@ -34753,10 +36244,26 @@
       "before_failures": [
         "timeout"
       ],
+      "before_failure_wall_seconds": {
+        "median": 600.0400038200896,
+        "minimum": 600.0400038200896,
+        "maximum": 600.0400038200896,
+        "samples": [
+          600.0400038200896
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "timeout"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 600.0756566778291,
+        "minimum": 600.0756566778291,
+        "maximum": 600.0756566778291,
+        "samples": [
+          600.0756566778291
+        ]
+      }
     },
     {
       "case": "yetong09_so2_metric_proj_retraction-LM",
@@ -34912,10 +36419,34 @@
       "before_failures": [
         "-11: no completed solve"
       ],
+      "before_failure_wall_seconds": {
+        "median": 2.6733848229050636,
+        "minimum": 2.6231386919971555,
+        "maximum": 2.673635316081345,
+        "samples": [
+          2.6733848229050636,
+          2.6231386919971555,
+          2.6726493251044303,
+          2.6734089930541813,
+          2.673635316081345
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "-11: no completed solve"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 2.673761961981654,
+        "minimum": 2.67285650013946,
+        "maximum": 2.7234396119602025,
+        "samples": [
+          2.72275999491103,
+          2.673761961981654,
+          2.7234396119602025,
+          2.6734082838520408,
+          2.67285650013946
+        ]
+      }
     },
     {
       "case": "yetong11_jump_land-LM",
@@ -34938,10 +36469,34 @@
       "before_failures": [
         "-11: no completed solve"
       ],
+      "before_failure_wall_seconds": {
+        "median": 2.6727426301222295,
+        "minimum": 2.6169867829885334,
+        "maximum": 2.6734178180340677,
+        "samples": [
+          2.672443958930671,
+          2.6734178180340677,
+          2.6727549941278994,
+          2.6727426301222295,
+          2.6169867829885334
+        ]
+      },
       "after_successful": 0,
       "after_failures": [
         "-11: no completed solve"
-      ]
+      ],
+      "after_failure_wall_seconds": {
+        "median": 2.6726144100539386,
+        "minimum": 2.666818354977295,
+        "maximum": 2.6731372009962797,
+        "samples": [
+          2.6726967690046877,
+          2.6731372009962797,
+          2.6726144100539386,
+          2.6668271929956973,
+          2.666818354977295
+        ]
+      }
     }
   ],
   "notes": "Final result\nAll 318 cases have before/after outcomes. The 250 completed cases each have five\nmeasured trials per version; all saved numerical comparisons are exact. The\nremaining 68 cases reproduce baseline failures: 32 timeouts, four crashes and\n32 explicit solver failures. No completed case changes solution quality.\n\nTimings are essentially unchanged within the measured workloads. The three\ninitial >5% flags have recheck ratios of 0.9932, 1.0007 and 0.9995. The independent\nbasis-retractor recheck takes 209.44 s before and 209.33 s after. The longer\nquadruped case is 73.85 s before and 74.77 s after; fixed-dynamics modes are within\n0.3%, and the one-iteration full clip is within 0.8%. These results support the\nownership simplification without establishing a useful speedup.\n\nScope and baseline\nThe checkpoint f71c907d already uses component coordinates for the global linear\nsolve. This change simplifies ownership and indexing. It does not repeat the\nearlier constrained-solver replacement or claim its previously reported 2.4x gain.\nNo compatibility aliases or alternative old paths remain for the removed APIs.\nThe separate coupled objective and component-local nonlinear retractions remain.\n\nNative validation\nFourteen test targets pass: testWorkingFace, testIELMWorkingSet,\ntestIEManifoldLinearization, testIEConstraintManifold, testTangentCone,\ntestIEManifoldOptimizer, testCMCImprovements, testReducedALRetractor,\ntestArticulatedRetractor, testAffineProjection, testIEHalfSphere,\ntestReducedALRetractionValidation, testRobustQp, and testWorldVelocityFactor.\nThe working-set oracle checks 64 coupled problems against exhaustive constrained\nQR. The direct component tests also check original indices, boundary tie order,\nstep bounds, row release, derivative sharing and state lifetime.\nFour Python integration tests pass. Both full-dynamics binaries pass their\nwrench, friction and boundary Jacobian self-tests.\ntestIERetractor and testIEQuadrupedUtilsManifold are disabled in the repository's\nCMake configuration; they are not counted as passes. SuiteSparse is disabled.\n\nInventory and measurement\nThe inventory covers all 15 rss/yetong CMC programs, their active LM/GD/CM\ncomparisons, Yetong08 multistage and retractor variants, and Yetong09 fixed and\nvarying metrics plus the independently runnable second retractor: 25 native cases. The G1 grid adds 288 cases: 24 recorded states,\nfour friction formulations, three retractors. Five walking cases cover fixed\nkinematics (hard and soft base balance), full coupled kinodynamics, a one-iteration\nfull-clip diagnostic and a five-iteration short clip. Total: 318 cases.\nOther search hits are wrappers, exporters or plots of these same problems.\nCommented-out experiments and CM-only main_connected_poses are identified in\nthe suite README; they are not additional active CMC experiments.\n\nRelease Clang 18.1.3 and the same GTSAM build are used for both snapshots.\nRuns alternate baseline/candidate order, with one warmup and five measured\nsuccessful runs. Each pair is pinned to the same logical CPU on separate physical\ncores (native primarily CPU 2; grid CPUs 4/6/8/10; walking CPUs 4/10).\nYetong09/10/11 use CPUs 12/14/16 respectively. The independent basis-retractor\ncase warms up on CPU 12, then distributes its five repeated pairs across CPUs\n0/4/6/8/10 concurrently. Each pair uses the same core before and after; its\ntimings describe that concurrent-pair workload, not an isolated production run.\nOMP_NUM_THREADS and OPENBLAS_NUM_THREADS are 1. Affinity also limits TBB and avoids\noversubscription. Kinodynamics still configures eight retraction workers, sharing\nthat CPU. Production eight-core app latency requires a separate measurement.\nNative scripts report optimization only. Fixed dynamics includes its native\nconstruction and solve; coupled kinodynamics reports native optimization.\nTiming scopes are compared only within a case. GP preparation and Python/model\nloading are excluded from those primary comparisons.\n\nThe benchmark skips the legacy helper's optional post-solve re-optimization of\nsaved iterates for projected-cost diagnostics. This never enters the reported\noptimization time or changes the optimized result. Some early Yetong07 trials\nstill ran those diagnostics, so their helper/process wall times are not comparable;\nthe optimization times and numerical comparisons are comparable.\nFailure trials already in progress when the timeout policy was adopted can have\ndifferent trial counts in the two versions; both outcomes remain recorded.\nTwo initial >5% G1 timing flags were rerun in fresh alternating batches on CPU 12.\nThe independent basis-retractor batch also exceeded that threshold: its first\nhalf overlapped the last generic-retractor timeout, and its second half ran\nfaster for both versions. A fresh five-pair batch repeats it under steady load,\nusing the already completed warmup. Both batches remain in the report. The JSON\nalso includes individual paired ratios, allowing run-order drift to be inspected.\n\nKnown baseline problems\nRSS04 LM/CM and Yetong10/11 segfault in both versions. The RSS04 backtrace reaches\nNonlinearFactorGraph::error during initial IELM state construction. Yetong10 also\nfails at a null instruction address after printing a factor-graph size. These\nfailures occur before a completed solve; their root cause is not established here.\nMatching failures do not establish solution equivalence for those examples.\nYetong08's multistage run times out at 600 seconds before completing its first\nstage in both versions. A paired warmup timeout is recorded as censored without\nrepeating the same timeout five times. G1 full-dynamics has a 30-second watchdog;\nits failed/censored configurations remain visible in the table and JSON.\nThirty grid configurations time out in both versions. Another 31 reduced-barrier\nconfigurations return the same explicit solver error: \"Reduced projection result\nviolates original constraints or blocking faces\". The native line-oriented API\nreturns exit status zero with that JSON error; the report correctly counts the\nerror response as a failure, rather than a completed solution.\nThe full five-iteration G1 clip reproduces the pre-existing local cone-QP AL\nfallback failure: stationarity 1.18637e-6, violation 3.4788e-12, 19 iterations.\nThe full one-iteration and short five-iteration cases supplement this failure;\nthey do not establish convergence of the complete five-iteration full clip.\n\nReproducibility and exclusions\nThe embedded provenance records the checkpoint, GTSAM revision, library hashes,\nrequest fingerprint and source fingerprints. Raw numerical arrays and logs are\nretained in /tmp/cmc-controlled-{before,after}, /tmp/cmc-final-g1-{before,after},\nand /tmp/cmc-final-walk-{before,after}. The checked-in drivers reproduce the\ninventory and comparison without requiring these temporary paths.\nEarly exploratory timing batches with TBB oversubscription, stale binary RPATH,\nand incomplete Python snapshot packaging were discarded. They are not counted\nas algorithm failures or included in the reported timings.\n",
@@ -35452,7 +37007,7 @@
     "benchmark_sources": {
       "examples/cmc_benchmarks/run.py": "2fada9213af9e751ff626ee77c79b94efcaa327a154c4e9e9e91343a2cf0c7ca",
       "examples/cmc_benchmarks/g1_cases.py": "066c0633b9f68c7de70c77bd1d01392e965827a855e585bbed2bec3c4543e5ca",
-      "examples/cmc_benchmarks/report.py": "02dc81a2b6691db683969372e7e93c3fcef7693a774eb76c533420d12a40f779",
+      "examples/cmc_benchmarks/report.py": "cdf33035579fb31094a596f6e7fa826306523517f8394a28f01f93ef5aafc55b",
       "examples/scripts/CmcBenchmark.h": "a31ffc6952067536051ec5def8a4263c5a97ea6e0fbdb137dcdeb06b3963e85b"
     },
     "gtsam_library_sha256": "d8b278f84cc498103c6a91188c2284e2140d07e9565317607069cdb33c17671a",
