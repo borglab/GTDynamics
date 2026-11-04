@@ -96,7 +96,7 @@ Vector ReducedALRetractor::solveProblem(const ConstrainedOptProblem &problem,
             << ", inner_converged=" << state.innerConverged
             << ", omega=" << state.bclOmega
             << ", lm_iterations=" << state.totalUnconstrainedIterations;
-    throw std::runtime_error(message.str());
+    throw RetractionFailure(message.str());
   }
   const Vector u = state.values.at<Vector>(AffineProjection::kReduced);
   if (!u.allFinite())
@@ -104,11 +104,10 @@ Vector ReducedALRetractor::solveProblem(const ConstrainedOptProblem &problem,
   return u;
 }
 
-IEConstraintManifold
-ReducedALRetractor::retract(const IEConstraintManifold *manifold,
-                            const VectorValues &delta,
-                            const std::optional<IndexSet> &blockingIndices,
-                            IERetractionInfo *info) const {
+IEConstraintManifold ReducedALRetractor::retract(
+    const IEConstraintManifold *manifold, const VectorValues &delta,
+    const std::optional<IndexSet> &blockingIndices,
+    IERetractionInfo *info) const {
   if (!manifold)
     throw std::invalid_argument("Null reduced AL retraction manifold");
   const IndexSet blocking = blockingIndices.value_or(IndexSet{});

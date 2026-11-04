@@ -203,7 +203,8 @@ struct IELMTrial {
     Values newUnconstrainedValues;
     double newError;
     double costChange;
-    size_t numRetractionIterations = 0; // total number of iterations in LM opt.
+    size_t numRetractionIterations =
+        0;  // total number of iterations in LM opt.
     std::vector<double> retractionDeviationRates;
     double linearCostChangeWithRetractionDelta = 0;
 
@@ -213,19 +214,19 @@ struct IELMTrial {
     /** Compute the new manifolds using the linear update delta and blocking
      * indices. */
     NonlinearUpdate(const IELMState &state, const LinearUpdate &linearUpdate,
-                    const NonlinearFactorGraph &graph);
+                    const NonlinearFactorGraph &graph,
+                    size_t retractionThreads = 1);
 
-    NonlinearUpdate(const IELMState &state,
-                    const IndexSetMap &forcedIndicesMap,
+    NonlinearUpdate(const IELMState &state, const IndexSetMap &forcedIndicesMap,
                     const NonlinearFactorGraph &graph);
 
     void computeError(const NonlinearFactorGraph &graph,
                       const double &oldError);
 
-    static std::pair<VectorValues, double>
-    evaluateRetractionDeviation(const IEConstraintManifold &manifold,
-                                const IEConstraintManifold &new_manifold,
-                                const VectorValues &tangentVector);
+    static std::pair<VectorValues, double> evaluateRetractionDeviation(
+        const IEConstraintManifold &manifold,
+        const IEConstraintManifold &new_manifold,
+        const VectorValues &tangentVector);
   };
 
 public:

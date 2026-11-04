@@ -7,8 +7,8 @@ const credit=computed(()=>source.value?.licenseNotes?.[0]);
 <template>
   <footer>
     <div v-if="credit" class="motion-attribution"><p><a :href="source.sourceUrl">G1 · {{source.sequenceId}}</a> from <a :href="source.datasetUrl">{{source.datasetName}}</a> by {{credit.creator}}. Licensed under <a :href="credit.licenseUrl">CC BY 4.0</a>.</p><p>{{credit.changes}}</p><a :href="`./${directory}${credit.localNotice}`">Motion attribution and modifications</a></div>
-    <p>SuperOdom supplies the LiDAR-inertial reference. It is an odometry estimate; loop-closure settings in the source dataset are unspecified. Contacts are inferred from kinematics.</p>
-    <p v-if="record.contactPhaseInference">Contact phases use privileged SuperOdom world-frame sole displacements and measured joint velocities in a discrete factor graph. The initializer and smoother use the resulting schedule; reference poses are not added as trajectory measurements.</p>
+    <p>SuperOdom supplies the LiDAR-inertial odometry reference. The source dataset leaves its loop-closure settings unspecified. Contacts are inferred from kinematics.</p>
+    <p v-if="record.contactPhaseInference">Contact phases use privileged SuperOdom world-frame sole displacements and measured joint velocities in a discrete factor graph. The initializer and smoother use the resulting schedule. Subsequent reference poses are reserved for evaluation.</p>
     <p>All optimization, robot transforms, factor errors, and slip measurements are computed offline. The browser replays saved results.</p>
     <details><summary>Frames, priors, and source fingerprints</summary><pre>{{JSON.stringify({imu:record.imuAiding,closure:record.loopClosure,provenance:record.provenance},null,2)}}</pre></details>
     <a :href="`./${directory}${record.availableStages?.includes('initial')?'initial.json.gz':record.availableStages?.includes('final')?'final.json.gz':'recording.json.gz'}`" download>Download recording metadata</a> · <a href="./MODEL_LICENSE.txt">Robot model license</a>

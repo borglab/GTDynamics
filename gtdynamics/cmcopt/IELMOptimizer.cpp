@@ -32,6 +32,11 @@ Values IELMOptimizer::optimizeManifolds(
     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
     const Values &unconstrainedValues) const {
 
+  details_->clear();
+  mode_.reset();
+  modeStartResiduals_.clear();
+  lastFailedMode_.reset();
+
   const LevenbergMarquardtParams &lmParams = ielm_params_.lmParams;
 
   // Construct manifold graph.
@@ -42,6 +47,8 @@ Values IELMOptimizer::optimizeManifolds(
   // Construct initial state
   IELMState state(manifolds, unconstrainedValues, graph, manifold_graph,
                   lmParams.lambdaInitial, lmParams.lambdaFactor, 0);
+
+  if (ielm_params_.iterationCallback) ielm_params_.iterationCallback(state);
 
   // check if we're already close enough
   if (state.error <= lmParams.errorTol) {
@@ -61,7 +68,12 @@ Values IELMOptimizer::optimizeManifolds(
     IELMIterationDetails iter_details = iterate(graph, state);
     state = IELMState::fromLastIteration(iter_details, graph, manifold_graph,
                                          lmParams);
+    rememberMode(iter_details);
     details_->push_back(iter_details);
+    if (ielm_params_.historyWindow &&
+        details_->size() > ielm_params_.historyWindow)
+      details_->erase(details_->begin());
+    if (ielm_params_.iterationCallback) ielm_params_.iterationCallback(state);
   } while (state.iterations < lmParams.maxIterations &&
            !checkConvergence(prev_state, state) &&
            checkLambdaWithinLimits(state.lambda) && std::isfinite(state.error));
@@ -130,80 +142,68 @@ IELMIterationDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
 }
 
 /* ************************************************************************* */
+namespace {
+IndexSetMap activeModes(const IEManifoldValues &manifolds) {
+  IndexSetMap result;
+  for (const auto &[key, manifold] : manifolds)
+    result.emplace(key, manifold.activeIndices());
+  return result;
+}
+}  // namespace
+
+void IELMOptimizer::rememberMode(const IELMIterationDetails &iteration) const {
+  const auto mode = activeModes(iteration.state.manifolds);
+  if (!mode_ || *mode_ != mode) {
+    mode_ = mode;
+    lastFailedMode_.reset();
+    modeStartResiduals_.clear();
+    for (const auto &[key, manifold] : iteration.state.manifolds) {
+      const auto &constraints = *manifold.iConstraints();
+      Vector residuals(constraints.size());
+      for (size_t i = 0; i < constraints.size(); ++i)
+        residuals(i) = constraints.at(i)->unwhitenedExpr(manifold.values())(0);
+      modeStartResiduals_.emplace(key, std::move(residuals));
+    }
+  }
+  // Match the historical search: last unsuccessful, successfully linearized
+  // trial, even when it stayed in the same mode. Projection failures do not
+  // have a candidate state and cannot supply a boundary decision.
+  for (auto trial = iteration.trials.rbegin(); trial != iteration.trials.rend();
+       ++trial)
+    if (!trial->stepIsSuccessful && trial->linearUpdate.solveSuccessful) {
+      lastFailedMode_ = activeModes(trial->nonlinearUpdate.newManifolds);
+      break;
+    }
+}
+
 bool IELMOptimizer::checkModeChange(
     const NonlinearFactorGraph &graph,
     IELMIterationDetails &current_iter_details) const {
-  if (details_->size() == 0) {
+  const auto &manifolds = current_iter_details.state.manifolds;
+  if (!mode_ || *mode_ != activeModes(manifolds) || !lastFailedMode_)
     return false;
-  }
-
-  // Find the first state in the sequence of states that have the same mode.
-  int n = details_->size();
-  int first_i = n - 1;
-  while (first_i >= 0 && isSameMode(current_iter_details.state.manifolds,
-                                    details_->at(first_i).state.manifolds)) {
-    first_i--;
-  }
-  first_i++;
-
-  // Condition1: mode remain unchanged in consecutive states
-  if (first_i >= n) {
-    return false;
-  }
-
-  const auto &init_iter_dertails = details_->at(first_i);
-  const auto &prev_iter_details = details_->back();
-
-  // Find the last failed trial.
-  size_t iter_idx = details_->size() - 1;
-  size_t trial_idx = details_->back().trials.size() - 1;
-  bool failed_trial_exists = false;
-  while (true) {
-    const auto &trial = details_->at(iter_idx).trials.at(trial_idx);
-    if (!trial.stepIsSuccessful && trial.linearUpdate.solveSuccessful) {
-      failed_trial_exists = true;
-      break;
-    }
-    // change to previous trial
-    if (trial_idx == 0) {
-      if (iter_idx == first_i) {
-        break;
+  IndexSetMap approaching;
+  for (const auto &[key, manifold] : manifolds) {
+    const auto candidate = lastFailedMode_->find(key);
+    if (candidate == lastFailedMode_->end()) continue;
+    double best = ielm_params_.boundaryApproachRateThreshold;
+    std::optional<size_t> selected;
+    for (size_t index : candidate->second) {
+      if (manifold.activeIndices().count(index)) continue;
+      const double residual =
+          manifold.iConstraints()->at(index)->unwhitenedExpr(manifold.values())(
+              0);
+      const double rate = modeStartResiduals_.at(key)(index) / residual;
+      if (rate > best) {
+        best = rate;
+        selected = index;
       }
-      iter_idx--;
-      trial_idx = details_->at(iter_idx).trials.size() - 1;
-    } else {
-      trial_idx--;
     }
+    if (selected) approaching.emplace(key, IndexSet{*selected});
   }
-
-  // Condition2(1): exists failed trial
-  if (!failed_trial_exists) {
-    return false;
-  }
-
-  IndexSetMap change_indices_map =
-      identifyChangeIndices(current_iter_details.state.manifolds,
-                            details_->at(iter_idx)
-                                .trials.at(trial_idx)
-                                .nonlinearUpdate.newManifolds);
-
-  // Condition2(2): most recent failed trial results in other mode
-  if (change_indices_map.size() == 0) {
-    return false;
-  }
-
-  auto approach_indices_map = identifyApproachingIndices(
-      init_iter_dertails.state.manifolds, current_iter_details.state.manifolds,
-      change_indices_map, ielm_params_.boundaryApproachRateThreshold);
-
-  // Condition3: approaching boundary with decent rate
-  if (approach_indices_map.size() == 0) {
-    return false;
-  }
-
-  // Enforce approaching indices;
-  IELMTrial trial(current_iter_details.state, graph, approach_indices_map);
-  current_iter_details.trials.emplace_back(trial);
+  if (approaching.empty()) return false;
+  current_iter_details.trials.emplace_back(current_iter_details.state, graph,
+                                           approaching);
   return true;
 }
 
@@ -216,9 +216,7 @@ bool IELMOptimizer::checkLambdaWithinLimits(const double &lambda) const {
 /* ************************************************************************* */
 bool IELMOptimizer::checkConvergence(const IELMState &prev_state,
                                      const IELMState &state) const {
-
-  if (state.error <= ielm_params_.lmParams.errorTol)
-    return true;
+  if (state.error <= ielm_params_.lmParams.errorTol) return true;
 
   // check if mode changes
   if (!isSameMode(prev_state.manifolds, state.manifolds)) {

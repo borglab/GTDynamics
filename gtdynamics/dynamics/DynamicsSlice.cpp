@@ -51,6 +51,22 @@ NonlinearFactorGraph Dynamics::aFactors<Slice>(
   return graph;
 }
 
+NonlinearFactorGraph Dynamics::wrenchBalanceFactors(
+    const Slice& slice, const Robot& robot,
+    const std::map<int, std::vector<gtsam::Key>>& externalWrenches) const {
+  NonlinearFactorGraph graph;
+  for (const auto& link : robot.links()) {
+    if (link->isFixed()) continue;
+    std::vector<gtsam::Key> keys;
+    const auto external = externalWrenches.find(link->id());
+    if (external != externalWrenches.end()) keys = external->second;
+    for (const auto& joint : link->joints())
+      keys.push_back(WrenchKey(link->id(), joint->id(), slice.k));
+    graph.add(WrenchFactor(p_.fa_cost_model, link, keys, slice.k, p_.gravity));
+  }
+  return graph;
+}
+
 template <>
 NonlinearFactorGraph Dynamics::graph<Slice>(
     const Slice& slice, const Robot& robot,

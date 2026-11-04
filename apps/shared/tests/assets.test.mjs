@@ -29,14 +29,17 @@ test('every published, checked-in app asset has a replay or attribution consumer
     replay(`${directory}recording.json.gz`);replay(`${directory}smoothing.json.gz`);
   }
   const labels='apps/contact-labels/public/';
-  for(const name of ['snippets.json','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt','contact-factors.html'])add(labels+name);
+  for(const name of ['snippets.json','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt'])add(labels+name);
   for(const snippet of json(`${labels}snippets.json`))add(`${labels}snippets/${snippet.id}.json.gz`);
   const kinematics='apps/kinematics-inspector/public/';
   add(`${kinematics}MODEL_LICENSE.txt`);add(`${kinematics}comparison.json`);
   for(const prior of ['none','upright','height','upright-height'])for(const imu of ['', '-imu'])for(const loop of ['', '-loop'])for(const stage of ['initial','final']){
     replay(`${kinematics}variants/${prior}${imu}${loop}/${stage}.json.gz`);
   }
+  const interpolation='apps/interpolation/public/';
+  for(const name of ['recording.json.gz','states.bin.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt'])add(interpolation+name);
   for(const name of ['recording.json','architecture.html'])add(`apps/motion-planning/public/${name}`);
+  for(const name of ['recording.json.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt']){add(`apps/dynamics/public/${name}`);add(`apps/kinodynamics/public/${name}`);}
   const published=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z','apps'],{cwd:root,encoding:'utf8'})
     .split('\0').filter(path=>/^apps\/[^/]+\/public\//.test(path)&&existsSync(resolve(root,path)));
   assert.deepEqual(published.filter(path=>!used.has(path)),[],'Unused public assets would be uploaded');

@@ -1,0 +1,77 @@
+@import '../../shared/kinematics/style.css';
+.interpolation-app { max-width: 1600px; margin: 0 auto; padding: 20px 32px 36px; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 16px; }
+.page-header h1 { margin: 5px 0 7px; font-size: 32px; }
+.page-header .abstract { color: #52655b; max-width: 1060px; font-size: 13px; line-height: 1.6; }
+.recorded-badge { margin-top: 9px; }
+.viewer-panel { border: 1px solid #dce3dc; border-radius: 10px; overflow: hidden; background: white; }
+.viewer-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; font-size: 12px; }
+.viewer-tools button { margin-right: 8px; }
+.knot-legend { color: #ad5c28; }
+.interpolation-scene { height: clamp(240px, calc(100dvh - 345px), 530px); width: 100%; }
+.interpolation-scene canvas { width: 100%; height: 100%; }
+.timeline { padding: 10px 18px 12px; border: 0; border-top: 1px solid #e3e8df; border-radius: 0; margin: 0; }
+.timeline > input { width: 100%; margin: 8px 0; }
+.time-row, .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; }
+.time-row > span { margin-left: auto; color: #65756d; font-size: 12px; }
+.controls label { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.paper-section { padding: 24px 0 0; margin-top: 24px; border-top: 1px solid #dce3dc; }
+.paper-section > p, .factor-definitions article p { max-width: 1100px; color: #52655b; font-size: 14px; line-height: 1.75; margin: 12px 0; }
+.paper-section h2 { margin: 0 0 14px; }
+.factor-definitions article { margin: 24px 0; }
+.factor-definitions h3, .subsection-title { font-size: 15px; font-weight: 600; margin: 24px 0 10px; }
+.equation { max-width: 1100px; overflow-x: auto; padding: 14px 18px; border-left: 3px solid #a5c2b5; background: #edf2eb; font-family: 'Cambria Math', Georgia, serif; line-height: 1.9; font-size: 16px; }
+.summary { display: flex; flex-wrap: wrap; gap: 12px 28px; padding: 8px 0; font-size: 13px; }
+.summary strong { color: #243b32; }
+.table-scroll { overflow-x: auto; margin: 16px 0; }
+.results-table, .diagnostics table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.results-table th, .results-table td, .diagnostics th, .diagnostics td { padding: 11px 12px; text-align: left; border-bottom: 1px solid #dce3dc; vertical-align: top; line-height: 1.6; }
+.results-table thead, .diagnostics thead { background: #edf2eb; }
+.results-table tbody th { width: 28%; font-weight: 500; }
+.results-table tbody td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.results-table tbody td:last-child { color: #617269; }
+.section-tools { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin: 28px 0 14px; }
+.section-tools label { font-size: 13px; }
+.section-tools span { margin-left: auto; color: #617269; font-size: 12px; }
+.section-tools h2 { margin: 0; }
+.plot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.signal-plot { margin: 0 0 16px; min-width: 0; padding: 14px 12px 2px; background: white; border: 1px solid #dce3dc; border-radius: 8px; }
+.signal-plot figcaption { padding: 0 8px 8px; font-size: 13px; font-weight: 600; }
+.plotly-chart { min-height: 260px; width: 100%; }
+.factor-graph { margin: 22px 0 0; border: 1px solid #dce3dc; border-radius: 8px; background: white; overflow: hidden; }
+.graph-title { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 13px; padding: 14px 18px 0; }
+.graph-title > span { color: #617269; font-size: 12px; }
+.graph-scroll { overflow-x: auto; }
+.factor-graph svg { display: block; width: 100%; min-width: 720px; max-height: 400px; }
+.factor-graph svg line, .factor-graph svg path { stroke: #7f968a; fill: none; stroke-width: 1.4; }
+.factor-graph svg .playback-cursor { stroke: #ad5c28; stroke-dasharray: 4 4; pointer-events: none; }
+.interval-highlight { fill: #f0f5ed; }
+.velocity-variable { fill: white; stroke: #315f4f; stroke-width: 2; }
+.process-factor { fill: #dcebe2; stroke: #315f4f; }
+.measurement-factor { fill: #e9e2d7; stroke: #927348; }
+.variable-symbol, .factor-symbol, .graph-note { text-anchor: middle; fill: #243b32; font-size: 14px; }
+.factor-symbol { font-size: 12px; }
+.graph-note, .graph-label { font-size: 11px; fill: #617269; }
+.slice-title { fill: #eef2eb; stroke: #d6ded6; }
+.graph-slice { cursor: pointer; }
+.graph-slice:hover .slice-title, .graph-slice:focus .slice-title { fill: #d4e6db; stroke: #315f4f; }
+.factor-graph figcaption { color: #617269; font-size: 12px; line-height: 1.75; padding: 14px 18px; border-top: 1px solid #e3e8df; }
+footer.paper-section { max-width: none; color: #617269; padding-bottom: 16px; font-size: 12px; }
+footer.paper-section > p { font-size: 12px; }
+footer pre { overflow-x: auto; font-size: 11px; }
+@media (max-width: 800px) {
+  .interpolation-app { padding: 16px 12px 24px; }
+  .page-header { gap: 8px; flex-direction: column; }
+  .page-header .abstract { font-size: 13px; }
+  .recorded-badge { margin: 0; padding: 6px 10px; }
+  .interpolation-scene { height: clamp(260px, 43dvh, 430px); }
+  .plot-grid { grid-template-columns: 1fr; }
+  .viewer-tools { flex-wrap: wrap; }
+  .section-tools span { margin-left: 0; }
+  .controls { gap: 12px; }
+  .controls label { flex-wrap: wrap; }
+  .controls select { max-width: 100%; }
+  .results-table { min-width: 650px; }
+  .diagnostics { overflow-x: auto; }
+  .diagnostics table { min-width: 520px; }
+}

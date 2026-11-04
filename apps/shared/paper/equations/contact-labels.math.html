@@ -1,0 +1,65 @@
+<h4>Slices and observations</h4>
+<p>Each kinematic slice k has two binary variables, one for each foot: 0 denotes swing (W), 1 stance (S). The pair z is shorthand, not an additional variable. Native keys are 2k and 2k+1. Encoder FK composed with the privileged SuperOdom LiDAR-inertial pelvis pose gives the world sole-origin position.</p>
+\[
+ c_{\ell,k},c_{r,k}\in\{0,1\},\qquad z_k=(c_{\ell,k},c_{r,k}),\qquad
+ d_{f,k}=\|p^W_{f,k}-p^W_{f,k-1}\|_2.
+\]
+<p>The incoming displacement is in metres and is associated with the ending slice. A preceding observed pose supplies the first displacement without introducing an extra contact variable. The factor on k,k+1 observes two displacements and therefore three consecutive poses. Touchdown within a sampling interval leaves timing ambiguity.</p>
+<h4>Conditional factor graph</h4>
+\[
+ P(c\mid d,v)=\frac{1}{Z(d,v)}\phi_0(z_0)
+ \prod_{k=0}^{N-1}\left[C(z_k)\prod_f V_{f,k}(c_{f,k})\right]
+ \prod_{k=0}^{N-2}\left[A(z_k,z_{k+1})\prod_f D_{f,k}(c_{f,k},c_{f,k+1})\right]
+ \prod_{k=1}^{N-2}\prod_f\psi(c_{f,k-1},c_{f,k},c_{f,k+1}).
+\]
+<p>The uniform initial pair prior is φ₀=1/4. The within-slice binary coupling C favors stance if the other foot swings. A connects all four variables in two adjacent slices; its numerical table below uses joint order WW, WS, SW, SS (left foot first).</p>
+\[
+ C(a,b)=\begin{cases}\eta,&a=b=0,\\1,&\text{otherwise},\end{cases}
+ \qquad A(z_k,z_{k+1})=T_{z_k,z_{k+1}}.
+\]
+<p>The default transition table is a product of independent per-foot transitions: persistence 0.97 and switching 0.03 per 20 ms. The API also accepts a general positive row-stochastic 4×4 table. Other factors change posterior transition probabilities.</p>
+<h4>Binary displacement factors</h4>
+\[
+ h(d;\sigma)=\sqrt{\frac{2}{\pi}}\,\frac{1}{\sigma}
+ \exp\!\left(-\frac{d^2}{2\sigma^2}\right),\quad d\geq0,
+ \qquad S_{f,k}=h(d_{f,k};\sigma_s),\quad W_{f,k}=h(d_{f,k};\sigma_w).
+\]
+<p>S and W are density values evaluated at the same observed displacement. Neither is a binary contact indicator or a posterior probability. Their units are m⁻¹, so they can exceed one. The narrow density models near-stationarity; the broad density also permits zero motion. The 1/σ normalization is retained. This is a scalar magnitude model, not the radial density of a three-dimensional Gaussian.</p>
+\[
+ D_{f,k}=\begin{pmatrix}
+ W_{f,k}^{w_k}W_{f,k+1}^{w_{k+1}} & W_{f,k}^{w_k}S_{f,k+1}^{w_{k+1}}\\
+ S_{f,k}^{w_k}W_{f,k+1}^{w_{k+1}} & S_{f,k}^{w_k}S_{f,k+1}^{w_{k+1}}
+ \end{pmatrix},\qquad
+ w_k=\begin{cases}1,&k=0\text{ or }N-1,\\1/2,&\text{otherwise}.\end{cases}
+\]
+<p>Rows and columns use W,S order at slices k and k+1. Large/small displacements favor touchdown; small/large favor lift-off. The overlap weights count each interior observation once across adjacent factors. This potential is separable: it adds no displacement correlation. Temporal dependence comes from the transition and duration factors. Each table is rescaled by its largest entry, preserving MAP; log ratios are floored at −700 and d/σ is capped at 10⁶ before squaring.</p>
+<h4>Unary joint-velocity factors</h4>
+<p>The signed forward velocity is the derivative of the sole origin relative to the pelvis, expressed in pelvis axes (+X forward, +Y left, +Z up). MuJoCo evaluates point and pelvis Jacobians at the measured joint angles; measured joint rates are mapped by name and independently interpolated to slice timestamps.</p>
+\[
+ r_f^B=R_{WB}^{\mathsf T}(p_f^W-p_B^W),\qquad
+ \dot r_f^B=R_{WB}^{\mathsf T}\left[(J_f^W-J_B^W)\dot q
+ -(J_{\omega B}^W\dot q)\times(p_f^W-p_B^W)\right],\qquad
+ v_f=e_x^{\mathsf T}\dot r_f^B.
+\]
+<p>The rotational transport term accounts for rotating pelvis axes. Free-base rates are zeroed; common base motion cancels. This cue uses joint rates and no LiDAR velocity.</p>
+\[
+ s(v)=\operatorname{clip}\!\left(\frac{1}{1+\exp(v/s_v)},\epsilon,1-\epsilon\right),\qquad
+ V_{f,k}(c)=\begin{cases}1-s(v_{f,k}),&c=0,\\s(v_{f,k}),&c=1.\end{cases}
+\]
+<p>Each unary factor is agnostic about the other foot. Forward motion favors swing, backward motion stance, and zero gives equal weights. Omitting velocity aiding removes these factors. These are forward-walking compatibility weights, not calibrated probabilities; the floor limits the maximum odds to (1−ε)/ε.</p>
+<h4>Duration and optional walking constraints</h4>
+\[
+ \psi(a,b,c)=\begin{cases}\rho,&a=c\ne b,\\1,&\text{otherwise}.\end{cases}
+\]
+<p>In order WWW, WWS, WSW, WSS, SWW, SWS, SSW, SSS the weights are [1,1,ρ,1,1,ρ,1,1]. An isolated stance or swing slice costs −log ρ in addition to transitions. This discourages one-slice flicker; it imposes no hard minimum duration and does not penalize two-slice events. Context protects displayed boundaries.</p>
+\[
+ H(a,b)=\begin{cases}0,&a=b=0,\\1,&\text{otherwise},\end{cases}
+ \qquad E=\begin{pmatrix}1&1&1&1\\1&1&0&1\\1&0&1&1\\1&1&1&1\end{pmatrix},
+ \qquad P_{\mathrm{strict}}\propto P\prod_k H(z_k)\prod_{k=0}^{N-2}E(z_k,z_{k+1}).
+\]
+<p>The default-on walking option adds H and E as separate factors. H forbids simultaneous swing; E forbids a direct left-only/right-only exchange, requiring at least one double-stance slice. These entries are exactly zero and never receive the measurement floor. The assumptions constrain labels, not a physical double-stance duration.</p>
+<h4>Max-product inference</h4>
+\[
+ c^*=\operatorname*{arg\,max}_{c} P(c\mid d,v).
+\]
+<p>GTSAM max-product with chronological elimination and traceback returns the joint MAP sequence, rather than independent marginal modes. There are 2N binary variables, 8N−6 soft factors with velocity aiding (6N−6 without), and 2N−1 additional hard walking factors. Inference is computed offline. Translation alone cannot detect a pure pivot; correlated kinematic cues should not be read as calibrated confidence. The window-based model above also uses rotation and distinguishes rocking from a stationary sole.</p>

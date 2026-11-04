@@ -1,4 +1,7 @@
 <script setup>
+import ContactPoseMath from '../../shared/paper/ContactPoseMath.vue';
+import AppAbstract from '../../shared/paper/AppAbstract.vue';
+import AppPaper from '../../shared/paper/AppPaper.vue';
 import {
   computed,
   nextTick,
@@ -228,7 +231,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main
+  <main id="demo"
     class="lab"
     data-model="pose"
     :data-sequence="sequenceId"
@@ -237,6 +240,7 @@ onBeforeUnmount(() => {
   >
     <header>
       <h1>Contact Initialization</h1>
+      <AppAbstract app="contact-initialization" />
     </header>
     <div class="toolbar">
       <label
@@ -362,12 +366,17 @@ onBeforeUnmount(() => {
             >
           </div>
         </section>
+
+      </div>
+      <AppPaper app="contact-initialization" :frame="selected" :samples="frames.length" @select="selectFrame">
+        <template #mathematics><ContactPoseMath :graph="graph" /></template>
+        <template #graph>
         <PoseContactGraph
           :graph="graph"
           :selected="selected"
           @select="selectFrame"
         />
-      </div>
+        </template>
       <div class="headline-metrics">
         <div>
           <span>Native LM median</span
@@ -508,34 +517,34 @@ onBeforeUnmount(() => {
           />
         </svg>
         <p>
-          {{ recording.source.sampling }} Black ticks mark solved slices. Red:
-          left; green: right; yellow: double stance.
+          {{ recording.source.sampling }} Black ticks mark solved slices. Red
+          indicates left stance, green indicates right stance, and yellow
+          indicates double stance.
         </p>
         <p>
           Labels are the exact saved Contact Labels max-product result, with
           joint-velocity factors, duration priors, and walking constraints
           enabled. LiDAR-inertial poses contribute to those labels and the first
-          root gauge; subsequent reference poses are used for evaluation, not as
-          pose factors.
+          root gauge. Subsequent reference poses are reserved for evaluation.
         </p>
         <a :href="ssioAttribution">SSIO dataset attribution and license</a>
       </section>
       <section class="comparison-panel">
         <h2>Saved prior configurations</h2>
         <p>
-          Standard deviations: contact translation
-          {{ graph.noise.contactTranslation * 100 }} cm, contact rotation
-          {{ graph.noise.contactRotationDegrees.toFixed(1) }}°; weak zero-motion
-          {{ graph.noise.betweenTranslation }} m /
-          {{ graph.noise.betweenRotationDegrees.toFixed(0) }}°; height
-          {{ graph.noise.height * 100 }} cm.
+          The contact observation standard deviations are
+          {{ graph.noise.contactTranslation * 100 }} cm for translation and
+          {{ graph.noise.contactRotationDegrees.toFixed(1) }}° for rotation.
+          The weak zero-motion prior uses {{ graph.noise.betweenTranslation }} m
+          and {{ graph.noise.betweenRotationDegrees.toFixed(0) }}°.
+          The height prior uses {{ graph.noise.height * 100 }} cm.
           <template v-if="rows.some((row) => row.upright)"
-            >Pelvis upright {{ graph.noise.uprightDegrees.toFixed(1) }}°;
-            contact height centered at {{ graph.groundHeight.toFixed(3) }} m in
-            the solve frame; sole-normal alignment off.</template
+            >The pelvis-upright standard deviation is {{ graph.noise.uprightDegrees.toFixed(1) }}°.
+            Contact height is centered at {{ graph.groundHeight.toFixed(3) }} m in
+            the solve frame. Sole-normal alignment is disabled.</template
           >
           <template v-else
-            >Sole-normal alignment
+            >The sole-normal alignment standard deviation is
             {{ graph.noise.normalDegrees.toFixed(2) }}°.</template
           >
           Ground height and upright leave horizontal position and yaw free.
@@ -629,7 +638,7 @@ onBeforeUnmount(() => {
           </table>
         </div>
         <p class="timing-context">
-          {{ run.benchmark.runs }} runs / {{ run.benchmark.warmup }} warmups.
+          The benchmark uses {{ run.benchmark.runs }} runs after {{ run.benchmark.warmup }} warmups.
           {{ run.benchmark.scope }}
         </p>
         <details>
@@ -643,17 +652,19 @@ onBeforeUnmount(() => {
           }}</pre>
         </details>
       </section>
+      </AppPaper>
       <footer>
         <p>
           All solves use
           <code>Initializer.InitializeSolutionContactPoses</code> from
           GTDynamics through its Python bindings. The browser only selects saved
-          results. No IMU or reference trajectory factors enter these solves.
+          results. These initialization graphs use contact observations and the
+          selected priors. Inertial aiding belongs to the subsequent smoothing apps.
         </p>
         <p>
-          {{ sequence.description }}. Contact schedules remain input
-          assumptions; a low residual does not establish no-slip contact or
-          trajectory accuracy.
+          {{ sequence.description }}. The contact schedule is an input assumption.
+          Residuals quantify the fit to that schedule and the chosen priors;
+          reference disagreement provides a separate trajectory check.
         </p>
         <a :href="sequence.sourceUrl">Motion source</a> ·
         <a href="G1_MOVES_ATTRIBUTION.txt">Capture attribution</a> ·

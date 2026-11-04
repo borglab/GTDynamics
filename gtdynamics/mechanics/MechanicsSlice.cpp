@@ -37,6 +37,20 @@ gtsam::NonlinearFactorGraph Mechanics::torqueFactors<Slice>(
   return graph;
 }
 
+gtsam::NonlinearFactorGraph Mechanics::torqueFactors(
+    const Slice& slice, const Robot& robot, const gtsam::Vector& armature) const {
+  if (!armature.allFinite() || (armature.array() < 0).any())
+    throw std::invalid_argument("Armature must be finite and nonnegative");
+  gtsam::NonlinearFactorGraph graph;
+  for (const auto& joint : robot.joints()) {
+    if (armature.size() && (joint->id() < 0 || joint->id() >= armature.size()))
+      throw std::invalid_argument("Armature must be indexed by joint id");
+    graph.add(TorqueFactor(p_.t_cost_model, joint, slice.k,
+                          armature.size() ? armature(joint->id()) : 0.0));
+  }
+  return graph;
+}
+
 template <>
 gtsam::NonlinearFactorGraph Mechanics::wrenchPlanarFactors<Slice>(
     const Slice& slice, const Robot& robot) const {

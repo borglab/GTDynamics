@@ -132,9 +132,6 @@ include(cmake/HandleTBB.cmake)              # TBB
 
 add_subdirectory(gtdynamics)
 
-if(GTDYNAMICS_BUILD_G1_MJLAB)
-  add_subdirectory(examples/g1_mjlab)
-endif()
 
 if(GTDYNAMICS_BUILD_MOTION_PLANNING_WEBDEMO)
   add_subdirectory(apps/motion-planning/backend)
@@ -148,6 +145,10 @@ message(STATUS "Build Python Wrapper: ${GTDYNAMICS_BUILD_PYTHON}")
 
 if(GTDYNAMICS_BUILD_PYTHON)
   add_subdirectory(python)
+endif()
+
+if(GTDYNAMICS_BUILD_G1_MJLAB)
+  add_subdirectory(examples/g1_mjlab)
 endif()
 
 # Process subdirectories.

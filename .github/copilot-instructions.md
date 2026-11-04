@@ -4,6 +4,58 @@ Follow these conventions when writing code and reviewing pull requests. Keep
 changes focused and follow the surrounding code. Prefer small functions with
 clear responsibilities over long functions or unnecessary abstractions.
 
+## Choosing numerical functionality
+
+- Use existing GTSAM and GTDynamics algorithms instead of SciPy or another
+  external numerical library when they provide the required functionality.
+  Inspect the C++ APIs, Python bindings, examples, and tests before adding a
+  dependency or implementing an alternative solver, interpolator, or geometry
+  algorithm.
+- A missing Python binding is a reason to expose the existing native API,
+  rather than substitute a different numerical backend. Extend the appropriate
+  `.i` declaration directly; keep wrapper and C++ signatures synchronized.
+- Use external libraries for capabilities that GTSAM/GTDynamics do not provide,
+  such as model loading or independent physics validation. Explain the concrete
+  capability gap when introducing a dependency. NumPy arrays and ordinary
+  array operations remain appropriate at the Python boundary.
+
+## Source file headers
+
+GTDynamics convention, following the copyright and Doxygen file-header layout
+used in GTSAM source files:
+
+- New first-party C++ and Python files, including examples and tests, should
+  carry the repository's copyright/license notice. Preserve existing notices,
+  creation years, and author attribution when modifying or moving files.
+- Follow the notice in C++ headers and source files with a Doxygen file block
+  containing `@file` with the actual filename and a concise `@brief` describing
+  the file's responsibility. Retain known `@author` attribution; use project
+  contributors when an individual author is not specified.
+- In Python, retain a shebang or encoding declaration at the top, then use the
+  Python comment form of the notice and file metadata (`## @file`, `# @brief`,
+  and `# @author`). Keep a useful module docstring before imports; preserve the
+  required placement of `from __future__` imports after that docstring.
+- Add missing file/API documentation to the files in the current change.
+  Avoid unrelated repository-wide header or copyright rewrites.
+
+## Object construction and results
+
+- Prefer mostly functional classes: once inputs are constructed, operations
+  should query them or return new values without changing the object's logical
+  state. Apply this pattern especially to builders, estimators, and batch solves.
+- Treat `add...` methods as part of construction, even when called after the
+  constructor returns. They may mutate the object and incrementally assemble
+  factors; avoid retaining duplicate inputs just to reconstruct those factors
+  during a later solve.
+- Prefer a const `solve()` that returns a separate result object. Put fitted
+  data, diagnostics, and const evaluation or interpolation methods on the result.
+  Avoid combining input collection and mutable solved/stale state in one object.
+- Results should own their numerical data and remain valid after the construction
+  object is modified or destroyed. Share fixed model data where appropriate and
+  document its lifetime and immutability requirements.
+- Internal caches are acceptable when they preserve observable behavior; avoid
+  mutable result caches and invalidation flags when a separate result suffices.
+
 ## C++ style
 
 ### Naming conventions
@@ -41,10 +93,17 @@ below. Preserve established identifiers outside the scope of a change.
 
 ### Public APIs and documentation
 
-- Document functions declared in headers with Doxygen-style `/** */` comments.
-  Small functions such as getters can use single-line `///` comments. There is
-  no need for `@brief`, `@param`, or similar tags when the prose is already clear.
-- Use `///` for single-line documentation rather than a one-line `/** */`.
+The following two rules are copied from GTSAM's
+[Public C++ APIs guidance](https://github.com/borglab/gtsam/blob/develop/.github/copilot-instructions.md#public-c-apis):
+
+- All functions in header files should have Doxygen-style API documentation
+  using `/** */`, except small functions such as getters, which can use a
+  single-line `///` comment. There is no need for `@brief`, `@param`, or similar
+  tags when the prose is already clear.
+- Use `///` for single-line documentation comments rather than `/** */`.
+
+Additional GTDynamics API conventions:
+
 - Document public types and fields where their meaning is not obvious. State
   coordinate frames, transform direction, units, index/key conventions, input
   requirements, defaults, return semantics, and relevant exceptions. For
@@ -150,6 +209,39 @@ when practical.
 
 ## Browser apps and robot visualization
 
+- Present each app as a compact technical paper around an interactive demo.
+  Keep the existing visual theme unless a redesign is explicitly requested;
+  prioritize content order and readable technical prose over decorative changes.
+  Use this order:
+  1. A two- or three-line abstract stating what the app shows, why it matters,
+     and how factor graphs express the problem. Build on the preceding tab
+     where appropriate. Avoid slogans and promotional copy.
+  2. The 3D demo, playback, selectors, and primary controls. Aim to show the
+     complete interaction area in one MacBook-sized browser viewport, including
+     the shared navigation; retain a usable responsive layout on smaller screens.
+  3. A short motivation describing the problem and usual alternatives, without
+     a literature review or reference list.
+  4. The approach, including a factor graph visualization. Distinguish variables,
+     factor scopes, hard constraints, and soft objectives. Prefer diagrams that
+     select or highlight the same slices as the demo; label schematic grouping
+     and optional factors explicitly rather than implying they are active.
+  5. Definitions of every factor type: what variables it connects, its measurement
+     or prior, residual or potential, and relevant frames, units, or assumptions.
+     Keep recorded numerical settings and error budgets with the results.
+  6. Additional results: existing plots, numerical tables, timings, convergence,
+     diagnostics, and downloads. Do not discard results to shorten the page.
+  7. A short discussion of the result and its limitations, linking to the next
+     app when it continues the argument. Retain dataset/model attribution and
+     licenses; a compressed paper format does not remove credit requirements.
+- Treat tab order as the technical progression. Keep Motion Planning after
+  kinematic and dynamic estimation, followed by SCATE UR5 as the last tab; use `apps/registry.json` as the source
+  of truth for navigation and overview links. Preserve standalone app URLs and
+  deployment prefixes in cross-app links.
+- Begin explanatory paragraphs with a complete, declarative topic sentence.
+  State what the model, measurement, or result means directly. Avoid slogans,
+  strings of imperatives, and rhetorical contrasts such as "not X, but Y" or
+  "this is not X; it is Y". Explain limitations through specific assumptions
+  and consequences. Keep headings, controls, and legends concise.
 - Put browser apps under `apps/`. Register new apps in `apps/registry.json` and
   the npm workspaces in `apps/package.json`, and use the shared navigation.
 - **Start robot viewers with `apps/shared/RobotViewport.js` and
@@ -206,6 +298,11 @@ when practical.
 - Abort pending asset loads on unmount and release MuJoCo data/models, Three.js
   resources, listeners, and animation loops. Snapshot clones can share mesh
   geometry, but only its owner should dispose of those shared buffers.
+
+- Put mathematical definitions in the app's method section, alongside its factor
+  graph, rather than maintaining a separate report. Reuse the build-time MathJax
+  plugin in `apps/shared/paper/` for offline inline SVG; bind parameter tables to
+  the selected recording so descriptions and results stay consistent.
 
 ## Local development and validation
 

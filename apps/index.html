@@ -29,13 +29,13 @@
         <section class="hero">
           <div class="hero-copy">
             <p class="eyebrow"><span></span> THE GTDYNAMICS PROJECT</p>
-            <h1>Robotics, connected<br />by <em>factor graphs.</em></h1>
-            <p class="lede">One language for robot motion. Express kinematics and dynamics as a graph, then let optimization connect the pieces.</p>
+            <h1>Robot estimation and planning<br />with <em>factor graphs</em></h1>
+            <p class="lede">GTDynamics represents articulated kinematics, dynamics, and trajectory objectives as factor graphs. These apps expose their variables, constraints, and recorded optimization results.</p>
             <p class="hero-detail">Built on GTSAM, GTDynamics brings together robot models, physical constraints, and trajectory optimization in a C++ library with Python bindings.</p>
             <a class="primary-link" href="#explore">Explore the apps <span aria-hidden="true">↓</span></a>
           </div>
           <figure class="graph-figure">
-            <div class="figure-label"><span>A MOTION, EXPRESSED AS A GRAPH</span><span>q · T · V</span></div>
+            <div class="figure-label"><span>TRAJECTORY FACTOR GRAPH</span><span>q · T · V</span></div>
             <svg viewBox="0 0 560 375" role="img" aria-labelledby="graph-title graph-desc">
               <title id="graph-title">Robot states connected by factors over time</title>
               <desc id="graph-desc">Three time slices contain joint angles, link poses, and twists. Factors connect variables inside each slice and link adjacent states over time.</desc>
@@ -53,14 +53,14 @@
         </section>
 
         <section id="explore" class="explore" aria-labelledby="explore-title">
-          <div class="section-intro"><div><p class="eyebrow">THE INTERACTIVE COLLECTION</p><h2 id="explore-title">See the ideas in motion.</h2></div><p>Open an app. Explore a robot.<br />Get a feel for the underlying math.</p></div>
+          <div class="section-intro"><div><p class="eyebrow">THE INTERACTIVE COLLECTION</p><h2 id="explore-title">Estimation and planning examples</h2></div><p>The apps progress from contact inference<br />through trajectory estimation to motion planning.</p></div>
           <div id="app-list" class="app-list"></div>
         </section>
 
         <section class="principles" aria-label="How GTDynamics works">
-          <div><span class="principle-number">01 / MODEL</span><h3>Start with the robot.</h3><p>Describe links and joints, their geometry, inertia, and the forces acting on them.</p></div>
-          <div><span class="principle-number">02 / CONNECT</span><h3>Make physics explicit.</h3><p>Use factors to express kinematic relationships and dynamics constraints between robot states.</p></div>
-          <div><span class="principle-number">03 / OPTIMIZE</span><h3>Solve for the motion.</h3><p>Combine constraints and objectives to solve forward dynamics, inverse dynamics, and trajectory problems.</p></div>
+          <div><span class="principle-number">01 / MODEL</span><h3>Robot model</h3><p>The robot model defines links, joints, geometry, inertia, and applied forces.</p></div>
+          <div><span class="principle-number">02 / CONNECT</span><h3>Factors and constraints</h3><p>Factors express kinematic relationships and dynamics constraints between robot states.</p></div>
+          <div><span class="principle-number">03 / OPTIMIZE</span><h3>Trajectory optimization</h3><p>Optimization combines these constraints with objectives to solve dynamics and trajectory problems.</p></div>
         </section>
         <footer class="site-footer"><span>GTDynamics <span class="footer-dot">·</span> BorgLab</span><div><a href="https://github.com/borglab/GTDynamics#readme" target="_blank" rel="noopener">Documentation ↗</a><a href="https://arxiv.org/abs/2011.06194" target="_blank" rel="noopener">Read the paper ↗</a></div></footer>
       </div>

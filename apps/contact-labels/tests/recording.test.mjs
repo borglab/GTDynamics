@@ -34,7 +34,11 @@ test("three distinct 20-second SSIO windows, attribution, and registered app", (
   );
   const apps = JSON.parse(readFileSync(new URL("apps/registry.json", root)));
   assert(apps.some((a) => a.id === "contact-labels"));
-  assert.equal(apps.at(-1).title, "Kinematics");
+  const kinematics = apps.findIndex((app) => app.title === "Kinematics");
+  assert.equal(apps[kinematics + 1].title, "Interpolation");
+  assert.equal(apps.at(-3).title, "Kinodynamics");
+  assert.equal(apps.at(-2).title, "Motion Planning");
+  assert.equal(apps.at(-1).title, "SCATE UR5");
 });
 for (const r of records) {
   test(`${r.id}: labels, windows, contact frames, and privileged provenance`, () => {
@@ -218,33 +222,17 @@ test("support graph uses consecutive translations and preserves comparison input
   }
 });
 
-test("paper report has MathJax definitions and matching parameters, without sample inspector", () => {
-  const html = readFileSync(
-    new URL("contact-factors.html", publicRoot),
-    "utf8",
-  );
-  const params = JSON.parse(
-    html.match(
-      /<script id="factor-model" type="application\/json">([\s\S]*?)<\/script>/,
-    )[1],
-  );
-  for (const r of records)
-    for (const [key, value] of Object.entries(params))
-      assert.deepEqual(r.supportGraph[key], value);
-  assert.match(html, /<mjx-container[^>]*jax="SVG"/);
-  assert(!/<g[^>]*data-mml-node="merror"/.test(html));
-  assert(!/<script[^>]*src=|<input|<select|id="factor-data"/.test(html));
-  assert.match(
-    html,
-    /density values evaluated at the same observed displacement/,
-  );
-  assert.match(html, /Neither is a binary contact indicator/);
-  assert.equal((html.match(/data:image\/svg\+xml;base64,/g)||[]).length,2);
-  assert.match(html,/Shared pose landmarks in initialization and CM-Opt/);
-  assert.match(html,/ContactPoseFactor/);
-  assert.match(html,/provisional, manually chosen/);
-  const model=JSON.parse(html.match(/<script id="kinematic-model" type="application\/json">([\s\S]*?)<\/script>/)[1]);
-  assert.equal(model.slices,715);assert.equal(model.stanceLandmarks,395);
-  assert.equal(model.contactFactors,1430);assert.equal(model.maxIterations,50);
-  assert.match(html,/within-phase interval at most 200 ms/);
+test("report removal preserves all numerical recording content", () => {
+  for (const record of records) {
+    const { provenance, ...content } = record;
+    // Fresh numerical exports have no maintenance entry. Historical archives
+    // retain a content hash when only presentation provenance was updated.
+    const migration = provenance.maintenance?.at(-1);
+    if (!migration) continue;
+    assert.equal(migration.kind, "presentation-only");
+    assert.equal(createHash("sha256").update(JSON.stringify(content)).digest("hex"), migration.retainedContentSha256);
+    assert.match(migration.previousExporterSha256, /^[a-f0-9]{64}$/);
+    assert.equal(Object.keys(migration.retiredReportSources).length, 2);
+    assert(!Object.keys(provenance.sources).some(path => /factor_report|typeset_report/.test(path)));
+  }
 });

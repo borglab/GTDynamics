@@ -28,6 +28,88 @@ solve with `--initializer contact` or `ik`.
 [`compare_kinematic_walk.py`](compare_kinematic_walk.py) calls those example
 functions to compare the initialization and solve timings (`--repeats 3`).
 
+## Coupled 50 Hz kinodynamics example
+
+[`kinodynamic_walk.py`](kinodynamic_walk.py) solves the SSIO mid-clip turns
+(78–98 s) in one coupled CMC-Opt optimization. Every original 20 ms slice has
+free configuration, velocity, acceleration, sole/reaction wrench and torque
+variables. Native articulated constraints and rectangular sole-wrench cones
+are exact; root/joint trapezoidal collocation factors couple adjacent slices.
+The initial configurations come from the shared contact initializer; all other
+state variables, including the shared IMU bias, start at zero.
+
+```bash
+python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
+python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
+```
+
+Enable `GTDYNAMICS_BUILD_G1_MJLAB` and `GTDYNAMICS_BUILD_PYTHON`,
+then build `_g1_kinodynamics` and add `build/examples/g1_mjlab` to `PYTHONPATH`.
+Use the same pinned packages and other Python paths as the dynamics example below.
+The private module composes existing library builders; its settings live in
+[`kinodynamic_settings.py`](kinodynamic_settings.py). It adds no experiment API
+to the main package. `ArticulatedRetractor` and the reusable factor/builder
+extensions remain in GTDynamics.
+
+The coupled solve adds translation and wrapped-yaw gauge costs (1 m and 1 rad
+standard deviations) at the selected initialization slice. Roll and pitch are
+free: initializer tilt is a starting guess, not an enforced observation. No
+upright or ground-height factors enter this solve.
+Run `test_kinodynamics.py` to check tilt recovery and
+`validate_kinodynamics.py --result /tmp/kinodynamics` for the independent
+MuJoCo inverse-dynamics and contact-feasibility checks.
+`--max-iterations` defaults to 5; `--start 78 --end 79` gives a small development
+run. The example saves `kinodynamics.npz` and `summary.json`, separating contact
+initialization, measurement preparation, graph assembly, initial feasibility,
+and coupled optimization. The [Kinodynamics app](../../apps/kinodynamics/README.md)
+replays the saved initial/final states, forces, velocities, torques and error
+history. Neither the saved Kinematics result nor GP interpolation initializes
+this solve. Support labels remain privileged, as described in the app.
+
+## Walking dynamics example
+
+[`dynamics_walk.py`](dynamics_walk.py) estimates accelerations, two sole-frame
+wrenches, and all 29 actuator torques from the best saved Kinematics trajectory.
+Start with `solve_walk()`: it calls the shared GP fit, prepares fixed poses and
+velocities plus acceleration prior means, defines the sole support patches,
+and calls the native CMC-Opt solver. The default development window is 78–98 s.
+
+Use the pinned model packages, matching GTDynamics/GTSAM Python bindings, and
+the original dense source used to generate the saved kinematics. From the
+repository root:
+
+```bash
+conda activate py312
+python -m pip install -r examples/g1_mjlab/requirements-dynamics.txt
+make -C build -j6 gtdynamics_py
+PYTHONPATH="$PWD/build/python:$HOME/git/gtsam/build/python:$PWD/examples/g1_mjlab" \
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python examples/g1_mjlab/dynamics_walk.py \
+  --kinematics apps/kinematics-inspector/public \
+  --dense-data apps/kinematics-inspector/.cache/openio-contact-source \
+  --start 78 --end 98 --output /tmp/g1-dynamics
+```
+
+The saved Kinematics assets must be hydrated from Git LFS. `--dense-data` must
+contain the original `walk.npz` and `walk.json`; their hashes are checked against
+the saved kinematics. The dense source is an ignored local input cache.
+
+The example prints convergence diagnostics and optionally writes `dynamics.npz`
+and `summary.json`. Load the archive with `np.load(path, allow_pickle=False)`.
+Joint columns follow its `joint_names`/`joint_ids`; the `wrenches` array has shape
+`(knots, 2, 6)` with feet ordered left/right and sole-local components
+`[moment; force]` in Nm and N. Torques are Nm, and joint accelerations are rad/s².
+`base_twist_accelerations` are angular-first derivatives in moving COM axes;
+their linear component needs `omega_body × v_body` to obtain physical COM
+acceleration. The archive includes the corresponding acceleration prior means,
+actual knot times, original source slice indices, and contact flags.
+
+[`sole_support.py`](sole_support.py) contains the model-derived support geometry.
+The [Dynamics app exporter](../../apps/dynamics/scripts/export_recording.py)
+calls this example and adds browser serialization and display geometry. The
+[app README](../../apps/dynamics/README.md) describes the factors, noise scales,
+independent MuJoCo/LP checks, and the remaining stance-motion inconsistency.
+
 ## Full graph and input boundary
 
 [`full_model.py`](full_model.py) exports static link/joint parameters, q/v,

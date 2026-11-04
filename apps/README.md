@@ -5,13 +5,25 @@ tab. [registry.json](registry.json) supplies the tab labels, overview links, and
 the list of apps to build. Each app keeps its own Vue/Vite project and can also
 be opened directly.
 
-- [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
-- [Contact Initialization](contact-initialization/README.md): replay C++ GTSAM walking initialization, inspect native timings, and switch between two G1 motion sequences.
-
 - [Contact Labels](contact-labels/README.md): inspect privileged stationarity targets derived from SSIO reference-world sole motion.
+- [Contact Initialization](contact-initialization/README.md): inspect native pose-contact initialization and independently selectable priors on SSIO and additional G1 recordings.
 - [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
 - [Kinematics](kinematics-inspector/README.md): inspect the full contact-initialized trajectory, contact weights, foot slip, factor counts, and error budgets.
+- [Interpolation](interpolation/README.md): inspect Pose3 and joint-vector Gaussian process interpolation, dense encoder measurements, and estimated velocities.
+- [Dynamics](dynamics/README.md): CMC-Opt inference of sole-frame contact wrenches and all 29 G1 joint torques on the SSIO 78–98 s clip.
+- [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
+- [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run. This is the last tab.
+
+Each app starts with a short technical abstract and its interactive demo, then
+continues with motivation, a factor graph formulation and factor definitions,
+existing numerical results, and a discussion. Read the tabs in order: inferred
+contact phases support initialization, initialization supports smoothing, and
+Gaussian-process interpolation supplies velocities for the dynamics example.
+Kinodynamics then estimates motion and forces together. Motion Planning illustrates a
+separate desired-motion problem. It does not currently plan from the G1 estimate.
+The shared paper components live in `shared/paper/`; solver code and recorded
+numerical results remain owned by their apps.
 
 ## Local preview
 
@@ -174,3 +186,12 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 
 It checks navigation, keyboard tabs, mobile layout, physics playback, recorded
 iteration scrubbing, and requests under a project-site prefix.
+
+The presentation check covers all registered apps at 1440 × 900 and 1280 × 800,
+including shared navigation, visible primary controls, diagram/time selection,
+relocated results, next-tab links, and mobile width:
+
+```bash
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+  node tests/paper.browser.mjs
+```

@@ -1,0 +1,8 @@
+SSIO / Open-IO G1 Inertial Odometry
+https://huggingface.co/datasets/Open-IO/humanoid-g1-odometry
+Clip: 10871_humanoid_20260520_223451
+Revision: db621c57833e08a812b2ec8491aa0ca81f0ecb33
+Creators: Yuheng Qiu and the SSIO authors / Open-IO
+License: Creative Commons Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+Changes: selected the 78–98 second window of the best saved GTDynamics kinematics trajectory; retained its original irregular double-support slices and inferred contact labels. Derived COM spatial velocities and accelerations from the full saved trajectory, then inferred sole-frame ground reaction wrenches and joint torques using native CMC-Opt. The browser replays fixed recorded poses and inferred forces. Support labels use privileged LiDAR-inertial reference motion and measured-joint FK; forces and torques are model-based estimates, not measured ground truth. Raw source files remain in an ignored cache.

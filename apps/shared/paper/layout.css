@@ -1,0 +1,58 @@
+/* Keep the existing themes. Reserve the first screen for the demo and controls. */
+.app-abstract { color: inherit; }
+.method-results {
+  --method: #087f71;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #dbe2d7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.method-results.ik { --method: #7955a5; }
+.comparison-results > div { min-width: 0; }
+.lab .visualization-grid { grid-template-columns: minmax(0, 1fr); }
+
+@media (min-width: 1050px) {
+  main.labels-app, main.kinematics-app, main.dynamics-app, main.lab,
+  main.comparison-app { padding-top: 18px; }
+  .page-header { margin-bottom: 14px; }
+  .page-header h1 { font-size: 32px; }
+  .page-header .app-abstract { max-width: 105ch; }
+  .labels-app .toolbar, .kinematics-app > .toolbar,
+  .comparison-app > .toolbar { padding-block: 10px; gap: 10px 20px; }
+  .labels-app .label-scene { height: clamp(180px, calc(100dvh - 465px), 480px); }
+  .labels-app .time-controls { padding-block: 10px; }
+  .kinematics-app .large-scene { aspect-ratio: auto; height: clamp(200px, calc(100dvh - 465px), 520px); }
+  .kinematics-app .viewer-controls { padding-block: 9px; }
+  .kinematics-app .slip-readout { padding-block: 6px; }
+  .kinematics-app .timeline { padding-block: 10px; }
+  .dynamics-app .dynamics-scene { height: clamp(220px, calc(100dvh - 375px), 540px); }
+  .dynamics-app .timeline { padding-block: 12px; }
+  .lab > header { margin-bottom: 10px; }
+  .lab .visualization-grid .scene { height: clamp(220px, calc(100dvh - 385px), 480px); }
+  .lab .scene-card { padding: 14px; }
+  .lab .scene-card .toolbar { margin-block: 8px; }
+  .lab .prior-controls { padding-top: 8px; }
+  .comparison-app .comparison .scene { height: clamp(150px, calc(100dvh - 520px), 350px); }
+  .comparison-app .panel-heading { padding: 10px 14px; }
+  .comparison-app .panel-heading h2 { font-size: 17px; margin: 0; }
+  .comparison-app .panel-heading .eyebrow { line-height: 1; }
+  .comparison-app > .timeline { padding: 10px 16px; margin-bottom: 12px; }
+  .comparison-app > .timeline input[type=range] { height: 12px; margin: 8px 0; }
+  .comparison-app > .timeline .phase-strip { margin-bottom: 5px; }
+  .comparison-app .iteration-controls {
+    display: grid;
+    grid-template-columns: minmax(70px, 1fr) auto;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+  .comparison-app .iteration-controls > .row:first-child { grid-column: 1 / -1; }
+  .comparison-app .iteration-controls > .row:last-child { gap: 6px; }
+  .comparison-app .iteration-controls button { padding: 5px 8px; }
+  .comparison-app .scene-caption, .comparison-app .path-legend { padding: 6px 14px; }
+  .comparison-app .iteration-controls input { margin: 0; }
+  .lab-shell .masthead { height: 44px; }
+  .lab-shell .intro { padding: 14px 0 18px; }
+  .lab-shell .canvas-wrap { aspect-ratio: auto; min-height: 220px; height: clamp(220px, calc(100dvh - 360px), 550px); }
+  .lab-shell .playback-panel { padding-block: 12px; }
+}
