@@ -142,11 +142,6 @@ public:
       const IERetractorParams &params,
       const std::optional<KeyVector> &priorKeys = {}) const;
 
-  /// Tangent cone C_x induced by thesis Eqs. (4.14)-(4.16).
-  const TangentCone::shared_ptr &tangentCone() const {
-    return linearization_->tangentCone();
-  }
-
   /** Immutable active-constraint geometry for this state. Ordinary copies share
    * it; createWithNewValues rebuilds it even when the equality basis is affine,
    * because inequality derivatives and active membership may have changed.
@@ -227,14 +222,6 @@ public:
   double evaluateEqualityViolation() const {
     return e_constraints_->violationNorm(values_);
   }
-
-  /// Linearize active inequalities as Dg_A(x) B_x, the K matrix in thesis
-  /// Eq. (4.15), for manifold-space QPs.
-  LinearIConstraintMap
-  linearActiveManifoldInequalityConstraints(const Key manifold_key) const;
-
-  /// Linearize the active inequalities directly in ambient variable space.
-  LinearIConstraintMap linearActiveBaseInequalityConstraints() const;
 
 protected:
   /// Identify A(x), either from explicit mode information or from which

@@ -177,17 +177,4 @@ IEConstraintManifold::constructLinearization(
   return std::make_shared<const IEManifoldLinearization>(tangent, ambient);
 }
 
-/* ************************************************************************* */
-LinearIConstraintMap
-IEConstraintManifold::linearActiveManifoldInequalityConstraints(
-    const Key manifold_key) const {
-  return linearization_->tangentConstraints(manifold_key);
-}
-
-/* ************************************************************************* */
-LinearIConstraintMap
-IEConstraintManifold::linearActiveBaseInequalityConstraints() const {
-  return linearization_->ambientConstraints();
-}
-
 } // namespace gtdynamics

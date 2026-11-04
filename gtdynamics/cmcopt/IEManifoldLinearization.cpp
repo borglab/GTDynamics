@@ -10,6 +10,7 @@
  */
 #include <gtdynamics/cmcopt/IEManifoldLinearization.h>
 
+#include <Eigen/LU>
 #include <stdexcept>
 
 namespace gtdynamics {
@@ -89,28 +90,6 @@ std::pair<IndexSet, Vector> IEManifoldLinearization::project(
   return {indices, std::move(result.second)};
 }
 
-LinearIConstraintMap IEManifoldLinearization::tangentConstraints(
-    Key componentKey) const {
-  LinearIConstraintMap result;
-  for (const auto& [index, block] : blocks_)
-    result.emplace(
-        index, std::make_shared<JacobianLinearInequalityConstraint>(
-                   std::make_shared<JacobianFactor>(
-                       componentKey, block.raw, Vector::Zero(block.raw.rows()),
-                       block.noise)));
-  return result;
-}
-
-LinearIConstraintMap IEManifoldLinearization::ambientConstraints() const {
-  LinearIConstraintMap result;
-  for (const auto& [index, block] : blocks_)
-    if (block.ambient)
-      result.emplace(index,
-                     std::make_shared<JacobianLinearInequalityConstraint>(
-                         std::make_shared<JacobianFactor>(*block.ambient)));
-  return result;
-}
-
 IndexSet IEManifoldLinearization::blockingIndices(
     const VectorValues& direction) const {
   IndexSet indices;
@@ -124,5 +103,84 @@ IndexSet IEManifoldLinearization::blockingIndices(
     if ((derivative.array() > 1e-5).any()) indices.insert(index);
   }
   return indices;
+}
+internal::WorkingFace IEManifoldLinearization::workingFace(
+    const IndexSet& selected) const {
+  return internal::WorkingFace(workingRows(selected));
+}
+internal::WorkingFace IEManifoldLinearization::workingFace(
+    const RowSet& selected) const {
+  Matrix matrix(selected.size(), blocks_.begin()->second.raw.cols());
+  size_t i = 0;
+  for (const auto& [block, row] : selected)
+    matrix.row(i++) = rows(block, true).row(row);
+  return internal::WorkingFace(std::move(matrix));
+}
+IEManifoldLinearization::RowSet IEManifoldLinearization::initialRows(
+    const IndexSet& selected, const Vector& initial) const {
+  RowSet active;
+  for (const auto& [index, block] : blocks_)
+    for (Eigen::Index row = 0; row < block.whitened.rows(); ++row) {
+      const double value = block.whitened.row(row).dot(initial);
+      if (value > 1e-7 || (selected.exists(index) && std::abs(value) > 1e-7))
+        throw std::invalid_argument("CMC QP warm start is not feasible");
+      if (selected.exists(index)) active.emplace(index, row);
+    }
+  return active;
+}
+IndexSet IEManifoldLinearization::completeBlocks(const RowSet& active) const {
+  IndexSet result;
+  for (const auto& [index, block] : blocks_) {
+    bool complete = block.raw.rows() > 0;
+    for (Eigen::Index row = 0; row < block.raw.rows(); ++row)
+      complete &= active.count({index, row}) != 0;
+    if (complete) result.insert(index);
+  }
+  return result;
+}
+std::pair<double, std::optional<IEManifoldLinearization::Row>>
+IEManifoldLinearization::boundaryStep(const Vector& current,
+                                      const Vector& direction,
+                                      const RowSet& active,
+                                      double maximumStep) const {
+  double step = maximumStep;
+  std::optional<Row> entering;
+  for (const auto& [index, block] : blocks_)
+    for (Eigen::Index row = 0; row < block.whitened.rows(); ++row) {
+      if (active.count({index, row})) continue;
+      const double slope = block.whitened.row(row).dot(direction);
+      if (slope <= 0.0) continue;
+      const double candidate = -block.whitened.row(row).dot(current) / slope;
+      if (candidate < step) {
+        step = std::max(0.0, candidate);
+        entering = Row{index, row};
+      }
+    }
+  return {step, entering};
+}
+std::pair<double, std::optional<IEManifoldLinearization::Row>>
+IEManifoldLinearization::leavingRow(const Vector& gradient,
+                                    const RowSet& active) const {
+  if (active.empty()) return {-1e-7, std::nullopt};
+  Matrix matrix(active.size(), gradient.size());
+  size_t i = 0;
+  for (const auto& [index, row] : active)
+    matrix.row(i++) = rows(index, true).row(row);
+  const Matrix transpose = matrix.transpose();
+  const Vector multipliers = transpose.fullPivLu().solve(-gradient);
+  if (!multipliers.allFinite() || !(transpose * multipliers + gradient)
+                                       .isZero(1e-6 * (1.0 + gradient.norm())))
+    throw std::runtime_error("CMC local dual equations are not stationary");
+  double mostNegative = -1e-7;
+  std::optional<Row> leaving;
+  i = 0;
+  for (const auto& row : active) {
+    if (multipliers(i) < mostNegative) {
+      mostNegative = multipliers(i);
+      leaving = row;
+    }
+    ++i;
+  }
+  return {mostNegative, leaving};
 }
 }  // namespace gtdynamics

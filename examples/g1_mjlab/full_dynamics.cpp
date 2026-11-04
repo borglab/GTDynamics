@@ -599,8 +599,8 @@ template <typename Force> void testContact(const Force &force,
   values.insert<Force>(key, force);
   for (const auto &constraint : constraints) {
     const auto boundary = constraint->createEqualityConstraint();
-    if (!internal::testFactorJacobians("contact boundary",
-        *boundary->penaltyFactor(), values, 1e-5, 1e-7))
+    if (!gtsam::internal::testFactorJacobians(
+            "contact boundary", *boundary->penaltyFactor(), values, 1e-5, 1e-7))
       throw std::runtime_error("Contact boundary Jacobian mismatch");
     if (constraint->unwhitenedExpr(values)(0) > 0 ||
         boundary->unwhitenedError(values)(0) !=
@@ -610,7 +610,8 @@ template <typename Force> void testContact(const Force &force,
   const Matrix map = Matrix::Random(6, force.size());
   values.insert<Vector6>(wrench, Vector6::Random());
   ContactWrench<Force> contact(wrench, key, map);
-  if (!internal::testFactorJacobians("contact wrench", contact, values, 1e-5, 1e-7))
+  if (!gtsam::internal::testFactorJacobians("contact wrench", contact, values,
+                                            1e-5, 1e-7))
     throw std::runtime_error("Contact wrench Jacobian mismatch");
 }
 
@@ -649,7 +650,8 @@ void selfTest() {
       const double expected = std::max(0.0,f.head<2>().squaredNorm()-.36*f(2)*f(2));
       if (std::abs(factor.unwhitenedError(values)(0)-expected)>1e-12)
         throw std::runtime_error("Friction factor residual mismatch");
-      if (!internal::testFactorJacobians("actual friction factor",factor,values,1e-5,1e-5))
+      if (!gtsam::internal::testFactorJacobians("actual friction factor",
+                                                factor, values, 1e-5, 1e-5))
         throw std::runtime_error("Friction factor Jacobian mismatch");
       Values known;known.insert(pk,pose);
       NonlinearFactorGraph graph;graph.add(factor);

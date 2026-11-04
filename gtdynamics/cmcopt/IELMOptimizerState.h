@@ -19,7 +19,6 @@
 
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
-#include <gtdynamics/cmcopt/TangentConeLinearization.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
 
@@ -46,10 +45,6 @@ public:
   IndexSetMap gradientBlockingIndicesMap;  // blocking indices map by neg grad
   GaussianFactorGraph::shared_ptr baseLinear;
   GaussianFactorGraph::shared_ptr linearManifoldGraph;
-  /// Immutable component-local cone rows, shared across LM damping trials.
-  std::shared_ptr<const internal::TangentConeLinearization> tangentCone;
-  IndexSetMapTranslator linearInequalityIndexTranslator;
-
   /// Default constructor.
   IELMState() {}
 
@@ -87,7 +82,6 @@ protected:
   void construct(const NonlinearFactorGraph &graph,
                  const NonlinearFactorGraph &manifold_graph);
 
-  void linearizeIConstraints();
 
   /// Compute gradient and identify the blocking constraints by neg grad.
   void computeGradient(const NonlinearFactorGraph &manifold_graph);
@@ -137,7 +131,7 @@ struct IELMTrial {
      * coordinates; this approximation does not release faces to certify a QP
      * optimum. Returns [delta, blockingIndices, numSolves, solveSuccessful].
      */
-    static std::tuple<VectorValues, IndexSet, size_t, bool> initialEstimate(
+    static std::tuple<VectorValues, IndexSetMap, size_t, bool> initialEstimate(
         const GaussianFactorGraph &quadraticCost, const IELMState &state,
         const LevenbergMarquardtParams &params);
 
@@ -146,7 +140,7 @@ struct IELMTrial {
      */
     static bool checkSolutionValid(const IELMState &state,
                                    const VectorValues &delta,
-                                   const IndexSet &blocking_indices);
+                                   const IndexSetMap &blockingIndices);
 
    protected:
     /** Refine delta with component-local faces and unconstrained global solves.
@@ -155,15 +149,14 @@ struct IELMTrial {
      * solveSuccessful to false.
      */
     void refineIQPStep(const GaussianFactorGraph &dampedSystem,
-                       const internal::TangentConeLinearization &cone,
-                       IndexSet &blockingIndices,
+                       const IELMState &state, IndexSetMap &blockingIndices,
                        const LevenbergMarquardtParams &params,
                        size_t maxIterations);
 
-    /** Decode the working set, lift delta, and record undamped cost reduction.
+    /** Retain the working set, lift delta, and record undamped cost reduction.
      */
     void recordSolution(const IELMState &state,
-                        const IndexSet &blockingIndices);
+                        const IndexSetMap &blockingIndices);
 
     /** Following functions are adapted from LMOptimizerState. */
     mutable std::vector<LMCachedModel> noiseModelCache;
