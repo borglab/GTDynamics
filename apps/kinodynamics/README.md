@@ -7,8 +7,11 @@ torques. The example defaults to the existing contact-pose initializer with zero
 dynamic variables. Select `--initialization fk` for measured-joint FK at a fixed
 upright pelvis with the robot's weight shared across stance feet. Velocities,
 accelerations, joint torques and bias start at zero in both strategies. The
-checked-in historical recording uses contact initialization; exporting a new
-result records the selected strategy and its raw initial forces.
+checked-in recording uses contact initialization and the shared single/double-
+support sampler. It retains 171 initialization slices: 114 in single support and
+57 in double support. Short phases contribute a central slice; long phases use
+one-sample-buffered slices at most 200 ms apart within the phase. Interpolation
+provides starting configurations; the coupled solve estimates all 1,000 slices.
 
 The computation is the student-facing example
 [`kinodynamic_walk.py`](../../examples/g1_mjlab/kinodynamic_walk.py). Run from the
@@ -21,7 +24,9 @@ provider and is not installed into the GTDynamics package:
 
 ```bash
 python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
-python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
+python examples/g1_mjlab/kinodynamic_walk.py --initialization fk --output /tmp/kinodynamics-fk
+python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics \
+  --comparison /tmp/kinodynamics-fk/summary.json
 cd apps
 npm run build
 ```
@@ -37,15 +42,19 @@ wrench transmission, sole transforms, zero swing wrenches, and rectangular wrenc
 cones are exact constraints. Encoder, stance-pose landmark, Gal3 IMU, stance
 velocity, trapezoidal configuration/velocity collocation, effort/rate and broad
 acceleration terms are costs. No point contacts or GP/spline warm start are used.
-No upright or ground-height costs remain in the coupled solve. The optional contact initializer
-uses its shared upright/motion/height priors. At the first selected double-support
-slice, translation and wrapped-yaw costs choose the world frame with unit
-standard deviations (1 m and 1 rad). All six root-pose coordinates remain free
+No upright or ground-height costs remain in the coupled solve. The contact initializer
+uses its shared upright/motion/height priors. At the first selected supported
+slice, translation and wrapped-yaw costs choose the world frame with
+standard deviations of 1 m and approximately 57.3°. All six root-pose coordinates remain free
 in the articulated tangent basis, allowing gravity/IMU observations to correct
 the initial roll and pitch.
 Earlier dense output from the initializer is a held pose guess and stays free
 in the coupled solve.
 
+CMC-Opt gives each constraint-connected component ownership of its
+linearization and active-face coordinates. The coupled linear step minimizes
+the shared objective with an unconstrained Gaussian solve in those coordinates;
+cone projections and nonlinear retractions remain local to each component.
 CMC-Opt relinearizes the full nonlinear equality basis. Each retraction recovers
 link poses/twists with native FK, fixes those q/v values through ConstVarFactor,
 and projects the remaining affine acceleration/wrench equations with Gaussian QR
@@ -64,21 +73,28 @@ Feasibility restoration changes the raw initial dynamics and is included in tota
 A feasible result or an objective-change stopping condition does not establish
 that the objective is globally optimal.
 
-The regenerated recording (2026-11-03, Release build, eight retraction threads)
-took **78.03 s** in coupled optimization and **87.89 s** from contact
+The regenerated recording (2026-11-04, Release build, eight retraction threads)
+took **32.25 s** in coupled optimization and **42.05 s** from contact
 initialization through the solve. It completed five iterations, reducing the
-objective from 28,986,857.82 to 9,120.02; it stopped at the iteration limit.
-The final equality/inequality violation norms are 4.16e-12 and
-1.29e-07. Across 21 evenly spaced slices, independent MuJoCo inverse
-dynamics agrees within 8.24e-13 N in root force, 1.85e-12 Nm in root moment,
-and 2.83e-12 Nm in joint torque. Every slice passes the sole-cone check
-(maximum violation 9.33e-08); swing wrenches are zero. These are equation
-consistency checks. Full-recording stance-origin speed RMS is
-0.185 m/s, so the finite-noise stance objective still permits slip.
-Reproduce the oracle with `python examples/g1_mjlab/validate_kinodynamics.py
---result /tmp/kinodynamics`. The replay includes source/binary fingerprints,
-the projection metric, gauge metadata, and the separate gauge error group.
-The [screenshot](docs/kinodynamics.png) shows the regenerated replay.
+objective from 34,560,256.82 to 9,047.41; it stopped at the iteration limit.
+The final equality/inequality violation norms are 4.12e-12 and
+9.28e-08. Across 21 evenly spaced slices, independent MuJoCo inverse
+dynamics agrees within 9.81e-13 N in root force, 2.25e-12 Nm in root moment,
+and 2.16e-12 Nm in joint torque. Every slice passes the sole-cone check
+(maximum violation 6.57e-08); swing wrenches are zero. These are equation
+consistency checks. Reproduce the oracle with
+`python examples/g1_mjlab/validate_kinodynamics.py --result /tmp/kinodynamics`.
+The replay includes source/binary fingerprints, the projection metric, gauge
+metadata, and the separate gauge error group. The [screenshot](docs/kinodynamics.png)
+shows this replay.
+
+The app's contact-versus-FK table comes from one run per strategy in the same
+process, contact followed by FK, with five iterations each and
+`OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1`. Both are feasible. It compares
+configuration initialization, feasibility restoration, optimization, total time,
+and final objective. The contact row describes the displayed replay; the FK row
+contains summary statistics only. Loading and export are excluded. These single
+runs do not establish convergence or a stable speedup across machines.
 
 The page follows the shared technical-paper layout. Its abstract and complete
 replay controls fit together on a laptop screen. Motivation, a synchronized

@@ -85,7 +85,73 @@ def body_poses(
     return result
 
 
-def export(result_path: Path, output: Path) -> None:
+def initialization_sampling(
+    arrays: dict[str, Any], report: dict[str, Any]
+) -> dict[str, Any]:
+    """Describe the shared supported-phase sampler and its observed support counts."""
+    selected = np.asarray(report["initializationSlices"], dtype=int)
+    support_counts = arrays["contact"][selected].sum(axis=1)
+    return {
+        "method": "contactInitializationSlices",
+        "selectedSlices": len(selected),
+        "singleSupportSlices": int(np.sum(support_counts == 1)),
+        "doubleSupportSlices": int(np.sum(support_counts == 2)),
+        "maxSliceIntervalMs": 200,
+        "contactBuffer": 1,
+        "outputSampleRateHz": 50,
+    }
+
+
+def initialization_comparison(
+    report: dict[str, Any], comparison_path: Path | None
+) -> dict[str, Any] | None:
+    """Package two matching five-iteration runs without exporting a second replay."""
+    if comparison_path is None:
+        return None
+    other = json.loads(comparison_path.read_text())
+    for key in (
+        "samples",
+        "maxIterations",
+        "retractionThreads",
+        "labels",
+        "initializationSlices",
+        "source",
+    ):
+        if report[key] != other[key]:
+            raise ValueError(f"Initialization comparison differs in {key}")
+    if {report["initializationStrategy"], other["initializationStrategy"]} != {
+        "contact",
+        "fk",
+    }:
+        raise ValueError("Comparison requires one contact and one FK run")
+    fields = (
+        "initializationStrategy",
+        "configurationInitializationSeconds",
+        "initializationSeconds",
+        "optimizationSeconds",
+        "totalInitializationAndSolveSeconds",
+        "objectiveFinal",
+        "iterations",
+        "feasible",
+    )
+    return {
+        "samples": report["samples"],
+        "maxIterations": report["maxIterations"],
+        "retractionThreads": report["retractionThreads"],
+        "runsPerStrategy": 1,
+        "timingScope": "Initialization, measurement assembly, feasibility restoration, and optimization; loading and export excluded",
+        "runs": [
+            {key: run[key] for key in fields}
+            for run in sorted(
+                (report, other), key=lambda run: run["initializationStrategy"]
+            )
+        ],
+    }
+
+
+def export(
+    result_path: Path, output: Path, comparison_path: Path | None = None
+) -> None:
     """Package model geometry, initial/final replay, forces, velocities and timing."""
     arrays = dict(np.load(result_path / "kinodynamics.npz", allow_pickle=False))
     report = json.loads((result_path / "summary.json").read_text())
@@ -239,7 +305,9 @@ def export(result_path: Path, output: Path) -> None:
             "collocation": report["collocation"],
             "accelerationDifferenceStepSeconds": 0.02,
         },
+        "initializationComparison": initialization_comparison(report, comparison_path),
         "source": {
+            "initializationSampling": initialization_sampling(arrays, report),
             "dataset": "SSIO",
             "clip": [float(arrays["times"][0]), float(arrays["times"][-1])],
             "sourceIndices": arrays["source_indices"].tolist(),
@@ -283,10 +351,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--result", type=Path, required=True)
     parser.add_argument(
+        "--comparison",
+        type=Path,
+        help="Other initializer summary.json for a single-run timing comparison",
+    )
+    parser.add_argument(
         "--output", type=Path, default=REPO / "apps/kinodynamics/public"
     )
     args = parser.parse_args()
-    export(args.result, args.output)
+    export(args.result, args.output, args.comparison)
 
 
 if __name__ == "__main__":
