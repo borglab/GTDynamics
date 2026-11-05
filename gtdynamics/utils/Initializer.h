@@ -43,8 +43,8 @@ class Initializer {
   const Kinematics kinematics_;
 
  public:
-  /** Initialize from FK contact poses and phase association. Buffer each entire
-   * stance by contactBuffer source slices; return the exact selected indices in
+  /** Initialize from FK contact poses and phase association. Use
+   * contactInitializationSlices with phase buffering; return selected indices in
    * diagnostics. dt is the uniform source period; selected intervals may vary.
    * Options can supply explicit selectedSlices (with contactBuffer=0) and
    * disable dense interpolation via interpolateOutput=false. Stance IDs always

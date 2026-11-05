@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file export_apps.py
+# @brief Generate kinematics and contact-versus-IK replay variants.
+# @author GTDynamics contributors
 """Regenerate the Contact vs IK snippets and contact-only Kinematics experiments.
 
 All initialization, CM-Opt iterations, factor errors, and slip locations are
@@ -143,7 +151,7 @@ def main() -> None:
                         "--final-only",
                         "--max-iterations",
                         "50",
-                        "--double-support-slices",
+                        "--contact-slices",
                         "--max-slice-interval-ms",
                         str(args.max_slice_interval_ms),
                     ]

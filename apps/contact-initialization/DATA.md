@@ -102,28 +102,18 @@ endpoint `end = endExclusive - 1` at the last supported sample.
 
 ## Frame sampling
 
-Both exporters retain every contact start and final supported sample. Whenever
-the next boundary is more than one second away, they select the latest original
-sample within one second of the preceding frame and repeat until the boundary
-is reached. Each supplemental frame uses that sample's measured FK and the
-contacts active at that timestamp. Contact intervals and flight gaps are
-unchanged. The native GTDynamics adapter applies the same rule to its requested
-joint samples before solving.
+Raw exporters retain the measured samples and contact intervals. Selection for
+optimization happens in `export_native_recordings.py`, through the shared
+`contactInitializationSlices` API. It samples every supported phase, retaining
+one central slice in short phases and evenly spaced buffered slices in long
+phases. The default maximum interval within a phase is 200 ms.
 
-The policy walk already has a maximum frame gap of 0.71 s and needs no additional
-frames. The capture now has 55 frames instead of 34, with a maximum gap of 1 s.
-`metadata.frameSampling` records the interval and counts; each frame's `selection`
-is `contact` or `periodic`. The UI marks periodic ticks with dashed lines.
-
-To resample an existing FK export without regenerating measurements, run in
-`py312` from the repository root, then regenerate the native recordings:
+Older raw exports contain `frames` and `metadata.frameSampling` from the retired
+one-second sampler. The native exporter ignores these fields and uses the
+original samples and contact schedule.
 
 ```bash
-python apps/contact-initialization/scripts/contact_discovery.py \
-  apps/contact-initialization/public/g1-walk.json \
-  apps/contact-initialization/public/g1-steptouch-30s.json
-python apps/contact-initialization/scripts/export_native_recordings.py \
-  --optimizer build/contact-initialization/contact_initializer
+python apps/contact-initialization/scripts/export_native_recordings.py
 ```
 
 ## Reproduce

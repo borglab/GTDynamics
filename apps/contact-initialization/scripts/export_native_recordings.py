@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file export_native_recordings.py
+# @brief Export native contact initialization results.
+# @author GTDynamics contributors
 """Record the native pose-contact initializer; the browser only replays results.
 
 The input schedule is preserved. Frozen observations, stance associations and
@@ -387,7 +395,7 @@ def main() -> None:
     ]
     catalogue = json.loads(args.sequences.read_text())
     for sequence in catalogue["sequences"]:
-        # SSIO has explicit double-support selection and separate prior settings.
+        # SSIO has explicit supported-phase selection and separate prior settings.
         # Its dedicated driver reuses record_run/package_run below.
         if sequence.get("contactEvidence") == "privileged-max-product":
             continue
@@ -463,7 +471,7 @@ def main() -> None:
                 },
                 "referenceExcludedFromOptimization": True,
                 "sampling": {
-                    "mode": "double-support",
+                    "mode": "supported-phases",
                     "maxSliceIntervalMs": args.max_slice_interval_ms,
                     "contactBuffer": 1,
                     "longPhaseSeconds": min(0.2, args.max_slice_interval_ms / 1000.0),

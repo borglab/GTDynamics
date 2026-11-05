@@ -20,10 +20,11 @@ labels derived partly from SuperOdom LiDAR-inertial motion, not independent cont
 measurements. The first selected root pose also fixes the gauge from that reference;
 subsequent reference poses are used only to evaluate the result.
 
-`initialization_slices` reuses native double-support selection: one central slice
+`initialization_slices` calls the shared native `contactInitializationSlices`
+sampler for both single- and double-support phases: one central slice
 from phases up to 200 ms, or evenly spaced slices between one-sample-buffered
 endpoints for longer phases, with no within-phase gap above 200 ms. This is the
-default for all five recordings; `--max-slice-interval-ms` sets the limit. Only these slices
+default for regenerating all five recordings; `--max-slice-interval-ms` sets the limit. Only these slices
 are optimized; there is no dense expansion. The full snippet phases still determine
 stance continuity. The strip shows the saved support states and selected slices.
 
@@ -87,7 +88,9 @@ actual times, frozen root-relative contact poses, and native stance indices.
 The app does not maintain a second association or graph-building algorithm.
 The current policy recording selects 148 slices and 38 stance poses; the capture
 selects 86 slices and 19 stance poses. Supported phase boundaries and supplemental
-samples are selected by the native API, with `contactBuffer=0` for this app.
+samples use the shared native sampler with a one-slice phase buffer. Explicit
+selected slices then enter the initializer with `contactBuffer=0`, preventing
+double buffering. Existing saved recordings retain their historical selection.
 
 For frozen FK `Z_ij = rootCOM_T_sole(q_i)`, the pose observation relates root pose
 `X_i` to stance pose `C_j` through `X_i Z_ij = C_j`. The native six-dimensional

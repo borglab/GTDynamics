@@ -3,6 +3,11 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+/**
+ * @file PoseContactInitializer.cpp
+ * @brief Initialize floating-root poses from shared sole-pose landmarks.
+ * @author GTDynamics contributors
+ */
 #include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/kinematics/ContactHeightFactor.h>
 #include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
@@ -108,38 +113,46 @@ std::map<size_t, std::vector<TrackedPoseContact>> contactPoseFrames(
   return frames;
 }
 
-std::vector<Slice> doubleSupportSlices(const Trajectory& trajectory, double dt,
-                                       double longPhaseSeconds,
-                                       size_t contactBuffer) {
-  require(std::isfinite(dt) && dt > 0 && std::isfinite(longPhaseSeconds) &&
+std::vector<Slice> contactInitializationSlices(const Trajectory& trajectory,
+                                               double dt,
+                                               double maxSliceInterval,
+                                               size_t contactBuffer,
+                                               double longPhaseSeconds) {
+  require(std::isfinite(dt) && dt > 0 && std::isfinite(maxSliceInterval) &&
+              maxSliceInterval >= dt && std::isfinite(longPhaseSeconds) &&
               longPhaseSeconds > 0,
-          "invalid double-support sampling period");
-
-  // Validate the schedule and material-frame identities using the common path.
-  contactPoseFrames(trajectory);
+          "invalid contact sampling interval");
+  contactPoseFrames(
+      trajectory);  // Validate phase bounds and contact identities.
 
   std::set<size_t> selected;
   for (const auto& phase : trajectory.phases()) {
-    size_t ground = 0;
-    for (const auto& contact : phase.constraintSpec()->contactPoses())
-      ground += contact.isGround;
-    if (ground != 2) continue;
-
-    // Duration here is the number of source samples times dt. A short phase
-    // contributes its central sample (the earlier one for an even sample
-    // count). This preserves even a one-sample double-support phase; it does
-    // not certify that either foot is flat or motionless at the selected
-    // instant.
+    if (phase.constraintSpec()->contactPoses().empty()) continue;
     const size_t width = phase.k_end - phase.k_start;
-    if ((width + 1) * dt <= longPhaseSeconds + 1e-12) {
+    if ((width + 1) * dt <=
+        std::min(longPhaseSeconds, maxSliceInterval) + 1e-12) {
+      // Preserve even a one-sample support phase, including a short handover.
       selected.insert(phase.k_start + width / 2);
-    } else {
-      // For a longer phase, retain both ends of its buffered interior. Capping
-      // the buffer avoids an empty interior; the set also removes duplicates.
-      const size_t buffer = std::min(contactBuffer, width / 2);
-      selected.insert(phase.k_start + buffer);
-      selected.insert(phase.k_end - buffer);
+      continue;
     }
+
+    // Buffer each phase inward, capping the margin to retain a nonempty
+    // interior. Stance identity is still determined on the original trajectory.
+    const size_t buffer = std::min(contactBuffer, width / 2);
+    const size_t first = phase.k_start + buffer, last = phase.k_end - buffer;
+    const size_t span = last - first;
+    if (span == 0) {
+      selected.insert(first);
+      continue;
+    }
+    const size_t maxSteps = std::max<size_t>(
+        1, size_t(std::min(double(span),
+                           std::floor(maxSliceInterval / dt + 1e-12))));
+    const size_t intervals = (span + maxSteps - 1) / maxSteps;
+    // Integer nearest rounding spreads gaps evenly; every gap <= maxSteps.
+    // Ties choose the later sample. No interpolated sample is synthesized.
+    for (size_t i = 0; i <= intervals; ++i)
+      selected.insert(first + (i * span + intervals / 2) / intervals);
   }
 
   std::vector<Slice> result;
@@ -169,28 +182,27 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
         options.betweenTranslationSigma, options.betweenRotationSigma})
     require(std::isfinite(sigma) && sigma > 0,
             "positive finite noise scales required");
+  require(
+      std::isfinite(options.maxSliceInterval) && options.maxSliceInterval > 0,
+      "positive finite sampling interval required");
   require(options.maxIterations > 0 && initialPose.matrix().allFinite(),
           "invalid optimizer options or gauge");
   const auto root = robot.link(rootLinkName);
   require(bool(root) && !root->isFixed(), "floating root required");
 
-  // Keep the original association for the whole trajectory. `trusted` is a
-  // separate observation mask: buffering can remove a contact observation at a
-  // slice without changing which material foothold later observations refer to.
+  // Associate footholds on the whole trajectory before sampling. Skipping
+  // slices must neither split continuing stances nor merge separate footholds.
   const auto frames = contactPoseFrames(trajectory);
-  auto trusted = frames;
-  std::map<size_t, std::pair<size_t, size_t>> spans;
   std::map<size_t, PoseOnLink> definitions;
   for (const auto& [k, contacts] : frames)
     for (const auto& c : contacts) {
       require(robot.link(c.contact.link->name()) == c.contact.link,
               "foreign contact link");
-      spans.emplace(c.stance, std::make_pair(k, k)).first->second.second = k;
       definitions.emplace(c.stance, c.contact);
     }
 
   // Select source indices, not newly synthesized times. Explicit selection has
-  // already applied its policy (for example, double-support-only sampling), so
+  // already applied its policy (including phase buffering), so
   // it must not be buffered a second time.
   std::set<size_t> selected;
   if (!options.selectedSlices.empty()) {
@@ -202,46 +214,10 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
       selected.insert(slice.k);
     }
   } else {
-    if (contactBuffer) {
-      // Trim each uninterrupted stance as a whole, not each phase separately.
-      // Retain both interior endpoints, then mask boundary observations from
-      // any additional selected slices that happen to include those boundaries.
-      for (const auto& [stance, span] : spans) {
-        const auto [first, last] = span;
-        require(last > first && contactBuffer <= (last - first - 1) / 2,
-                "stance too short for contact buffer");
-        selected.insert(first + contactBuffer);
-        selected.insert(last - contactBuffer);
-      }
-
-      for (auto& [k, contacts] : trusted) {
-        const size_t sliceIndex = k;
-        contacts.erase(
-            std::remove_if(contacts.begin(), contacts.end(),
-                           [&](const auto& c) {
-                             const auto [first, last] = spans.at(c.stance);
-                             return sliceIndex - first < contactBuffer ||
-                                    last - sliceIndex < contactBuffer;
-                           }),
-            contacts.end());
-      }
-    }
-
-    // The legacy automatic policy supplements stance endpoints with supported
-    // phase boundaries and roughly one-second samples in long phases. Explicit
-    // selection bypasses this entire policy, keeping the requested graph
-    // sparse.
-    for (const auto& phase : trajectory.phases()) {
-      for (size_t k : {phase.k_start, phase.k_end})
-        if (!trusted.at(k).empty()) selected.insert(k);
-      const size_t stride =
-          size_t(std::max(1.0, std::min(double(phase.k_end - phase.k_start),
-                                        std::floor((1.0 + 1e-8) / dt))));
-      for (size_t k = phase.k_start; phase.k_end - k > stride;) {
-        k += stride;
-        if (!trusted.at(k).empty()) selected.insert(k);
-      }
-    }
+    for (const auto& slice : contactInitializationSlices(
+             trajectory, dt, std::max(dt, options.maxSliceInterval),
+             contactBuffer))
+      selected.insert(slice.k);
   }
   require(!selected.empty(), "no active contact frames");
 
@@ -261,7 +237,7 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
     InsertPose(&known, root->id(), k, Pose3());
     const auto fk = robot.forwardKinematics(known, k, rootLinkName);
     std::vector<Observation> row;
-    for (const auto& c : trusted.at(k))
+    for (const auto& c : frames.at(k))
       row.push_back({c.stance, c.contact.predict(fk, k)});
     observations.push_back(row);
     result.selectedSlices.emplace_back(k);

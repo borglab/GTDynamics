@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file export_g1_contacts.py
+# @brief Export G1 simulation measurements and contact intervals.
+# @author GTDynamics contributors
 """Export the real G1 PR walking recording for the contact initialization app.
 
 Requires Python with numpy and mujoco, not MJLab or a GPU. The original recorder
@@ -20,8 +28,6 @@ from pathlib import Path
 
 import mujoco
 import numpy as np
-
-from contact_discovery import component_count, sample_frames
 
 
 SOURCE_REVISION = "dba5c5eaea5d9bd19f0fa91191bbbbc9a4291941"
@@ -227,7 +233,6 @@ def main():
     if not len(supported):
         raise ValueError("Detector found no supported samples")
     first, last = int(supported[0]), int(supported[-1])
-    frames, frame_sampling = sample_frames(samples, contacts)
     for i, sample in enumerate(samples):
         sample["support"] = {side: bool(support[i, j]) for j, side in enumerate(feet)}
 
@@ -297,21 +302,17 @@ def main():
             "limitation": "Support labels use simulator normal loads; contact detection from encoders alone requires an additional heuristic or sensor.",
         },
         "graphSampleRange": [first, last],
-        "frameSampling": frame_sampling,
         "excludedBoundarySamples": [
             i for i in range(len(samples)) if i < first or i > last
         ],
         "excludedBoundaryReason": "No detected support at the initial saved sample; an unconstrained pose would be an isolated graph component.",
         "stats": {
             "episodeCount": len(contacts),
-            "frameCount": len(frames),
             "leftEpisodes": sum(c["foot"] == "left" for c in contacts),
             "rightEpisodes": sum(c["foot"] == "right" for c in contacts),
             "singleSupportSamples": int(np.sum(support.sum(axis=1) == 1)),
             "doubleSupportSamples": int(np.sum(support.all(axis=1))),
             "unsupportedSamples": int(np.sum(~support.any(axis=1))),
-            "graphComponents": component_count(frames),
-            "observationCount": sum(len(f["contacts"]) for f in frames),
             "referenceDisplacementMeters": rounded(qpos[-1, :3] - qpos[first, :3], 9),
         },
         "licenseNotes": [
@@ -364,7 +365,6 @@ def main():
         },
         "samples": samples,
         "contacts": contacts,
-        "frames": frames,
         "reference": {
             "description": "Recorded floating-base world poses for evaluation and optional overlay only; excluded from graph construction and optimization.",
             "poses": references,

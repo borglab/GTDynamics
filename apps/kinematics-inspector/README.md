@@ -49,19 +49,18 @@ constraints. It produces 787 contiguous phases: left, right, or double stance.
 World sole displacements use the privileged SuperOdom reference; the resulting
 schedule is an offline target, not a proprioceptive contact detector.
 
-`initialization_slices` reuses native `doubleSupportSlices` selection for the
-394 double-stance phases. A short phase
-(sample count × 20 ms ≤ 200 ms) contributes its central slice; a longer phase
-contributes evenly spaced source slices between its first and last samples after
-a one-slice inward buffer. `--max-slice-interval-ms` defaults to 200; intervals
-within each retained phase never exceed that limit and differ by at most one
-source sample. This trial gives 715 slices, compared with 421 using endpoints
-alone. Single-stance phases still determine material-foothold identity:
-the continuing foot shares its landmark, while lift-off/recontact starts a new
-one. The native pose initializer receives the original phase sequence plus
-explicit selected slices, with `interpolateOutput=False`. Its result supplies
-the exact indices and poses reused by smoothing. No interpolated states are
-created in either solve.
+`initialization_slices` calls the shared native `contactInitializationSlices`
+sampler used by Contact Initialization and kinodynamics. It includes single-
+and double-support phases. A short phase contributes its central slice; a long
+phase contributes evenly spaced source slices between one-sample-buffered
+endpoints. `--max-slice-interval-ms` defaults to 200. The bound applies within
+each phase; buffering and unsupported gaps can produce longer intervals.
+Foothold identity follows the original phase sequence through lift-off and
+recontact. The native initializer returns the exact indices and poses reused
+by smoothing, with `interpolateOutput=False`.
+
+Checked-in recordings retain their original double-support-only sampling until
+regenerated. Their recorded slice counts and timings describe that earlier run.
 
 Contact initialization uses the same corrected preset as Contact Initialization:
 1 cm / 90° observations, upright starting values, and soft priors for pelvis
@@ -73,15 +72,14 @@ replay. No later reference pose determines this shift. Configuration uses degree
 and converts at the native API boundary. The initializer allows 200 iterations
 and reports stalled separately from converged; CM-Opt allows 50 iterations.
 
-The reduced trajectory retains `sourceIndices` and actual timestamps. Its 393
-hidden lift-offs start new stance landmarks and are excluded from slip metrics.
+The reduced trajectory retains `sourceIndices` and actual timestamps. Hidden
+lift-offs start new stance landmarks and are excluded from slip metrics.
 The timeline displays the complete red/green/yellow source schedule; clicking
 jumps to the nearest estimated slice. The viewer and plots show saved estimates
 only; line segments between samples are visualization, not additional states.
 
-Intervals now range from 0.06 to 0.88 seconds, rather than up to 25.58 seconds.
-Gaps across omitted single-stance phases can exceed the within-phase 200 ms
-limit. Each of the 714 Gal3 pims integrates precisely between adjacent retained
+In the existing double-support recording, intervals range from 0.06 to 0.88
+seconds. Each Gal3 pim integrates precisely between adjacent retained
 timestamps, including fractional native IMU intervals. Velocity seeds, playback,
 and plots use those same times. `dt` describes the source grid, not the reduced
 spacing. The first retained pose uses the reference gauge at that exact source slice; the

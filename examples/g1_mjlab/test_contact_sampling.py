@@ -1,3 +1,11 @@
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file test_contact_sampling.py
+# @brief Verify phase sampling, stance continuity, and irregular IMU intervals.
+# @author GTDynamics contributors
 """Buffered native selection, sparse key mapping, and irregular-time IMU seeds."""
 
 import unittest
@@ -20,7 +28,7 @@ from mujoco_io import KinematicRecording
 
 
 class ContactSamplingTests(unittest.TestCase):
-    def test_double_support_selection_preserves_foothold_breaks(self) -> None:
+    def test_supported_selection_preserves_foothold_breaks(self) -> None:
         source = self.recording()
         robot = gtd.CreateRobotFromFile(
             str(
@@ -59,7 +67,7 @@ class ContactSamplingTests(unittest.TestCase):
             contact_diagnostics=diagnostics,
         )
         self.assertEqual(
-            [slice.k for slice in diagnostics.slices()], [1, 6, 12, 20, 29]
+            [slice.k for slice in diagnostics.slices()], [1, 4, 6, 8, 12, 21, 29]
         )
         self.assertTrue(
             all(len(snapshot.poses) == walk.count for snapshot in diagnostics.history)
@@ -67,16 +75,16 @@ class ContactSamplingTests(unittest.TestCase):
         self.assertAlmostEqual(options.rotationSigma, np.deg2rad(45.0))
         self.assertAlmostEqual(info["rotation_sigma_degrees"], 45.0)
         self.assertEqual(info["translation_sigma_m"], 0.01)
-        np.testing.assert_array_equal(walk.source_indices, [1, 6, 12, 20, 29])
-        np.testing.assert_allclose(walk.times, [0.02, 0.12, 0.24, 0.40, 0.58])
-        self.assertEqual(info["max_slice_interval_ms"], 200)
-        self.assertTrue(info["double_support_only"])
-        self.assertEqual(
-            walk.contact_breaks, frozenset({(1, right.link.id()), (2, left.link.id())})
+        np.testing.assert_array_equal(walk.source_indices, [1, 4, 6, 8, 12, 21, 29])
+        np.testing.assert_allclose(
+            walk.times, [0.02, 0.08, 0.12, 0.16, 0.24, 0.42, 0.58]
         )
+        self.assertEqual(info["max_slice_interval_ms"], 200)
+        self.assertTrue(info["supported_phases"])
+        self.assertEqual(walk.contact_breaks, frozenset())
         groups = {}
         _, constraints, keys = build_problem(walk, objective_groups=groups)
-        self.assertEqual(groups["contact"].size(), 10)
+        self.assertEqual(groups["contact"].size(), 12)
         self.assertEqual(constraints.size(), len(robot.joints()) * walk.count)
         self.assertEqual(
             seed_contact_landmarks(walk, seed).extract(keys).size(), len(keys)
@@ -100,7 +108,7 @@ class ContactSamplingTests(unittest.TestCase):
         )
         self.assertEqual(
             [s.k for s in initialization_slices(trajectory, 0.02)],
-            [1, 10, 20, 29, 50],
+            [1, 10, 20, 29, 32, 40, 48, 50],
         )
         # 200 ms is not a multiple of 30 ms: seven source steps would be too long.
         retained = [s.k for s in initialization_slices(trajectory, 0.03)]
@@ -109,7 +117,7 @@ class ContactSamplingTests(unittest.TestCase):
         self.assertLessEqual(int(gaps.max() - gaps.min()), 1)
         self.assertEqual(
             [s.k for s in initialization_slices(trajectory, 0.02, 1000)],
-            [1, 29, 50],
+            [1, 29, 32, 48, 50],
         )
         for invalid in (0, 10, float("nan"), float("inf")):
             with self.assertRaises(ValueError):
@@ -168,19 +176,19 @@ class ContactSamplingTests(unittest.TestCase):
 
     def test_retained_slices_have_native_poses_and_source_times(self) -> None:
         source = self.recording()
-        walk, seed, info = initialize_contact_slices(source, double_support_only=False)
-        np.testing.assert_array_equal(walk.source_indices, [1, 10, 20, 29])
-        np.testing.assert_allclose(walk.times, [0.1, 1.0, 2.0, 2.9])
+        walk, seed, info = initialize_contact_slices(source)
+        np.testing.assert_array_equal(walk.source_indices, np.arange(1, 30, 2))
+        np.testing.assert_allclose(walk.times, np.arange(1, 30, 2) * 0.1)
         np.testing.assert_array_equal(
             walk.reference_root_positions,
-            source.reference_root_positions[[1, 10, 20, 29]],
+            source.reference_root_positions[1:30:2],
         )
         self.assertEqual(info["contact_buffer"], 1)
         self.assertEqual(
-            [k for k, _, _ in contact_slices(walk.trajectory)], list(range(4))
+            [k for k, _, _ in contact_slices(walk.trajectory)], list(range(walk.count))
         )
         costs, constraints, keys = build_problem(walk)
-        for k in range(4):
+        for k in range(walk.count):
             self.assertTrue(seed.atPose3(gtd.PoseKey(1, k)).equals(source.anchor, 1e-8))
         self.assertLess(
             costs.error(seed_contact_landmarks(walk, seed).extract(keys)), 1e-10
@@ -190,9 +198,7 @@ class ContactSamplingTests(unittest.TestCase):
     def test_recontact_gets_new_landmark_across_skipped_flight(self) -> None:
         options = gtd.pose_contact_init.Options()
         options.addBetweenFactors = True
-        walk, seed, _ = initialize_contact_slices(
-            self.recording(flight=True), options, double_support_only=False
-        )
+        walk, seed, _ = initialize_contact_slices(self.recording(flight=True), options)
         self.assertEqual(len(walk.contact_breaks), 1)
         k, link = next(iter(walk.contact_breaks))
         groups = {}
@@ -238,9 +244,7 @@ class ContactSamplingTests(unittest.TestCase):
     def test_shared_stance_pose_factor_and_optional_priors(self) -> None:
         # Independent foot observations connect to a shared optimized landmark.
         # CM-Opt must retain these free Pose3 keys outside kinematic constraints.
-        walk, seed, _ = initialize_contact_slices(
-            self.recording(), double_support_only=False
-        )
+        walk, seed, _ = initialize_contact_slices(self.recording())
         seed = seed_contact_landmarks(walk, seed)
         groups = {}
         costs, constraints, keys = build_problem(
@@ -280,7 +284,7 @@ class ContactSamplingTests(unittest.TestCase):
 
     def test_irregular_velocity_seed_and_pim_durations(self) -> None:
         walk, seed, _ = initialize_contact_slices(
-            self.recording(), double_support_only=False
+            self.recording(), max_slice_interval_ms=350
         )
         velocity = np.array([0.3, -0.2, 0.1])
         for k, time in enumerate(walk.times):
@@ -302,10 +306,12 @@ class ContactSamplingTests(unittest.TestCase):
             bias,
         )
         np.testing.assert_allclose(
-            [pim.deltaTij() for pim in pims], [0.9, 1.0, 0.9], atol=1e-12
+            [pim.deltaTij() for pim in pims],
+            [0.3, 0.3, 0.2, 0.3, 0.3, 0.3, 0.3, 0.2, 0.3, 0.3],
+            atol=1e-12,
         )
         factors = gtd.Kinematics().imuFactors(walk.trajectory, 1, pims, BIAS_KEY)
-        self.assertEqual(factors.size(), 3)
+        self.assertEqual(factors.size(), walk.count - 1)
         self.assertLess(factors.error(initial), 1e-15)
 
 

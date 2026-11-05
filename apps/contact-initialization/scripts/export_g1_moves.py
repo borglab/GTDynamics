@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file export_g1_moves.py
+# @brief Export measured G1 motion and contact intervals.
+# @author GTDynamics contributors
 """Download and export a continuous, CC-BY-4.0 G1 Moves stepping capture.
 
 Uses the same 29-DoF G1 kinematics as the original PR recording. Unlike that
@@ -21,7 +29,7 @@ import mujoco
 import numpy as np
 
 from export_g1_contacts import digest, rounded
-from contact_discovery import component_count, refine_handovers, sample_frames
+from contact_discovery import refine_handovers
 
 REVISION = "895d064b2385725e6aabf540461c219afc3e0916"
 CLIP = "J_Dance0_StepTouch"
@@ -247,7 +255,6 @@ def main():
     supported = np.flatnonzero(support.any(axis=1))
     if not len(supported):
         raise ValueError("Heuristic found no candidate support")
-    frames, frame_sampling = sample_frames(samples, contacts)
     rigidity = []
     for contact in contacts:
         (p0, q0), (p1, q1) = (
@@ -265,14 +272,11 @@ def main():
         )
     stats = {
         "episodeCount": len(contacts),
-        "frameCount": len(frames),
         "leftEpisodes": sum(c["foot"] == "left" for c in contacts),
         "rightEpisodes": sum(c["foot"] == "right" for c in contacts),
         "singleSupportSamples": int(np.sum(support.sum(axis=1) == 1)),
         "doubleSupportSamples": int(np.sum(support.all(axis=1))),
         "unsupportedSamples": int(np.sum(~support.any(axis=1))),
-        "graphComponents": component_count(frames),
-        "observationCount": sum(len(f["contacts"]) for f in frames),
         "referenceDisplacementMeters": rounded(
             qpos[-1, :3] - qpos[int(supported[0]), :3], 9
         ),
@@ -327,7 +331,6 @@ def main():
             "limitation": "A kinematic candidate-contact schedule, not force evidence. Both feet can slide or appear above the floor after retargeting. Threshold rejections may disconnect the graph; no motion edges fill those gaps. Recorded root is used only for labeling and held-out evaluation, never as a pose measurement in the solver.",
         },
         "graphSampleRange": [int(supported[0]), int(supported[-1])],
-        "frameSampling": frame_sampling,
         "excludedBoundarySamples": [
             i for i in range(len(samples)) if i < supported[0] or i > supported[-1]
         ],
@@ -359,7 +362,6 @@ def main():
         "model": model_description,
         "samples": samples,
         "contacts": contacts,
-        "frames": frames,
         "reference": {
             "description": "Original retargeted motion root poses; held-out overlay/evaluation only after contact schedule annotation. No reference root pose is a graph input.",
             "poses": reference,

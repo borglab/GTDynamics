@@ -1170,13 +1170,15 @@ class Result {
 } // namespace contact_init
 
 #include <gtdynamics/utils/PoseContactInitializer.h>
-std::vector<gtdynamics::Slice> doubleSupportSlices(
+std::vector<gtdynamics::Slice> contactInitializationSlices(
     const gtdynamics::Trajectory& trajectory, double dt,
-    double longPhaseSeconds = 0.2, size_t contactBuffer = 1);
+    double maxSliceInterval = 0.2, size_t contactBuffer = 1,
+    double longPhaseSeconds = 0.2);
 
 namespace pose_contact_init {
 class Options {
   Options();
+  double maxSliceInterval;
   size_t maxIterations;
   bool recordHistory;
   std::vector<gtdynamics::Slice> selectedSlices;

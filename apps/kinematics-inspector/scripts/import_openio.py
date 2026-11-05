@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file import_openio.py
+# @brief Import SSIO sensor measurements and contact intervals for G1 examples.
+# @author GTDynamics contributors
 """Download a physical G1 recording and prepare a walking excerpt for Kinematics.
 
 Keep the original sensor files in the ignored cache. Resample poses and encoders
@@ -28,7 +36,7 @@ sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 sys.path.insert(0, str(REPO / "apps/contact-initialization/scripts"))
 from g1_model import load_g1_model, model_description
 from export_g1_moves import detect_support
-from contact_discovery import component_count, sample_frames
+from contact_discovery import contact_component_count
 
 CLIP = "10871_humanoid_20260520_223451"
 REVISION = "db621c57833e08a812b2ec8491aa0ca81f0ecb33"
@@ -375,8 +383,7 @@ def main() -> None:
         floor = float(np.interp(args.start_seconds, detection_times, local_floor))
     for k, sample in enumerate(samples):
         sample["support"] = {side: bool(support[k, i]) for i, side in enumerate(feet)}
-    frames, sampling = sample_frames(samples, contacts)
-    components = component_count(frames)
+    components = contact_component_count(contacts)
     if (
         not args.full_trajectory
         and not args.allow_disconnected
@@ -497,8 +504,6 @@ def main() -> None:
             "model": description,
             "samples": samples,
             "contacts": contacts,
-            "frames": frames,
-            "frameSampling": sampling,
             "reference": {
                 "poses": [
                     {"p": row[:3].tolist(), "q": row[3:7].tolist()} for row in qpos
