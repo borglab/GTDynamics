@@ -1,3 +1,11 @@
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file test_pose_contacts.py
+# @brief Verify pose-contact bindings and the shared 200 ms sampling default.
+# @author GTDynamics contributors
 """Native pose-contact bindings, including defaults and exact buffered slice IDs."""
 
 import unittest
@@ -21,12 +29,19 @@ class PoseContactTests(unittest.TestCase):
         values = gtd.Initializer().InitializeSolutionContactPoses(
             robot, "root", anchor, gtsam.Values(), trajectory, 0.1, options, result, 1
         )
-        self.assertEqual([s.k for s in result.slices()], [1, 10, 19])
-        np.testing.assert_allclose(result.times, [0.1, 1.0, 1.9])
+        # A one-sample buffer leaves [1, 19]; the 200 ms default at 10 Hz
+        # retains every other source slice, including single-support poses.
+        expected_slices = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+        self.assertEqual(options.maxSliceInterval, 0.2)
+        self.assertEqual([s.k for s in result.slices()], expected_slices)
+        np.testing.assert_allclose(result.times, np.asarray(expected_slices) * 0.1)
         self.assertEqual(len(result.contactPoses), 1)
         self.assertEqual(len(result.contactFrames), 1)
         self.assertTrue(result.contactFrames[0].equals(contact))
-        self.assertEqual([o.poseIndex for o in result.observations], [0, 1, 2])
+        self.assertEqual(
+            [o.poseIndex for o in result.observations],
+            list(range(len(expected_slices))),
+        )
         for observation in result.observations:
             self.assertEqual(observation.contactIndex, 0)
             predicted = result.poses[observation.poseIndex] * observation.rootTcontact

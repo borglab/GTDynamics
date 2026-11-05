@@ -35,11 +35,16 @@ functions to compare the initialization and solve timings (`--repeats 3`).
 free configuration, velocity, acceleration, sole/reaction wrench and torque
 variables. Native articulated constraints and rectangular sole-wrench cones
 are exact; root/joint trapezoidal collocation factors couple adjacent slices.
-The initial configurations come from the shared contact initializer; all other
-state variables, including the shared IMU bias, start at zero.
+The default `--initialization contact` uses the existing contact-pose initializer
+and starts dynamic variables at zero. The optional `--initialization fk` runs
+measured-joint FK with a fixed upright pelvis, aligns the gauge-slice stance
+soles to zero height, and shares gravity-support forces across stance feet.
+Velocities, accelerations, joint torques and IMU bias start at zero in both
+strategies. Both use the same coupled graph and feasibility restoration.
 
 ```bash
 python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
+python examples/g1_mjlab/kinodynamic_walk.py --initialization fk --output /tmp/kinodynamics-fk
 python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
 ```
 
@@ -59,12 +64,38 @@ Run `test_kinodynamics.py` to check tilt recovery and
 `validate_kinodynamics.py --result /tmp/kinodynamics` for the independent
 MuJoCo inverse-dynamics and contact-feasibility checks.
 `--max-iterations` defaults to 5; `--start 78 --end 79` gives a small development
-run. The example saves `kinodynamics.npz` and `summary.json`, separating contact
+run. The example saves `kinodynamics.npz` and `summary.json`, separating configuration
 initialization, measurement preparation, graph assembly, initial feasibility,
 and coupled optimization. The [Kinodynamics app](../../apps/kinodynamics/README.md)
 replays the saved initial/final states, forces, velocities, torques and error
 history. Neither the saved Kinematics result nor GP interpolation initializes
 this solve. Support labels remain privileged, as described in the app.
+
+### Initialization timing comparison
+
+A local comparison on 2026-11-04 at commit `0af58608` used the 78–98 s
+mid-clip turns (1,000 slices at 50 Hz), five coupled iterations, and eight
+retraction workers. Contact initialization used 171 selected slices: 114 in
+single support and 57 in double support.
+
+| Measurement | Contact (default) | FK |
+| --- | ---: | ---: |
+| Configuration initialization | 0.151 s | 0.484 s |
+| Initial feasibility restoration | 6.526 s | 6.299 s |
+| Coupled optimization | 30.691 s | 37.608 s |
+| Total initialization through solve | 40.391 s | 47.976 s |
+| Final objective | 9,047.407 | 67,966.670 |
+| Feasible | Yes | Yes |
+
+Contact initialization reduced total time by 16% and reached a lower objective
+within the same five-iteration budget. These are single runs, contact followed
+by FK in one process, using Python 3.12 with `OMP_NUM_THREADS=1` and
+`OPENBLAS_NUM_THREADS=1`. The canonical MuJoCo scene was loaded once and reused.
+Total time includes configuration initialization, measurement preparation,
+native graph assembly, feasibility restoration, and optimization; it excludes
+recording/model loading and result export. Five iterations establish a bounded
+comparison, not convergence. Browser recordings were not regenerated for this
+measurement.
 
 ## Walking dynamics example
 

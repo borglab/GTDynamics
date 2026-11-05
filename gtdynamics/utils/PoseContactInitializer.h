@@ -3,6 +3,11 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+/**
+ * @file PoseContactInitializer.h
+ * @brief Pose-contact initialization and shared phase sampling.
+ * @author GTDynamics contributors
+ */
 #pragma once
 #include <gtdynamics/utils/ContactInitializer.h>
 #include <gtdynamics/utils/PoseOnLink.h>
@@ -24,17 +29,22 @@ struct TrackedPoseContact {
 std::map<size_t, std::vector<TrackedPoseContact>> contactPoseFrames(
     const Trajectory& trajectory);
 
-/** Select only phases with exactly two ground contact poses. Short phases
- * (sample count * dt <= longPhaseSeconds) contribute one central slice;
- * longer phases contribute endpoints buffered inward by contactBuffer slices.
- * The buffer is capped to keep a nonempty selection, including one-slice
- * phases. Returns ordered unique source Slice indices. Requires positive finite
- * dt and longPhaseSeconds. Stance association remains in the ORIGINAL
- * trajectory.
+/** Select original slices from every phase with at least one pose contact.
+ * Short phases (sample count * dt <= min(longPhaseSeconds, maxSliceInterval))
+ * contribute their central slice, choosing the earlier of two central samples.
+ * Long phases retain inward-buffered endpoints and evenly spaced slices between
+ * them, with gaps <= maxSliceInterval seconds. The buffer is capped to retain
+ * short phases. The interval bound applies within each phase's buffered
+ * interior; unsupported phases and buffered boundaries can create larger gaps.
+ * Returns ordered unique source indices; stance association uses the original
+ * trajectory. Requires finite dt > 0, maxSliceInterval >= dt, longPhaseSeconds
+ * > 0.
  */
-std::vector<Slice> doubleSupportSlices(const Trajectory& trajectory, double dt,
-                                       double longPhaseSeconds = 0.2,
-                                       size_t contactBuffer = 1);
+std::vector<Slice> contactInitializationSlices(const Trajectory& trajectory,
+                                               double dt,
+                                               double maxSliceInterval = 0.2,
+                                               size_t contactBuffer = 1,
+                                               double longPhaseSeconds = 0.2);
 
 namespace pose_contact_init {
 /** Contact-pose observation noise: radians and metres. Priors are explicit soft
@@ -44,7 +54,9 @@ namespace pose_contact_init {
 struct Options {
   size_t maxIterations = 100;
   bool recordHistory = true;
-  /// Explicit ordered source slices; empty uses the existing automatic policy.
+  /// Maximum automatic sampling interval in seconds, bounded below by dt.
+  double maxSliceInterval = 0.2;
+  /// Explicit ordered source slices; empty calls contactInitializationSlices.
   /// Requires contactBuffer=0; selection has already applied any phase buffer.
   std::vector<Slice> selectedSlices;
   /// False returns FK Values ONLY at selected slices, without interpolation.

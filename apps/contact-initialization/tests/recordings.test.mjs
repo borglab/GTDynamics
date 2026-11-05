@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { gunzipSync } from "node:zlib";
+import { recordedSourceBytes } from '../../shared/tests/recordedSources.mjs';
 import { recordingSourceMatches } from '../../shared/recordingProvenance.mjs';
 import {
   composePoses,
@@ -53,13 +54,12 @@ for (const entry of catalogue.sequences) {
     );
     for (const [path, hash] of Object.entries(recording.source.sources)) {
       assert.match(hash, /^[a-f0-9]{64}$/);
-      const source = await readFile(new URL(path, repo));
       // Label archives also contain report/export provenance. Check the actual
       // label inputs below so documentation-only changes do not stale a solve.
       if (
         path !== recording.source.labelSource
       )
-        assert(recordingSourceMatches(path, source, hash), path);
+        assert(recordingSourceMatches(path, recordedSourceBytes(path, hash), hash), path);
     }
     assert.equal(data.model.soleCorners, undefined);
     assert.equal(data.model.soleOutline, undefined);

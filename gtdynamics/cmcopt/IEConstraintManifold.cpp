@@ -57,17 +57,7 @@ TangentSpaceMetric::shared_ptr IEConstraintManifold::projectionMetric(
 /* ************************************************************************* */
 std::pair<IndexSet, Vector>
 IEConstraintManifold::projectTangentCone(const Vector &xi) const {
-  auto result = i_cone_->project(xi);
-
-  // TangentCone::project returns row indices in the active-constraint list;
-  // map them back to the original inequality indices from thesis Eq. (4.3).
-  IndexSet blocking_indices;
-  std::vector<size_t> active_indices_vector(active_indices_.begin(),
-                                            active_indices_.end());
-  for (const auto &index : result.first) {
-    blocking_indices.insert(active_indices_vector.at(index));
-  }
-  return std::make_pair(blocking_indices, result.second);
+  return linearization_->project(xi);
 }
 
 /* ************************************************************************* */
@@ -100,25 +90,7 @@ IEConstraintManifold::retract(const VectorValues &delta,
 /* ************************************************************************* */
 IndexSet IEConstraintManifold::blockingIndices(
     const VectorValues &tangentVector) const {
-  IndexSet blocking_indices;
-
-  for (const auto &idx : active_indices_) {
-    const auto &i_constraint = i_constraints_->at(idx);
-    auto linear_factor = LinearizedIConstraint(i_constraint, values_);
-    Vector error = Vector::Zero(linear_factor->rows());
-    for (auto it = linear_factor->begin(); it != linear_factor->end(); ++it) {
-      if (tangentVector.exists(*it)) {
-        error += linear_factor->getA(it) * tangentVector.at(*it);
-      }
-    }
-    // A positive directional derivative means this g(x)<=0 face would be
-    // violated by the proposed tangent step; these are blocking constraints
-    // in the sense of thesis Eq. (4.45).
-    if ((error.array() > 1e-5).any()) {
-      blocking_indices.insert(idx);
-    }
-  }
-  return blocking_indices;
+  return linearization_->blockingIndices(tangentVector);
 }
 
 /* ************************************************************************* */
@@ -178,85 +150,31 @@ IndexSet IEConstraintManifold::identifyActiveConstraints(
 }
 
 /* ************************************************************************* */
-TangentCone::shared_ptr IEConstraintManifold::constructTangentCone(
-    const NonlinearInequalityConstraints &i_constraints,
-    const Values &values, const IndexSet &active_indices,
+std::shared_ptr<const IEManifoldLinearization>
+IEConstraintManifold::constructLinearization(
+    const NonlinearInequalityConstraints &i_constraints, const Values &values,
+    const IndexSet &active_indices,
     const TangentSpaceBasis::shared_ptr &t_basis) {
-
-  LinearInequalityConstraints constraints;
-  for (const auto &constraint_idx : active_indices) {
-    auto i_constraint = i_constraints.at(constraint_idx);
-    auto linear_factor = LinearizedIConstraint(i_constraint, values);
-    // Form Dg_A(x) B_x, i.e. the K matrix in thesis Eq. (4.15), so cone
-    // projection happens in equality-manifold coordinates.
-    Matrix man_jacobian = Matrix::Zero(linear_factor->rows(), t_basis->dim());
-    for (auto it = linear_factor->begin(); it != linear_factor->end(); ++it) {
-      const Key key = *it;
-      man_jacobian += linear_factor->getA(it) * t_basis->recoverJacobian(key);
+  LinearIConstraintMap tangent, ambient;
+  for (size_t index : active_indices) {
+    const auto &constraint = i_constraints.at(index);
+    const auto linear = LinearizedIConstraint(constraint, values);
+    Matrix rows = Matrix::Zero(linear->rows(), t_basis->dim());
+    std::vector<std::pair<Key, Matrix>> terms;
+    for (auto it = linear->begin(); it != linear->end(); ++it) {
+      rows += linear->getA(it) * t_basis->recoverJacobian(*it);
+      terms.emplace_back(*it, linear->getA(it));
     }
-    auto noise_model = noiseModel::Diagonal::Sigmas(i_constraint->sigmas());
-    auto jacobian_factor = std::make_shared<JacobianFactor>(
-        1, man_jacobian, Vector::Zero(linear_factor->rows()),
-        noise_model);
-    constraints.emplace_shared<JacobianLinearInequalityConstraint>(
-            jacobian_factor);
+    const auto noise = noiseModel::Diagonal::Sigmas(constraint->sigmas());
+    const Vector zero = Vector::Zero(linear->rows());
+    tangent.emplace(
+        index, std::make_shared<JacobianLinearInequalityConstraint>(
+                   std::make_shared<JacobianFactor>(1, rows, zero, noise)));
+    ambient.emplace(index,
+                    std::make_shared<JacobianLinearInequalityConstraint>(
+                        std::make_shared<JacobianFactor>(terms, zero, noise)));
   }
-
-  auto cone = std::make_shared<TangentCone>(constraints);
-  return cone;
-}
-
-/* ************************************************************************* */
-LinearIConstraintMap
-IEConstraintManifold::linearActiveManifoldInequalityConstraints(
-    const Key manifold_key) const {
-
-  LinearIConstraintMap active_constraints;
-
-  for (const auto &constraint_idx : active_indices_) {
-    auto i_constraint = i_constraints_->at(constraint_idx);
-    auto linear_factor = LinearizedIConstraint(i_constraint, values_);
-    Matrix man_jacobian = Matrix::Zero(linear_factor->rows(), dim());
-    for (auto it = linear_factor->begin(); it != linear_factor->end(); ++it) {
-      const Key key = *it;
-      man_jacobian += linear_factor->getA(it) * e_basis_->recoverJacobian(key);
-    }
-    auto noise_model = noiseModel::Diagonal::Sigmas(i_constraint->sigmas());
-    auto jacobian_factor = std::make_shared<JacobianFactor>(
-        manifold_key, man_jacobian, Vector::Zero(linear_factor->rows()),
-        noise_model);
-    auto linear_constraint =
-        std::make_shared<JacobianLinearInequalityConstraint>(
-            jacobian_factor);
-    active_constraints.insert({constraint_idx, linear_constraint});
-  }
-
-  return active_constraints;
-}
-
-/* ************************************************************************* */
-LinearIConstraintMap
-IEConstraintManifold::linearActiveBaseInequalityConstraints() const {
-  LinearIConstraintMap active_constraints;
-
-  for (const auto &constraint_idx : active_indices_) {
-    auto i_constraint = i_constraints_->at(constraint_idx);
-    auto linear_factor = LinearizedIConstraint(i_constraint, values_);
-    std::vector<std::pair<Key, Matrix>> jacobians;
-    jacobians.reserve(linear_factor->size());
-    for (auto it = linear_factor->begin(); it != linear_factor->end(); ++it) {
-      jacobians.emplace_back(*it, linear_factor->getA(it));
-    }
-    auto noise_model = noiseModel::Diagonal::Sigmas(i_constraint->sigmas());
-    auto jacobian_factor = std::make_shared<JacobianFactor>(
-        jacobians, Vector::Zero(linear_factor->rows()), noise_model);
-    auto linear_constraint =
-        std::make_shared<JacobianLinearInequalityConstraint>(
-            jacobian_factor);
-    active_constraints.insert({constraint_idx, linear_constraint});
-  }
-
-  return active_constraints;
+  return std::make_shared<const IEManifoldLinearization>(tangent, ambient);
 }
 
 } // namespace gtdynamics

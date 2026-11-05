@@ -3,6 +3,9 @@
 # Atlanta, Georgia 30332-0415. All Rights Reserved.
 # See LICENSE for the license information.
 # ----------------------------------------------------------------------------
+## @file kinematic_walk.py
+# @brief Solve G1 kinematics on selected supported slices.
+# @author GTDynamics contributors
 """Fit a complete G1 walk with CM-Opt and contact or IK initialization.
 
 Read load_walk -> build_problem -> initialize -> solve_cm -> evaluate.
@@ -55,10 +58,10 @@ def main() -> None:
         default=REPO / "apps/contact-initialization/public/g1-walk.json",
     )
     parser.add_argument(
-        "--double-support-slices",
+        "--contact-slices",
         action="store_true",
         default=True,
-        help="Infer contact phases, initialize and solve only selected double-stance slices",
+        help="Infer contact phases, initialize and solve only selected supported slices",
     )
     parser.add_argument("--initializer", choices=("contact", "ik"), default="contact")
     parser.add_argument("--max-slice-interval-ms", type=float, default=200.0)
@@ -84,12 +87,11 @@ def main() -> None:
     walk = load_walk(args.data, args.contacts, args.max_frames)
     selected_seed = None
     phase_info = None
-    if args.double_support_slices:
+    if args.contact_slices:
         if np.isclose(walk.dt, 0.02):
             walk, phase_info = infer_contact_phases(walk, args.data)
         walk, selected_seed, initialization = initialize_contact_slices(
             walk,
-            double_support_only=True,
             rotation_sigma_degrees=CONTACT_ROTATION_SIGMA_DEGREES,
             max_slice_interval_ms=args.max_slice_interval_ms,
         )

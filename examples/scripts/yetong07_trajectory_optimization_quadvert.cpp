@@ -16,6 +16,8 @@
 
 #include <filesystem>
 
+#include "CmcBenchmark.h"
+
 using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_vertical_jump;
@@ -109,7 +111,10 @@ CreateProblem() {
 }
 
 void TrajectoryOptimization() {
-  auto [problem, vision60_multi_phase, params] = CreateProblem();
+  auto setup = CreateProblem();
+  auto& problem = std::get<0>(setup);
+  auto& vision60_multi_phase = std::get<1>(setup);
+  [[maybe_unused]] auto& params = std::get<2>(setup);
   EvaluateAndExportInitValues(problem, *vision60_multi_phase, scenario_folder);
 
   /* <=====================================================================> */
@@ -148,7 +153,10 @@ void TrajectoryOptimization() {
   ie_params.activeConstraintsGroupedAsCategories = true;
 
   /* <=========== optimize ===========> */
-  auto ielm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+  auto ielm_result = cmc_benchmark::measure(problem, "LM", [&] {
+    return OptimizeIE_CMCOptLM(problem, ie_params, iecm_params, "CMOpt(IE)",
+                               cmc_benchmark::method.empty());
+  });
   EvaluateAndExportIELMResult(problem, *vision60_multi_phase, ielm_result.second,
                               scenario_folder, false);
 
@@ -193,6 +201,11 @@ void TrajectoryOptimization() {
 }
 
 int main(int argc, char **argv) {
-  TrajectoryOptimization();
-  return 0;
+  cmc_benchmark::configure(argc, argv);
+  try {
+    TrajectoryOptimization();
+    return 0;
+  } catch (const cmc_benchmark::Finished&) {
+    return 0;
+  }
 }

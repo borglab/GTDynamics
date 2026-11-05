@@ -174,7 +174,7 @@ IEOptimizer::computeTangentVector(const IEManifoldValues &manifolds,
   for (const auto &it : manifolds) {
     const Key &key = it.first;
     const Vector &xi = delta.at(key);
-    VectorValues tv = manifolds.at(key).eBasis()->computeTangentVector(xi);
+    VectorValues tv = manifolds.at(key).toAmbient(xi);
     tangentVector.insert(tv);
   }
   return tangentVector;

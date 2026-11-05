@@ -11,11 +11,11 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/cmcopt/ComponentTangentSpace.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
+#include <gtdynamics/cmcopt/IELMWorkingSet.h>
 #include <gtdynamics/cmcopt/IndependentComponents.h>
-#include <gtdynamics/cmcopt/TangentConeLinearization.h>
+#include <gtdynamics/cmcopt/WorkingFace.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
 #include <algorithm>
@@ -104,28 +104,8 @@ void IELMState::construct(const NonlinearFactorGraph &graph,
   baseLinear = graph.linearize(baseValues());
   linearManifoldGraph = manifold_graph.linearize(values);
 
-  // linearize active i-constraints
-  linearizeIConstraints();
-
   // compute graident
   computeGradient(manifold_graph);
-}
-
-/* ************************************************************************* */
-void IELMState::linearizeIConstraints() {
-  LinearInequalityConstraints componentConstraints;
-  size_t index = 0;
-  for (const auto &[key, manifold] : manifolds) {
-    auto manifoldConstraints =
-        manifold.linearActiveManifoldInequalityConstraints(key);
-    for (const auto &[constraintIndex, constraint] : manifoldConstraints) {
-      componentConstraints.push_back(constraint);
-      linearInequalityIndexTranslator.insert(index, key, constraintIndex);
-      index++;
-    }
-  }
-  tangentCone = std::make_shared<const internal::TangentConeLinearization>(
-      componentConstraints);
 }
 
 /* ************************************************************************* */
@@ -534,13 +514,15 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       SqrtHessianDiagonal(linear, params.lmParams);
   const auto dampedSystem =
       buildDampedSystem(linear, sqrtHessianDiagonal, state, params.lmParams);
-  IndexSet blockingIndices;
-
-  if (state.tangentCone->empty()) {
+  IndexSetMap blockingIndices;
+  const bool hasActive = std::any_of(
+      state.manifolds.begin(), state.manifolds.end(), [](const auto &entry) {
+        return !entry.second.linearization()->indices().empty();
+      });
+  if (!hasActive) {
     // With no active inequality faces, this is an ordinary LM linear solve.
     try {
-      delta = internal::ComponentTangentSpace({}).solve(dampedSystem,
-                                                        params.lmParams);
+      delta = internal::solveWorkingFaces(dampedSystem, {}, params.lmParams);
       solveSuccessful = true;
     } catch (const IndeterminateSystemException &) {
       solveSuccessful = false;
@@ -558,8 +540,8 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
     // Refine both the step and working set; initially blocking faces may need
     // to be released to reach the constrained minimum.
     if (params.iqpMaxIterations > 0) {
-      refineIQPStep(dampedSystem, *state.tangentCone, blockingIndices,
-                    params.lmParams, params.iqpMaxIterations);
+      refineIQPStep(dampedSystem, state, blockingIndices, params.lmParams,
+                    params.iqpMaxIterations);
       if (!solveSuccessful) return;
     }
   }
@@ -569,13 +551,16 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
 
 /* ************************************************************************* */
 void IELMTrial::LinearUpdate::refineIQPStep(
-    const GaussianFactorGraph &dampedSystem,
-    const internal::TangentConeLinearization &cone, IndexSet &blockingIndices,
-    const LevenbergMarquardtParams &params, size_t maxIterations) {
+    const GaussianFactorGraph &dampedSystem, const IELMState &state,
+    IndexSetMap &blockingIndices, const LevenbergMarquardtParams &params,
+    size_t maxIterations) {
   try {
-    const auto result =
-        cone.refine(internal::compactGaussianCosts(dampedSystem), delta,
-                    blockingIndices, params, maxIterations);
+    internal::ComponentLinearizations components;
+    for (const auto &[key, manifold] : state.manifolds)
+      components.emplace(key, manifold.linearization());
+    const auto result = internal::refineWorkingSet(
+        internal::compactGaussianCosts(dampedSystem), components, delta,
+        blockingIndices, params, maxIterations);
     delta = result.delta;
     numSolves += result.numSolves;
     blockingIndices = result.blockingIndices;
@@ -592,12 +577,11 @@ void IELMTrial::LinearUpdate::refineIQPStep(
 }
 
 /* ************************************************************************* */
-void IELMTrial::LinearUpdate::recordSolution(const IELMState &state,
-                                             const IndexSet &blockingIndices) {
-  // Return to original constraint indices and ambient tangent coordinates for
-  // the nonlinear retraction, then evaluate the undamped model's reduction.
-  blockingIndicesMap =
-      state.linearInequalityIndexTranslator.decodeIndices(blockingIndices);
+void IELMTrial::LinearUpdate::recordSolution(
+    const IELMState &state, const IndexSetMap &blockingIndices) {
+  // Retain original constraint indices while lifting to ambient tangents for
+  // retraction, then evaluate the undamped model's predicted reduction.
+  blockingIndicesMap = blockingIndices;
   tangentVector = computeTangentVector(state, delta, state.unconstrainedKeys);
   if (!checkSolutionValid(state, delta, blockingIndices)) {
     solveSuccessful = false;
@@ -619,17 +603,14 @@ IELMTrial::LinearUpdate IELMTrial::LinearUpdate::zero(const IELMState &state) {
 }
 
 /* ************************************************************************* */
-std::tuple<VectorValues, IndexSet, size_t, bool>
+std::tuple<VectorValues, IndexSetMap, size_t, bool>
 IELMTrial::LinearUpdate::initialEstimate(
     const GaussianFactorGraph &quadraticCost, const IELMState &state,
     const LevenbergMarquardtParams &params) {
-  IndexSet blockingIndices =
-      state.linearInequalityIndexTranslator.encodeIndices(
-          state.gradientBlockingIndicesMap);
+  IndexSetMap blockingIndices = state.gradientBlockingIndicesMap;
   size_t numSolves = 0;
 
   const auto localCost = internal::compactGaussianCosts(quadraticCost);
-  const auto &cone = *state.tangentCone;
 
   while (true) {
     numSolves += 1;
@@ -637,7 +618,13 @@ IELMTrial::LinearUpdate::initialEstimate(
     try {
       // Selected faces define local coordinates. The global solver only sees
       // the objective in those coordinates, with the original LM damping.
-      delta = cone.workingSpace(blockingIndices).solve(localCost, params);
+      internal::WorkingFaces charts;
+      for (const auto &[key, selected] : blockingIndices)
+        if (!selected.empty())
+          charts.emplace(
+              key,
+              state.manifolds.at(key).linearization()->workingFace(selected));
+      delta = internal::solveWorkingFaces(localCost, charts, params);
     } catch (const IndeterminateSystemException &) {
       return {delta, blockingIndices, numSolves, false};
     } catch (const std::runtime_error &) {
@@ -645,14 +632,16 @@ IELMTrial::LinearUpdate::initialEstimate(
     }
 
     bool feasible = true;
-    for (size_t index : cone.violated(delta)) {
-      if (blockingIndices.exists(index)) {
-        // A selected face must be zero. Numerical failure is a failed trial,
-        // never a reason to fall back to global constrained elimination.
-        return {delta, blockingIndices, numSolves, false};
+    for (const auto &[key, manifold] : state.manifolds) {
+      const auto &local = *manifold.linearization();
+      if (local.indices().empty()) continue;
+      for (size_t index : local.violated(delta.at(key))) {
+        auto &selected = blockingIndices[key];
+        if (selected.exists(index))
+          return {delta, blockingIndices, numSolves, false};
+        feasible = false;
+        selected.insert(index);
       }
-      feasible = false;
-      blockingIndices.insert(index);
     }
     if (feasible) {
       return {delta, blockingIndices, numSolves, true};
@@ -663,9 +652,17 @@ IELMTrial::LinearUpdate::initialEstimate(
 /* ************************************************************************* */
 bool IELMTrial::LinearUpdate::checkSolutionValid(
     const IELMState &state, const VectorValues &delta,
-    const IndexSet &blockingIndices) {
-  return state.tangentCone->violated(delta).empty() &&
-         state.tangentCone->active(delta, blockingIndices);
+    const IndexSetMap &blockingIndices) {
+  for (const auto &[key, manifold] : state.manifolds) {
+    const auto &local = *manifold.linearization();
+    if (local.indices().empty()) continue;
+    if (!local.violated(delta.at(key)).empty()) return false;
+    const auto found = blockingIndices.find(key);
+    if (found != blockingIndices.end() &&
+        !local.active(delta.at(key), found->second))
+      return false;
+  }
+  return true;
 }
 
 /* ************************************************************************* */
@@ -733,7 +730,7 @@ VectorValues IELMTrial::LinearUpdate::computeTangentVector(
       tangentVector.insert(key, delta.at(key));
     } else {
       const auto &manifold = state.manifolds.at(key);
-      VectorValues tv = manifold.eBasis()->computeTangentVector(xi);
+      VectorValues tv = manifold.toAmbient(xi);
       tangentVector.insert(tv);
     }
   }

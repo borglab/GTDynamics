@@ -3,6 +3,11 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+/**
+ * @file testPoseContacts.cpp
+ * @brief Verify pose contacts, phase sampling, and initialization.
+ * @author GTDynamics contributors
+ */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/ContactHeightFactor.h>
 #include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
@@ -131,8 +136,8 @@ TEST(PoseContacts, BufferedInitializationAndRecontact) {
   const Pose3 anchor(Rot3::Rz(.2), Point3(1, 2, 3));
   const auto values = Initializer().InitializeSolutionContactPoses(
       r, "l1", anchor, measured, t, .02, options, &result, 1);
-  EXPECT_LONGS_EQUAL(5, result.slices().front().k);
-  EXPECT_LONGS_EQUAL(11, result.slices().back().k);
+  EXPECT_LONGS_EQUAL(6, result.slices().front().k);
+  EXPECT_LONGS_EQUAL(10, result.slices().back().k);
   EXPECT_LONGS_EQUAL(1, result.contactPoses.size());
   EXPECT_LONGS_EQUAL(1, result.contactFrames.size());
   EXPECT(result.contactFrames.front().equals(c));
@@ -145,11 +150,11 @@ TEST(PoseContacts, BufferedInitializationAndRecontact) {
         result.poses.at(observation.poseIndex) * observation.rootTcontact,
         result.contactPoses.at(observation.contactIndex), 1e-7));
   }
-  EXPECT(assert_equal(anchor, Pose(values, r.link("l1")->id(), 5), 1e-10));
+  EXPECT(assert_equal(anchor, Pose(values, r.link("l1")->id(), 6), 1e-10));
   EXPECT(result.residualRms < 1e-8);
   EXPECT(result.rotationRms < 1e-8);
-  for (size_t k = 5; k <= 11; ++k)
-    EXPECT(assert_equal(c.predict(values, 5), c.predict(values, k), 1e-7));
+  for (size_t k = 6; k <= 10; ++k)
+    EXPECT(assert_equal(c.predict(values, 6), c.predict(values, k), 1e-7));
   const Trajectory disconnected(
       WalkCycle({phase(4, 6, {c}), phase(7, 8, {}), phase(9, 12, {c})}), 1);
   bool rejected = false;
@@ -165,9 +170,9 @@ TEST(PoseContacts, BufferedInitializationAndRecontact) {
       r, "l1", anchor, measured, disconnected, .02, options, &result);
   EXPECT_LONGS_EQUAL(2, result.contactPoses.size());
 }
-// Short, one-slice, and long double stance retain central or buffered
-// endpoints; single stance is skipped and short phases survive any buffer.
-TEST(PoseContacts, DoubleSupportSelection) {
+// Every supported phase contributes central or evenly spaced buffered slices;
+// single stance is retained and short phases survive any buffer.
+TEST(PoseContacts, SupportedPhaseSelection) {
   const auto r = robot();
   const PoseOnLink left(r.link("l1"), Pose3()), right(r.link("l2"), Pose3());
   const Trajectory t(
@@ -175,15 +180,51 @@ TEST(PoseContacts, DoubleSupportSelection) {
                  phase(5, 9, {left, right}), phase(10, 14, {right}),
                  phase(15, 34, {left, right})}),
       1);
-  const auto selected = doubleSupportSlices(t, .02, .2, 1);
-  EXPECT_LONGS_EQUAL(4, selected.size());
-  for (size_t i = 0; i < 4; ++i)
-    EXPECT_LONGS_EQUAL((std::vector<size_t>{0, 7, 16, 33})[i], selected[i].k);
-  CHECK_EXCEPTION(doubleSupportSlices(t, 0), std::invalid_argument);
-  CHECK_EXCEPTION(doubleSupportSlices(t, .02, -1), std::invalid_argument);
+  const auto selected = contactInitializationSlices(t, .02, .2, 1);
+  EXPECT_LONGS_EQUAL(7, selected.size());
+  for (size_t i = 0; i < 7; ++i)
+    EXPECT_LONGS_EQUAL((std::vector<size_t>{0, 2, 7, 12, 16, 25, 33})[i],
+                       selected[i].k);
+  CHECK_EXCEPTION(contactInitializationSlices(t, 0), std::invalid_argument);
+  CHECK_EXCEPTION(contactInitializationSlices(t, .02, -1),
+                  std::invalid_argument);
+}
+// Native automatic and explicit callers share the same buffered sampling
+// policy.
+TEST(PoseContacts, AutomaticSamplingMatchesExplicit) {
+  const auto r = robot();
+  const PoseOnLink foot(r.link("l2"), Pose3());
+  const Trajectory t(WalkCycle({phase(0, 30, {foot})}), 1);
+  Values measured;
+  for (size_t k = 0; k <= 30; ++k)
+    InsertJointAngle(&measured, r.joint("j1")->id(), k, .001 * k);
+  pose_contact_init::Options options;
+  options.interpolateOutput = false;
+  options.addGroundFactors = false;
+  pose_contact_init::Result automatic, explicitResult;
+  const auto values = Initializer().InitializeSolutionContactPoses(
+      r, "l1", Pose3(), measured, t, .03, options, &automatic, 1);
+  options.selectedSlices = contactInitializationSlices(t, .03);
+  const auto repeated = Initializer().InitializeSolutionContactPoses(
+      r, "l1", Pose3(), measured, t, .03, options, &explicitResult);
+  EXPECT(assert_equal(values, repeated, 1e-10));
+  EXPECT_LONGS_EQUAL(options.selectedSlices.size(), automatic.slices().size());
+  size_t minGap = 100, maxGap = 0;
+  for (size_t i = 0; i < automatic.slices().size(); ++i) {
+    EXPECT_LONGS_EQUAL(options.selectedSlices[i].k, automatic.slices()[i].k);
+    if (i) {
+      const size_t gap = automatic.slices()[i].k - automatic.slices()[i - 1].k;
+      minGap = std::min(minGap, gap);
+      maxGap = std::max(maxGap, gap);
+    }
+  }
+  EXPECT(maxGap * .03 <= .2);
+  EXPECT(maxGap - minGap <= 1);
+  CHECK_EXCEPTION(contactInitializationSlices(t, .03, .02),
+                  std::invalid_argument);
 }
 // Sparse output contains only requested slices; footholds retain identities
-// through skipped single-stance phases and reset after lift-off/recontact.
+// through single-stance phases and reset after lift-off/recontact.
 TEST(PoseContacts, ExplicitSparseInitialization) {
   const auto r = robot();
   const PoseOnLink left(r.link("l1"), Pose3()), right(r.link("l2"), Pose3());
@@ -196,23 +237,23 @@ TEST(PoseContacts, ExplicitSparseInitialization) {
   for (size_t k = 0; k < 15; ++k)
     InsertJointAngle(&measured, r.joint("j1")->id(), k, 0);
   pose_contact_init::Options options;
-  options.selectedSlices = doubleSupportSlices(t, .02);
+  options.selectedSlices = contactInitializationSlices(t, .02);
   options.interpolateOutput = false;
   options.addGroundFactors = false;
   pose_contact_init::Result result;
   const auto values = Initializer().InitializeSolutionContactPoses(
       r, "l1", Pose3(), measured, t, .02, options, &result);
-  EXPECT_LONGS_EQUAL(3, result.poses.size());
+  EXPECT_LONGS_EQUAL(5, result.poses.size());
   EXPECT_LONGS_EQUAL(4, result.contactPoses.size());
-  EXPECT_LONGS_EQUAL(6, result.observations.size());
+  EXPECT_LONGS_EQUAL(8, result.observations.size());
   for (size_t k = 0; k < 15; ++k)
     EXPECT(values.exists(PoseKey(r.link("l1")->id(), k)) ==
-           (k == 1 || k == 7 || k == 13));
+           (k == 1 || k == 4 || k == 7 || k == 10 || k == 13));
   EXPECT_LONGS_EQUAL(result.observations[0].contactIndex,
                      result.observations[2].contactIndex);
   EXPECT(result.observations[1].contactIndex !=
-         result.observations[3].contactIndex);
-  EXPECT_LONGS_EQUAL(result.observations[3].contactIndex,
+         result.observations[4].contactIndex);
+  EXPECT_LONGS_EQUAL(result.observations[4].contactIndex,
                      result.observations[5].contactIndex);
   // Omitting an entire old foothold leaves compact, valid diagnostic indices.
   options.selectedSlices = {Slice(7), Slice(13)};

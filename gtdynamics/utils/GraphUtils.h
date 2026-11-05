@@ -209,25 +209,6 @@ public:
   }
 };
 
-/**
- * @class IndexSetMapTranslator
- * @brief Translates between global index and (Key, index_in_key) pair.
- */
-class IndexSetMapTranslator {
-public:
-  std::map<std::pair<Key, size_t>, size_t> encoder;
-  std::map<size_t, std::pair<Key, size_t>> decoder;
-
-  IndexSetMapTranslator() {}
-
-  void insert(size_t index, Key key, size_t index_in_key);
-
-  IndexSet encodeIndices(const IndexSetMap &index_set_map) const;
-
-  IndexSetMap decodeIndices(const IndexSet &indices) const;
-};
-
-
 /// Return factors representing mu*\|Ax-b*b_scale\|^2.
 GaussianFactorGraph ScaledBiasedFactors(const GaussianFactorGraph &graph,
                                         double mu, double b_scale);

@@ -1,3 +1,11 @@
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file test_exporter.py
+# @brief Check native initialization export and held-out reference data.
+# @author GTDynamics contributors
 """Integration check: reference geometry cannot enter native pose initialization."""
 
 from copy import deepcopy
@@ -53,7 +61,7 @@ class PoseRecordingTests(unittest.TestCase):
             data, exporter.load_g1_model()
         )
         options = gtd.pose_contact_init.Options()
-        options.selectedSlices = gtd.doubleSupportSlices(trajectory, 0.02, 0.2, 1)
+        options.selectedSlices = exporter.initialization_slices(trajectory, 0.02)
         options.interpolateOutput = False
         options.rotationSigma = float(np.deg2rad(90.0))
         options.addUprightFactors = True

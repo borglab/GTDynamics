@@ -3,6 +3,9 @@
 # Atlanta, Georgia 30332-0415. All Rights Reserved.
 # See LICENSE for the license information.
 # ----------------------------------------------------------------------------
+## @file contact_phases.py
+# @brief Infer contact phases and expose shared native slice selection.
+# @author GTDynamics contributors
 """Infer contact phases and preserve stance identities on selected slices."""
 
 from __future__ import annotations
@@ -117,33 +120,14 @@ def initialization_slices(
     contact_buffer: int = 1,
     long_phase_seconds: float = 0.2,
 ) -> list[gtd.Slice]:
-    """Retain double-stance slices, filling long buffered phases evenly.
-
-    Reuse native short-phase/endpoint selection. Within each long phase, choose
-    the fewest intervals whose lengths are at most max_slice_interval_ms, then
-    distribute their endpoints over actual source indices. Adjacent intervals
-    differ by at most one source sample. The maximum applies within retained
-    double-stance phases; skipped single-stance phases can create larger gaps.
-    """
-    interval_seconds = max_slice_interval_ms / 1000.0
-    if not np.isfinite(interval_seconds) or interval_seconds < dt:
-        raise ValueError("max_slice_interval_ms must be finite and at least dt * 1000")
-    endpoints = gtd.doubleSupportSlices(
-        trajectory, dt, min(long_phase_seconds, interval_seconds), contact_buffer
+    """Select buffered single/double-support slices with the shared native policy."""
+    return gtd.contactInitializationSlices(
+        trajectory,
+        dt,
+        max_slice_interval_ms / 1000.0,
+        contact_buffer,
+        long_phase_seconds,
     )
-    indices = np.array([s.k for s in endpoints], dtype=np.int64)
-    max_steps = int(np.floor(interval_seconds / dt + 1e-12))
-    selected: set[int] = set()
-    for phase in trajectory.phases():
-        start, stop = np.searchsorted(indices, [phase.k_start, phase.k_end + 1])
-        if start == stop:
-            continue
-        first, last = int(indices[start]), int(indices[stop - 1])
-        intervals = max(1, (last - first + max_steps - 1) // max_steps)
-        selected.update(
-            np.rint(np.linspace(first, last, intervals + 1)).astype(int).tolist()
-        )
-    return [gtd.Slice(k) for k in sorted(selected)]
 
 
 def contact_slices(

@@ -25,6 +25,7 @@
 #include <memory>
 #include <string>
 
+#include "CmcBenchmark.h"
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include "gtdynamics/cmopt/TangentSpaceBasis.h"
 
@@ -161,7 +162,19 @@ void OptimizeSO2() {
         std::make_shared<BarrierRetractorCreator>(barrier_params);
     IELMOptimizer optimizer(ielm_params, iecm_params);
     auto result =
-        optimizer.optimize(graph, constraints, i_constraints, init_values);
+        cmc_benchmark::method.empty()
+            ? optimizer.optimize(graph, constraints, i_constraints, init_values)
+            : cmc_benchmark::measure(
+                  IEConsOptProblem(graph, constraints, i_constraints,
+                                   init_values),
+                  "LM",
+                  [&] {
+                    return OptimizeIE_CMCOptLM(
+                        IEConsOptProblem(graph, constraints, i_constraints,
+                                         init_values),
+                        ielm_params, iecm_params, "CMC-Opt", false);
+                  })
+                  .first.values;
     // result.print();
     std::cout << "error: " << graph.error(result) << "\n";
     const auto &details = optimizer.details();
@@ -180,7 +193,19 @@ void OptimizeSO2() {
         std::make_shared<BarrierRetractorCreator>(barrier_params);
     IELMOptimizer optimizer(ielm_params, iecm_params);
     auto result =
-        optimizer.optimize(graph, constraints, i_constraints, init_values);
+        cmc_benchmark::method.empty()
+            ? optimizer.optimize(graph, constraints, i_constraints, init_values)
+            : cmc_benchmark::measure(
+                  IEConsOptProblem(graph, constraints, i_constraints,
+                                   init_values),
+                  "LM",
+                  [&] {
+                    return OptimizeIE_CMCOptLM(
+                        IEConsOptProblem(graph, constraints, i_constraints,
+                                         init_values),
+                        ielm_params, iecm_params, "CMC-Opt", false);
+                  })
+                  .first.values;
     // result.print();
     std::cout << "error: " << graph.error(result) << "\n";
     const auto &details = optimizer.details();
@@ -191,7 +216,12 @@ void OptimizeSO2() {
   }
 }
 
-int main() {
-  OptimizeSO2();
-  return 0;
+int main(int argc, char **argv) {
+  cmc_benchmark::configure(argc, argv);
+  try {
+    OptimizeSO2();
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
+  }
 }

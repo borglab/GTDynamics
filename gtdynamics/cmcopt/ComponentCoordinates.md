@@ -1,5 +1,10 @@
 # Component coordinates for the CMC-Opt linear step
 
+The current component-ownership simplification is evaluated against `f71c907d`
+in the [downloadable HTML report](ComponentRefactorReport.html). The historical
+timings below describe the earlier move to unconstrained component-coordinate
+solves; they are separate experiments.
+
 ## Understanding of the previous implementation
 
 This note describes the previous CMC-Opt linear step and its replacement by
@@ -78,19 +83,28 @@ $$
 \eta_i \xrightarrow{N_i} \delta_i \xrightarrow{B_i} \Delta x_i.
 $$
 
-- `ComponentTangentSpace` constructs a basis $N_i$ for the kernel of each
-  selected face matrix. It substitutes these bases into the already-damped
-  soft costs, calls GTSAM's ordinary Gaussian solver, and recovers $\delta_i$.
-- `TangentConeLinearization` caches the homogeneous inequality rows and their
-  original component keys. It checks directional feasibility and constructs
-  working-face parameterizations. Its optional refinement manages row-level
-  working sets around the same unconstrained global solve.
-- `IELMState` stores this immutable cone linearization across damping trials.
-  It no longer stores a second ambient-space constraint graph.
-- `IELMTrial` no longer appends constrained factors or constructs a global
-  `QpProblem`. An invalid or unsuccessful reduced solve is rejected; it cannot
-  fall back to global constrained elimination.
+- Each `IEConstraintManifold` owns one immutable `IEManifoldLinearization`.
+  It owns active ambient Jacobians, equality-tangent rows, local cone projection,
+  original nonlinear block indices, and local working-face construction. It also
+  answers boundary-step and dual-multiplier queries for optional QP refinement.
+- `WorkingFace` represents **one** component's selected-face chart $N_i$.
+  Stateless functions substitute these charts into already-damped soft costs,
+  invoke GTSAM's Gaussian solver, and recover $\delta_i$.
+- `IELMState` owns the manifolds directly. There is no global tangent-cone
+  coordinator or flat constraint-index translation. Working sets use component
+  keys and original constraint indices throughout the LM trial and retraction.
+- `IELMWorkingSet.cpp` coordinates optional row additions and releases. The
+  coupled cost determines the global step and gradient; each component computes
+  its own boundary intersections and multiplier candidates. This code owns no
+  constraint geometry and constructs no global inequality graph.
+- Ordinary manifold copies share their geometry. A new manifold state rebuilds
+  inequality geometry even when its equality basis is affine and reusable.
+- Failed reduced solves reject the LM trial. Local cone projection and nonlinear
+  retraction retain their existing implementations and numerical policies.
 
+The former `ComponentTangentSpace`, `TangentConeLinearization`,
+`IndexSetMapTranslator`, and cached-factor re-export APIs have been removed.
+Repository consumers and tests use the new APIs directly.
 All trajectory-wide quadratic minimizations therefore receive soft Gaussian
 costs. Local cone projection and nonlinear component retraction keep their
 existing constrained numerical methods. Their constraints remain inside their
@@ -286,21 +300,21 @@ empirical timing result as a proof of full algorithmic identity.
 
 ## Validation and performance
 
-`testComponentTangentSpace` compares recovered solutions with the previous
+`testWorkingFace` compares recovered solutions with the previous
 constrained Gaussian QR formulation. It covers cross-component costs, nonunit
 noise, anisotropic damping, redundant and scaled rows, tiny kernel coefficients, zero-DOF
 components, ordering, native Hessian costs, and rejection of constrained noise
 in the reduced objective. It also checks quadratic-cost equivalence and the
 unconstrained-factor contract directly.
 
-`testTangentConeLinearization` checks 64 coupled QP cases against an exhaustive
+`testIELMWorkingSet` checks 64 coupled QP cases against an exhaustive
 working-set oracle using constrained QR. Additional cases cover opposing and
 dependent rows, row release, partially active multirow blocks, iteration
 exhaustion, multiple blocks on one component, and invalid component assembly.
 The native regression targets for the rebased implementation are:
 
 ```text
-testComponentTangentSpace   testTangentConeLinearization
+testWorkingFace   testIELMWorkingSet
 testIEManifoldOptimizer     testIEConstraintManifold
 testTangentCone             testReducedALRetractor
 testFixedKinematicsDynamics testArticulatedRetractor
@@ -334,5 +348,65 @@ optional QP refinement on the complete trajectory.
 The [undergraduate explanation and benchmark report](../../examples/g1_mjlab/cmcopt_architecture_undergrad.md)
 gives the timing scopes, numerical comparisons, and reproduction command.
 For review, the key correspondence is between equations (2)–(5),
-[`ComponentTangentSpace`](ComponentTangentSpace.cpp), and the working-set
-orchestration in [`TangentConeLinearization`](TangentConeLinearization.cpp).
+[`WorkingFace`](WorkingFace.cpp), and the working-set
+orchestration in [`IELMWorkingSet`](IELMWorkingSet.cpp).
+
+
+## Earlier checkpoint: state-owned component linearizations
+
+The encapsulation comparison uses commit `45172046` as its baseline. The G1 inputs, free-tilt gauge, constraints, solver tolerances, thread
+counts, and working-set policy are unchanged. Each manifold now owns one
+immutable active-constraint linearization; LM stores shared references to it.
+The local object handles cone projection, directional feasibility, working-face
+row assembly, original block indices, and compatibility constraint exports.
+Coordinate conversion and inequality residual evaluation go through manifold
+methods. The coupled solve and working-set coordination remain in the optimizer;
+optional refinement's dual and boundary-step orchestration are unchanged.
+
+The full 78–98 s clip completes one iteration in both versions. Its requested
+five-iteration baseline fails after the first accepted iteration in the existing
+local cone QP fallback: stationarity is `1.18637e-6`, violation is `3.4788e-12`,
+and the fallback reports 19 iterations. This failure predates the refactor and reproduces with the same diagnostics
+after it. Consequently, the full-clip timing comparison below uses one iteration. A
+separate 78–79 s clip completes all five iterations in both versions.
+
+Three sequential full-clip runs per version used Release Clang, eight retraction
+workers, and `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1` on the same machine:
+
+| Measurement | Before, median (range) | After, median (range) |
+| --- | ---: | ---: |
+| Optimization | 7.343 s (7.282–7.861) | 7.331 s (7.248–7.870) |
+| Total from contact initialization | 16.717 s (16.609–17.309) | 16.878 s (16.735–17.341) |
+
+The measured optimization ratio is 1.002× and total runtime is about 1% higher.
+These differences do not establish a useful speedup. The short five-iteration
+check took 1.377 s before and 1.361 s after in optimization, from one run each;
+this is a correctness check rather than a repeated performance measurement.
+The ownership change removes redundant derivative evaluation, but the added
+local bookkeeping and the rest of the solve dominate the observed timings.
+
+All 20 saved numerical arrays and all error-history entries are exactly equal
+for every paired full-clip run and the short five-iteration run. The new
+`testIEManifoldLinearization` counts Jacobian evaluations: cone projection,
+compatibility exports, working-face construction, and directional checks reuse
+one evaluation. It also verifies original constraint indices, noise scaling,
+copy sharing, snapshot lifetime, and fresh inequality geometry at a new state
+even when the equality basis is affine. Eight relevant native suites and four
+Python integration tests pass.
+
+For local reproduction, run `examples/g1_mjlab/kinodynamic_walk.py` with
+`--max-iterations 1` for the full clip, or `--end 79 --max-iterations 5` for the
+short check. Saved comparisons are `/tmp/cmc-local-comparison.json`; numerical
+outputs are `/tmp/cmc-local-{before,after}-{1,2,3}` and
+`/tmp/cmc-local-short-{before,after}`. Timing scopes match the earlier report:
+input/model loading and browser export are excluded from the reported total.
+
+
+## Component-ownership refactor validation
+
+The current refactor is compared with checkpoint `f71c907d`. The downloadable
+[HTML report](ComponentRefactorReport.html) contains the complete case inventory,
+numerical comparisons, timing scopes, and unresolved baseline failures.
+Reproduction scripts live in [`examples/cmc_benchmarks`](../../examples/cmc_benchmarks).
+The earlier measurements above describe earlier changes and are not evidence
+for the current refactor.

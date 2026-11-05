@@ -175,19 +175,17 @@ against analytic and exhaustive test problems.
 | Numerical fallback | Return to global constrained elimination | Reject an unsuccessful LM trial |
 | Nonlinear feasibility | Component retractions | Component retractions |
 
-[`ComponentTangentSpace`](../../gtdynamics/cmcopt/ComponentTangentSpace.h) owns
-the fixed-working-set parameterization. It reduces the already-damped cost,
-adjusts the ordering for components with zero remaining freedom, invokes the
-unconstrained GTSAM solver, and recovers the original component increments.
-Its input is a map of local face matrices, rather than a constrained factor
-graph. It explicitly rejects constrained noise in the objective.
+[`WorkingFace`](../../gtdynamics/cmcopt/WorkingFace.h) owns one component's
+selected-face basis. Stateless helpers transform Gaussian costs, solve the
+coupled objective, and recover component increments.
 
-[`TangentConeLinearization`](../../gtdynamics/cmcopt/TangentConeLinearization.h)
-stores each inequality block's component key and homogeneous rows. It checks
-feasibility, constructs working-face coordinates, and manages optional row-level
-refinement. Only fully active blocks are promoted to nonlinear equalities
-during retraction. Multirow constraints with slack rows retain their inequality
-semantics.
+[`IEManifoldLinearization`](../../gtdynamics/cmcopt/IEManifoldLinearization.h)
+owns the local geometry and supplies projection, face charts, boundary steps,
+and multiplier candidates. [`IELMWorkingSet`](../../gtdynamics/cmcopt/IELMWorkingSet.h)
+coordinates optional row-level refinement. It promotes only fully tight original
+blocks to equalities during retraction; partially tight multirow blocks retain
+inequality semantics. No global cone object or flattened constraint indices are
+needed.
 
 [`IELMOptimizerState`](../../gtdynamics/cmcopt/IELMOptimizerState.cpp) orchestrates
 these operations. It no longer constructs an ambient copy of every active
@@ -299,3 +297,8 @@ bindings, and prepared G1 model/data cache. In this workspace,
 `/tmp/run-kinodynamics` supplies those paths and the thread environment.
 Measured outputs are in `/tmp/kinodynamics-architecture-{1,2,3}/`; the machine-
 readable comparison is `/tmp/cmc-architecture-comparison.json`.
+
+
+The subsequent component-ownership refactor has a separate
+[downloadable HTML report](../../gtdynamics/cmcopt/ComponentRefactorReport.html),
+with the full example inventory and matched before/after measurements.

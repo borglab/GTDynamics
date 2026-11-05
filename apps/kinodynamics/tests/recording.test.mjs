@@ -26,7 +26,7 @@ test('the measured run reduces cost and satisfies the exact mechanics and sole c
   assert(d.initialEqualityL2>1);
   assert(d.initializationSeconds>0);
   assert(d.optimizationSeconds>0);
-  assert(d.contactInitializationSeconds>0);
+  assert(d.configurationInitializationSeconds>0);
   assert(Math.abs(d.errorHistory.at(-1).reduce((a,b)=>a+b,0)-d.objectiveFinal)<1e-5);
   assert.equal(d.errorHistory.length,d.wallSeconds.length);
   assert(d.factors.some(factor=>factor.type==='Configuration collocation'&&factor.count===29970));
@@ -52,4 +52,20 @@ test('the recorded gauge is a translation/yaw cost and leaves tilt free',()=>{
   assert(d.factors.some(f=>f.type==='Translation/yaw gauge'&&f.count===2));
   assert.equal(d.solverSettings.historyWindow,1);
   assert.equal(d.iterations,d.maxIterations);
+});
+
+
+test('initialization sampling and timing comparisons match the replay',()=>{
+  const sampling=record.source.initializationSampling;
+  const selected=record.diagnostics.initializationSlices;
+  assert.equal(sampling.selectedSlices,selected.length);
+  assert.equal(sampling.singleSupportSlices,selected.filter(k=>record.contact[k].filter(Boolean).length===1).length);
+  assert.equal(sampling.doubleSupportSlices,selected.filter(k=>record.contact[k].filter(Boolean).length===2).length);
+  assert(sampling.singleSupportSlices>0);
+  const comparison=record.initializationComparison;
+  assert.equal(comparison.runsPerStrategy,1);
+  assert.deepEqual(comparison.runs.map(run=>run.initializationStrategy),['contact','fk']);
+  const contact=comparison.runs[0];
+  for(const key of ['objectiveFinal','iterations','optimizationSeconds','totalInitializationAndSolveSeconds'])assert.equal(contact[key],record.diagnostics[key]);
+  assert.equal(comparison.samples,record.times.length);
 });

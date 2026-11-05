@@ -41,6 +41,7 @@ bool container_equal(const Container &c1, const Container &c2) {
   return std::equal(c1.begin(), c1.end(), c2.begin());
 }
 
+// Verify projection, retraction, and tangent geometry on a half sphere.
 TEST(IEConstraintManifold, HalfSphere) {
   Key point_key = Symbol('p', 0);
 
@@ -123,26 +124,18 @@ TEST(IEConstraintManifold, HalfSphere) {
     auto e_manifold1 = manifold.eConstraintManifold(a_indices);
     EXPECT(e_manifold1.dim() == 1);
 
-    // Test linear i-constraints
-    Key manifold_key = 3;
+    // The cached tangent rows evaluate the same directional derivative.
     VectorValues tangentVector;
     tangentVector.insert(point_key, Vector3(8, -6, 2));
-    Vector xi = manifold.eBasis()->computeXi(tangentVector);
-    VectorValues delta;
-    delta.insert(manifold_key, xi);
-    auto linearBaseInequalityConstraints = manifold.linearActiveBaseInequalityConstraints();
-    auto linearManifoldInequalityConstraints = manifold.linearActiveManifoldInequalityConstraints(manifold_key);
-
-    for (const auto&[idx, base_constraint]: linearBaseInequalityConstraints) {
-      auto manifold_constraint = linearManifoldInequalityConstraints.at(idx);
-      auto base_constraint_eval = (*base_constraint)(tangentVector);
-      auto manifold_constraint_eval = (*manifold_constraint)(delta);
-      EXPECT(assert_equal(Vector1(-2.0), base_constraint_eval));
-      EXPECT(assert_equal(Vector1(-2.0), manifold_constraint_eval));
-    }
+    Vector xi = manifold.toCoordinates(tangentVector);
+    for (size_t index : manifold.linearization()->indices())
+      EXPECT(assert_equal(
+          Vector1(-2.0),
+          Vector(manifold.linearization()->rows(index, true) * xi)));
   }
 }
 
+// A newly reached boundary remains active after penalty retraction.
 TEST(IEConstraintManifold, PenaltyRetractionRetainsNewBoundary) {
   const Key key = 7;
   auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
@@ -200,13 +193,12 @@ TEST(IEConstraintManifold, ScaledInequalityLinearization) {
       inward.insert(key, -outward.at(key));
       VectorValues coordinates;
       coordinates.insert(manifoldKey, manifold.eBasis()->computeXi(outward));
-      const auto base = manifold.linearActiveBaseInequalityConstraints().at(0);
-      const auto reduced =
-          manifold.linearActiveManifoldInequalityConstraints(manifoldKey).at(0);
-      EXPECT_DOUBLES_EQUAL(2.0 / sigma, (*base)(outward)(0), 1e-8);
-      EXPECT_DOUBLES_EQUAL(2.0 / sigma, (*reduced)(coordinates)(0), 1e-8);
-      EXPECT(!base->feasible(outward));
-      EXPECT(base->feasible(inward));
+      const auto &local = *manifold.linearization();
+      EXPECT_DOUBLES_EQUAL(
+          2.0 / sigma, (local.rows(0, true) * coordinates.at(manifoldKey))(0),
+          1e-8);
+      EXPECT(local.violated(manifold.toCoordinates(outward)).exists(0));
+      EXPECT(local.violated(manifold.toCoordinates(inward)).empty());
       EXPECT(manifold.blockingIndices(outward).exists(0));
       EXPECT(manifold.blockingIndices(inward).empty());
       const auto [blocking, projected] = manifold.projectTangentCone(outward);
