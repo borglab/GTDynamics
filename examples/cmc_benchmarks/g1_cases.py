@@ -70,9 +70,17 @@ def walking_cases() -> list[dict]:
     for name, script, extra in [
         ("fixed-dynamics", "dynamics_walk.py", []),
         ("fixed-dynamics-soft", "dynamics_walk.py", ["--soft-base-balance"]),
-        ("kinodynamics-full", "kinodynamic_walk.py", []),
-        ("kinodynamics-one", "kinodynamic_walk.py", ["--max-iterations", "1"]),
-        ("kinodynamics-short", "kinodynamic_walk.py", ["--end", "79"]),
+        ("kinodynamics-full", "kinodynamic_walk.py", ["--initialization", "contact"]),
+        (
+            "kinodynamics-one",
+            "kinodynamic_walk.py",
+            ["--initialization", "contact", "--max-iterations", "1"],
+        ),
+        (
+            "kinodynamics-short",
+            "kinodynamic_walk.py",
+            ["--initialization", "contact", "--end", "79"],
+        ),
     ]:
         cases.append(dict(name=name, script=script, extra=extra))
     return cases

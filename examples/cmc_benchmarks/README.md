@@ -58,7 +58,11 @@ The walking examples use their pinned 3.11.0 model environment. Both use Python
 Native script timing is `IEResultSummary.optimization_time`; helper wall time
 also includes result assessment, and process wall time includes construction
 and export. G1 full-dynamics reports its solver and assembly times separately;
-walking examples report their existing native timing scopes. Do not compare
+walking examples report their existing native timing scopes. The historical
+kinodynamics cases explicitly select `--initialization contact` so that their
+initializer choice is independent of future defaults. New runs use the shared
+single/double-support sampler; historical reports retain their original sampling.
+Paired comparisons must use the same sampling policy. Do not compare
 unlike scopes or count warmup time. Timeout and failure are explicit outcomes,
 never zero-time successes. Compare final objectives, individual factor errors,
 constraint residuals, final coordinates/arrays, and iteration counts alongside

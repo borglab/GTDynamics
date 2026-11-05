@@ -35,11 +35,16 @@ functions to compare the initialization and solve timings (`--repeats 3`).
 free configuration, velocity, acceleration, sole/reaction wrench and torque
 variables. Native articulated constraints and rectangular sole-wrench cones
 are exact; root/joint trapezoidal collocation factors couple adjacent slices.
-The initial configurations come from the shared contact initializer; all other
-state variables, including the shared IMU bias, start at zero.
+The default `--initialization contact` uses the existing contact-pose initializer
+and starts dynamic variables at zero. The optional `--initialization fk` runs
+measured-joint FK with a fixed upright pelvis, aligns the gauge-slice stance
+soles to zero height, and shares gravity-support forces across stance feet.
+Velocities, accelerations, joint torques and IMU bias start at zero in both
+strategies. Both use the same coupled graph and feasibility restoration.
 
 ```bash
 python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
+python examples/g1_mjlab/kinodynamic_walk.py --initialization fk --output /tmp/kinodynamics-fk
 python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
 ```
 
@@ -59,7 +64,7 @@ Run `test_kinodynamics.py` to check tilt recovery and
 `validate_kinodynamics.py --result /tmp/kinodynamics` for the independent
 MuJoCo inverse-dynamics and contact-feasibility checks.
 `--max-iterations` defaults to 5; `--start 78 --end 79` gives a small development
-run. The example saves `kinodynamics.npz` and `summary.json`, separating contact
+run. The example saves `kinodynamics.npz` and `summary.json`, separating configuration
 initialization, measurement preparation, graph assembly, initial feasibility,
 and coupled optimization. The [Kinodynamics app](../../apps/kinodynamics/README.md)
 replays the saved initial/final states, forces, velocities, torques and error
