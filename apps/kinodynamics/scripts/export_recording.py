@@ -101,6 +101,10 @@ def export(result_path: Path, output: Path) -> None:
         arrays["initial_poses"][:, contact_columns] @ arrays["contact_transforms"]
     )
     wrenches = arrays["wrenches"]
+    initial_wrenches = arrays.get("initial_wrenches", np.zeros_like(wrenches))
+    initial_forces = np.einsum(
+        "nfij,nfj->nfi", initial_poses[:, :, :3, :3], initial_wrenches[:, :, 3:]
+    )
     world_forces = np.einsum("nfij,nfj->nfi", poses[:, :, :3, :3], wrenches[:, :, 3:])
     world_moments = np.einsum("nfij,nfj->nfi", poses[:, :, :3, :3], wrenches[:, :, :3])
     root = int(arrays["root_id"])
@@ -187,6 +191,8 @@ def export(result_path: Path, output: Path) -> None:
         "jointTorques": arrays["joint_torques"].tolist(),
         "jointEffortLimits": effort_limits.tolist(),
         "initial": {
+            "worldForces": initial_forces.tolist(),
+            "wrenches": initial_wrenches.tolist(),
             "bodyPoses": body_poses(model, arrays, True),
             "contactPoses": [
                 [encode_pose(p) for p in sample] for sample in initial_poses
@@ -266,7 +272,9 @@ def export(result_path: Path, output: Path) -> None:
     text = notice.read_text().split("Changes:")[0]
     notice.write_text(
         text
-        + "Changes: selected the 78–98 s mid-clip turns at the original 50 Hz. Used saved max-product support labels derived from SuperOdom LiDAR-inertial foot motion and measured joint velocities. Contact-initialized configurations, then jointly estimated configurations, velocities, accelerations, sole/reaction wrenches and joint torques with native CMC-Opt and trapezoidal collocation. All dynamic variables and the shared IMU bias started at zero. Later reference poses are evaluation data. Forces and torques are model-based estimates. The browser replays stored results.\n"
+        + "Changes: selected the 78–98 s mid-clip turns at the original 50 Hz. Used saved max-product support labels derived from SuperOdom LiDAR-inertial foot motion and measured joint velocities. Initial state: "
+        + report["initialization"]
+        + ". Jointly estimated configurations, velocities, accelerations, sole/reaction wrenches and joint torques with native CMC-Opt and trapezoidal collocation. Later reference poses are evaluation data. Forces and torques are model-based estimates. The browser replays stored results.\n"
     )
     print(f"Exported {len(poses)} slices to {output}", flush=True)
 

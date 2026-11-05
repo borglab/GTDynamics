@@ -3,8 +3,12 @@
 The app replays a coupled 50 Hz CMC-Opt solve of the SSIO G1 mid-clip turns
 (78.00–97.98 s, 1,000 slices). It estimates configurations, body/world velocities,
 accelerations, sole wrenches, internal reaction wrenches, and all 29 actuator
-torques. The contact initializer supplies starting configurations. All other
-states start at zero, including the shared IMU bias.
+torques. The example defaults to the existing contact-pose initializer with zero
+dynamic variables. Select `--initialization fk` for measured-joint FK at a fixed
+upright pelvis with the robot's weight shared across stance feet. Velocities,
+accelerations, joint torques and bias start at zero in both strategies. The
+checked-in historical recording uses contact initialization; exporting a new
+result records the selected strategy and its raw initial forces.
 
 The computation is the student-facing example
 [`kinodynamic_walk.py`](../../examples/g1_mjlab/kinodynamic_walk.py). Run from the
@@ -22,7 +26,7 @@ cd apps
 npm run build
 ```
 
-The example defaults to five iterations and accepts `--max-iterations`, `--start`, `--end`, `--data`, `--labels`, and
+The example defaults to five iterations and accepts `--initialization fk|contact`, `--max-iterations`, `--start`, `--end`, `--data`, `--labels`, and
 `--retraction-threads` (8 by default; 1 runs projections serially).
 Its main saves numerical arrays and a JSON report. The exporter converts those
 arrays to offline browser assets and adds independently compiled model geometry.
@@ -33,7 +37,7 @@ wrench transmission, sole transforms, zero swing wrenches, and rectangular wrenc
 cones are exact constraints. Encoder, stance-pose landmark, Gal3 IMU, stance
 velocity, trapezoidal configuration/velocity collocation, effort/rate and broad
 acceleration terms are costs. No point contacts or GP/spline warm start are used.
-No upright or ground-height costs remain in the coupled solve. The initializer
+No upright or ground-height costs remain in the coupled solve. The optional contact initializer
 uses its shared upright/motion/height priors. At the first selected double-support
 slice, translation and wrapped-yaw costs choose the world frame with unit
 standard deviations (1 m and 1 rad). All six root-pose coordinates remain free
@@ -52,11 +56,11 @@ parallel results are checked against each other. One previous iteration is retai
 and active sets track the mode independently of diagnostic-history retention. The app stores scalar per-factor error
 histories instead.
 
-Timing separates contact initialization, graph assembly, initial feasibility,
+Timing separates configuration initialization, graph assembly, initial feasibility,
 and coupled optimization. Input/model loading, array export,
 compression and browser rendering are excluded from the reported solver total.
 Measurement construction and IMU preintegration are included in the total.
-Feasibility restoration changes the raw zero dynamics and is included in total.
+Feasibility restoration changes the raw initial dynamics and is included in total.
 A feasible result or an objective-change stopping condition does not establish
 that the objective is globally optimal.
 
