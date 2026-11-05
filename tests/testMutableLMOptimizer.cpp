@@ -16,7 +16,6 @@
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>

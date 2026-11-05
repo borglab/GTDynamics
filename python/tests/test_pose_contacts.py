@@ -26,8 +26,16 @@ class PoseContactTests(unittest.TestCase):
         options = gtd.pose_contact_init.Options()
         result = gtd.pose_contact_init.Result()
         anchor = gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, 1.0]))
-        values = gtd.Initializer().InitializeSolutionContactPoses(
-            robot, "root", anchor, gtsam.Values(), trajectory, 0.1, options, result, 1
+        initializer = gtd.PoseContactInitializer(
+            robot=robot, options=options, contactBuffer=1
+        )
+        values = initializer.run(
+            rootLinkName="root",
+            initialPose=anchor,
+            measuredJoints=gtsam.Values(),
+            trajectory=trajectory,
+            dt=0.1,
+            diagnostics=result,
         )
         # A one-sample buffer leaves [1, 19]; the 200 ms default at 10 Hz
         # retains every other source slice, including single-support poses.
@@ -48,11 +56,33 @@ class PoseContactTests(unittest.TestCase):
             self.assertTrue(predicted.equals(result.contactPoses[0], 1e-8))
         self.assertEqual(len(result.history), result.iterations + 1)
         self.assertTrue(contact.predict(values, 10).equals(gtsam.Pose3(), 1e-8))
-        options.selectedSlices = [gtd.Slice(3), gtd.Slice(17)]
+        # Construction copies tuning, while each run gets its own gauge and clip.
+        options.maxIterations = 0
+        shorter = gtd.Trajectory(gtd.WalkCycle([gtd.Phase(0, 5, spec)]), 1)
+        shifted_anchor = gtsam.Pose3(
+            anchor.rotation(), anchor.translation() + np.array([0.3, 0.2, 0.0])
+        )
+        shifted = initializer.run(
+            rootLinkName="root",
+            initialPose=shifted_anchor,
+            measuredJoints=gtsam.Values(),
+            trajectory=shorter,
+            dt=0.05,
+        )
+        self.assertTrue(shifted.atPose3(gtd.PoseKey(1, 0)).equals(shifted_anchor, 1e-8))
+        self.assertTrue(values.atPose3(gtd.PoseKey(1, 0)).equals(anchor, 1e-8))
+        options.maxIterations = 100
+        selected_slices = [gtd.Slice(3), gtd.Slice(17)]
         options.interpolateOutput = False
         options.initializeUpright = True
-        sparse = gtd.Initializer().InitializeSolutionContactPoses(
-            robot, "root", anchor, gtsam.Values(), trajectory, 0.1, options, result
+        sparse = gtd.PoseContactInitializer(robot=robot, options=options).run(
+            rootLinkName="root",
+            initialPose=anchor,
+            measuredJoints=gtsam.Values(),
+            trajectory=trajectory,
+            dt=0.1,
+            diagnostics=result,
+            selectedSlices=selected_slices,
         )
         self.assertEqual([s.k for s in result.slices()], [3, 17])
         np.testing.assert_allclose(result.times, [0.3, 1.7])
@@ -63,8 +93,14 @@ class PoseContactTests(unittest.TestCase):
         options.addNormalFactors = False
         options.groundHeight = 0.0
         options.groundSigma = 0.1
-        gtd.Initializer().InitializeSolutionContactPoses(
-            robot, "root", anchor, gtsam.Values(), trajectory, 0.1, options, result
+        gtd.PoseContactInitializer(robot=robot, options=options).run(
+            rootLinkName="root",
+            initialPose=anchor,
+            measuredJoints=gtsam.Values(),
+            trajectory=trajectory,
+            dt=0.1,
+            diagnostics=result,
+            selectedSlices=selected_slices,
         )
         factors = [result.graph.at(i) for i in range(result.graph.size())]
         self.assertEqual(
@@ -79,14 +115,12 @@ class PoseContactTests(unittest.TestCase):
         self.assertEqual(len(spec.contactPoints()), 0)
         self.assertEqual(len(spec.contactPoses()), 1)
         seen = []
-        ik = gtd.Initializer().InitializeSolutionPoseIK(
-            robot,
-            "root",
-            [anchor] * 21,
-            gtsam.Values(),
-            trajectory,
-            2,
-            lambda k, i, e, v: seen.append((k, i)),
+        ik = gtd.PoseIKInitializer(robot=robot, maxIterations=2).run(
+            rootLinkName="root",
+            rootGuesses=[anchor] * 21,
+            measuredJoints=gtsam.Values(),
+            trajectory=trajectory,
+            iterationCallback=lambda k, i, e, v: seen.append((k, i)),
         )
         self.assertEqual(len({k for k, i in seen}), 21)
         self.assertTrue(ik.atPose3(gtd.PoseKey(1, 20)).equals(anchor, 1e-8))

@@ -19,20 +19,20 @@ import pandas as pd
 
 Isotropic = gtsam.noiseModel.Isotropic
 
-URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..", "models",
-                     "urdfs")
+URDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..", "models", "urdfs")
 
 
 def run(args):
     """Main runner."""
     # Load the inverted pendulum.
-    ip = gtd.CreateRobotFromFile(osp.join(URDF_PATH, "inverted_pendulum.urdf"),
-                                 "inverted_pendulum")
+    ip = gtd.CreateRobotFromFile(
+        osp.join(URDF_PATH, "inverted_pendulum.urdf"), "inverted_pendulum"
+    )
     j1_id = ip.joint("j1").id()
     ip = ip.fixLink("l1")
 
     T = 3.0  # seconds
-    dt = 1. / 100  # Time horizon (s) and timestep duration (s).
+    dt = 1.0 / 100  # Time horizon (s) and timestep duration (s).
     t_steps = np.ceil(T / dt)  # Timesteps.
 
     # Noise models:
@@ -56,25 +56,23 @@ def run(args):
     theta_T = np.pi
     dtheta_T = 0
     ddtheta_T = 0
-    graph.addPriorDouble(gtd.JointAngleKey(j1_id, t_steps), theta_T,
-                         objectives_model)
-    graph.addPriorDouble(gtd.JointVelKey(j1_id, t_steps), dtheta_T,
-                         objectives_model)
-    graph.addPriorDouble(gtd.JointAccelKey(j1_id, t_steps), ddtheta_T,
-                         objectives_model)
+    graph.addPriorDouble(gtd.JointAngleKey(j1_id, t_steps), theta_T, objectives_model)
+    graph.addPriorDouble(gtd.JointVelKey(j1_id, t_steps), dtheta_T, objectives_model)
+    graph.addPriorDouble(gtd.JointAccelKey(j1_id, t_steps), ddtheta_T, objectives_model)
 
     # Apply state costs along the way if asked.
     if args.state_costs:
         for t in range(t_steps + 1):
-            graph.addPriorDouble(gtd.JointAngleKey(j1_id, t), theta_T,
-                                 objectives_model)
+            graph.addPriorDouble(gtd.JointAngleKey(j1_id, t), theta_T, objectives_model)
 
     # Do apply control costs at all steps.
     for t in range(t_steps + 1):
         graph.add(gtd.MinTorqueFactor(gtd.TorqueKey(j1_id, t), control_model))
 
     # Initialize solution.
-    init_vals = gtd.ZeroValuesTrajectory(ip, t_steps, 0, 0.0, None)
+    init_vals = gtd.ZeroTrajectoryInitializer(robot=ip, gaussianNoise=0.0).run(
+        numSteps=t_steps, numPhases=0, contactPoints=None
+    )
 
     # Optimize.
     params = gtsam.LevenbergMarquardtParams()
@@ -93,7 +91,7 @@ def run(args):
             ("theta", gtd.JointAngle),
             ("dtheta", gtd.JointVel),
             ("ddtheta", gtd.JointAccel),
-            ("tau", gtd.Torque)
+            ("tau", gtd.Torque),
         ]
     }
     df = pd.DataFrame(data)
@@ -103,14 +101,12 @@ def run(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run inverted pendulum.')
-    parser.add_argument('-o',
-                        '--output',
-                        type=str,
-                        default="traj.csv",
-                        help='Output CSV file')
-    parser.add_argument('--state_costs',
-                        action='store_true',
-                        help="apply theta objective at all dt")
+    parser = argparse.ArgumentParser(description="Run inverted pendulum.")
+    parser.add_argument(
+        "-o", "--output", type=str, default="traj.csv", help="Output CSV file"
+    )
+    parser.add_argument(
+        "--state_costs", action="store_true", help="apply theta objective at all dt"
+    )
     args = parser.parse_args()
     run(args)

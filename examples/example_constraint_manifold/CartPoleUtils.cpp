@@ -11,6 +11,7 @@
  * @author Yetong Zhang
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include "CartPoleUtils.h"
 
 #include <gtdynamics/factors/MinTorqueFactor.h>
@@ -87,8 +88,8 @@ NonlinearFactorGraph CartPole::getCollocation(size_t num_steps, double dt) {
 
 /* ************************************************************************* */
 Values CartPole::getInitValuesZero(size_t num_steps) {
-  Initializer initializer;
-  Values values0 = initializer.ZeroValues(robot, 0, 0.0);
+  ZeroSliceInitializer initializer(robot);
+  Values values0 = initializer.run(0);
   Values known_values;
   for (const auto& joint : robot.joints()) {
     InsertJointAngle(&known_values, joint->id(),
@@ -140,8 +141,6 @@ Values CartPole::getInitValues(size_t num_steps, std::string option) {
 
 /* ************************************************************************* */
 Values CartPole::getInitValuesInterp(size_t num_steps) {
-  Initializer initializer;
-
   double init_q0 = X_i(0);
   double terminal_q0 = X_T(0);
   double init_q1 = X_i(3);
@@ -167,9 +166,8 @@ Values CartPole::getInitValuesInterp(size_t num_steps) {
 
 /* ************************************************************************* */
 Values CartPole::getInitValuesInfeasible(size_t num_steps) {
-  Initializer initializer;
   auto init_values_infeasible =
-      initializer.ZeroValuesTrajectory(robot, num_steps, 0, 0.0);
+      gtdynamics::ZeroTrajectoryInitializer(robot, 0.0).run(num_steps, 0);
   return init_values_infeasible;
 }
 /* ************************************************************************* */

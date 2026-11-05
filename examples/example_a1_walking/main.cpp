@@ -11,12 +11,13 @@
  * @author: Dan Barladeanu
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtsam/base/VectorConstants.h>
 #include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/ChainInitializer.h>
+#include <gtdynamics/dynamics/ChainInitializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/base/timing.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -179,9 +180,10 @@ int massGraph() {
 
   // Initialize solution.
   double gaussian_noise = 1e-30;
-  Initializer initializer;
+
   gtsam::Values init_vals = trajectory.multiPhaseInitialValues(
-      robot, initializer, gaussian_noise, desired_dt);
+      robot, gtdynamics::ZeroSliceInitializer(robot, gaussian_noise),
+      desired_dt);
 
   gttic_(optimization1);
 
@@ -333,9 +335,10 @@ int oldGraph() {
 
   // Initialize solution.
   double gaussian_noise = 1e-30;
-  Initializer initializer;
+
   gtsam::Values init_vals = trajectory.multiPhaseInitialValues(
-      robot, initializer, gaussian_noise, desired_dt);
+      robot, gtdynamics::ZeroSliceInitializer(robot, gaussian_noise),
+      desired_dt);
 
   gttic_(optimization2);
 
@@ -502,9 +505,9 @@ int newGraph() {
 
   // Initialize solution.
   double gaussian_noise = 1e-30;
-  ChainInitializer initializer;
+
   gtsam::Values init_vals = trajectory.multiPhaseInitialValues(
-      robot, initializer, gaussian_noise, desired_dt);
+      robot, gtdynamics::ChainInitializer(robot, gaussian_noise), desired_dt);
 
   gttic_(optimization3);
 

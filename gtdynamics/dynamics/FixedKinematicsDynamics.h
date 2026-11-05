@@ -116,6 +116,7 @@ struct Result {
   double maxMomentResidual = 0.0;
   /// Final negative objective gradient projected into the feasible tangent
   /// cone, measured in independent acceleration and sole-wrench coordinates.
+  /// Infinity for a linear seed, whose stationarity is not evaluated.
   double projectedGradientNorm = 0.0;
   double assemblySeconds = 0.0;
   double initializationSeconds = 0.0;
@@ -137,6 +138,26 @@ struct Result {
   bool stationary = false;
 };
 }  // namespace fixed_dynamics
+
+/** Construct the affine equality-feasible dynamics seed used by the full
+ * solver. Input frames, keys and units match solveFixedKinematicsDynamics.
+ * Stance sole wrenches are fixed to equal positive normal shares of mass *
+ * |gravity|; swing wrenches are zero. One constrained Gaussian QR solve
+ * minimizes only acceleration-prior error subject to those loads and exact
+ * mechanics. Effort/wrench/rate costs are reported but do not affect the seed.
+ * There is no manifold construction, cone projection or iterative dynamics
+ * optimization. Throws for softDynamics or infeasible mechanics/wrench/optional
+ * torque limits; it does not repair a seed that fails those checks. Results
+ * have zero optimizer iterations/projections and stationary=false. Assembly,
+ * Gaussian solve and residual checking are distinct from subsequent coupled
+ * optimization.
+ */
+fixed_dynamics::Result fixedKinematicsDynamicsSeed(
+    const Robot& robot, const Trajectory& trajectory,
+    const std::vector<Slice>& slices, const std::vector<double>& times,
+    const gtsam::Values& fixedValues, const gtsam::Values& accelerationPriors,
+    const std::vector<fixed_dynamics::Contact>& contacts,
+    const gtsam::Vector& armature, const fixed_dynamics::Options& options);
 
 /** Infer accelerations, sole wrenches, and actuated joint torques over a
  * trajectory using IELMOptimizer, EliminationBasis, and ReducedALRetractor.

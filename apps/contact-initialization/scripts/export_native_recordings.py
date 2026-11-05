@@ -169,6 +169,7 @@ def record_run(
     warmup: int,
     options: gtd.pose_contact_init.Options | None = None,
     anchor: gtsam.Pose3 | None = None,
+    selected_slices: list[gtd.Slice] | None = None,
 ) -> tuple[gtd.pose_contact_init.Result, dict[str, Any]]:
     """Time actual native calls without history, then record one separate solve."""
     options = options or gtd.pose_contact_init.Options()
@@ -176,7 +177,7 @@ def record_run(
     options.addBetweenFactors = between
     options.addGroundFactors = ground
     options.recordHistory = False
-    initializer = gtd.Initializer()
+
     phases: dict[str, list[float]] = {
         name: [] for name in ("graphBuild", "optimization", "total", "call")
     }
@@ -184,15 +185,14 @@ def record_run(
         options.recordHistory = repeat == warmup + repetitions
         result = gtd.pose_contact_init.Result()
         started = perf_counter()
-        values = initializer.InitializeSolutionContactPoses(
-            robot,
-            "pelvis",
-            anchor or bodyTcom,
-            measured,
-            trajectory,
-            dt,
-            options,
-            result,
+        values = gtd.PoseContactInitializer(robot=robot, options=options).run(
+            rootLinkName="pelvis",
+            initialPose=anchor or bodyTcom,
+            measuredJoints=measured,
+            trajectory=trajectory,
+            dt=dt,
+            diagnostics=result,
+            selectedSlices=selected_slices or [],
         )
         elapsed = (perf_counter() - started) * 1000
         if warmup <= repeat < warmup + repetitions:
@@ -389,8 +389,8 @@ def main() -> None:
         REPO / "examples/g1_mjlab/mujoco_io.py",
         REPO / "examples/g1_mjlab/g1_model.py",
         REPO / "examples/g1_mjlab/contact_phases.py",
-        REPO / "gtdynamics/utils/PoseContactInitializer.cpp",
-        REPO / "gtdynamics/utils/PoseContactInitializer.h",
+        REPO / "gtdynamics/kinematics/PoseContactInitializer.cpp",
+        REPO / "gtdynamics/kinematics/PoseContactInitializer.h",
         REPO / "gtdynamics.i",
     ]
     catalogue = json.loads(args.sequences.read_text())
@@ -413,7 +413,6 @@ def main() -> None:
         )
         runs, unavailable = {}, {}
         for name, between, ground, options in prior_configurations():
-            options.selectedSlices = selected
             options.interpolateOutput = False
             try:
                 result, benchmark = record_run(
@@ -428,6 +427,7 @@ def main() -> None:
                     args.repetitions,
                     args.warmup,
                     options,
+                    selected_slices=selected,
                 )
             except ValueError as error:
                 if not between and "disconnected contact graph" in str(error):
@@ -456,7 +456,7 @@ def main() -> None:
         path.write_text(json.dumps(data, separators=(",", ":")) + "\n")
         output = {
             "schemaVersion": 3,
-            "solver": "Initializer.InitializeSolutionContactPoses",
+            "solver": "PoseContactInitializer.run",
             "recordedAtUtc": datetime.now(timezone.utc).isoformat(),
             "sequenceId": sequence["id"],
             "defaultVariant": "between-ground-upright",

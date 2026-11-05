@@ -13,9 +13,9 @@
  */
 
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>
-#include <gtdynamics/utils/Initializer.h>
 
 #include <iomanip>
 
@@ -27,8 +27,7 @@ void IECartPoleWithLimits::PrintValues(const Values &values,
                                        const size_t num_steps) {
   std::cout << std::setw(12) << "x" << std::setw(12) << "v" << std::setw(12)
             << "a" << std::setw(12) << "q" << std::setw(12) << "w"
-            << std::setw(12) << "qa" << std::setw(12) << "f"
-            << "\n";
+            << std::setw(12) << "qa" << std::setw(12) << "f" << "\n";
   for (size_t k = 0; k <= num_steps; k++) {
     double q = values.atDouble(JointAngleKey(1, k));
     double w = values.atDouble(JointVelKey(1, k));
@@ -48,8 +47,7 @@ void IECartPoleWithLimits::PrintDelta(const VectorValues &values,
                                       const size_t num_steps) {
   std::cout << std::setw(12) << "x" << std::setw(12) << "v" << std::setw(12)
             << "a" << std::setw(12) << "q" << std::setw(12) << "w"
-            << std::setw(12) << "qa" << std::setw(12) << "f"
-            << "\n";
+            << std::setw(12) << "qa" << std::setw(12) << "f" << "\n";
   for (size_t k = 0; k <= num_steps; k++) {
     double q = values.at(JointAngleKey(1, k))(0);
     double w = values.at(JointVelKey(1, k))(0);
@@ -74,9 +72,9 @@ void IECartPoleWithLimits::ExportValues(const Values &values, size_t num_steps,
   double t_elapsed = 0;
   for (int t = 0; t <= num_steps; t++, t_elapsed += dt) {
     std::vector<Key> keys = {JointAngleKey(0, t), JointVelKey(0, t),
-                                    JointAccelKey(0, t), TorqueKey(0, t),
-                                    JointAngleKey(1, t), JointVelKey(1, t),
-                                    JointAccelKey(1, t), TorqueKey(1, t)};
+                             JointAccelKey(0, t), TorqueKey(0, t),
+                             JointAngleKey(1, t), JointVelKey(1, t),
+                             JointAccelKey(1, t), TorqueKey(1, t)};
     std::vector<std::string> vals = {std::to_string(t_elapsed)};
     for (auto &&k : keys) {
       vals.push_back(std::to_string(values.atDouble(k)));
@@ -91,8 +89,8 @@ void IECartPoleWithLimits::ExportValues(const Values &values, size_t num_steps,
 }
 
 /* ************************************************************************* */
-NonlinearEqualityConstraints
-IECartPoleWithLimits::eConstraints(const int k) const {
+NonlinearEqualityConstraints IECartPoleWithLimits::eConstraints(
+    const int k) const {
   auto graph = graph_builder_.dynamicsFactorGraph(robot_, k);
   graph.addPrior(TorqueKey(r_joint_id_, k), 0.0,
                  graph_builder_.opt().prior_t_cost_model);
@@ -101,8 +99,8 @@ IECartPoleWithLimits::eConstraints(const int k) const {
 }
 
 /* ************************************************************************* */
-NonlinearInequalityConstraints
-IECartPoleWithLimits::iConstraints(const int k) const {
+NonlinearInequalityConstraints IECartPoleWithLimits::iConstraints(
+    const int k) const {
   Key p_joint_key = JointAngleKey(p_joint_id_, k);
   Key force_key = TorqueKey(p_joint_id_, k);
   NonlinearInequalityConstraints i_constraints;
@@ -124,8 +122,8 @@ IECartPoleWithLimits::iConstraints(const int k) const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-IECartPoleWithLimits::finalStateCosts(size_t num_steps) const {
+NonlinearFactorGraph IECartPoleWithLimits::finalStateCosts(
+    size_t num_steps) const {
   NonlinearFactorGraph graph;
   if (constrain_final_x_) {
     graph.addPrior(JointAngleKey(p_joint_id_, num_steps), target_state_[0],
@@ -141,8 +139,8 @@ IECartPoleWithLimits::finalStateCosts(size_t num_steps) const {
 }
 
 /* ************************************************************************* */
-NonlinearEqualityConstraints
-IECartPoleWithLimits::initStateConstraints() const {
+NonlinearEqualityConstraints IECartPoleWithLimits::initStateConstraints()
+    const {
   NonlinearEqualityConstraints constraints;
   Key r_joint_key = JointAngleKey(r_joint_id_, 0);
   Key p_joint_key = JointAngleKey(p_joint_id_, 0);
@@ -164,8 +162,8 @@ IECartPoleWithLimits::initStateConstraints() const {
 }
 
 /* ************************************************************************* */
-NonlinearEqualityConstraints
-IECartPoleWithLimits::finalStateConstraints(size_t num_steps) const {
+NonlinearEqualityConstraints IECartPoleWithLimits::finalStateConstraints(
+    size_t num_steps) const {
   NonlinearEqualityConstraints constraints;
   Key r_joint_key = JointAngleKey(r_joint_id_, num_steps);
   Key p_joint_key = JointAngleKey(p_joint_id_, num_steps);
@@ -189,12 +187,12 @@ IECartPoleWithLimits::finalStateConstraints(size_t num_steps) const {
 }
 
 /* ************************************************************************* */
-NonlinearFactorGraph
-IECartPoleWithLimits::minTorqueCosts(size_t num_steps) const {
+NonlinearFactorGraph IECartPoleWithLimits::minTorqueCosts(
+    size_t num_steps) const {
   NonlinearFactorGraph graph;
   for (int k = 0; k <= num_steps; k++)
-    graph.emplace_shared<MinTorqueFactor>(
-        TorqueKey(p_joint_id_, k), control_model_);
+    graph.emplace_shared<MinTorqueFactor>(TorqueKey(p_joint_id_, k),
+                                          control_model_);
   return graph;
 }
 
@@ -241,8 +239,6 @@ Values IECartPoleWithLimits::getInitValuesZero(size_t num_steps) const {
 
 /* ************************************************************************* */
 Values IECartPoleWithLimits::getInitValuesInterp(size_t num_steps) const {
-  Initializer initializer;
-
   double init_q0 = initial_state_(0);
   double terminal_q0 = target_state_(0);
   double init_q1 = initial_state_(3);
@@ -260,7 +256,7 @@ Values IECartPoleWithLimits::getInitValuesInterp(size_t num_steps) const {
 }
 
 BasisKeyFunction IECartPoleWithLimits::getBasisKeyFunction() const {
-  BasisKeyFunction basisKeyFunction = [=](const KeyVector& keys) -> KeyVector {
+  BasisKeyFunction basisKeyFunction = [=](const KeyVector &keys) -> KeyVector {
     KeyVector basis_keys;
     size_t k = DynamicsSymbol(*keys.begin()).time();
     if (k == 0) {

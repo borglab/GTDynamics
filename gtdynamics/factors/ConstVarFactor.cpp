@@ -55,8 +55,12 @@ std::vector<size_t> ConstVarFactor::computeBaseKeyIndex(
 
 /* ************************************************************************* */
 void ConstVarFactor::setFixedValues(const Values& values) {
-  for (const Key& key : values.keys()) {
-    if (fixed_keys_.exists(key)) {
+  // A trajectory can supply many fixed values, while this factor needs only
+  // its own keys. Visiting those keys avoids a trajectory-wide scan and key
+  // vector allocation for every factor. Missing entries retain prior values,
+  // preserving partial updates.
+  for (const Key& key : fixed_keys_) {
+    if (values.exists(key)) {
       if (fixed_values_.exists(key)) {
         fixed_values_.update(key, values.at(key));
       } else {

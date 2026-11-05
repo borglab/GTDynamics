@@ -20,7 +20,6 @@
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>

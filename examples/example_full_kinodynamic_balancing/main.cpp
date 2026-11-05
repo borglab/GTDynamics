@@ -11,16 +11,17 @@
  * @author Alejandro Escontrela
  */
 
-#include <gtsam/base/VectorConstants.h>
-#include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/kinematics/KinematicInitializer.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
+#include <gtsam/base/MatrixConstants.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/base/VectorConstants.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -186,7 +187,7 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   gtsam::Values init_vals;
-  Initializer initializer;
+
   std::string initialization_technique = "inverse_kinematics";
   if (initialization_technique == "interp")
     // TODO(aescontrela): Figure out why the linearly interpolated initial
@@ -194,16 +195,23 @@ int main(int argc, char** argv) {
     // a difficult time optimizing the trajectory when the initial solution lies
     // in the infeasible region. This would make sense if I were using an IPM to
     // solve this problem...
-    init_vals = initializer.InitializeSolutionInterpolationMultiPhase(
-        vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
-        contact_points);
+    init_vals = gtdynamics::MultiPhaseInterpolationInitializer(vision60, 0.0)
+                    .run("body", base_pose_init, des_poses, des_poses_t, dt,
+                         contact_points);
   else if (initialization_technique == "zeros")
-    init_vals = initializer.ZeroValuesTrajectory(vision60, t_steps, 0, 0.0,
-                                                 contact_points);
+    init_vals = gtdynamics::ZeroTrajectoryInitializer(vision60, 0.0)
+                    .run(t_steps, 0, contact_points);
   else if (initialization_technique == "inverse_kinematics")
-    init_vals = initializer.InitializeSolutionInverseKinematics(
-        vision60, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
-        contact_points);
+    init_vals = gtdynamics::InverseKinematicsInitializer(vision60, 0.0)
+                    .run("body", base_pose_init, des_poses, des_poses_t, dt,
+                         contact_points);
+
+  // Kinematic strategies return q/v only; complete the dynamics seed
+  // explicitly.
+  auto complete =
+      ZeroTrajectoryInitializer(vision60, 0.0).run(t_steps, 0, contact_points);
+  complete.update(init_vals);
+  init_vals = std::move(complete);
 
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosityLM("SUMMARY");
@@ -245,14 +253,8 @@ int main(int argc, char** argv) {
   traj_file.open("traj.csv");
   // angles, vels, accels, torques.
   traj_file << jnames_str << "," << jnames_str << "," << jnames_str << ","
-            << jnames_str << ",gol_x"
-            << ",gol_y"
-            << ",gol_z"
-            << ",gol_qx"
-            << ",gol_qy"
-            << ",gol_qz"
-            << ",gol_qw"
-            << "\n";
+            << jnames_str << ",gol_x" << ",gol_y" << ",gol_z" << ",gol_qx"
+            << ",gol_qy" << ",gol_qz" << ",gol_qw" << "\n";
   for (int t = 0; t <= t_steps; t++) {
     std::vector<std::string> vals;
     for (auto&& joint : vision60.joints())

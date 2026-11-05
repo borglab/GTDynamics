@@ -7,7 +7,7 @@ options = gtd.pose_contact_init.Options()
 options.addGroundFactors = True
 options.addBetweenFactors = False
 result = gtd.pose_contact_init.Result()
-values = gtd.Initializer().InitializeSolutionContactPoses(
+values = gtd.PoseContactInitializer().run(
     robot, "pelvis", initial_root_com_pose, measured_joints,
     trajectory, dt, options, result, contactBuffer=0,
 )

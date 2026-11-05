@@ -149,7 +149,7 @@ async function loadSequence() {
     if (token !== generation) return;
     if (
       saved.schemaVersion !== 3 ||
-      saved.solver !== "Initializer.InitializeSolutionContactPoses"
+      !["Initializer.InitializeSolutionContactPoses", "PoseContactInitializer.run"].includes(saved.solver)
     )
       throw new Error(
         "Expected a native pose-contact recording. Regenerate app assets.",
@@ -656,7 +656,7 @@ onBeforeUnmount(() => {
       <footer>
         <p>
           All solves use
-          <code>Initializer.InitializeSolutionContactPoses</code> from
+          <code>PoseContactInitializer.run</code> from
           GTDynamics through its Python bindings. The browser only selects saved
           results. These initialization graphs use contact observations and the
           selected priors. Inertial aiding belongs to the subsequent smoothing apps.

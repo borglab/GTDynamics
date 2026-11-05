@@ -12,6 +12,8 @@
  * @author Frank Dellaert
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
+#include <gtdynamics/kinematics/KinematicInitializer.h>
 #include <gtsam/base/MatrixConstants.h>
 #include "QuadrupedUtils.h"
 
@@ -23,7 +25,6 @@
 #include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -381,7 +382,6 @@ Values Vision60Robot::getInitValuesTrajectory(
     const std::string initialization_technique) const {
   // Initialize solution.
   Values init_vals;
-  Initializer initializer;
 
   // solve 1 step value
   Values init_values_0 = getInitValuesStep(0, base_pose_init);
@@ -395,9 +395,10 @@ Values Vision60Robot::getInitValuesTrajectory(
     }
   } else if (initialization_technique == "interp") {
     /// interpolate base pose
-    auto interp_values = initializer.InitializeSolutionInterpolationMultiPhase(
-        robot, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
-        contact_points);
+    auto interp_values =
+        gtdynamics::MultiPhaseInterpolationInitializer(robot, 0.0)
+            .run("body", base_pose_init, des_poses, des_poses_t, dt,
+                 contact_points);
     Values base_link_values;
     for (int t = 0; t <= num_steps; t++) {
       base_link_values.insert(PoseKey(base_id, t),
@@ -458,14 +459,14 @@ Values Vision60Robot::getInitValuesTrajectory(
   //   // in the infeasible region. This would make sense if I were using an IPM
   //   to
   //   // solve this problem...
-  //   init_vals = initializer.InitializeSolutionInterpolationMultiPhase(
+  //   init_vals = gtdynamics::MultiPhaseInterpolationInitializer().run(
   //       robot, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
   //       contact_points);
   // else if (initialization_technique == "zeros")
-  //   init_vals = initializer.ZeroValuesTrajectory(robot, t_steps, 0, 0.0,
+  //   init_vals = gtdynamics::ZeroTrajectoryInitializer().run(robot, t_steps, 0, 0.0,
   //   contact_points);
   // else if (initialization_technique == "inverse_kinematics")
-  //   init_vals = initializer.InitializeSolutionInverseKinematics(
+  //   init_vals = gtdynamics::InverseKinematicsInitializer().run(
   //       robot, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
   //       contact_points);
 

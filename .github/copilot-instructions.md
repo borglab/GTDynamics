@@ -56,6 +56,18 @@ used in GTSAM source files:
 - Internal caches are acceptable when they preserve observable behavior; avoid
   mutable result caches and invalidation flags when a separate result suffices.
 
+- Implement initialization strategies as immutable classes with a const `run()`
+  method. Copy tuning parameters (noise scales, iteration limits, sampling
+  settings) and the fixed robot model in the constructor. Pass trajectory-specific
+  inputs (measurements, contact phases, timestamps, and preceding estimates) to
+  `run()` so the same strategy can initialize several inputs independently. Use the C++
+  parameter names unchanged in Python bindings and keyword arguments at Python
+  initializer construction sites. Return values and diagnostics in a separate
+  owning result; keep solver state local to each run. Place kinematic-only strategies in
+  `gtdynamics/kinematics/` and strategies that estimate accelerations, forces or
+  torques in `gtdynamics/dynamics/`. Dynamics strategies may call kinematic
+  strategies; kinematic strategies must not depend on dynamics initialization.
+
 ## C++ style
 
 ### Naming conventions

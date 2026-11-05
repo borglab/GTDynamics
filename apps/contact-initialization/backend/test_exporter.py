@@ -61,14 +61,14 @@ class PoseRecordingTests(unittest.TestCase):
             data, exporter.load_g1_model()
         )
         options = gtd.pose_contact_init.Options()
-        options.selectedSlices = exporter.initialization_slices(trajectory, 0.02)
+        selected_slices = exporter.initialization_slices(trajectory, 0.02)
         options.interpolateOutput = False
         options.rotationSigma = float(np.deg2rad(90.0))
         options.addUprightFactors = True
         options.addNormalFactors = False
         options.groundSigma = 0.1
         options.groundHeight = 0.0
-        first = options.selectedSlices[0].k
+        first = selected_slices[0].k
         reference = data["reference"]["poses"][first]
         # Deliberately undo the frame correction to reproduce the original bug.
         position = (
@@ -88,6 +88,7 @@ class PoseRecordingTests(unittest.TestCase):
             0,
             options,
             anchor,
+            selected_slices=selected_slices,
         )
         self.assertTrue(result.stalled)
         self.assertFalse(result.converged)

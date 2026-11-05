@@ -1,5 +1,15 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415. All Rights Reserved.
+ * See LICENSE for the license information.
+ * -------------------------------------------------------------------------- */
+/**
+ * @file test_initializer.cpp
+ * @brief Validate point-contact registration and its factor Jacobians.
+ * @author GTDynamics contributors
+ */
+#include <gtdynamics/kinematics/ContactInitializer.h>
 #include <gtdynamics/utils/ContactInitializationFactors.h>
-#include <gtdynamics/utils/ContactInitializer.h>
 #include <gtsam/base/numericalDerivative.h>
 
 #include <cmath>
@@ -30,7 +40,7 @@ void checkSparseSlices(const std::vector<ContactMeasurements>& original,
   options.poseKey = [&measurements](size_t i) {
     return Symbol('s', measurements.at(i).slice.k);
   };
-  const auto result = ContactInitializer().Initialize(measurements, options);
+  const auto result = ContactInitializer(options).run(measurements);
   for (size_t i = 0; i < measurements.size(); ++i) {
     require(result.graph.measurements[i].slice.k == indices[i],
             "Sparse source indices are not renumbered");
@@ -143,7 +153,7 @@ int main() {
       Options options;
       options.model = model;
       options.perturb = true;
-      const Result result = ContactInitializer().Initialize(frames, options);
+      const Result result = ContactInitializer(options).run(frames);
       require(result.residualRms < 1e-6,
               "Synthetic contact reconstruction residual");
       require(result.objectiveFinal < result.objectiveInitial,
@@ -166,10 +176,9 @@ int main() {
     }
     Options mapped;
     mapped.model = Model::Patch;
-    mapped.anchorPose = pose;
     mapped.poseKey = [](size_t i) { return Symbol('b', i + 1000); };
     mapped.landmarkKey = [](size_t i) { return Symbol('l', i + 2000); };
-    const auto remapped = ContactInitializer().Initialize(frames, mapped);
+    const auto remapped = ContactInitializer(mapped).run(frames, pose);
     for (size_t i = 0; i < frames.size(); ++i) {
       require(remapped.poses[i].equals(pose.compose(truth[i]), 1e-7),
               "Caller world anchor propagates through contact registration");
@@ -185,14 +194,12 @@ int main() {
         if (observation.stanceId == "L1") observation.localPoint.z() += 0.15;
     Options heightOptions;
     heightOptions.model = Model::Patch;
-    const auto withoutHeight =
-        ContactInitializer().Initialize(rocked, heightOptions);
+    const auto withoutHeight = ContactInitializer(heightOptions).run(rocked);
     require(!withoutHeight.graph.groundHeight &&
                 withoutHeight.graph.groundFactors.empty(),
             "Height-off mode has neither a plane nor height factors");
     heightOptions.addGroundFactors = true;
-    const auto withHeight =
-        ContactInitializer().Initialize(rocked, heightOptions);
+    const auto withHeight = ContactInitializer(heightOptions).run(rocked);
     double beforeHeight = 0, afterHeight = 0;
     for (size_t i = 0; i < withHeight.landmarks.size(); ++i) {
       beforeHeight += std::pow(withoutHeight.landmarks[i].z() + 0.8, 2);
@@ -208,23 +215,21 @@ int main() {
     require(std::abs(*withHeight.graph.groundPriorHeight + 0.8) < 1e-12,
             "Ground height derives from anchored FK");
     heightOptions.groundPriorHeight = -0.75;
-    require(*ContactInitializer()
-                    .Initialize(rocked, heightOptions)
+    require(*ContactInitializer(heightOptions)
+                    .run(rocked)
                     .graph.groundPriorHeight == -0.75,
             "Caller can specify world ground height");
     heightOptions.model = Model::Ground;
     heightOptions.groundPriorHeight.reset();
-    const auto exactHeight =
-        ContactInitializer().Initialize(frames, heightOptions);
+    const auto exactHeight = ContactInitializer(heightOptions).run(frames);
     require(exactHeight.graph.groundFactors.empty() &&
                 exactHeight.groundObjective == 0,
             "Hard plane needs no redundant height factors");
     Options unsupported;
-    unsupported.anchorPose = pose;
     bool rejected = false;
     try {
-      ContactInitializer().Initialize(
-          {ContactMeasurements{gtdynamics::Slice(0), 0, {}}}, unsupported);
+      ContactInitializer(unsupported)
+          .run({ContactMeasurements{gtdynamics::Slice(0), 0, {}}}, pose);
     } catch (const std::invalid_argument&) {
       rejected = true;
     }
@@ -241,8 +246,7 @@ int main() {
     Options pointOptions;
     pointOptions.model = Model::Point;
     pointOptions.perturb = true;
-    const auto pointResult =
-        ContactInitializer().Initialize(points, pointOptions);
+    const auto pointResult = ContactInitializer(pointOptions).run(points);
     require(std::isfinite(pointResult.residualRms),
             "Ambiguous point graph solved with LM damping");
     require(pointResult.graph.frameRanks[0] == 3 &&
@@ -254,10 +258,10 @@ int main() {
     for (auto& o : frames[4].observations) o.stanceId = "L2";
     Options disconnected;
     disconnected.model = Model::Patch;
-    require(ContactInitializer()
-                    .Initialize(frames, disconnected)
-                    .graph.components.size() == 2,
-            "Flight must not invent a trajectory connection");
+    require(
+        ContactInitializer(disconnected).run(frames).graph.components.size() ==
+            2,
+        "Flight must not invent a trajectory connection");
     for (bool between : {false, true})
       for (bool up : {false, true})
         for (bool ground : {false, true}) {
@@ -265,8 +269,7 @@ int main() {
           options.addBetweenFactors = between;
           options.addUprightFactors = up;
           options.addGroundFactors = ground;
-          const auto regularized =
-              ContactInitializer().Initialize(frames, options);
+          const auto regularized = ContactInitializer(options).run(frames);
           require(regularized.graph.contactComponents.size() == 2,
                   "Regularization preserves the measured contact components");
           require(regularized.graph.components.size() == (between ? 1 : 2),

@@ -12,6 +12,7 @@
  * @author Frank Dellaert
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/cmopt/BasisRetractor.h>
 #include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <CppUnitLite/Test.h>
@@ -20,7 +21,6 @@
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -431,8 +431,8 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
       graph_builder.dynamicsFactorGraph(robot, 0, {}, {}, ground_plane_height));
 
   // initial values
-  Initializer initializer;
-  Values values0 = initializer.ZeroValues(robot, 0, 0.0);
+  ZeroSliceInitializer initializer(robot);
+  Values values0 = initializer.run(0);
   Values known_values;
   for (const auto& joint : robot.joints()) {
     InsertJointAngle(&known_values, joint->id(),

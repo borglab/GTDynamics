@@ -11,12 +11,13 @@
  * @author: Dan Barladeanu
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtsam/base/VectorConstants.h>
 #include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/ChainDynamicsGraph.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/ChainInitializer.h>
+#include <gtdynamics/dynamics/ChainInitializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/base/timing.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -230,12 +231,13 @@ int CombinedRun(bool add_mass_to_body) {
 
   // Initialize solution.
   double gaussian_noise = 1e-20;
-  Initializer initializer;
-  ChainInitializer chain_initializer;
+
   gtsam::Values init_vals_DG = trajectory.multiPhaseInitialValues(
-      robot, initializer, gaussian_noise, desired_dt);
+      robot, gtdynamics::ZeroSliceInitializer(robot, gaussian_noise),
+      desired_dt);
   gtsam::Values init_vals_CDG = trajectory.multiPhaseInitialValues(
-      robot_massless, chain_initializer, gaussian_noise, desired_dt);
+      robot_massless,
+      gtdynamics::ChainInitializer(robot_massless, gaussian_noise), desired_dt);
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;

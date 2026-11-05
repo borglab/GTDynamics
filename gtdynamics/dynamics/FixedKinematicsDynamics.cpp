@@ -12,15 +12,15 @@
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
-#include <gtdynamics/dynamics/Dynamics.h>
-#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/dynamics/ContactWrenchFactor.h>
+#include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
 #include <gtdynamics/dynamics/TwistAccelFactor.h>
 #include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
+#include <gtdynamics/kinematics/PoseContactInitializer.h>
+#include <gtdynamics/mechanics/Mechanics.h>
 #include <gtdynamics/utils/ContactWrench.h>
-#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -72,8 +73,17 @@ class CountedReducedALRetractor : public ReducedALRetractor {
 // rather than a nonlinear initialization optimization or a dynamics substitute.
 Values equalityAnchor(const NonlinearFactorGraph& cost,
                       const NonlinearEqualityConstraints& equalities,
-                      const Values& zero) {
+                      const Values& zero, const Values& contactSeed) {
   auto linear = cost.linearize(zero);
+  // Positive normal loads place stance wrenches inside their cones. With
+  // free root/joint accelerations, affine articulated dynamics admits those
+  // loads exactly. These rows choose ONLY a seed; they are absent from the
+  // subsequent optimization graph. Using acceleration priors here keeps this
+  // construction block diagonal across slices, without temporal force costs.
+  for (Key key : contactSeed.keys())
+    linear->emplace_shared<JacobianFactor>(key, Matrix6::Identity(),
+                                           contactSeed.at<Vector6>(key),
+                                           noiseModel::Constrained::All(6));
   const auto linearEqualities = equalities.penaltyGraph().linearize(zero);
   for (const auto& factor : *linearEqualities) {
     JacobianFactor jacobian(*factor);
@@ -87,7 +97,7 @@ Values equalityAnchor(const NonlinearFactorGraph& cost,
 }
 
 struct Problem {
-  Values zero;
+  Values zero, contactSeed;
   NonlinearFactorGraph cost, effort, wrench, torqueSmooth, wrenchSmooth,
       balance, acceleration;
   NonlinearFactorGraph rootBalance;
@@ -106,15 +116,16 @@ struct Problem {
       throw std::invalid_argument(
           "Dynamics requires matching slices/times and contacts");
     if (!options.gravity.allFinite() || options.maxIterations == 0)
-      throw std::invalid_argument("Invalid gravity or dynamics iteration limit");
+      throw std::invalid_argument(
+          "Invalid gravity or dynamics iteration limit");
     if (!armature.allFinite() || !options.torqueLimits.allFinite())
       throw std::invalid_argument("Armature and torque limits must be finite");
-    for (double sigma :
-         {options.effortSigma, options.wrenchSigma, options.torqueSmoothSigma,
-          options.wrenchSmoothSigma, options.balanceMomentSigma,
-          options.balanceForceSigma, options.baseAngularAccelerationSigmaDegrees,
-          options.baseLinearAccelerationSigma,
-          options.jointAccelerationSigmaDegrees})
+    for (double sigma : {options.effortSigma, options.wrenchSigma,
+                         options.torqueSmoothSigma, options.wrenchSmoothSigma,
+                         options.balanceMomentSigma, options.balanceForceSigma,
+                         options.baseAngularAccelerationSigmaDegrees,
+                         options.baseLinearAccelerationSigma,
+                         options.jointAccelerationSigmaDegrees})
       if (!(sigma > 0) || !std::isfinite(sigma))
         throw std::invalid_argument(
             "Dynamics sigmas must be positive and finite");
@@ -143,11 +154,14 @@ struct Problem {
     for (const auto& link : robot.links())
       if (!children.count(link->id())) {
         if (root)
-          throw std::invalid_argument("Dynamics requires one floating tree root");
+          throw std::invalid_argument(
+              "Dynamics requires one floating tree root");
         root = link;
       }
     if (!root || root->isFixed())
       throw std::invalid_argument("Dynamics requires a floating tree root");
+    double totalMass = 0;
+    for (const auto& link : robot.links()) totalMass += link->mass();
     std::set<const Link*> robotLinks;
     for (const auto& link : robot.links()) robotLinks.insert(link.get());
     for (const auto& contact : contacts) {
@@ -158,7 +172,8 @@ struct Problem {
         throw std::invalid_argument(
             "Dynamics contact link must belong to the robot");
       if (!contact.pose.comTcontact.matrix().allFinite())
-        throw std::invalid_argument("Dynamics contact transform must be finite");
+        throw std::invalid_argument(
+            "Dynamics contact transform must be finite");
     }
 
     const auto tracked = contactPoseFrames(trajectory);
@@ -202,13 +217,14 @@ struct Problem {
             if (frame.contact.equals(contact.pose)) stance = frame.stance;
         if (stance) {
           active.push_back(c);
-          const auto cone = RectangularContactWrench(
-              contact.halfLength, contact.halfWidth, contact.frictionCoefficient);
+          const auto cone =
+              RectangularContactWrench(contact.halfLength, contact.halfWidth,
+                                       contact.frictionCoefficient);
           for (const auto& inequality : cone.constraints(soleKey))
             inequalities.push_back(inequality);
         } else {
-          exact.emplace_shared<PriorFactor<Vector6>>(soleKey, Vector6::Zero(),
-                                                     noiseModel::Unit::Create(6));
+          exact.emplace_shared<PriorFactor<Vector6>>(
+              soleKey, Vector6::Zero(), noiseModel::Unit::Create(6));
         }
         const double length = std::sqrt(contact.halfLength * contact.halfWidth);
         Vector6 sigmas;
@@ -228,8 +244,8 @@ struct Problem {
           sigmas *= options.wrenchSmoothSigma / options.wrenchSigma *
                     std::sqrt(times[i] - times[i - 1]);
           wrenchSmooth.emplace_shared<BetweenFactor<Vector6>>(
-              ContactWrenchKey(id, c, slices[i - 1].k), soleKey, Vector6::Zero(),
-              noiseModel::Diagonal::Sigmas(sigmas));
+              ContactWrenchKey(id, c, slices[i - 1].k), soleKey,
+              Vector6::Zero(), noiseModel::Diagonal::Sigmas(sigmas));
           ++result.wrenchSmoothFactors;
         }
       }
@@ -237,14 +253,22 @@ struct Problem {
         throw std::invalid_argument(
             "Strict fixed dynamics requires support at every slice");
 
+      for (size_t c = 0; c < contacts.size(); ++c) {
+        Vector6 load = Vector6::Zero();
+        if (std::find(active.begin(), active.end(), c) != active.end())
+          load(5) = totalMass * options.gravity.norm() / active.size();
+        contactSeed.insert(ContactWrenchKey(contacts[c].pose.link->id(), c, k),
+                           Vector(load));
+      }
+
       // Root Newton-Euler balance determines one active six-axis contact
       // wrench. All other active contact wrenches are independent coordinates.
       // Removing that one root equality in the explicit soft mode gives every
       // active sole wrench its six coordinates without changing internal
       // physics.
       for (size_t a = options.softDynamics ? 0 : 1; a < active.size(); ++a)
-        independentKeys.insert(
-            ContactWrenchKey(contacts[active[a]].pose.link->id(), active[a], k));
+        independentKeys.insert(ContactWrenchKey(
+            contacts[active[a]].pose.link->id(), active[a], k));
 
       for (const auto& link : robot.links()) {
         for (const auto& joint : link->joints()) {
@@ -265,7 +289,8 @@ struct Problem {
         if (link == root) {
           const Vector6 mean = accelerationPriors.at<Vector6>(accelerationKey);
           if (!mean.allFinite())
-            throw std::invalid_argument("Root acceleration prior must be finite");
+            throw std::invalid_argument(
+                "Root acceleration prior must be finite");
           independentKeys.insert(accelerationKey);
           acceleration.emplace_shared<PriorFactor<Vector6>>(
               accelerationKey, mean, baseAccelerationNoise);
@@ -306,16 +331,18 @@ struct Problem {
               "fixedValues");
         const double mean = accelerationPriors.at<double>(accelerationKey);
         if (!std::isfinite(mean))
-          throw std::invalid_argument("Joint acceleration prior must be finite");
+          throw std::invalid_argument(
+              "Joint acceleration prior must be finite");
         zero.insert(accelerationKey, 0.0);
         independentKeys.insert(accelerationKey);
-        acceleration.emplace_shared<PriorFactor<double>>(accelerationKey, mean,
-                                                         jointAccelerationNoise);
+        acceleration.emplace_shared<PriorFactor<double>>(
+            accelerationKey, mean, jointAccelerationNoise);
         const Key torqueKey = TorqueKey(id, k);
         result.torqueKeys.push_back(torqueKey);
         zero.insert(torqueKey, 0.0);
         effort.emplace_shared<PriorFactor<double>>(
-            torqueKey, 0.0, noiseModel::Isotropic::Sigma(1, options.effortSigma));
+            torqueKey, 0.0,
+            noiseModel::Isotropic::Sigma(1, options.effortSigma));
         if (i)
           torqueSmooth.emplace_shared<BetweenFactor<double>>(
               TorqueKey(id, slices[i - 1].k), torqueKey, 0.0,
@@ -350,8 +377,57 @@ struct Problem {
     result.inequalityDimension = inequalities.dim();
     result.assemblySeconds = seconds(start);
   }
+  // Evaluate physical residuals and costs without setting up CMC manifolds.
+  void summarize() {
+    result.effortError = effort.error(result.values);
+    result.wrenchError = wrench.error(result.values);
+    result.torqueSmoothError = torqueSmooth.error(result.values);
+    result.wrenchSmoothError = wrenchSmooth.error(result.values);
+    result.balanceError = balance.error(result.values);
+    result.accelerationError = acceleration.error(result.values);
+    result.equalityL2 = equalities.violationNorm(result.values);
+    result.inequalityL2 = inequalities.violationNorm(result.values);
+    result.feasible = result.equalityL2 < 1e-5 && result.inequalityL2 < 1e-5;
+    for (const auto& factor : rootBalance) {
+      const auto native = std::dynamic_pointer_cast<NoiseModelFactor>(factor);
+      const Vector6 residual = native->unwhitenedError(result.values);
+      result.baseResiduals.push_back(residual);
+      result.maxMomentResidual =
+          std::max(result.maxMomentResidual, residual.head<3>().norm());
+      result.maxForceResidual =
+          std::max(result.maxForceResidual, residual.tail<3>().norm());
+    }
+  }
 };
 }  // namespace
+
+fixed_dynamics::Result fixedKinematicsDynamicsSeed(
+    const Robot& robot, const Trajectory& trajectory,
+    const std::vector<Slice>& slices, const std::vector<double>& times,
+    const gtsam::Values& fixedValues, const gtsam::Values& accelerationPriors,
+    const std::vector<fixed_dynamics::Contact>& contacts,
+    const gtsam::Vector& armature, const fixed_dynamics::Options& options) {
+  if (options.softDynamics)
+    throw std::invalid_argument("Linear dynamics seed requires exact dynamics");
+  Problem problem(robot, trajectory, slices, times, fixedValues,
+                  accelerationPriors, contacts, armature, options);
+  const auto started = Clock::now();
+  auto& result = problem.result;
+  result.values = equalityAnchor(problem.acceleration, problem.equalities,
+                                 problem.zero, problem.contactSeed);
+  result.initializationSeconds = seconds(started);
+  result.objectiveInitial = result.objectiveFinal =
+      problem.cost.error(result.values);
+  result.objectiveHistory = {result.objectiveFinal};
+  problem.summarize();
+  if (!result.feasible)
+    throw std::runtime_error(
+        "Linear dynamics seed violates exact mechanics or "
+        "wrench/torque constraints");
+  // No objective optimization or tangent-cone stationarity test was performed.
+  result.projectedGradientNorm = std::numeric_limits<double>::infinity();
+  return result;
+}
 
 fixed_dynamics::Result solveFixedKinematicsDynamics(
     const Robot& robot, const Trajectory& trajectory,
@@ -363,8 +439,8 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
   Problem problem(robot, trajectory, slices, times, fixedValues,
                   accelerationPriors, contacts, armature, options);
   auto start = Clock::now();
-  Values initial =
-      equalityAnchor(problem.cost, problem.equalities, problem.zero);
+  Values initial = equalityAnchor(problem.acceleration, problem.equalities,
+                                  problem.zero, problem.contactSeed);
   const double anchorViolation = problem.equalities.violationNorm(initial);
   if (anchorViolation > 1e-6)
     throw std::runtime_error("Fixed dynamics equality anchor is infeasible: " +
@@ -474,15 +550,7 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
   if (result.objectiveHistory.empty() ||
       std::abs(result.objectiveHistory.back() - result.objectiveFinal) > 1e-12)
     result.objectiveHistory.push_back(result.objectiveFinal);
-  result.effortError = problem.effort.error(result.values);
-  result.wrenchError = problem.wrench.error(result.values);
-  result.torqueSmoothError = problem.torqueSmooth.error(result.values);
-  result.wrenchSmoothError = problem.wrenchSmooth.error(result.values);
-  result.balanceError = problem.balance.error(result.values);
-  result.accelerationError = problem.acceleration.error(result.values);
-  result.equalityL2 = problem.equalities.violationNorm(result.values);
-  result.inequalityL2 = problem.inequalities.violationNorm(result.values);
-  result.feasible = result.equalityL2 < 1e-5 && result.inequalityL2 < 1e-5;
+  problem.summarize();
   if (!optimizer.details().empty()) {
     const auto& finalState = optimizer.details().back().state;
     const auto projected = IEOptimizer::projectTangentCone(
@@ -490,15 +558,6 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
     result.projectedGradientNorm = projected.second.norm();
   }
   result.stationary = result.feasible && result.projectedGradientNorm <= 1e-5;
-  for (const auto& factor : problem.rootBalance) {
-    const auto native = std::dynamic_pointer_cast<NoiseModelFactor>(factor);
-    const Vector6 residual = native->unwhitenedError(result.values);
-    result.baseResiduals.push_back(residual);
-    result.maxMomentResidual =
-        std::max(result.maxMomentResidual, residual.head<3>().norm());
-    result.maxForceResidual =
-        std::max(result.maxForceResidual, residual.tail<3>().norm());
-  }
   return result;
 }
 }  // namespace gtdynamics

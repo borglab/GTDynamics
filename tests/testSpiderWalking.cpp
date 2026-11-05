@@ -13,6 +13,7 @@
  * @author: Frank Dellaert, Varun Agrawal, Stefanos Charalambous
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtsam/base/VectorConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
@@ -150,9 +151,10 @@ TEST(testSpiderWalking, WholeEnchilada) {
 
   // Initialize solution.
   double gaussian_noise = 0.0;
-  Initializer initializer;
-  Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
+
+  Values init_vals = trajectory.multiPhaseInitialValues(
+      robot, gtdynamics::ZeroSliceInitializer(robot, gaussian_noise),
+      desired_dt);
   EXPECT_LONGS_EQUAL(3847, init_vals.size());
 
   // Compare error for all factors with expected values in file.
