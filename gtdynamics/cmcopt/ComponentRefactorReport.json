@@ -36499,7 +36499,7 @@
       }
     }
   ],
-  "notes": "Final result\nAll 318 cases have before/after outcomes. The 250 completed cases each have five\nmeasured trials per version; all saved numerical comparisons are exact. The\nremaining 68 cases reproduce baseline failures: 32 timeouts, four crashes and\n32 explicit solver failures. No completed case changes solution quality.\n\nTimings are essentially unchanged within the measured workloads. The three\ninitial >5% flags have recheck ratios of 0.9932, 1.0007 and 0.9995. The independent\nbasis-retractor recheck takes 209.44 s before and 209.33 s after. The longer\nquadruped case is 73.85 s before and 74.77 s after; fixed-dynamics modes are within\n0.3%, and the one-iteration full clip is within 0.8%. These results support the\nownership simplification without establishing a useful speedup.\n\nScope and baseline\nThe checkpoint f71c907d already uses component coordinates for the global linear\nsolve. This change simplifies ownership and indexing. It does not repeat the\nearlier constrained-solver replacement or claim its previously reported 2.4x gain.\nNo compatibility aliases or alternative old paths remain for the removed APIs.\nThe separate coupled objective and component-local nonlinear retractions remain.\n\nNative validation\nFourteen test targets pass: testWorkingFace, testIELMWorkingSet,\ntestIEManifoldLinearization, testIEConstraintManifold, testTangentCone,\ntestIEManifoldOptimizer, testCMCImprovements, testReducedALRetractor,\ntestArticulatedRetractor, testAffineProjection, testIEHalfSphere,\ntestReducedALRetractionValidation, testRobustQp, and testWorldVelocityFactor.\nThe working-set oracle checks 64 coupled problems against exhaustive constrained\nQR. The direct component tests also check original indices, boundary tie order,\nstep bounds, row release, derivative sharing and state lifetime.\nFour Python integration tests pass. Both full-dynamics binaries pass their\nwrench, friction and boundary Jacobian self-tests.\ntestIERetractor and testIEQuadrupedUtilsManifold are disabled in the repository's\nCMake configuration; they are not counted as passes. SuiteSparse is disabled.\n\nInventory and measurement\nThe inventory covers all 15 rss/yetong CMC programs, their active LM/GD/CM\ncomparisons, Yetong08 multistage and retractor variants, and Yetong09 fixed and\nvarying metrics plus the independently runnable second retractor: 25 native cases. The G1 grid adds 288 cases: 24 recorded states,\nfour friction formulations, three retractors. Five walking cases cover fixed\nkinematics (hard and soft base balance), full coupled kinodynamics, a one-iteration\nfull-clip diagnostic and a five-iteration short clip. Total: 318 cases.\nOther search hits are wrappers, exporters or plots of these same problems.\nCommented-out experiments and CM-only main_connected_poses are identified in\nthe suite README; they are not additional active CMC experiments.\n\nRelease Clang 18.1.3 and the same GTSAM build are used for both snapshots.\nRuns alternate baseline/candidate order, with one warmup and five measured\nsuccessful runs. Each pair is pinned to the same logical CPU on separate physical\ncores (native primarily CPU 2; grid CPUs 4/6/8/10; walking CPUs 4/10).\nYetong09/10/11 use CPUs 12/14/16 respectively. The independent basis-retractor\ncase warms up on CPU 12, then distributes its five repeated pairs across CPUs\n0/4/6/8/10 concurrently. Each pair uses the same core before and after; its\ntimings describe that concurrent-pair workload, not an isolated production run.\nOMP_NUM_THREADS and OPENBLAS_NUM_THREADS are 1. Affinity also limits TBB and avoids\noversubscription. Kinodynamics still configures eight retraction workers, sharing\nthat CPU. Production eight-core app latency requires a separate measurement.\nNative scripts report optimization only. Fixed dynamics includes its native\nconstruction and solve; coupled kinodynamics reports native optimization.\nTiming scopes are compared only within a case. GP preparation and Python/model\nloading are excluded from those primary comparisons.\n\nThe benchmark skips the legacy helper's optional post-solve re-optimization of\nsaved iterates for projected-cost diagnostics. This never enters the reported\noptimization time or changes the optimized result. Some early Yetong07 trials\nstill ran those diagnostics, so their helper/process wall times are not comparable;\nthe optimization times and numerical comparisons are comparable.\nFailure trials already in progress when the timeout policy was adopted can have\ndifferent trial counts in the two versions; both outcomes remain recorded.\nTwo initial >5% G1 timing flags were rerun in fresh alternating batches on CPU 12.\nThe independent basis-retractor batch also exceeded that threshold: its first\nhalf overlapped the last generic-retractor timeout, and its second half ran\nfaster for both versions. A fresh five-pair batch repeats it under steady load,\nusing the already completed warmup. Both batches remain in the report. The JSON\nalso includes individual paired ratios, allowing run-order drift to be inspected.\n\nKnown baseline problems\nRSS04 LM/CM and Yetong10/11 segfault in both versions. The RSS04 backtrace reaches\nNonlinearFactorGraph::error during initial IELM state construction. Yetong10 also\nfails at a null instruction address after printing a factor-graph size. These\nfailures occur before a completed solve; their root cause is not established here.\nMatching failures do not establish solution equivalence for those examples.\nYetong08's multistage run times out at 600 seconds before completing its first\nstage in both versions. A paired warmup timeout is recorded as censored without\nrepeating the same timeout five times. G1 full-dynamics has a 30-second watchdog;\nits failed/censored configurations remain visible in the table and JSON.\nThirty grid configurations time out in both versions. Another 31 reduced-barrier\nconfigurations return the same explicit solver error: \"Reduced projection result\nviolates original constraints or blocking faces\". The native line-oriented API\nreturns exit status zero with that JSON error; the report correctly counts the\nerror response as a failure, rather than a completed solution.\nThe full five-iteration G1 clip reproduces the pre-existing local cone-QP AL\nfallback failure: stationarity 1.18637e-6, violation 3.4788e-12, 19 iterations.\nThe full one-iteration and short five-iteration cases supplement this failure;\nthey do not establish convergence of the complete five-iteration full clip.\n\nReproducibility and exclusions\nThe embedded provenance records the checkpoint, GTSAM revision, library hashes,\nrequest fingerprint and source fingerprints. Raw numerical arrays and logs are\nretained in /tmp/cmc-controlled-{before,after}, /tmp/cmc-final-g1-{before,after},\nand /tmp/cmc-final-walk-{before,after}. The checked-in drivers reproduce the\ninventory and comparison without requiring these temporary paths.\nEarly exploratory timing batches with TBB oversubscription, stale binary RPATH,\nand incomplete Python snapshot packaging were discarded. They are not counted\nas algorithm failures or included in the reported timings.\n",
+  "notes": "Follow-up: kinodynamics-full environment sensitivity (2026-11-04)\nA controlled comparison of PR #469 head 45172046 and shared-linearization commit\nf71c907d found no regression. With the successful investigation's NumPy 2.2.6\nenvironment, both complete five iterations and every saved result array is exact.\nThe final objective is 9120.017395552624; equality L2 is 4.1370e-12 and inequality\nL2 is 1.2862e-7. Optimization times are 81.61 s and 81.16 s on one pinned CPU.\nThese are individual reproduction runs, not a new statistical timing comparison.\n\nBoth revisions fail under the original benchmark's Python environment with\nNumPy 2.5.2, reporting the same cone-QP AL failure already shown in the table.\nA further run keeps the successful interpreter, binaries, inputs, and settings\nand replaces only the imported NumPy package (including its numerical backend)\nwith NumPy 2.5.2: it reproduces the exact same failure. Initial Values then match\nthe failing environment byte-for-byte. Their maximum local-coordinate difference\nfrom the successful initialization is 3.67e-9 (mixed variable units).\n\nThis establishes environment-dependent numerical sensitivity in the existing\nsolver, not a regression from f71c907d. It does not identify the precise NumPy\noperation responsible, nor prove which inner AL stopping condition was reached.\nThe reported AL stationarity 1.18637e-6 exceeds the configured 1e-7 tolerance;\nviolation 3.4788e-12 is below the 1e-9 feasibility tolerance. The failure correctly\nremains recorded; it is not a missing result or evidence of changed refactor\nbehavior. A robustness fix needs its own focused reproducer and fresh validation.\nNo solver code, tolerances, or old benchmark measurements were changed.\nFull reproduction notes: gtdynamics/cmcopt/KinodynamicsFailureInvestigation.md.\n\nFinal result\nAll 318 cases have before/after outcomes. The 250 completed cases each have five\nmeasured trials per version; all saved numerical comparisons are exact. The\nremaining 68 cases reproduce baseline failures: 32 timeouts, four crashes and\n32 explicit solver failures. No completed case changes solution quality.\n\nTimings are essentially unchanged within the measured workloads. The three\ninitial >5% flags have recheck ratios of 0.9932, 1.0007 and 0.9995. The independent\nbasis-retractor recheck takes 209.44 s before and 209.33 s after. The longer\nquadruped case is 73.85 s before and 74.77 s after; fixed-dynamics modes are within\n0.3%, and the one-iteration full clip is within 0.8%. These results support the\nownership simplification without establishing a useful speedup.\n\nScope and baseline\nThe checkpoint f71c907d already uses component coordinates for the global linear\nsolve. This change simplifies ownership and indexing. It does not repeat the\nearlier constrained-solver replacement or claim its previously reported 2.4x gain.\nNo compatibility aliases or alternative old paths remain for the removed APIs.\nThe separate coupled objective and component-local nonlinear retractions remain.\n\nNative validation\nFourteen test targets pass: testWorkingFace, testIELMWorkingSet,\ntestIEManifoldLinearization, testIEConstraintManifold, testTangentCone,\ntestIEManifoldOptimizer, testCMCImprovements, testReducedALRetractor,\ntestArticulatedRetractor, testAffineProjection, testIEHalfSphere,\ntestReducedALRetractionValidation, testRobustQp, and testWorldVelocityFactor.\nThe working-set oracle checks 64 coupled problems against exhaustive constrained\nQR. The direct component tests also check original indices, boundary tie order,\nstep bounds, row release, derivative sharing and state lifetime.\nFour Python integration tests pass. Both full-dynamics binaries pass their\nwrench, friction and boundary Jacobian self-tests.\ntestIERetractor and testIEQuadrupedUtilsManifold are disabled in the repository's\nCMake configuration; they are not counted as passes. SuiteSparse is disabled.\n\nInventory and measurement\nThe inventory covers all 15 rss/yetong CMC programs, their active LM/GD/CM\ncomparisons, Yetong08 multistage and retractor variants, and Yetong09 fixed and\nvarying metrics plus the independently runnable second retractor: 25 native cases. The G1 grid adds 288 cases: 24 recorded states,\nfour friction formulations, three retractors. Five walking cases cover fixed\nkinematics (hard and soft base balance), full coupled kinodynamics, a one-iteration\nfull-clip diagnostic and a five-iteration short clip. Total: 318 cases.\nOther search hits are wrappers, exporters or plots of these same problems.\nCommented-out experiments and CM-only main_connected_poses are identified in\nthe suite README; they are not additional active CMC experiments.\n\nRelease Clang 18.1.3 and the same GTSAM build are used for both snapshots.\nRuns alternate baseline/candidate order, with one warmup and five measured\nsuccessful runs. Each pair is pinned to the same logical CPU on separate physical\ncores (native primarily CPU 2; grid CPUs 4/6/8/10; walking CPUs 4/10).\nYetong09/10/11 use CPUs 12/14/16 respectively. The independent basis-retractor\ncase warms up on CPU 12, then distributes its five repeated pairs across CPUs\n0/4/6/8/10 concurrently. Each pair uses the same core before and after; its\ntimings describe that concurrent-pair workload, not an isolated production run.\nOMP_NUM_THREADS and OPENBLAS_NUM_THREADS are 1. Affinity also limits TBB and avoids\noversubscription. Kinodynamics still configures eight retraction workers, sharing\nthat CPU. Production eight-core app latency requires a separate measurement.\nNative scripts report optimization only. Fixed dynamics includes its native\nconstruction and solve; coupled kinodynamics reports native optimization.\nTiming scopes are compared only within a case. GP preparation and Python/model\nloading are excluded from those primary comparisons.\n\nThe benchmark skips the legacy helper's optional post-solve re-optimization of\nsaved iterates for projected-cost diagnostics. This never enters the reported\noptimization time or changes the optimized result. Some early Yetong07 trials\nstill ran those diagnostics, so their helper/process wall times are not comparable;\nthe optimization times and numerical comparisons are comparable.\nFailure trials already in progress when the timeout policy was adopted can have\ndifferent trial counts in the two versions; both outcomes remain recorded.\nTwo initial >5% G1 timing flags were rerun in fresh alternating batches on CPU 12.\nThe independent basis-retractor batch also exceeded that threshold: its first\nhalf overlapped the last generic-retractor timeout, and its second half ran\nfaster for both versions. A fresh five-pair batch repeats it under steady load,\nusing the already completed warmup. Both batches remain in the report. The JSON\nalso includes individual paired ratios, allowing run-order drift to be inspected.\n\nKnown baseline problems\nRSS04 LM/CM and Yetong10/11 segfault in both versions. The RSS04 backtrace reaches\nNonlinearFactorGraph::error during initial IELM state construction. Yetong10 also\nfails at a null instruction address after printing a factor-graph size. These\nfailures occur before a completed solve; their root cause is not established here.\nMatching failures do not establish solution equivalence for those examples.\nYetong08's multistage run times out at 600 seconds before completing its first\nstage in both versions. A paired warmup timeout is recorded as censored without\nrepeating the same timeout five times. G1 full-dynamics has a 30-second watchdog;\nits failed/censored configurations remain visible in the table and JSON.\nThirty grid configurations time out in both versions. Another 31 reduced-barrier\nconfigurations return the same explicit solver error: \"Reduced projection result\nviolates original constraints or blocking faces\". The native line-oriented API\nreturns exit status zero with that JSON error; the report correctly counts the\nerror response as a failure, rather than a completed solution.\nThe full five-iteration G1 clip reproduces the pre-existing local cone-QP AL\nfallback failure: stationarity 1.18637e-6, violation 3.4788e-12, 19 iterations.\nThe full one-iteration and short five-iteration cases supplement this failure;\nthey do not establish convergence of the complete five-iteration full clip.\n\nReproducibility and exclusions\nThe embedded provenance records the checkpoint, GTSAM revision, library hashes,\nrequest fingerprint and source fingerprints. Raw numerical arrays and logs are\nretained in /tmp/cmc-controlled-{before,after}, /tmp/cmc-final-g1-{before,after},\nand /tmp/cmc-final-walk-{before,after}. The checked-in drivers reproduce the\ninventory and comparison without requiring these temporary paths.\nEarly exploratory timing batches with TBB oversubscription, stale binary RPATH,\nand incomplete Python snapshot packaging were discarded. They are not counted\nas algorithm failures or included in the reported timings.\n",
   "rechecks": [
     {
       "baseline": "f71c907d",
@@ -37015,6 +37015,111 @@
     "source_line_counts": {
       "before_six_files": 806,
       "after_six_files": 629
+    },
+    "kinodynamics_followup": {
+      "revisions": {
+        "head": "451720468e3c6bdc672876c702eeaf20b4596509",
+        "shared": "f71c907d40c0b8d5fadcbbd7480eea1005e21c88"
+      },
+      "successful_arrays_exact": {
+        "times": true,
+        "source_indices": true,
+        "link_ids": true,
+        "joint_ids": true,
+        "poses": true,
+        "initial_poses": true,
+        "joint_names": true,
+        "initial_joint_angles": true,
+        "contact_transforms": true,
+        "contact_link_ids": true,
+        "contact": true,
+        "reference_root_positions": true,
+        "root_id": true,
+        "body_twists": true,
+        "body_twist_accelerations": true,
+        "joint_angles": true,
+        "joint_velocities": true,
+        "joint_accelerations": true,
+        "wrenches": true,
+        "joint_torques": true
+      },
+      "initial_environment_difference": {
+        "dimension": 1004252,
+        "max_abs": 3.670312054267659e-09,
+        "l2": 3.287171908608931e-07,
+        "nonzero": 178388
+      },
+      "runs": {
+        "raw-head-confirm": {
+          "outcome": {
+            "status": "returned",
+            "wallSeconds": 101.23039203812368
+          },
+          "initial": {
+            "sha256": "ca76c7cce24de36d3940ac1c3341043e750d72a10f8d4ac8b2528bcd0b949e68"
+          },
+          "summary": {
+            "iterations": 5,
+            "feasible": true,
+            "objectiveFinal": 9120.017395552624,
+            "equalityL2": 4.137014483932463e-12,
+            "inequalityL2": 1.28621769347088e-07,
+            "initializationSeconds": 14.597283137,
+            "optimizationSeconds": 81.610537466
+          }
+        },
+        "raw-shared-1": {
+          "outcome": {
+            "status": "returned",
+            "wallSeconds": 100.77938755392097
+          },
+          "initial": {
+            "sha256": "ca76c7cce24de36d3940ac1c3341043e750d72a10f8d4ac8b2528bcd0b949e68"
+          },
+          "summary": {
+            "iterations": 5,
+            "feasible": true,
+            "objectiveFinal": 9120.017395552624,
+            "equalityL2": 4.137014483932463e-12,
+            "inequalityL2": 1.28621769347088e-07,
+            "initializationSeconds": 14.611289189,
+            "optimizationSeconds": 81.16185871
+          }
+        },
+        "py312-head": {
+          "outcome": {
+            "status": "exception",
+            "type": "RuntimeError",
+            "message": "Tangent-cone projection failed: CMC QP AL fallback did not converge: stationarity=1.18637e-06, violation=3.4788e-12, iterations=19",
+            "wallSeconds": 52.486714934930205
+          },
+          "initial": {
+            "sha256": "a4b978f09bccb083fd4a5e9fbf57cf9db028e4ea0e44a0793e1c8f0a7d621247"
+          }
+        },
+        "py312-shared": {
+          "outcome": {
+            "status": "exception",
+            "type": "RuntimeError",
+            "message": "Tangent-cone projection failed: CMC QP AL fallback did not converge: stationarity=1.18637e-06, violation=3.4788e-12, iterations=19",
+            "wallSeconds": 52.58141673915088
+          },
+          "initial": {
+            "sha256": "a4b978f09bccb083fd4a5e9fbf57cf9db028e4ea0e44a0793e1c8f0a7d621247"
+          }
+        },
+        "numpy25-shared": {
+          "outcome": {
+            "status": "exception",
+            "type": "RuntimeError",
+            "message": "Tangent-cone projection failed: CMC QP AL fallback did not converge: stationarity=1.18637e-06, violation=3.4788e-12, iterations=19",
+            "wallSeconds": 52.273640176979825
+          },
+          "initial": {
+            "sha256": "a4b978f09bccb083fd4a5e9fbf57cf9db028e4ea0e44a0793e1c8f0a7d621247"
+          }
+        }
+      }
     }
   }
 }
