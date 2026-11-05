@@ -38,7 +38,7 @@
   {
     "id": "kinodynamics",
     "title": "Kinodynamics",
-    "description": "Inspect a coupled 50 Hz G1 trajectory solve from contact-initialized configurations and zero velocities, accelerations, wrenches and torques.",
+    "description": "Inspect a coupled 50 Hz G1 trajectory solve initialized by contact poses, GP velocities and a linear dynamics seed.",
     "tag": "Coupled state and dynamics estimation"
   },
   {
