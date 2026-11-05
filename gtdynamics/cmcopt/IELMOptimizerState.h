@@ -21,6 +21,9 @@
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
+#include <gtsam/constrained/QpProblem.h>
+
+#include <limits>
 
 namespace gtdynamics {
 using namespace gtsam;
@@ -42,9 +45,18 @@ public:
   size_t iterations = 0;
   size_t totalInnerIterations = 0;
   VectorValues gradient;
-  IndexSetMap gradientBlockingIndicesMap;  // blocking indices map by neg grad
   GaussianFactorGraph::shared_ptr baseLinear;
   GaussianFactorGraph::shared_ptr linearManifoldGraph;
+  /// Undamped objective and homogeneous active inequalities in B coordinates.
+  QpProblem tangentQp;
+  /// Contiguous QP rows belonging to one original nonlinear constraint block.
+  struct QpConstraintBlock {
+    Key component;
+    size_t constraint;
+    size_t firstRow;
+    size_t numRows;
+  };
+  std::vector<QpConstraintBlock> qpConstraintBlocks;
   /// Default constructor.
   IELMState() {}
 
@@ -81,10 +93,6 @@ protected:
 
   void construct(const NonlinearFactorGraph &graph,
                  const NonlinearFactorGraph &manifold_graph);
-
-
-  /// Compute gradient and identify the blocking constraints by neg grad.
-  void computeGradient(const NonlinearFactorGraph &manifold_graph);
 };
 
 /** Trial for LM inner iteration with certain lambda setting. */
@@ -101,7 +109,7 @@ struct IELMTrial {
             const IndexSetMap &forcedIndicesMap);
 
   struct LinearUpdate {
-    double lambda;
+    double lambda = 0;
     IndexSetMap blockingIndicesMap;
     VectorValues delta;
     VectorValues tangentVector;
@@ -109,14 +117,15 @@ struct IELMTrial {
     double newError = 0;
     double costChange = 0;
     bool solveSuccessful = 0;
-    size_t numSolves = 0; // number of solving linear systems
+    std::string failureReason;
+    size_t qpIterations = 0;  // GTSAM active-set iterations, not factorizations
 
     /** Default constructor. */
     LinearUpdate() {}
 
     /** Compute a damped LM step and its blocking inequality constraints.
-     * First find a feasible step, then optionally refine its working set.
-     * Every global solve uses soft costs in local working-face coordinates.
+     * Solve the global tangent-cone QP with GTSAM's sparse active-set solver.
+     * Equality constraints have already been eliminated by B.
      * Lift the result to ambient tangent coordinates and record the predicted
      * reduction in the undamped cost model.
      */
@@ -126,15 +135,6 @@ struct IELMTrial {
     /// Construct a zero step for a boundary-mode change.
     static LinearUpdate zero(const IELMState &state);
 
-    /** Find a feasible step by adding blocking blocks to the initial working
-     * set from the projected negative gradient. Each solve uses local face
-     * coordinates; this approximation does not release faces to certify a QP
-     * optimum. Returns [delta, blockingIndices, numSolves, solveSuccessful].
-     */
-    static std::tuple<VectorValues, IndexSetMap, size_t, bool> initialEstimate(
-        const GaussianFactorGraph &quadraticCost, const IELMState &state,
-        const LevenbergMarquardtParams &params);
-
     /** Check directional feasibility and selected-face tightness in component
      * coordinates. This check does not certify QP stationarity or optimality.
      */
@@ -143,16 +143,6 @@ struct IELMTrial {
                                    const IndexSetMap &blockingIndices);
 
    protected:
-    /** Refine delta with component-local faces and unconstrained global solves.
-     * Updates delta, blockingIndices, numSolves, and solveSuccessful. Numerical
-     * failure, infeasible initialization, or iteration exhaustion sets
-     * solveSuccessful to false.
-     */
-    void refineIQPStep(const GaussianFactorGraph &dampedSystem,
-                       const IELMState &state, IndexSetMap &blockingIndices,
-                       const LevenbergMarquardtParams &params,
-                       size_t maxIterations);
-
     /** Retain the working set, lift delta, and record undamped cost reduction.
      */
     void recordSolution(const IELMState &state,
@@ -184,8 +174,8 @@ struct IELMTrial {
   struct NonlinearUpdate {
     IEManifoldValues newManifolds;
     Values newUnconstrainedValues;
-    double newError;
-    double costChange;
+    double newError = std::numeric_limits<double>::infinity();
+    double costChange = -std::numeric_limits<double>::infinity();
     size_t numRetractionIterations =
         0;  // total number of iterations in LM opt.
     std::vector<double> retractionDeviationRates;
@@ -221,10 +211,10 @@ public:
 
   // decision making
   IndexSetMap forcedIndicesMap;
-  double modelFidelity;
-  bool stepIsSuccessful;
-  bool stopSearchingLambda;
-  double trialTime;
+  double modelFidelity = -std::numeric_limits<double>::infinity();
+  bool stepIsSuccessful = false;
+  bool stopSearchingLambda = false;
+  double trialTime = 0;
 
   /// Update lambda for the next trial/state.
   void setNextLambda(double &new_lambda, double &newLambdaFactor,

@@ -575,7 +575,7 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
       objective.cost.error(initial) - variableCost.error(initial);
 
   IELMParams params;
-  params.iqpMaxIterations = 1000;
+  params.qpMaxIterations = 1000;
   params.lmParams.maxIterations = options.maxIterations;
   params.lmParams.absoluteErrorTol = 1e-8;
   params.lmParams.relativeErrorTol = 1e-8;

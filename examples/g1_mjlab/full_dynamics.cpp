@@ -519,7 +519,7 @@ json::object solve(const json::object &input) {
     }
   } else if (solver == "CMC") {
     IELMParams p;
-    p.iqpMaxIterations = 1000;
+    p.qpMaxIterations = 1000;
     p.lmParams.maxIterations = 500;
     p.lmParams.absoluteErrorTol = p.lmParams.relativeErrorTol = 1e-12;
     auto mp = std::make_shared<IEConstraintManifold::Params>();

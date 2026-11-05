@@ -38,36 +38,6 @@ template <class T>
 T setting(const py::dict& settings, const char* name) {
   return settings[py::str(name)].cast<T>();
 }
-// Retire each stance landmark at its final observation, keeping a shared bias
-// until its last factor. Time-block elimination preserves the chain structure.
-Ordering chronologicalOrdering(const NonlinearFactorGraph& cost,
-                               const IEManifoldValues& manifolds,
-                               const Values& unconstrained, size_t firstSlice) {
-  const auto ownership = IEOptimizer::varToManifoldKeyMap(manifolds);
-  std::map<Key, size_t> lastSlice;
-  for (Key key : unconstrained.keys()) lastSlice[key] = firstSlice;
-  for (const auto& factor : cost) {
-    size_t last = firstSlice;
-    for (Key key : factor->keys()) {
-      const auto owner = ownership.find(key);
-      if (owner != ownership.end())
-        last = std::max(last, DynamicsSymbol(owner->second).time());
-    }
-    for (Key key : factor->keys())
-      if (unconstrained.exists(key))
-        lastSlice[key] = std::max(lastSlice[key], last);
-  }
-  std::map<size_t, Key> chronological;
-  for (const auto& [key, manifold] : manifolds)
-    chronological.emplace(DynamicsSymbol(key).time(), key);
-  Ordering ordering;
-  for (const auto& [k, key] : chronological) {
-    ordering.push_back(key);
-    for (const auto& [freeKey, last] : lastSlice)
-      if (last == k) ordering.push_back(freeKey);
-  }
-  return ordering;
-}
 // Locate the floating root independently of the initialization strategy.
 LinkSharedPtr floatingRoot(const Robot& robot) {
   LinkSharedPtr root;
@@ -539,13 +509,7 @@ py::dict solve(
   params.lmParams.lambdaInitial = setting<double>(settings, "lambdaInitial");
   params.lmParams.setDiagonalDamping(
       setting<bool>(settings, "diagonalDamping"));
-  // Eliminate one time block at a time. Multifrontal amalgamation can turn the
-  // chain's dense 111-coordinate blocks plus a shared bias into one large QR
-  // front when active cone faces are present. Retire each stance landmark at
-  // its final observation, keeping only the shared bias until the end.
-  params.lmParams.setLinearSolverType("SEQUENTIAL_CHOLESKY");
-  params.lmParams.ordering =
-      chronologicalOrdering(cost, manifolds, unconstrained, slices.front().k);
+  // GTSAM owns ordering and elimination inside the sparse QP solve.
   params.lmParams.verbosityLM = LevenbergMarquardtParams::SUMMARY;
   const auto optimizeStart = Clock::now();
   params.iterationCallback = [&](const IELMState& state) {

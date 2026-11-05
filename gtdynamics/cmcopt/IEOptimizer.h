@@ -161,12 +161,6 @@ public:
     if (state_current_str.size() > 0) {
       std::cout << "current: " << state_current_str << "\n";
     }
-    auto state_grad_blocking_str =
-        IEOptimizer::indicesString(state.gradientBlockingIndicesMap, keyFormatter);
-    if (state_grad_blocking_str.size() > 0) {
-      std::cout << "grad blocking: " << state_grad_blocking_str << "\n";
-    }
-
     for (const auto &it : state.manifolds) {
       double i_error = it.second.evaluateInequalityViolation();
       double e_error = it.second.evaluateEqualityViolation();
