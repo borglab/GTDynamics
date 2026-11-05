@@ -61,29 +61,9 @@ def acceleration_prior_values(
     result is vdot_body; physical acceleration is vdot_body + omega cross v.
     Joint means follow interpolation.jointIds(), in rad/s² for revolute joints.
     """
-    if not np.isfinite(step_seconds) or step_seconds <= 0:
-        raise ValueError("The acceleration differentiation step must be positive")
-    knots = interpolation.knotTimes()
-    before = max(knots[0], time - step_seconds)
-    after = min(knots[-1], time + step_seconds)
-    if not knots[0] <= time <= knots[-1] or after <= before:
-        raise ValueError("The differentiation stencil must lie inside the GP fit")
-    first: gtd.FloatingBaseState = interpolation.interpolate(before)
-    last: gtd.FloatingBaseState = interpolation.interpolate(after)
-    duration = after - before
-    priors = gtsam.Values()
-    gtd.InsertTwistAccel(
-        priors,
-        robot.link("pelvis").id(),
-        k,
-        (last.baseTwist - first.baseTwist) / duration,
+    return gtd.gpAccelerationPriors(
+        interpolation, robot.link("pelvis").id(), time, k, step_seconds
     )
-    for joint_id, acceleration in zip(
-        interpolation.jointIds(),
-        (last.jointVelocities - first.jointVelocities) / duration,
-    ):
-        gtd.InsertJointAccel(priors, joint_id, k, float(acceleration))
-    return priors
 
 
 def prepare_fixed_kinematics(

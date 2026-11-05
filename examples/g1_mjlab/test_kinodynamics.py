@@ -54,7 +54,7 @@ class TestKinodynamics(unittest.TestCase):
         self.assertEqual(options["maxIterations"], 5)
         self.assertEqual(options["gaugeSlice"], 0)
         self.assertEqual(options["retractionThreads"], 8)
-        self.assertEqual(options["initialization"], "contact")
+        self.assertEqual(options["initialization"], "contact-gp-dynamics")
         options["maxIterations"] = 20
         options["gaugeSlice"] = 1
         result = solve(
@@ -219,6 +219,155 @@ class TestKinodynamics(unittest.TestCase):
             np.testing.assert_allclose(total, [0.0, 0.0, 98.1], atol=1e-12)
             np.testing.assert_array_equal(gtd.Twist(seed, 0, k), np.zeros(6))
             np.testing.assert_array_equal(gtd.TwistAccel(seed, 0, k), np.zeros(6))
+
+    def test_contact_mode_keeps_the_original_zero_motion_seed(self) -> None:
+        """Explicit contact mode retains the zero-motion alternative."""
+        from unittest.mock import patch
+        from kinodynamic_initialization import initialize_walk
+        from kinodynamic_walk import argument_parser
+        from mujoco_io import KinematicRecording
+
+        body = gtd.Link(0, "body", 10.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
+        robot = gtd.Robot({"body": body}, {})
+        sole = gtd.PoseOnLink(
+            body, gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, -0.5])), True
+        )
+        trajectory = gtd.Trajectory(
+            gtd.WalkCycle([gtd.Phase(0, 2, gtd.PoseContactConstraintSpec([sole]))]), 1
+        )
+        anchor = gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, 0.5]))
+        walk = KinematicRecording(
+            robot,
+            body,
+            gtsam.Values(),
+            anchor,
+            trajectory,
+            3,
+            0.02,
+            0.0,
+            np.zeros((3, 3)),
+            {},
+        )
+        self.assertEqual(
+            argument_parser().parse_args([]).initialization, "contact-gp-dynamics"
+        )
+        with patch.object(
+            gtd,
+            "KinodynamicInitializer",
+            side_effect=AssertionError(
+                "The contact-only mode must skip the full pipeline"
+            ),
+        ):
+            values, metadata = initialize_walk(walk, [0, 2], "contact", [], np.empty(0))
+        self.assertNotIn("dynamicsInitializationSeconds", metadata)
+        for k in range(3):
+            self.assertTrue(values.atPose3(gtd.PoseKey(0, k)).equals(anchor, 1e-10))
+            np.testing.assert_array_equal(gtd.Twist(values, 0, k), np.zeros(6))
+            self.assertFalse(values.exists(gtd.TwistAccelKey(0, k)))
+            self.assertFalse(values.exists(gtd.ContactWrenchKey(0, 0, k)))
+
+    def test_default_initializer_stops_after_the_linear_dynamics_seed(self) -> None:
+        """The wrapped default returns feasible dynamics without CMC iterations."""
+        from kinodynamic_initialization import initialize_walk
+        from mujoco_io import KinematicRecording
+
+        body = gtd.Link(0, "body", 10.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
+        child = gtd.Link(1, "child", 1.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
+        joint = gtd.RevoluteJoint(
+            0, "joint", gtsam.Pose3(), body, child, np.array([0.0, 0.0, 1.0])
+        )
+        body.addJoint(joint)
+        child.addJoint(joint)
+        robot = gtd.Robot({"body": body, "child": child}, {"joint": joint})
+        measured = gtsam.Values()
+        for k in range(3):
+            gtd.InsertJointAngle(measured, 0, k, 0.0)
+        sole = gtd.PoseOnLink(
+            body, gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, -0.5])), True
+        )
+        trajectory = gtd.Trajectory(
+            gtd.WalkCycle([gtd.Phase(0, 2, gtd.PoseContactConstraintSpec([sole]))]), 1
+        )
+        walk = KinematicRecording(
+            robot,
+            body,
+            measured,
+            gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, 0.5])),
+            trajectory,
+            3,
+            0.02,
+            0.0,
+            np.zeros((3, 3)),
+            {},
+        )
+        values, diagnostics = initialize_walk(
+            walk,
+            [0, 2],
+            "contact-gp-dynamics",
+            [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.8)],
+            np.empty(0),
+        )
+        self.assertTrue(diagnostics["dynamicsInitializationFeasible"])
+        self.assertEqual(diagnostics["dynamicsInitializationIterations"], 0)
+        self.assertEqual(diagnostics["dynamicsInitializationManifoldSeconds"], 0)
+        self.assertEqual(diagnostics["dynamicsInitializationOptimizationSeconds"], 0)
+        np.testing.assert_allclose(
+            values.atVector(gtd.ContactWrenchKey(0, 0, 1)),
+            [0, 0, 0, 0, 0, 107.91],
+            atol=1e-8,
+        )
+
+    def test_complete_native_seed_is_retained(self) -> None:
+        """Coupled assembly preserves fitted motion and solved support dynamics."""
+        body = gtd.Link(0, "body", 10.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
+        robot = gtd.Robot({"body": body}, {})
+        sole = gtd.PoseOnLink(
+            body, gtsam.Pose3(gtsam.Rot3(), np.array([0.0, 0.0, -0.5])), True
+        )
+        trajectory = gtd.Trajectory(
+            gtd.WalkCycle([gtd.Phase(0, 2, gtd.PoseContactConstraintSpec([sole]))]), 1
+        )
+        initial = gtsam.Values()
+        wrench = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 98.1])
+        twist = np.array([0.0, 0.0, 0.0, 0.3, 0.0, 0.0])
+        for k in range(3):
+            initial.insert(
+                gtd.PoseKey(0, k),
+                gtsam.Pose3(gtsam.Rot3(), np.array([0.006 * k, 0.0, 0.5])),
+            )
+            gtd.InsertTwist(initial, 0, k, twist)
+            gtd.InsertTwistAccel(initial, 0, k, np.zeros(6))
+            initial.insert(gtd.LinearVelocityKey(0, k), twist[3:])
+            initial.insert(gtd.ContactWrenchKey(0, 0, k), wrench)
+            initial.insert(
+                gtd.DynamicsSymbol.LinkJointSymbol("ec", 0, 0, k).key(), wrench
+            )
+        options = solver_settings()
+        options["initialization"] = "contact-gp-dynamics"
+        options["maxIterations"] = 1
+        result = solve(
+            robot,
+            trajectory,
+            [gtd.Slice(k) for k in range(3)],
+            [0.0, 0.02, 0.04],
+            initial,
+            [],
+            [],
+            [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.8)],
+            np.empty(0),
+            options,
+        )
+        for k in range(3):
+            np.testing.assert_array_equal(
+                gtd.Twist(result["initialValues"], 0, k), twist
+            )
+            np.testing.assert_array_equal(
+                result["initialValues"].atVector(gtd.ContactWrenchKey(0, 0, k)), wrench
+            )
+            np.testing.assert_array_equal(
+                result["initialValues"].atVector(gtd.LinearVelocityKey(0, k)), twist[3:]
+            )
+        self.assertTrue(result["feasible"])
 
     def test_fk_seed_keeps_root_fixed_and_uses_measured_joints(self) -> None:
         """FK retains the measured joint motion without fitting a root trajectory."""

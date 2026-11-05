@@ -13,8 +13,8 @@
 #include <gtdynamics/dynamics/WorldVelocityFactor.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/kinematics/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/kinematics/PoseContactInitializer.h>
 #include <gtdynamics/utils/ContactWrench.h>
-#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/nonlinear/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -68,7 +68,7 @@ Ordering chronologicalOrdering(const NonlinearFactorGraph& cost,
   }
   return ordering;
 }
-// Both configuration strategies start with zero motion.
+// Locate the floating root independently of the initialization strategy.
 LinkSharedPtr floatingRoot(const Robot& robot) {
   LinkSharedPtr root;
   std::set<int> children;
@@ -83,20 +83,27 @@ LinkSharedPtr floatingRoot(const Robot& robot) {
     throw std::invalid_argument("Missing floating root");
   return root;
 }
-Values zeroVelocityConfiguration(const Robot& robot,
-                                 const std::vector<Slice>& slices,
-                                 const Values& initialValues) {
+Values kinematicConfiguration(const Robot& robot,
+                              const std::vector<Slice>& slices,
+                              const Values& initialValues) {
   Values qv;
   for (const Slice& slice : slices) {
     for (const auto& link : robot.links()) {
       qv.insert(PoseKey(link->id(), slice.k),
                 initialValues.at<Pose3>(PoseKey(link->id(), slice.k)));
-      qv.insert(TwistKey(link->id(), slice.k), Vector(Vector6::Zero()));
+      const Key velocity = TwistKey(link->id(), slice.k);
+      qv.insert(velocity,
+                initialValues.exists(velocity)
+                    ? Vector(Twist(initialValues, link->id(), slice.k))
+                    : Vector(Vector6::Zero()));
     }
     for (const auto& joint : robot.joints()) {
       qv.insert(JointAngleKey(joint->id(), slice.k),
                 initialValues.at<double>(JointAngleKey(joint->id(), slice.k)));
-      qv.insert(JointVelKey(joint->id(), slice.k), 0.0);
+      const Key velocity = JointVelKey(joint->id(), slice.k);
+      qv.insert(velocity, initialValues.exists(velocity)
+                              ? initialValues.at<double>(velocity)
+                              : 0.0);
     }
   }
   return qv;
@@ -135,11 +142,12 @@ py::dict solve(
   const auto root = floatingRoot(robot);
   const std::string initialization =
       setting<std::string>(settings, "initialization");
-  if (initialization != "fk" && initialization != "contact")
+  if (initialization != "fk" && initialization != "contact" &&
+      initialization != "contact-gp-dynamics")
     throw std::invalid_argument("Unknown kinodynamics initialization");
   double totalMass = 0.0;
   for (const auto& link : robot.links()) totalMass += link->mass();
-  const Values qv = zeroVelocityConfiguration(robot, slices, initialValues);
+  const Values qv = kinematicConfiguration(robot, slices, initialValues);
   Values seed = qv;
   NonlinearFactorGraph exact, effort, wrench, torqueSmooth, wrenchSmooth,
       acceleration;
@@ -410,8 +418,25 @@ py::dict solve(
               dt, twistNoise);
     }
   }
-  for (Key key : initialValues.keys())
-    if (!seed.exists(key)) seed.insert(key, initialValues.at(key));
+  // Retain every completed stage of initialization. Graph assembly supplies
+  // defaults for absent keys only; GP motion and solved dynamics must survive.
+  for (Key key : initialValues.keys()) {
+    if (!seed.exists(key)) {
+      seed.insert(key, initialValues.at(key));
+      continue;
+    }
+    // Native FK stores fixed-size twists; graph assembly uses dynamic vectors.
+    // Normalize those representations before Values::update's strict type
+    // check.
+    const auto label = DynamicsSymbol(key).label();
+    if (label == "V" || label == "A" || label == "F" || label == "C" ||
+        label == "ec")
+      seed.update(key, Vector(initialValues.at<Vector6>(key)));
+    else if (label == "vW")
+      seed.update(key, Vector(initialValues.at<Vector3>(key)));
+    else
+      seed.update(key, initialValues.at(key));
+  }
   groups.insert(groups.end(),
                 {poseCollocation, velocityCollocation, stanceVelocity, effort,
                  wrench, torqueSmooth, wrenchSmooth, acceleration});
