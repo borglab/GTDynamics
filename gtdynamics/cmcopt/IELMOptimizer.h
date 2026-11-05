@@ -31,7 +31,7 @@ struct IELMParams {
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
   LevenbergMarquardtParams lmParams;
-  /// Strict GTSAM active-set iteration limit; zero skips QP refinement.
+  /// Strict local-face working-set iteration limit; zero skips QP refinement.
   size_t iqpMaxIterations = 0;
   /** Bound retained full iteration states for long trajectories; zero retains
    * all. This does not affect the state used by mode-change detection.

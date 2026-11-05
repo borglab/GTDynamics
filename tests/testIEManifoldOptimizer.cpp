@@ -166,7 +166,8 @@ static IELMState unilateralContactState(double target = 4.0) {
   return state;
 }
 
-TEST(IELMLinearUpdate, ReleaseUnilateralContactWithGtsam) {
+// Verifies a local face can be released while retaining the LM damping.
+TEST(IELMLinearUpdate, ReleaseUnilateralContactLocally) {
   const auto state = unilateralContactState();
   IELMParams params;
   params.iqpMaxIterations = 100;
@@ -178,7 +179,8 @@ TEST(IELMLinearUpdate, ReleaseUnilateralContactWithGtsam) {
   EXPECT(update.numSolves > 1);
 }
 
-TEST(IELMLinearUpdate, GtsamIterationExhaustionIsFailure) {
+// Verifies an exhausted working-set budget rejects the LM trial.
+TEST(IELMLinearUpdate, IterationExhaustionIsFailure) {
   const auto state = unilateralContactState();
   IELMParams params;
   // A single iteration releases the boundary; it cannot certify the new step.
@@ -187,7 +189,8 @@ TEST(IELMLinearUpdate, GtsamIterationExhaustionIsFailure) {
   EXPECT(!update.solveSuccessful);
 }
 
-TEST(IELMLinearUpdate, GtsamWorkingSetPreservesConstraintIndices) {
+// Verifies local face indices return to the correct nonlinear component.
+TEST(IELMLinearUpdate, LocalWorkingSetPreservesConstraintIndices) {
   const auto state = unilateralContactState(-4.0);
   IELMParams params;
   params.iqpMaxIterations = 100;
@@ -200,7 +203,7 @@ TEST(IELMLinearUpdate, GtsamWorkingSetPreservesConstraintIndices) {
 
 // Coupling makes the projected gradient initially block x although the QP
 // optimum can require releasing it. Exercise both inequality senses and KKT
-// multiplier signs through the production CMC-to-GTSAM path.
+// multiplier signs through the production component-coordinate path.
 TEST(IELMLinearUpdate, CoupledBoundsWithBothSenses) {
   const Key key = 7;
   const double damping = 0.01;
