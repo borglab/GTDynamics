@@ -121,11 +121,10 @@ void IELMState::construct(const NonlinearFactorGraph &graph,
       costScopes[scope].push_back(factor);
     }
   }
-  // Preserve the old solve path's same-scope cost compaction. QpCost stores
-  // Hessians: converting every small residual separately would replicate dense
-  // component blocks throughout a large trajectory. Never combine scopes.
+  // Combine matching scopes without forming normal equations. Sparse QP
+  // elimination can then retain rank-deficient costs in square-root form.
   for (const auto &[scope, factors] : costScopes)
-    tangentQp.addCost(HessianFactor(factors));
+    tangentQp.addCost(JacobianFactor(factors, Ordering(scope)));
   gradient = linearManifoldGraph->gradientAtZero();
   for (const auto &[key, dimension] : dimensions)
     if (!dimension) gradient.insert(key, Vector(0));

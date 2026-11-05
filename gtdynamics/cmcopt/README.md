@@ -200,6 +200,13 @@ boundary blocks, with homogeneous right-hand sides. Inactive inequalities are
 handled by nonlinear retraction, not affine bounds in the QP. Cross-component
 and temporal objective factors remain coupled and sparse.
 
+Costs with matching variable scopes are stacked as Jacobian factors. GTSAM's
+`QpCost` must retain that square-root representation, and its sparse solve must
+preserve it through QR elimination. Converting these rank-deficient
+least-squares factors to Hessians and back can lose weak directions before
+active-set handling begins. See [SparseQpValidation.md](SparseQpValidation.md)
+for the required dependency fixes and regression results.
+
 Zero is a feasible QP starting point. `qpMaxIterations` defaults to 1,000;
 exhaustion or a numerical failure rejects the LM trial. There is no approximate
 feasible-step mode or global solver fallback. Extra QP regularization is disabled

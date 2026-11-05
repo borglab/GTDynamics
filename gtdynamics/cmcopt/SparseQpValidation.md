@@ -1,12 +1,142 @@
 # Sparse tangent-QP validation — 2026-11-05
 
-This replacement is **not ready to merge**. With GTSAM PR 2912, all targeted
-regression tests pass, including the previously failing dependent-row and
-fixed-kinematics cases. The full G1 trajectory still fails during
-Hessian-to-Jacobian conversion, and the small trajectory exposes a failed
-optimality certificate. The implementation has no alternative global backend.
+Two numerical defects exposed by G1 now have local fixes on top of GTSAM PR
+2912. All targeted suites and the 51-sample trajectory pass. The full cold-start
+QP remains under validation, so full-workload acceptance remains open. The
+measured small-case slowdown and full-case active-set work must not be confused with the numerical failures below.
 
-## Current results with GTSAM PR 2912 and TBB
+## Local fixes and matched measurements
+
+GTSAM worktree branch `codex/cmc-qp-square-root` contains three local commits:
+
+- `0e96c71c4`: retain every finite weighted coefficient in constrained QR.
+- `8f7c52063`: retain original Jacobian costs through `QpCost`, gradient/error
+  evaluation, linearization, and sparse QR elimination.
+- `b20aa2673`: inspect feasible zero-regularization QP minima immediately,
+  avoiding a duplicate sparse solve before checking multipliers.
+
+The GTDynamics adapter now stacks matching-scope costs as Jacobian factors,
+matching the old compaction representation. Its previous Hessian conversion
+was an added source of roundoff. Both builds use the fixed GTSAM headers and
+library; TBB remains enabled in both projects. No QP tolerances, iteration
+limits, regularization, or starting-value conventions were changed. No code
+was pushed or PR opened.
+
+### Why the previous active-set implementation behaved differently
+
+PR 472 includes an active-set QP refinement method, but its default
+`iqpMaxIterations = 0` disables that refinement. The default path constructs a
+feasible step and stops; it does not require a QP optimality certificate. When
+refinement is enabled, its local $N$ bases eliminate the working constraints
+before ordinary Gaussian solves. The new path expresses those rows as hard
+constraints in GTSAM, exercising constrained QR directly.
+
+Two distinct representation problems were established:
+
+1. Forming a Hessian from least-squares costs and converting it back to a
+   Jacobian loses weak directions and can introduce roundoff-scale negative
+   eigenvalues. The captured 216-dimensional failing factor below reproduces
+   the conversion exception. Preserve square-root factors through the sparse
+   solve instead. Hessian-native QPs retain their existing behavior.
+2. `noiseModel::Constrained::QR` discarded raw coefficients with magnitude at
+   most `1e-9`, before considering their weights. After elimination, a tiny
+   coefficient with a tiny sigma can still carry substantial information.
+   The fix includes all finite weighted coefficients and retains the existing
+   weighted rank test. Hard rows remain handled separately.
+
+A minimal regression has the finite equation `1e-10 * y = 2e-10` with sigma
+`1e-10`, next to the hard equation `x = 0`. This is an ordinary unit-weight
+`y = 2` measurement. The original QR routine drops it and returns rank one;
+the fixed routine returns rank two and the correct equation. Running the new
+regression against the original routine confirms this failure.
+
+The captured small G1 working graph had stationarity infinity norm
+`0.0264157349144`. Keeping Jacobians alone did not remove it, and five residual
+correction solves made essentially no improvement. Removing the raw-coefficient
+cutoff reduces an independent residual evaluation to `2.8012e-9` and allows
+the unchanged QP convergence checks to pass.
+
+The zero-regularization path previously waited for another identical solve to
+observe a small step before inspecting multipliers. GTSAM already inspected
+feasible candidates immediately when additional proximal regularization was
+positive. Extending that existing check to zero avoids redundant solves while
+retaining every primal and optimality check. Regressions require an
+unconstrained QP to finish in one iteration and a bound-release QP in two.
+
+### Validation and timing
+
+Passing: all 13 affected GTDynamics C++ suites, all six native G1 Python
+integration tests, and GTSAM's `testQpSolver`, `testQpProblem`, `testNoiseModel`,
+and `testLpSolver`. Added upstream regressions cover square-root cost error and
+linearization, release of a boundary in a QP with a weak finite direction,
+and preservation of small weighted coefficients. Dependent/opposing-row,
+vector-block, damping, retry, and nonlinear retraction tests continue to pass.
+
+Matched sequential runs, with no concurrent builds or tests, use GTSAM
+`b20aa26730423e9dc46fe8c05ece7179a26332f2`, library SHA-256
+`0d4b644367883eef62550a34d4c832ab904847367b7ea522d06c0d66390e197a`.
+Both have TBB on and identical inputs. The small run uses 51 samples, two outer
+iterations, and one retraction worker.
+
+| Measurement | PR 472 | Sparse QP with fixes |
+| --- | ---: | ---: |
+| Optimization | 1.256652 s | 2.280635 s |
+| Final objective | 874.3249215582 | 867.0325813253 |
+| Equality violation L2 | 1.0281e-12 | 1.0355e-12 |
+| Inequality violation L2 | 5.4208e-8 | 2.9862e-8 |
+| Feasible at 1e-5 | Yes | Yes |
+
+The converged-QP path takes about 1.8 times as long in this small case. It also
+reaches a different, lower objective after the same two outer steps. These are
+single-run observations, not a convergence-rate or speedup claim. The two
+accepted LM trials take 1 and 6 QP iterations respectively; each sparse
+active-set iteration rebuilds and eliminates its working graph. Before the
+duplicate-solve fix, a matched run took 3.288777 s, with 2 and 12 QP iterations,
+and exactly the same final objective. That fix reduced this observed runtime
+by about 31%.
+
+For the full 1,000-sample, five-step, eight-worker workload, the new PR 472
+baseline reproduces the published result: configuration initialization
+`1.240839 s`, optimization `28.978726 s`, total initialization and solve
+`41.010679 s`, objective `9074.0827634688`, and nonlinear feasibility true.
+A full sparse-QP diagnostic was stopped after more than 100 iterations of the
+second QP, while it was still making progress. It started that QP with all 378
+rows active; 330 remained at iteration 100. Individual sampled active-set
+iterations took about 3–3.5 seconds. This is active-set work, not the earlier
+fixed-point stall, and there is no completed full-workload runtime or final
+objective to compare.
+
+The progress hook invokes the unchanged solver and logs every twentieth
+iteration. Its explicit linkage loaded system TBB 12.11, whereas the matched
+completed runs loaded TBB 12.13. Treat this as an iteration diagnostic, not a
+matched runtime comparison.
+
+A separate diagnostic used the same zero starting point but an empty fresh
+working set, explicitly preloading matching TBB 12.13. With GTSAM `8f7c52063`
+(before the duplicate-solve improvement), the full second QP **converged in
+151 iterations with 62 active rows**, passed its unchanged certificate, and
+produced an accepted nonlinear step with logged objective approximately
+18,420. The probe was stopped during the following outer step. This establishes
+that the identified numerical fixes solve the full constrained QP in this
+case; it is not a completed five-step trajectory measurement. Compilation of
+the subsequent duplicate-solve fix overlapped the end of this diagnostic, so
+its elapsed time is not a clean performance result.
+
+The empty-working-set experiment changes no production code and reuses no
+previous solution. All inequalities remain in the QP, and GTSAM adds blocking
+rows itself. Initializing every homogeneous row as active forces many releases;
+starting empty still adds rows individually. Working-set initialization and
+reusing sparse elimination work are possible future GTSAM performance tasks.
+The production adapter retains the agreed ordinary cold solver call.
+
+Raw final records are `cmc-final-small-{baseline,candidate}.json` and
+`cmc-final-full-baseline.json`. The full progress logs are
+`cmc-fixed-full-candidate.log` and `cmc-empty-full.log`. These, the regression
+logs, the captured small working graph, and diagnostic sources are preserved
+under `build/qp2912-diagnostics/local-fixes` (ignored local artifacts). The
+minimal regressions themselves are committed in the GTSAM worktree.
+
+## Before local fixes: GTSAM PR 2912 and TBB
 
 Built [GTSAM PR 2912](https://github.com/borglab/gtsam/pull/2912), branch
 `codex/mpc-sparse-active-set`, at
@@ -19,7 +149,7 @@ options match the previous build. Actual loaded library paths were recorded;
 the Python runs both loaded TBB `libtbb.so.12.13`. GTSAM library SHA-256:
 `3cd45c5e84ebab54fb1a7999ed1832c2c3ec1ba0aa3ddffe47b6adf0f76a7bea`.
 
-The candidate's `build` now uses this dependency. PR 472 (`ad64754e`) uses a
+At that stage, the candidate's `build` used this dependency. PR 472 (`ad64754e`) uses a
 separate `build-qp2912` directory, preserving its original build. The cached
 `GTSAM_INCLUDE_DIR` was explicitly updated along with `GTSAM_DIR`; initially
 it retained the old header path and caused a linker mismatch. Both final
