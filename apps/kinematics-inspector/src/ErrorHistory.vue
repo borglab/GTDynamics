@@ -1,4 +1,5 @@
 <script setup>
+import { themeColor, onThemeChange } from '../../shared/theme.js';
 import {onBeforeUnmount,onMounted,ref,watch} from 'vue';
 const props=defineProps({history:Array,groups:Array});
 const element=ref(null),axis=ref('iteration'),logScale=ref(true),error=ref('');
@@ -10,18 +11,20 @@ async function draw(){
     x:history.map(row=>row[axis.value==='iteration'?'iteration':'elapsedSeconds']),
     y:history.map(row=>{const value=id==='total'?row.total:row.factorErrors[id];return logScale.value&&value===0?null:value;}),
     name:label,type:'scatter',mode:'lines+markers',marker:{size:4},
-    line:{color:id==='total'?'#202b25':colors[id],width:id==='total'?3:1.6},
+    line:{color:id==='total'?themeColor('text'):colors[id],width:id==='total'?3:1.6},
     hovertemplate:'%{y:.6g}<extra>%{fullData.name}</extra>',
   }));
   await Plotly.react(element.value,traces,{
     autosize:true,height:460,margin:{l:80,r:20,t:24,b:145},
-    font:{family:'ui-sans-serif, system-ui, sans-serif',size:11,color:'#6b7971'},
-    paper_bgcolor:'#fff',plot_bgcolor:'#fff',dragmode:'zoom',hovermode:'x unified',
+    font:{family:'ui-sans-serif, system-ui, sans-serif',size:11,color:themeColor('muted')},
+    paper_bgcolor:themeColor('panel'),plot_bgcolor:themeColor('panel'),dragmode:'zoom',hovermode:'x unified',
     legend:{orientation:'h',x:0,y:-.28},
-    xaxis:{title:{text:axis.value==='iteration'?'Optimization iteration':'Elapsed solve time (s)'},gridcolor:'#e5eae3',zeroline:false},
-    yaxis:{title:{text:'Objective error'},type:logScale.value?'log':'linear',gridcolor:'#e5eae3',zeroline:false},
+    xaxis:{title:{text:axis.value==='iteration'?'Optimization iteration':'Elapsed solve time (s)'},gridcolor:themeColor('grid'),zeroline:false},
+    yaxis:{title:{text:'Objective error'},type:logScale.value?'log':'linear',gridcolor:themeColor('grid'),zeroline:false},
   },{scrollZoom:true,responsive:false,displaylogo:false,modeBarButtonsToRemove:['select2d','lasso2d']});
 }
+const stopTheme = onThemeChange(() => { if (Plotly && ready && !disposed && element.value) draw(); });
+onBeforeUnmount(stopTheme);
 onMounted(async()=>{
   const target=element.value;
   try{

@@ -7,9 +7,16 @@
     "dev": "vite --host 127.0.0.1 --port 3006",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 3006",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "build:standalone": "vite build --mode standalone"
   },
   "devDependencies": {
-    "vite": "^6.2.2"
+    "vite": "^6.2.2",
+    "@vitejs/plugin-vue": "^5.2.3"
+  },
+  "dependencies": {
+    "three": "0.151.3",
+    "vue": "^3.5.13",
+    "plotly.js-basic-dist-min": "4.2.0"
   }
 }

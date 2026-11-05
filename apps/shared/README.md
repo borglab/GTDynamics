@@ -98,3 +98,19 @@ in `paper/graph.js` and offline equations in
 `paper/equations/kinodynamics.math.html`. Its recording-bound parameter tables
 stay with the results, while the method distinguishes hard mechanics constraints
 from soft measurements and temporal collocation.
+
+## Shared appearance
+
+App entry points import `theme.js`, which applies the saved light/dark preference,
+loads `theme.css`, and listens for same-origin shell and storage updates.
+`onThemeChange(callback)` returns an unsubscribe function; dispose it with the
+component. `themeColor(role)` resolves semantic colors for canvas/Plotly layouts.
+The shell owns the accessible toggle. `RobotViewport` updates its background,
+fog, ground and grid in place; it preserves model colors and camera state.
+Call `viewport.stop()` to pause continuous playback and return to rendering on
+changes. `dispose()` also removes the viewport's theme listener.
+
+Keep categorical series colors and robot materials distinct from surface colors.
+For existing light palettes, `var(--dark-panel, <original light color>)` and the
+other `--dark-*` roles override only dark mode; new components can use the
+`--theme-*` palette directly. Alpha overlays use `--dark-overlay`.
