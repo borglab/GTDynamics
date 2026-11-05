@@ -1,8 +1,123 @@
 # Sparse tangent-QP validation — 2026-11-05
 
-This replacement is **not ready to merge**: GTSAM's sparse active-set solver
-fails on dependent active inequality rows. The implementation deliberately
-retains failing acceptance tests and has no alternative global backend.
+This replacement is **not ready to merge**. With GTSAM PR 2912, all targeted
+regression tests pass, including the previously failing dependent-row and
+fixed-kinematics cases. The full G1 trajectory still fails during
+Hessian-to-Jacobian conversion, and the small trajectory exposes a failed
+optimality certificate. The implementation has no alternative global backend.
+
+## Current results with GTSAM PR 2912 and TBB
+
+Built [GTSAM PR 2912](https://github.com/borglab/gtsam/pull/2912), branch
+`codex/mpc-sparse-active-set`, at
+`f3a49dcb0272c31bbb34f9c53d17cdc11e3badd2` in an isolated managed worktree:
+`/home/dellaert/.codex/worktrees/gtsam-qp2912/gtsam`.
+Both comparison versions were rebuilt against its headers, library, and Python
+bindings, with `GTSAM_WITH_TBB=ON` and `GTDYNAMICS_WITH_TBB=ON`.
+Release, CUDA, bundled Eigen, and the other GTSAM numerical configuration
+options match the previous build. Actual loaded library paths were recorded;
+the Python runs both loaded TBB `libtbb.so.12.13`. GTSAM library SHA-256:
+`3cd45c5e84ebab54fb1a7999ed1832c2c3ec1ba0aa3ddffe47b6adf0f76a7bea`.
+
+The candidate's `build` now uses this dependency. PR 472 (`ad64754e`) uses a
+separate `build-qp2912` directory, preserving its original build. The cached
+`GTSAM_INCLUDE_DIR` was explicitly updated along with `GTSAM_DIR`; initially
+it retained the old header path and caused a linker mismatch. Both final
+builds and Python imports were verified before measurement. No GTSAM source
+changes, QP tolerance changes, additional regularization, or warm starts were
+introduced. QP iteration limit remains 1,000.
+
+Validation passes:
+
+- All four upstream suites: `testQpSolver`, `testNoiseModel`, `testLpSolver`,
+  and `testQpProblem`.
+- All 13 affected GTDynamics C++ suites, including `testIELMQp`,
+  `testSparseQpDependentRows`, and `testFixedKinematicsDynamics`.
+- All six native G1 Python integration tests.
+
+### Full trajectory
+
+One sequential run per version, without concurrent compilation. Identical
+78–98 s inputs, 1,000 slices, five outer iterations, eight retraction workers,
+contact-GP-dynamics initialization, and `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1`.
+
+| Measurement | PR 472 + GTSAM 2912 | Sparse QP + GTSAM 2912 |
+| --- | ---: | ---: |
+| Configuration initialization | 1.2391 s | Not separately recorded on failure |
+| Coupled optimization | 28.6109 s | Failed during the second outer step |
+| Total initialization through solve | 40.7803 s | No completed solve |
+| Initial objective | 368,865.9968373461 | Same starting problem; log prints 368,866 |
+| Final objective | 9,074.0827634057 | No final result |
+| Equality violation L2 | 4.1052e-12 | No final result |
+| Inequality violation L2 | 3.7840e-8 | No final result |
+| Feasible at 1e-5 | Yes | No final result |
+| Completed outer iterations | 5 | 1 |
+
+The candidate completed one step, then exhausted all nine damping trials
+from 0.001 through 100,000. Wall time from clip preparation to failure was
+25.5421 s; this is not a successful optimization runtime. Peak RSS was
+10,396,360 KiB. No full-workload speedup or slowdown ratio can be reported.
+
+A separate GDB run identifies the throw in
+`JacobianFactor::JacobianFactor(const HessianFactor&)`, called while assembling
+`EliminateQR` inside multifrontal elimination. This occurs before constrained
+QR can process the assembled Jacobian. It is distinct from the redundant-dual
+failure fixed by PR 2912.
+
+A temporary capture hook saved a failing two-key factor with dimensions
+111 and 105 (217 augmented rows). A standalone program using only GTSAM
+reproduces the same conversion exception from the saved matrix. Its 216x216
+Hessian has minimum eigenvalue approximately -1.94e-9 and maximum 8.00e6
+(relative minimum -2.42e-16). This is consistent with roundoff-scale
+indefiniteness; the spectrum alone does not establish the complete root cause.
+
+### Small-trajectory diagnostic
+
+The matched 51-sample PR 472 rerun completed in 1.2512 s of optimization,
+objective 874.324921558, and remained feasible. The candidate's second outer
+step exhausted its 1,000 QP iterations at lambda 0.001 and entered retries.
+This additional probe was stopped during retries; it has no completed runtime
+or final result. A short diagnostic compilation overlapped part of the probe,
+so its elapsed time is deliberately excluded from performance comparisons.
+
+A separate bounded diagnostic delegated every calculation to the unchanged
+solver and inspected its state at QP iteration 20. The four active rows and
+values were unchanged, but the checks were:
+
+| Check | Measured value | Required tolerance |
+| --- | ---: | ---: |
+| Stationarity infinity norm | 0.0264155622450 | 1e-7 |
+| Absolute primal-dual gap | 9.621465527e-6 | 1e-7 |
+| Maximum primal violation | 8.995845654e-16 | 1e-7 |
+| Largest positive active inequality multiplier | 0 | 1e-7 |
+
+Thus the new certificate rejects an iterate whose values have stopped changing
+within the step tolerance, which the old step-change criterion could accept. Tolerances were not relaxed. The earlier
+2.1x small-case ratio belongs to the old GTSAM build and must not be presented
+as a result for PR 2912.
+
+### Local artifacts and reproducer
+
+Raw results, logs, the captured matrix, and diagnostic sources are retained
+under `build/qp2912-diagnostics` in this GTDynamics worktree (ignored build
+artifacts). The GTSAM-only reproducer can be built and run with:
+
+```sh
+cmake -S build/qp2912-diagnostics -B build/qp2912-diagnostics/repro-build \
+  -DGTSAM_DIR=/home/dellaert/.codex/worktrees/gtsam-qp2912/gtsam/build \
+  -DCUDAToolkit_ROOT=/usr/local/cuda
+cmake --build build/qp2912-diagnostics/repro-build
+build/qp2912-diagnostics/repro-build/reproduce \
+  build/qp2912-diagnostics/cmc-qp2912-failing-hessian.txt
+```
+
+It prints the reproduced conversion failure and returns zero when the captured
+failure is observed; it is a diagnostic, not a passing robustness test. The
+baseline/candidate numerical records are `cmc-qp2912-full-{baseline,candidate}.json`,
+and the optimality-check record is `cmc-qp2912-small-certificate.log`.
+
+The sections below preserve historical results with GTSAM `84b26b1c`, before
+PR 2912, and do not describe the currently linked build.
 
 ## Dependency reproducer
 
