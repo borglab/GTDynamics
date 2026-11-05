@@ -84,3 +84,87 @@ A preliminary ungrouped-cost run was stopped after excessive memory use.
 The final code preserves same-scope cost compaction before `QpCost` conversion;
 the reported candidate run uses that final path. Historical reports and app
 recordings were not regenerated.
+
+
+## Full G1 comparison
+
+Measured after the bounded comparison, at the user's request, using the
+README's full workload: 78–98 s, 1,000 source slices at 50 Hz, five outer
+iterations, eight retraction workers, and contact-GP-dynamics initialization.
+PR 472 is `ad64754e`; the candidate is `d53fd140`. Both use the same inputs,
+cached model, Python environment, GTSAM library hash, and single-threaded
+OpenMP/OpenBLAS settings listed above. Runs were sequential, one per version.
+The reduced component dimension is 106,584.
+
+| Measurement | PR 472 rerun | Sparse QP |
+| --- | ---: | ---: |
+| Configuration initialization | 1.2460 s | Not separately recorded on failure |
+| Coupled optimization | 27.9800 s | Failed during the second outer step |
+| Total initialization through solve (README scope) | 39.7690 s | No completed solve |
+| Initial objective | 368,865.9968373461 | Same starting problem; log prints 368,866 |
+| Final objective | 9,074.0828569349 | No final result |
+| Equality violation L2 | 4.0946e-12 | No final result |
+| Inequality violation L2 | 9.4392e-8 | No final result |
+| Feasible at 1e-5 | Yes | No final result |
+| Completed outer iterations | 5 | 1 |
+
+The baseline reproduces the README's 1.245 s initialization, 28.01 s
+optimization, 39.64 s total, and 9,074.082857 objective. The total column uses
+`totalInitializationAndSolveSeconds`, excluding clip preparation and export.
+It is distinct from the component-setup `initializationSeconds` native field.
+
+The candidate completed its first step, reducing the objective to approximately
+75,950. The next QP failed at all nine damping values from 0.001 through
+100,000, throwing `IndeterminateSystemException` near reduced variable
+18298068214481855. LM then reported exhausted damping trials. Wall time from
+clip preparation through exception handling was 27.1219 s; this is **time to
+failure**, not a completed optimization time or a speedup. Peak process RSS
+was 10,438,284 KiB.
+
+A separate timing-only diagnostic run identifies the failure in the first
+**primal** Gaussian solve of the second QP, with 378 active scalar inequality
+rows. No dual graph or multiplier solve was reached on any of these retries.
+This establishes the failing stage, but does not establish that this failure
+has the same cause as the dependent-row unit-test failures. Increasing primal
+LM damping did not resolve it. No solver fallback or GTSAM modification was
+used.
+
+Local raw artifacts are `/tmp/cmc-qp-full-{baseline,candidate}.json`, their
+`.log` files, `/tmp/cmc-qp-full-{baseline,candidate}-time.txt`, and the runner
+`/tmp/cmc-qp-full-g1.py`. Diagnostic full-run records are
+`/tmp/cmc-qp-profile-full.{json,log}`.
+
+## Measured cause of the bounded-run slowdown
+
+A separate diagnostic rerun of the 51-sample case timed calls to the unchanged
+GTSAM library using a temporary interposition library. It delegated all
+computations to the original methods and produced the same final objective.
+These instrumented timings are separate from the headline benchmark timings.
+
+The second outer step used 12 QP iterations. Its working set shrank from nine
+active scalar rows to four, releasing one row at a time. Each iteration calls
+`buildWorkingGraph(...).optimize()`, which performs fresh multifrontal
+elimination and back-substitution. An iteration that checks multipliers also
+repeats the primal solve; this sparse implementation does not reuse its
+previous factorization.
+
+| Second-step diagnostic | Wall time |
+| --- | ---: |
+| All 12 QP iterations | 1.2166 s |
+| Primal Gaussian solves within those iterations | 1.2122 s |
+| Dual-graph construction | 0.0032 s |
+| Dual Gaussian solves | 0.0003 s |
+
+PR 472 reports two linear solves for that step and accepts its default
+feasible-step approximation. The candidate requires a converged QP. Repeated
+primal solves are the dominant measured QP cost and explain much of the
+small-run slowdown; multiplier calculations are negligible here. Retraction
+iteration counts actually fell from 168 to 109 for that step. The candidate
+also changes ordering/elimination and adds QP assembly during linearization;
+this measurement does not isolate their individual contributions.
+
+The full workload has no completed candidate timing, so the small-case 2.1x
+ratio must not be extrapolated to it. Fix the production sparse-solver failure
+before making a full-workload performance comparison. Diagnostic sources and
+logs are `/tmp/cmc-qp-profile.cpp`, `/tmp/cmc-qp-profile.so`, and
+`/tmp/cmc-qp-profile-small.{json,log}`.
