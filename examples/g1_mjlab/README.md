@@ -71,6 +71,32 @@ replays the saved initial/final states, forces, velocities, torques and error
 history. Neither the saved Kinematics result nor GP interpolation initializes
 this solve. Support labels remain privileged, as described in the app.
 
+### Initialization timing comparison
+
+A local comparison on 2026-11-04 at commit `0af58608` used the 78–98 s
+mid-clip turns (1,000 slices at 50 Hz), five coupled iterations, and eight
+retraction workers. Contact initialization used 171 selected slices: 114 in
+single support and 57 in double support.
+
+| Measurement | Contact (default) | FK |
+| --- | ---: | ---: |
+| Configuration initialization | 0.151 s | 0.484 s |
+| Initial feasibility restoration | 6.526 s | 6.299 s |
+| Coupled optimization | 30.691 s | 37.608 s |
+| Total initialization through solve | 40.391 s | 47.976 s |
+| Final objective | 9,047.407 | 67,966.670 |
+| Feasible | Yes | Yes |
+
+Contact initialization reduced total time by 16% and reached a lower objective
+within the same five-iteration budget. These are single runs, contact followed
+by FK in one process, using Python 3.12 with `OMP_NUM_THREADS=1` and
+`OPENBLAS_NUM_THREADS=1`. The canonical MuJoCo scene was loaded once and reused.
+Total time includes configuration initialization, measurement preparation,
+native graph assembly, feasibility restoration, and optimization; it excludes
+recording/model loading and result export. Five iterations establish a bounded
+comparison, not convergence. Browser recordings were not regenerated for this
+measurement.
+
 ## Walking dynamics example
 
 [`dynamics_walk.py`](dynamics_walk.py) estimates accelerations, two sole-frame
