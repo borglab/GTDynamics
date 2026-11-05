@@ -28,8 +28,9 @@ struct ContactInterpolationOptions {
 /** Owning kinematic result. No acceleration, force, or torque keys are added.
  * The interpolation shares the fixed robot topology, which must remain
  * unchanged. contact retains original source indices and sparse diagnostics.
- * contactSeconds includes dense FK; interpolationSeconds includes GP assembly,
- * elimination and evaluation at requested slices. Times are wall seconds.
+ * contactSeconds includes sparse contact output; interpolationSeconds includes
+ * GP assembly, elimination and evaluation at requested slices. Times are wall
+ * seconds.
  */
 struct ContactInterpolationResult {
   gtsam::Values values;

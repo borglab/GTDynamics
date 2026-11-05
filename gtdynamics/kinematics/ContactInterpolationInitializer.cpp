@@ -14,7 +14,6 @@
 #include <chrono>
 #include <cmath>
 #include <map>
-#include <set>
 #include <stdexcept>
 namespace gtdynamics {
 namespace {
@@ -47,11 +46,12 @@ ContactInterpolationResult ContactInterpolationInitializer::run(
   ContactInterpolationResult result;
   auto started = Clock::now();
   auto contactOptions = options_.contact;
-  contactOptions.interpolateOutput = true;
-  const auto configurations =
-      PoseContactInitializer(robot_, contactOptions, options_.contactBuffer)
-          .run(rootLinkName, initialPose, measuredJoints, trajectory, dt,
-               &result.contact, selectedSlices);
+  contactOptions.interpolateOutput = false;
+  // The GP needs only solved root poses at its knots. Do not first expand
+  // dense FK configurations that would be discarded after fitting velocities.
+  PoseContactInitializer(robot_, contactOptions, options_.contactBuffer)
+      .run(rootLinkName, initialPose, measuredJoints, trajectory, dt,
+           &result.contact, selectedSlices);
   result.contactSeconds = seconds(started);
 
   started = Clock::now();
@@ -80,17 +80,19 @@ ContactInterpolationResult ContactInterpolationInitializer::run(
       robot_, rootLinkName, basePsd,
       gtsam::Vector::Constant(joints.size(), joint * joint),
       gtsam::Vector::Constant(joints.size(), encoder));
-  std::set<size_t> knots{slices.front().k, slices.back().k};
-  for (const auto& slice : result.contact.selectedSlices) {
-    if (!sourceTimes.count(slice.k))
+  std::map<size_t, gtsam::Pose3> knots;
+  // Endpoints outside the selected span hold the nearest fitted root pose.
+  knots.emplace(slices.front().k, result.contact.poses.front());
+  knots.emplace(slices.back().k, result.contact.poses.back());
+  for (size_t i = 0; i < result.contact.selectedSlices.size(); ++i) {
+    const size_t k = result.contact.selectedSlices[i].k;
+    if (!sourceTimes.count(k))
       throw std::invalid_argument(
           "Every selected contact slice must be present in the output slices");
-    knots.insert(slice.k);
+    knots.insert_or_assign(k, result.contact.poses[i]);
   }
-  for (size_t k : knots)
-    problem.addKnot(sourceTimes.at(k),
-                    Pose(configurations, robot_.link(rootLinkName)->id(), k),
-                    angles(k));
+  for (const auto& [k, rootPose] : knots)
+    problem.addKnot(sourceTimes.at(k), rootPose, angles(k));
   for (size_t i = 0; i < slices.size(); ++i)
     problem.addJointMeasurement(times[i], angles(slices[i].k));
   result.interpolation =

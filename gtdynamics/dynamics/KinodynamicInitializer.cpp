@@ -52,23 +52,29 @@ KinodynamicInitializationResult KinodynamicInitializer::run(
     const std::vector<Slice>& selectedSlices) const {
   using Clock = std::chrono::steady_clock;
   const auto started = Clock::now();
-  KinodynamicInitializationResult result;
-  result.kinematics =
-      ContactInterpolationInitializer(robot_, options_.kinematics)
-          .run(rootLinkName, initialPose, measuredJoints, trajectory, slices,
-               times, dt, selectedSlices);
-  result.values = result.kinematics.values;
+  auto kinematics = ContactInterpolationInitializer(robot_, options_.kinematics)
+                        .run(rootLinkName, initialPose, measuredJoints,
+                             trajectory, slices, times, dt, selectedSlices);
   const auto dynamicsStarted = Clock::now();
   gtsam::Values accelerationPriors;
   const size_t rootId = robot_.link(rootLinkName)->id();
   for (size_t i = 0; i < slices.size(); ++i)
     accelerationPriors.insert(
-        gpAccelerationPriors(*result.kinematics.interpolation, rootId, times[i],
+        gpAccelerationPriors(*kinematics.interpolation, rootId, times[i],
                              slices[i].k, options_.accelerationStepSeconds));
-  result.dynamics = fixedKinematicsDynamicsSeed(
-      robot_, trajectory, slices, times, result.values, accelerationPriors,
+  auto dynamics = fixedKinematicsDynamicsSeed(
+      robot_, trajectory, slices, times, kinematics.values, accelerationPriors,
       contacts, armature, options_.dynamics);
-  result.values.insert(result.dynamics.values);
+  KinodynamicInitializationResult result{
+      std::move(dynamics.values),
+      std::move(kinematics.contact),
+      std::move(kinematics.interpolation),
+      std::move(static_cast<fixed_dynamics::Diagnostics&>(dynamics)),
+      kinematics.contactSeconds,
+      kinematics.interpolationSeconds};
+  // Move the larger dynamics map and copy the kinematics once into the owning
+  // combined result. Intermediate state maps are not retained for diagnostics.
+  result.values.insert(kinematics.values);
   for (const auto& slice : slices) {
     const auto pose = Pose(result.values, rootId, slice.k);
     const gtsam::Vector3 worldVelocity =
@@ -76,6 +82,9 @@ KinodynamicInitializationResult KinodynamicInitializer::run(
     result.values.insert(LinearVelocityKey(rootId, slice.k),
                          gtsam::Vector(worldVelocity));
   }
+  // Include destruction of temporary state maps in the reported stage time.
+  kinematics.values.clear();
+  accelerationPriors.clear();
   result.dynamicsSeconds =
       std::chrono::duration<double>(Clock::now() - dynamicsStarted).count();
   result.totalSeconds =

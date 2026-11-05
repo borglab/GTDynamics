@@ -22,7 +22,7 @@ gtsam::Values gpAccelerationPriors(
     const FloatingBaseInterpolation& interpolation, size_t rootId, double time,
     size_t k, double stepSeconds = 0.02);
 /** Immutable strategy configuration. Dynamics settings share the full solver's
- * gravity and acceleration-prior scales. Effort/rate costs are diagnostic only;
+ * gravity and acceleration-prior scales. Effort/rate costs are not constructed;
  * no dynamics optimizer iterations or manifold projections are performed.
  */
 struct KinodynamicInitializationOptions {
@@ -33,13 +33,18 @@ struct KinodynamicInitializationOptions {
 /** Owning pipeline results. values merges fixed GP kinematics and inferred
  * dynamics, plus WORLD root COM linear velocities for the Galilean IMU factor.
  * Biases/stance-landmark variables for a later coupled solve are not created.
- * dynamics retains the linear seed diagnostics. totalSeconds
+ * Intermediate state maps are not retained. contact and interpolation own the
+ * sparse fit and GP data; dynamics contains only linear seed diagnostics.
+ * totalSeconds
  * includes every stage, including differentiation, FK and result assembly.
  */
 struct KinodynamicInitializationResult {
   gtsam::Values values;
-  ContactInterpolationResult kinematics;
-  fixed_dynamics::Result dynamics;
+  pose_contact_init::Result contact;
+  std::shared_ptr<FloatingBaseInterpolation> interpolation;
+  fixed_dynamics::Diagnostics dynamics;
+  double contactSeconds = 0;
+  double interpolationSeconds = 0;
   double dynamicsSeconds = 0;
   double totalSeconds = 0;
 };

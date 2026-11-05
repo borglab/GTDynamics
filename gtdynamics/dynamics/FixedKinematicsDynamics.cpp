@@ -73,7 +73,9 @@ class CountedReducedALRetractor : public ReducedALRetractor {
 // rather than a nonlinear initialization optimization or a dynamics substitute.
 Values equalityAnchor(const NonlinearFactorGraph& cost,
                       const NonlinearEqualityConstraints& equalities,
-                      const Values& zero, const Values& contactSeed) {
+                      const Values& zero, const Values& contactSeed,
+                      fixed_dynamics::Diagnostics& diagnostics) {
+  auto started = Clock::now();
   auto linear = cost.linearize(zero);
   // Positive normal loads place stance wrenches inside their cones. With
   // free root/joint accelerations, affine articulated dynamics admits those
@@ -86,20 +88,26 @@ Values equalityAnchor(const NonlinearFactorGraph& cost,
                                            noiseModel::Constrained::All(6));
   const auto linearEqualities = equalities.penaltyGraph().linearize(zero);
   for (const auto& factor : *linearEqualities) {
-    JacobianFactor jacobian(*factor);
-    std::vector<std::pair<Key, Matrix>> terms;
-    for (auto it = jacobian.begin(); it != jacobian.end(); ++it)
-      terms.emplace_back(*it, jacobian.getA(it));
-    linear->emplace_shared<JacobianFactor>(
-        terms, jacobian.getb(), noiseModel::Constrained::All(jacobian.rows()));
+    // The newly linearized factors belong only to this local system. Change
+    // their noise models in place instead of copying every Jacobian block.
+    auto jacobian = std::dynamic_pointer_cast<JacobianFactor>(factor);
+    if (!jacobian) jacobian = std::make_shared<JacobianFactor>(*factor);
+    jacobian->get_model() = noiseModel::Constrained::All(jacobian->rows());
+    linear->push_back(jacobian);
   }
-  return zero.retract(linear->optimize(EliminateQR));
+  diagnostics.linearizationSeconds = seconds(started);
+  started = Clock::now();
+  const auto delta = linear->optimize(EliminateQR);
+  diagnostics.linearSolveSeconds = seconds(started);
+  started = Clock::now();
+  Values values = zero.retract(delta);
+  diagnostics.valueAssemblySeconds = seconds(started);
+  return values;
 }
 
 struct Problem {
   Values zero, contactSeed;
-  NonlinearFactorGraph cost, effort, wrench, torqueSmooth, wrenchSmooth,
-      balance, acceleration;
+  NonlinearFactorGraph balance, acceleration;
   NonlinearFactorGraph rootBalance;
   NonlinearEqualityConstraints equalities;
   NonlinearInequalityConstraints inequalities;
@@ -111,18 +119,14 @@ struct Problem {
           const Values& fixedValues, const Values& accelerationPriors,
           const std::vector<fixed_dynamics::Contact>& contacts,
           const Vector& armature, const fixed_dynamics::Options& options) {
-    const auto start = Clock::now();
     if (slices.empty() || slices.size() != times.size() || contacts.empty())
       throw std::invalid_argument(
           "Dynamics requires matching slices/times and contacts");
-    if (!options.gravity.allFinite() || options.maxIterations == 0)
-      throw std::invalid_argument(
-          "Invalid gravity or dynamics iteration limit");
+    if (!options.gravity.allFinite())
+      throw std::invalid_argument("Invalid gravity");
     if (!armature.allFinite() || !options.torqueLimits.allFinite())
       throw std::invalid_argument("Armature and torque limits must be finite");
-    for (double sigma : {options.effortSigma, options.wrenchSigma,
-                         options.torqueSmoothSigma, options.wrenchSmoothSigma,
-                         options.balanceMomentSigma, options.balanceForceSigma,
+    for (double sigma : {options.balanceMomentSigma, options.balanceForceSigma,
                          options.baseAngularAccelerationSigmaDegrees,
                          options.baseLinearAccelerationSigma,
                          options.jointAccelerationSigmaDegrees})
@@ -226,28 +230,6 @@ struct Problem {
           exact.emplace_shared<PriorFactor<Vector6>>(
               soleKey, Vector6::Zero(), noiseModel::Unit::Create(6));
         }
-        const double length = std::sqrt(contact.halfLength * contact.halfWidth);
-        Vector6 sigmas;
-        sigmas << Vector3::Constant(options.wrenchSigma * length),
-            Vector3::Constant(options.wrenchSigma);
-        wrench.emplace_shared<PriorFactor<Vector6>>(
-            soleKey, Vector6::Zero(), noiseModel::Diagonal::Sigmas(sigmas));
-        bool sameStance = false;
-        if (i && stance) {
-          const auto previous = tracked.find(slices[i - 1].k);
-          if (previous != tracked.end())
-            for (const auto& frame : previous->second)
-              if (frame.contact.equals(contact.pose) && frame.stance == *stance)
-                sameStance = true;
-        }
-        if (sameStance) {
-          sigmas *= options.wrenchSmoothSigma / options.wrenchSigma *
-                    std::sqrt(times[i] - times[i - 1]);
-          wrenchSmooth.emplace_shared<BetweenFactor<Vector6>>(
-              ContactWrenchKey(id, c, slices[i - 1].k), soleKey,
-              Vector6::Zero(), noiseModel::Diagonal::Sigmas(sigmas));
-          ++result.wrenchSmoothFactors;
-        }
       }
       if (active.empty() && !options.softDynamics)
         throw std::invalid_argument(
@@ -340,15 +322,6 @@ struct Problem {
         const Key torqueKey = TorqueKey(id, k);
         result.torqueKeys.push_back(torqueKey);
         zero.insert(torqueKey, 0.0);
-        effort.emplace_shared<PriorFactor<double>>(
-            torqueKey, 0.0,
-            noiseModel::Isotropic::Sigma(1, options.effortSigma));
-        if (i)
-          torqueSmooth.emplace_shared<BetweenFactor<double>>(
-              TorqueKey(id, slices[i - 1].k), torqueKey, 0.0,
-              noiseModel::Isotropic::Sigma(
-                  1, options.torqueSmoothSigma *
-                         std::sqrt(times[i] - times[i - 1])));
         if (options.torqueLimits.size()) {
           const Double_ torque(torqueKey), limit(options.torqueLimits(id));
           inequalities.push_back(
@@ -365,24 +338,14 @@ struct Problem {
     rootBalance = ConstVarGraph(rootBalance, prescribed);
     balance = ConstVarGraph(balance, prescribed);
     equalities = NonlinearEqualityConstraints::FromCostGraph(exact);
-    cost.add(effort);
-    cost.add(wrench);
-    cost.add(torqueSmooth);
-    cost.add(wrenchSmooth);
-    cost.add(balance);
-    cost.add(acceleration);
     result.softDynamics = options.softDynamics;
     result.variableDimension = zero.dim();
     result.equalityDimension = equalities.dim();
     result.inequalityDimension = inequalities.dim();
-    result.assemblySeconds = seconds(start);
   }
   // Evaluate physical residuals and costs without setting up CMC manifolds.
   void summarize() {
-    result.effortError = effort.error(result.values);
-    result.wrenchError = wrench.error(result.values);
-    result.torqueSmoothError = torqueSmooth.error(result.values);
-    result.wrenchSmoothError = wrenchSmooth.error(result.values);
+    const auto started = Clock::now();
     result.balanceError = balance.error(result.values);
     result.accelerationError = acceleration.error(result.values);
     result.equalityL2 = equalities.violationNorm(result.values);
@@ -397,6 +360,87 @@ struct Problem {
       result.maxForceResidual =
           std::max(result.maxForceResidual, residual.tail<3>().norm());
     }
+    result.validationSeconds = seconds(started);
+  }
+};
+
+// Only the full optimizer constructs effort and temporal objectives. The seed
+// shares mechanics and acceleration priors, without allocating these factors.
+struct Objective {
+  NonlinearFactorGraph cost, effort, wrench, torqueSmooth, wrenchSmooth;
+
+  Objective(Problem& problem, const Trajectory& trajectory,
+            const std::vector<Slice>& slices, const std::vector<double>& times,
+            const std::vector<fixed_dynamics::Contact>& contacts,
+            const fixed_dynamics::Options& options) {
+    if (options.maxIterations == 0)
+      throw std::invalid_argument("Invalid dynamics iteration limit");
+    for (double sigma : {options.effortSigma, options.wrenchSigma,
+                         options.torqueSmoothSigma, options.wrenchSmoothSigma})
+      if (!(sigma > 0) || !std::isfinite(sigma))
+        throw std::invalid_argument(
+            "Dynamics sigmas must be positive and finite");
+    const auto tracked = contactPoseFrames(trajectory);
+    for (size_t i = 0; i < slices.size(); ++i) {
+      const size_t k = slices[i].k;
+      for (size_t c = 0; c < contacts.size(); ++c) {
+        const auto& contact = contacts[c];
+        const int id = contact.pose.link->id();
+        const Key soleKey = ContactWrenchKey(id, c, k);
+        std::optional<size_t> stance;
+        const auto frames = tracked.find(k);
+        if (frames != tracked.end())
+          for (const auto& frame : frames->second)
+            if (frame.contact.equals(contact.pose)) stance = frame.stance;
+        const double length = std::sqrt(contact.halfLength * contact.halfWidth);
+        Vector6 sigmas;
+        sigmas << Vector3::Constant(options.wrenchSigma * length),
+            Vector3::Constant(options.wrenchSigma);
+        wrench.emplace_shared<PriorFactor<Vector6>>(
+            soleKey, Vector6::Zero(), noiseModel::Diagonal::Sigmas(sigmas));
+        bool sameStance = false;
+        if (i && stance) {
+          const auto previous = tracked.find(slices[i - 1].k);
+          if (previous != tracked.end())
+            for (const auto& frame : previous->second)
+              if (frame.contact.equals(contact.pose) && frame.stance == *stance)
+                sameStance = true;
+        }
+        if (sameStance) {
+          sigmas *= options.wrenchSmoothSigma / options.wrenchSigma *
+                    std::sqrt(times[i] - times[i - 1]);
+          wrenchSmooth.emplace_shared<BetweenFactor<Vector6>>(
+              ContactWrenchKey(id, c, slices[i - 1].k), soleKey,
+              Vector6::Zero(), noiseModel::Diagonal::Sigmas(sigmas));
+          ++problem.result.wrenchSmoothFactors;
+        }
+      }
+      for (size_t id : problem.result.jointIds) {
+        const Key torqueKey = TorqueKey(id, k);
+        effort.emplace_shared<PriorFactor<double>>(
+            torqueKey, 0.0,
+            noiseModel::Isotropic::Sigma(1, options.effortSigma));
+        if (i)
+          torqueSmooth.emplace_shared<BetweenFactor<double>>(
+              TorqueKey(id, slices[i - 1].k), torqueKey, 0.0,
+              noiseModel::Isotropic::Sigma(
+                  1, options.torqueSmoothSigma *
+                         std::sqrt(times[i] - times[i - 1])));
+      }
+    }
+    cost.add(effort);
+    cost.add(wrench);
+    cost.add(torqueSmooth);
+    cost.add(wrenchSmooth);
+    cost.add(problem.balance);
+    cost.add(problem.acceleration);
+  }
+
+  void summarize(fixed_dynamics::Result& result) const {
+    result.effortError = effort.error(result.values);
+    result.wrenchError = wrench.error(result.values);
+    result.torqueSmoothError = torqueSmooth.error(result.values);
+    result.wrenchSmoothError = wrenchSmooth.error(result.values);
   }
 };
 }  // namespace
@@ -409,24 +453,26 @@ fixed_dynamics::Result fixedKinematicsDynamicsSeed(
     const gtsam::Vector& armature, const fixed_dynamics::Options& options) {
   if (options.softDynamics)
     throw std::invalid_argument("Linear dynamics seed requires exact dynamics");
+  auto started = Clock::now();
   Problem problem(robot, trajectory, slices, times, fixedValues,
                   accelerationPriors, contacts, armature, options);
-  const auto started = Clock::now();
+  problem.result.assemblySeconds = seconds(started);
+  started = Clock::now();
   auto& result = problem.result;
-  result.values = equalityAnchor(problem.acceleration, problem.equalities,
-                                 problem.zero, problem.contactSeed);
+  auto values = equalityAnchor(problem.acceleration, problem.equalities,
+                               problem.zero, problem.contactSeed, result);
+  result.values.swap(values);
   result.initializationSeconds = seconds(started);
-  result.objectiveInitial = result.objectiveFinal =
-      problem.cost.error(result.values);
-  result.objectiveHistory = {result.objectiveFinal};
   problem.summarize();
+  result.objectiveInitial = result.objectiveFinal = result.accelerationError;
+  result.objectiveHistory = {result.objectiveFinal};
   if (!result.feasible)
     throw std::runtime_error(
         "Linear dynamics seed violates exact mechanics or "
         "wrench/torque constraints");
   // No objective optimization or tangent-cone stationarity test was performed.
   result.projectedGradientNorm = std::numeric_limits<double>::infinity();
-  return result;
+  return std::move(problem.result);
 }
 
 fixed_dynamics::Result solveFixedKinematicsDynamics(
@@ -436,11 +482,16 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
     const std::vector<fixed_dynamics::Contact>& contacts,
     const gtsam::Vector& armature, const fixed_dynamics::Options& options) {
   using namespace gtsam;
+  auto start = Clock::now();
   Problem problem(robot, trajectory, slices, times, fixedValues,
                   accelerationPriors, contacts, armature, options);
-  auto start = Clock::now();
-  Values initial = equalityAnchor(problem.acceleration, problem.equalities,
-                                  problem.zero, problem.contactSeed);
+  const Objective objective(problem, trajectory, slices, times, contacts,
+                            options);
+  problem.result.assemblySeconds = seconds(start);
+  start = Clock::now();
+  Values initial =
+      equalityAnchor(problem.acceleration, problem.equalities, problem.zero,
+                     problem.contactSeed, problem.result);
   const double anchorViolation = problem.equalities.violationNorm(initial);
   if (anchorViolation > 1e-6)
     throw std::runtime_error("Fixed dynamics equality anchor is infeasible: " +
@@ -502,7 +553,7 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
   }
   initial = manifolds.baseValues();
   problem.result.manifoldSeconds = seconds(start);
-  problem.result.objectiveInitial = problem.cost.error(initial);
+  problem.result.objectiveInitial = objective.cost.error(initial);
 
   // Some affine components (a swing leg or an arm, for example) are completely
   // determined by fixed kinematics. Remove their zero-dimensional manifold
@@ -519,9 +570,9 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
     }
   }
   const NonlinearFactorGraph variableCost =
-      ConstVarGraph(problem.cost, determined);
+      ConstVarGraph(objective.cost, determined);
   const double constantError =
-      problem.cost.error(initial) - variableCost.error(initial);
+      objective.cost.error(initial) - variableCost.error(initial);
 
   IELMParams params;
   params.iqpMaxIterations = 1000;
@@ -532,10 +583,10 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
   start = Clock::now();
   auto& result = problem.result;
   // Skip a zero-column LM system if every component is uniquely determined.
-  result.values =
-      result.reducedDimension
-          ? optimizer.optimizeManifolds(variableCost, manifolds, Values())
-          : Values();
+  auto values = result.reducedDimension ? optimizer.optimizeManifolds(
+                                              variableCost, manifolds, Values())
+                                        : Values();
+  result.values.swap(values);
   result.values.insert(determined);
   result.optimizationSeconds = seconds(start);
   result.numALSolves = retractor->alSolves;
@@ -546,10 +597,11 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
                           : optimizer.details().back().state.iterations;
   for (const auto& iteration : optimizer.details())
     result.objectiveHistory.push_back(iteration.state.error + constantError);
-  result.objectiveFinal = problem.cost.error(result.values);
+  result.objectiveFinal = objective.cost.error(result.values);
   if (result.objectiveHistory.empty() ||
       std::abs(result.objectiveHistory.back() - result.objectiveFinal) > 1e-12)
     result.objectiveHistory.push_back(result.objectiveFinal);
+  objective.summarize(result);
   problem.summarize();
   if (!optimizer.details().empty()) {
     const auto& finalState = optimizer.details().back().state;
@@ -558,6 +610,6 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
     result.projectedGradientNorm = projected.second.norm();
   }
   result.stationary = result.feasible && result.projectedGradientNorm <= 1e-5;
-  return result;
+  return std::move(problem.result);
 }
 }  // namespace gtdynamics

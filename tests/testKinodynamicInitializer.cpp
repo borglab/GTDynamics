@@ -92,20 +92,23 @@ TEST(KinodynamicInitializer, PipelineStopsAtLinearSeed) {
   EXPECT_DOUBLES_EQUAL(0, result.dynamics.optimizationSeconds, 0);
   EXPECT(!result.dynamics.stationary);
   EXPECT(std::isinf(result.dynamics.projectedGradientNorm));
-  EXPECT_LONGS_EQUAL(3, result.kinematics.contact.selectedSlices.size());
+  EXPECT_LONGS_EQUAL(3, result.contact.selectedSlices.size());
   EXPECT(Twist(result.values, 0, 2).head<3>().norm() > .2);
   EXPECT(result.values.at<Vector>(ContactWrenchKey(1, 0, 2))(5) > 1);
-  for (const auto key : result.kinematics.values.keys())
-    EXPECT(
-        result.values.at(key).equals_(result.kinematics.values.at(key), 1e-12));
+  Values kinematics;
+  for (size_t i = 0; i < f.slices.size(); ++i)
+    kinematics.insert(result.interpolation->values(f.times[i], f.slices[i].k));
+  for (const auto key : kinematics.keys())
+    EXPECT(result.values.at(key).equals_(kinematics.at(key), 1e-12));
   Values accelerationPriors;
   for (size_t i = 0; i < f.slices.size(); ++i)
     accelerationPriors.insert(gpAccelerationPriors(
-        *result.kinematics.interpolation, 0, f.times[i], f.slices[i].k, .02));
+        *result.interpolation, 0, f.times[i], f.slices[i].k, .02));
   const auto direct = fixedKinematicsDynamicsSeed(
-      f.robot, f.trajectory, f.slices, f.times, result.kinematics.values,
-      accelerationPriors, f.contacts(), Vector(), f.options().dynamics);
-  EXPECT(assert_equal(direct.values, result.dynamics.values, 1e-7));
+      f.robot, f.trajectory, f.slices, f.times, kinematics, accelerationPriors,
+      f.contacts(), Vector(), f.options().dynamics);
+  for (Key key : direct.values.keys())
+    EXPECT(result.values.at(key).equals_(direct.values.at(key), 1e-7));
   EXPECT_DOUBLES_EQUAL(direct.objectiveFinal, result.dynamics.objectiveFinal,
                        1e-7);
   EXPECT(result.totalSeconds >= result.dynamicsSeconds);

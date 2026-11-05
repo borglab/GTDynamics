@@ -133,6 +133,27 @@ TEST(FixedKinematicsDynamics, LinearSeedAndConstraintChecks) {
       49.05, result.values.at<Vector6>(result.contactKeys[2])(5), 1e-8);
   EXPECT(result.values.at<Vector6>(result.contactKeys[1]).norm() < 1e-8);
   EXPECT(result.values.at<Vector6>(result.contactKeys[4]).norm() < 1e-8);
+  EXPECT_DOUBLES_EQUAL(result.accelerationError, result.objectiveFinal, 1e-12);
+  EXPECT_DOUBLES_EQUAL(0, result.effortError, 0);
+  EXPECT_DOUBLES_EQUAL(0, result.wrenchSmoothError, 0);
+  EXPECT(result.linearSolveSeconds > 0);
+  EXPECT(result.linearizationSeconds + result.linearSolveSeconds +
+             result.valueAssemblySeconds <=
+         result.initializationSeconds);
+  // Full-optimizer parameters do not affect seed construction or validation.
+  fixed_dynamics::Options unusedObjectives;
+  unusedObjectives.maxIterations = 0;
+  unusedObjectives.effortSigma = 0;
+  unusedObjectives.wrenchSmoothSigma = 0;
+  const auto sameSeed = fixedKinematicsDynamicsSeed(
+      f.robot, trajectory, {Slice(0), Slice(1), Slice(2)}, {0., .08, .3},
+      f.fixed, f.priors, f.contacts(), Vector(), unusedObjectives);
+  EXPECT(assert_equal(result.values, sameSeed.values, 1e-12));
+  CHECK_EXCEPTION(
+      solveFixedKinematicsDynamics(
+          f.robot, trajectory, {Slice(0), Slice(1), Slice(2)}, {0., .08, .3},
+          f.fixed, f.priors, f.contacts(), Vector(), unusedObjectives),
+      std::invalid_argument);
   fixed_dynamics::Options soft;
   soft.softDynamics = true;
   CHECK_EXCEPTION(fixedKinematicsDynamicsSeed(f.robot, trajectory,

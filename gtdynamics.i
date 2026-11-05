@@ -686,9 +686,8 @@ class Options {
   double balanceForceSigma;
   gtsam::Vector torqueLimits;
 };
-class Result {
-  Result();
-  gtsam::Values values;
+class Diagnostics {
+  Diagnostics();
   std::vector<gtsam::Key> contactKeys;
   std::vector<gtsam::Key> torqueKeys;
   std::vector<size_t> jointIds;
@@ -709,6 +708,10 @@ class Result {
   double projectedGradientNorm;
   double assemblySeconds;
   double initializationSeconds;
+  double linearizationSeconds;
+  double linearSolveSeconds;
+  double valueAssemblySeconds;
+  double validationSeconds;
   double manifoldSeconds;
   double optimizationSeconds;
   size_t iterations;
@@ -723,6 +726,10 @@ class Result {
   bool softDynamics;
   bool feasible;
   bool stationary;
+};
+class Result : gtdynamics::fixed_dynamics::Diagnostics {
+  Result();
+  gtsam::Values values;
 };
 } // namespace fixed_dynamics
 gtdynamics::fixed_dynamics::Result fixedKinematicsDynamicsSeed(
@@ -1659,8 +1666,11 @@ class KinodynamicInitializationOptions {
 };
 class KinodynamicInitializationResult {
   gtsam::Values values;
-  gtdynamics::ContactInterpolationResult kinematics;
-  gtdynamics::fixed_dynamics::Result dynamics;
+  gtdynamics::pose_contact_init::Result contact;
+  std::shared_ptr<gtdynamics::FloatingBaseInterpolation> interpolation;
+  gtdynamics::fixed_dynamics::Diagnostics dynamics;
+  double contactSeconds;
+  double interpolationSeconds;
   double dynamicsSeconds;
   double totalSeconds;
 };
