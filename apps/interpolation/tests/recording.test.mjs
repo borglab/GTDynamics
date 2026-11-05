@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
+import { recordedSourceBytes } from '../../shared/tests/recordedSources.mjs';
 import { recordingSourceMatches } from '../../shared/recordingProvenance.mjs';
 import { decodeStates } from '../../shared/kinematics/recording.js';
 import { validateRecording, frameAtTime } from '../src/recording.js';
@@ -30,7 +31,7 @@ test('one offline recording uses the actual comparison winner and original knots
   assert(record.diagnostics.graphConstructionSeconds > 0);
   assert(record.source.checksums.denseJointSource.match(/^[0-9a-f]{64}$/));
   for (const [path, expected] of Object.entries(record.provenance.sources)) {
-    const bytes = readFileSync(new URL(`../../../${path}`, import.meta.url));
+    const bytes = recordedSourceBytes(path, expected);
     assert(recordingSourceMatches(path, bytes, expected), path);
   }
   assert(record.diagnostics.mujocoOracle.maxBodyPoseError < 1e-8);
