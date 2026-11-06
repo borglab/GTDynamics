@@ -32,9 +32,12 @@ Only wholly active vector constraint blocks are promoted to equalities.
 The global solver defaults to full convergence within `qpMaxIterations`
 (default 1,000). `qpUseProjectedGradientInitialization` optionally seeds this
 solve. `qpUseFeasibleStep` instead requests feasible descent using GTSAM's
-`computeFeasibleStep`, which always uses projected-gradient initialization.
+`computeFeasibleStep`, using the same optional projected-gradient initialization.
 The G1 example selects this mode by default; `--qp-step full` requests convergence,
-and `--no-projected-gradient-initialization` disables seeding of full solves.
+and `--projected-gradient-initialization` enables seeding (now disabled by default).
+`--qp-ordering temporal` passes the chronological component ordering, retiring
+each stance landmark at its last observation and keeping the bias until the end.
+The default `--qp-ordering automatic` leaves ordering to GTSAM's COLAMD.
 A numerical failure or exhausted iteration budget rejects the trial. A no-progress
 result supplies a zero trial and does not certify QP optimality.
 `qpIterations` counts main active-set iterations, excluding initialization solves,

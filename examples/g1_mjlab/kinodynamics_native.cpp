@@ -26,6 +26,7 @@
 #include <iostream>
 
 #include "KinodynamicGauge.h"
+#include "KinodynamicOrdering.h"
 namespace py = pybind11;
 namespace {
 using namespace gtdynamics;
@@ -513,7 +514,15 @@ py::dict solve(
   params.lmParams.lambdaInitial = setting<double>(settings, "lambdaInitial");
   params.lmParams.setDiagonalDamping(
       setting<bool>(settings, "diagonalDamping"));
-  // GTSAM owns ordering and elimination inside the sparse QP solve.
+  std::vector<std::string> orderingKeys;
+  if (setting<bool>(settings, "qpUseTemporalOrdering")) {
+    params.lmParams.ordering = g1_example::chronologicalOrdering(
+        cost, manifolds, unconstrained, slices.front().k);
+    for (Key key : *params.lmParams.ordering)
+      orderingKeys.push_back(std::to_string(key));
+  }
+  result["qpOrderingKeys"] = orderingKeys;
+  // GTSAM owns elimination; an unset ordering selects its automatic COLAMD.
   params.lmParams.verbosityLM = LevenbergMarquardtParams::SUMMARY;
   const auto optimizeStart = Clock::now();
   params.iterationCallback = [&](const IELMState& state) {

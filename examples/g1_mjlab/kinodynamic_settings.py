@@ -23,8 +23,9 @@ def solver_settings() -> dict[str, Any]:
         "initialization": "contact-gp-dynamics",
         "maxIterations": 5,
         "qpMaxIterations": 1000,
-        "qpUseProjectedGradientInitialization": True,
+        "qpUseProjectedGradientInitialization": False,
         "qpUseFeasibleStep": True,
+        "qpUseTemporalOrdering": False,
         "gaugeSlice": 0,
         "retractionThreads": 8,
         "historyWindow": 1,
@@ -66,7 +67,8 @@ def configure_solve(
     retraction_threads: int,
     *,
     qp_use_feasible_step: bool = True,
-    qp_use_projected_gradient_initialization: bool = True,
+    qp_use_projected_gradient_initialization: bool = False,
+    qp_use_temporal_ordering: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return native options and report metadata for the selected root gauge.
 
@@ -82,6 +84,7 @@ def configure_solve(
         retractionThreads=retraction_threads,
         qpUseFeasibleStep=qp_use_feasible_step,
         qpUseProjectedGradientInitialization=qp_use_projected_gradient_initialization,
+        qpUseTemporalOrdering=qp_use_temporal_ordering,
     )
     metadata = {
         "gauge": {

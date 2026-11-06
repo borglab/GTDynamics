@@ -553,6 +553,16 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
     qpParams->maxIterations = params.qpMaxIterations;
     qpParams->useProjectedGradientInitialization =
         params.qpUseProjectedGradientInitialization;
+    if (params.lmParams.ordering) {
+      Ordering ordering;
+      for (Key key : *params.lmParams.ordering) {
+        // Fixed components have no QP variables. Keep other entries so GTSAM
+        // can reject missing, repeated or unknown keys in the requested order.
+        if (delta.exists(key) && delta.at(key).size() == 0) continue;
+        ordering.push_back(key);
+      }
+      qpParams->setOrdering(ordering);
+    }
     try {
       const ActiveSetSolver solver(problem, qpParams);
       Values solution;

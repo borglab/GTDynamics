@@ -218,7 +218,9 @@ TEST(IELMQp, EqualityReductionAndZeroDimensionalComponent) {
           .createEqualityFactor());
   const auto state = makeState(graph, {}, initial, equalities);
   EXPECT(state.tangentQp.eConstraints().empty());
-  const IELMTrial::LinearUpdate update(0.2, graph, state, {});
+  IELMParams params;
+  params.lmParams.ordering = Ordering{8, 7};  // Fixed key 7 is omitted by CMC.
+  const IELMTrial::LinearUpdate update(0.2, graph, state, params);
   EXPECT(update.solveSuccessful);
   if (!update.solveSuccessful) return;
   EXPECT(assert_equal(Vector2::Zero(), update.tangentVector.at(7), 1e-9));
@@ -336,6 +338,12 @@ TEST(IELMQp, ProjectedInitializationAndFeasibleStepModes) {
     EXPECT(feasible.solveSuccessful);
     if (!feasible.solveSuccessful) continue;
     EXPECT_LONGS_EQUAL(1, feasible.qpIterations);
+    if (!projected) {
+      // Without projection, all tight bounds remain in the initial working set.
+      EXPECT(assert_equal(initial.zeroVectors(), feasible.tangentVector, 1e-9));
+      EXPECT_DOUBLES_EQUAL(0., feasible.costChange, 1e-9);
+      continue;
+    }
     EXPECT(assert_equal(Vector2(0., 5. / 5.2), feasible.tangentVector.at(7),
                         1e-9));
     EXPECT(feasible.costChange > 0);
@@ -384,6 +392,30 @@ TEST(IELMQp, FeasibleStepNoProgressAndFailures) {
   EXPECT(!singular.failureReason.empty());
   const IELMTrial::LinearUpdate damped(0.2, graph, singularState, params);
   EXPECT(damped.solveSuccessful);
+}
+
+// Forward complete orders and let GTSAM reject incomplete or invalid requests.
+TEST(IELMQp, CustomOrderingValidation) {
+  Values initial;
+  initial.insert(7, Vector(Vector1::Zero()));
+  initial.insert(8, Vector(Vector1::Zero()));
+  NonlinearFactorGraph graph;
+  for (Key key : {7, 8})
+    graph.emplace_shared<PriorFactor<Vector>>(key, Vector(Vector1(2.)),
+                                              noiseModel::Unit::Create(1));
+  const auto state = makeState(graph, {}, initial);
+  IELMParams params;
+  params.qpUseFeasibleStep = true;
+  params.lmParams.ordering = Ordering{8, 7};
+  const IELMTrial::LinearUpdate custom(0.2, graph, state, params);
+  EXPECT(custom.solveSuccessful);
+  EXPECT(assert_equal(Vector1(2. / 1.2), custom.tangentVector.at(7), 1e-9));
+  params.lmParams.ordering = Ordering{7};
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
+  params.lmParams.ordering = Ordering{7, 7, 8};
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
 }
 
 }  // namespace tangent_qp

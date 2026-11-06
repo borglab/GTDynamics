@@ -71,7 +71,8 @@ def solve_walk(
     retraction_threads: int = 8,
     initialization: str = "contact-gp-dynamics",
     qp_use_feasible_step: bool = True,
-    qp_use_projected_gradient_initialization: bool = True,
+    qp_use_projected_gradient_initialization: bool = False,
+    qp_use_temporal_ordering: bool = False,
 ) -> KinodynamicSolution:
     """Initialize and jointly optimize G1 poses, motion, and forces at support knots.
 
@@ -86,9 +87,10 @@ def solve_walk(
             "contact" fits contact poses with zero motion and forces;
             "contact-gp-dynamics" adds GP interpolation and a linear dynamics seed (default).
         qp_use_feasible_step: Request feasible descent instead of QP convergence.
-            This mode always uses projected-gradient initialization.
-        qp_use_projected_gradient_initialization: Seed full QP solves by projecting
-            the negative gradient when qp_use_feasible_step is False.
+        qp_use_projected_gradient_initialization: Seed either QP mode by projecting
+            the negative gradient; disabled by default.
+        qp_use_temporal_ordering: Pass the example's chronological component and
+            last-observation ordering instead of automatic COLAMD.
 
     Returns:
         The prepared clip, initial COM-to-world poses, native optimized values,
@@ -128,6 +130,7 @@ def solve_walk(
         retraction_threads,
         qp_use_feasible_step=qp_use_feasible_step,
         qp_use_projected_gradient_initialization=qp_use_projected_gradient_initialization,
+        qp_use_temporal_ordering=qp_use_temporal_ordering,
     )
     metadata.update(solver_metadata)
     metadata["measurementPreparationSeconds"] = (
@@ -183,6 +186,7 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
                 "equalityDimension",
                 "inequalityDimension",
                 "feasible",
+                "qpOrderingKeys",
             )
         },
         "errorNames": list(result["errorNames"]),
@@ -351,8 +355,14 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--projected-gradient-initialization",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Seed full QP solves; feasible steps always enable it",
+        default=False,
+        help="Seed QP solves with projected gradients (default: disabled)",
+    )
+    parser.add_argument(
+        "--qp-ordering",
+        choices=("automatic", "temporal"),
+        default="automatic",
+        help="Automatic COLAMD (default) or chronological elimination with landmark retirement",
     )
     return parser
 
@@ -372,6 +382,7 @@ def main() -> None:
         initialization=args.initialization,
         qp_use_feasible_step=args.qp_step == "feasible",
         qp_use_projected_gradient_initialization=args.projected_gradient_initialization,
+        qp_use_temporal_ordering=args.qp_ordering == "temporal",
     )
     args.output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output / "kinodynamics.npz", **solution_arrays(solution))

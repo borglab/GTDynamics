@@ -47,13 +47,17 @@ npm run build
 The example defaults to five iterations and accepts
 `--initialization fk|contact|contact-gp-dynamics`, `--max-iterations`, `--start`, `--end`, `--data`, `--labels`, and
 `--retraction-threads` (8 by default; 1 runs projections serially).
-It now defaults to GTSAM's projected-gradient feasible-step API. Use
-`--qp-step full` for a converged QP, or add
-`--no-projected-gradient-initialization` to use the original all-tight start
-for full solves. Feasible-step calls always initialize with projected gradients.
+It defaults to GTSAM's feasible-step API with projected-gradient initialization
+disabled. Use `--qp-step full` for a converged QP and
+`--projected-gradient-initialization` to enable seeding in either mode.
+`--qp-ordering temporal` passes our chronological component ordering, retiring
+each stance landmark at its last observation and keeping the bias until the end.
+`--qp-ordering automatic` (default) lets GTSAM use COLAMD. The supplied order
+is recorded as decimal key strings in `qpOrderingKeys`.
 The selected options are recorded in `solverSettings`; `qpMaxIterations` remains
 1,000. The linked GTSAM build must provide `computeFeasibleStep()` and
-`useProjectedGradientInitialization`, including matching Python bindings.
+`useProjectedGradientInitialization`, and `setOrdering()`, including matching
+Python bindings.
 Its main saves numerical arrays and a JSON report. The exporter converts those
 arrays to offline browser assets and adds independently compiled model geometry.
 No optimization runs in the browser. All recording/model gzip files use Git LFS.
@@ -105,7 +109,46 @@ active-set iterations. The smaller variable count does not resolve the GTSAM
 solver performance issue. The native binary/revision and modified Python
 source fingerprints are included in the replay provenance.
 
-Matched local runs on 2026-11-05 link GTSAM `e7f6b7774` with incremental sparse
+The latest comparison uses GTSAM `e0fb6ad4f`, feasible steps, and projected-gradient
+initialization disabled. Only `contact-gp-dynamics` was run, on the same 78–98 s
+clip with 171 support slices and five outer iterations. Both modes use identical
+Release binaries, system TBB 2021.11 with CPUs 0–7, eight retraction workers,
+single-thread BLAS/OpenMP, explicit LM damping and zero extra QP regularization.
+Three fresh processes per ordering ran sequentially in automatic/temporal,
+temporal/automatic, automatic/temporal order, after all builds and tests.
+
+| Ordering | Optimization runs (s) | Median optimization (s) | Median initialization through optimization (s) | Final objective |
+| --- | --- | ---: | ---: | ---: |
+| Automatic COLAMD | 9.1473, 9.1284, 9.0903 | 9.1284 | 11.1249 | 9,272.533830 |
+| Temporal, passed to GTSAM | 8.8833, 8.8170, 8.8250 | 8.8250 | 10.8266 | 9,272.533830 |
+
+Passing the temporal ordering saves 3.32% of optimization time (1.034x).
+Each run attempts five QP working-face solves total, with no rejected LM trials.
+All runs are feasible: equality norms are at most 2.00e-12 and inequality norms
+at most 5.09e-8. Independent MuJoCo inverse dynamics, sole-cone and swing-wrench
+checks pass. Ordering changes the objective by only 4.0e-11; the maximum pose
+matrix difference is 8.53e-14, wrench difference 1.24e-11 and joint-torque
+difference 2.85e-12. The temporal order contains all 213 reduced/free keys,
+with landmarks retiring at their last observation and bias retained until the end.
+
+The initializer change affects the optimization policy: disabling projected
+gradients keeps all tight rows on the starting face, and feasible-step mode
+returns without multiplier-based releases. The earlier projected-gradient run
+below reached objective 9,000.94 after five iterations, whereas these runs reach
+9,272.53. That historical run also used an older GTSAM revision; it is not a
+matched measurement of the initializer alone. The ordering comparison above
+has identical settings apart from `qpUseTemporalOrdering`.
+
+Raw reports, arrays, actual ordered keys, library/model hashes, validation and
+`comparison.json` are local in `build/temporal-qp-comparison/`. Reproduce the two
+modes using `--qp-step feasible --no-projected-gradient-initialization` and
+`--qp-ordering automatic` or `--qp-ordering temporal`. GTDynamics forwards
+`lmParams.ordering` after dropping zero-dimensional component keys, with GTSAM
+validating the remaining permutation. `testIELMQp`, `testKinodynamicGauge`, the
+four affected manifold/retractor suites, and seven G1 Python tests pass. The
+GTSAM options, feasible-step, QP, LP and QP-problem suites also pass.
+
+Earlier matched local runs on 2026-11-05 link GTSAM `e7f6b7774` with incremental sparse
 elimination and projected-gradient initialization. Each run uses the same
 78–98 s clip, 171 retained support slices, five outer iterations, LM settings,
 and zero additional QP regularization. Both libraries are Release builds with

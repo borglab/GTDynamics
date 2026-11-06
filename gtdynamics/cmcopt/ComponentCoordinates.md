@@ -27,8 +27,10 @@ diagonal damping in $\xi$ coordinates. It calls
 `ActiveSetSolver::optimizeWithState` with the sparse subproblem solver, zero
 initial increments, and zero additional regularization. The QP has no equality
 constraints: those were already eliminated by $B$. GTSAM selects its internal
-ordering and elimination; LM `ordering` and `linearSolverType` no longer control
-the global linear step.
+elimination. When supplied, LM `ordering` is forwarded after removing
+zero-dimensional component keys; GTSAM validates the remaining complete
+permutation. An unset ordering selects automatic COLAMD. LM `linearSolverType`
+does not select the global QP backend.
 
 The solver owns row additions, releases, and multipliers. GTDynamics no longer
 constructs an active-face kernel $N$, transforms the objective through $N$,
@@ -38,11 +40,13 @@ or implements an active-set iteration. `qpMaxIterations` replaces
 componentwise projection of the negative gradient (default false).
 
 With `qpUseFeasibleStep=true`, each trial calls
-`ActiveSetSolver::computeFeasibleStep` instead. GTSAM always uses projected-gradient
-initialization in this mode and returns at feasible descent, without certifying
+`ActiveSetSolver::computeFeasibleStep` instead. It honors the same projected-gradient
+initialization flag and returns at feasible descent, without certifying
 optimality or multiplier validity. `NoProgress` supplies the original zero
 increment to the existing LM stopping logic. Numerical failures and iteration
 limits reject the trial. This mode does not add a GTDynamics working-set solver.
+With projection disabled, all tight rows enter the initial working set; feasible
+descent does not perform multiplier-based releases or establish stationarity.
 
 Zero-dimensional components are omitted from the QP variables and restored as
 zero increments. An entirely fixed problem needs no QP call. Failures reject

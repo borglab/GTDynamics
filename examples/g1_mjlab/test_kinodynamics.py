@@ -135,8 +135,9 @@ class TestKinodynamics(unittest.TestCase):
         self.assertEqual(options["gaugeSlice"], 0)
         self.assertEqual(options["retractionThreads"], 8)
         self.assertEqual(options["initialization"], "contact-gp-dynamics")
-        self.assertTrue(options["qpUseProjectedGradientInitialization"])
+        self.assertFalse(options["qpUseProjectedGradientInitialization"])
         self.assertTrue(options["qpUseFeasibleStep"])
+        self.assertFalse(options["qpUseTemporalOrdering"])
         options["maxIterations"] = 20
         options["gaugeSlice"] = 1
         result = solve(
@@ -153,6 +154,7 @@ class TestKinodynamics(unittest.TestCase):
         )
         options["retractionThreads"] = 1
         options["historyWindow"] = 0
+        options["qpUseTemporalOrdering"] = True
         serial = solve(
             robot,
             trajectory,
@@ -166,6 +168,8 @@ class TestKinodynamics(unittest.TestCase):
             options,
         )
         self.assertTrue(result["values"].equals(serial["values"], 1e-8))
+        self.assertEqual(len(result["qpOrderingKeys"]), 0)
+        self.assertGreater(len(serial["qpOrderingKeys"]), 0)
         np.testing.assert_allclose(
             result["errorHistory"], serial["errorHistory"], atol=1e-8
         )
