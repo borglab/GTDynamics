@@ -1,19 +1,28 @@
 # Kinodynamics
 
-The app replays a coupled 50 Hz CMC-Opt solve of the SSIO G1 mid-clip turns
-(78.00–97.98 s, 1,000 slices). It estimates configurations, body/world velocities,
+The app replays a coupled CMC-Opt solve on sparse support knots from the SSIO
+G1 mid-clip turns (78–98 s). It estimates configurations, body/world velocities,
 accelerations, sole wrenches, internal reaction wrenches, and all 29 actuator
 torques. The default `--initialization contact-gp-dynamics` runs the native
 contact → GP → affine linear dynamics seed pipeline. `--initialization contact`
 retains contact poses with zero motion and forces; `--initialization fk` uses
 measured-joint FK at a fixed upright pelvis and gravity-support forces.
 
-The contact stage retains 171 source slices: 114 in single support and 57 in
-double support. Short phases contribute a central slice; long phases use
+Initialization and coupled optimization both retain 171 source slices: 114 in
+single support and 57 in double support. Short phases contribute a central slice;
+long phases use
 one-sample-buffered slices at most 200 ms apart. Contact poses supply GP knots,
-dense encoders constrain velocities, and the dynamics initializer estimates
-accelerations, wrenches and torques at all 1,000 original slices. The coupled
-solve estimates every 50 Hz slice. Raw replay displays the initialized signals.
+retained encoders constrain velocities, and the dynamics initializer estimates
+accelerations, wrenches and torques at those same knots. Selection occurs before
+variable and factor assembly. The 1,000 source samples never become a dense
+kinodynamic optimization problem. Original irregular timestamps determine IMU
+preintegration, collocation, and rate costs. Every supported phase is represented,
+so a stance landmark persists across phase boundaries and resets after lift-off.
+Raw and optimized replay show the retained knots without synthesizing dense
+force or torque estimates.
+
+The component coordinate count falls from 106,584 to 18,297. Shared contact poses
+and bias add 252 coordinates to each complete QP (18,549 in the sparse solve).
 
 The computation is the student-facing example
 [`kinodynamic_walk.py`](../../examples/g1_mjlab/kinodynamic_walk.py). Run from the
@@ -56,10 +65,10 @@ the initial roll and pitch.
 The initialized configurations and velocities become free variables in the
 coupled solve.
 
-CMC-Opt gives each constraint-connected component ownership of its
-linearization and active-face coordinates. The coupled linear step minimizes
-the shared objective with an unconstrained Gaussian solve in those coordinates;
-cone projections and nonlinear retractions remain local to each component.
+CMC-Opt eliminates each constraint-connected component's linearized equalities
+through its basis B. The coupled linear step solves the reduced objective and
+active-boundary inequalities with GTSAM's sparse QP solver. Nonlinear retractions
+remain local to each component.
 CMC-Opt relinearizes the full nonlinear equality basis. Each retraction recovers
 link poses/twists with native FK, fixes those q/v values through ConstVarFactor,
 and projects the remaining affine acceleration/wrench equations with Gaussian QR
@@ -79,7 +88,17 @@ Feasibility restoration changes the raw initial dynamics and is included in tota
 A feasible result or an objective-change stopping condition does not establish
 that the objective is globally optimal.
 
-The recorded runs (2026-11-05, Release build, eight retraction workers) use
+The current sparse replay is one five-iteration run with TBB enabled and eight
+retraction workers. Initialization took 0.226 s, coupled optimization took
+204.172 s, and initialization through optimization took 206.057 s. The objective
+decreased from 7,341,612.101 to 8,931.760. Equality and inequality residual norms
+are 1.76e-12 and 3.70e-8, respectively. The expensive second QP required 173
+active-set iterations. The smaller variable count does not resolve the GTSAM
+solver performance issue. The native binary/revision and modified Python
+source fingerprints are included in the replay provenance.
+
+The following historical PR 472 dense runs (2026-11-05, Release build, eight
+retraction workers) used
 five coupled iterations on identical 1,000 source slices at 50 Hz. Contact fitting
 retains 171 slices: 114 in single support and 57 in double support. Each strategy
 ran once in a separate process with `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1`.
@@ -128,7 +147,11 @@ configured five-iteration limit; feasibility does not establish convergence.
 The replay includes source/binary fingerprints, projection settings and gauge
 metadata. The [screenshot](docs/kinodynamics.png) shows this replay.
 
-The app's three-strategy table uses these saved summaries. Only the default's
+The historical table above refers to the dense formulation; it is not a runtime
+claim for the sparse QP solver. The app's three-strategy table uses the summaries
+embedded in its current recording, when matching comparison runs are supplied.
+The current sparse replay contains only the default run; the historical dense
+comparison remains above. Only the default's
 full initial/final replay is stored; the contact-only and FK rows contain summary
 statistics. Totals include initialization, measurement construction, IMU
 preintegration, graph assembly, initial feasibility and coupled optimization.

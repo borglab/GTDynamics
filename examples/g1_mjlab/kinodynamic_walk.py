@@ -5,9 +5,9 @@
 # See LICENSE for the license information.
 # ----------------------------------------------------------------------------
 ## @file kinodynamic_walk.py
-# @brief Solve dense G1 kinodynamics from FK or contact-pose initialization.
+# @brief Solve G1 kinodynamics on selected single- and double-support slices.
 # @author GTDynamics contributors
-"""Solve the SSIO mid-clip turns jointly at 50 Hz using native CMC-Opt.
+"""Solve the SSIO mid-clip turns on sparse support slices using native CMC-Opt.
 
 The saved Contact Labels max-product schedule supplies stance phases. The default
 runs the native contact -> GP -> dynamics pipeline. Use --initialization contact
@@ -52,7 +52,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 @dataclass
 class KinodynamicSolution:
-    """Full dense solution, initial pose estimate, physical model and timings."""
+    """Support-slice solution, initial pose estimate, physical model and timings."""
 
     walk: KinematicRecording
     result: dict[str, Any]
@@ -71,7 +71,7 @@ def solve_walk(
     retraction_threads: int = 8,
     initialization: str = "contact-gp-dynamics",
 ) -> KinodynamicSolution:
-    """Initialize and jointly optimize G1 poses, motion, and forces at 50 Hz.
+    """Initialize and jointly optimize G1 poses, motion, and forces at support knots.
 
     Args:
         directory: Recording directory containing encoders, reference, and IMU.
@@ -87,8 +87,8 @@ def solve_walk(
     Returns:
         The prepared clip, initial COM-to-world poses, native optimized values,
         sole patches, and timing metadata. The contact-gp-dynamics strategy retains fitted
-        velocities, accelerations, torques and wrenches. Every original
-        sample is optimized. Preparation, configuration initialization,
+        velocities, accelerations, torques and wrenches. Only the selected
+        single- and double-support slices are optimized. Preparation, initialization,
         measurement assembly, and native solve are timed separately; array
         extraction and serialization are excluded. Total initialization/solve
         time starts after clip preparation and includes measurement assembly.
@@ -126,7 +126,7 @@ def solve_walk(
         time.perf_counter() - measurement_started
     )
 
-    # Restore feasibility, then jointly optimize on the same 50 Hz slices.
+    # Restore feasibility, then jointly optimize the same sparse support knots.
     started = time.perf_counter()
     result = solve_coupled_problem(
         walk, initial, measurements, patches, armature, options
@@ -145,7 +145,8 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
     return {
         **solution.metadata,
         "samples": solution.walk.count,
-        "sampleRateHz": 50,
+        "sampleRateHz": None,
+        "sourceSampleRateHz": 50,
         "initialization": (
             "Measured-joint FK at a fixed upright pelvis; gravity-support forces; "
             "zero velocities, accelerations, joint torques and bias"

@@ -66,7 +66,7 @@ def configure_solve(
 
     Translation and yaw select coordinates at the first retained support slice.
     Roll and pitch remain free; the initializer supplies only their starting
-    guess. Earlier dense configurations remain free in the coupled solve.
+    guess. Every retained configuration remains free in the coupled solve.
     """
     options = solver_settings()
     options.update(

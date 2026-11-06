@@ -92,13 +92,13 @@ def initialization_sampling(
     selected = np.asarray(report["initializationSlices"], dtype=int)
     support_counts = arrays["contact"][selected].sum(axis=1)
     return {
-        "method": "contactInitializationSlices",
+        **report["optimizationSampling"],
         "selectedSlices": len(selected),
         "singleSupportSlices": int(np.sum(support_counts == 1)),
         "doubleSupportSlices": int(np.sum(support_counts == 2)),
         "maxSliceIntervalMs": 200,
         "contactBuffer": 1,
-        "outputSampleRateHz": 50,
+        "outputSampleRateHz": None,
     }
 
 
@@ -232,7 +232,7 @@ def export(
         raise ValueError("Update factor counts to match the example error groups")
     record = {
         "schemaVersion": 1,
-        "title": "SSIO G1 mid-clip turns · full 50 Hz kinodynamics",
+        "title": "SSIO G1 mid-clip turns · support-slice kinodynamics",
         "times": arrays["times"].tolist(),
         "bodyNames": [model.body(i).name for i in range(model.nbody)],
         "rootBody": root,
@@ -292,7 +292,9 @@ def export(
             ],
         },
         "settings": {
-            "sampleRateHz": 50,
+            "sampleRateHz": None,
+            "sourceSampleRateHz": 50,
+            "sampling": "single- and double-support knots",
             "retractionThreads": report.get("retractionThreads", 1),
             "kinematicsEstimated": True,
             "accelerationsEstimated": True,
@@ -349,7 +351,7 @@ def export(
     text = notice.read_text().split("Changes:")[0]
     notice.write_text(
         text
-        + "Changes: selected the 78–98 s mid-clip turns at the original 50 Hz. Used saved max-product support labels derived from SuperOdom LiDAR-inertial foot motion and measured joint velocities. Initial state: "
+        + "Changes: selected sparse single- and double-support slices from the 78–98 s mid-clip turns, preserving original timestamps and stance identities. Used saved max-product support labels derived from SuperOdom LiDAR-inertial foot motion and measured joint velocities. Initial state: "
         + report["initialization"]
         + ". Jointly estimated configurations, velocities, accelerations, sole/reaction wrenches and joint torques with native CMC-Opt and trapezoidal collocation. Later reference poses are evaluation data. Forces and torques are model-based estimates. The browser replays stored results.\n"
     )
