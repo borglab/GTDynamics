@@ -112,7 +112,7 @@ source fingerprints are included in the replay provenance.
 The latest comparison uses GTSAM `e0fb6ad4f`, feasible steps, and projected-gradient
 initialization disabled. Only `contact-gp-dynamics` was run, on the same 78–98 s
 clip with 171 support slices and five outer iterations. Both modes use identical
-Release binaries, system TBB 2021.11 with CPUs 0–7, eight retraction workers,
+Release binaries, TBB with CPUs 0–7, eight retraction workers,
 single-thread BLAS/OpenMP, explicit LM damping and zero extra QP regularization.
 Three fresh processes per ordering ran sequentially in automatic/temporal,
 temporal/automatic, automatic/temporal order, after all builds and tests.
@@ -139,6 +139,11 @@ below reached objective 9,000.94 after five iterations, whereas these runs reach
 matched measurement of the initializer alone. The ordering comparison above
 has identical settings apart from `qpUseTemporalOrdering`.
 
+The recorded Python processes loaded Conda's `libtbb.so.12.13` and
+`libtbbmalloc.so.2.13`, despite the build selecting system TBB 2021.11. Their
+actual paths and hashes match across both orderings. The master audit below
+pins system TBB explicitly, avoiding this loader-dependent difference.
+
 Raw reports, arrays, actual ordered keys, library/model hashes, validation and
 `comparison.json` are local in `build/temporal-qp-comparison/`. Reproduce the two
 modes using `--qp-step feasible --no-projected-gradient-initialization` and
@@ -151,8 +156,8 @@ GTSAM options, feasible-step, QP, LP and QP-problem suites also pass.
 Earlier matched local runs on 2026-11-05 link GTSAM `e7f6b7774` with incremental sparse
 elimination and projected-gradient initialization. Each run uses the same
 78–98 s clip, 171 retained support slices, five outer iterations, LM settings,
-and zero additional QP regularization. Both libraries are Release builds with
-system TBB 2021.11, affinity CPUs 0–7, eight retraction workers, and single-thread
+and zero additional QP regularization. Both libraries are Release TBB builds with
+affinity CPUs 0–7, eight retraction workers, and single-thread
 BLAS/OpenMP. Runs use fresh processes sequentially, without concurrent builds.
 
 | Initialization | Full QP optimization (s) | Feasible-step optimization (s) | Full QP objective | Feasible-step objective |
@@ -182,6 +187,69 @@ Raw summaries, arrays, logs, matching library/model hashes and validation report
 are local in `build/new-qp-comparison/`; `comparison.json` checks that each pair
 differs only in `qpUseFeasibleStep`. These runs do not update the saved browser
 recording. The historical dense PR 472 timings below use different sampling.
+
+## Matched audit against master
+
+The 28.01 s optimization / 39.64 s total quoted from master used 1,000 optimized
+samples. The current 8.83 s run uses 171 support knots, so those numbers do not
+measure a regression on the same problem. A new audit builds master's native
+solver from `ad64754e` (tree-identical to merged master `c88f3699`) in an isolated
+build directory, using the current Python support-slice preparation. Both native
+versions use the same GTSAM `e0fb6ad4f` binary, Clang Release flags, 171 slices,
+five outer iterations, temporal ordering, measurements and damping. This audit
+explicitly preloads system `libtbb.so.12.11` / `libtbbmalloc.so.2.11`, pins CPUs
+0–7, uses eight retraction workers, and limits BLAS/OpenMP to one thread.
+
+| Solver / diagnostic | Optimization (s) | Final objective |
+| --- | ---: | ---: |
+| Unchanged master algorithm on sparse inputs | 8.6581 | 8,980.796615 |
+| Current generic QP, no projected initialization | 8.8808 | 9,272.533830 |
+| Master with diagnostic all-tight face selection, sequential Cholesky | 5.1008 | 9,272.533830 |
+| Same master diagnostic, sequential QR | 6.6905 | 9,272.533830 |
+| Generic QP diagnostic, sequential QR | 8.6463 | 9,272.533830 |
+| Generic QP diagnostic, sequential mixed QR/Cholesky | 8.2031 | 9,272.533830 |
+
+These are single bounded runs, checked by a separate timing-probe pass. All
+return feasible trajectories and pass independent MuJoCo dynamics and sole
+checks. For the all-tight Cholesky and current generic paths, saved trajectories
+agree to numerical precision; the original master row selects a different face
+and consequently produces a lower objective. The diagnostics alter only face
+selection or elimination in temporary copies/interposition libraries. They do
+not restore a working-face implementation or change GTSAM's production backend.
+
+The identical-face comparison locates the remaining overhead. In the instrumented
+pass, master takes 5.0943 s and the generic path 8.8721 s. Total linear-step work
+is 0.5734 s for master's local-face reduction/recovery plus unconstrained
+Cholesky, versus 3.4416 s inside GTSAM's feasible-step calls (3.3446 s in sparse
+subproblems). Six state constructions take 0.3416 s on master versus 1.2225 s
+with global QP assembly. These two differences account for approximately 3.75 s
+of the 3.78 s total gap.
+
+Passing an ordering preserves variable order, but does not reproduce master's
+linear algebra. Master removes active-face directions locally and then uses
+sequential unconstrained Cholesky. The generic path retains exact active rows
+and performs constrained QR through a multifrontal/Bayes-tree solve. Switching
+that generic solve to sequential QR saves only about 0.23 s here; ordering or
+sequential elimination alone does not recover the old cost. The next backend
+optimization target is efficient exact-constraint elimination / an unconstrained
+factorization after reduction inside GTSAM, plus reduced QP assembly overhead.
+The diagnostic mixed QR/Cholesky result is not a robustness validation for other
+problems and has not been enabled in production.
+
+The step policy also differs. Master projects the gradient to select its first
+face, then adds all violated blocks together until feasible; optional full QP
+refinement is disabled. The current no-projection method retains all tight rows
+on its initial face and returns feasible descent without multiplier-based row
+release. Having a feasible-step API and matching ordering therefore does not
+make the two algorithms equivalent. Matching master quality needs an appropriate
+face-selection/update policy as well as a faster linear subproblem.
+
+Raw pinned runs, excluded preliminary runs, timing probes, diagnostic source
+copies, library hashes, arrays and validation are local in
+`build/master-qp-audit/`. `comparison.json` contains only the pinned successful
+runs and verifies matching input objective, sample count, GTSAM and TBB hashes.
+
+## Historical dense runs
 
 The following historical PR 472 dense runs (2026-11-05, Release build, eight
 retraction workers) used
