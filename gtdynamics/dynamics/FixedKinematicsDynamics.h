@@ -86,17 +86,16 @@ struct Options {
   gtsam::Vector torqueLimits;
 };
 
-/** Native CMC-Opt result. Keys are slice-major: contactKeys follows contacts,
- * torqueKeys follows jointIds (ascending). values contains inferred link twist
- * derivatives, joint accelerations, wrenches, and torques. Input Values are
- * never altered. baseResiduals contains one
+/** Owning mechanics and solver diagnostics, without a state Values map.
+ * Keys are slice-major: contactKeys follows contacts and torqueKeys follows
+ * jointIds (ascending). baseResiduals contains one
  * unwhitened [moment; force] Newton-Euler residual per slice in root COM axes.
  * It is zero to numerical precision in strict mode.
- * Error fields are half the sum of squared whitened residuals. Timing fields
- * are seconds; dimension fields count scalar coordinates or constraint rows.
+ * Error fields are half the sum of squared whitened residuals. A linear seed
+ * reports only acceleration-prior costs; effort and temporal costs are absent.
+ * Timing fields are seconds; dimensions count scalar coordinates or rows.
  */
-struct Result {
-  gtsam::Values values;
+struct Diagnostics {
   std::vector<gtsam::Key> contactKeys;
   std::vector<gtsam::Key> torqueKeys;
   std::vector<size_t> jointIds;
@@ -116,9 +115,19 @@ struct Result {
   double maxMomentResidual = 0.0;
   /// Final negative objective gradient projected into the feasible tangent
   /// cone, measured in independent acceleration and sole-wrench coordinates.
+  /// Infinity for a linear seed, whose stationarity is not evaluated.
   double projectedGradientNorm = 0.0;
   double assemblySeconds = 0.0;
+  /// Complete equality-anchor construction, solve and value assembly.
   double initializationSeconds = 0.0;
+  /// Assembly of the constrained Gaussian system, including linearization.
+  double linearizationSeconds = 0.0;
+  /// Gaussian QR optimization only, excluding system and Values assembly.
+  double linearSolveSeconds = 0.0;
+  /// Reconstruction of typed Values from the Gaussian solution.
+  double valueAssemblySeconds = 0.0;
+  /// Physical constraint checks, root residuals and applicable prior errors.
+  double validationSeconds = 0.0;
   double manifoldSeconds = 0.0;
   double optimizationSeconds = 0.0;
   size_t iterations = 0;
@@ -136,7 +145,35 @@ struct Result {
   /// stopping.
   bool stationary = false;
 };
+
+/** Owning numerical result. values contains link twist derivatives, joint
+ * accelerations, sole/reaction wrenches and torques. Input Values never change.
+ * Separate diagnostics allow composed pipelines to keep one combined map.
+ */
+struct Result : Diagnostics {
+  gtsam::Values values;
+};
 }  // namespace fixed_dynamics
+
+/** Construct the affine equality-feasible dynamics seed used by the full
+ * solver. Input frames, keys and units match solveFixedKinematicsDynamics.
+ * Stance sole wrenches are fixed to equal positive normal shares of mass *
+ * |gravity|; swing wrenches are zero. One constrained Gaussian QR solve
+ * minimizes only acceleration-prior error subject to those loads and exact
+ * mechanics. Effort/wrench/rate objectives are not constructed for the seed.
+ * There is no manifold construction, cone projection or iterative dynamics
+ * optimization. Throws for softDynamics or infeasible mechanics/wrench/optional
+ * torque limits; it does not repair a seed that fails those checks. Results
+ * have zero optimizer iterations/projections and stationary=false. Assembly,
+ * Gaussian solve and residual checking are distinct from subsequent coupled
+ * optimization.
+ */
+fixed_dynamics::Result fixedKinematicsDynamicsSeed(
+    const Robot& robot, const Trajectory& trajectory,
+    const std::vector<Slice>& slices, const std::vector<double>& times,
+    const gtsam::Values& fixedValues, const gtsam::Values& accelerationPriors,
+    const std::vector<fixed_dynamics::Contact>& contacts,
+    const gtsam::Vector& armature, const fixed_dynamics::Options& options);
 
 /** Infer accelerations, sole wrenches, and actuated joint torques over a
  * trajectory using IELMOptimizer, EliminationBasis, and ReducedALRetractor.

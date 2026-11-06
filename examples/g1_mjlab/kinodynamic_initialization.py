@@ -6,44 +6,31 @@
 ## @file kinodynamic_initialization.py
 # @brief Construct FK or contact-pose starting configurations for kinodynamics.
 # @author GTDynamics contributors
-"""Configuration seeds; native assembly supplies zero motion and support forces."""
+"""Native kinematic and dynamics strategies for the coupled G1 solve."""
 
 from __future__ import annotations
 
 import gtsam
 import gtdynamics as gtd
 import numpy as np
+from numpy.typing import NDArray
 
 from mujoco_io import KinematicRecording
 
 
 def initialize_fk(walk: KinematicRecording) -> gtsam.Values:
-    """Run native FK with a constant root COM pose and measured joint angles.
-
-    The caller supplies the upright root anchor, including the fixed body-to-COM
-    transform. Each slice has zero root twist and joint rates. No pose fitting,
-    temporal interpolation, or inverse kinematics is performed.
-    """
-    result = gtsam.Values()
-    for k in range(walk.count):
-        known = gtsam.Values()
-        known.insert(gtd.PoseKey(walk.root.id(), k), walk.anchor)
-        for joint in walk.robot.joints():
-            key = gtd.JointAngleKey(joint.id(), k)
-            known.insert(key, walk.measured.atDouble(key))
-            known.insert(gtd.JointVelKey(joint.id(), k), 0.0)
-        fk: gtsam.Values = walk.robot.forwardKinematics(known, k, walk.root.name())
-        result.insert(fk)
-    return result
+    """Use the native kinematic-only FK strategy; motion starts at zero."""
+    return gtd.ForwardKinematicsInitializer(robot=walk.robot).run(
+        rootLinkName=walk.root.name(),
+        initialPose=walk.anchor,
+        measuredJoints=walk.measured,
+        slices=[gtd.Slice(k) for k in range(walk.count)],
+    )
 
 
-def initialize_contact(
-    walk: KinematicRecording, selected_slices: list[int]
-) -> tuple[gtsam.Values, int]:
-    """Retain the original contact-pose optimizer and its upright/motion/height priors."""
-    settings: gtd.pose_contact_init.Options = gtd.pose_contact_init.Options()
-    settings.selectedSlices = [gtd.Slice(k) for k in selected_slices]
-    settings.interpolateOutput = True
+def contact_options() -> gtd.pose_contact_init.Options:
+    """Use the established contact-pose noise and upright/motion/height priors."""
+    settings = gtd.pose_contact_init.Options()
     settings.recordHistory = False
     settings.initializeUpright = True
     contact_rotation_sigma_degrees = 90.0
@@ -59,27 +46,83 @@ def initialize_contact(
     settings.addNormalFactors = False
     settings.groundHeight = 0.0
     settings.groundSigma = 0.1
-    diagnostics: gtd.pose_contact_init.Result = gtd.pose_contact_init.Result()
-    initial: gtsam.Values = gtd.Initializer().InitializeSolutionContactPoses(
-        walk.robot,
-        walk.root.name(),
-        walk.anchor,
-        walk.measured,
-        walk.trajectory,
-        walk.dt,
-        settings,
-        diagnostics,
-        0,
-    )
-    return initial, diagnostics.iterations
+    return settings
 
 
-def initialize_configurations(
-    walk: KinematicRecording, selected_slices: list[int], strategy: str
-) -> tuple[gtsam.Values, int]:
-    """Return configuration values and optimizer iterations for FK or contact init."""
+def initialize_walk(
+    walk: KinematicRecording,
+    selected_slices: list[int],
+    strategy: str,
+    contacts: list[gtd.fixed_dynamics.Contact],
+    armature: NDArray[np.float64],
+) -> tuple[gtsam.Values, dict[str, object]]:
+    """Run native immutable initialization and return explicit stage diagnostics.
+
+    The contact mode uses the original contact-pose optimizer and zero
+    motion/forces. The default contact-gp-dynamics fits GP velocities and then
+    constructs the affine equality-feasible dynamics seed. Positive normal
+    support loads and exact mechanics determine accelerations, wrenches and
+    torques in one Gaussian solve. No dynamics manifold or iterative optimizer
+    is constructed. The later coupled solve optimizes effort/rate costs. The GP
+    has no external world-velocity observations. FK remains the zero-motion
+    alternative, with gravity support supplied by coupled native assembly.
+    """
     if strategy == "fk":
-        return initialize_fk(walk), 0
+        return initialize_fk(walk), {"configurationInitializationIterations": 0}
     if strategy == "contact":
-        return initialize_contact(walk, selected_slices)
-    raise ValueError("initialization must be 'fk' or 'contact'")
+        diagnostics = gtd.pose_contact_init.Result()
+        values: gtsam.Values = gtd.PoseContactInitializer(
+            robot=walk.robot, options=contact_options(), contactBuffer=0
+        ).run(
+            rootLinkName=walk.root.name(),
+            initialPose=walk.anchor,
+            measuredJoints=walk.measured,
+            trajectory=walk.trajectory,
+            dt=walk.dt,
+            diagnostics=diagnostics,
+            selectedSlices=[gtd.Slice(k) for k in selected_slices],
+        )
+        return values, {"configurationInitializationIterations": diagnostics.iterations}
+    if strategy != "contact-gp-dynamics":
+        raise ValueError(
+            "initialization must be 'fk', 'contact', or 'contact-gp-dynamics'"
+        )
+    options = gtd.KinodynamicInitializationOptions()
+    kinematics = gtd.ContactInterpolationOptions()
+    kinematics.contact = contact_options()
+    options.kinematics = kinematics
+    result: gtd.KinodynamicInitializationResult = gtd.KinodynamicInitializer(
+        robot=walk.robot, options=options
+    ).run(
+        rootLinkName=walk.root.name(),
+        initialPose=walk.anchor,
+        measuredJoints=walk.measured,
+        trajectory=walk.trajectory,
+        slices=[gtd.Slice(k) for k in range(walk.count)],
+        times=walk.times.tolist(),
+        dt=walk.dt,
+        contacts=contacts,
+        armature=armature,
+        selectedSlices=[gtd.Slice(k) for k in selected_slices],
+    )
+    return result.values, {
+        "configurationInitializationIterations": result.contact.iterations,
+        "contactInitializationSeconds": result.contactSeconds,
+        "gpInitializationSeconds": result.interpolationSeconds,
+        "dynamicsInitializationSeconds": result.dynamicsSeconds,
+        "dynamicsInitializationIterations": result.dynamics.iterations,
+        "dynamicsInitializationAssemblySeconds": result.dynamics.assemblySeconds,
+        "dynamicsInitializationAnchorSeconds": result.dynamics.initializationSeconds,
+        "dynamicsInitializationLinearizationSeconds": result.dynamics.linearizationSeconds,
+        "dynamicsInitializationLinearSolveSeconds": result.dynamics.linearSolveSeconds,
+        "dynamicsInitializationValueAssemblySeconds": result.dynamics.valueAssemblySeconds,
+        "dynamicsInitializationValidationSeconds": result.dynamics.validationSeconds,
+        "dynamicsInitializationManifoldSeconds": result.dynamics.manifoldSeconds,
+        "dynamicsInitializationOptimizationSeconds": result.dynamics.optimizationSeconds,
+        "dynamicsInitializationObjectiveInitial": result.dynamics.objectiveInitial,
+        "dynamicsInitializationObjectiveFinal": result.dynamics.objectiveFinal,
+        "dynamicsInitializationEqualityL2": result.dynamics.equalityL2,
+        "dynamicsInitializationInequalityL2": result.dynamics.inequalityL2,
+        "dynamicsInitializationFeasible": result.dynamics.feasible,
+        "nativePipelineSeconds": result.totalSeconds,
+    }

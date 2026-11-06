@@ -12,10 +12,11 @@
  * @author: Frank Dellaert, Gerry Chen, Frank Dellaert
  */
 
-#include <gtsam/base/VectorConstants.h>
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Trajectory.h>
+#include <gtsam/base/VectorConstants.h>
 #include <gtsam/geometry/Point3.h>
 
 #include <algorithm>
@@ -56,34 +57,31 @@ NonlinearFactorGraph Trajectory::multiPhaseFactorGraph(
   // Graphs for transition between phases + their initial values.
   auto transition_graphs =
       getTransitionGraphs(robot, graph_builder, mu, ground_plane_height);
-  return graph_builder.multiPhaseTrajectoryFG(robot, phaseDurations(),
-                                              transition_graphs, collocation,
-                                              phaseContactPoints(), mu,
-                                              ground_plane_height);
+  return graph_builder.multiPhaseTrajectoryFG(
+      robot, phaseDurations(), transition_graphs, collocation,
+      phaseContactPoints(), mu, ground_plane_height);
 }
 
 vector<Values> Trajectory::transitionPhaseInitialValues(
-    const Robot &robot, const Initializer &initializer,
-    double gaussian_noise) const {
+    const Robot &robot, const ZeroSliceInitializer &initializer) const {
   vector<PointOnLinks> trans_cps = transitionContactPoints();
   vector<Values> transition_graph_init;
   vector<int> final_timesteps = finalTimeSteps();
   for (int p = 1; p < numPhases(); p++) {
-    transition_graph_init.push_back(initializer.ZeroValues(
-        robot, final_timesteps[p - 1], gaussian_noise, trans_cps[p - 1]));
+    transition_graph_init.push_back(
+        initializer.run(final_timesteps[p - 1], trans_cps[p - 1]));
   }
   return transition_graph_init;
 }
 
-Values Trajectory::multiPhaseInitialValues(const Robot &robot,
-                                           const Initializer &initializer,
-                                           double gaussian_noise,
-                                           double dt) const {
+Values Trajectory::multiPhaseInitialValues(
+    const Robot &robot, const ZeroSliceInitializer &initializer,
+    double dt) const {
   vector<Values> transition_graph_init =
-      transitionPhaseInitialValues(robot, initializer, gaussian_noise);
-  return initializer.MultiPhaseZeroValuesTrajectory(
-      robot, phaseDurations(), transition_graph_init, dt, gaussian_noise,
-      phaseContactPoints());
+      transitionPhaseInitialValues(robot, initializer);
+  return gtdynamics::MultiPhaseZeroInitializer(robot).run(
+      phaseDurations(), transition_graph_init, dt, phaseContactPoints(),
+      &initializer);
 }
 
 NonlinearFactorGraph Trajectory::contactPointObjectives(

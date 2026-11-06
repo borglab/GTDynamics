@@ -10,9 +10,10 @@
 """Solve the SSIO mid-clip turns jointly at 50 Hz using native CMC-Opt.
 
 The saved Contact Labels max-product schedule supplies stance phases. The default
-uses the contact-pose initializer and zero dynamic variables. Use --initialization
-fk for measured-joint FK at a fixed upright pelvis with gravity-support forces.
-Both start velocities, accelerations, torques and IMU bias at zero. Native
+runs the native contact -> GP -> dynamics pipeline. Use --initialization contact
+for contact-pose fitting with zero motion and forces, or fk for measured-joint
+FK at a fixed upright pelvis with gravity-support forces.
+The shared IMU bias starts at zero. Native
 feasibility restoration is timed separately for either seed.
 
 Run: python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
@@ -36,7 +37,7 @@ from numpy.typing import NDArray
 
 from contact_phases import contact_slices
 from imu_aiding import BIAS_KEY
-from kinodynamic_initialization import initialize_configurations
+from kinodynamic_initialization import initialize_walk
 from kinodynamic_preparation import prepare_walk
 from kinodynamic_problem import (
     dynamics_model,
@@ -68,7 +69,7 @@ def solve_walk(
     end: float = 98.0,
     max_iterations: int = 5,
     retraction_threads: int = 8,
-    initialization: str = "contact",
+    initialization: str = "contact-gp-dynamics",
 ) -> KinodynamicSolution:
     """Initialize and jointly optimize G1 poses, motion, and forces at 50 Hz.
 
@@ -80,12 +81,13 @@ def solve_walk(
         max_iterations: Maximum coupled CMC-Opt iterations after restoration.
         retraction_threads: Number of workers for component retractions.
         initialization: "fk" uses fixed-pelvis FK and gravity-support forces;
-            "contact" fits sole-pose landmarks and starts forces at zero.
+            "contact" fits contact poses with zero motion and forces;
+            "contact-gp-dynamics" adds GP interpolation and a linear dynamics seed (default).
 
     Returns:
         The prepared clip, initial COM-to-world poses, native optimized values,
-        sole patches, and timing metadata. Both strategies start velocities,
-        accelerations, torques, and shared IMU bias at zero. Every original
+        sole patches, and timing metadata. The contact-gp-dynamics strategy retains fitted
+        velocities, accelerations, torques and wrenches. Every original
         sample is optimized. Preparation, configuration initialization,
         measurement assembly, and native solve are timed separately; array
         extraction and serialization are excluded. Total initialization/solve
@@ -96,21 +98,21 @@ def solve_walk(
     walk, metadata = prepare_walk(directory, labels_path, start, end, initialization)
     metadata["preparationSeconds"] = time.perf_counter() - prepared
 
-    # Construct configurations; native assembly adds motion and force variables.
+    # Define physical inputs, then run the complete native initialization.
+    patches, armature = dynamics_model(walk)
     initialization_started = time.perf_counter()
-    initial, iterations = initialize_configurations(
-        walk, metadata["initializationSlices"], initialization
+    initial, initialization_metadata = initialize_walk(
+        walk, metadata["initializationSlices"], initialization, patches, armature
     )
     metadata["configurationInitializationSeconds"] = (
         time.perf_counter() - initialization_started
     )
-    metadata["configurationInitializationIterations"] = iterations
+    metadata.update(initialization_metadata)
     metadata["initializationStrategy"] = initialization
 
     # Add observations, shared stance landmarks, and canonical contact patches.
     measurement_started = time.perf_counter()
     initial, measurements, imu_metadata = prepare_measurements(walk, directory, initial)
-    patches, armature = dynamics_model(walk)
     gauge_slice = metadata["initializationSlices"][0]
     options, solver_metadata = configure_solve(
         initialization,
@@ -148,7 +150,11 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
             "Measured-joint FK at a fixed upright pelvis; gravity-support forces; "
             "zero velocities, accelerations, joint torques and bias"
             if solution.metadata["initializationStrategy"] == "fk"
-            else "Contact poses/joint angles; zero v/a/wrenches/torques/bias"
+            else (
+                "Contact poses/joint angles; zero v/a/wrenches/torques/bias"
+                if solution.metadata["initializationStrategy"] == "contact"
+                else "Contact poses, GP q/v, affine linear dynamics seed; zero IMU bias"
+            )
         ),
         "estimatedBias": result["values"].atConstantBias(BIAS_KEY).vector().tolist(),
         **{
@@ -219,7 +225,7 @@ def solution_arrays(solution: KinodynamicSolution) -> dict[str, NDArray[Any]]:
         ),
         "initial_joint_angles": np.array(
             [
-                [walk.measured.atDouble(gtd.JointAngleKey(j, k)) for j in joints]
+                [gtd.JointAngle(solution.initial, j, k) for j in joints]
                 for k in range(walk.count)
             ]
         ),
@@ -280,6 +286,24 @@ def solution_arrays(solution: KinodynamicSolution) -> dict[str, NDArray[Any]]:
         "wrenches": np.array(
             [result["values"].atVector(key) for key in result["contactKeys"]]
         ).reshape(walk.count, 2, 6),
+        "initial_joint_velocities": np.array(
+            [
+                [gtd.JointVel(result["initialValues"], j, k) for j in joints]
+                for k in range(walk.count)
+            ]
+        ),
+        "initial_body_twists": np.array(
+            [
+                [
+                    gtd.Twist(result["initialValues"], link.id(), k)
+                    for link in walk.robot.links()
+                ]
+                for k in range(walk.count)
+            ]
+        ),
+        "initial_joint_torques": np.array(
+            [result["initialValues"].atDouble(key) for key in result["torqueKeys"]]
+        ).reshape(walk.count, len(joints)),
         "joint_torques": np.array(
             [result["values"].atDouble(key) for key in result["torqueKeys"]]
         ).reshape(walk.count, len(joints)),
@@ -301,9 +325,9 @@ def argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--initialization",
-        choices=("fk", "contact"),
-        default="contact",
-        help="contact (default): contact-pose optimizer and zero dynamics; fk: fixed-pelvis measured-joint FK and gravity support",
+        choices=("fk", "contact", "contact-gp-dynamics"),
+        default="contact-gp-dynamics",
+        help="contact-gp-dynamics (default): contact -> GP -> linear dynamics seed; contact: contact poses and zero motion/forces; fk: fixed-pelvis FK with gravity support",
     )
     parser.add_argument("--start", type=float, default=78.0)
     parser.add_argument("--end", type=float, default=98.0)

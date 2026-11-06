@@ -9,7 +9,8 @@
  * @author GTDynamics contributors
  */
 #pragma once
-#include <gtdynamics/utils/ContactInitializer.h>
+#include <gtdynamics/kinematics/ContactInitializer.h>
+#include <gtdynamics/kinematics/KinematicInitializer.h>
 #include <gtdynamics/utils/PoseOnLink.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -56,9 +57,6 @@ struct Options {
   bool recordHistory = true;
   /// Maximum automatic sampling interval in seconds, bounded below by dt.
   double maxSliceInterval = 0.2;
-  /// Explicit ordered source slices; empty calls contactInitializationSlices.
-  /// Requires contactBuffer=0; selection has already applied any phase buffer.
-  std::vector<Slice> selectedSlices;
   /// False returns FK Values ONLY at selected slices, without interpolation.
   bool interpolateOutput = true;
   /// Starting values only: propagate relative yaw and contact translation,
@@ -101,8 +99,9 @@ struct Observation {
   gtsam::Pose3 rootTcontact;
 };
 /** Sparse diagnostics; source indices/times are retained, never renumbered.
- * Dense interpolation performed by Initializer is excluded from these slices.
- * Objectives are twice GTSAM error; rotational RMS is reported separately. */
+ * Dense interpolation performed by PoseContactInitializer is excluded from
+ * these slices. Objectives are twice GTSAM error; rotational RMS is reported
+ * separately. */
 struct Result {
   std::vector<Slice> selectedSlices;
   std::vector<double> times;
@@ -126,4 +125,56 @@ struct Result {
   std::vector<Slice> slices() const { return selectedSlices; }
 };
 }  // namespace pose_contact_init
+
+class PoseContactInitializer {
+ public:
+  /** Bind the robot and copy tuning parameters. The model shares fixed
+   * Link/Joint topology, which must remain unchanged. Trajectory data is
+   * supplied separately to run(). */
+  explicit PoseContactInitializer(
+      const Robot& robot, const pose_contact_init::Options& options = {},
+      size_t contactBuffer = 0);
+
+  /** Initialize from FK contact poses and phase association. Use
+   * contactInitializationSlices with phase buffering; return selected indices
+   * in diagnostics. dt is the uniform source period; selected intervals may
+   * vary. Callers can supply explicit selectedSlices (with contactBuffer=0) and
+   * disable dense interpolation via options.interpolateOutput=false. Stance IDs
+   * always come from the original complete trajectory, including unselected
+   * phases. An empty selectedSlices input uses the configured sampling policy;
+   * explicit slices must be ordered and require contactBuffer=0. Disconnected
+   * support requires explicit motion priors or is rejected. */
+  gtsam::Values run(const std::string& rootLinkName,
+                    const gtsam::Pose3& initialPose,
+                    const gtsam::Values& measuredJoints,
+                    const Trajectory& trajectory, double dt = 1.0,
+                    pose_contact_init::Result* diagnostics = nullptr,
+                    const std::vector<Slice>& selectedSlices = {}) const;
+
+ private:
+  const Robot robot_;
+  const pose_contact_init::Options options_;
+  const size_t contactBuffer_;
+};
+class PoseIKInitializer {
+ public:
+  /** Bind the robot and copy tuning parameters. The model shares fixed
+   * Link/Joint topology, which must remain unchanged. Trajectory data is
+   * supplied separately to run(). */
+  explicit PoseIKInitializer(const Robot& robot, size_t maxIterations = 10);
+
+  /** Per-slice IK using the same material contact frames as the contact
+   * initializer. rootGuesses follows trajectory slices and sets root priors;
+   * measured joint angles supply soft priors. Each stance target is frozen at
+   * its first FK observation. The callback receives global slice keys. */
+  gtsam::Values run(
+      const std::string& rootLinkName,
+      const std::vector<gtsam::Pose3>& rootGuesses,
+      const gtsam::Values& measuredJoints, const Trajectory& trajectory,
+      const InitializationIterationCallback& iterationCallback = nullptr) const;
+
+ private:
+  const Robot robot_;
+  const size_t maxIterations_;
+};
 }  // namespace gtdynamics

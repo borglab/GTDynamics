@@ -139,7 +139,6 @@ def main() -> None:
         ] = "Mean sole height at the first selected supported slice"
         runs = {}
         for name, between, ground, options in prior_configurations():
-            options.selectedSlices = selected
             options.interpolateOutput = False
             options.groundHeight = 0.0
             result, benchmark = record_run(
@@ -155,6 +154,7 @@ def main() -> None:
                 args.warmup,
                 options,
                 anchor,
+                selected_slices=selected,
             )
             run = package_run(
                 result,
@@ -182,15 +182,15 @@ def main() -> None:
             Path(__file__),
             APP / "scripts/export_native_recordings.py",
             REPO / "examples/g1_mjlab/contact_phases.py",
-            REPO / "gtdynamics/utils/PoseContactInitializer.cpp",
-            REPO / "gtdynamics/utils/PoseContactInitializer.h",
+            REPO / "gtdynamics/kinematics/PoseContactInitializer.cpp",
+            REPO / "gtdynamics/kinematics/PoseContactInitializer.h",
             REPO / "gtdynamics/utils/ContactInitializationFactors.h",
             REPO / "gtdynamics.i",
             labels_path,
         ]
         recording = {
             "schemaVersion": 3,
-            "solver": "Initializer.InitializeSolutionContactPoses",
+            "solver": "PoseContactInitializer.run",
             "recordedAtUtc": datetime.now(timezone.utc).isoformat(),
             "sequenceId": sequence_id,
             "defaultVariant": "between-ground-upright",

@@ -130,30 +130,30 @@ def initialize_contact_slices(
             raise ValueError("rotation_sigma_degrees must be finite and positive")
         settings.rotationSigma = float(np.deg2rad(rotation_sigma_degrees))
     settings.interpolateOutput = False
-    settings.selectedSlices = initialization_slices(
+    selected_slices = initialization_slices(
         source.trajectory,
         source.dt,
         max_slice_interval_ms,
         contact_buffer,
         long_phase_seconds,
     )
-    if not settings.selectedSlices:
+    if not selected_slices:
         raise ValueError("No supported phases available for initialization")
     diagnostics = (
         contact_diagnostics
         if contact_diagnostics is not None
         else gtd.pose_contact_init.Result()
     )
-    values: gtsam.Values = gtd.Initializer().InitializeSolutionContactPoses(
-        source.robot,
-        source.root.name(),
-        source.anchor,
-        source.measured,
-        source.trajectory,
-        source.dt,
-        settings,
-        diagnostics,
-        0,
+    values: gtsam.Values = gtd.PoseContactInitializer(
+        robot=source.robot, options=settings, contactBuffer=0
+    ).run(
+        rootLinkName=source.root.name(),
+        initialPose=source.anchor,
+        measuredJoints=source.measured,
+        trajectory=source.trajectory,
+        dt=source.dt,
+        diagnostics=diagnostics,
+        selectedSlices=selected_slices,
     )
     indices = np.array([s.k for s in diagnostics.slices()], dtype=np.int64)
     if len(indices) < 2:
@@ -256,7 +256,7 @@ def initialize(
         raise ValueError(
             "Use the seed returned by initialize_contact_slices for irregular slices"
         )
-    initializer = gtd.Initializer()
+
     if method == "contact":
         options = (
             contact_options
@@ -269,29 +269,29 @@ def initialize(
             if contact_diagnostics is not None
             else gtd.pose_contact_init.Result()
         )
-        values: gtsam.Values = initializer.InitializeSolutionContactPoses(
-            walk.robot,
-            walk.root.name(),
-            walk.anchor,
-            walk.measured,
-            walk.trajectory,
-            walk.dt,
-            options,
-            diagnostics,
+        values: gtsam.Values = gtd.PoseContactInitializer(
+            robot=walk.robot, options=options
+        ).run(
+            rootLinkName=walk.root.name(),
+            initialPose=walk.anchor,
+            measuredJoints=walk.measured,
+            trajectory=walk.trajectory,
+            dt=walk.dt,
+            diagnostics=diagnostics,
         )
         info = contact_initialization_info(options, diagnostics)
         return seed_contact_landmarks(walk, values).extract(keys), info
     if method != "ik":
         raise ValueError(f"Unknown initialization: {method}")
     root_guesses: list[gtsam.Pose3] = [nominal_root(walk, k) for k in range(walk.count)]
-    values: gtsam.Values = initializer.InitializeSolutionPoseIK(
-        walk.robot,
-        walk.root.name(),
-        root_guesses,
-        walk.measured,
-        walk.trajectory,
-        10,
-        ik_iteration,
+    values: gtsam.Values = gtd.PoseIKInitializer(
+        robot=walk.robot, maxIterations=10
+    ).run(
+        rootLinkName=walk.root.name(),
+        rootGuesses=root_guesses,
+        measuredJoints=walk.measured,
+        trajectory=walk.trajectory,
+        iterationCallback=ik_iteration,
     )
     return seed_contact_landmarks(walk, values).extract(keys), {
         "slice_calls": walk.count

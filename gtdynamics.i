@@ -686,9 +686,8 @@ class Options {
   double balanceForceSigma;
   gtsam::Vector torqueLimits;
 };
-class Result {
-  Result();
-  gtsam::Values values;
+class Diagnostics {
+  Diagnostics();
   std::vector<gtsam::Key> contactKeys;
   std::vector<gtsam::Key> torqueKeys;
   std::vector<size_t> jointIds;
@@ -709,6 +708,10 @@ class Result {
   double projectedGradientNorm;
   double assemblySeconds;
   double initializationSeconds;
+  double linearizationSeconds;
+  double linearSolveSeconds;
+  double valueAssemblySeconds;
+  double validationSeconds;
   double manifoldSeconds;
   double optimizationSeconds;
   size_t iterations;
@@ -724,7 +727,18 @@ class Result {
   bool feasible;
   bool stationary;
 };
+class Result : gtdynamics::fixed_dynamics::Diagnostics {
+  Result();
+  gtsam::Values values;
+};
 } // namespace fixed_dynamics
+gtdynamics::fixed_dynamics::Result fixedKinematicsDynamicsSeed(
+    const gtdynamics::Robot& robot, const gtdynamics::Trajectory& trajectory,
+    const std::vector<gtdynamics::Slice>& slices, const std::vector<double>& times,
+    const gtsam::Values& fixedValues,
+    const gtsam::Values& accelerationPriors,
+    const std::vector<gtdynamics::fixed_dynamics::Contact>& contacts,
+    const gtsam::Vector& armature, const gtdynamics::fixed_dynamics::Options& options);
 gtdynamics::fixed_dynamics::Result solveFixedKinematicsDynamics(
     const gtdynamics::Robot& robot, const gtdynamics::Trajectory& trajectory,
     const std::vector<gtdynamics::Slice>& slices, const std::vector<double>& times,
@@ -1103,7 +1117,7 @@ gtsam::DiscreteFactorGraph contactVelocityFactors(
     const std::vector<double>& rightForwardVelocities,
     double velocityScale = 0.1, double minimumProbability = 0.02);
 
-#include <gtdynamics/utils/ContactInitializer.h>
+#include <gtdynamics/kinematics/ContactInitializer.h>
 namespace contact_init {
 #include <gtdynamics/utils/ContactInitializationFactors.h>
 class UprightFactor : gtsam::NoiseModelFactor {
@@ -1126,7 +1140,6 @@ class Options {
   std::optional<double> groundPriorHeight;
   double relativeErrorTolerance;
   double absoluteErrorTolerance;
-  std::optional<gtsam::Pose3> anchorPose;
 };
 class Timings {
   Timings();
@@ -1169,7 +1182,7 @@ class Result {
 };
 } // namespace contact_init
 
-#include <gtdynamics/utils/PoseContactInitializer.h>
+#include <gtdynamics/kinematics/PoseContactInitializer.h>
 std::vector<gtdynamics::Slice> contactInitializationSlices(
     const gtdynamics::Trajectory& trajectory, double dt,
     double maxSliceInterval = 0.2, size_t contactBuffer = 1,
@@ -1181,7 +1194,6 @@ class Options {
   double maxSliceInterval;
   size_t maxIterations;
   bool recordHistory;
-  std::vector<gtdynamics::Slice> selectedSlices;
   bool interpolateOutput;
   bool initializeUpright;
   bool addBetweenFactors;
@@ -1233,58 +1245,123 @@ class Result {
 };
 } // namespace pose_contact_init
 
-#include <gtdynamics/utils/Initializer.h>
-class Initializer {
-  Initializer();
-  gtsam::Values InitializeSolutionPoseIK(
-      const gtdynamics::Robot& robot, const string& rootLinkName,
-      const std::vector<gtsam::Pose3>& rootGuesses,
-      const gtsam::Values& measuredJoints, const gtdynamics::Trajectory& trajectory,
-      size_t maxIterations = 10,
-      const gtdynamics::InitializationIterationCallback& iterationCallback = nullptr) const;
-
-  gtsam::Values InitializeSolutionContactPoses(
-      const gtdynamics::Robot& robot, const string& rootLinkName,
-      const gtsam::Pose3& initialPose, const gtsam::Values& measuredJoints,
-      const gtdynamics::Trajectory& trajectory, double dt = 1.0,
-      const gtdynamics::pose_contact_init::Options& options = gtdynamics::pose_contact_init::Options(),
-      gtdynamics::pose_contact_init::Result @diagnostics = nullptr,
-      size_t contactBuffer = 0) const;
-
-
-  gtsam::Values InitializeSolutionInverseKinematics(
-      const gtdynamics::Robot& robot, const string& link_name,
-      const gtsam::Pose3& initial_pose, const std::vector<gtsam::Pose3>& target_poses,
-      const std::vector<double>& times, double dt, double gaussian_noise = 1e-8,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt,
-      const gtdynamics::InitializationIterationCallback& iteration_callback = nullptr);
-  gtsam::Values InitializeSolutionContacts(
-      const gtdynamics::Robot& robot, const string& root_link_name,
-      const gtsam::Pose3& initial_pose, const gtsam::Values& measured_joints,
-      const gtdynamics::Trajectory& trajectory, double dt = 1.0,
-      const gtdynamics::contact_init::Options& options = gtdynamics::contact_init::Options(),
-      gtdynamics::contact_init::Result @diagnostics = nullptr,
-      size_t contactBuffer = 0) const;
-
-  gtsam::Values ZeroValues(
-      const gtdynamics::Robot& robot, const int t,
-      double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt) const;
-
-  gtsam::Values ZeroValuesTrajectory(
-      const gtdynamics::Robot& robot, const int num_steps,
-      const int num_phases = -1, double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt);
+#include <gtdynamics/kinematics/KinematicInitializer.h>
+#include <gtdynamics/dynamics/ZeroInitializer.h>
+class ForwardKinematicsInitializer {
+  ForwardKinematicsInitializer(const gtdynamics::Robot& robot);
+  gtsam::Values run(const string& rootLinkName,
+                    const gtsam::Pose3& initialPose,
+                    const gtsam::Values& measuredJoints,
+                    const std::vector<gtdynamics::Slice>& slices) const;
 };
 
-#include <gtdynamics/utils/ChainInitializer.h>
-class ChainInitializer : gtdynamics::Initializer {
-  ChainInitializer();
+class ZeroSliceInitializer {
+  ZeroSliceInitializer(const gtdynamics::Robot& robot, double gaussianNoise = 0.0);
+  gtsam::Values run(
+        const int t,
+        const std::optional<gtdynamics::PointOnLinks>& contactPoints = std::nullopt) const;
+};
 
-  gtsam::Values ZeroValues(
-      const gtdynamics::Robot& robot, const int t,
-      double gaussian_noise = 0.0,
-      const std::optional<gtdynamics::PointOnLinks>& contact_points = std::nullopt) const;
+class PoseContactInitializer {
+  PoseContactInitializer(
+      const gtdynamics::Robot& robot, const gtdynamics::pose_contact_init::Options& options = gtdynamics::pose_contact_init::Options(),
+      size_t contactBuffer = 0);
+  gtsam::Values run(const string& rootLinkName,
+                    const gtsam::Pose3& initialPose,
+                    const gtsam::Values& measuredJoints,
+                    const gtdynamics::Trajectory& trajectory, double dt = 1.0,
+                    gtdynamics::pose_contact_init::Result @diagnostics = nullptr,
+                    const std::vector<gtdynamics::Slice>& selectedSlices = std::vector<gtdynamics::Slice>()) const;
+};
+
+class PoseIKInitializer {
+  PoseIKInitializer(const gtdynamics::Robot& robot, size_t maxIterations = 10);
+  gtsam::Values run(
+      const string& rootLinkName,
+      const std::vector<gtsam::Pose3>& rootGuesses,
+      const gtsam::Values& measuredJoints, const gtdynamics::Trajectory& trajectory,
+      const gtdynamics::InitializationIterationCallback& iterationCallback = nullptr) const;
+};
+
+class InterpolationInitializer {
+  InterpolationInitializer(const gtdynamics::Robot& robot,
+                                    double gaussianNoise = 0.0);
+  gtsam::Values run(
+      const string& linkName, const gtsam::Pose3& initialPose,
+      const gtsam::Pose3& finalPose, double startTime, double endTime,
+      double dt, const std::optional<gtdynamics::PointOnLinks>& contactPoints = std::nullopt) const;
+};
+
+class MultiPhaseInterpolationInitializer {
+  MultiPhaseInterpolationInitializer(const gtdynamics::Robot& robot,
+                                              double gaussianNoise = 0.0);
+  gtsam::Values run(
+      const string& linkName, const gtsam::Pose3& initialPose,
+      const std::vector<gtsam::Pose3>& targetPoses,
+      const std::vector<double>& times, double dt,
+      const std::optional<gtdynamics::PointOnLinks>& contactPoints = std::nullopt) const;
+};
+
+class InverseKinematicsInitializer {
+  InverseKinematicsInitializer(const gtdynamics::Robot& robot,
+                                        double gaussianNoise = 1e-8);
+  gtsam::Values run(
+      const string& linkName, const gtsam::Pose3& initialPose,
+      const std::vector<gtsam::Pose3>& targetPoses,
+      const std::vector<double>& times, double dt,
+      const std::optional<gtdynamics::PointOnLinks>& contactPoints = std::nullopt,
+      const gtdynamics::InitializationIterationCallback& iterationCallback = nullptr) const;
+};
+
+class ContactTrajectoryInitializer {
+  ContactTrajectoryInitializer(
+      const gtdynamics::Robot& robot, const gtdynamics::contact_init::Options& options = gtdynamics::contact_init::Options(),
+      size_t contactBuffer = 0);
+  gtsam::Values run(const string& rootLinkName,
+                    const gtsam::Pose3& initialPose,
+                    const gtsam::Values& measuredJoints,
+                    const gtdynamics::Trajectory& trajectory, double dt = 1.0,
+                    gtdynamics::contact_init::Result @diagnostics = nullptr) const;
+};
+
+class MultiPhaseZeroInitializer {
+  MultiPhaseZeroInitializer(const gtdynamics::Robot& robot,
+                                     const double gaussianNoise = 1e-8);
+  gtsam::Values run(
+      const std::vector<int>& phaseSteps,
+      std::vector<gtsam::Values> transitionValues, double dt = 1. / 240,
+      const std::optional<std::vector<gtdynamics::PointOnLinks>>& phaseContactPoints = std::nullopt,
+      const gtdynamics::ZeroSliceInitializer @sliceInitializer = nullptr) const;
+};
+
+class MultiPhaseIKInitializer {
+  MultiPhaseIKInitializer(const gtdynamics::Robot& robot,
+                                   double gaussianNoise = 1e-8);
+  gtsam::Values run(const string& linkName,
+                    const std::vector<int>& phaseSteps,
+                    const gtsam::Pose3& initialPose,
+                    const std::vector<gtsam::Pose3>& targetPoses,
+                    const std::vector<double>& times,
+                    std::vector<gtsam::Values> transitionValues,
+                    double dt = 1. / 240,
+                    const std::optional<std::vector<gtdynamics::PointOnLinks>>&
+                        phaseContactPoints = std::nullopt) const;
+};
+
+class ZeroTrajectoryInitializer {
+  ZeroTrajectoryInitializer(const gtdynamics::Robot& robot,
+                                     double gaussianNoise = 0.0);
+  gtsam::Values run(
+      const int numSteps, const int numPhases = -1,
+      const std::optional<gtdynamics::PointOnLinks>& contactPoints = std::nullopt,
+      const gtdynamics::ZeroSliceInitializer @sliceInitializer = nullptr) const;
+};
+
+#include <gtdynamics/dynamics/ChainInitializer.h>
+class ChainInitializer : gtdynamics::ZeroSliceInitializer {
+  ChainInitializer(const gtdynamics::Robot& robot, double gaussianNoise = 0.0);
+  gtsam::Values run(const int t,
+      const std::optional<gtdynamics::PointOnLinks>& contactPoints = std::nullopt) const;
 };
 
 /********************** symbols **********************/
@@ -1484,10 +1561,8 @@ class Trajectory {
                         double mu,
                         double ground_plane_height = 0.0) const;
   std::vector<gtsam::Values>
-  transitionPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::Initializer &initializer,
-                               double gaussian_noise) const;
-  gtsam::Values multiPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::Initializer &initializer,
-                                        double gaussian_noise, double dt) const;
+  transitionPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::ZeroSliceInitializer &initializer) const;
+  gtsam::Values multiPhaseInitialValues(const gtdynamics::Robot& robot, const gtdynamics::ZeroSliceInitializer &initializer, double dt) const;
   std::vector<int> finalTimeSteps() const;
   const gtdynamics::Phase &phase(size_t p) const;
   int getStartTimeStep(size_t p) const;
@@ -1551,6 +1626,64 @@ class FloatingBaseInterpolator {
   void addBaseVelocityMeasurement(double time,
       const gtsam::Vector3& worldLinearVelocity, double sigma);
   gtdynamics::FloatingBaseInterpolation solve() const;
+};
+
+#include <gtdynamics/kinematics/ContactInterpolationInitializer.h>
+class ContactInterpolationOptions {
+  ContactInterpolationOptions();
+  gtdynamics::pose_contact_init::Options contact;
+  size_t contactBuffer;
+  double baseAngularProcessSigmaDegrees;
+  double baseLinearProcessSigma;
+  double jointProcessSigmaDegrees;
+  double jointMeasurementSigmaDegrees;
+};
+class ContactInterpolationResult {
+  gtsam::Values values;
+  gtdynamics::pose_contact_init::Result contact;
+  std::shared_ptr<gtdynamics::FloatingBaseInterpolation> interpolation;
+  double contactSeconds;
+  double interpolationSeconds;
+};
+class ContactInterpolationInitializer {
+  ContactInterpolationInitializer(
+      const gtdynamics::Robot& robot, const gtdynamics::ContactInterpolationOptions& options = gtdynamics::ContactInterpolationOptions());
+  gtdynamics::ContactInterpolationResult run(
+      const string& rootLinkName, const gtsam::Pose3& initialPose,
+      const gtsam::Values& measuredJoints, const gtdynamics::Trajectory& trajectory,
+      const std::vector<gtdynamics::Slice>& slices, const std::vector<double>& times,
+      double dt, const std::vector<gtdynamics::Slice>& selectedSlices = std::vector<gtdynamics::Slice>()) const;
+};
+
+#include <gtdynamics/dynamics/KinodynamicInitializer.h>
+gtsam::Values gpAccelerationPriors(const gtdynamics::FloatingBaseInterpolation& interpolation,
+    size_t rootId, double time, size_t k, double stepSeconds = 0.02);
+class KinodynamicInitializationOptions {
+  KinodynamicInitializationOptions();
+  gtdynamics::ContactInterpolationOptions kinematics;
+  gtdynamics::fixed_dynamics::Options dynamics;
+  double accelerationStepSeconds;
+};
+class KinodynamicInitializationResult {
+  gtsam::Values values;
+  gtdynamics::pose_contact_init::Result contact;
+  std::shared_ptr<gtdynamics::FloatingBaseInterpolation> interpolation;
+  gtdynamics::fixed_dynamics::Diagnostics dynamics;
+  double contactSeconds;
+  double interpolationSeconds;
+  double dynamicsSeconds;
+  double totalSeconds;
+};
+class KinodynamicInitializer {
+  KinodynamicInitializer(
+      const gtdynamics::Robot& robot, const gtdynamics::KinodynamicInitializationOptions& options = gtdynamics::KinodynamicInitializationOptions());
+  gtdynamics::KinodynamicInitializationResult run(
+      const string& rootLinkName, const gtsam::Pose3& initialPose,
+      const gtsam::Values& measuredJoints, const gtdynamics::Trajectory& trajectory,
+      const std::vector<gtdynamics::Slice>& slices, const std::vector<double>& times,
+      double dt, const std::vector<gtdynamics::fixed_dynamics::Contact>& contacts,
+      const gtsam::Vector& armature,
+      const std::vector<gtdynamics::Slice>& selectedSlices = std::vector<gtdynamics::Slice>()) const;
 };
 
 /********************** gpmp2  **********************/

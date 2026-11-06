@@ -11,12 +11,12 @@
  * @author Alejandro Escontrela and Yetong Zhang
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtsam/base/VectorConstants.h>
 #include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/slam/PriorFactor.h>
 
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   using four_bar_linkage_pure::planar_axis;
   auto robot = four_bar_linkage_pure::getRobot();
 
-  Initializer initializer;
+  ZeroSliceInitializer initializer(robot);
 
   gtsam::Vector3 gravity(0, -10, 0);
   robot = robot.fixLink("l1");
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
       graph_builder.dynamicsFactorGraph(robot, 0);
 
   // Inverse dynamics priors. We care about the torques.
-  gtsam::Values joint_angles_vels_accels = initializer.ZeroValues(robot, 0);
+  gtsam::Values joint_angles_vels_accels = initializer.run(0);
   gtsam::NonlinearFactorGraph prior_factors =
       graph_builder.inverseDynamicsPriors(robot, 0, joint_angles_vels_accels);
 
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
                         gtsam::noiseModel::Gaussian::Covariance(gtsam::I_1x1)));
 
   // Initialize solution.
-  gtsam::Values init_values = initializer.ZeroValues(robot, 0);
+  gtsam::Values init_values = initializer.run(0);
 
   std::cout << "\033[1;32;7mFactor Graph Optimization:\033[0m" << std::endl;
   graph_builder.printGraph(graph);

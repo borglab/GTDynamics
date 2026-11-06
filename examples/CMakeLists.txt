@@ -1,5 +1,8 @@
 # CMake file to make compiling all the examples easier.
 
+# Prefer this build over an older installed GTDynamics in CMAKE_PREFIX_PATH.
+include_directories(BEFORE ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
+
 # Variable to hold all the example directories
 set(EXAMPLE_SUBDIRS
     scripts

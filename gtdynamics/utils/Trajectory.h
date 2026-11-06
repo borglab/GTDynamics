@@ -19,9 +19,9 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/utils/Phase.h>
 #include <gtdynamics/utils/WalkCycle.h>
-#include <gtdynamics/utils/Initializer.h>
 
 namespace gtdynamics {
+class ZeroSliceInitializer;
 
 /**
  * @class Trajectory class implements functions derived
@@ -127,24 +127,22 @@ class Trajectory {
   /**
    * @fn Returns Initial values for transition graphs.
    * @param[in] robot             Robot specification from URDF/SDF.
-   * @param[in] initializer       Initializer class to initialize with
-   * @param[in] gaussian_noise    Gaussian noise to add to initial values
+   * @param[in] initializer       ZeroSliceInitializer class to initialize with
    * @return Initial values for transition graphs
    */
   std::vector<gtsam::Values> transitionPhaseInitialValues(
-      const Robot &robot, const Initializer &initializer, double gaussian_noise) const;
+      const Robot &robot, const ZeroSliceInitializer &initializer) const;
 
   /**
    * @fn Returns Initial values for multi-phase factor graph.
    * @param[in] robot             Robot specification from URDF/SDF.
-   * @param[in] initializer       Initializer class to initialize with
-   * @param[in] gaussian_noise    Gaussian noise to add to initial values
-   * @param[in] desired_dt        integration timestep
+   * @param[in] initializer       ZeroSliceInitializer class to initialize with
+   * @param[in] dt                integration timestep
    * @return Initial values for multi-phase factor graph
    */
   gtsam::Values multiPhaseInitialValues(const Robot &robot,
-                                        const Initializer &initializer, 
-                                        double gaussian_noise, double dt) const;
+                                        const ZeroSliceInitializer &initializer,
+                                        double dt) const;
 
   /**
    * @fn Returns a vector of final time step for every phase.

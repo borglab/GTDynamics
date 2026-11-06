@@ -9,7 +9,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 get_filename_component(CONTACT_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
 add_library(gtdynamics_contact_initializer STATIC
-  "${CONTACT_REPO_ROOT}/gtdynamics/utils/ContactInitializer.cpp")
+  "${CONTACT_REPO_ROOT}/gtdynamics/kinematics/ContactInitializer.cpp")
 target_include_directories(gtdynamics_contact_initializer PUBLIC "${CONTACT_REPO_ROOT}")
 target_link_libraries(gtdynamics_contact_initializer PUBLIC gtsam)
 target_compile_features(gtdynamics_contact_initializer PUBLIC cxx_std_17)

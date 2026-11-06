@@ -108,6 +108,61 @@ TEST(FixedKinematicsDynamics, StaticSupportTrajectory) {
   }
 }
 
+// A single QR seed respects changing support, exact mechanics and cone faces.
+// It rejects unsupported soft dynamics instead of silently relaxing mechanics.
+TEST(FixedKinematicsDynamics, LinearSeedAndConstraintChecks) {
+  Fixture f;
+  const auto phase = [](size_t k, const std::vector<PoseOnLink>& contacts) {
+    return Phase(k, k, std::make_shared<PoseContactConstraintSpec>(contacts));
+  };
+  const Trajectory trajectory(
+      WalkCycle({phase(0, {f.left}), phase(1, {f.left, f.right}),
+                 phase(2, {f.right})}),
+      1);
+  const auto result = fixedKinematicsDynamicsSeed(
+      f.robot, trajectory, {Slice(0), Slice(1), Slice(2)}, {0., .08, .3},
+      f.fixed, f.priors, f.contacts(), Vector(), {});
+  EXPECT(result.feasible);
+  EXPECT(result.maxForceResidual < 1e-8);
+  EXPECT(result.maxMomentResidual < 1e-8);
+  EXPECT_LONGS_EQUAL(0, result.iterations);
+  EXPECT_LONGS_EQUAL(0, result.numALSolves);
+  EXPECT_DOUBLES_EQUAL(
+      98.1, result.values.at<Vector6>(result.contactKeys[0])(5), 1e-8);
+  EXPECT_DOUBLES_EQUAL(
+      49.05, result.values.at<Vector6>(result.contactKeys[2])(5), 1e-8);
+  EXPECT(result.values.at<Vector6>(result.contactKeys[1]).norm() < 1e-8);
+  EXPECT(result.values.at<Vector6>(result.contactKeys[4]).norm() < 1e-8);
+  EXPECT_DOUBLES_EQUAL(result.accelerationError, result.objectiveFinal, 1e-12);
+  EXPECT_DOUBLES_EQUAL(0, result.effortError, 0);
+  EXPECT_DOUBLES_EQUAL(0, result.wrenchSmoothError, 0);
+  EXPECT(result.linearSolveSeconds > 0);
+  EXPECT(result.linearizationSeconds + result.linearSolveSeconds +
+             result.valueAssemblySeconds <=
+         result.initializationSeconds);
+  // Full-optimizer parameters do not affect seed construction or validation.
+  fixed_dynamics::Options unusedObjectives;
+  unusedObjectives.maxIterations = 0;
+  unusedObjectives.effortSigma = 0;
+  unusedObjectives.wrenchSmoothSigma = 0;
+  const auto sameSeed = fixedKinematicsDynamicsSeed(
+      f.robot, trajectory, {Slice(0), Slice(1), Slice(2)}, {0., .08, .3},
+      f.fixed, f.priors, f.contacts(), Vector(), unusedObjectives);
+  EXPECT(assert_equal(result.values, sameSeed.values, 1e-12));
+  CHECK_EXCEPTION(
+      solveFixedKinematicsDynamics(
+          f.robot, trajectory, {Slice(0), Slice(1), Slice(2)}, {0., .08, .3},
+          f.fixed, f.priors, f.contacts(), Vector(), unusedObjectives),
+      std::invalid_argument);
+  fixed_dynamics::Options soft;
+  soft.softDynamics = true;
+  CHECK_EXCEPTION(fixedKinematicsDynamicsSeed(f.robot, trajectory,
+                                              {Slice(0), Slice(1), Slice(2)},
+                                              {0., .08, .3}, f.fixed, f.priors,
+                                              f.contacts(), Vector(), soft),
+                  std::invalid_argument);
+}
+
 // Acceleration observations are soft: exact balance and unilateral support can
 // correct a downward acceleration observation that is faster than free fall.
 TEST(FixedKinematicsDynamics, AccelerationIsEstimated) {
@@ -191,6 +246,29 @@ TEST(FixedKinematicsDynamics, SwingAndSingleSupport) {
   EXPECT(determined.feasible);
   EXPECT(determined.stationary);
   EXPECT_LONGS_EQUAL(24, determined.reducedDimension);
+}
+
+// A downward acceleration observation beyond free fall would imply tensile
+// ground force. Start at the feasible cone apex and keep forces unilateral.
+TEST(FixedKinematicsDynamics, DownwardPriorAtConeApex) {
+  Fixture fixture;
+  for (size_t k = 0; k < 3; ++k) {
+    Vector6 mean = Vector6::Zero();
+    mean(5) = -30;
+    fixture.priors.update(TwistAccelKey(0, k), Vector(mean));
+  }
+  const auto result = solveFixedKinematicsDynamics(
+      fixture.robot, fixture.trajectory, {Slice(0), Slice(1), Slice(2)},
+      {0.0, .08, .3}, fixture.fixed, fixture.priors, fixture.contacts(),
+      Vector(), fixed_dynamics::Options());
+  EXPECT(result.feasible);
+  EXPECT(result.equalityL2 < 1e-8);
+  EXPECT(result.inequalityL2 < 1e-8);
+  for (size_t k = 0; k < 3; ++k) {
+    EXPECT_DOUBLES_EQUAL(-9.81, TwistAccel(result.values, 0, k)(5), 1e-5);
+    EXPECT(result.values.at<Vector6>(result.contactKeys[2 * k])(5) > -1e-8);
+    EXPECT(result.values.at<Vector6>(result.contactKeys[2 * k + 1])(5) > -1e-8);
+  }
 }
 
 // Motor effort includes rotor inertia times the estimated joint acceleration,

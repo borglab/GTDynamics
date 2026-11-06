@@ -110,7 +110,7 @@ def retained_initialization_slices(
     """Select buffered support slices, allowing slice zero as an FK-only fallback."""
     retained: list[gtd.Slice] = initialization_slices(trajectory, 0.02)
     if not retained:
-        if initialization == "contact":
+        if initialization != "fk":
             raise ValueError(
                 "Contact initialization requires at least one supported phase"
             )
@@ -143,11 +143,13 @@ def prepare_walk(
     labels_path: Path,
     start: float,
     end: float,
-    initialization: str = "contact",
+    initialization: str = "contact-gp-dynamics",
 ) -> tuple[KinematicRecording, dict[str, Any]]:
     """Assemble the 50 Hz clip and align its gauge-slice stance soles to z=0."""
-    if initialization not in ("fk", "contact"):
-        raise ValueError("initialization must be 'fk' or 'contact'")
+    if initialization not in ("fk", "contact", "contact-gp-dynamics"):
+        raise ValueError(
+            "initialization must be 'fk', 'contact', or 'contact-gp-dynamics'"
+        )
     arrays, metadata = load_recording(directory)
     times, indices, states = load_support_clip(labels_path, start, end)
     model = load_g1_model()

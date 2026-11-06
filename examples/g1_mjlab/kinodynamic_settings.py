@@ -20,7 +20,7 @@ from typing import Any
 def solver_settings() -> dict[str, Any]:
     """Return a fresh editable recipe; no global mutable configuration."""
     return {
-        "initialization": "contact",
+        "initialization": "contact-gp-dynamics",
         "maxIterations": 5,
         "gaugeSlice": 0,
         "retractionThreads": 8,

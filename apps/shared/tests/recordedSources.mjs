@@ -5,7 +5,7 @@
  * @author GTDynamics contributors
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { recordingSourceMatches } from '../recordingProvenance.mjs';
@@ -21,8 +21,11 @@ if (!/^[a-f0-9]{40}$/.test(revision)) throw new Error('Invalid archived recordin
  * narrowly defined additive-wrapper allowances in recordingSourceMatches.
  */
 export function recordedSourceBytes(path, expected) {
-  const current = readFileSync(resolve(root, path));
-  if (recordingSourceMatches(path, current, expected)) return current;
+  const currentPath = resolve(root, path);
+  if (existsSync(currentPath)) {
+    const current = readFileSync(currentPath);
+    if (recordingSourceMatches(path, current, expected)) return current;
+  }
   if (!archived.has(path)) {
     archived.set(path, execFileSync('git', ['show', `${revision}:${path}`], {
       cwd: root, maxBuffer: 16 * 1024 * 1024,

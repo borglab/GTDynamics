@@ -16,7 +16,6 @@
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/scenarios/CartPoleWithLimitsRetractor.h>
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>
-#include <gtdynamics/utils/Initializer.h>
 
 #include <iomanip>
 

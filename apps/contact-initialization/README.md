@@ -1,6 +1,6 @@
 # Contact Initialization
 
-Inspect the native `Initializer.InitializeSolutionContactPoses` solve on the same
+Inspect the native `PoseContactInitializer.run` solve on the same
 three SSIO snippets as Contact Labels: 24–44 s, 78–98 s, and 198–218 s.
 The policy walk and retargeted step-touch use the same sampling policy. Each foot has one fixed sole frame; each uninterrupted stance has one
 world `Pose3` landmark. The app has no point/patch selector or point-landmark solve.

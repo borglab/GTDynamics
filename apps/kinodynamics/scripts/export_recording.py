@@ -103,27 +103,29 @@ def initialization_sampling(
 
 
 def initialization_comparison(
-    report: dict[str, Any], comparison_path: Path | None
+    report: dict[str, Any], comparison_paths: list[Path] | None
 ) -> dict[str, Any] | None:
-    """Package two matching five-iteration runs without exporting a second replay."""
-    if comparison_path is None:
+    """Package matching bounded runs; only the selected default exports a replay."""
+    if not comparison_paths:
         return None
-    other = json.loads(comparison_path.read_text())
-    for key in (
-        "samples",
-        "maxIterations",
-        "retractionThreads",
-        "labels",
-        "initializationSlices",
-        "source",
-    ):
-        if report[key] != other[key]:
-            raise ValueError(f"Initialization comparison differs in {key}")
-    if {report["initializationStrategy"], other["initializationStrategy"]} != {
-        "contact",
-        "fk",
-    }:
-        raise ValueError("Comparison requires one contact and one FK run")
+    runs = [report, *[json.loads(path.read_text()) for path in comparison_paths]]
+    strategies = [run["initializationStrategy"] for run in runs]
+    if len(set(strategies)) != len(strategies):
+        raise ValueError("Initialization comparison contains a duplicate strategy")
+    for other in runs[1:]:
+        for key in (
+            "samples",
+            "maxIterations",
+            "retractionThreads",
+            "labels",
+            "initializationSlices",
+            "source",
+        ):
+            if report[key] != other[key]:
+                raise ValueError(f"Initialization comparison differs in {key}")
+    priority = {"contact-gp-dynamics": 0, "contact": 1, "fk": 2}
+    if any(strategy not in priority for strategy in strategies):
+        raise ValueError("Unknown initialization comparison strategy")
     fields = (
         "initializationStrategy",
         "configurationInitializationSeconds",
@@ -143,14 +145,14 @@ def initialization_comparison(
         "runs": [
             {key: run[key] for key in fields}
             for run in sorted(
-                (report, other), key=lambda run: run["initializationStrategy"]
+                runs, key=lambda run: priority[run["initializationStrategy"]]
             )
         ],
     }
 
 
 def export(
-    result_path: Path, output: Path, comparison_path: Path | None = None
+    result_path: Path, output: Path, comparison_paths: list[Path] | None = None
 ) -> None:
     """Package model geometry, initial/final replay, forces, velocities and timing."""
     arrays = dict(np.load(result_path / "kinodynamics.npz", allow_pickle=False))
@@ -257,6 +259,13 @@ def export(
         "jointTorques": arrays["joint_torques"].tolist(),
         "jointEffortLimits": effort_limits.tolist(),
         "initial": {
+            "jointVelocities": arrays["initial_joint_velocities"].tolist(),
+            "jointTorques": arrays["initial_joint_torques"].tolist(),
+            "worldVelocities": np.einsum(
+                "nij,nj->ni",
+                arrays["initial_poses"][:, root_column, :3, :3],
+                arrays["initial_body_twists"][:, root_column, 3:],
+            ).tolist(),
             "worldForces": initial_forces.tolist(),
             "wrenches": initial_wrenches.tolist(),
             "bodyPoses": body_poses(model, arrays, True),
@@ -305,7 +314,7 @@ def export(
             "collocation": report["collocation"],
             "accelerationDifferenceStepSeconds": 0.02,
         },
-        "initializationComparison": initialization_comparison(report, comparison_path),
+        "initializationComparison": initialization_comparison(report, comparison_paths),
         "source": {
             "initializationSampling": initialization_sampling(arrays, report),
             "dataset": "SSIO",
@@ -353,7 +362,8 @@ def main() -> None:
     parser.add_argument(
         "--comparison",
         type=Path,
-        help="Other initializer summary.json for a single-run timing comparison",
+        action="append",
+        help="Other initializer summary.json; repeat for several comparison rows",
     )
     parser.add_argument(
         "--output", type=Path, default=REPO / "apps/kinodynamics/public"

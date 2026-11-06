@@ -6,8 +6,9 @@
  * -------------------------------------------------------------------------- */
 
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/dynamics/ZeroInitializer.h>
+#include <gtdynamics/kinematics/ContactInitializer.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -61,9 +62,10 @@ TEST(ContactTrajectoryInitializer, GeneralSpecificationKeepsNonGroundContacts) {
   contact_init::Options options;
   options.model = contact_init::Model::Patch;
   contact_init::Result diagnostics;
-  const auto result = Initializer().InitializeSolutionContacts(
-      robot, "l1", Pose3(Rot3::Rx(-std::acos(-1.0) / 2), Point3(0, 0, 1)),
-      measurements, Phases({Phase(4, 5, spec)}), .01, options, &diagnostics);
+  const auto result =
+      gtdynamics::ContactTrajectoryInitializer(robot, options)
+          .run("l1", Pose3(Rot3::Rx(-std::acos(-1.0) / 2), Point3(0, 0, 1)),
+               measurements, Phases({Phase(4, 5, spec)}), .01, &diagnostics);
   EXPECT_LONGS_EQUAL(3, diagnostics.landmarks.size());
   EXPECT_LONGS_EQUAL(
       3, diagnostics.graph.measurements.front().observations.size());
@@ -105,10 +107,10 @@ TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
   options.model = contact_init::Model::Patch;
   options.perturb = true;
   contact_init::Result diagnostics;
-  Initializer initializer;
-  const auto result = initializer.InitializeSolutionContacts(
-      robot, "l1", initial_root, measurements, trajectory, 0.01, options,
-      &diagnostics);
+
+  const auto result = gtdynamics::ContactTrajectoryInitializer(robot, options)
+                          .run("l1", initial_root, measurements, trajectory,
+                               0.01, &diagnostics);
 
   EXPECT_LONGS_EQUAL(2, diagnostics.graph.measurements.size());
   EXPECT_LONGS_EQUAL(4, diagnostics.graph.measurements.front().slice.k);
@@ -128,9 +130,9 @@ TEST(ContactTrajectoryInitializer, DenseSeedsPreserveMeasurementsAndCOMFrames) {
                   JointAngle(result, joint->id(), sample), 0);
     DOUBLES_EQUAL(JointVel(measurements, joint->id(), sample),
                   JointVel(result, joint->id(), sample), 0);
-    EXPECT(result.exists(TorqueKey(joint->id(), sample)));
-    EXPECT(result.exists(JointAccelKey(joint->id(), sample)));
-    EXPECT(result.exists(ContactWrenchKey(foot->id(), 0, sample)));
+    EXPECT(!result.exists(TorqueKey(joint->id(), sample)));
+    EXPECT(!result.exists(JointAccelKey(joint->id(), sample)));
+    EXPECT(!result.exists(ContactWrenchKey(foot->id(), 0, sample)));
     EXPECT(Twist(result, root->id(), sample).norm() < 1e-12);
   }
 }
@@ -146,8 +148,8 @@ TEST(ContactTrajectoryInitializer, InvalidPhasesAndMeasurementsRejected) {
   Values measurements;
   InsertJointAngle(&measurements, robot.joint("j1")->id(), 4, 0.0);
   auto initialize = [&](const Trajectory& trajectory) {
-    return Initializer().InitializeSolutionContacts(
-        robot, "l1", Pose3(), measurements, trajectory, .01);
+    return gtdynamics::ContactTrajectoryInitializer(robot).run(
+        "l1", Pose3(), measurements, trajectory, .01);
   };
   EXPECT(Rejects([&] { initialize(Phases({ContactPhase(4, 8, patch)})); },
                  "missing joint angle"));
@@ -206,9 +208,10 @@ TEST(ContactTrajectoryInitializer,
   contact_init::Options options;
   options.model = contact_init::Model::Patch;
   contact_init::Result diagnostics;
-  const auto values = Initializer().InitializeSolutionContacts(
-      robot, "l1", Pose3(), measurements, Phases({ContactPhase(4, 38, patch)}),
-      0.1, options, &diagnostics);
+  const auto values =
+      gtdynamics::ContactTrajectoryInitializer(robot, options)
+          .run("l1", Pose3(), measurements,
+               Phases({ContactPhase(4, 38, patch)}), 0.1, &diagnostics);
   const std::vector<size_t> expected{4, 14, 24, 34, 38};
   EXPECT_LONGS_EQUAL(expected.size(), diagnostics.graph.measurements.size());
   for (size_t i = 0; i < expected.size(); ++i) {
@@ -248,9 +251,10 @@ TEST(ContactTrajectoryInitializer, LandmarkGroundPriorUsesAnchoredFK) {
   options.addGroundFactors = true;
   const Pose3 anchor(Rot3::RzRyRx(0.1, -0.2, 0.3), Point3(1, 2, 3));
   contact_init::Result diagnostics;
-  const auto values = Initializer().InitializeSolutionContacts(
-      robot, "l1", anchor, measurements, Phases({ContactPhase(4, 6, patch)}),
-      0.01, options, &diagnostics);
+  const auto values =
+      gtdynamics::ContactTrajectoryInitializer(robot, options)
+          .run("l1", anchor, measurements, Phases({ContactPhase(4, 6, patch)}),
+               0.01, &diagnostics);
   double height = 0;
   for (const auto& observation :
        diagnostics.graph.measurements.front().observations) {
@@ -278,16 +282,16 @@ TEST(ContactTrajectoryInitializer, DisconnectedContactGaugesRejected) {
   for (size_t sample : {4, 5, 6, 7, 8, 9}) {
     InsertJointAngle(&measurements, joint->id(), sample, 0.0);
   }
-  Initializer initializer;
+
   contact_init::Options options;
   options.model = contact_init::Model::Point;
   bool disconnected_rejected = false;
   try {
-    initializer.InitializeSolutionContacts(
-        robot, "l1", Pose3(), measurements,
-        Phases({ContactPhase(4, 5, point), ContactPhase(6, 7, {}),
-                ContactPhase(8, 9, point)}),
-        0.01, options);
+    gtdynamics::ContactTrajectoryInitializer(robot, options)
+        .run("l1", Pose3(), measurements,
+             Phases({ContactPhase(4, 5, point), ContactPhase(6, 7, {}),
+                     ContactPhase(8, 9, point)}),
+             0.01);
   } catch (const std::invalid_argument& error) {
     disconnected_rejected =
         std::string(error.what()).find("disconnected") != std::string::npos;
@@ -315,22 +319,24 @@ TEST(ContactTrajectoryInitializer, PhaseContinuityAndPointReentry) {
   contact_init::Options options;
   options.model = contact_init::Model::Patch;
   contact_init::Result result;
-  Initializer initializer;
-  initializer.InitializeSolutionContacts(
-      robot, "l1", Pose3(), measured,
-      Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, double_support),
-              ContactPhase(8, 9, patch)}),
-      .01, options, &result);
+
+  gtdynamics::ContactTrajectoryInitializer(robot, options)
+      .run(
+          "l1", Pose3(), measured,
+          Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, double_support),
+                  ContactPhase(8, 9, patch)}),
+          .01, &result);
   EXPECT_LONGS_EQUAL(7, result.landmarks.size());
   EXPECT_LONGS_EQUAL(1, result.graph.contactComponents.size());
   EXPECT(result.residualRms < 1e-8);
   // A point absent for a phase gets a fresh landmark even when its link stays.
   double_support.erase(double_support.begin());
-  initializer.InitializeSolutionContacts(
-      robot, "l1", Pose3(), measured,
-      Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, double_support),
-              ContactPhase(8, 9, patch)}),
-      .01, options, &result);
+  gtdynamics::ContactTrajectoryInitializer(robot, options)
+      .run(
+          "l1", Pose3(), measured,
+          Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, double_support),
+                  ContactPhase(8, 9, patch)}),
+          .01, &result);
   EXPECT_LONGS_EQUAL(8, result.landmarks.size());
 }
 
@@ -349,11 +355,12 @@ TEST(ContactTrajectoryInitializer, SharedEndpointsAndFlightSeeds) {
   options.model = contact_init::Model::Patch;
   contact_init::Result diagnostics;
   const Pose3 anchor(Rot3(), Point3(1, 2, 3));
-  const auto result = Initializer().InitializeSolutionContacts(
-      robot, "l1", anchor, measured,
-      Phases({ContactPhase(4, 4, {}), ContactPhase(5, 6, patch),
-              ContactPhase(6, 7, patch), ContactPhase(8, 9, {})}),
-      .01, options, &diagnostics);
+  const auto result =
+      gtdynamics::ContactTrajectoryInitializer(robot, options)
+          .run("l1", anchor, measured,
+               Phases({ContactPhase(4, 4, {}), ContactPhase(5, 6, patch),
+                       ContactPhase(6, 7, patch), ContactPhase(8, 9, {})}),
+               .01, &diagnostics);
   EXPECT_LONGS_EQUAL(3, diagnostics.graph.measurements.size());
   EXPECT_LONGS_EQUAL(3, diagnostics.graph.measurements[1].observations.size());
   EXPECT_LONGS_EQUAL(3, diagnostics.landmarks.size());
@@ -382,11 +389,11 @@ TEST(ContactTrajectoryInitializer, FlightBreaksLandmarksEvenWithMotionPrior) {
   options.model = contact_init::Model::Patch;
   options.addBetweenFactors = true;
   contact_init::Result diagnostics;
-  Initializer().InitializeSolutionContacts(
-      robot, "l1", Pose3(), measured,
-      Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, {}),
-              ContactPhase(8, 9, patch)}),
-      .01, options, &diagnostics);
+  gtdynamics::ContactTrajectoryInitializer(robot, options)
+      .run("l1", Pose3(), measured,
+           Phases({ContactPhase(4, 5, patch), ContactPhase(6, 7, {}),
+                   ContactPhase(8, 9, patch)}),
+           .01, &diagnostics);
   EXPECT_LONGS_EQUAL(6, diagnostics.landmarks.size());
   EXPECT_LONGS_EQUAL(2, diagnostics.graph.contactComponents.size());
   EXPECT_LONGS_EQUAL(1, diagnostics.graph.components.size());
@@ -422,8 +429,8 @@ struct Fixture {
 
   Values initialize(const Trajectory& trajectory, size_t buffer,
                     contact_init::Result* result, double dt = .01) const {
-    return Initializer().InitializeSolutionContacts(
-        robot, "l1", anchor, measured, trajectory, dt, options, result, buffer);
+    return gtdynamics::ContactTrajectoryInitializer(robot, options, buffer)
+        .run("l1", anchor, measured, trajectory, dt, result);
   }
 };
 
@@ -432,8 +439,9 @@ TEST(ContactTrajectoryInitializer, OptionalSliceBufferAndDensePrefix) {
   Fixture f;
   const auto trajectory = Phases({ContactPhase(4, 14, f.foot)});
   contact_init::Result legacy, zero;
-  const auto expected = Initializer().InitializeSolutionContacts(
-      f.robot, "l1", f.anchor, f.measured, trajectory, .01, f.options, &legacy);
+  const auto expected =
+      gtdynamics::ContactTrajectoryInitializer(f.robot, f.options)
+          .run("l1", f.anchor, f.measured, trajectory, .01, &legacy);
   const auto unchanged = f.initialize(trajectory, 0, &zero);
   EXPECT(assert_equal(expected, unchanged, 1e-12));
   EXPECT_LONGS_EQUAL(legacy.graph.measurements.size(),
@@ -451,7 +459,7 @@ TEST(ContactTrajectoryInitializer, OptionalSliceBufferAndDensePrefix) {
       EXPECT(assert_equal(f.anchor, Pose(values, f.robot.link("l1")->id(), k),
                           1e-8));
       DOUBLES_EQUAL(0.0, JointAngle(values, f.robot.joint("j1")->id(), k), 0);
-      EXPECT(values.exists(ContactWrenchKey(f.robot.link("l2")->id(), 0, k)));
+      EXPECT(!values.exists(ContactWrenchKey(f.robot.link("l2")->id(), 0, k)));
     }
   }
 }

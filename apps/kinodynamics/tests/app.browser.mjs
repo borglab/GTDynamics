@@ -20,9 +20,11 @@ try{
       await page.locator('.kinodynamics-scene[data-ready="true"]').waitFor();
       assert.equal(await page.getByRole('heading',{name:'Kinodynamics',exact:true}).count(),1);
       assert.match(await page.locator('.timing-grid').innerText(),/1,000/);
-      assert.match(await page.locator('.initialization-comparison').innerText(),/Contact \(default\)/);
+      assert.match(await page.locator('.initialization-comparison').innerText(),/Contact → GP → linear seed \(default\)/);
       assert.match(await page.locator('.initialization-comparison').innerText(),/Fixed-pelvis FK/);
       assert.match(await page.locator('.recorded-settings').innerText(),/57.2958°/);
+      assert.match(await page.locator('.solve-section').innerText(),/Dynamics initializer: constrained Gaussian QR/);
+      assert.match(await page.locator('.solve-section').innerText(),/Dynamics initializer: mechanics and wrench checks/);
       assert.equal(await page.locator('canvas').count(),1);
       const slider=page.getByRole('slider',{name:'Kinodynamics time'});
       await slider.fill('500');assert.equal(await page.locator('main').getAttribute('data-frame'),'500');
@@ -30,7 +32,7 @@ try{
       assert(Number(await page.locator('main').getAttribute('data-frame'))>500);
       const estimate=page.getByRole('combobox',{name:'Estimate',exact:true});
       await estimate.selectOption('initial');
-      assert.equal(await page.locator('.kinodynamics-scene').getAttribute('data-force-arrows'),'0');
+      assert(Number(await page.locator('.kinodynamics-scene').getAttribute('data-force-arrows'))>0);
       await estimate.selectOption('final');
       assert(Number(await page.locator('.kinodynamics-scene').getAttribute('data-force-arrows'))>0);
       await page.getByRole('checkbox',{name:'All joint torques',exact:true}).check();

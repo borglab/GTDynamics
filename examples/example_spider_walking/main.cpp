@@ -12,6 +12,7 @@
  * Gandhi, Varun Agrawal
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtsam/base/VectorConstants.h>
 #include <gtdynamics/factors/ObjectiveFactors.h>
 #include <gtdynamics/universal_robot/sdf.h>
@@ -134,9 +135,10 @@ int main(int argc, char** argv) {
 
   // Initialize solution.
   double gaussian_noise = 1e-5;
-  Initializer initializer;
-  gtsam::Values init_vals =
-      trajectory.multiPhaseInitialValues(robot, initializer, gaussian_noise, desired_dt);
+
+  gtsam::Values init_vals = trajectory.multiPhaseInitialValues(
+      robot, gtdynamics::ZeroSliceInitializer(robot, gaussian_noise),
+      desired_dt);
 
   // Optimize!
   gtsam::LevenbergMarquardtParams params;
