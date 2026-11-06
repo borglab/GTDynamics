@@ -309,6 +309,83 @@ TEST(IELMQp, ExhaustedRetriesAreNotConvergence) {
   EXPECT(threw);
 }
 
+// Feasible descent can stop on the projected face before a full solve releases
+// it.
+TEST(IELMQp, ProjectedInitializationAndFeasibleStepModes) {
+  NonlinearFactorGraph graph;
+  const Matrix2 informationRoot = (Matrix2() << 1., -2., 0., 1.).finished();
+  graph.emplace_shared<PriorFactor<Vector>>(
+      7, Vector(Vector2(5., 3.)),
+      noiseModel::Gaussian::SqrtInformation(informationRoot));
+  Values initial;
+  initial.insert(7, Vector(Vector2::Zero()));
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(
+      bound(7, -Matrix2::Identity(), Vector2::Zero(), Vector2(0.3, 7.)));
+  const auto state = makeState(graph, inequalities, initial);
+  const IELMTrial::LinearUpdate full(0.2, graph, state, {});
+  EXPECT(full.solveSuccessful);
+  for (bool projected : {false, true}) {
+    IELMParams params;
+    params.qpUseProjectedGradientInitialization = projected;
+    const IELMTrial::LinearUpdate seeded(0.2, graph, state, params);
+    EXPECT(seeded.solveSuccessful);
+    EXPECT(assert_equal(full.delta, seeded.delta, 1e-9));
+    params.qpUseFeasibleStep = true;
+    const IELMTrial::LinearUpdate feasible(0.2, graph, state, params);
+    EXPECT(feasible.solveSuccessful);
+    if (!feasible.solveSuccessful) continue;
+    EXPECT_LONGS_EQUAL(1, feasible.qpIterations);
+    EXPECT(assert_equal(Vector2(0., 5. / 5.2), feasible.tangentVector.at(7),
+                        1e-9));
+    EXPECT(feasible.costChange > 0);
+    EXPECT(full.newError < feasible.newError);
+    EXPECT(IELMTrial::LinearUpdate::checkSolutionValid(
+        state, feasible.delta, feasible.blockingIndicesMap));
+    // Only one row is active, so the vector block stays an inequality.
+    EXPECT(feasible.blockingIndicesMap.empty());
+    EXPECT_DOUBLES_EQUAL(
+        state.linearManifoldGraph->error(initial.zeroVectors()) -
+            state.linearManifoldGraph->error(feasible.delta),
+        feasible.costChange, 1e-9);
+  }
+}
+
+// No progress supplies a zero trial, while exhaustion and singularity reject
+// it.
+TEST(IELMQp, FeasibleStepNoProgressAndFailures) {
+  Values initial;
+  initial.insert(7, Vector(Vector1::Zero()));
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<Vector>>(7, Vector(Vector1(-2.)),
+                                            noiseModel::Unit::Create(1));
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(
+      bound(7, -Matrix1::Identity(), Vector1::Zero(), Vector1::Ones()));
+  const auto state = makeState(graph, inequalities, initial);
+  IELMParams params;
+  params.qpUseFeasibleStep = true;
+  const IELMTrial::LinearUpdate stopped(0.2, graph, state, params);
+  EXPECT(stopped.solveSuccessful);
+  EXPECT(assert_equal(initial.zeroVectors(), stopped.tangentVector, 1e-9));
+  EXPECT_DOUBLES_EQUAL(0., stopped.costChange, 1e-9);
+  params.qpMaxIterations = 0;
+  const IELMTrial::LinearUpdate exhausted(0.2, graph, state, params);
+  EXPECT(!exhausted.solveSuccessful);
+  EXPECT(!exhausted.failureReason.empty());
+  params.qpMaxIterations = 1000;
+  initial.insert(8, Vector(Vector1::Zero()));
+  graph = NonlinearFactorGraph();
+  graph.emplace_shared<BetweenFactor<Vector>>(7, 8, Vector(Vector1(1.)),
+                                              noiseModel::Unit::Create(1));
+  const auto singularState = makeState(graph, {}, initial);
+  const IELMTrial::LinearUpdate singular(0., graph, singularState, params);
+  EXPECT(!singular.solveSuccessful);
+  EXPECT(!singular.failureReason.empty());
+  const IELMTrial::LinearUpdate damped(0.2, graph, singularState, params);
+  EXPECT(damped.solveSuccessful);
+}
+
 }  // namespace tangent_qp
 
 int main() {

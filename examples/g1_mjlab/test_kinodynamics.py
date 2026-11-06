@@ -135,6 +135,8 @@ class TestKinodynamics(unittest.TestCase):
         self.assertEqual(options["gaugeSlice"], 0)
         self.assertEqual(options["retractionThreads"], 8)
         self.assertEqual(options["initialization"], "contact-gp-dynamics")
+        self.assertTrue(options["qpUseProjectedGradientInitialization"])
+        self.assertTrue(options["qpUseFeasibleStep"])
         options["maxIterations"] = 20
         options["gaugeSlice"] = 1
         result = solve(
@@ -167,6 +169,22 @@ class TestKinodynamics(unittest.TestCase):
         np.testing.assert_allclose(
             result["errorHistory"], serial["errorHistory"], atol=1e-8
         )
+        options["qpUseFeasibleStep"] = False
+        full = solve(
+            robot,
+            trajectory,
+            [gtd.Slice(k) for k in range(3)],
+            [0.0, 0.02, 0.04],
+            initial,
+            [measurements],
+            ["Root observations"],
+            [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.6)],
+            np.empty(0),
+            options,
+        )
+        self.assertTrue(full["feasible"])
+        self.assertLess(full["objectiveFinal"], full["objectiveInitial"])
+        options["qpUseFeasibleStep"] = True
         # The complete example objective has the same value after a global
         # translation/yaw change, with the gauge anchor transformed alongside it.
         change = gtsam.Pose3(gtsam.Rot3.Rz(0.7), np.array([2.0, -3.0, 1.0]))

@@ -70,6 +70,8 @@ def solve_walk(
     max_iterations: int = 5,
     retraction_threads: int = 8,
     initialization: str = "contact-gp-dynamics",
+    qp_use_feasible_step: bool = True,
+    qp_use_projected_gradient_initialization: bool = True,
 ) -> KinodynamicSolution:
     """Initialize and jointly optimize G1 poses, motion, and forces at support knots.
 
@@ -83,6 +85,10 @@ def solve_walk(
         initialization: "fk" uses fixed-pelvis FK and gravity-support forces;
             "contact" fits contact poses with zero motion and forces;
             "contact-gp-dynamics" adds GP interpolation and a linear dynamics seed (default).
+        qp_use_feasible_step: Request feasible descent instead of QP convergence.
+            This mode always uses projected-gradient initialization.
+        qp_use_projected_gradient_initialization: Seed full QP solves by projecting
+            the negative gradient when qp_use_feasible_step is False.
 
     Returns:
         The prepared clip, initial COM-to-world poses, native optimized values,
@@ -120,6 +126,8 @@ def solve_walk(
         float(walk.times[gauge_slice]),
         max_iterations,
         retraction_threads,
+        qp_use_feasible_step=qp_use_feasible_step,
+        qp_use_projected_gradient_initialization=qp_use_projected_gradient_initialization,
     )
     metadata.update(solver_metadata)
     metadata["measurementPreparationSeconds"] = (
@@ -334,6 +342,18 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", type=float, default=98.0)
     parser.add_argument("--max-iterations", type=int, default=5)
     parser.add_argument("--retraction-threads", type=int, default=8)
+    parser.add_argument(
+        "--qp-step",
+        choices=("feasible", "full"),
+        default="feasible",
+        help="feasible descent (default) or a converged QP solution",
+    )
+    parser.add_argument(
+        "--projected-gradient-initialization",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Seed full QP solves; feasible steps always enable it",
+    )
     return parser
 
 
@@ -350,6 +370,8 @@ def main() -> None:
         max_iterations=args.max_iterations,
         retraction_threads=args.retraction_threads,
         initialization=args.initialization,
+        qp_use_feasible_step=args.qp_step == "feasible",
+        qp_use_projected_gradient_initialization=args.projected_gradient_initialization,
     )
     args.output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output / "kinodynamics.npz", **solution_arrays(solution))

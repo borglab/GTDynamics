@@ -551,13 +551,32 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         ActiveSetSolverParams::QpSubproblemSolver::Sparse;
     qpParams->regularization = 0;
     qpParams->maxIterations = params.qpMaxIterations;
+    qpParams->useProjectedGradientInitialization =
+        params.qpUseProjectedGradientInitialization;
     try {
-      const auto [solution, result] =
-          ActiveSetSolver(problem, qpParams).optimizeWithState(initial);
-      qpIterations = result.iterations;
-      if (!result.converged) {
-        failureReason = "Sparse QP did not converge";
-        return;
+      const ActiveSetSolver solver(problem, qpParams);
+      Values solution;
+      std::vector<bool> activeRows;
+      if (params.qpUseFeasibleStep) {
+        const auto result = solver.computeFeasibleStep(initial);
+        qpIterations = result.iterations;
+        using Status = ActiveSetFeasibleStepResult::Status;
+        if (result.status != Status::FeasibleProgress &&
+            result.status != Status::NoProgress) {
+          failureReason = result.message;
+          return;
+        }
+        solution = result.values;
+        activeRows = result.activeInequalityRows;
+      } else {
+        const auto [values, result] = solver.optimizeWithState(initial);
+        qpIterations = result.iterations;
+        if (!result.converged) {
+          failureReason = "Sparse QP did not converge";
+          return;
+        }
+        solution = values;
+        activeRows = result.activeInequalityRows;
       }
       for (auto &[key, value] : delta) {
         if (value.size()) value = solution.at<Vector>(key);
@@ -567,7 +586,7 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         }
       }
       for (const auto &block : state.qpConstraintBlocks) {
-        const auto begin = result.activeInequalityRows.begin() + block.firstRow;
+        const auto begin = activeRows.begin() + block.firstRow;
         // Retraction promotes whole blocks only. Partially active vector
         // constraints remain inequalities, as in the existing cone projection.
         if (std::all_of(begin, begin + block.numRows,
@@ -578,8 +597,7 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       failureReason = error.what();
       return;
     } catch (const std::runtime_error &error) {
-      // Includes iteration exhaustion. Do not fall back to another backend or
-      // accept an approximate step. Invalid inputs still propagate.
+      // Includes iteration exhaustion. Invalid inputs still propagate.
       failureReason = error.what();
       return;
     }

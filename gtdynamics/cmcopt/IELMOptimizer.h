@@ -26,13 +26,20 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-
 struct IELMParams {
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
   LevenbergMarquardtParams lmParams;
   /// GTSAM sparse QP iteration limit; exhaustion rejects the LM trial.
   size_t qpMaxIterations = 1000;
+  /// Seed a full QP solve with GTSAM's componentwise projected gradient.
+  bool qpUseProjectedGradientInitialization = false;
+  /** Request GTSAM's feasible descent step instead of full QP convergence.
+   * This mode always uses projected-gradient initialization. A no-progress
+   * result supplies a zero trial without certifying QP optimality; numerical
+   * failure and iteration exhaustion reject the trial.
+   */
+  bool qpUseFeasibleStep = false;
   /** Bound retained full iteration states for long trajectories; zero retains
    * all. This does not affect the state used by mode-change detection.
    * Scalar convergence data can be collected through iterationCallback.

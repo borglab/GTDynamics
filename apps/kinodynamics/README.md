@@ -47,6 +47,13 @@ npm run build
 The example defaults to five iterations and accepts
 `--initialization fk|contact|contact-gp-dynamics`, `--max-iterations`, `--start`, `--end`, `--data`, `--labels`, and
 `--retraction-threads` (8 by default; 1 runs projections serially).
+It now defaults to GTSAM's projected-gradient feasible-step API. Use
+`--qp-step full` for a converged QP, or add
+`--no-projected-gradient-initialization` to use the original all-tight start
+for full solves. Feasible-step calls always initialize with projected gradients.
+The selected options are recorded in `solverSettings`; `qpMaxIterations` remains
+1,000. The linked GTSAM build must provide `computeFeasibleStep()` and
+`useProjectedGradientInitialization`, including matching Python bindings.
 Its main saves numerical arrays and a JSON report. The exporter converts those
 arrays to offline browser assets and adds independently compiled model geometry.
 No optimization runs in the browser. All recording/model gzip files use Git LFS.
@@ -88,7 +95,8 @@ Feasibility restoration changes the raw initial dynamics and is included in tota
 A feasible result or an objective-change stopping condition does not establish
 that the objective is globally optimal.
 
-The current sparse replay is one five-iteration run with TBB enabled and eight
+The saved sparse replay predates the projected-gradient and feasible-step APIs.
+It is one five-iteration run with TBB enabled and eight
 retraction workers. Initialization took 0.226 s, coupled optimization took
 204.172 s, and initialization through optimization took 206.057 s. The objective
 decreased from 7,341,612.101 to 8,931.760. Equality and inequality residual norms
@@ -96,6 +104,41 @@ are 1.76e-12 and 3.70e-8, respectively. The expensive second QP required 173
 active-set iterations. The smaller variable count does not resolve the GTSAM
 solver performance issue. The native binary/revision and modified Python
 source fingerprints are included in the replay provenance.
+
+Matched local runs on 2026-11-05 link GTSAM `e7f6b7774` with incremental sparse
+elimination and projected-gradient initialization. Each run uses the same
+78–98 s clip, 171 retained support slices, five outer iterations, LM settings,
+and zero additional QP regularization. Both libraries are Release builds with
+system TBB 2021.11, affinity CPUs 0–7, eight retraction workers, and single-thread
+BLAS/OpenMP. Runs use fresh processes sequentially, without concurrent builds.
+
+| Initialization | Full QP optimization (s) | Feasible-step optimization (s) | Full QP objective | Feasible-step objective |
+| --- | ---: | ---: | ---: | ---: |
+| `contact-gp-dynamics` | 87.78 | 67.47 | 8,931.76 | 9,000.94 |
+| `contact` | 170.01 | 108.74 | 8,931.49 | 8,948.17 |
+| `fk` | 274.26 | 192.15 | 26,482.39 | 26,469.03 |
+
+These are complete nonlinear optimization times, including QP initialization,
+relinearization, retraction, LM retries and error-history recording. Initialization
+through optimization totals are 89.78/69.48 s, 171.70/110.41 s and
+275.92/193.84 s respectively (full/feasible). All six results are feasible:
+equality norms are at most 1.87e-12 and inequality norms at most 9.44e-8.
+They also pass the independent 21-sample MuJoCo inverse-dynamics check and
+sole-cone/swing-wrench checks at every retained slice.
+
+Feasible steps save 23%, 36% and 30% in these single matched comparisons.
+Their five-iteration objectives change by +0.77%, +0.19% and -0.05%.
+Neither stopping at five iterations nor obtaining a feasible QP step establishes
+nonlinear optimality. Both FK runs have two rejected trials and damping retries.
+Main QP iteration totals (full/feasible) are 243/167, 488/288 and 839/554;
+they exclude auxiliary projection iterations. The default's second QP needs
+111/41 main iterations, so feasible-step mode still spends time updating its
+working set before returning useful descent.
+
+Raw summaries, arrays, logs, matching library/model hashes and validation reports
+are local in `build/new-qp-comparison/`; `comparison.json` checks that each pair
+differs only in `qpUseFeasibleStep`. These runs do not update the saved browser
+recording. The historical dense PR 472 timings below use different sampling.
 
 The following historical PR 472 dense runs (2026-11-05, Release build, eight
 retraction workers) used

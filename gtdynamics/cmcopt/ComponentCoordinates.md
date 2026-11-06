@@ -11,7 +11,7 @@ $Dh_i(x)B_i(x)=0$. Its increment is $\Delta x_i=B_i\xi_i$. Unconstrained
 variables retain their original tangent coordinates. Nonlinear objective
 factors are linearized in these coordinates, including all cross-component
 and temporal couplings. Costs with identical key scopes are combined before
-conversion to QP Hessians, preserving the previous solve path's compaction.
+conversion to QP costs, retaining their square-root factors and compaction.
 No global dense matrix is assembled.
 
 ## QP assembly and solve
@@ -33,7 +33,16 @@ the global linear step.
 The solver owns row additions, releases, and multipliers. GTDynamics no longer
 constructs an active-face kernel $N$, transforms the objective through $N$,
 or implements an active-set iteration. `qpMaxIterations` replaces
-`iqpMaxIterations` and defaults to 1,000; convergence is mandatory.
+`iqpMaxIterations` and defaults to 1,000. Full convergence is the default.
+`qpUseProjectedGradientInitialization` seeds this full solve with GTSAM's
+componentwise projection of the negative gradient (default false).
+
+With `qpUseFeasibleStep=true`, each trial calls
+`ActiveSetSolver::computeFeasibleStep` instead. GTSAM always uses projected-gradient
+initialization in this mode and returns at feasible descent, without certifying
+optimality or multiplier validity. `NoProgress` supplies the original zero
+increment to the existing LM stopping logic. Numerical failures and iteration
+limits reject the trial. This mode does not add a GTDynamics working-set solver.
 
 Zero-dimensional components are omitted from the QP variables and restored as
 zero increments. An entirely fixed problem needs no QP call. Failures reject
@@ -64,8 +73,9 @@ zero-dimensional components, damping, failures, and slack-boundary retraction.
 The archived `ComponentRefactorReport.html` and `.json` describe earlier
 implementations and remain historical measurements. They do not establish
 performance or bit-identical results for this replacement: the former default
-stopped at a feasible approximation, whereas every successful new trial solves
-the full tangent-cone QP. Sparse-backend dependent-row robustness must be
+stopped at a feasible approximation, whereas the default replacement solves
+the full tangent-cone QP. The G1 example now explicitly requests feasible steps
+through GTSAM. Sparse-backend dependent-row robustness must be
 validated before this replacement is considered ready. See
 [SparseQpValidation.md](SparseQpValidation.md) for the current blocker and the
 bounded G1 comparison.

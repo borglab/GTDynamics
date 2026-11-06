@@ -29,11 +29,18 @@ LM accepts the trial or increases damping and solves another QP. Retractors
 still enforce all inequalities, and can operate independently in parallel.
 Only wholly active vector constraint blocks are promoted to equalities.
 
-The global solver must converge within `qpMaxIterations` (default 1,000).
-A numerical failure rejects the trial; there is no alternate global backend or
-approximate feasible-step mode. `qpIterations` counts active-set iterations,
+The global solver defaults to full convergence within `qpMaxIterations`
+(default 1,000). `qpUseProjectedGradientInitialization` optionally seeds this
+solve. `qpUseFeasibleStep` instead requests feasible descent using GTSAM's
+`computeFeasibleStep`, which always uses projected-gradient initialization.
+The G1 example selects this mode by default; `--qp-step full` requests convergence,
+and `--no-projected-gradient-initialization` disables seeding of full solves.
+A numerical failure or exhausted iteration budget rejects the trial. A no-progress
+result supplies a zero trial and does not certify QP optimality.
+`qpIterations` counts main active-set iterations, excluding initialization solves,
 not factorizations. This can change trajectories relative to the historical
-configuration that skipped full QP refinement.
+configuration that skipped full QP refinement. LM still checks nonlinear
+retraction and objective improvement for every proposed step.
 
 See [the implementation contract](../../gtdynamics/cmcopt/ComponentCoordinates.md)
 and [IELMOptimizerState](../../gtdynamics/cmcopt/IELMOptimizerState.cpp).

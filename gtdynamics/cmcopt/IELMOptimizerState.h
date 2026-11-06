@@ -118,13 +118,15 @@ struct IELMTrial {
     double costChange = 0;
     bool solveSuccessful = 0;
     std::string failureReason;
-    size_t qpIterations = 0;  // GTSAM active-set iterations, not factorizations
+    /// Main GTSAM working-face solves; excludes initialization projections.
+    size_t qpIterations = 0;
 
     /** Default constructor. */
     LinearUpdate() {}
 
     /** Compute a damped LM step and its blocking inequality constraints.
      * Solve the global tangent-cone QP with GTSAM's sparse active-set solver.
+     * Optionally request feasible descent instead of QP convergence.
      * Equality constraints have already been eliminated by B.
      * Lift the result to ambient tangent coordinates and record the predicted
      * reduction in the undamped cost model.

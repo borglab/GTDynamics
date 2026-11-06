@@ -499,6 +499,10 @@ py::dict solve(
   result["reducedDimension"] = reducedDimension;
   result["objectiveInitial"] = cost.error(initial);
   IELMParams params;
+  params.qpMaxIterations = setting<size_t>(settings, "qpMaxIterations");
+  params.qpUseProjectedGradientInitialization =
+      setting<bool>(settings, "qpUseProjectedGradientInitialization");
+  params.qpUseFeasibleStep = setting<bool>(settings, "qpUseFeasibleStep");
   params.historyWindow = setting<size_t>(settings, "historyWindow");
   params.retractionThreads = setting<size_t>(settings, "retractionThreads");
   params.lmParams.maxIterations = setting<size_t>(settings, "maxIterations");
