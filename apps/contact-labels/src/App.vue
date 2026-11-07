@@ -12,6 +12,7 @@ import {
   watch,
 } from "vue";
 import { ContactScene } from "./scene.js";
+import { playbackFrame } from "./playback.js";
 import {
   loadJson,
   validateRecord,
@@ -149,10 +150,7 @@ function selectFrame(value) {
 }
 function tick(now) {
   if (!playing.value) return;
-  frame.value = Math.min(
-    record.value.times.length - 1,
-    first + Math.floor((now - origin) / 20),
-  );
+  frame.value = playbackFrame(first, now - origin, record.value.times.length);
   if (frame.value === record.value.times.length - 1) pause();
   else animation = requestAnimationFrame(tick);
 }
