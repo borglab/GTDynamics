@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>URDF IK Explorer</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+        "urdf-loader": "https://cdn.jsdelivr.net/npm/urdf-loader@0.12.3/src/URDFLoader.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <aside id="panel">
+    <header>
+      <h1>URDF IK Explorer</h1>
+      <span class="sub">GTDynamics</span>
+    </header>
+
+    <section class="controls">
+      <label>Model
+        <select id="model"></select>
+      </label>
+      <label>End-effector frame
+        <select id="ee" disabled></select>
+      </label>
+      <label>IK scheme
+        <select id="scheme"></select>
+      </label>
+      <p id="scheme-desc" class="hint"></p>
+      <label class="check">
+        <input type="checkbox" id="orientation" checked>
+        Constrain orientation (full 6-DoF pose)
+      </label>
+      <div class="grid3">
+        <label>Pos tol (mm)
+          <input type="number" id="pos-tol" value="1" min="0.001" step="0.1">
+        </label>
+        <label>Rot tol (°)
+          <input type="number" id="rot-tol" value="0.5" min="0.001" step="0.1">
+        </label>
+        <label>Max iters
+          <input type="number" id="max-iters" min="1" step="1" placeholder="auto">
+        </label>
+      </div>
+    </section>
+
+    <section id="status" class="status idle">
+      <div class="status-head">
+        <span id="status-badge">Loading…</span>
+        <span id="status-meta"></span>
+      </div>
+      <ul id="reasons"></ul>
+    </section>
+
+    <section id="pose-section">
+      <h2>End-effector pose <span class="edit-flag">editing</span></h2>
+      <table class="pose">
+        <thead>
+          <tr><th></th><th>Current</th><th>Target</th></tr>
+        </thead>
+        <tbody id="pose-rows"></tbody>
+      </table>
+      <p class="hint mono" id="quat"></p>
+      <div class="buttons">
+        <button id="solve">Solve to target</button>
+        <button id="reset-target" class="secondary">Target = current</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Joints <button id="home" class="small secondary">Home</button></h2>
+      <div id="joints"></div>
+    </section>
+
+    <section id="notes" hidden></section>
+  </aside>
+
+  <main id="viewport">
+    <div id="help">
+      <b>Drag</b> the orange handle to move the end-effector ·
+      <b>double-click</b> it to edit its pose
+      (<kbd>W</kbd> move, <kbd>E</kbd> rotate, <kbd>Esc</kbd> done) ·
+      drag elsewhere to orbit, scroll to zoom
+    </div>
+    <div id="view-tools">
+      <label class="check"><input type="checkbox" id="show-skeleton" checked> Skeleton</label>
+      <label class="check"><input type="checkbox" id="show-meshes" checked> Meshes</label>
+      <button id="fit" class="small secondary">Fit view</button>
+    </div>
+    <div id="toast" hidden></div>
+  </main>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
