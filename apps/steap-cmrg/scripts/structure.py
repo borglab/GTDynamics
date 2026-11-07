@@ -120,14 +120,18 @@ def lifted(goal: gtsam.Pose3, dz: float) -> gtsam.Pose3:
     return gtsam.Pose3(goal.rotation(), gtsam.Point3(p[0], p[1], p[2] + dz))
 
 
-def add_grip(member: Member, stage_x: float, stage_y: float, grip_y: float, yaw: float) -> None:
+def add_grip(
+    member: Member, stage_x: float, stage_y: float, grip_y: float, yaw: float
+) -> None:
     """Set the staged grip, the grip at the target and the in-hand offset of a member.
 
     The grip is a downward tool goal above the staged member on edge. Carrying it
     through the staging-to-target transform gives the hold at the target.
     """
     stage_z = TABLE_TOP_Z + PROFILE_WIDTH / 2.0
-    member.grip_staging = cell.downward_goal(stage_x, grip_y, stage_z + GRIP_Z_ABOVE, yaw)
+    member.grip_staging = cell.downward_goal(
+        stage_x, grip_y, stage_z + GRIP_Z_ABOVE, yaw
+    )
     grip_local = np.linalg.inv(member.staging) @ member.grip_staging.matrix()
     member.grip = gtsam.Pose3(member.target @ grip_local)
     member.grip_offset = np.linalg.inv(member.grip_staging.matrix()) @ member.staging
@@ -146,19 +150,38 @@ def build_structure(spec: dict) -> Structure:
     stock_distance = float(spec.get("stock_distance", 2.0))
     members: list[Member] = []
     if spec.get("base"):
-        first, second = (np.array([site[0] + p.get("x", 0.0), site[1] + p["y"]]) for p in spec["posts"][:2])
+        first, second = (
+            np.array([site[0] + p.get("x", 0.0), site[1] + p["y"]])
+            for p in spec["posts"][:2]
+        )
         direction = second - first
         length = float(np.linalg.norm(direction)) - PROFILE_THICK
         center = (first + second) / 2.0
-        pose = flat_pose(center[0], center[1], TABLE_TOP_Z + PROFILE_THICK / 2.0, math.atan2(direction[1], direction[0]))
-        members.append(Member("base", "base", (length, PROFILE_WIDTH, PROFILE_THICK), pose, fixed=True))
+        pose = flat_pose(
+            center[0],
+            center[1],
+            TABLE_TOP_Z + PROFILE_THICK / 2.0,
+            math.atan2(direction[1], direction[0]),
+        )
+        members.append(
+            Member(
+                "base", "base", (length, PROFILE_WIDTH, PROFILE_THICK), pose, fixed=True
+            )
+        )
     posts = spec["posts"]
     movable: list[Member] = []
     for index, post in enumerate(posts):
         height = float(post["height"])
         x, y = site[0] + post.get("x", 0.0), site[1] + post["y"]
         pose = standing_pose(x, y, TABLE_TOP_Z + height / 2.0, math.pi)
-        movable.append(Member(f"post_{index + 1}", "post", (height, PROFILE_WIDTH, PROFILE_THICK), pose))
+        movable.append(
+            Member(
+                f"post_{index + 1}",
+                "post",
+                (height, PROFILE_WIDTH, PROFILE_THICK),
+                pose,
+            )
+        )
     for index, lintel in enumerate(spec.get("lintels", [])):
         a, b = lintel["between"]
         pa, pb = movable[a].target[:3, 3], movable[b].target[:3, 3]
@@ -170,7 +193,14 @@ def build_structure(spec: dict) -> Structure:
         center = (pa[:2] + pb[:2]) / 2.0
         yaw = math.atan2(direction[1], direction[0])
         pose = flat_pose(center[0], center[1], z, yaw)
-        movable.append(Member(f"lintel_{index + 1}", "lintel", (length, PROFILE_WIDTH, PROFILE_THICK), pose))
+        movable.append(
+            Member(
+                f"lintel_{index + 1}",
+                "lintel",
+                (length, PROFILE_WIDTH, PROFILE_THICK),
+                pose,
+            )
+        )
     stock_x = site[0] - stock_distance + (len(movable) - 1) / 2.0 * STOCK_SPACING
     for slot, member in enumerate(movable):
         length = member.size[0]
@@ -182,13 +212,21 @@ def build_structure(spec: dict) -> Structure:
         grip_y = end - GRIP_FROM_TOP if member.kind == "post" else y_center
         add_grip(member, x, y_center, grip_y, math.pi / 2.0)
     members.extend(movable)
-    return Structure(spec.get("name", "structure"), members, _tables(members, movable), site,
-                     stock_distance, spec)
+    return Structure(
+        spec.get("name", "structure"),
+        members,
+        _tables(members, movable),
+        site,
+        stock_distance,
+        spec,
+    )
 
 
 def footprint(pose: np.ndarray, size) -> np.ndarray:
     """Return the world x, y of a member's eight corners."""
-    signs = np.array([[i, j, k] for i in (-0.5, 0.5) for j in (-0.5, 0.5) for k in (-0.5, 0.5)])
+    signs = np.array(
+        [[i, j, k] for i in (-0.5, 0.5) for j in (-0.5, 0.5) for k in (-0.5, 0.5)]
+    )
     return ((signs * np.asarray(size)) @ pose[:3, :3].T + pose[:3, 3])[:, :2]
 
 
@@ -196,7 +234,9 @@ def table_box(points: np.ndarray, margin: float = 0.0) -> Box:
     """Return a table from the floor to the work height over the bounding rectangle of ``points``."""
     low, high = points.min(axis=0) - margin, points.max(axis=0) + margin
     half_top = TABLE_HEIGHT / 2.0
-    return Box.axis_aligned([*(low + high) / 2.0, half_top], [*(high - low) / 2.0, half_top])
+    return Box.axis_aligned(
+        [*(low + high) / 2.0, half_top], [*(high - low) / 2.0, half_top]
+    )
 
 
 def _tables(members: list[Member], movable: list[Member]) -> dict[str, Box]:
@@ -219,14 +259,24 @@ PRESETS = {
         "name": "Double portal",
         "site": [6.0, 3.65],
         "stock_distance": 2.0,
-        "posts": [{"y": -1.1, "height": 1.0}, {"y": 0.0, "height": 1.0}, {"y": 1.1, "height": 1.0}],
-        "lintels": [{"between": [0, 1], "overhang": 0.06}, {"between": [1, 2], "overhang": 0.06}],
+        "posts": [
+            {"y": -1.1, "height": 1.0},
+            {"y": 0.0, "height": 1.0},
+            {"y": 1.1, "height": 1.0},
+        ],
+        "lintels": [
+            {"between": [0, 1], "overhang": 0.06},
+            {"between": [1, 2], "overhang": 0.06},
+        ],
     },
     "skewed-portal": {
         "name": "Skewed portal",
         "site": [6.0, 3.65],
         "stock_distance": 2.0,
-        "posts": [{"x": -0.35, "y": -0.9, "height": 1.1}, {"x": 0.45, "y": 0.8, "height": 1.1}],
+        "posts": [
+            {"x": -0.35, "y": -0.9, "height": 1.1},
+            {"x": 0.45, "y": 0.8, "height": 1.1},
+        ],
         "lintels": [{"between": [0, 1], "overhang": 0.1}],
     },
 }

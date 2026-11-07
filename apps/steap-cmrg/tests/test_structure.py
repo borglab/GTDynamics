@@ -41,8 +41,11 @@ class TestStructure(unittest.TestCase):
         """The furthest staged member lies 2.0 m from the build site."""
         for spec in st.PRESETS.values():
             structure = st.build_structure(spec)
-            distances = [np.linalg.norm(member.staging[:2, 3] - structure.site)
-                         for member in structure.members if not member.fixed]
+            distances = [
+                np.linalg.norm(member.staging[:2, 3] - structure.site)
+                for member in structure.members
+                if not member.fixed
+            ]
             self.assertAlmostEqual(max(distances), 2.0)
 
     def test_portal_members_are_flush(self):
@@ -51,24 +54,38 @@ class TestStructure(unittest.TestCase):
         members = {m.name: m for m in structure.members}
         ys = np.sort([members[n].target[1, 3] for n in ("post_1", "post_2")])
         thick = st.PROFILE_THICK
-        self.assertAlmostEqual(members["base"].size[0], (ys[1] - thick / 2.0) - (ys[0] + thick / 2.0))
-        self.assertAlmostEqual(members["lintel_1"].size[0], (ys[1] + thick / 2.0) - (ys[0] - thick / 2.0))
-        self.assertAlmostEqual(members["base"].target[2, 3] - thick / 2.0, st.TABLE_TOP_Z)
+        self.assertAlmostEqual(
+            members["base"].size[0], (ys[1] - thick / 2.0) - (ys[0] + thick / 2.0)
+        )
+        self.assertAlmostEqual(
+            members["lintel_1"].size[0], (ys[1] + thick / 2.0) - (ys[0] - thick / 2.0)
+        )
+        self.assertAlmostEqual(
+            members["base"].target[2, 3] - thick / 2.0, st.TABLE_TOP_Z
+        )
         for name in ("post_1", "post_2"):
-            self.assertAlmostEqual(members[name].target[2, 3] - members[name].size[0] / 2.0, st.TABLE_TOP_Z)
+            self.assertAlmostEqual(
+                members[name].target[2, 3] - members[name].size[0] / 2.0, st.TABLE_TOP_Z
+            )
 
     def test_workbench_matches_structure_and_platform_holds_stock(self):
         """The workbench has the assembled footprint; the platform is separate and holds the stock."""
         structure = st.build_structure(st.PRESETS["portal"])
         members = {m.name: m for m in structure.members}
         bench, platform = structure.tables["workbench"], structure.tables["platform"]
-        np.testing.assert_allclose(bench.half[:2], [st.PROFILE_WIDTH / 2.0, members["lintel_1"].size[0] / 2.0])
+        np.testing.assert_allclose(
+            bench.half[:2], [st.PROFILE_WIDTH / 2.0, members["lintel_1"].size[0] / 2.0]
+        )
         np.testing.assert_allclose(bench.center[:2], structure.site)
-        self.assertLess(platform.center[0] + platform.half[0], bench.center[0] - bench.half[0])
+        self.assertLess(
+            platform.center[0] + platform.half[0], bench.center[0] - bench.half[0]
+        )
         for member in structure.members:
             if not member.fixed:
                 corners = st.footprint(member.staging, member.size)
-                self.assertTrue(np.all(np.abs(corners - platform.center[:2]) <= platform.half[:2]))
+                self.assertTrue(
+                    np.all(np.abs(corners - platform.center[:2]) <= platform.half[:2])
+                )
 
     def test_grip_offset_carries_the_member_into_place(self):
         """The in-hand offset maps the target grip back to the target member pose."""
@@ -97,10 +114,19 @@ class TestSequence(unittest.TestCase):
         """Posts take four nails before release; the lintel takes eight and the build ends on the last."""
         structure = st.build_structure(st.PRESETS["portal"])
         segments = sq.build_sequence(structure)
-        for member, count, clear in (("post_1", 4, False), ("post_2", 4, True), ("lintel_1", 8, True)):
+        for member, count, clear in (
+            ("post_1", 4, False),
+            ("post_2", 4, True),
+            ("lintel_1", 8, True),
+        ):
             steps = [s.key.split(":")[1] for s in segments if s.member == member]
             nails = ["reposition", "nail", "withdraw"] * count
-            expected = (["clear"] if clear else []) + ["reach", "grip", "carry"] + nails + ["release"]
+            expected = (
+                (["clear"] if clear else [])
+                + ["reach", "grip", "carry"]
+                + nails
+                + ["release"]
+            )
             if member == "lintel_1":
                 expected = expected[:-2]
             self.assertEqual(steps, expected)
@@ -129,10 +155,23 @@ class TestShortcut(unittest.TestCase):
         def free(q):
             return not (0.4 < q[0] < 0.6 and q[1] < 0.8)
 
-        path = [np.array(p, dtype=float) for p in ([0.1, 0.1], [0.2, 0.7], [0.1, 0.9], [0.5, 0.95], [0.9, 0.85], [0.8, 0.3], [0.9, 0.1])]
+        path = [
+            np.array(p, dtype=float)
+            for p in (
+                [0.1, 0.1],
+                [0.2, 0.7],
+                [0.1, 0.9],
+                [0.5, 0.95],
+                [0.9, 0.85],
+                [0.8, 0.3],
+                [0.9, 0.1],
+            )
+        ]
         span = np.ones(2)
         short = rrt.shortcut(path, free, span, 0.01, seed=1)
-        length = lambda points: sum(np.linalg.norm(b - a) for a, b in zip(points, points[1:]))  # noqa: E731
+        length = lambda points: sum(
+            np.linalg.norm(b - a) for a, b in zip(points, points[1:])
+        )  # noqa: E731
         self.assertLess(length(short), length(path))
         np.testing.assert_allclose(short[0], path[0])
         np.testing.assert_allclose(short[-1], path[-1])
@@ -161,25 +200,45 @@ class TestSpheres(unittest.TestCase):
         size = (1.2, 3.5 * 0.0254, 1.5 * 0.0254)
         pose = st.standing_pose(2.0, 3.0, 0.9, 0.7)
         group = sc.member_spheres(pose, size)
-        signs = np.array([[sx, sy, sz] for sx in (-1, 0, 1) for sy in (-1, 1) for sz in (-1, 1)], dtype=float)
+        signs = np.array(
+            [[sx, sy, sz] for sx in (-1, 0, 1) for sy in (-1, 1) for sz in (-1, 1)],
+            dtype=float,
+        )
         corners = pose[:3, :3] @ (signs * np.array(size) / 2.0).T + pose[:3, 3:4]
         self.assertTrue(np.all(group.signed_distance(corners.T) < 0.0))
 
     def test_table_spheres_stay_inside_and_cover_the_box(self):
         """Spheres never cross a face, and cover even a table narrower than the sphere size."""
-        for half in ([0.7, 1.2, st.TABLE_TOP_Z / 2.0], [st.PROFILE_WIDTH / 2.0, 1.16, st.TABLE_TOP_Z / 2.0]):
+        for half in (
+            [0.7, 1.2, st.TABLE_TOP_Z / 2.0],
+            [st.PROFILE_WIDTH / 2.0, 1.16, st.TABLE_TOP_Z / 2.0],
+        ):
             box = sc.Box.axis_aligned([0.0, 0.0, half[2]], half)
             group = sc.table_spheres(box)
-            np.testing.assert_array_less((np.abs(group.centers - box.center) + group.radius).max(axis=0), box.half + 1e-9)
-            top = np.array([[0.0, y, 2.0 * half[2]] for y in np.linspace(-0.9 * half[1], 0.9 * half[1], 25)])
+            np.testing.assert_array_less(
+                (np.abs(group.centers - box.center) + group.radius).max(axis=0),
+                box.half + 1e-9,
+            )
+            top = np.array(
+                [
+                    [0.0, y, 2.0 * half[2]]
+                    for y in np.linspace(-0.9 * half[1], 0.9 * half[1], 25)
+                ]
+            )
             self.assertLess(group.signed_distance(top).max(), 0.02)
 
     def test_table_top_is_nearly_flat_and_clears_the_floor(self):
         """The table's sphere union reaches its top surface and is clear just above it."""
-        box = sc.Box.axis_aligned([0.0, 0.0, st.TABLE_TOP_Z / 2.0], [0.7, 1.2, st.TABLE_TOP_Z / 2.0])
+        box = sc.Box.axis_aligned(
+            [0.0, 0.0, st.TABLE_TOP_Z / 2.0], [0.7, 1.2, st.TABLE_TOP_Z / 2.0]
+        )
         group = sc.table_spheres(box)
-        above = np.array([[0.0, 0.0, st.TABLE_TOP_Z + 0.02], [0.33, 0.51, st.TABLE_TOP_Z + 0.02]])
-        below = np.array([[0.0, 0.0, st.TABLE_TOP_Z - 0.03], [0.33, 0.51, st.TABLE_TOP_Z - 0.03]])
+        above = np.array(
+            [[0.0, 0.0, st.TABLE_TOP_Z + 0.02], [0.33, 0.51, st.TABLE_TOP_Z + 0.02]]
+        )
+        below = np.array(
+            [[0.0, 0.0, st.TABLE_TOP_Z - 0.03], [0.33, 0.51, st.TABLE_TOP_Z - 0.03]]
+        )
         self.assertTrue(np.all(group.signed_distance(above) > 0.0))
         self.assertTrue(np.all(group.signed_distance(below) < 0.0))
 
@@ -194,7 +253,16 @@ class TestRrt(unittest.TestCase):
         def free(q):
             return not (0.4 < q[0] < 0.6 and q[1] < 0.8)
 
-        path = rrt.rrt_connect([0.1, 0.1], [0.9, 0.1], lower, upper, free, step=0.05, resolution=0.01, seed=1)
+        path = rrt.rrt_connect(
+            [0.1, 0.1],
+            [0.9, 0.1],
+            lower,
+            upper,
+            free,
+            step=0.05,
+            resolution=0.01,
+            seed=1,
+        )
         self.assertTrue(all(free(q) for q in path))
         line, velocities = rrt.path_to_states(path, 10, 2.0, upper - lower)
         np.testing.assert_allclose(line[0], [0.1, 0.1])

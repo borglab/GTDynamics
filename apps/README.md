@@ -154,8 +154,9 @@ The workflow follows GitHub's [custom Pages workflow](https://docs.github.com/en
 2. Add the directory to `workspaces` in `apps/package.json` and run `npm install`
    from `apps` to update the shared lockfile.
 3. Add an entry to `registry.json` with `id` (the folder name), `title`,
-   `description`, and `tag`. This adds its tab and overview link and includes it
-   in the development launcher and Pages build.
+   `description`, and `tag`, plus an optional short `tab` label for a long
+   title. This adds its tab and overview link and includes it in the
+   development launcher and Pages build.
 4. If it needs downloaded assets, add its bootstrap to the `models` script.
    Native/server functionality needs an explicit static mode for Pages.
 5. Start robot visualization with [the shared viewport and camera](shared/README.md).

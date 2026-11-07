@@ -41,10 +41,14 @@ class CableDisplay:
             metadata = pl.read_cable_metadata(pl.CABLE_WEIGHTS[arm])
             self.arc[arm] = np.array([float(v) for v in metadata["node_arc"]])
 
-    def nodes(self, world: dict[str, np.ndarray], q: np.ndarray, arm: int) -> np.ndarray:
+    def nodes(
+        self, world: dict[str, np.ndarray], q: np.ndarray, arm: int
+    ) -> np.ndarray:
         """Return the (16, 3) world Chebyshev nodes of an arm's cable at configuration ``q``."""
         block = 9 * (arm - 1)
-        residuals = np.asarray(self.networks[arm].forward(q[block + 4 : block + 9])).reshape(-1, 3)
+        residuals = np.asarray(
+            self.networks[arm].forward(q[block + 4 : block + 9])
+        ).reshape(-1, 3)
         link_1, link_3, link_6 = (world[f"robot{arm}_link_{n}"] for n in (1, 3, 6))
         anchors = cell.CABLE_ANCHORS[arm]
         end_3 = link_3[:3, :3] @ anchors["link_3"] + link_3[:3, 3]
@@ -65,8 +69,12 @@ class CableDisplay:
             out[j] = point
         return out
 
-    def samples(self, world: dict[str, np.ndarray], q: np.ndarray, arm: int, count: int) -> np.ndarray:
+    def samples(
+        self, world: dict[str, np.ndarray], q: np.ndarray, arm: int, count: int
+    ) -> np.ndarray:
         """Return ``count`` world points along a cubic through the nodes, by chord length."""
         nodes = self.nodes(world, q, arm)
-        chord = np.concatenate(([0.0], np.cumsum(np.linalg.norm(np.diff(nodes, axis=0), axis=1))))
+        chord = np.concatenate(
+            ([0.0], np.cumsum(np.linalg.norm(np.diff(nodes, axis=0), axis=1)))
+        )
         return CubicSpline(chord, nodes)(np.linspace(0.0, chord[-1], count))

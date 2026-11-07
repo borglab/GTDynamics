@@ -69,7 +69,9 @@ def extend(tree, q_target, collision_free, step, span, resolution):
     """Grow ``tree`` one step toward ``q_target``; return (status, new index)."""
     near = tree.nearest(q_target, span)
     q_new, reached = steer(tree.nodes[near], q_target, step, span)
-    if not collision_free(q_new) or not edge_clear(tree.nodes[near], q_new, collision_free, span, resolution):
+    if not collision_free(q_new) or not edge_clear(
+        tree.nodes[near], q_new, collision_free, span, resolution
+    ):
         return "trapped", -1
     return ("reached" if reached else "advanced"), tree.add(q_new, near)
 
@@ -85,8 +87,18 @@ def connect(tree, q_target, collision_free, step, span, resolution):
         return ("reached", index) if status == "reached" else ("trapped", last)
 
 
-def rrt_connect(q_start, q_goal, lower, upper, collision_free, step=0.05, resolution=0.02,
-                max_iterations=5000, seed=0, endpoint_collision_free=None) -> list[np.ndarray]:
+def rrt_connect(
+    q_start,
+    q_goal,
+    lower,
+    upper,
+    collision_free,
+    step=0.05,
+    resolution=0.02,
+    max_iterations=5000,
+    seed=0,
+    endpoint_collision_free=None,
+) -> list[np.ndarray]:
     """Return a feasible path from ``q_start`` to ``q_goal`` by bidirectional tree growth."""
     q_start, q_goal = np.asarray(q_start, dtype=float), np.asarray(q_goal, dtype=float)
     lower, upper = np.asarray(lower, dtype=float), np.asarray(upper, dtype=float)
@@ -103,7 +115,9 @@ def rrt_connect(q_start, q_goal, lower, upper, collision_free, step=0.05, resolu
         sample = lower + rng.random(len(lower)) * (upper - lower)
         status, new = extend(tree_a, sample, collision_free, step, span, resolution)
         if status != "trapped":
-            outcome, joined = connect(tree_b, tree_a.nodes[new], collision_free, step, span, resolution)
+            outcome, joined = connect(
+                tree_b, tree_a.nodes[new], collision_free, step, span, resolution
+            )
             if outcome == "reached":
                 path_a, path_b = tree_a.path_to(new), tree_b.path_to(joined)
                 return path_a + path_b[::-1] if start_side else path_b + path_a[::-1]
@@ -112,7 +126,9 @@ def rrt_connect(q_start, q_goal, lower, upper, collision_free, step=0.05, resolu
     raise ValueError(f"RRT-Connect found no path in {max_iterations} iterations")
 
 
-def shortcut(path, collision_free, span, resolution, seed=0, tries=300) -> list[np.ndarray]:
+def shortcut(
+    path, collision_free, span, resolution, seed=0, tries=300
+) -> list[np.ndarray]:
     """Return ``path`` with random pairs of waypoints joined wherever the straight edge is free."""
     rng = np.random.default_rng(seed)
     points = [np.asarray(p, dtype=float) for p in path]
@@ -120,7 +136,9 @@ def shortcut(path, collision_free, span, resolution, seed=0, tries=300) -> list[
         if len(points) < 3:
             break
         i, j = sorted(rng.choice(len(points), size=2, replace=False))
-        if j - i > 1 and edge_clear(points[i], points[j], collision_free, span, resolution):
+        if j - i > 1 and edge_clear(
+            points[i], points[j], collision_free, span, resolution
+        ):
             points = points[: i + 1] + points[j:]
     return points
 
@@ -128,7 +146,10 @@ def shortcut(path, collision_free, span, resolution, seed=0, tries=300) -> list[
 def resample_path(path, state_count, span) -> list[np.ndarray]:
     """Resample a waypoint path to ``state_count`` states evenly spaced by arc length."""
     points = [np.asarray(p, dtype=float) for p in path]
-    segments = [np.linalg.norm((points[i + 1] - points[i]) / span) for i in range(len(points) - 1)]
+    segments = [
+        np.linalg.norm((points[i + 1] - points[i]) / span)
+        for i in range(len(points) - 1)
+    ]
     cumulative = np.concatenate(([0.0], np.cumsum(segments)))
     total = cumulative[-1]
     if total == 0.0:
@@ -136,7 +157,10 @@ def resample_path(path, state_count, span) -> list[np.ndarray]:
     states = []
     for k in range(state_count):
         target = total * k / (state_count - 1)
-        j = min(max(int(np.searchsorted(cumulative, target, side="right") - 1), 0), len(points) - 2)
+        j = min(
+            max(int(np.searchsorted(cumulative, target, side="right") - 1), 0),
+            len(points) - 2,
+        )
         local = (target - cumulative[j]) / segments[j] if segments[j] > 0 else 0.0
         states.append(points[j] + local * (points[j + 1] - points[j]))
     return states
@@ -145,7 +169,9 @@ def resample_path(path, state_count, span) -> list[np.ndarray]:
 def central_velocities(line, total_time) -> list[np.ndarray]:
     """Return central-difference velocities of evenly timed states, zero at both ends."""
     delta_t = total_time / (len(line) - 1)
-    interior = [(line[k + 1] - line[k - 1]) / (2.0 * delta_t) for k in range(1, len(line) - 1)]
+    interior = [
+        (line[k + 1] - line[k - 1]) / (2.0 * delta_t) for k in range(1, len(line) - 1)
+    ]
     return [np.zeros_like(line[0])] + interior + [np.zeros_like(line[0])]
 
 

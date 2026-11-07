@@ -51,9 +51,13 @@ class DisplayKinematics:
     def __init__(self):
         self.model = ud.parse_urdf(cell.URDF_FILE)
         self.names = [n for arm in (1, 2) for n in cell.arm_joint_names(arm)]
-        self.tcp = {arm: cell.tool_tcp_pose(cell.ARM_TOOL[arm]).matrix() for arm in (1, 2)}
+        self.tcp = {
+            arm: cell.tool_tcp_pose(cell.ARM_TOOL[arm]).matrix() for arm in (1, 2)
+        }
         moving = {j.child for j in self.model.joints if j.kind != "fixed"}
-        self.movable = [i for i, link in enumerate(self.model.links) if self._moves(link, moving)]
+        self.movable = [
+            i for i, link in enumerate(self.model.links) if self._moves(link, moving)
+        ]
 
     def _moves(self, link: str, moving: set[str]) -> bool:
         while link:
@@ -84,7 +88,9 @@ class DisplayKinematics:
 def pose_row(matrix: np.ndarray) -> list[float]:
     """Return ``[x, y, z, qx, qy, qz, qw]`` of a 4x4 transform, rounded for JSON."""
     quaternion = ud.matrix_to_quaternion_xyzw(matrix[:3, :3])
-    return [round(float(v), 4) for v in matrix[:3, 3]] + [round(float(v), 5) for v in quaternion]
+    return [round(float(v), 4) for v in matrix[:3, 3]] + [
+        round(float(v), 5) for v in quaternion
+    ]
 
 
 def hermite(q0, q1, v0, v1, dt, s):
@@ -97,17 +103,35 @@ def hermite(q0, q1, v0, v1, dt, s):
 class BuildRecorder:
     """Runs a structure's segments and accumulates the recording."""
 
-    def __init__(self, structure: st.Structure, planner: pl.CmrgPlanner, disturbance: steap.Disturbance, seed: int):
+    def __init__(
+        self,
+        structure: st.Structure,
+        planner: pl.CmrgPlanner,
+        disturbance: steap.Disturbance,
+        seed: int,
+    ):
         self.structure, self.planner, self.disturbance = structure, planner, disturbance
         self.rng = np.random.default_rng(seed)
         self.kin = DisplayKinematics()
         self.cable_display = cd.CableDisplay()
-        self.poses = {m.name: (m.target.copy() if m.fixed else m.staging.copy()) for m in structure.members}
-        self.status = {m.name: ("placed" if m.fixed else "staged") for m in structure.members}
+        self.poses = {
+            m.name: (m.target.copy() if m.fixed else m.staging.copy())
+            for m in structure.members
+        }
+        self.status = {
+            m.name: ("placed" if m.fixed else "staged") for m in structure.members
+        }
         self.member_index = {m.name: i for i, m in enumerate(structure.members)}
         self.q = planner.join([cell.park_configuration(1), cell.park_configuration(2)])
         self.time = 0.0
-        self.frames = {"time": [], "q": [], "bodyPoses": [], "tips": [], "cable": [], "members": []}
+        self.frames = {
+            "time": [],
+            "q": [],
+            "bodyPoses": [],
+            "tips": [],
+            "cable": [],
+            "members": [],
+        }
         self.segments: list[dict] = []
         self.field_cache: dict[tuple, object] = {}
         self.lift_configurations: dict[str, np.ndarray] = {}
@@ -116,22 +140,37 @@ class BuildRecorder:
 
     # -- world -----------------------------------------------------------
     def obstacles(self) -> list[sc.SphereSet]:
-        wood = [m.spheres(self.poses[m.name]) for m in self.structure.members if self.status[m.name] == "placed"]
+        wood = [
+            m.spheres(self.poses[m.name])
+            for m in self.structure.members
+            if self.status[m.name] == "placed"
+        ]
         return wood + self.planner.table_spheres
 
     def set_obstacles(self) -> None:
-        names = tuple(sorted(m.name for m in self.structure.members if self.status[m.name] == "placed"))
+        names = tuple(
+            sorted(
+                m.name
+                for m in self.structure.members
+                if self.status[m.name] == "placed"
+            )
+        )
         key = (names, tuple(np.round(self.poses[n][:3, 3], 3).tobytes() for n in names))
         if key not in self.field_cache:
             self.planner.set_obstacles(self.obstacles())
-            self.field_cache[key] = (self.planner.block_spheres, self.planner.block_field)
+            self.field_cache[key] = (
+                self.planner.block_spheres,
+                self.planner.block_field,
+            )
         self.planner.block_spheres, self.planner.block_field = self.field_cache[key]
 
     def tool_world(self, q: np.ndarray, arm: int) -> np.ndarray:
         return self.kin.tool_frames(self.kin.transforms(q))[arm - 1]
 
     # -- goals -------------------------------------------------------------
-    def goal_configuration(self, segment: sq.Segment, maneuver: pl.Maneuver) -> np.ndarray:
+    def goal_configuration(
+        self, segment: sq.Segment, maneuver: pl.Maneuver
+    ) -> np.ndarray:
         parts = self.planner.split(self.q)
         goal = [parts[0].copy(), parts[1].copy()]
         for index, target in enumerate(segment.goals):
@@ -140,11 +179,19 @@ class BuildRecorder:
         for index, target in enumerate(segment.goals):
             if isinstance(target, (sq.Blend, np.ndarray)) or target is None:
                 continue
-            goal[index] = self.planner.solve_ik(self.planner.specs[index], target, parts[index],
-                                                goal[1 - index], maneuver, warm=True)
+            goal[index] = self.planner.solve_ik(
+                self.planner.specs[index],
+                target,
+                parts[index],
+                goal[1 - index],
+                maneuver,
+                warm=True,
+            )
         for index, target in enumerate(segment.goals):
             if isinstance(target, sq.Blend):
-                goal[index] = self.blend_goal(segment, index, target, parts, goal, maneuver)
+                goal[index] = self.blend_goal(
+                    segment, index, target, parts, goal, maneuver
+                )
         return self.planner.join(goal)
 
     def prepare_blocks(self, segments: list[sq.Segment]) -> None:
@@ -153,7 +200,9 @@ class BuildRecorder:
         for segment in segments:
             for index, target in enumerate(segment.goals):
                 if isinstance(target, sq.Blend):
-                    self.blocks.setdefault(target.block, {"arm": index, "segments": [], "end": target.end})["segments"].append(segment)
+                    self.blocks.setdefault(
+                        target.block, {"arm": index, "segments": [], "end": target.end}
+                    )["segments"].append(segment)
 
     def begin_block(self, name: str, maneuver: pl.Maneuver) -> dict:
         """Solve a block's end configuration and fractions along the other arm's tool travel."""
@@ -164,8 +213,18 @@ class BuildRecorder:
         parts = self.planner.split(self.q)
         block["start"] = parts[arm].copy()
         end = block["end"]
-        block["end_q"] = end if isinstance(end, np.ndarray) else self.planner.solve_ik(
-            self.planner.specs[arm], end, parts[arm], parts[1 - arm], maneuver, warm=False)
+        block["end_q"] = (
+            end
+            if isinstance(end, np.ndarray)
+            else self.planner.solve_ik(
+                self.planner.specs[arm],
+                end,
+                parts[arm],
+                parts[1 - arm],
+                maneuver,
+                warm=False,
+            )
+        )
         position, distances = self.tool_world(self.q, 2 - arm)[:3, 3], []
         for segment in block["segments"]:
             target = segment.goals[1 - arm]
@@ -173,7 +232,7 @@ class BuildRecorder:
                 point = np.asarray(target.translation())
             elif isinstance(target, np.ndarray):
                 q = self.q.copy()
-                q[9 * (1 - arm):9 * (1 - arm) + 9] = target
+                q[9 * (1 - arm) : 9 * (1 - arm) + 9] = target
                 point = self.tool_world(q, 2 - arm)[:3, 3]
             else:
                 point = position
@@ -191,49 +250,107 @@ class BuildRecorder:
         for candidate in np.linspace(fraction, previous, 6):
             q = block["start"] + candidate * (block["end_q"] - block["start"])
             full = self.planner.join([q, other] if index == 0 else [other, q])
-            if self.planner.collision_free(full, maneuver, pad=False, check_carried=False):
+            if self.planner.collision_free(
+                full, maneuver, pad=False, check_carried=False
+            ):
                 return q
         return parts[index]
 
-    def via_configurations(self, segment, maneuver, goal) -> tuple[np.ndarray, np.ndarray]:
+    def via_configurations(
+        self, segment, maneuver, goal
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Solve arm 1's lifted poses at both ends; arm 2 moves proportionally between its ends."""
         spec = self.planner.specs[0]
         first, last = segment.rrt_via
         lift = self.lift_configurations.get(segment.member)
         arm2_first = self.q[9:] + 0.25 * (goal[9:] - self.q[9:])
         arm2_last = self.q[9:] + 0.75 * (goal[9:] - self.q[9:])
-        arm1_first = lift if lift is not None else self.planner.solve_ik(spec, first, self.q[:9], arm2_first, maneuver, warm=True)
-        return (self.planner.join([arm1_first, arm2_first]),
-                self.planner.join([self.planner.solve_ik(spec, last, goal[:9], arm2_last, maneuver, warm=True), arm2_last]))
+        arm1_first = (
+            lift
+            if lift is not None
+            else self.planner.solve_ik(
+                spec, first, self.q[:9], arm2_first, maneuver, warm=True
+            )
+        )
+        return (
+            self.planner.join([arm1_first, arm2_first]),
+            self.planner.join(
+                [
+                    self.planner.solve_ik(
+                        spec, last, goal[:9], arm2_last, maneuver, warm=True
+                    ),
+                    arm2_last,
+                ]
+            ),
+        )
 
     def maneuver_for(self, segment: sq.Segment) -> pl.Maneuver:
         settings = self.planner.settings
         maneuver = pl.Maneuver(
-            straight=segment.straight, block_clearance=segment.block_clearance, use_rrt=segment.use_rrt,
+            straight=segment.straight,
+            block_clearance=segment.block_clearance,
+            use_rrt=segment.use_rrt,
             contact=segment.contact,
-            state_count=settings.nail_state_count if segment.nailing else settings.state_count,
-            check_interpolated=settings.nail_check_interpolated if segment.nailing else settings.check_interpolated)
+            state_count=(
+                settings.nail_state_count if segment.nailing else settings.state_count
+            ),
+            check_interpolated=(
+                settings.nail_check_interpolated
+                if segment.nailing
+                else settings.check_interpolated
+            ),
+        )
         if segment.carried:
             member = next(m for m in self.structure.members if m.name == segment.member)
-            points, radius = col.carried_points(self.planner.specs[0], member.size, member.grip_offset)
-            maneuver.carried_by, maneuver.carried_points, maneuver.carried_radius = 1, points, radius
+            points, radius = col.carried_points(
+                self.planner.specs[0], member.size, member.grip_offset
+            )
+            maneuver.carried_by, maneuver.carried_points, maneuver.carried_radius = (
+                1,
+                points,
+                radius,
+            )
             maneuver.carried_other_only = segment.carried_other_only
         return maneuver
 
     # -- run -------------------------------------------------------------
     def signature(self, segments: list[sq.Segment], count: int) -> str:
         """Identify the first ``count`` segments plus the settings, so a stale checkpoint is not reused."""
-        return json.dumps([[s.key for s in segments[:count]], vars(self.planner.settings),
-                           vars(self.disturbance), self.structure.name, cell.CABLE_ANCHORS, st.TABLE_TOP_Z, self.structure.stock_distance,
-                           "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-16nails-gp-playback-wait-lift-time-still-grasp-no-extra-priors"],
-                          sort_keys=True, default=str)
+        return json.dumps(
+            [
+                [s.key for s in segments[:count]],
+                vars(self.planner.settings),
+                vars(self.disturbance),
+                self.structure.name,
+                cell.CABLE_ANCHORS,
+                st.TABLE_TOP_Z,
+                self.structure.stock_distance,
+                "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-16nails-gp-playback-wait-lift-time-still-grasp-no-extra-priors",
+            ],
+            sort_keys=True,
+            default=str,
+        )
 
-    def save_checkpoint(self, path: Path, segments: list[sq.Segment], count: int) -> None:
-        state = {"signature": self.signature(segments, count), "count": count, "q": self.q, "time": self.time,
-                 "poses": self.poses, "status": self.status, "frames": self.frames, "segments": self.segments,
-                 "rng": self.rng.bit_generator.state, "lift": self.lift_configurations, "grasp": self.grasp,
-                 "blocks": {k: {f: v for f, v in b.items() if f in ("start", "end_q", "fractions")}
-                            for k, b in self.blocks.items()}}
+    def save_checkpoint(
+        self, path: Path, segments: list[sq.Segment], count: int
+    ) -> None:
+        state = {
+            "signature": self.signature(segments, count),
+            "count": count,
+            "q": self.q,
+            "time": self.time,
+            "poses": self.poses,
+            "status": self.status,
+            "frames": self.frames,
+            "segments": self.segments,
+            "rng": self.rng.bit_generator.state,
+            "lift": self.lift_configurations,
+            "grasp": self.grasp,
+            "blocks": {
+                k: {f: v for f, v in b.items() if f in ("start", "end_q", "fractions")}
+                for k, b in self.blocks.items()
+            },
+        }
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp")
         temporary.write_bytes(pickle.dumps(state))
@@ -245,9 +362,17 @@ class BuildRecorder:
             return 0
         state = pickle.loads(path.read_bytes())
         if state["signature"] != self.signature(segments, state["count"]):
-            print("checkpoint does not match this sequence or settings; starting over", flush=True)
+            print(
+                "checkpoint does not match this sequence or settings; starting over",
+                flush=True,
+            )
             return 0
-        self.q, self.time, self.poses, self.status = state["q"], state["time"], state["poses"], state["status"]
+        self.q, self.time, self.poses, self.status = (
+            state["q"],
+            state["time"],
+            state["poses"],
+            state["status"],
+        )
         self.frames, self.segments = state["frames"], state["segments"]
         self.rng.bit_generator.state = state["rng"]
         self.lift_configurations, self.grasp = state["lift"], state["grasp"]
@@ -256,7 +381,12 @@ class BuildRecorder:
         print(f"resumed {state['count']} segments from {path}", flush=True)
         return state["count"]
 
-    def run(self, segments: list[sq.Segment], limit: int | None = None, checkpoint: Path | None = None) -> None:
+    def run(
+        self,
+        segments: list[sq.Segment],
+        limit: int | None = None,
+        checkpoint: Path | None = None,
+    ) -> None:
         self.prepare_blocks(segments)
         first = self.load_checkpoint(checkpoint, segments) if checkpoint else 0
         for number, segment in enumerate(segments[:limit]):
@@ -264,7 +394,10 @@ class BuildRecorder:
                 continue
             started = time.time()
             self.run_segment(number, segment)
-            print(f"[{number + 1}/{len(segments)}] {segment.label}: {time.time() - started:.1f}s", flush=True)
+            print(
+                f"[{number + 1}/{len(segments)}] {segment.label}: {time.time() - started:.1f}s",
+                flush=True,
+            )
             if checkpoint:
                 self.save_checkpoint(checkpoint, segments, number + 1)
 
@@ -283,7 +416,9 @@ class BuildRecorder:
         plan = self.planner.plan(self.q, goal, maneuver)
         plan_seconds = time.time() - t0
         t0 = time.time()
-        run = steap.execute(self.planner, plan, self.disturbance, self.rng, feedback=True)
+        run = steap.execute(
+            self.planner, plan, self.disturbance, self.rng, feedback=True
+        )
         steap_seconds = time.time() - t0
         self.record(segment, member, carried, plan, run, plan_seconds, steap_seconds)
         self.q = run.measured[-1].copy()
@@ -293,7 +428,9 @@ class BuildRecorder:
             self.seat(member)
         if segment.event == "grip_close":
             # The gripper closes on the wood where it lies, so tracking error cannot move the wood.
-            self.grasp = np.linalg.inv(self.tool_world(self.q, 1)) @ self.poses[member.name]
+            self.grasp = (
+                np.linalg.inv(self.tool_world(self.q, 1)) @ self.poses[member.name]
+            )
             self.status[member.name] = "carried"
         if segment.event and segment.event_at == "end":
             self.time += DWELL_SECONDS
@@ -304,10 +441,16 @@ class BuildRecorder:
         self.status[member.name] = "placed"
 
     # -- recording ---------------------------------------------------------
-    def member_poses(self, tool_frame: np.ndarray | None, carried: st.Member | None) -> list[list[float]]:
+    def member_poses(
+        self, tool_frame: np.ndarray | None, carried: st.Member | None
+    ) -> list[list[float]]:
         rows = []
         for m in self.structure.members:
-            pose = (tool_frame @ self.grasp) if (carried is not None and m.name == carried.name) else self.poses[m.name]
+            pose = (
+                (tool_frame @ self.grasp)
+                if (carried is not None and m.name == carried.name)
+                else self.poses[m.name]
+            )
             rows.append(pose_row(pose))
         return rows
 
@@ -317,9 +460,16 @@ class BuildRecorder:
 
     def cable_points(self, q: np.ndarray) -> list[list[list[float]]]:
         world = self.kin.transforms(q)
-        return [self.cable_display.samples(world, q, arm, pl.CABLE_SAMPLES).round(3).tolist() for arm in (1, 2)]
+        return [
+            self.cable_display.samples(world, q, arm, pl.CABLE_SAMPLES)
+            .round(3)
+            .tolist()
+            for arm in (1, 2)
+        ]
 
-    def record(self, segment, member, carried, plan, run, plan_seconds, steap_seconds) -> None:
+    def record(
+        self, segment, member, carried, plan, run, plan_seconds, steap_seconds
+    ) -> None:
         n, dt = plan.state_count, plan.delta_t
         sub = max(2, int(np.ceil(TARGET_FRAMES / (n - 1))))
         frame_start = len(self.frames["time"])
@@ -328,42 +478,76 @@ class BuildRecorder:
             last = k == n - 1
             for j in range(1 if last else sub):
                 s = j / sub
-                q = run.measured[k] if last else hermite(run.measured[k], run.measured[k + 1], velocities[k],
-                                                         velocities[k + 1], dt, s)
+                q = (
+                    run.measured[k]
+                    if last
+                    else hermite(
+                        run.measured[k],
+                        run.measured[k + 1],
+                        velocities[k],
+                        velocities[k + 1],
+                        dt,
+                        s,
+                    )
+                )
                 world = self.kin.transforms(q)
                 tools = self.kin.tool_frames(world)
                 self.frames["time"].append(round(self.time + dt * (k + s), 3))
                 executed.append(q)
                 self.frames["q"].append([round(float(v), 5) for v in q])
                 self.frames["bodyPoses"].append(self.kin.poses(world).round(4).tolist())
-                self.frames["tips"].append([[round(float(v), 3) for v in f[:3, 3]] for f in tools])
+                self.frames["tips"].append(
+                    [[round(float(v), 3) for v in f[:3, 3]] for f in tools]
+                )
                 self.frames["cable"].append(self.cable_points(q))
                 self.frames["members"].append(self.member_poses(tools[0], carried))
-        events = [{"at": segment.event_at, "type": segment.event}] if segment.event else []
+        events = (
+            [{"at": segment.event_at, "type": segment.event}] if segment.event else []
+        )
         clearance = [self.planner.clearances(q) for q in executed]
-        self.segments.append({
-            "key": segment.key, "label": segment.label, "member": member.name,
-            "t0": round(self.time, 3), "duration": round(plan.total_time, 3),
-            "frameStart": frame_start, "frameCount": len(self.frames["time"]) - frame_start,
-            "events": events,
-            "planned": [self.tips_of(q) for q in run.nominal],
-            "replans": [[self.tips_of(q) for q in estimate] for estimate in run.estimates],
-            "graphError": round(plan.error, 4),
-            "supportStates": n, "subFrames": sub,
-            "seed": plan.seed_kind,
-            "planSeconds": round(plan_seconds, 2), "steapSeconds": round(steap_seconds, 2),
-            "finalJointError": round(run.final_error, 5),
-            "toolError": self.tool_error(run),
-            "clearance": {key: round(min(c[key] for c in clearance), 4) for key in ("floor", "wood", "table", "cross_arm")},
-            "disturbanceMax": round(float(np.max(np.abs(run.measured - run.commanded))), 5),
-            "replanShiftMax": round(float(np.max(np.abs(run.commanded - run.nominal))), 4),
-        })
+        self.segments.append(
+            {
+                "key": segment.key,
+                "label": segment.label,
+                "member": member.name,
+                "t0": round(self.time, 3),
+                "duration": round(plan.total_time, 3),
+                "frameStart": frame_start,
+                "frameCount": len(self.frames["time"]) - frame_start,
+                "events": events,
+                "planned": [self.tips_of(q) for q in run.nominal],
+                "replans": [
+                    [self.tips_of(q) for q in estimate] for estimate in run.estimates
+                ],
+                "graphError": round(plan.error, 4),
+                "supportStates": n,
+                "subFrames": sub,
+                "seed": plan.seed_kind,
+                "planSeconds": round(plan_seconds, 2),
+                "steapSeconds": round(steap_seconds, 2),
+                "finalJointError": round(run.final_error, 5),
+                "toolError": self.tool_error(run),
+                "clearance": {
+                    key: round(min(c[key] for c in clearance), 4)
+                    for key in ("floor", "wood", "table", "cross_arm")
+                },
+                "disturbanceMax": round(
+                    float(np.max(np.abs(run.measured - run.commanded))), 5
+                ),
+                "replanShiftMax": round(
+                    float(np.max(np.abs(run.commanded - run.nominal))), 4
+                ),
+            }
+        )
         self.time += plan.total_time
 
     def tool_error(self, run) -> list[float]:
         end_nominal = self.kin.tool_frames(self.kin.transforms(run.nominal[-1]))
         end_measured = self.kin.tool_frames(self.kin.transforms(run.measured[-1]))
-        return [round(float(np.linalg.norm(a[:3, 3] - b[:3, 3])), 5) for a, b in zip(end_nominal, end_measured)]
+        return [
+            round(float(np.linalg.norm(a[:3, 3] - b[:3, 3])), 5)
+            for a, b in zip(end_nominal, end_measured)
+        ]
 
     def nail_records(self) -> list[dict]:
         """Return each fired nail's head on the wood surface, driving direction and firing frame."""
@@ -377,8 +561,14 @@ class BuildRecorder:
                 direction = goal.rotation().matrix()[:, 2]
                 embed = sq.NAIL_EMBED if member.kind == "lintel" else 0.0
                 head = np.asarray(goal.translation()) - embed * direction
-                nails.append({"member": member.name, "frame": segment["frameStart"] + segment["frameCount"] - 1,
-                              "head": head.round(4).tolist(), "direction": direction.round(5).tolist()})
+                nails.append(
+                    {
+                        "member": member.name,
+                        "frame": segment["frameStart"] + segment["frameCount"] - 1,
+                        "head": head.round(4).tolist(),
+                        "direction": direction.round(5).tolist(),
+                    }
+                )
         return nails
 
     def to_json(self) -> dict:
@@ -387,21 +577,47 @@ class BuildRecorder:
             "schemaVersion": 1,
             "kind": "steap-cmrg",
             "structure": {
-                "name": s.name, "spec": s.spec,
-                "members": [{"name": m.name, "kind": m.kind, "size": list(m.size), "fixed": m.fixed,
-                             "target": pose_row(m.target), "staging": None if m.staging is None else pose_row(m.staging)}
-                            for m in s.members],
-                "tables": [{"name": k, "center": b.center.round(4).tolist(), "half": b.half.round(4).tolist()}
-                           for k, b in s.tables.items()],
+                "name": s.name,
+                "spec": s.spec,
+                "members": [
+                    {
+                        "name": m.name,
+                        "kind": m.kind,
+                        "size": list(m.size),
+                        "fixed": m.fixed,
+                        "target": pose_row(m.target),
+                        "staging": None if m.staging is None else pose_row(m.staging),
+                    }
+                    for m in s.members
+                ],
+                "tables": [
+                    {
+                        "name": k,
+                        "center": b.center.round(4).tolist(),
+                        "half": b.half.round(4).tolist(),
+                    }
+                    for k, b in s.tables.items()
+                ],
                 "stockDistance": s.stock_distance,
             },
-            "bodies": {"names": self.kin.model.links, "movable": self.kin.movable,
-                       "static": [pose_row(t) for t in (self.kin.transforms(np.zeros(18))[l] for l in self.kin.model.links)]},
+            "bodies": {
+                "names": self.kin.model.links,
+                "movable": self.kin.movable,
+                "static": [
+                    pose_row(t)
+                    for t in (
+                        self.kin.transforms(np.zeros(18))[l]
+                        for l in self.kin.model.links
+                    )
+                ],
+            },
             "settings": {
                 "planner": vars(self.planner.settings),
                 "disturbance": vars(self.disturbance),
-                "measurementSigma": {"gantryMeters": steap.MEASUREMENT_SIGMA_GANTRY_M,
-                                     "armDegrees": steap.MEASUREMENT_SIGMA_ARM_DEG},
+                "measurementSigma": {
+                    "gantryMeters": steap.MEASUREMENT_SIGMA_GANTRY_M,
+                    "armDegrees": steap.MEASUREMENT_SIGMA_ARM_DEG,
+                },
                 "cableRadius": pl.CABLE_RADIUS,
             },
             "segments": self.segments,
@@ -413,8 +629,17 @@ class BuildRecorder:
 def display_model() -> dict:
     """Return display geometry for the cell with both tools attached to their tool0 links."""
     model = ud.parse_urdf(cell.URDF_FILE)
-    extras = {f"robot{arm}_tool0": [ud.Visual(cell.TOOL_MESHES[cell.ARM_TOOL[arm]], np.zeros(3), np.zeros(3),
-                                              (0.32, 0.34, 0.36, 1.0))] for arm in (1, 2)}
+    extras = {
+        f"robot{arm}_tool0": [
+            ud.Visual(
+                cell.TOOL_MESHES[cell.ARM_TOOL[arm]],
+                np.zeros(3),
+                np.zeros(3),
+                (0.32, 0.34, 0.36, 1.0),
+            )
+        ]
+        for arm in (1, 2)
+    }
     return ud.display_geometry(model, extras)
 
 
@@ -440,14 +665,20 @@ def update_presets(output_dir: Path, preset: str, title: str) -> None:
     path = output_dir / "presets.json"
     entries = json.loads(path.read_text()) if path.exists() else []
     entries = [entry for entry in entries if entry["id"] != preset]
-    entries.append({"id": preset, "title": title, "file": f"recording-{preset}.json.gz"})
-    path.write_text(json.dumps(sorted(entries, key=lambda entry: entry["id"]), indent=2) + "\n")
+    entries.append(
+        {"id": preset, "title": title, "file": f"recording-{preset}.json.gz"}
+    )
+    path.write_text(
+        json.dumps(sorted(entries, key=lambda entry: entry["id"]), indent=2) + "\n"
+    )
     (output_dir / "MODEL_NOTICE.txt").write_text(NOTICE)
 
 
 def revision() -> str:
     try:
-        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=APP_DIR, text=True).strip()
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=APP_DIR, text=True
+        ).strip()
     except Exception:
         return "unknown"
 
@@ -462,7 +693,11 @@ def main() -> None:
     parser.add_argument("--arm-sigma-deg", type=float, default=0.10)
     parser.add_argument("--max-segments", type=int, default=None)
     parser.add_argument("--model-only", action="store_true")
-    parser.add_argument("--no-checkpoint", action="store_true", help="ignore and do not write the resume checkpoint")
+    parser.add_argument(
+        "--no-checkpoint",
+        action="store_true",
+        help="ignore and do not write the resume checkpoint",
+    )
     args = parser.parse_args()
     if args.model_only:
         write_gzip_json(args.output_dir / "model.json.gz", display_model())
@@ -470,9 +705,15 @@ def main() -> None:
     structure = st.build_structure(st.PRESETS[args.preset])
     settings = pl.Settings(lm_iterations=args.lm_iterations)
     planner = pl.CmrgPlanner(cell.load_robot(), settings)
-    disturbance = steap.Disturbance(args.gantry_sigma_mm / 1000.0, args.arm_sigma_deg, seed=args.seed)
+    disturbance = steap.Disturbance(
+        args.gantry_sigma_mm / 1000.0, args.arm_sigma_deg, seed=args.seed
+    )
     recorder = BuildRecorder(structure, planner, disturbance, args.seed)
-    checkpoint = None if args.no_checkpoint else APP_DIR / ".cache" / f"checkpoint-{args.preset}.pkl"
+    checkpoint = (
+        None
+        if args.no_checkpoint
+        else APP_DIR / ".cache" / f"checkpoint-{args.preset}.pkl"
+    )
     recorder.run(sq.build_sequence(structure), args.max_segments, checkpoint)
     payload = recorder.to_json()
     payload["source"] = {"revision": revision(), "preset": args.preset}

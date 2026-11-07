@@ -123,9 +123,7 @@ def read_stl(path: Path) -> tuple[np.ndarray, np.ndarray]:
         raise ValueError(f"{path} is not a binary STL")
     record = np.dtype([("n", "<f4", 3), ("v", "<f4", (3, 3)), ("a", "<u2")])
     triangles = np.frombuffer(data, dtype=record, count=count, offset=84)["v"]
-    vertices, faces = np.unique(
-        triangles.reshape(-1, 3), axis=0, return_inverse=True
-    )
+    vertices, faces = np.unique(triangles.reshape(-1, 3), axis=0, return_inverse=True)
     return vertices.astype(np.float32), faces.reshape(-1, 3).astype(np.int32)
 
 
@@ -154,7 +152,9 @@ def parse_urdf(path: Path, root: Path = URDF_ROOT) -> UrdfModel:
     for material in tree.findall("material"):
         color = material.find("color")
         if color is not None:
-            colors[material.get("name")] = tuple(_floats(color.get("rgba"), "0.7 0.7 0.7 1"))
+            colors[material.get("name")] = tuple(
+                _floats(color.get("rgba"), "0.7 0.7 0.7 1")
+            )
     links, visuals = [], {}
     for link in tree.findall("link"):
         name = link.get("name")
@@ -220,18 +220,6 @@ def link_transforms(
     for link in model.links:
         solve(link)
     return world
-
-
-def body_poses(
-    model: UrdfModel, joint_values: dict[str, float] | None = None
-) -> np.ndarray:
-    """Return an (nbody, 7) array of ``[x, y, z, qx, qy, qz, qw]`` link poses."""
-    world = link_transforms(model, joint_values)
-    poses = np.zeros((len(model.links), 7))
-    for index, link in enumerate(model.links):
-        poses[index, :3] = world[link][:3, 3]
-        poses[index, 3:] = matrix_to_quaternion_xyzw(world[link][:3, :3])
-    return poses
 
 
 def display_geometry(

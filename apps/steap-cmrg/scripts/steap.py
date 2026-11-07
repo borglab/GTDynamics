@@ -49,15 +49,21 @@ class Disturbance:
 
     def sigmas(self) -> np.ndarray:
         """Return the per-DoF standard deviation for both arms (m, rad)."""
-        return np.concatenate([[self.gantry_sigma_m] * 3 + [np.deg2rad(self.arm_sigma_deg)] * 6] * 2)
+        return np.concatenate(
+            [[self.gantry_sigma_m] * 3 + [np.deg2rad(self.arm_sigma_deg)] * 6] * 2
+        )
 
-    def sequence(self, rng: np.random.Generator, count: int, active: np.ndarray) -> np.ndarray:
+    def sequence(
+        self, rng: np.random.Generator, count: int, active: np.ndarray
+    ) -> np.ndarray:
         """Return (count, dof) disturbance with zero at k = 0 and none on inactive DoFs."""
         sigma = self.sigmas() * active
         noise = np.zeros((count, len(sigma)))
         innovation = np.sqrt(max(1.0 - self.persistence**2, 0.0))
         for k in range(1, count):
-            noise[k] = self.persistence * noise[k - 1] + innovation * sigma * rng.standard_normal(len(sigma))
+            noise[k] = self.persistence * noise[
+                k - 1
+            ] + innovation * sigma * rng.standard_normal(len(sigma))
         return noise
 
 
@@ -77,7 +83,10 @@ class Execution:
 
 def measurement_model(dof: int) -> gtsam.noiseModel.Base:
     """Return the paper's diagonal measurement noise: 5 mm gantry, 0.002 degrees arm."""
-    sigmas = np.concatenate([[MEASUREMENT_SIGMA_GANTRY_M] * 3 + [np.deg2rad(MEASUREMENT_SIGMA_ARM_DEG)] * 6] * (dof // 9))
+    sigmas = np.concatenate(
+        [[MEASUREMENT_SIGMA_GANTRY_M] * 3 + [np.deg2rad(MEASUREMENT_SIGMA_ARM_DEG)] * 6]
+        * (dof // 9)
+    )
     return gtsam.noiseModel.Diagonal.Sigmas(sigmas)
 
 
@@ -88,8 +97,13 @@ def isam_params() -> gtsam.ISAM2Params:
     return params
 
 
-def execute(planner: CmrgPlanner, plan: Plan, disturbance: Disturbance, rng: np.random.Generator,
-            feedback: bool = True) -> Execution:
+def execute(
+    planner: CmrgPlanner,
+    plan: Plan,
+    disturbance: Disturbance,
+    rng: np.random.Generator,
+    feedback: bool = True,
+) -> Execution:
     """Execute ``plan`` with simulated disturbances, replanning after every measurement.
 
     ``feedback=False`` skips the measurement factors, giving the open-loop run under the same disturbance.
@@ -119,5 +133,12 @@ def execute(planner: CmrgPlanner, plan: Plan, disturbance: Disturbance, rng: np.
     velocities = np.array([result.atVector(V(k)) for k in range(n)])
     measured_array = np.array(measured)
     return Execution(
-        nominal, np.array(commanded), measured_array, nominal + noise, velocities, estimates,
-        plan.error, float(np.max(np.abs(measured_array[-1] - nominal[-1]))))
+        nominal,
+        np.array(commanded),
+        measured_array,
+        nominal + noise,
+        velocities,
+        estimates,
+        plan.error,
+        float(np.max(np.abs(measured_array[-1] - nominal[-1]))),
+    )

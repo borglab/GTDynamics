@@ -94,7 +94,9 @@ def table_spheres(box: Box) -> SphereSet:
     return SphereSet(np.stack([axis.ravel() for axis in mesh], axis=1), radius)
 
 
-def sphere_signed_distance(points: np.ndarray, obstacles: list[SphereSet]) -> np.ndarray:
+def sphere_signed_distance(
+    points: np.ndarray, obstacles: list[SphereSet]
+) -> np.ndarray:
     """Return the distance from points to the nearest obstacle sphere surface."""
     return np.min([group.signed_distance(points) for group in obstacles], axis=0)
 
@@ -118,7 +120,9 @@ def floor_field() -> gtd.SignedDistanceField:
     return make_field(points, points[:, 2].copy())
 
 
-def sphere_field(obstacles: list[SphereSet], pitch: float = FIELD_PITCH) -> gtd.SignedDistanceField | None:
+def sphere_field(
+    obstacles: list[SphereSet], pitch: float = FIELD_PITCH
+) -> gtd.SignedDistanceField | None:
     """Return the signed distance field of a union of sphere sets over the workspace, or None."""
     if not obstacles:
         return None

@@ -94,7 +94,10 @@ def post_nails(member: st.Member, structure: st.Structure) -> list[gtsam.Pose3]:
     inward = 1.0 if center[1] < structure.site[1] else -1.0
     nail_y = center[1] - inward * member.size[2] / 2.0
     z = base.target[2, 3]
-    return [cell.approach_goal(center[0] + dx, nail_y, z, (0.0, inward, 0.0)) for dx in NAIL_OFFSETS]
+    return [
+        cell.approach_goal(center[0] + dx, nail_y, z, (0.0, inward, 0.0))
+        for dx in NAIL_OFFSETS
+    ]
 
 
 def member_nails(member: st.Member, structure: st.Structure) -> list[gtsam.Pose3]:
@@ -102,15 +105,18 @@ def member_nails(member: st.Member, structure: st.Structure) -> list[gtsam.Pose3
     if member.kind == "lintel":
         index = int(member.name.split("_")[1]) - 1
         between = structure.spec["lintels"][index]["between"]
-        posts = [m for m in structure.members if m.name in {f"post_{i + 1}" for i in between}]
+        posts = [
+            m for m in structure.members if m.name in {f"post_{i + 1}" for i in between}
+        ]
         return lintel_nails(member, posts)
     if member.kind == "post":
         return post_nails(member, structure)
     return []
 
 
-def member_segments(member: st.Member, structure: st.Structure, previous: st.Member | None,
-                    last: bool) -> list[Segment]:
+def member_segments(
+    member: st.Member, structure: st.Structure, previous: st.Member | None, last: bool
+) -> list[Segment]:
     """Return the ordered segments that place and fasten one movable member.
 
     Both arms move in every maneuver except while arm 1 must hold the plank still for nailing.
@@ -127,57 +133,150 @@ def member_segments(member: st.Member, structure: st.Structure, previous: st.Mem
     reach = st.standoff(grip)
     nails = member_nails(member, structure)
     standoffs = [st.standoff(nail, NAIL_STANDOFF) for nail in nails]
-    ready = cell.downward_goal(structure.site[0] + 1.4, structure.site[1], READY_HEIGHT, 0.0)
+    ready = cell.downward_goal(
+        structure.site[0] + 1.4, structure.site[1], READY_HEIGHT, 0.0
+    )
+
     def waiting(standoff: gtsam.Pose3) -> gtsam.Pose3:
-        return (st.lifted(standoff, LINTEL_HOVER_HEIGHT) if member.kind == "lintel"
-                else st.standoff(standoff, POST_WAIT_BACKOFF))
+        return (
+            st.lifted(standoff, LINTEL_HOVER_HEIGHT)
+            if member.kind == "lintel"
+            else st.standoff(standoff, POST_WAIT_BACKOFF)
+        )
 
     first = waiting(standoffs[0]) if standoffs else ready
-    fetch_goal = Blend(f"{name}:fetch", first) if previous is None else Blend(f"{name}:park", parks[1])
+    fetch_goal = (
+        Blend(f"{name}:fetch", first)
+        if previous is None
+        else Blend(f"{name}:park", parks[1])
+    )
     lintel = member.kind == "lintel"
     carry_goal = None if lintel else (fetch_goal if previous is None else first)
     segments = []
     if previous is not None:
         # Lift straight out of the previous release first, so the long transit starts from a free pose.
-        segments.append(Segment(f"{name}:clear", f"{name}: clear the placed member", name,
-                                (st.lifted(st.standoff(previous.grip), CLEAR_HEIGHT), fetch_goal),
-                                straight=(True, False), block_clearance=0.0, contact=True))
+        segments.append(
+            Segment(
+                f"{name}:clear",
+                f"{name}: clear the placed member",
+                name,
+                (st.lifted(st.standoff(previous.grip), CLEAR_HEIGHT), fetch_goal),
+                straight=(True, False),
+                block_clearance=0.0,
+                contact=True,
+            )
+        )
     segments += [
-        Segment(f"{name}:reach", f"{name}: reach to staged member", name, (reach, fetch_goal)),
-        Segment(f"{name}:grip", f"{name}: grip", name, (grip, fetch_goal), straight=(True, False), block_clearance=0.0,
-                contact=True, event="grip_close"),
-        Segment(f"{name}:carry", f"{name}: carry into place", name, (hold, carry_goal), carried=True,
-                block_clearance=0.0, rrt_via=(reach, st.lifted(hold, CARRY_APPROACH_HEIGHT))),
+        Segment(
+            f"{name}:reach",
+            f"{name}: reach to staged member",
+            name,
+            (reach, fetch_goal),
+        ),
+        Segment(
+            f"{name}:grip",
+            f"{name}: grip",
+            name,
+            (grip, fetch_goal),
+            straight=(True, False),
+            block_clearance=0.0,
+            contact=True,
+            event="grip_close",
+        ),
+        Segment(
+            f"{name}:carry",
+            f"{name}: carry into place",
+            name,
+            (hold, carry_goal),
+            carried=True,
+            block_clearance=0.0,
+            rrt_via=(reach, st.lifted(hold, CARRY_APPROACH_HEIGHT)),
+        ),
     ]
     for i, nail in enumerate(nails):
         # A lintel's first nail on each post top is a long move rather than a nailing step.
         sweep = lintel and i % len(NAIL_OFFSETS) == 0
-        segments.append(Segment(f"{name}:reposition:{i}", f"{name}: reposition nailer", name, (None, standoffs[i]),
-                                carried=True, carried_other_only=True, block_clearance=0.0, use_rrt=sweep,
-                                contact=True, nailing=not sweep))
         segments.append(
-            Segment(f"{name}:nail:{i}", f"{name}: nail", name, (None, nail), straight=(False, True), carried=True,
-                    carried_other_only=True, block_clearance=0.0, use_rrt=False, contact=True, nailing=True,
-                    event="fire_nail"))
+            Segment(
+                f"{name}:reposition:{i}",
+                f"{name}: reposition nailer",
+                name,
+                (None, standoffs[i]),
+                carried=True,
+                carried_other_only=True,
+                block_clearance=0.0,
+                use_rrt=sweep,
+                contact=True,
+                nailing=not sweep,
+            )
+        )
+        segments.append(
+            Segment(
+                f"{name}:nail:{i}",
+                f"{name}: nail",
+                name,
+                (None, nail),
+                straight=(False, True),
+                carried=True,
+                carried_other_only=True,
+                block_clearance=0.0,
+                use_rrt=False,
+                contact=True,
+                nailing=True,
+                event="fire_nail",
+            )
+        )
         if last and i == len(nails) - 1:
             return segments
         segments.append(
-            Segment(f"{name}:withdraw:{i}", f"{name}: withdraw", name, (None, standoffs[i]), straight=(False, True),
-                    carried=True, carried_other_only=True, block_clearance=0.0, use_rrt=False, contact=True,
-                    nailing=True))
+            Segment(
+                f"{name}:withdraw:{i}",
+                f"{name}: withdraw",
+                name,
+                (None, standoffs[i]),
+                straight=(False, True),
+                carried=True,
+                carried_other_only=True,
+                block_clearance=0.0,
+                use_rrt=False,
+                contact=True,
+                nailing=True,
+            )
+        )
     hover = waiting(standoffs[-1]) if standoffs else ready
     segments.append(
-        Segment(f"{name}:release", f"{name}: open gripper, back off and lift the nailer", name,
-                (st.standoff(hold), hover), straight=(True, False), block_clearance=0.0,
-                contact=True, event="grip_open", event_at="start"))
+        Segment(
+            f"{name}:release",
+            f"{name}: open gripper, back off and lift the nailer",
+            name,
+            (st.standoff(hold), hover),
+            straight=(True, False),
+            block_clearance=0.0,
+            contact=True,
+            event="grip_open",
+            event_at="start",
+        )
+    )
     if last:
         exit_block = f"{name}:exit"
         to_park = Blend(exit_block, parks[1])
         segments += [
-            Segment(f"{name}:clear", f"{name}: clear the placed member", name,
-                    (st.lifted(st.standoff(hold), CLEAR_HEIGHT), to_park), straight=(True, False),
-                    block_clearance=0.0, contact=True),
-            Segment(f"{name}:finish", "return both arms to park", name, (parks[0], to_park), block_clearance=0.0),
+            Segment(
+                f"{name}:clear",
+                f"{name}: clear the placed member",
+                name,
+                (st.lifted(st.standoff(hold), CLEAR_HEIGHT), to_park),
+                straight=(True, False),
+                block_clearance=0.0,
+                contact=True,
+            ),
+            Segment(
+                f"{name}:finish",
+                "return both arms to park",
+                name,
+                (parks[0], to_park),
+                block_clearance=0.0,
+            ),
         ]
     return segments
 
@@ -188,5 +287,7 @@ def build_sequence(structure: st.Structure) -> list[Segment]:
     segments: list[Segment] = []
     for index, member in enumerate(movable):
         previous = movable[index - 1] if index else None
-        segments += member_segments(member, structure, previous, last=index == len(movable) - 1)
+        segments += member_segments(
+            member, structure, previous, last=index == len(movable) - 1
+        )
     return segments

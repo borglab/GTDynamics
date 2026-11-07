@@ -32,7 +32,8 @@ class TestCable(unittest.TestCase):
         cls.robot = cell.load_robot()
         cls.names = [n for arm in (1, 2) for n in cell.arm_joint_names(arm)]
         cls.cables = {
-            arm: pl.build_cable(cls.robot, arm, cls.names, 9 * (arm - 1)) for arm in (1, 2)
+            arm: pl.build_cable(cls.robot, arm, cls.names, 9 * (arm - 1))
+            for arm in (1, 2)
         }
         cls.display = cd.CableDisplay()
         cls.model = ud.parse_urdf(cell.URDF_FILE)
@@ -44,7 +45,10 @@ class TestCable(unittest.TestCase):
     def anchors(self, arm):
         """Return the world anchor positions of an arm's link 3 and link 6 ends."""
         return [
-            (self.world[f"robot{arm}_{link}"] @ np.append(cell.CABLE_ANCHORS[arm][link], 1.0))[:3]
+            (
+                self.world[f"robot{arm}_{link}"]
+                @ np.append(cell.CABLE_ANCHORS[arm][link], 1.0)
+            )[:3]
             for link in ("link_3", "link_6")
         ]
 
@@ -75,7 +79,9 @@ class TestCable(unittest.TestCase):
                 ("link 3", nodes[0], "link_3", arc * cd.LABEL_SEGMENTS),
                 ("link 6", nodes[-1], "link_6", (1.0 - arc) * cd.LABEL_SEGMENTS),
             ):
-                normal = self.world[f"robot{arm}_{link}"][:3, :3] @ cell.CABLE_NORMALS[link]
+                normal = (
+                    self.world[f"robot{arm}_{link}"][:3, :3] @ cell.CABLE_NORMALS[link]
+                )
                 inside = (distance > 0) & (distance <= cd.GUIDE_SEGMENTS)
                 self.assertTrue(inside.any(), label)
                 expected = end + np.outer(distance[inside] * cd.GUIDE_STEP, normal)
