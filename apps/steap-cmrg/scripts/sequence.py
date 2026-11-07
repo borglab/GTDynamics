@@ -30,7 +30,8 @@ import structure as st
 NAIL_STANDOFF = 0.10
 NAIL_EMBED = 0.005
 NAIL_OFFSETS = (-0.03, -0.01, 0.01, 0.03)
-HOVER_HEIGHT = 0.35
+# Posts: arm 2 waits back along its approach line, clear of the gripper above the nail.
+POST_WAIT_BACKOFF = 0.30
 # Lintel nails sit near the top of the nailer's comfortable reach.
 LINTEL_HOVER_HEIGHT = 0.15
 CARRY_APPROACH_HEIGHT = 0.35
@@ -127,8 +128,11 @@ def member_segments(member: st.Member, structure: st.Structure, previous: st.Mem
     nails = member_nails(member, structure)
     standoffs = [st.standoff(nail, NAIL_STANDOFF) for nail in nails]
     ready = cell.downward_goal(structure.site[0] + 1.4, structure.site[1], READY_HEIGHT, 0.0)
-    hover_height = LINTEL_HOVER_HEIGHT if member.kind == "lintel" else HOVER_HEIGHT
-    first = st.lifted(standoffs[0], hover_height) if standoffs else ready
+    def waiting(standoff: gtsam.Pose3) -> gtsam.Pose3:
+        return (st.lifted(standoff, LINTEL_HOVER_HEIGHT) if member.kind == "lintel"
+                else st.standoff(standoff, POST_WAIT_BACKOFF))
+
+    first = waiting(standoffs[0]) if standoffs else ready
     fetch_goal = Blend(f"{name}:fetch", first) if previous is None else Blend(f"{name}:park", parks[1])
     lintel = member.kind == "lintel"
     carry_goal = None if lintel else (fetch_goal if previous is None else first)
@@ -161,7 +165,7 @@ def member_segments(member: st.Member, structure: st.Structure, previous: st.Mem
             Segment(f"{name}:withdraw:{i}", f"{name}: withdraw", name, (None, standoffs[i]), straight=(False, True),
                     carried=True, carried_other_only=True, block_clearance=0.0, use_rrt=False, contact=True,
                     nailing=True))
-    hover = st.lifted(standoffs[-1], hover_height) if standoffs else ready
+    hover = waiting(standoffs[-1]) if standoffs else ready
     segments.append(
         Segment(f"{name}:release", f"{name}: open gripper, back off and lift the nailer", name,
                 (st.standoff(hold), hover), straight=(True, False), block_clearance=0.0,

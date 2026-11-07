@@ -34,8 +34,8 @@ PROFILE_THICK = 1.5 * 0.0254
 # Workbench height: EA_Z bottoms out for a horizontal nailer below about 0.37 m, and the cable needs floor clearance.
 TABLE_TOP_Z = 0.91355
 TABLE_HEIGHT = TABLE_TOP_Z
-GRIP_Z_ABOVE = 0.02
-GRIP_FROM_TOP = 0.40
+GRIP_Z_ABOVE = 0.035
+GRIP_FROM_TOP = 0.20
 STOCK_SPACING = 0.28
 STOCK_MARGIN = 0.10
 APPROACH = 0.30

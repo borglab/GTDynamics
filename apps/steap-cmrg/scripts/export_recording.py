@@ -87,18 +87,8 @@ def pose_row(matrix: np.ndarray) -> list[float]:
     return [round(float(v), 4) for v in matrix[:3, 3]] + [round(float(v), 5) for v in quaternion]
 
 
-def playback_velocities(states: np.ndarray, dt: float) -> np.ndarray:
-    """Return per-joint velocities that cannot overshoot: harmonic-mean slopes, zero at both ends and at turns."""
-    slopes = np.diff(states, axis=0) / dt
-    before, after = slopes[:-1], slopes[1:]
-    same_direction = before * after > 0.0
-    velocities = np.zeros_like(states)
-    velocities[1:-1][same_direction] = (2.0 * before * after / np.where(same_direction, before + after, 1.0))[same_direction]
-    return velocities
-
-
 def hermite(q0, q1, v0, v1, dt, s):
-    """Return the cubic Hermite state between two support states at fraction ``s``."""
+    """Return the state between two support states at fraction ``s``: the constant-velocity GP mean."""
     h00, h10 = 2 * s**3 - 3 * s**2 + 1, s**3 - 2 * s**2 + s
     h01, h11 = -2 * s**3 + 3 * s**2, s**3 - s**2
     return h00 * q0 + h10 * dt * v0 + h01 * q1 + h11 * dt * v1
@@ -120,6 +110,8 @@ class BuildRecorder:
         self.frames = {"time": [], "q": [], "bodyPoses": [], "tips": [], "cable": [], "members": []}
         self.segments: list[dict] = []
         self.field_cache: dict[tuple, object] = {}
+        self.lift_configurations: dict[str, np.ndarray] = {}
+        self.grasp = np.eye(4)
         self.planner.set_tables(structure.static_spheres())
 
     # -- world -----------------------------------------------------------
@@ -207,9 +199,11 @@ class BuildRecorder:
         """Solve arm 1's lifted poses at both ends; arm 2 moves proportionally between its ends."""
         spec = self.planner.specs[0]
         first, last = segment.rrt_via
+        lift = self.lift_configurations.get(segment.member)
         arm2_first = self.q[9:] + 0.25 * (goal[9:] - self.q[9:])
         arm2_last = self.q[9:] + 0.75 * (goal[9:] - self.q[9:])
-        return (self.planner.join([self.planner.solve_ik(spec, first, self.q[:9], arm2_first, maneuver, warm=True), arm2_first]),
+        arm1_first = lift if lift is not None else self.planner.solve_ik(spec, first, self.q[:9], arm2_first, maneuver, warm=True)
+        return (self.planner.join([arm1_first, arm2_first]),
                 self.planner.join([self.planner.solve_ik(spec, last, goal[:9], arm2_last, maneuver, warm=True), arm2_last]))
 
     def maneuver_for(self, segment: sq.Segment) -> pl.Maneuver:
@@ -231,13 +225,13 @@ class BuildRecorder:
         """Identify the first ``count`` segments plus the settings, so a stale checkpoint is not reused."""
         return json.dumps([[s.key for s in segments[:count]], vars(self.planner.settings),
                            vars(self.disturbance), self.structure.name, cell.CABLE_ANCHORS, st.TABLE_TOP_Z, self.structure.stock_distance,
-                           "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-tether-pchip-16nails"],
+                           "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-16nails-gp-playback-wait-lift-time-still-grasp-no-extra-priors"],
                           sort_keys=True, default=str)
 
     def save_checkpoint(self, path: Path, segments: list[sq.Segment], count: int) -> None:
         state = {"signature": self.signature(segments, count), "count": count, "q": self.q, "time": self.time,
                  "poses": self.poses, "status": self.status, "frames": self.frames, "segments": self.segments,
-                 "rng": self.rng.bit_generator.state,
+                 "rng": self.rng.bit_generator.state, "lift": self.lift_configurations, "grasp": self.grasp,
                  "blocks": {k: {f: v for f, v in b.items() if f in ("start", "end_q", "fractions")}
                             for k, b in self.blocks.items()}}
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -256,6 +250,7 @@ class BuildRecorder:
         self.q, self.time, self.poses, self.status = state["q"], state["time"], state["poses"], state["status"]
         self.frames, self.segments = state["frames"], state["segments"]
         self.rng.bit_generator.state = state["rng"]
+        self.lift_configurations, self.grasp = state["lift"], state["grasp"]
         for name, cached in state["blocks"].items():
             self.blocks[name].update(cached)
         print(f"resumed {state['count']} segments from {path}", flush=True)
@@ -292,9 +287,13 @@ class BuildRecorder:
         steap_seconds = time.time() - t0
         self.record(segment, member, carried, plan, run, plan_seconds, steap_seconds)
         self.q = run.measured[-1].copy()
+        if segment.key.endswith(":reach"):
+            self.lift_configurations[member.name] = plan.states()[-1][:9].copy()
         if segment.key.endswith(":carry"):
             self.seat(member)
         if segment.event == "grip_close":
+            # The gripper closes on the wood where it lies, so tracking error cannot move the wood.
+            self.grasp = np.linalg.inv(self.tool_world(self.q, 1)) @ self.poses[member.name]
             self.status[member.name] = "carried"
         if segment.event and segment.event_at == "end":
             self.time += DWELL_SECONDS
@@ -308,7 +307,7 @@ class BuildRecorder:
     def member_poses(self, tool_frame: np.ndarray | None, carried: st.Member | None) -> list[list[float]]:
         rows = []
         for m in self.structure.members:
-            pose = (tool_frame @ carried.grip_offset) if (carried is not None and m.name == carried.name) else self.poses[m.name]
+            pose = (tool_frame @ self.grasp) if (carried is not None and m.name == carried.name) else self.poses[m.name]
             rows.append(pose_row(pose))
         return rows
 
@@ -324,7 +323,7 @@ class BuildRecorder:
         n, dt = plan.state_count, plan.delta_t
         sub = max(2, int(np.ceil(TARGET_FRAMES / (n - 1))))
         frame_start = len(self.frames["time"])
-        velocities = playback_velocities(run.measured, dt)
+        velocities, executed = run.velocities, []
         for k in range(n):
             last = k == n - 1
             for j in range(1 if last else sub):
@@ -334,13 +333,14 @@ class BuildRecorder:
                 world = self.kin.transforms(q)
                 tools = self.kin.tool_frames(world)
                 self.frames["time"].append(round(self.time + dt * (k + s), 3))
+                executed.append(q)
                 self.frames["q"].append([round(float(v), 5) for v in q])
                 self.frames["bodyPoses"].append(self.kin.poses(world).round(4).tolist())
                 self.frames["tips"].append([[round(float(v), 3) for v in f[:3, 3]] for f in tools])
                 self.frames["cable"].append(self.cable_points(q))
                 self.frames["members"].append(self.member_poses(tools[0], carried))
         events = [{"at": segment.event_at, "type": segment.event}] if segment.event else []
-        clearance = [self.planner.clearances(q) for q in run.measured]
+        clearance = [self.planner.clearances(q) for q in executed]
         self.segments.append({
             "key": segment.key, "label": segment.label, "member": member.name,
             "t0": round(self.time, 3), "duration": round(plan.total_time, 3),
@@ -351,7 +351,6 @@ class BuildRecorder:
             "graphError": round(plan.error, 4),
             "supportStates": n, "subFrames": sub,
             "seed": plan.seed_kind,
-            "replanSolver": run.solver,
             "planSeconds": round(plan_seconds, 2), "steapSeconds": round(steap_seconds, 2),
             "finalJointError": round(run.final_error, 5),
             "toolError": self.tool_error(run),

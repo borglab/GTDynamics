@@ -17,12 +17,6 @@ is fused as a position-only ``PriorFactorVector(X(k), q_measured)`` with the
 paper's measurement sigmas; ISAM2 then re-estimates the remaining states before
 the next command. The robot is simulated: the measurement is the command plus a
 seeded AR(1) disturbance, so no hardware is involved.
-
-ISAM2 takes unguarded linearized steps, which can leap away near stiff limit and
-collision factors. An update that moves a remaining state by more than
-``REPLAN_TRUST`` is rejected, and the rest of the maneuver replans with warm-started
-Levenberg-Marquardt, softly tethered to the batch plan plus a fading correction because
-the cost is nearly flat along large motions.
 """
 
 from __future__ import annotations
@@ -38,9 +32,6 @@ from planner import CmrgPlanner, Plan
 MEASUREMENT_SIGMA_ARM_DEG = 0.002
 MEASUREMENT_SIGMA_GANTRY_M = 0.005
 EXTRA_ISAM_ITERATIONS = 3
-REPLAN_TRUST = 0.15
-FALLBACK_ITERATIONS = 50
-FALLBACK_TETHER_SIGMA = 0.05
 
 
 @dataclass
@@ -82,7 +73,6 @@ class Execution:
     estimates: list[np.ndarray] = field(default_factory=list)
     graph_error: float = 0.0
     final_error: float = 0.0
-    solver: str = "isam2"
 
 
 def measurement_model(dof: int) -> gtsam.noiseModel.Base:
@@ -96,35 +86,6 @@ def isam_params() -> gtsam.ISAM2Params:
     params = gtsam.ISAM2Params()
     params.setOptimizationParams(gtsam.ISAM2DoglegParams())
     return params
-
-
-def remaining_jump(candidate: gtsam.Values, previous: gtsam.Values, first: int, count: int) -> float:
-    """Return the largest change to any state from ``first`` to the end, in m or rad."""
-    return max(float(np.max(np.abs(candidate.atVector(X(j)) - previous.atVector(X(j))))) for j in range(first, count))
-
-
-def tethered_states(plan: Plan, latest: np.ndarray, k: int) -> dict[int, np.ndarray]:
-    """Return the batch plan after state ``k`` plus the latest error, fading to zero at the goal."""
-    last = plan.state_count - 1
-    error = latest - plan.values.atVector(X(k))
-    return {j: plan.values.atVector(X(j)) + error * (last - j) / (last - k) for j in range(k + 1, last + 1)}
-
-
-def replan_batch(plan: Plan, readings: list[np.ndarray], model) -> gtsam.Values:
-    """Return a warm-started, tethered Levenberg-Marquardt replan through every measurement so far."""
-    graph = gtsam.NonlinearFactorGraph()
-    graph.push_back(plan.graph)
-    initial = gtsam.Values(plan.values)
-    for k, reading in enumerate(readings):
-        graph.add(gtsam.PriorFactorVector(X(k), reading, model))
-        initial.update(X(k), reading)
-    tether = gtsam.noiseModel.Isotropic.Sigma(len(readings[0]), FALLBACK_TETHER_SIGMA)
-    for j, state in tethered_states(plan, readings[-1], len(readings) - 1).items():
-        graph.add(gtsam.PriorFactorVector(X(j), state, tether))
-        initial.update(X(j), state)
-    params = gtsam.LevenbergMarquardtParams()
-    params.setMaxIterations(FALLBACK_ITERATIONS)
-    return gtsam.LevenbergMarquardtOptimizer(graph, initial, params).optimize()
 
 
 def execute(planner: CmrgPlanner, plan: Plan, disturbance: Disturbance, rng: np.random.Generator,
@@ -142,9 +103,6 @@ def execute(planner: CmrgPlanner, plan: Plan, disturbance: Disturbance, rng: np.
     for _ in range(EXTRA_ISAM_ITERATIONS):
         isam.update()
     result = isam.calculateEstimate()
-    use_isam = remaining_jump(result, plan.values, 0, n) <= REPLAN_TRUST
-    if not use_isam:
-        result = plan.values
     model = measurement_model(dof)
     commanded, measured, estimates = [], [], []
     for k in range(n):
@@ -155,18 +113,11 @@ def execute(planner: CmrgPlanner, plan: Plan, disturbance: Disturbance, rng: np.
         if feedback:
             fused = gtsam.NonlinearFactorGraph()
             fused.add(gtsam.PriorFactorVector(X(k), reading, model))
-            if use_isam:
-                isam.update(fused)
-                candidate = isam.calculateEstimate()
-                use_isam = remaining_jump(candidate, result, k + 1, n) <= REPLAN_TRUST if k + 1 < n else True
-            if use_isam:
-                result = candidate
-            else:
-                result = replan_batch(plan, measured, model)
+            isam.update(fused)
+            result = isam.calculateEstimate()
         estimates.append(np.array([result.atVector(X(j)) for j in range(n)]))
     velocities = np.array([result.atVector(V(k)) for k in range(n)])
     measured_array = np.array(measured)
     return Execution(
         nominal, np.array(commanded), measured_array, nominal + noise, velocities, estimates,
-        plan.error, float(np.max(np.abs(measured_array[-1] - nominal[-1]))),
-        "isam2" if use_isam else "levenberg-marquardt")
+        plan.error, float(np.max(np.abs(measured_array[-1] - nominal[-1]))))

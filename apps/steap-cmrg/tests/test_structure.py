@@ -140,72 +140,17 @@ class TestShortcut(unittest.TestCase):
             self.assertTrue(rrt.edge_clear(a, b, free, span, 0.01))
 
 
-class TestReplanGuard(unittest.TestCase):
-    """The ISAM2 jump check."""
-
-    def test_remaining_jump_ignores_states_already_executed(self):
-        """Only states from ``first`` onward count, and the largest absolute change is returned."""
-        import gtsam
-        from gtsam.symbol_shorthand import X
-
-        import steap
-
-        a, b = gtsam.Values(), gtsam.Values()
-        for k, (p, q) in enumerate(((0.0, 5.0), (1.0, 1.1), (2.0, 1.8))):
-            a.insert(X(k), np.array([p]))
-            b.insert(X(k), np.array([q]))
-        self.assertAlmostEqual(steap.remaining_jump(b, a, 1, 3), 0.2)
-        self.assertAlmostEqual(steap.remaining_jump(b, a, 0, 3), 5.0)
-
-
-class TestTether(unittest.TestCase):
-    """The fading correction used by fallback replans."""
-
-    def test_correction_fades_to_zero_at_the_goal(self):
-        """The first state after the measurement keeps most of the error and the goal keeps none."""
-        import gtsam
-        from gtsam.symbol_shorthand import X
-        from types import SimpleNamespace
-
-        import steap
-
-        values = gtsam.Values()
-        for k in range(5):
-            values.insert(X(k), np.array([float(k)]))
-        states = steap.tethered_states(SimpleNamespace(values=values, state_count=5), np.array([1.4]), 1)
-        self.assertEqual(sorted(states), [2, 3, 4])
-        np.testing.assert_allclose(states[2], [2.0 + 0.4 * 2.0 / 3.0])
-        np.testing.assert_allclose(states[4], [4.0])
-
-
 class TestPlayback(unittest.TestCase):
     """Interpolation between executed states."""
 
-    def test_playback_stays_within_executed_states(self):
-        """A held joint stays held, and a moving joint stays near its executed range."""
+    def test_playback_matches_the_support_states_and_velocities(self):
+        """The GP mean passes through both states with zero-velocity ends staying between them."""
         import export_recording as ex
 
-        dt = 0.5
-        states = np.array([[0.0, 1.0], [0.2, 1.0], [0.1, 1.0], [0.4, 1.0]])
-        velocities = ex.playback_velocities(states, dt)
-        np.testing.assert_allclose(velocities[[0, -1]], 0.0)
-        np.testing.assert_allclose(velocities[:, 1], 0.0)
-        samples = np.array([ex.hermite(states[k], states[k + 1], velocities[k], velocities[k + 1], dt, s)
-                            for k in range(3) for s in np.linspace(0.0, 1.0, 11)])
-        np.testing.assert_allclose(samples[:, 1], 1.0)
-        self.assertLessEqual(samples[:, 0].max(), 0.4 + 1e-9)
-        self.assertGreaterEqual(samples[:, 0].min(), -1e-9)
-
-    def test_sudden_speed_change_does_not_dip_backward(self):
-        """A joint starting from rest toward a fast interval never moves against its motion."""
-        import export_recording as ex
-
-        dt = 1.0
-        states = np.array([[0.0], [0.05], [2.0], [2.1]])
-        velocities = ex.playback_velocities(states, dt)
-        samples = np.array([ex.hermite(states[k], states[k + 1], velocities[k], velocities[k + 1], dt, s)
-                            for k in range(3) for s in np.linspace(0.0, 1.0, 21)])
-        self.assertTrue(np.all(np.diff(samples[:, 0]) >= -1e-9))
+        q0, q1, zero = np.array([0.0, 1.0]), np.array([0.4, 1.0]), np.zeros(2)
+        np.testing.assert_allclose(ex.hermite(q0, q1, zero, zero, 0.5, 0.0), q0)
+        np.testing.assert_allclose(ex.hermite(q0, q1, zero, zero, 0.5, 1.0), q1)
+        np.testing.assert_allclose(ex.hermite(q0, q1, zero, zero, 0.5, 0.5), [0.2, 1.0])
 
 
 class TestSpheres(unittest.TestCase):

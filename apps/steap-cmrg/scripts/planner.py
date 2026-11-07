@@ -45,7 +45,6 @@ CABLE_RADIUS = 3.0 * 0.0254 / 2.0
 CABLE_SAMPLES = 57
 CONVERGENCE_ERROR = 3.3e4
 LM_ERROR_TOLERANCE = 1e-10
-VIA_SIGMA = 0.05
 ENDPOINT_RADIUS = 0.15
 # Contact poses: tool spheres overlap a table by up to 6.9 cm where the tool meshes clear it.
 TABLE_CONTACT_SLACK = 0.07
@@ -58,7 +57,6 @@ class Settings:
     """Planner tuning, defaulting to the BAR Lab paper values."""
 
     state_count: int = 10
-    seed_sigma: float | None = 0.1
     nail_state_count: int = 2
     check_interpolated: int = 5
     nail_check_interpolated: int = 5
@@ -378,6 +376,11 @@ class CmrgPlanner:
                 pairs.append(gtd.SelfCollisionPair(a, b, self.settings.cross_arm_clearance))
         return (gtd.RobotQueryPoints(self.robot, cell.BASE_LINK, joints, points), np.array(radii), pairs, split)
 
+    def maneuver_time(self, q_start, q_goal, maneuver: Maneuver) -> float:
+        """Return the duration, summed over every leg when the maneuver passes through lifted poses."""
+        points = [q_start, *(maneuver.rrt_via or ()), q_goal]
+        return sum(self.total_time_for(a, b) for a, b in zip(points, points[1:]))
+
     def build_graph(self, q_start, q_goal, total_time: float, maneuver: Maneuver) -> gtsam.NonlinearFactorGraph:
         """Assemble the GPMP2 graph for one maneuver."""
         s, m = self.settings, self.models
@@ -390,7 +393,6 @@ class CmrgPlanner:
         graph.add(gtsam.PriorFactorVector(X(n - 1), q_goal, self.endpoint_model))
         graph.add(gtsam.PriorFactorVector(V(n - 1), np.zeros(self.dof), self.endpoint_model))
         self._add_pinned(graph, q_start, q_goal, maneuver)
-        self._add_via(graph, n, maneuver)
         self_model, self_radii, self_pairs, _ = self._self_models(maneuver)
         carried = None
         if maneuver.carried_points and self.block_field is not None and not maneuver.carried_other_only:
@@ -445,14 +447,6 @@ class CmrgPlanner:
                                                       self.qc_model, dt, tau))
         return graph
 
-    def _add_via(self, graph, n: int, maneuver: Maneuver) -> None:
-        """Softly hold arm 1 at the lifted poses, so smoothing keeps the lift-off and the descent."""
-        if maneuver.rrt_via is None or n < 4:
-            return
-        model = gtsam.noiseModel.Diagonal.Sigmas(np.r_[np.full(9, VIA_SIGMA), np.full(9, 1e6)])
-        graph.add(gtsam.PriorFactorVector(X(1), maneuver.rrt_via[0], model))
-        graph.add(gtsam.PriorFactorVector(X(n - 2), maneuver.rrt_via[1], model))
-
     def _add_pinned(self, graph, q_start, q_goal, maneuver: Maneuver) -> None:
         """Pin held and straight-flagged degrees of freedom to their linear path at interior states."""
         n = maneuver.state_count or self.settings.state_count
@@ -464,9 +458,12 @@ class CmrgPlanner:
         if not mask.any():
             return
         model = gtsam.noiseModel.Diagonal.Sigmas(np.where(mask, 1e-6, 1e6))
+        still = gtsam.noiseModel.Diagonal.Sigmas(np.where(held, 1e-3, 1e6))
         for k in range(1, n - 1):
             target = q_start + (k / (n - 1)) * (q_goal - q_start)
             graph.add(gtsam.PriorFactorVector(X(k), target, model))
+            if held.any():
+                graph.add(gtsam.PriorFactorVector(V(k), np.zeros(self.dof), still))
 
     # -- solve -----------------------------------------------------------
     def floor_free(self, q: np.ndarray) -> bool:
@@ -541,24 +538,13 @@ class CmrgPlanner:
             totals[name] = totals.get(name, 0.0) + factor.error(values)
         return {name: round(total, 1) for name, total in sorted(totals.items(), key=lambda item: -item[1])[:4]}
 
-    def with_seed_prior(self, graph: gtsam.NonlinearFactorGraph, line, kind: str) -> gtsam.NonlinearFactorGraph:
-        """Softly hold interior states near an RRT seed; the smoothness cost alone permits large detours."""
-        if self.settings.seed_sigma is None or kind != "rrt":
-            return graph
-        held = gtsam.NonlinearFactorGraph()
-        held.push_back(graph)
-        model = gtsam.noiseModel.Isotropic.Sigma(self.dof, self.settings.seed_sigma)
-        for k in range(1, len(line) - 1):
-            held.add(gtsam.PriorFactorVector(X(k), line[k], model))
-        return held
-
     def plan(self, q_start, q_goal, maneuver: Maneuver | None = None) -> Plan:
         """Solve one maneuver: seed, batch Levenberg-Marquardt, and a convergence check."""
         maneuver = maneuver or Maneuver()
         q_start, q_goal = np.asarray(q_start, dtype=float), np.asarray(q_goal, dtype=float)
-        total_time = self.total_time_for(q_start, q_goal)
+        total_time = self.maneuver_time(q_start, q_goal, maneuver)
         n = maneuver.state_count or self.settings.state_count
-        base_graph = self.build_graph(q_start, q_goal, total_time, maneuver)
+        graph = self.build_graph(q_start, q_goal, total_time, maneuver)
         failure = "not attempted"
         for attempt in range(len(RRT_BOX_MARGINS)):
             try:
@@ -570,7 +556,6 @@ class CmrgPlanner:
             for k in range(n):
                 initial.insert(X(k), line[k])
                 initial.insert(V(k), velocities[k])
-            graph = self.with_seed_prior(base_graph, line, kind)
             params = gtsam.LevenbergMarquardtParams()
             params.setMaxIterations(self.settings.lm_iterations)
             # Run to convergence: the cost is nearly flat along large motions, and ISAM2 would finish the solve.
