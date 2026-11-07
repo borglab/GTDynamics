@@ -1,0 +1,44 @@
+/* Shared semantic colors. Existing light colors remain as local fallbacks. */
+:root {
+  color-scheme: light;
+  --theme-page: #f7f8f4;
+  --theme-panel: #ffffff;
+  --theme-surface: #edf2eb;
+  --theme-text: #243833;
+  --theme-secondary: #52655b;
+  --theme-muted: #6b7971;
+  --theme-border: #dbe2d7;
+  --theme-grid: #e5eae3;
+  --theme-accent: #315f4f;
+  --theme-scene: #f1f3ef;
+  --theme-ground: #edf0e9;
+  --theme-grid-major: #b5c2b7;
+  --theme-grid-minor: #d6ddd3;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --theme-page: #0c1218;
+  --theme-panel: #141d25;
+  --theme-surface: #1d2933;
+  --theme-text: #e0e8ed;
+  --theme-secondary: #bbc9d2;
+  --theme-muted: #9babb7;
+  --theme-border: #35434f;
+  --theme-grid: #283640;
+  --theme-accent: #aad8be;
+  --theme-scene: #0c1218;
+  --theme-ground: #111b23;
+  --theme-grid-major: #425660;
+  --theme-grid-minor: #293941;
+  /* Optional overrides preserve each app's established light palette. */
+  --dark-overlay: #141d25e6;
+  --dark-page: var(--theme-page);
+  --dark-panel: var(--theme-panel);
+  --dark-surface: var(--theme-surface);
+  --dark-text: var(--theme-text);
+  --dark-secondary: var(--theme-secondary);
+  --dark-muted: var(--theme-muted);
+  --dark-border: var(--theme-border);
+  --dark-grid: var(--theme-grid);
+  --dark-accent: var(--theme-accent);
+}

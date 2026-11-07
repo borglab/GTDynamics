@@ -30,6 +30,8 @@ export class RobotViewport {
   } = {}) {
     this.container = container;
     this.disposed = false;
+    this.lightBackground = background;
+    this.stages = [];
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(background);
     if (fog) this.scene.fog = new THREE.Fog(background, ...fog);
@@ -55,6 +57,9 @@ export class RobotViewport {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
+    this.themeChanged = () => this.applyTheme();
+    window.addEventListener('gtdynamics-theme-change', this.themeChanged);
+    this.applyTheme();
   }
 
   /** Add a standard lit stage; customize colors/dimensions without copying setup. */
@@ -92,7 +97,43 @@ export class RobotViewport {
       if (grid.opacity !== undefined) { lines.material.transparent = true; lines.material.opacity = grid.opacity; }
       this.scene.add(lines);
     }
-    return { ground: floor, grid: lines };
+    const stage = { ground: floor, grid: lines };
+    this.stages.push({ ...stage, groundColor: ground?.color,
+      gridColors: lines ? Float32Array.from(lines.geometry.attributes.color.array) : null,
+      majorColor: grid ? new THREE.Color(grid.colors[0]) : null });
+    this.applyTheme();
+    return stage;
+  }
+
+  /** Recolor stage surfaces while preserving the camera, models and overlays. */
+  applyTheme() {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    const css = getComputedStyle(document.documentElement);
+    const color = (name, fallback) => css.getPropertyValue(`--theme-${name}`).trim() || fallback;
+    this.scene.background.set(dark ? color('scene', '#0c1218') : this.lightBackground);
+    if (this.scene.fog) this.scene.fog.color.copy(this.scene.background);
+    for (const stage of this.stages) {
+      if (stage.ground) {
+        stage.ground.material.color.set(dark ? color('ground', '#111b23') : stage.groundColor);
+        if (dark) stage.ground.material.color.convertSRGBToLinear();
+      }
+      if (stage.grid) {
+        const colors = stage.grid.geometry.attributes.color;
+        if (!dark) colors.array.set(stage.gridColors);
+        else {
+          const major = new THREE.Color(color('grid-major', '#425660')).convertSRGBToLinear();
+          const minor = new THREE.Color(color('grid-minor', '#293941')).convertSRGBToLinear();
+          for (let i = 0; i < colors.count; i++) {
+            const original = stage.gridColors.subarray(i * 3, i * 3 + 3);
+            const isMajor = Math.abs(original[0] - stage.majorColor.r) < 1e-5 && Math.abs(original[1] - stage.majorColor.g) < 1e-5;
+            const value = isMajor ? major : minor;
+            colors.setXYZ(i, value.r, value.g, value.b);
+          }
+        }
+        colors.needsUpdate = true;
+      }
+    }
+    if (!this.animation) this.render();
   }
 
   resize() {
@@ -114,6 +155,13 @@ export class RobotViewport {
     });
   }
 
+  /** Pause continuous updates; controls and explicit render calls remain active. */
+  stop() {
+    this.renderer.setAnimationLoop(null);
+    this.animation = null;
+    this.render();
+  }
+
   render() { if (!this.disposed) this.renderer.render(this.scene, this.camera); }
 
   dispose() {
@@ -122,6 +170,7 @@ export class RobotViewport {
     this.renderer.setAnimationLoop(null);
     this.animation = null;
     this.resizeObserver.disconnect();
+    window.removeEventListener('gtdynamics-theme-change', this.themeChanged);
     this.controls.removeEventListener('change', this.controlsChanged);
     this.controls.dispose();
     disposeObject3D(this.scene);

@@ -180,11 +180,11 @@ watch(
 <style scoped>
 .graph-stats {
   font-size: 12px;
-  color: #61716a;
+  color: var(--dark-secondary, #61716a);
 }
 .graph-scroll {
-  border-block: 1px solid #e0e7e2;
-  background: #fafbf9;
+  border-block: 1px solid var(--dark-border, #e0e7e2);
+  background: var(--dark-page, #fafbf9);
 }
 svg {
   display: block;
@@ -194,16 +194,16 @@ svg text {
     11px ui-monospace,
     monospace;
   text-anchor: middle;
-  fill: #243438;
+  fill: var(--dark-text, #243438);
 }
 svg .row-label {
   text-anchor: start;
-  fill: #61716a;
+  fill: var(--dark-muted, #61716a);
   font-size: 10px;
 }
 svg .node-time {
   font-size: 9px;
-  fill: #61716a;
+  fill: var(--dark-muted, #61716a);
 }
 line,
 path {
@@ -227,24 +227,24 @@ rect {
   opacity: 1;
 }
 .pose-node circle {
-  fill: #fff;
-  stroke: #243438;
+  fill: var(--dark-panel, #fff);
+  stroke: var(--dark-muted, #243438);
   stroke-width: 1.5;
 }
 .pose-node.selected circle {
-  fill: #243438;
+  fill: var(--dark-text, #243438);
   stroke-width: 3;
 }
 .pose-node.selected > text:first-of-type {
-  fill: white;
+  fill: var(--dark-panel, white);
 }
 .contact-node circle {
-  fill: white;
+  fill: var(--dark-panel, white);
   stroke: currentColor;
   stroke-width: 1.5;
 }
 .contact-node.active circle {
-  fill: #edf2e8;
+  fill: var(--dark-panel, #edf2e8);
   stroke-width: 3;
 }
 .motion-factor {

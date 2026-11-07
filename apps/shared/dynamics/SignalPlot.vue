@@ -1,4 +1,5 @@
 <script setup>
+import { themeColor, onThemeChange } from '../theme.js';
 import {nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue';
 import {frameAtTime} from './recording.js';
 const props=defineProps({title:String,unit:String,times:Array,series:Array,frame:Number,xTitle:{type:String,default:'Dataset time (s)'}});
@@ -10,16 +11,18 @@ async function draw(){
   const traces=props.series.map(series=>({type:'scatter',mode:'lines+markers',x:props.times,y:series.values,name:series.name,line:{color:series.color,width:1.6,dash:series.dash||'solid'},marker:{size:3},hovertemplate:'%{x:.2f} s<br>%{y:.2f} '+props.unit+'<extra>%{fullData.name}</extra>'}));
   const time=props.times[props.frame];
   await Plotly.react(element.value,traces,{
-    height:260,margin:{l:60,r:22,t:18,b:64},paper_bgcolor:'transparent',plot_bgcolor:'#fff',
-    font:{family:'Inter,system-ui,sans-serif',color:'#42574e',size:11},
-    xaxis:{title:{text:props.xTitle},gridcolor:'#edf0e9',zeroline:false},
-    yaxis:{title:{text:props.unit},gridcolor:'#edf0e9',zerolinecolor:'#bac7bb'},
+    height:260,margin:{l:60,r:22,t:18,b:64},paper_bgcolor:'transparent',plot_bgcolor:themeColor('panel'),
+    font:{family:'Inter,system-ui,sans-serif',color:themeColor('secondary'),size:11},
+    xaxis:{title:{text:props.xTitle},gridcolor:themeColor('grid'),zeroline:false},
+    yaxis:{title:{text:props.unit},gridcolor:themeColor('grid'),zerolinecolor:themeColor('border')},
     legend:{orientation:'h',x:0,y:-.28,font:{size:10}},
     shapes:[{type:'line',xref:'x',x0:time,x1:time,yref:'paper',y0:0,y1:1,line:{color:'#86958b',width:1,dash:'dot'}}],
     hovermode:'x unified',dragmode:'zoom',uirevision:props.title,
   },{responsive:true,displaylogo:false,scrollZoom:true,modeBarButtonsToRemove:['select2d','lasso2d','toImage']});
   if(alive&&element.value)element.value.dataset.ready='true';
 }
+const stopTheme = onThemeChange(() => { if (Plotly && alive && element.value) draw(); });
+onBeforeUnmount(stopTheme);
 onMounted(async()=>{
   const module=await import('plotly.js-basic-dist-min');
   if(!alive)return;

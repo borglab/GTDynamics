@@ -1,3 +1,4 @@
+import '../../shared/theme.js';
 import { createApp } from 'vue';
 import App from './App.vue';
 import '../../shared/kinematics/style.css';
