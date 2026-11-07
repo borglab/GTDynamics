@@ -428,9 +428,10 @@ def write_gzip_json(path: Path, payload: dict) -> None:
 NOTICE = """BAR Lab CMRG model notice
 
 The robot meshes (ABB IRB6620 arms, gantry bridges, timber gripper and nailer) and the learned dress-cable
-weights come from the Bruun Automation Research Lab BAR-robot-cell repository (Georgia Institute of Technology).
-They are used here to visualize and plan the cell; ABB retains any rights in its robot geometry. The planner
-follows the BAR Lab STEAP paper implementation; STEAP is Bhattacharyya et al., arXiv:1807.10425.
+weights come from the Bruun Automation Research Lab (Georgia Institute of Technology):
+https://bruun-automation-research-lab.github.io/BAR-Documentation/index.html
+They are used here to visualize and plan the cell; ABB retains any rights in its robot geometry. The primary
+source for this work is CAST, Shaji et al., arXiv:2609.24841. STEAP is Mukadam et al., arXiv:1807.10425.
 """
 
 

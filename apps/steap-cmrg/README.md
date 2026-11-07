@@ -1,6 +1,8 @@
 # STEAP Assembly
 
-Two gantry-mounted ABB IRB6620 arms of the BAR Lab CMRG build a post-and-lintel frame from 2×4 stock staged far from the build site on the same table. Each maneuver is planned offline with GPMP2 (RRT-Connect seed, learned dress-cable factors), then executed with simulated disturbances and replanned by STEAP: measurement priors fused in an ISAM2 Bayes tree. The browser replays the recording.
+Two gantry-mounted ABB IRB6620 arms of the BAR Lab CMRG build a post-and-lintel frame from 2×4 stock. The setup presented in this visualization is a simplified version of the one in the original paper. Each maneuver is planned offline with GPMP2 (RRT-Connect seed, learned dress-cable factors), then executed with simulated disturbances and replanned by STEAP: measurement priors fused in an ISAM2 Bayes tree. The browser replays the recording.
+
+Primary source: Shaji, Kim, D'Amato, Bruun, and Dellaert, "CAST: Collision-Aware Assembly with Construction Robots using Simultaneous Trajectory Estimation and Planning" ([arXiv:2609.24841](https://arxiv.org/abs/2609.24841)). STEAP method: Mukadam, Dong, Dellaert, and Boots, "STEAP: Simultaneous Trajectory Estimation and Planning" ([arXiv:1807.10425](https://arxiv.org/abs/1807.10425)).
 
 ## Run
 
