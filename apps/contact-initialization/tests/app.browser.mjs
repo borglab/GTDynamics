@@ -115,8 +115,22 @@ try {
         name: "Contact event",
         exact: true,
       });
+      const graph = app.locator(".pose-graph svg");
+      const event = (i) => graph.getByRole("button", { name: `Select event ${i}`, exact: true });
+      await event(1).click();
+      assert.equal(await slider.inputValue(), "1");
+      await event(2).press("Enter");
+      assert.equal(await slider.inputValue(), "2");
+      await event(3).press("Space");
+      assert.equal(await slider.inputValue(), "3");
+      assert.equal(await graph.locator(".contact-node[tabindex]").count(), 0);
+
       await slider.fill("20");
       assert.equal(await lab.getAttribute("data-event"), "20");
+      assert.equal(await event(20).getAttribute("aria-pressed"), "true");
+      const active = graph.locator('[data-factor][data-active="true"]');
+      assert(await active.count() > 0);
+      assert.equal(await active.count(), await active.and(graph.locator(".observation-factor")).count());
       await app
         .getByRole("button", { name: "Play event playback", exact: true })
         .click();
