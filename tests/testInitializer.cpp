@@ -13,9 +13,10 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
+#include <gtdynamics/dynamics/ZeroInitializer.h>
+#include <gtdynamics/kinematics/KinematicInitializer.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -43,9 +44,8 @@ TEST(InitializeSolutionUtils, Interpolation) {
   // We will interpolate from 0->10s, in 1 second increments.
   double T_i = 0, T_f = 10, dt = 1;
 
-  Initializer initializer;
-  gtsam::Values init_vals = initializer.InitializeSolutionInterpolation(
-      robot, "link_0", wTb_i, wTb_f, T_i, T_f, dt);
+  gtsam::Values init_vals = gtdynamics::InterpolationInitializer(robot).run(
+      "link_0", wTb_i, wTb_f, T_i, T_f, dt);
 
   int n_steps_final = static_cast<int>(std::round(T_f / dt));
 
@@ -81,9 +81,9 @@ TEST(InitializeSolutionUtils, InitializeSolutionInterpolationMultiPhase) {
   std::vector<double> ts = {5, 10};
   double dt = 1;
 
-  Initializer initializer;
-  gtsam::Values init_vals = initializer.InitializeSolutionInterpolationMultiPhase(
-      robot, "l1", wTb_i, wTb_t, ts, dt);
+  gtsam::Values init_vals =
+      gtdynamics::MultiPhaseInterpolationInitializer(robot).run("l1", wTb_i,
+                                                                wTb_t, ts, dt);
 
   Pose3 pose = Pose(init_vals, l1->id());
   EXPECT(assert_equal(wTb_i, pose));
@@ -121,9 +121,8 @@ TEST(InitializeSolutionUtils, InitializePosesAndJoints) {
   gtsam::Sampler sampler(sampler_noise_model);
   std::vector<Pose3> wTl_dt;
 
-  Initializer initializer;
-  auto actual = initializer.InitializePosesAndJoints(robot, wTb_i, wTb_t, l2->name(), t_i,
-                                         timesteps, dt, sampler, &wTl_dt);
+  auto actual = gtdynamics::initializePosesAndJoints(
+      robot, wTb_i, wTb_t, l2->name(), t_i, timesteps, dt, sampler, &wTl_dt);
   gtsam::Values expected;
   InsertPose(&expected, 0, Pose3(Rot3(), Point3(0, 0, 1)));
   InsertPose(&expected, 1, Pose3(Rot3(), Point3(0, 0, 3)));
@@ -178,9 +177,10 @@ TEST(InitializeSolutionUtils, InverseKinematics) {
    *                      |                 | l1 :(
    *                   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯¯¯¯
    */
-  Initializer initializer;
-  gtsam::Values init_vals = initializer.InitializeSolutionInverseKinematics(
-      robot, l2->name(), wTb_i, wTb_t, ts, dt, kNoiseSigma, contact_points);
+
+  gtsam::Values init_vals =
+      gtdynamics::InverseKinematicsInitializer(robot, kNoiseSigma)
+          .run(l2->name(), wTb_i, wTb_t, ts, dt, contact_points);
 
   EXPECT(assert_equal(wTb_i, Pose(init_vals, l2->id()), 1e-3));
 
@@ -214,8 +214,8 @@ TEST(InitializeSolutionUtils, ZeroValues) {
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
-  Initializer initializer;
-  gtsam::Values init_vals = initializer.ZeroValues(robot, 0, 0.0, contact_points);
+  ZeroSliceInitializer initializer(robot);
+  gtsam::Values init_vals = initializer.run(0, contact_points);
 
   Pose3 pose;
   double joint_angle;
@@ -236,10 +236,9 @@ TEST(InitializeSolutionUtils, MultipleContactPointsShareWrenchSeed) {
   const PointOnLinks patch = {{link, Point3(0, 0, 0)},
                               {link, Point3(0.1, 0, 0)},
                               {link, Point3(0, 0.1, 0)}};
-  Initializer initializer;
-  const auto single = initializer.ZeroValues(robot, 7, 0.0,
-                                             PointOnLinks{patch.front()});
-  const auto multiple = initializer.ZeroValues(robot, 7, 0.0, patch);
+  ZeroSliceInitializer initializer(robot);
+  const auto single = initializer.run(7, PointOnLinks{patch.front()});
+  const auto multiple = initializer.run(7, patch);
   EXPECT(assert_equal(single, multiple));
   EXPECT(multiple.exists(ContactWrenchKey(link->id(), 0, 7)));
 }
@@ -256,9 +255,8 @@ TEST(InitializeSolutionUtils, ZeroValuesTrajectory) {
   Pose3 oTc_l1(Rot3(), Point3(0, 0, -1.0));
   PointOnLinks contact_points = {{l1, oTc_l1.translation()}};
 
-  Initializer initializer;
-  gtsam::Values init_vals =
-      initializer.ZeroValuesTrajectory(robot, 100, -1, 0.0, contact_points);
+  gtsam::Values init_vals = gtdynamics::ZeroTrajectoryInitializer(robot, 0.0)
+                                .run(100, -1, contact_points);
 
   double joint_angle;
   for (size_t t = 0; t <= 100; t++) {
@@ -302,18 +300,20 @@ TEST(InitializeSolutionUtils, MultiPhaseInverseKinematicsTrajectory) {
   ts.push_back(3 * steps_per_phase);
 
   // Initial values for transition graphs.
-  gtdynamics::Initializer initializer;
   std::vector<gtsam::Values> transition_graph_init;
   transition_graph_init.push_back(
-      initializer.ZeroValues(robot, 1 * steps_per_phase, kNoiseSigma, p0));
+      gtdynamics::ZeroSliceInitializer(robot, kNoiseSigma)
+          .run(1 * steps_per_phase, p0));
   transition_graph_init.push_back(
-      initializer.ZeroValues(robot, 2 * steps_per_phase, kNoiseSigma, p0));
+      gtdynamics::ZeroSliceInitializer(robot, kNoiseSigma)
+          .run(2 * steps_per_phase, p0));
 
   double dt = 1.0;
 
-  gtsam::Values init_vals = initializer.MultiPhaseInverseKinematicsTrajectory(
-      robot, l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
-      dt, kNoiseSigma, phase_contact_points);
+  gtsam::Values init_vals =
+      gtdynamics::MultiPhaseIKInitializer(robot, kNoiseSigma)
+          .run(l2->name(), phase_steps, wTb_i, wTb_t, ts, transition_graph_init,
+               dt, phase_contact_points);
 
   Pose3 pose = Pose(init_vals, l2->id());
   EXPECT(assert_equal(wTb_i, pose, 1e-3));

@@ -11,11 +11,11 @@
  * @author Alejandro Escontrela
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -91,8 +91,9 @@ int main(int argc, char** argv) {
     graph.emplace_shared<MinTorqueFactor>(TorqueKey(j0_id, t), control_model);
 
   // Initialize solution.
-  Initializer initializer;
-  auto init_vals = initializer.ZeroValuesTrajectory(cp, t_steps, 0, 0.0);
+
+  auto init_vals =
+      gtdynamics::ZeroTrajectoryInitializer(cp, 0.0).run(t_steps, 0);
   gtsam::LevenbergMarquardtParams params;
   params.setMaxIterations(40);
   params.setVerbosityLM("SUMMARY");

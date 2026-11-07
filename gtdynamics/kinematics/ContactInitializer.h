@@ -1,7 +1,14 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415. All Rights Reserved.
+ * See LICENSE for the license information.
+ * -------------------------------------------------------------------------- */
 #pragma once
 
 /**
  * @file ContactInitializer.h
+ * @brief Sparse root-pose fitting to point-contact observations.
+ * @author GTDynamics contributors
  * Sparse root-pose initialization from fixed forward-kinematics measurements.
  *
  * Each selected slice supplies contact-point positions on the robot's links,
@@ -118,13 +125,6 @@ struct Options {
   /// Stop when the absolute decrease of GTSAM's half-squared cost is this
   /// small.
   double absoluteErrorTolerance = 1e-12;
-  /** Exact root-to-world pose for the first frame, excluded from optimization.
-   *
-   * Defaults to zero translation and identity rotation, except that hard-ground
-   * mode levels the first sole patch. Other contact components have independent
-   * arbitrary gauges unless identity motion factors explicitly connect them.
-   */
-  std::optional<gtsam::Pose3> anchorPose;
   /** Map a selected-slice ordinal to its Pose3 key, not a source sample index.
    *
    * Keys must be unique and disjoint from landmark keys. The GTDynamics adapter
@@ -313,15 +313,19 @@ struct Result {
  *
  * Input contains measured geometry, not floating-base reference poses. This
  * class does not infer contacts, sample frames, compute joint FK, or expand a
- * dense trajectory. Use Initializer::InitializeSolutionContacts for the robot
+ * dense trajectory. Use ContactTrajectoryInitializer::run for the robot
  * adapter. Point-contact rotations can remain unobservable despite LM damping.
  */
 class ContactInitializer {
  public:
+  /// Copy tuning parameters; each run supplies its measurements and gauge.
+  explicit ContactInitializer(const Options& options = {});
+
   /** Register and optimize selected measurements, retaining exact pose gauges.
    *
-   * Supply slices in temporal order, fixed local measurements in metres, and
-   * unique keys through Options. Returns sparse states and optional history.
+   * Supply slices in temporal order, fixed local measurements in metres, an
+   * optional first root-to-world pose gauge, and unique keys through Options.
+   * Returns sparse states and optional history.
    *
    * Throws std::invalid_argument for empty input, invalid observation IDs or
    * duplicate stance points within a frame, nonfinite geometry or prior scales,
@@ -329,20 +333,11 @@ class ContactInitializer {
    * Throws std::runtime_error if an LM iterate has nonfinite or increasing
    * cost; GTSAM can also report linear-solver errors for an unsuitable graph.
    */
-  Result Initialize(const std::vector<ContactMeasurements>& measurements,
-                    const Options& options = {}) const;
+  Result run(const std::vector<ContactMeasurements>& measurements,
+             const std::optional<gtsam::Pose3>& anchorPose = {}) const;
 
-  /** Return Initialize(measurements, options).values with the same gauges and
-   * keys.
-   *
-   * Entries contain sparse root poses and stance landmarks, including fixed
-   * poses; this convenience function does not produce dense robot-link states.
-   */
-  gtsam::Values InitializeSolutionContactFrames(
-      const std::vector<ContactMeasurements>& measurements,
-      const Options& options = {}) const {
-    return Initialize(measurements, options).values;
-  }
+ private:
+  const Options options_;
 };
 
 /** Return the pose rank supplied by points with known world correspondences.
@@ -365,3 +360,80 @@ gtsam::Pose3 FitRigidTransform(const std::vector<gtsam::Point3>& local,
                                const std::vector<gtsam::Point3>& world,
                                const gtsam::Pose3& previous = {});
 }  // namespace gtdynamics::contact_init
+
+namespace gtdynamics {
+class Robot;
+class Trajectory;
+class ContactTrajectoryInitializer {
+ public:
+  /** Bind the robot and copy tuning parameters. The model shares fixed
+   * Link/Joint topology, which must remain unchanged. Trajectory data is
+   * supplied separately to run(). */
+  explicit ContactTrajectoryInitializer(
+      const Robot& robot, const contact_init::Options& options = {},
+      size_t contactBuffer = 0);
+
+  /** Initialize measured joints over a trajectory of contact phases.
+   *
+   * Each phase supplies a ConstraintSpec with contactPoints(). All contacts
+   * are used, regardless of their isGround flag. Mixed ground/wall contacts
+   * require a Patch or Point model without global ground priors.
+   * The same point on the same link in consecutive phases shares a landmark,
+   * regardless of point ordering. A point that disappears
+   * and later returns gets a new landmark. Callers supply no touchdown IDs.
+   *
+   * Phases use original, inclusive sample indices. They must be ordered and
+   * contiguous, either disjoint or sharing one endpoint. Shared endpoints use
+   * the union of contacts and produce only one output state. Empty contact
+   * specifications represent flight; missing specifications are invalid.
+   *
+   * Phase boundaries with contact are retained for the sparse solve. Long
+   * supported phases are supplemented at intervals of at most one second
+   * (or every sample if dt > 1). Root poses are interpolated between solved
+   * frames and held constant outside the supported span. In particular,
+   * initialPose anchors the first supported frame and any unsupported prefix.
+   * These flight/interpolation values are seeds, not contact measurements.
+   * At least one supported frame is required. Disconnected contact graphs
+   * require an explicit motion prior (options.addBetweenFactors).
+   *
+   * A positive contactBuffer excludes that many slices at both ends of
+   * each link's continuous stance, even when it spans multiple phases.
+   * Both retained stance endpoints are selected, with the usual phase and
+   * one-second supplemental samples wherever trusted contacts remain.
+   * Each observation is filtered independently of which foot selected the
+   * slice. Every stance must retain at least two distinct slices, otherwise
+   * std::invalid_argument is thrown; margins are never reduced. Zero keeps
+   * the original selection exactly, including single-slice stances.
+   * The gauge is at the first retained slice; the prefix is held at
+   * initialPose, so no root motion is inferred in the trimmed prefix. Dense
+   * outputs keep the original contact schedule. Trimming may disconnect the
+   * sparse graph.
+   *
+   * @param rootLinkName Link whose COM pose defines the floating base.
+   * @param initialPose Initial world COM pose, fixing the gauge as above.
+   * @param measuredJoints JointAngleKey(j,k) for every joint and trajectory
+   * slice. Optional JointVelKey values are preserved; absent velocities are
+   * zero. Existing poses in these Values are ignored.
+   * @param trajectory Phases and their contact specifications.
+   * @param dt Seconds per sample index, finite and positive.
+   * @param diagnostics Optional sparse graph, solution, and core timings.
+   * diagnostics->slices() returns the exact source slices used by the solve,
+   * allowing downstream estimation at those same, irregularly spaced times.
+   *
+   * FK expands all trajectory slices into ordinary GTDynamics Values,
+   * preserving measured joints, without acceleration, force, or torque keys.
+   * Root twists are zero seeds. Invalid phases, contact geometry, or missing
+   * or nonfinite joint measurements throw std::invalid_argument.
+   */
+  gtsam::Values run(const std::string& rootLinkName,
+                    const gtsam::Pose3& initialPose,
+                    const gtsam::Values& measuredJoints,
+                    const Trajectory& trajectory, double dt = 1.0,
+                    contact_init::Result* diagnostics = nullptr) const;
+
+ private:
+  const std::shared_ptr<const Robot> robot_;
+  const contact_init::Options options_;
+  const size_t contactBuffer_;
+};
+}  // namespace gtdynamics

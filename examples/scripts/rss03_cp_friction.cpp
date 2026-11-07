@@ -13,11 +13,13 @@
  */
 
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
-#include <gtdynamics/scenarios/CPBarrierRetractor.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/scenarios/CPBarrierRetractor.h>
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 
 #include <filesystem>
+
+#include "CmcBenchmark.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -199,154 +201,172 @@ std::pair<IEResultSummary, IELMOptimizationDetails> SecondPhaseOptimization(
 
   IELMParams ie_params;
   ie_params.boundaryApproachRateThreshold = 1e10;
-  return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
-                             false);
+  return cmc_benchmark::measure(problem, "LM", [&] {
+    return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
+                               false);
+  });
 }
 
 int main(int argc, char **argv) {
-  auto problem = CreateProblem();
+  cmc_benchmark::configure(argc, argv);
+  try {
+    auto problem = CreateProblem();
 
-  // Parameters
-  IELMParams ie_params;
-  ie_params.boundaryApproachRateThreshold = 1e10;
-  // ie_params.lmParams.setVerbosityLM("SUMMARY");
+    // Parameters
+    IELMParams ie_params;
+    ie_params.boundaryApproachRateThreshold = 1e10;
+    // ie_params.lmParams.setVerbosityLM("SUMMARY");
 
-  // soft constraints
-  std::cout << "optimize soft...\n";
-  LevenbergMarquardtParams lmParams;
-  // lmParams.setVerbosityLM("SUMMARY");
-  auto soft_result =
-      OptimizeIE_Soft(problem, lmParams, 1e2, eval_proj_cost_progress);
+    // soft constraints
+    std::cout << "optimize soft...\n";
+    LevenbergMarquardtParams lmParams;
+    // lmParams.setVerbosityLM("SUMMARY");
+    auto soft_result = cmc_benchmark::other([&] {
+      return OptimizeIE_Soft(problem, lmParams, 1e2, eval_proj_cost_progress);
+    });
 
-  // penalty method
-  std::cout << "optimize penalty...\n";
-  auto penaltyParams = std::make_shared<PenaltyParameters>();
-  penaltyParams->initial_mu = 1e2;
-  penaltyParams->mu_increase_rate = 4;
-  penaltyParams->num_iterations = 8;
-  auto penalty_result =
-      OptimizeIE_Penalty(problem, penaltyParams, eval_proj_cost_progress);
+    // penalty method
+    std::cout << "optimize penalty...\n";
+    auto penaltyParams = std::make_shared<PenaltyParameters>();
+    penaltyParams->initial_mu = 1e2;
+    penaltyParams->mu_increase_rate = 4;
+    penaltyParams->num_iterations = 8;
+    auto penalty_result = cmc_benchmark::other([&] {
+      return OptimizeIE_Penalty(problem, penaltyParams,
+                                eval_proj_cost_progress);
+    });
 
-  // augmented Lagrangian
-  std::cout << "optimize augmented Lagrangian...\n";
-  auto al_params = std::make_shared<AugmentedLagrangianParameters>();
-  al_params->initial_mu_e = 10;
-  al_params->num_iterations = 8;
-  al_params->dual_step_size_factor_e = 5e-2;
-  al_params->dual_step_size_factor_i = 5e-2;
-  al_params->max_dual_step_size_e = 1e0;
-  al_params->max_dual_step_size_i = 1e0;
-  if (log_progress) {
-    al_params->store_iter_details = true;
-    al_params->store_lm_details = true;
+    // augmented Lagrangian
+    std::cout << "optimize augmented Lagrangian...\n";
+    auto al_params = std::make_shared<AugmentedLagrangianParameters>();
+    al_params->initial_mu_e = 10;
+    al_params->num_iterations = 8;
+    al_params->dual_step_size_factor_e = 5e-2;
+    al_params->dual_step_size_factor_i = 5e-2;
+    al_params->max_dual_step_size_e = 1e0;
+    al_params->max_dual_step_size_i = 1e0;
+    if (log_progress) {
+      al_params->store_iter_details = true;
+      al_params->store_lm_details = true;
+    }
+    auto al_result = cmc_benchmark::other([&] {
+      return OptimizeIE_AugmentedLagrangian(problem, al_params,
+                                            eval_proj_cost_progress);
+    });
+
+    // SQP method
+    std::cout << "optimize SQP...\n";
+    auto sqp_params = std::make_shared<SQPParams>();
+    sqp_params->merit_e_l2_mu = 1e0;
+    sqp_params->merit_i_l2_mu = 1e0;
+    sqp_params->merit_e_l1_mu = 1e0;
+    sqp_params->merit_i_l1_mu = 1e0;
+    // sqp_params->lm_params.setVerbosityLM("SUMMARY");
+    sqp_params->lm_params.setlambdaUpperBound(1e10);
+    auto sqp_result = cmc_benchmark::other([&] {
+      return OptimizeIE_SQP(problem, sqp_params, eval_proj_cost_progress);
+    });
+
+    // IP method
+    std::cout << "optimize IP...\n";
+    auto ip_result =
+        cmc_benchmark::other([&] { return OptimizeIE_IPOPT(problem); });
+
+    // ELM with penalty for i-constraints
+    std::cout << "optimize CM-Opt(E-LM)...\n";
+    auto cmopt_result = cmc_benchmark::measure(problem, "CM", [&] {
+      return OptimizeIE_CMOpt(problem, ie_params, GetIECMParamsSP(), 1e2);
+    });
+
+    // // IEGD method
+    // std::cout << "optimize CMOpt(IE-GD)...\n";
+    // GradientDescentParams gd_params;
+    // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
+    // GetIECMParamsSP());
+
+    // IELM standard projection
+    std::cout << "optimize CMC-Opt(IE-LM-SP)...\n";
+    auto cmcopt_result = cmc_benchmark::measure(problem, "LM", [&] {
+      return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsSP(),
+                                 "CMC-Opt");
+    });
+
+    // // IELM cost-aware projection
+    // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
+    // auto ielm_cr_result =
+    //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(),
+    //     "CMOpt(IE-LM-CR)");
+
+    if (display_result) {
+      soft_result.first.printLatex(std::cout);
+      sqp_result.first.printLatex(std::cout);
+      cmopt_result.first.printLatex(std::cout);
+      ip_result.first.printLatex(std::cout);
+      penalty_result.first.printLatex(std::cout);
+      al_result.first.printLatex(std::cout);
+      cmcopt_result.first.printLatex(std::cout);
+    }
+
+    if (log_progress) {
+      std::filesystem::create_directory(scenario_folder);
+      soft_result.first.exportFile(scenario_folder + "soft_progress.csv");
+      penalty_result.first.exportFile(scenario_folder + "penalty_progress.csv");
+      sqp_result.first.exportFile(scenario_folder + "sqp_progress.csv");
+      cmopt_result.first.exportFile(scenario_folder + "elm_progress.csv");
+      // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
+      cmcopt_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
+      // ielm_cr_result.first.exportFile(scenario_folder +
+      // "ielm_cr_progress.csv");
+
+      IECartPoleWithFriction::ExportValues(problem.initValues(), num_steps,
+                                           scenario_folder + "init_traj.csv");
+      IECartPoleWithFriction::ExportValues(cmcopt_result.first.values,
+                                           num_steps,
+                                           scenario_folder + "ielm_traj.csv");
+    }
+
+    if (second_phase_opt) {
+      auto soft_continued = SecondPhaseOptimization(
+          soft_result.first.projected_values, "soft-continued");
+      auto penalty_continued = SecondPhaseOptimization(
+          penalty_result.first.projected_values, "penalty-continued");
+      auto sqp_continued = SecondPhaseOptimization(
+          sqp_result.first.projected_values, "sqp-continued");
+      auto elm_continued = SecondPhaseOptimization(
+          cmopt_result.first.projected_values, "CM-Opt-continued");
+
+      soft_continued.first.printLatex(std::cout);
+      elm_continued.first.printLatex(std::cout);
+      sqp_continued.first.printLatex(std::cout);
+      penalty_continued.first.printLatex(std::cout);
+
+      soft_continued.first.exportFile(scenario_folder + "soft_continued.csv");
+      elm_continued.first.exportFile(scenario_folder + "elm_continued.csv");
+      sqp_continued.first.exportFile(scenario_folder + "sqp_continued.csv");
+      penalty_continued.first.exportFile(scenario_folder +
+                                         "penalty_continued.csv");
+    }
+
+    if (evaluate_cost_terms) {
+      auto cost_terms = GetCostTerms();
+      EvaluateCostTerms(std::cout, cost_terms, problem.initValues(),
+                        problem.initValues(), "Initital Values");
+      EvaluateCostTerms(std::cout, cost_terms, soft_result.first.values,
+                        soft_result.first.projected_values, "Soft");
+      EvaluateCostTerms(std::cout, cost_terms, cmopt_result.first.values,
+                        cmopt_result.first.projected_values, "CM-Opt");
+      EvaluateCostTerms(std::cout, cost_terms, sqp_result.first.values,
+                        sqp_result.first.projected_values, "SQP");
+      EvaluateCostTerms(std::cout, cost_terms, penalty_result.first.values,
+                        penalty_result.first.projected_values, "Penalty");
+      EvaluateCostTerms(std::cout, cost_terms, al_result.first.values,
+                        al_result.first.projected_values, "AugL");
+      EvaluateCostTerms(std::cout, cost_terms, cmcopt_result.first.values,
+                        cmcopt_result.first.projected_values, "CMC-Opt");
+    }
+
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
   }
-  auto al_result = OptimizeIE_AugmentedLagrangian(problem, al_params,
-                                                  eval_proj_cost_progress);
-
-  // SQP method
-  std::cout << "optimize SQP...\n";
-  auto sqp_params = std::make_shared<SQPParams>();
-  sqp_params->merit_e_l2_mu = 1e0;
-  sqp_params->merit_i_l2_mu = 1e0;
-  sqp_params->merit_e_l1_mu = 1e0;
-  sqp_params->merit_i_l1_mu = 1e0;
-  // sqp_params->lm_params.setVerbosityLM("SUMMARY");
-  sqp_params->lm_params.setlambdaUpperBound(1e10);
-  auto sqp_result =
-      OptimizeIE_SQP(problem, sqp_params, eval_proj_cost_progress);
-
-  // IP method
-  std::cout << "optimize IP...\n";
-  auto ip_result = OptimizeIE_IPOPT(problem);
-
-  // ELM with penalty for i-constraints
-  std::cout << "optimize CM-Opt(E-LM)...\n";
-  auto cmopt_result =
-      OptimizeIE_CMOpt(problem, ie_params, GetIECMParamsSP(), 1e2);
-
-  // // IEGD method
-  // std::cout << "optimize CMOpt(IE-GD)...\n";
-  // GradientDescentParams gd_params;
-  // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
-  // GetIECMParamsSP());
-
-  // IELM standard projection
-  std::cout << "optimize CMC-Opt(IE-LM-SP)...\n";
-  auto cmcopt_result =
-      OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsSP(), "CMC-Opt");
-
-  // // IELM cost-aware projection
-  // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
-  // auto ielm_cr_result =
-  //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(),
-  //     "CMOpt(IE-LM-CR)");
-
-  if (display_result) {
-    soft_result.first.printLatex(std::cout);
-    sqp_result.first.printLatex(std::cout);
-    cmopt_result.first.printLatex(std::cout);
-    ip_result.first.printLatex(std::cout);
-    penalty_result.first.printLatex(std::cout);
-    al_result.first.printLatex(std::cout);
-    cmcopt_result.first.printLatex(std::cout);
-  }
-
-  if (log_progress) {
-    std::filesystem::create_directory(scenario_folder);
-    soft_result.first.exportFile(scenario_folder + "soft_progress.csv");
-    penalty_result.first.exportFile(scenario_folder + "penalty_progress.csv");
-    sqp_result.first.exportFile(scenario_folder + "sqp_progress.csv");
-    cmopt_result.first.exportFile(scenario_folder + "elm_progress.csv");
-    // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
-    cmcopt_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
-    // ielm_cr_result.first.exportFile(scenario_folder +
-    // "ielm_cr_progress.csv");
-
-    IECartPoleWithFriction::ExportValues(problem.initValues(), num_steps,
-                                         scenario_folder + "init_traj.csv");
-    IECartPoleWithFriction::ExportValues(cmcopt_result.first.values, num_steps,
-                                         scenario_folder + "ielm_traj.csv");
-  }
-
-  if (second_phase_opt) {
-    auto soft_continued = SecondPhaseOptimization(
-        soft_result.first.projected_values, "soft-continued");
-    auto penalty_continued = SecondPhaseOptimization(
-        penalty_result.first.projected_values, "penalty-continued");
-    auto sqp_continued = SecondPhaseOptimization(
-        sqp_result.first.projected_values, "sqp-continued");
-    auto elm_continued = SecondPhaseOptimization(
-        cmopt_result.first.projected_values, "CM-Opt-continued");
-
-    soft_continued.first.printLatex(std::cout);
-    elm_continued.first.printLatex(std::cout);
-    sqp_continued.first.printLatex(std::cout);
-    penalty_continued.first.printLatex(std::cout);
-
-    soft_continued.first.exportFile(scenario_folder + "soft_continued.csv");
-    elm_continued.first.exportFile(scenario_folder + "elm_continued.csv");
-    sqp_continued.first.exportFile(scenario_folder + "sqp_continued.csv");
-    penalty_continued.first.exportFile(scenario_folder +
-                                       "penalty_continued.csv");
-  }
-
-  if (evaluate_cost_terms) {
-    auto cost_terms = GetCostTerms();
-    EvaluateCostTerms(std::cout, cost_terms, problem.initValues(),
-                      problem.initValues(), "Initital Values");
-    EvaluateCostTerms(std::cout, cost_terms, soft_result.first.values,
-                      soft_result.first.projected_values, "Soft");
-    EvaluateCostTerms(std::cout, cost_terms, cmopt_result.first.values,
-                      cmopt_result.first.projected_values, "CM-Opt");
-    EvaluateCostTerms(std::cout, cost_terms, sqp_result.first.values,
-                      sqp_result.first.projected_values, "SQP");
-    EvaluateCostTerms(std::cout, cost_terms, penalty_result.first.values,
-                      penalty_result.first.projected_values, "Penalty");
-    EvaluateCostTerms(std::cout, cost_terms, al_result.first.values,
-                      al_result.first.projected_values, "AugL");
-    EvaluateCostTerms(std::cout, cost_terms, cmcopt_result.first.values,
-                      cmcopt_result.first.projected_values, "CMC-Opt");
-  }
-
-  return 0;
 }

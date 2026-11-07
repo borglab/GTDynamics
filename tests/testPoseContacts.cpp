@@ -3,12 +3,18 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+/**
+ * @file testPoseContacts.cpp
+ * @brief Verify pose contacts, phase sampling, and initialization.
+ * @author GTDynamics contributors
+ */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/ContactHeightFactor.h>
+#include <gtdynamics/kinematics/ContactInitializer.h>
 #include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
+#include <gtdynamics/kinematics/PoseContactInitializer.h>
 #include <gtdynamics/universal_robot/sdf.h>
 #include <gtdynamics/utils/ContactInitializationFactors.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/PoseContactConstraintSpec.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/base/TestableAssertions.h>
@@ -129,10 +135,10 @@ TEST(PoseContacts, BufferedInitializationAndRecontact) {
   options.addGroundFactors = false;
   pose_contact_init::Result result;
   const Pose3 anchor(Rot3::Rz(.2), Point3(1, 2, 3));
-  const auto values = Initializer().InitializeSolutionContactPoses(
-      r, "l1", anchor, measured, t, .02, options, &result, 1);
-  EXPECT_LONGS_EQUAL(5, result.slices().front().k);
-  EXPECT_LONGS_EQUAL(11, result.slices().back().k);
+  const auto values = gtdynamics::PoseContactInitializer(r, options, 1)
+                          .run("l1", anchor, measured, t, .02, &result);
+  EXPECT_LONGS_EQUAL(6, result.slices().front().k);
+  EXPECT_LONGS_EQUAL(10, result.slices().back().k);
   EXPECT_LONGS_EQUAL(1, result.contactPoses.size());
   EXPECT_LONGS_EQUAL(1, result.contactFrames.size());
   EXPECT(result.contactFrames.front().equals(c));
@@ -145,29 +151,29 @@ TEST(PoseContacts, BufferedInitializationAndRecontact) {
         result.poses.at(observation.poseIndex) * observation.rootTcontact,
         result.contactPoses.at(observation.contactIndex), 1e-7));
   }
-  EXPECT(assert_equal(anchor, Pose(values, r.link("l1")->id(), 5), 1e-10));
+  EXPECT(assert_equal(anchor, Pose(values, r.link("l1")->id(), 6), 1e-10));
   EXPECT(result.residualRms < 1e-8);
   EXPECT(result.rotationRms < 1e-8);
-  for (size_t k = 5; k <= 11; ++k)
-    EXPECT(assert_equal(c.predict(values, 5), c.predict(values, k), 1e-7));
+  for (size_t k = 6; k <= 10; ++k)
+    EXPECT(assert_equal(c.predict(values, 6), c.predict(values, k), 1e-7));
   const Trajectory disconnected(
       WalkCycle({phase(4, 6, {c}), phase(7, 8, {}), phase(9, 12, {c})}), 1);
   bool rejected = false;
   try {
-    Initializer().InitializeSolutionContactPoses(r, "l1", anchor, measured,
-                                                 disconnected, .02, options);
+    gtdynamics::PoseContactInitializer(r, options)
+        .run("l1", anchor, measured, disconnected, .02);
   } catch (const std::invalid_argument&) {
     rejected = true;
   }
   EXPECT(rejected);
   options.addBetweenFactors = true;
-  Initializer().InitializeSolutionContactPoses(
-      r, "l1", anchor, measured, disconnected, .02, options, &result);
+  gtdynamics::PoseContactInitializer(r, options)
+      .run("l1", anchor, measured, disconnected, .02, &result);
   EXPECT_LONGS_EQUAL(2, result.contactPoses.size());
 }
-// Short, one-slice, and long double stance retain central or buffered
-// endpoints; single stance is skipped and short phases survive any buffer.
-TEST(PoseContacts, DoubleSupportSelection) {
+// Every supported phase contributes central or evenly spaced buffered slices;
+// single stance is retained and short phases survive any buffer.
+TEST(PoseContacts, SupportedPhaseSelection) {
   const auto r = robot();
   const PoseOnLink left(r.link("l1"), Pose3()), right(r.link("l2"), Pose3());
   const Trajectory t(
@@ -175,16 +181,55 @@ TEST(PoseContacts, DoubleSupportSelection) {
                  phase(5, 9, {left, right}), phase(10, 14, {right}),
                  phase(15, 34, {left, right})}),
       1);
-  const auto selected = doubleSupportSlices(t, .02, .2, 1);
-  EXPECT_LONGS_EQUAL(4, selected.size());
-  for (size_t i = 0; i < 4; ++i)
-    EXPECT_LONGS_EQUAL((std::vector<size_t>{0, 7, 16, 33})[i], selected[i].k);
-  CHECK_EXCEPTION(doubleSupportSlices(t, 0), std::invalid_argument);
-  CHECK_EXCEPTION(doubleSupportSlices(t, .02, -1), std::invalid_argument);
+  const auto selected = contactInitializationSlices(t, .02, .2, 1);
+  EXPECT_LONGS_EQUAL(7, selected.size());
+  for (size_t i = 0; i < 7; ++i)
+    EXPECT_LONGS_EQUAL((std::vector<size_t>{0, 2, 7, 12, 16, 25, 33})[i],
+                       selected[i].k);
+  CHECK_EXCEPTION(contactInitializationSlices(t, 0), std::invalid_argument);
+  CHECK_EXCEPTION(contactInitializationSlices(t, .02, -1),
+                  std::invalid_argument);
+}
+// Native automatic and explicit callers share the same buffered sampling
+// policy.
+TEST(PoseContacts, AutomaticSamplingMatchesExplicit) {
+  std::vector<Slice> selectedSlices;
+  const auto r = robot();
+  const PoseOnLink foot(r.link("l2"), Pose3());
+  const Trajectory t(WalkCycle({phase(0, 30, {foot})}), 1);
+  Values measured;
+  for (size_t k = 0; k <= 30; ++k)
+    InsertJointAngle(&measured, r.joint("j1")->id(), k, .001 * k);
+  pose_contact_init::Options options;
+  options.interpolateOutput = false;
+  options.addGroundFactors = false;
+  pose_contact_init::Result automatic, explicitResult;
+  const auto values = gtdynamics::PoseContactInitializer(r, options, 1)
+                          .run("l1", Pose3(), measured, t, .03, &automatic);
+  selectedSlices = contactInitializationSlices(t, .03);
+  const auto repeated = gtdynamics::PoseContactInitializer(r, options)
+                            .run("l1", Pose3(), measured, t, .03,
+                                 &explicitResult, selectedSlices);
+  EXPECT(assert_equal(values, repeated, 1e-10));
+  EXPECT_LONGS_EQUAL(selectedSlices.size(), automatic.slices().size());
+  size_t minGap = 100, maxGap = 0;
+  for (size_t i = 0; i < automatic.slices().size(); ++i) {
+    EXPECT_LONGS_EQUAL(selectedSlices[i].k, automatic.slices()[i].k);
+    if (i) {
+      const size_t gap = automatic.slices()[i].k - automatic.slices()[i - 1].k;
+      minGap = std::min(minGap, gap);
+      maxGap = std::max(maxGap, gap);
+    }
+  }
+  EXPECT(maxGap * .03 <= .2);
+  EXPECT(maxGap - minGap <= 1);
+  CHECK_EXCEPTION(contactInitializationSlices(t, .03, .02),
+                  std::invalid_argument);
 }
 // Sparse output contains only requested slices; footholds retain identities
-// through skipped single-stance phases and reset after lift-off/recontact.
+// through single-stance phases and reset after lift-off/recontact.
 TEST(PoseContacts, ExplicitSparseInitialization) {
+  std::vector<Slice> selectedSlices;
   const auto r = robot();
   const PoseOnLink left(r.link("l1"), Pose3()), right(r.link("l2"), Pose3());
   const Trajectory t(
@@ -196,42 +241,45 @@ TEST(PoseContacts, ExplicitSparseInitialization) {
   for (size_t k = 0; k < 15; ++k)
     InsertJointAngle(&measured, r.joint("j1")->id(), k, 0);
   pose_contact_init::Options options;
-  options.selectedSlices = doubleSupportSlices(t, .02);
+  selectedSlices = contactInitializationSlices(t, .02);
   options.interpolateOutput = false;
   options.addGroundFactors = false;
   pose_contact_init::Result result;
-  const auto values = Initializer().InitializeSolutionContactPoses(
-      r, "l1", Pose3(), measured, t, .02, options, &result);
-  EXPECT_LONGS_EQUAL(3, result.poses.size());
+  const auto values =
+      gtdynamics::PoseContactInitializer(r, options)
+          .run("l1", Pose3(), measured, t, .02, &result, selectedSlices);
+  EXPECT_LONGS_EQUAL(5, result.poses.size());
   EXPECT_LONGS_EQUAL(4, result.contactPoses.size());
-  EXPECT_LONGS_EQUAL(6, result.observations.size());
+  EXPECT_LONGS_EQUAL(8, result.observations.size());
   for (size_t k = 0; k < 15; ++k)
     EXPECT(values.exists(PoseKey(r.link("l1")->id(), k)) ==
-           (k == 1 || k == 7 || k == 13));
+           (k == 1 || k == 4 || k == 7 || k == 10 || k == 13));
   EXPECT_LONGS_EQUAL(result.observations[0].contactIndex,
                      result.observations[2].contactIndex);
   EXPECT(result.observations[1].contactIndex !=
-         result.observations[3].contactIndex);
-  EXPECT_LONGS_EQUAL(result.observations[3].contactIndex,
+         result.observations[4].contactIndex);
+  EXPECT_LONGS_EQUAL(result.observations[4].contactIndex,
                      result.observations[5].contactIndex);
   // Omitting an entire old foothold leaves compact, valid diagnostic indices.
-  options.selectedSlices = {Slice(7), Slice(13)};
-  Initializer().InitializeSolutionContactPoses(r, "l1", Pose3(), measured, t,
-                                               .02, options, &result);
+  selectedSlices = {Slice(7), Slice(13)};
+  gtdynamics::PoseContactInitializer(r, options)
+      .run("l1", Pose3(), measured, t, .02, &result, selectedSlices);
   EXPECT_LONGS_EQUAL(3, result.contactFrames.size());
   EXPECT_LONGS_EQUAL(3, result.contactPoses.size());
   for (const auto& observation : result.observations)
     EXPECT(assert_equal(
         result.poses.at(observation.poseIndex) * observation.rootTcontact,
         result.contactPoses.at(observation.contactIndex), 1e-8));
-  options.selectedSlices = {Slice(7), Slice(1)};
-  CHECK_EXCEPTION(Initializer().InitializeSolutionContactPoses(
-                      r, "l1", Pose3(), measured, t, .02, options),
-                  std::invalid_argument);
+  selectedSlices = {Slice(7), Slice(1)};
+  CHECK_EXCEPTION(
+      gtdynamics::PoseContactInitializer(r, options)
+          .run("l1", Pose3(), measured, t, .02, nullptr, selectedSlices),
+      std::invalid_argument);
 }
 // Optional root upright and height-only priors reuse existing factors and keep
 // the exact gauge fixed. Default sole-normal behavior remains available.
 TEST(PoseContacts, SharedUprightAndHeightPriors) {
+  std::vector<Slice> selectedSlices;
   const auto r = robot();
   const PoseOnLink c(r.link("l2"), Pose3(), true);
   Values measured;
@@ -239,7 +287,7 @@ TEST(PoseContacts, SharedUprightAndHeightPriors) {
     InsertJointAngle(&measured, r.joint("j1")->id(), k, 0.0);
   const Trajectory t(WalkCycle({phase(0, 3, {c})}), 1);
   pose_contact_init::Options options;
-  options.selectedSlices = {Slice(0), Slice(3)};
+  selectedSlices = {Slice(0), Slice(3)};
   options.addUprightFactors = true;
   options.addNormalFactors = false;
   options.addBetweenFactors = true;
@@ -247,8 +295,8 @@ TEST(PoseContacts, SharedUprightAndHeightPriors) {
   options.groundSigma = 0.1;
   pose_contact_init::Result result;
   const Pose3 anchor(Rot3::Rz(0.3), Point3(1, 2, 0));
-  Initializer().InitializeSolutionContactPoses(r, "l1", anchor, measured, t,
-                                               .02, options, &result);
+  gtdynamics::PoseContactInitializer(r, options)
+      .run("l1", anchor, measured, t, .02, &result, selectedSlices);
   size_t upright = 0, height = 0, normal = 0;
   for (const auto& factor : result.graph) {
     upright +=
@@ -266,6 +314,7 @@ TEST(PoseContacts, SharedUprightAndHeightPriors) {
 // Sole rocking must not accumulate into root tilt in upright starting values.
 // This option changes only the start, independently of the upright prior.
 TEST(PoseContacts, UprightStartRejectsAccumulatedRocking) {
+  std::vector<Slice> selectedSlices;
   const auto r =
       CreateRobotFromFile(kUrdfPath + std::string("test/simple_urdf.urdf"));
   const PoseOnLink contact(r.link("l2"), Pose3(), false);
@@ -275,17 +324,17 @@ TEST(PoseContacts, UprightStartRejectsAccumulatedRocking) {
     InsertJointAngle(&measured, r.joint("j1")->id(), k,
                      k * 30.0 * 3.141592653589793 / 180.0);
   pose_contact_init::Options options;
-  options.selectedSlices = {Slice(0), Slice(1), Slice(2)};
+  selectedSlices = {Slice(0), Slice(1), Slice(2)};
   options.addGroundFactors = false;
   options.interpolateOutput = false;
   options.maxIterations = 1;
   const Pose3 anchor(Rot3::Rz(0.3), Point3(1, 2, 3));
   pose_contact_init::Result original, upright;
-  Initializer().InitializeSolutionContactPoses(
-      r, "l1", anchor, measured, trajectory, .02, options, &original);
+  gtdynamics::PoseContactInitializer(r, options)
+      .run("l1", anchor, measured, trajectory, .02, &original, selectedSlices);
   options.initializeUpright = true;
-  Initializer().InitializeSolutionContactPoses(
-      r, "l1", anchor, measured, trajectory, .02, options, &upright);
+  gtdynamics::PoseContactInitializer(r, options)
+      .run("l1", anchor, measured, trajectory, .02, &upright, selectedSlices);
   EXPECT_LONGS_EQUAL(original.graph.size(), upright.graph.size());
   EXPECT(Rot3::Logmap(anchor.rotation().between(
                           original.history.front().poses.back().rotation()))

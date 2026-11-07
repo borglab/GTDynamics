@@ -12,16 +12,17 @@
  * @author Frank Dellaert
  */
 
-
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
-#include <gtdynamics/scenarios/HalfSphereRetractor.h>
-#include <gtdynamics/scenarios/SphereRetractor.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/scenarios/HalfSphereRetractor.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
+#include <gtdynamics/scenarios/SphereRetractor.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <filesystem>
+
+#include "CmcBenchmark.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -180,138 +181,153 @@ std::pair<IEResultSummary, IELMOptimizationDetails> SecondPhaseOptimization(
 
   IELMParams ie_params;
   ie_params.boundaryApproachRateThreshold = 1e10;
-  return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
-                             false);
+  return cmc_benchmark::measure(problem, "LM", [&] {
+    return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
+                               false);
+  });
 }
 
 /* ************************************************************************* */
 int main(int argc, char **argv) {
-  auto problem = CreateProblem();
+  cmc_benchmark::configure(argc, argv);
+  try {
+    auto problem = CreateProblem();
 
-  IELMParams ie_params;
-  // ie_params.lmParams.minModelFidelity = 0.5;
+    IELMParams ie_params;
+    // ie_params.lmParams.minModelFidelity = 0.5;
 
-  // soft constraints
-  std::cout << "optimize soft...\n";
-  LevenbergMarquardtParams lmParams;
-  auto soft_result = OptimizeIE_Soft(problem, lmParams, 1e2);
+    // soft constraints
+    std::cout << "optimize soft...\n";
+    LevenbergMarquardtParams lmParams;
+    auto soft_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_Soft(problem, lmParams, 1e2); });
 
-  // penalty method
-  std::cout << "optimize penalty...\n";
-  auto penaltyParams = std::make_shared<PenaltyParameters>();
-  penaltyParams->initial_mu = 1;
-  penaltyParams->num_iterations = 4;
-  penaltyParams->mu_increase_rate = 10;
-  penaltyParams->store_iter_details = true;
-  penaltyParams->store_lm_details = true;
-  penaltyParams->lmParams.setVerbosityLM("SUMMARY");
-  auto penalty_result = OptimizeIE_Penalty(problem, penaltyParams);
+    // penalty method
+    std::cout << "optimize penalty...\n";
+    auto penaltyParams = std::make_shared<PenaltyParameters>();
+    penaltyParams->initial_mu = 1;
+    penaltyParams->num_iterations = 4;
+    penaltyParams->mu_increase_rate = 10;
+    penaltyParams->store_iter_details = true;
+    penaltyParams->store_lm_details = true;
+    penaltyParams->lmParams.setVerbosityLM("SUMMARY");
+    auto penalty_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_Penalty(problem, penaltyParams); });
 
-  // augmented Lagrangian
-  std::cout << "optimize augmented Lagrangian...\n";
-  auto al_params = std::make_shared<AugmentedLagrangianParameters>();
-  al_params->initial_mu_e = 10;
-  al_params->store_iter_details = true;
-  al_params->store_lm_details = true;
-  auto al_result = OptimizeIE_AugmentedLagrangian(problem, al_params);
+    // augmented Lagrangian
+    std::cout << "optimize augmented Lagrangian...\n";
+    auto al_params = std::make_shared<AugmentedLagrangianParameters>();
+    al_params->initial_mu_e = 10;
+    al_params->store_iter_details = true;
+    al_params->store_lm_details = true;
+    auto al_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_AugmentedLagrangian(problem, al_params); });
 
-  // SQP method
-  std::cout << "optimize SQP...\n";
-  auto sqp_params = std::make_shared<SQPParams>();
-  sqp_params->merit_e_l2_mu = 1e2;
-  sqp_params->merit_i_l2_mu = 1e1;
-  sqp_params->merit_e_l1_mu = 1e2;
-  sqp_params->merit_i_l1_mu = 1e1;
-  sqp_params->lm_params.setlambdaUpperBound(1e10);
-  auto sqp_result = OptimizeIE_SQP(problem, sqp_params);
+    // SQP method
+    std::cout << "optimize SQP...\n";
+    auto sqp_params = std::make_shared<SQPParams>();
+    sqp_params->merit_e_l2_mu = 1e2;
+    sqp_params->merit_i_l2_mu = 1e1;
+    sqp_params->merit_e_l1_mu = 1e2;
+    sqp_params->merit_i_l1_mu = 1e1;
+    sqp_params->lm_params.setlambdaUpperBound(1e10);
+    auto sqp_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_SQP(problem, sqp_params); });
 
-  // IP method
-  std::cout << "optimize IP...\n";
-  auto ip_result = OptimizeIE_IPOPT(problem);
+    // IP method
+    std::cout << "optimize IP...\n";
+    auto ip_result =
+        cmc_benchmark::other([&] { return OptimizeIE_IPOPT(problem); });
 
-  // ELM with penalty for i-constraints
-  std::cout << "optimize CMOpt(E-LM)...\n";
-  auto elm_result =
-      OptimizeIE_CMOpt(problem, ie_params, GetECMParamsManual(), 1e2);
+    // ELM with penalty for i-constraints
+    std::cout << "optimize CMOpt(E-LM)...\n";
+    auto elm_result = cmc_benchmark::measure(problem, "CM", [&] {
+      return OptimizeIE_CMOpt(problem, ie_params, GetECMParamsManual(), 1e2);
+    });
 
-  // // // IEGD method
-  // // std::cout << "optimize CMOpt(IE-GD)...\n";
-  // // GradientDescentParams gd_params;
-  // // // gd_params.muLowerBound = 1e-10;
-  // // // gd_params.verbose = true;
-  // // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
-  // GetIECMParamsManual());
+    // // // IEGD method
+    // // std::cout << "optimize CMOpt(IE-GD)...\n";
+    // // GradientDescentParams gd_params;
+    // // // gd_params.muLowerBound = 1e-10;
+    // // // gd_params.verbose = true;
+    // // auto iegd_result = OptimizeIE_CMCOptGD(problem, gd_params,
+    // GetIECMParamsManual());
 
-  // IELM standard projection
-  std::cout << "optimize CMOpt(IE-LM)...\n";
-  auto ielm_sp_result =
-      OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsManual(), "CMC-Opt");
+    // IELM standard projection
+    std::cout << "optimize CMOpt(IE-LM)...\n";
+    auto ielm_sp_result = cmc_benchmark::measure(problem, "LM", [&] {
+      return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsManual(),
+                                 "CMC-Opt");
+    });
 
-  // // // IELM cost-aware projection
-  // // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
-  // // // ie_params.lmParams.setVerbosityLM("SUMMARY");
-  // // auto ielm_cr_result =
-  // //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(),
-  // "CMOpt(IE-LM-CR)");
+    // // // IELM cost-aware projection
+    // // std::cout << "optimize CMOpt(IE-LM-CR)...\n";
+    // // // ie_params.lmParams.setVerbosityLM("SUMMARY");
+    // // auto ielm_cr_result =
+    // //     OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(),
+    // "CMOpt(IE-LM-CR)");
 
-  if (display_result) {
-    soft_result.first.printLatex(std::cout);
-    elm_result.first.printLatex(std::cout);
-    sqp_result.first.printLatex(std::cout);
-    penalty_result.first.printLatex(std::cout);
-    ip_result.first.printLatex(std::cout);
-    al_result.first.printLatex(std::cout);
-    ielm_sp_result.first.printLatex(std::cout);
+    if (display_result) {
+      soft_result.first.printLatex(std::cout);
+      elm_result.first.printLatex(std::cout);
+      sqp_result.first.printLatex(std::cout);
+      penalty_result.first.printLatex(std::cout);
+      ip_result.first.printLatex(std::cout);
+      al_result.first.printLatex(std::cout);
+      ielm_sp_result.first.printLatex(std::cout);
+    }
+
+    if (log_progress) {
+      std::filesystem::create_directory(scenario_folder);
+      soft_result.first.exportFile(scenario_folder + "soft_progress.csv");
+      penalty_result.first.exportFile(scenario_folder + "penalty_progress.csv");
+      al_result.first.exportFile(scenario_folder + "al_progress.csv");
+      sqp_result.first.exportFile(scenario_folder + "sqp_progress.csv");
+      elm_result.first.exportFile(scenario_folder + "elm_progress.csv");
+      // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
+      ielm_sp_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
+      // ielm_cr_result.first.exportFile(scenario_folder +
+      // "ielm_cr_progress.csv");
+    }
+
+    if (log_values) {
+      SaveValues("init_values.csv", problem.initValues());
+      SaveValues("soft_values.csv", soft_result.second.back().values);
+      SaveValues("penalty_values.csv", penalty_result.second.back().values);
+      SaveValues("sqp_values.csv", sqp_result.second.back().state.values);
+      SaveValues("elm_values.csv", elm_result.second.back().state.baseValues());
+      // SaveValues("iegd_values.csv",
+      // iegd_result.second.back().state.baseValues());
+      SaveValues("ielm_sp_values.csv",
+                 ielm_sp_result.second.back().state.baseValues());
+      // SaveValues("ielm_cr_values.csv",
+      //            ielm_cr_result.second.back().state.baseValues());
+    }
+
+    if (second_phase_opt) {
+      auto soft_continued = SecondPhaseOptimization(
+          soft_result.first.projected_values, "soft-continued");
+      auto penalty_continued = SecondPhaseOptimization(
+          penalty_result.first.projected_values, "penalty-continued");
+      auto sqp_continued = SecondPhaseOptimization(
+          sqp_result.first.projected_values, "sqp-continued");
+      auto elm_continued = SecondPhaseOptimization(
+          elm_result.first.projected_values, "CM-Opt-continued");
+
+      soft_continued.first.printLatex(std::cout);
+      elm_continued.first.printLatex(std::cout);
+      sqp_continued.first.printLatex(std::cout);
+      penalty_continued.first.printLatex(std::cout);
+
+      soft_continued.first.exportFile(scenario_folder + "soft_continued.csv");
+      elm_continued.first.exportFile(scenario_folder + "elm_continued.csv");
+      sqp_continued.first.exportFile(scenario_folder + "sqp_continued.csv");
+      penalty_continued.first.exportFile(scenario_folder +
+                                         "penalty_continued.csv");
+    }
+
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
   }
-
-  if (log_progress) {
-    std::filesystem::create_directory(scenario_folder);
-    soft_result.first.exportFile(scenario_folder + "soft_progress.csv");
-    penalty_result.first.exportFile(scenario_folder + "penalty_progress.csv");
-    al_result.first.exportFile(scenario_folder + "al_progress.csv");
-    sqp_result.first.exportFile(scenario_folder + "sqp_progress.csv");
-    elm_result.first.exportFile(scenario_folder + "elm_progress.csv");
-    // iegd_result.first.exportFile(scenario_folder + "iegd_progress.csv");
-    ielm_sp_result.first.exportFile(scenario_folder + "ielm_sp_progress.csv");
-    // ielm_cr_result.first.exportFile(scenario_folder +
-    // "ielm_cr_progress.csv");
-  }
-
-  if (log_values) {
-    SaveValues("init_values.csv", problem.initValues());
-    SaveValues("soft_values.csv", soft_result.second.back().values);
-    SaveValues("penalty_values.csv", penalty_result.second.back().values);
-    SaveValues("sqp_values.csv", sqp_result.second.back().state.values);
-    SaveValues("elm_values.csv", elm_result.second.back().state.baseValues());
-    // SaveValues("iegd_values.csv",
-    // iegd_result.second.back().state.baseValues());
-    SaveValues("ielm_sp_values.csv",
-               ielm_sp_result.second.back().state.baseValues());
-    // SaveValues("ielm_cr_values.csv",
-    //            ielm_cr_result.second.back().state.baseValues());
-  }
-
-  if (second_phase_opt) {
-    auto soft_continued = SecondPhaseOptimization(
-        soft_result.first.projected_values, "soft-continued");
-    auto penalty_continued = SecondPhaseOptimization(
-        penalty_result.first.projected_values, "penalty-continued");
-    auto sqp_continued = SecondPhaseOptimization(
-        sqp_result.first.projected_values, "sqp-continued");
-    auto elm_continued = SecondPhaseOptimization(
-        elm_result.first.projected_values, "CM-Opt-continued");
-
-    soft_continued.first.printLatex(std::cout);
-    elm_continued.first.printLatex(std::cout);
-    sqp_continued.first.printLatex(std::cout);
-    penalty_continued.first.printLatex(std::cout);
-
-    soft_continued.first.exportFile(scenario_folder + "soft_continued.csv");
-    elm_continued.first.exportFile(scenario_folder + "elm_continued.csv");
-    sqp_continued.first.exportFile(scenario_folder + "sqp_continued.csv");
-    penalty_continued.first.exportFile(scenario_folder +
-                                       "penalty_continued.csv");
-  }
-
-  return 0;
 }

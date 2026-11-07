@@ -1,5 +1,9 @@
 /* GTDynamics Copyright 2026, Georgia Tech Research Corporation. See LICENSE. */
-/** Native implementation of the G1 walking experiment; not a library API. */
+/**
+ * @file kinodynamics_native.cpp
+ * @brief Assemble and solve the G1 coupled walking example with native CMC-Opt.
+ * @author GTDynamics contributors
+ */
 #include <gtdynamics/cmcopt/ArticulatedRetractor.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IndependentComponents.h>
@@ -9,8 +13,8 @@
 #include <gtdynamics/dynamics/WorldVelocityFactor.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/kinematics/ContactKinematicsTwistFactor.h>
+#include <gtdynamics/kinematics/PoseContactInitializer.h>
 #include <gtdynamics/utils/ContactWrench.h>
-#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/nonlinear/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -64,7 +68,7 @@ Ordering chronologicalOrdering(const NonlinearFactorGraph& cost,
   }
   return ordering;
 }
-// The experiment starts from the initializer's configurations and zero motion.
+// Locate the floating root independently of the initialization strategy.
 LinkSharedPtr floatingRoot(const Robot& robot) {
   LinkSharedPtr root;
   std::set<int> children;
@@ -79,20 +83,27 @@ LinkSharedPtr floatingRoot(const Robot& robot) {
     throw std::invalid_argument("Missing floating root");
   return root;
 }
-Values zeroVelocityConfiguration(const Robot& robot,
-                                 const std::vector<Slice>& slices,
-                                 const Values& initialValues) {
+Values kinematicConfiguration(const Robot& robot,
+                              const std::vector<Slice>& slices,
+                              const Values& initialValues) {
   Values qv;
   for (const Slice& slice : slices) {
     for (const auto& link : robot.links()) {
       qv.insert(PoseKey(link->id(), slice.k),
                 initialValues.at<Pose3>(PoseKey(link->id(), slice.k)));
-      qv.insert(TwistKey(link->id(), slice.k), Vector(Vector6::Zero()));
+      const Key velocity = TwistKey(link->id(), slice.k);
+      qv.insert(velocity,
+                initialValues.exists(velocity)
+                    ? Vector(Twist(initialValues, link->id(), slice.k))
+                    : Vector(Vector6::Zero()));
     }
     for (const auto& joint : robot.joints()) {
       qv.insert(JointAngleKey(joint->id(), slice.k),
                 initialValues.at<double>(JointAngleKey(joint->id(), slice.k)));
-      qv.insert(JointVelKey(joint->id(), slice.k), 0.0);
+      const Key velocity = JointVelKey(joint->id(), slice.k);
+      qv.insert(velocity, initialValues.exists(velocity)
+                              ? initialValues.at<double>(velocity)
+                              : 0.0);
     }
   }
   return qv;
@@ -129,8 +140,15 @@ py::dict solve(
       }))
     throw std::invalid_argument("The gauge slice must be in the trajectory");
   const auto root = floatingRoot(robot);
-  const Values qv = zeroVelocityConfiguration(robot, slices, initialValues);
-  Values zero = qv;
+  const std::string initialization =
+      setting<std::string>(settings, "initialization");
+  if (initialization != "fk" && initialization != "contact" &&
+      initialization != "contact-gp-dynamics")
+    throw std::invalid_argument("Unknown kinodynamics initialization");
+  double totalMass = 0.0;
+  for (const auto& link : robot.links()) totalMass += link->mass();
+  const Values qv = kinematicConfiguration(robot, slices, initialValues);
+  Values seed = qv;
   NonlinearFactorGraph exact, effort, wrench, torqueSmooth, wrenchSmooth,
       acceleration;
   NonlinearInequalityConstraints inequalities;
@@ -210,8 +228,8 @@ py::dict solve(
       const Key soleKey = ContactWrenchKey(id, c, k);
       const Key comKey = DynamicsSymbol::LinkJointSymbol("ec", id, c, k);
       contactKeys.push_back(soleKey);
-      zero.insert(soleKey, Vector(Vector6::Zero()));
-      zero.insert(comKey, Vector(Vector6::Zero()));
+      seed.insert(soleKey, Vector(Vector6::Zero()));
+      seed.insert(comKey, Vector(Vector6::Zero()));
       external[id].push_back(comKey);
       exact.emplace_shared<ContactWrenchFactor>(soleKey, comKey,
                                                 contact.pose.comTcontact,
@@ -258,6 +276,28 @@ py::dict solve(
       throw std::invalid_argument(
           "This experiment requires support at every slice");
 
+    if (initialization == "fk") {
+      // Share the world support force across stance feet. Each wrench has zero
+      // moment at its sole origin; transform its force into sole axes and then
+      // use the library's dual-adjoint map for the COM wrench and lever arm.
+      // This is only a seed: restoration resolves moments, friction and
+      // torques.
+      const Vector3 worldForce =
+          -totalMass * parameters.gravity.value() / active.size();
+      for (size_t c : active) {
+        const auto& contact = contacts[c];
+        const int id = contact.pose.link->id();
+        const Pose3 worldContact =
+            qv.at<Pose3>(PoseKey(id, k)) * contact.pose.comTcontact;
+        Vector6 soleWrench = Vector6::Zero();
+        soleWrench.tail<3>() = worldContact.rotation().unrotate(worldForce);
+        seed.update(ContactWrenchKey(id, c, k), Vector(soleWrench));
+        seed.update(
+            DynamicsSymbol::LinkJointSymbol("ec", id, c, k),
+            Vector(contactWrenchToCom(contact.pose.comTcontact, soleWrench)));
+      }
+    }
+
     // Root Newton-Euler balance determines one active six-axis contact
     // wrench. All other active contact wrenches are independent coordinates.
     for (size_t a = 1; a < active.size(); ++a)
@@ -267,11 +307,11 @@ py::dict solve(
     for (const auto& link : robot.links()) {
       for (const auto& joint : link->joints()) {
         const Key key = WrenchKey(link->id(), joint->id(), k);
-        zero.insert(key, Vector(Vector6::Zero()));
+        seed.insert(key, Vector(Vector6::Zero()));
       }
 
       const Key accelerationKey = TwistAccelKey(link->id(), k);
-      zero.insert(accelerationKey, Vector(Vector6::Zero()));
+      seed.insert(accelerationKey, Vector(Vector6::Zero()));
       if (link == root) {
         independentKeys.insert(accelerationKey);
         acceleration.emplace_shared<PriorFactor<Vector6>>(
@@ -286,13 +326,13 @@ py::dict solve(
       const int id = joint->id();
 
       const Key accelerationKey = JointAccelKey(id, k);
-      zero.insert(accelerationKey, 0.0);
+      seed.insert(accelerationKey, 0.0);
       independentKeys.insert(accelerationKey);
       acceleration.emplace_shared<PriorFactor<double>>(accelerationKey, 0.0,
                                                        jointAccelerationNoise);
       const Key torqueKey = TorqueKey(id, k);
       torqueKeys.push_back(torqueKey);
-      zero.insert(torqueKey, 0.0);
+      seed.insert(torqueKey, 0.0);
       effort.emplace_shared<PriorFactor<double>>(
           torqueKey, 0.0,
           noiseModel::Isotropic::Sigma(
@@ -334,7 +374,7 @@ py::dict solve(
     const size_t k = slices[i].k;
     const Key poseKey = PoseKey(root->id(), k),
               twistKey = TwistKey(root->id(), k);
-    zero.insert(LinearVelocityKey(root->id(), k), Vector(Vector3::Zero()));
+    seed.insert(LinearVelocityKey(root->id(), k), Vector(Vector3::Zero()));
     exact.emplace_shared<WorldVelocityFactor>(poseKey, twistKey,
                                               LinearVelocityKey(root->id(), k),
                                               noiseModel::Unit::Create(3));
@@ -378,8 +418,25 @@ py::dict solve(
               dt, twistNoise);
     }
   }
-  for (Key key : initialValues.keys())
-    if (!zero.exists(key)) zero.insert(key, initialValues.at(key));
+  // Retain every completed stage of initialization. Graph assembly supplies
+  // defaults for absent keys only; GP motion and solved dynamics must survive.
+  for (Key key : initialValues.keys()) {
+    if (!seed.exists(key)) {
+      seed.insert(key, initialValues.at(key));
+      continue;
+    }
+    // Native FK stores fixed-size twists; graph assembly uses dynamic vectors.
+    // Normalize those representations before Values::update's strict type
+    // check.
+    const auto label = DynamicsSymbol(key).label();
+    if (label == "V" || label == "A" || label == "F" || label == "C" ||
+        label == "ec")
+      seed.update(key, Vector(initialValues.at<Vector6>(key)));
+    else if (label == "vW")
+      seed.update(key, Vector(initialValues.at<Vector3>(key)));
+    else
+      seed.update(key, initialValues.at(key));
+  }
   groups.insert(groups.end(),
                 {poseCollocation, velocityCollocation, stanceVelocity, effort,
                  wrench, torqueSmooth, wrenchSmooth, acceleration});
@@ -393,9 +450,9 @@ py::dict solve(
   for (const auto& group : groups) cost.add(group);
   const auto equalities = NonlinearEqualityConstraints::FromCostGraph(exact);
   py::dict result;
-  result["initialValues"] = zero;
-  result["initialEqualityL2"] = equalities.violationNorm(zero);
-  result["variableDimension"] = zero.dim();
+  result["initialValues"] = seed;
+  result["initialEqualityL2"] = equalities.violationNorm(seed);
+  result["variableDimension"] = seed.dim();
   result["equalityDimension"] = equalities.dim();
   result["inequalityDimension"] = inequalities.dim();
   result["errorNames"] = names;
@@ -454,7 +511,7 @@ py::dict solve(
                                                     projectionSettings);
   auto start = Clock::now();
   auto manifolds = IEOptimizer::identifyManifolds(equalities, inequalities,
-                                                  zero, manifoldParams);
+                                                  seed, manifoldParams);
   const auto componentKeys = manifolds.keys();
   gtdynamics::internal::forIndependentComponents(
       componentKeys.size(), setting<size_t>(settings, "retractionThreads"),
@@ -466,7 +523,7 @@ py::dict solve(
     reducedDimension += manifold.eBasis()->dim();
   Values initial = manifolds.baseValues();
   const Values unconstrained =
-      IEOptimizer::identifyUnconstrainedValues(equalities, inequalities, zero);
+      IEOptimizer::identifyUnconstrainedValues(equalities, inequalities, seed);
   initial.insert(unconstrained);
   result["initializationSeconds"] = elapsed(start);
   result["reducedDimension"] = reducedDimension;

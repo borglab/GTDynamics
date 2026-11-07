@@ -23,10 +23,24 @@ test('the measured run reduces cost and satisfies the exact mechanics and sole c
   assert(d.objectiveFinal<d.objectiveInitial);
   assert(d.equalityL2<1e-5);
   assert(d.inequalityL2<1e-5);
-  assert(d.initialEqualityL2>1);
+  assert(d.initialEqualityL2<1e-5);
+  assert.equal(d.initializationStrategy,'contact-gp-dynamics');
+  assert(d.dynamicsInitializationSeconds>0);
+  assert(d.dynamicsInitializationAssemblySeconds>0);
+  assert(d.dynamicsInitializationAnchorSeconds>0);
+  assert(d.dynamicsInitializationLinearizationSeconds>0);
+  assert(d.dynamicsInitializationLinearSolveSeconds>0);
+  assert(d.dynamicsInitializationValueAssemblySeconds>0);
+  assert(d.dynamicsInitializationValidationSeconds>0);
+  assert(d.dynamicsInitializationLinearizationSeconds+d.dynamicsInitializationLinearSolveSeconds+d.dynamicsInitializationValueAssemblySeconds<=d.dynamicsInitializationAnchorSeconds);
+  assert.equal(d.dynamicsInitializationObjectiveInitial,d.dynamicsInitializationObjectiveFinal);
+  assert.equal(d.dynamicsInitializationIterations,0);
+  assert.equal(d.dynamicsInitializationManifoldSeconds,0);
+  assert.equal(d.dynamicsInitializationOptimizationSeconds,0);
+  assert(d.dynamicsInitializationFeasible);
   assert(d.initializationSeconds>0);
   assert(d.optimizationSeconds>0);
-  assert(d.contactInitializationSeconds>0);
+  assert(d.configurationInitializationSeconds>0);
   assert(Math.abs(d.errorHistory.at(-1).reduce((a,b)=>a+b,0)-d.objectiveFinal)<1e-5);
   assert.equal(d.errorHistory.length,d.wallSeconds.length);
   assert(d.factors.some(factor=>factor.type==='Configuration collocation'&&factor.count===29970));
@@ -52,4 +66,30 @@ test('the recorded gauge is a translation/yaw cost and leaves tilt free',()=>{
   assert(d.factors.some(f=>f.type==='Translation/yaw gauge'&&f.count===2));
   assert.equal(d.solverSettings.historyWindow,1);
   assert.equal(d.iterations,d.maxIterations);
+});
+
+
+test('initialization sampling and timing comparisons match the replay',()=>{
+  const sampling=record.source.initializationSampling;
+  const selected=record.diagnostics.initializationSlices;
+  assert.equal(sampling.selectedSlices,selected.length);
+  assert.equal(sampling.singleSupportSlices,selected.filter(k=>record.contact[k].filter(Boolean).length===1).length);
+  assert.equal(sampling.doubleSupportSlices,selected.filter(k=>record.contact[k].filter(Boolean).length===2).length);
+  assert(sampling.singleSupportSlices>0);
+  const comparison=record.initializationComparison;
+  assert.equal(comparison.runsPerStrategy,1);
+  assert.deepEqual(comparison.runs.map(run=>run.initializationStrategy),['contact-gp-dynamics','contact','fk']);
+  const contact=comparison.runs[0];
+  for(const key of ['objectiveFinal','iterations','optimizationSeconds','totalInitializationAndSolveSeconds'])assert.equal(contact[key],record.diagnostics[key]);
+  assert.equal(comparison.samples,record.times.length);
+});
+
+
+test('the default pipeline replays GP motion and the affine dynamics seed',()=>{
+  assert.equal(record.initial.jointVelocities.length,record.times.length);
+  assert.equal(record.initial.jointTorques.length,record.times.length);
+  assert(record.initial.jointVelocities.some(sample=>sample.some(value=>Math.abs(value)>.01)));
+  assert(record.initial.jointTorques.some(sample=>sample.some(value=>Math.abs(value)>1)));
+  assert(record.initial.worldVelocities.some(sample=>Math.hypot(...sample)>.1));
+  assert(record.initial.worldForces.some(sample=>sample.some(force=>Math.hypot(...force)>100)));
 });

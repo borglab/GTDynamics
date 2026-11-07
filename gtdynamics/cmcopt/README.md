@@ -9,6 +9,10 @@ CMC-Opt extends equality-only CM-Opt to manifolds with inequality boundaries and
 - a projection step that respects that cone, and
 - a retraction that can promote blocking inequalities to temporary equalities.
 
+[Component coordinates for the linear step](ComponentCoordinates.md) explains
+the previous global constrained formulation, the local-elimination architecture,
+and the fixed-working-set equivalence proof, including numerical qualifications.
+
 ## Source Note
 
 Equation references below are from Yetong Zhang's June 2024 thesis, *Constraint Manifold Optimization for Robotic Inference and Planning with Constraints*. The CMC-Opt material is primarily Chapter 4; metric-aware and approximate retraction variants are in Chapter 5.
@@ -29,13 +33,15 @@ The implementation uses GTSAM's opposite convention: an inequality expression
 `c(x)` is feasible when `c(x) <= 0`, so `c = -g` for the thesis notation used in
 this note. `GeqZero(f)` constructs `c = -f`; `LeqZero(f)` constructs `c = f`.
 Consequently, the implemented tangent cone uses `Dc(x) B xi <= 0`, and a positive
-directional derivative identifies an outward step. Both QP callers pass
-`LinearConstraint::LessEqual` to GTSAM's `ActiveSetSolver`.
+directional derivative identifies an outward step. The local gradient-projection QP uses
+`LinearConstraint::LessEqual` with GTSAM's `ActiveSetSolver`.
 
 GTSAM's working-set multipliers solve `A_active.transpose() * lambda = gradient`;
 for `A*x-b <= 0`, valid inequality multipliers in that internal convention are
-nonpositive. Positive ones release a working-set row. CMC does not negate or
-reinterpret those multipliers; it consumes the returned active rows.
+nonpositive. Positive ones release a working-set row in that solver. The local
+projection consumes its returned active rows. Optional LM working-set refinement
+uses `A_active.transpose() * mu = -gradient`, so its valid multipliers are
+nonnegative and a negative multiplier releases a row.
 
 Constraint sigmas are applied once to the raw expression Jacobian. Reading an
 already-whitened equality linearization and attaching the sigma again would
@@ -96,7 +102,7 @@ Pointers:
 - [IEConstraintManifold](IEConstraintManifold.h#L25)
 - [IEConstraintManifold::activeIndices](IEConstraintManifold.h#L98)
 - [IEConstraintManifold::identifyActiveConstraints](IEConstraintManifold.cpp#L181)
-- [IEConstraintManifold::constructTangentCone](IEConstraintManifold.cpp#L205)
+- [IEConstraintManifold::constructLinearization](IEConstraintManifold.cpp)
 - [TangentCone](TangentCone.h#L25)
 
 Implementation detail:
@@ -140,11 +146,11 @@ where $B_x$ is the equality tangent basis and $Dg_{\mathcal{A}}(x)$ is the Jacob
 
 Pointers:
 
-- [IEConstraintManifold::constructTangentCone](IEConstraintManifold.cpp#L205)
+- [IEConstraintManifold::constructLinearization](IEConstraintManifold.cpp)
 - [IEConstraintManifold::linearActiveManifoldInequalityConstraints](IEConstraintManifold.cpp#L235)
 - [IEConstraintManifold::linearActiveBaseInequalityConstraints](IEConstraintManifold.cpp#L263)
 
-This is exactly where the code turns active nonlinear inequalities into linearized cone constraints in either manifold coordinates or base-variable coordinates.
+The manifold constructs one [immutable local linearization](IEManifoldLinearization.h) per state. Cone projection and LM working-face checks share its active inequality derivatives. The optimizer queries local geometry directly; obsolete constraint-export methods have been removed.
 
 Thesis reference: Eqs. (4.14)-(4.16) define the tangent cone as `v = B theta` with `K theta >= 0`, where `K = Dg_A(x) B`.
 
@@ -163,7 +169,7 @@ Pointers:
 - [IEConstraintManifold::projectTangentCone](IEConstraintManifold.cpp#L79)
 - [IEOptimizer::projectTangentCone](IEOptimizer.cpp#L185)
 
-`TangentCone::project` solves the convex IQP. `IEConstraintManifold::projectTangentCone` maps the cone-local blocking set back to original inequality indices. `IEOptimizer::projectTangentCone` applies that componentwise across the whole problem.
+`TangentCone::project` solves the convex IQP. `IEManifoldLinearization::project` maps the cone-local blocking set back to original inequality indices for `IEConstraintManifold::projectTangentCone`. `IEOptimizer::projectTangentCone` applies that componentwise across the whole problem.
 
 Thesis reference: Eq. (4.31) projects a descent direction into the cone for one CMC. Eq. (4.42) applies the same projection componentwise across multiple CMCs. The code generalizes this projection to any trial vector, not only a gradient vector.
 
@@ -198,22 +204,47 @@ Pointers:
 
 - [IELMOptimizer](IELMOptimizer.h#L40)
 - [IELMState](IELMOptimizerState.h#L35)
-- [IELMState::linearizeIConstraints](IELMOptimizerState.cpp#L100)
+- [IEManifoldLinearization](IEManifoldLinearization.h)
 - [IELMTrial::LinearUpdate](IELMOptimizerState.cpp#L493)
 - [IELMTrial::LinearUpdate::initialEstimate](IELMOptimizerState.cpp#L555)
 - [IELMTrial::LinearUpdate::checkSolutionValid](IELMOptimizerState.cpp#L600)
 
 How the code matches the math:
 
-- `linearizeIConstraints()` builds the linearized inequality constraints at the current state.
+- Each manifold owns one immutable `IEManifoldLinearization`, with active
+  inequality rows in equality-tangent coordinates and original block indices.
+  It supplies local charts, boundary intersections, and dual queries.
 - `LinearUpdate(...)` builds the damped LM system.
 - `initialEstimate(...)` seeds the IQP with blocking constraints coming from the negative gradient.
-- Cone projection and LM refinement construct a GTSAM `QpProblem` and invoke
-  its sparse `ActiveSetSolver` directly. The LM solve preserves the damped
-  objective, warm-starts the blocking rows, enforces `iqpMaxIterations`, and
-  marks the trial unsuccessful if GTSAM cannot converge. No extra QP
-  regularization is added. Only blocks whose rows are all active are passed
-  to retraction as equalities.
+- Each selected face matrix $A_i$ defines a component-local kernel $N_i$.
+  `WorkingFace` stores that component's chart. Stateless Gaussian helpers
+  substitute $\delta_i=N_i\eta_i$ into soft costs, including existing damping. GTSAM solves an
+  **unconstrained** Gaussian graph in $\eta$, then the component increments
+  are recovered. The global solve receives no face equations, KKT system,
+  constrained noise, or constrained-solver fallback.
+- With `iqpMaxIterations=0`, the original add-blocks-until-feasible approximation
+  is retained. Optional refinement uses row-level primal active-set steps:
+  boundary line search adds rows, and component-local KKT multiplier solves
+  release rows. Each working-set subproblem uses the same local kernels and
+  unconstrained global solve. Iteration exhaustion or numerical failure rejects
+  the trial. Only fully active blocks become equalities during retraction.
+- Component-local gradient projection still uses GTSAM's QP machinery through
+  `TangentCone::project`. Nonlinear component retractions retain their own
+  feasibility solvers. Neither operation assembles a trajectory-wide QP.
+
+For a fixed working set, the reduced LM problem is
+
+$$
+\min_\eta \frac12\|JN\eta+r\|^2
+          +\frac\lambda2\|DN\eta\|^2,
+\qquad N=\operatorname{diag}(N_1,\ldots,N_m).
+$$
+
+Cross-component objective factors remain coupled through $JN$. Replacing
+$DN$ with identity would change LM's metric and is deliberately avoided.
+See [WorkingFace.h](WorkingFace.h) and
+[IELMWorkingSet.h](IELMWorkingSet.h). The optimizer retains component-local
+indices throughout; there is no global cone coordinator or index translator.
 
 Thesis reference: Eq. (4.44) is the CMC Levenberg-Marquardt quadratic subproblem, constrained by the cone coordinates for each CMC.
 

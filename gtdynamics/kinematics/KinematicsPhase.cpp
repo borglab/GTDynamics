@@ -15,7 +15,6 @@
 #include <gtdynamics/kinematics/Kinematics.h>
 #include <gtdynamics/utils/ContextUtils.h>
 #include <gtdynamics/utils/Phase.h>
-#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -41,7 +40,8 @@ NonlinearFactorGraph Kinematics::qFactors<Phase>(
     const std::optional<PointOnLinks>& contact_points,
     const gtsam::Vector3& gravity, double ground_plane_height) const {
   const Interval& interval = static_cast<const Interval&>(phase);
-  return qFactors(interval, robot, contact_points, gravity, ground_plane_height);
+  return qFactors(interval, robot, contact_points, gravity,
+                  ground_plane_height);
 }
 
 template <>

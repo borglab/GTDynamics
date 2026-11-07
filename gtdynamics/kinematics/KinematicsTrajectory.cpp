@@ -14,7 +14,7 @@
 #include <gtdynamics/factors/ContactEqualityFactor.h>
 #include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
-#include <gtdynamics/utils/PoseContactInitializer.h>
+#include <gtdynamics/kinematics/PoseContactInitializer.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -181,7 +181,8 @@ NonlinearFactorGraph Kinematics::pointGoalObjectives<Trajectory>(
 }
 
 template <>
-gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Trajectory>(
+gtsam::NonlinearEqualityConstraints
+Kinematics::pointGoalConstraints<Trajectory>(
     const Trajectory& trajectory, const ContactGoals& contact_goals) const {
   gtsam::NonlinearEqualityConstraints constraints;
   for (auto&& phase : trajectory.phases()) {
@@ -195,7 +196,8 @@ gtsam::NonlinearEqualityConstraints Kinematics::pointGoalConstraints<Trajectory>
 }
 
 template <>
-gtsam::NonlinearEqualityConstraints Kinematics::jointAngleConstraints<Trajectory>(
+gtsam::NonlinearEqualityConstraints
+Kinematics::jointAngleConstraints<Trajectory>(
     const Trajectory& trajectory, const Robot& robot,
     const Values& joint_targets) const {
   gtsam::NonlinearEqualityConstraints constraints;
@@ -226,8 +228,8 @@ Values Kinematics::initialValues<Trajectory>(
     const gtsam::Values& initial_joints, bool use_fk) const {
   Values values;
   for (auto&& phase : trajectory.phases()) {
-    values.insert(
-        initialValues<Interval>(phase, robot, gaussian_noise, initial_joints, use_fk));
+    values.insert(initialValues<Interval>(phase, robot, gaussian_noise,
+                                          initial_joints, use_fk));
   }
   return values;
 }

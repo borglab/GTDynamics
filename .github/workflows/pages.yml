@@ -55,6 +55,9 @@ jobs:
           python -m pip install -r ../examples/g1_mjlab/requirements-model.txt
       - name: Bootstrap pinned robot assets
         run: npm run models
+      - name: Fetch immutable sources for historical replay checks
+        run: |
+          git fetch --no-tags --depth=1 origin "$(cat shared/recordingSourceRevision.txt)"
       - name: Test
         run: npm test
       - name: Build all apps

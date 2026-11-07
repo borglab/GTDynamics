@@ -12,10 +12,10 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/scenarios/DomeRetractor.h>
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
+#include <gtdynamics/scenarios/DomeRetractor.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/nonlinear/LevenbergMarquardtParams.h>
@@ -23,6 +23,8 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <filesystem>
+
+#include "CmcBenchmark.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -235,67 +237,79 @@ double TranslationError(const Values &gt_values, const Values &values) {
 }
 
 int main(int argc, char **argv) {
-  double radius = 1;
-  IEHalfSphere half_sphere(radius);
-  auto problem = SimpleProblem(half_sphere);
+  cmc_benchmark::configure(argc, argv);
+  try {
+    double radius = 1;
+    IEHalfSphere half_sphere(radius);
+    auto problem = SimpleProblem(half_sphere);
 
-  problem.initValues().print();
+    problem.initValues().print();
 
-  auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->retractorCreator =
-      std::make_shared<UniversalIERetractorCreator>(
-          std::make_shared<DomeRetractor>(half_sphere));
-  iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
+    auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
+    iecm_params->retractorCreator =
+        std::make_shared<UniversalIERetractorCreator>(
+            std::make_shared<DomeRetractor>(half_sphere));
+    iecm_params->equalityBasisCreator =
+        std::make_shared<OrthonormalBasisCreator>();
 
-  LevenbergMarquardtParams lmParams;
-  std::cout << "run soft...\n";
-  auto soft_result = OptimizeIE_Soft(problem, lmParams, 100);
+    LevenbergMarquardtParams lmParams;
+    std::cout << "run soft...\n";
+    auto soft_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_Soft(problem, lmParams, 100); });
 
-  auto barrier_params = std::make_shared<PenaltyParameters>();
-  barrier_params->num_iterations = 15;
-  std::cout << "run barrier...\n";
-  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
+    auto barrier_params = std::make_shared<PenaltyParameters>();
+    barrier_params->num_iterations = 15;
+    std::cout << "run barrier...\n";
+    auto barrier_result = cmc_benchmark::other(
+        [&] { return OptimizeIE_Penalty(problem, barrier_params); });
 
-  GradientDescentParams gd_params;
-  std::cout << "run gd...\n";
-  auto gd_result = OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
+    GradientDescentParams gd_params;
+    std::cout << "run gd...\n";
+    auto gd_result = cmc_benchmark::measure(problem, "GD", [&] {
+      return OptimizeIE_CMCOptGD(problem, gd_params, iecm_params);
+    });
 
-  IELMParams ie_params;
-  std::cout << "run lm...\n";
-  ie_params.lmParams.setVerbosityLM("SUMMARY");
-  ie_params.showActiveConstraints = true;
-  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+    IELMParams ie_params;
+    std::cout << "run lm...\n";
+    ie_params.lmParams.setVerbosityLM("SUMMARY");
+    ie_params.showActiveConstraints = true;
+    auto lm_result = cmc_benchmark::measure(problem, "LM", [&] {
+      return OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+    });
 
-  soft_result.first.printLatex(std::cout);
-  barrier_result.first.printLatex(std::cout);
-  gd_result.first.printLatex(std::cout);
-  lm_result.first.printLatex(std::cout);
+    soft_result.first.printLatex(std::cout);
+    barrier_result.first.printLatex(std::cout);
+    gd_result.first.printLatex(std::cout);
+    lm_result.first.printLatex(std::cout);
 
-  Values gt = SimpleTrajectory(half_sphere);
-  size_t num_steps = gt.size() - 1;
+    Values gt = SimpleTrajectory(half_sphere);
+    size_t num_steps = gt.size() - 1;
 
-  std::string folder = "../../results/dome_estimation_simple/";
-  std::filesystem::create_directory(folder);
-  std::string folder_lm = folder + "lm/";
-  std::filesystem::create_directory(folder_lm);
-  IEHalfSphere::ExportValues(lm_result.second.back().state.baseValues(),
-                             num_steps, folder_lm + "values_final.txt");
-  IEHalfSphere::ExportValues(gt, num_steps, folder_lm + "values_gt.txt");
+    std::string folder = "../../results/dome_estimation_simple/";
+    std::filesystem::create_directory(folder);
+    std::string folder_lm = folder + "lm/";
+    std::filesystem::create_directory(folder_lm);
+    IEHalfSphere::ExportValues(lm_result.second.back().state.baseValues(),
+                               num_steps, folder_lm + "values_final.txt");
+    IEHalfSphere::ExportValues(gt, num_steps, folder_lm + "values_gt.txt");
 
-  auto soft_error = TranslationError(gt, soft_result.second.back().values);
-  auto barrier_error =
-      TranslationError(gt, barrier_result.second.back().values);
-  auto gd_error = TranslationError(
-      gt, gd_result.second.back().state.manifolds.baseValues());
-  auto lm_error =
-      TranslationError(gt, lm_result.second.back().state.baseValues());
-  std::cout << soft_error << "\t" << barrier_error << "\t" << gd_error << "\t"
-            << lm_error << "\n";
+    auto soft_error = TranslationError(gt, soft_result.second.back().values);
+    auto barrier_error =
+        TranslationError(gt, barrier_result.second.back().values);
+    auto gd_error = TranslationError(
+        gt, gd_result.second.back().state.manifolds.baseValues());
+    auto lm_error =
+        TranslationError(gt, lm_result.second.back().state.baseValues());
+    std::cout << soft_error << "\t" << barrier_error << "\t" << gd_error << "\t"
+              << lm_error << "\n";
 
-  //   for (const auto &iter_details : details) {
-  //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
-  //                                   IEHalfSphere::PrintValues,
-  //                                   IEHalfSphere::PrintDelta);
+    //   for (const auto &iter_details : details) {
+    //     IEOptimizer::printIterationDetails(iter_details, num_steps, false,
+    //                                   IEHalfSphere::PrintValues,
+    //                                   IEHalfSphere::PrintDelta);
 
-  return 0;
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
+  }
 }

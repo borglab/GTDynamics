@@ -7,6 +7,8 @@
 
 /**
  * @file ContactTrajectoryInitializer.cpp
+ * @brief Initialize a robot trajectory from measured joint and contact points.
+ * @author GTDynamics contributors
  * Adapt measured GTDynamics joint trajectories to the sparse contact core.
  *
  * Read the trajectory contact phases, freeze root-relative FK at contact
@@ -15,7 +17,7 @@
  * Dense expansion supplies initialization values, not new solver observations.
  */
 
-#include <gtdynamics/utils/Initializer.h>
+#include <gtdynamics/kinematics/ContactInitializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtdynamics/utils/values.h>
 
@@ -130,21 +132,26 @@ ContactFrames TrackContacts(const Robot& robot, const Trajectory& trajectory) {
 
 }  // namespace
 
-gtsam::Values Initializer::InitializeSolutionContacts(
-    const Robot& robot, const std::string& root_link_name,
-    const gtsam::Pose3& wTroot_i, const gtsam::Values& measured_joints,
-    const Trajectory& trajectory, double dt,
-    const contact_init::Options& options, contact_init::Result* diagnostics,
-    size_t contactBuffer) const {
+ContactTrajectoryInitializer::ContactTrajectoryInitializer(
+    const Robot& robot, const contact_init::Options& options,
+    size_t contactBuffer)
+    : robot_(std::make_shared<const Robot>(robot)),
+      options_(options),
+      contactBuffer_(contactBuffer) {}
+
+gtsam::Values ContactTrajectoryInitializer::run(
+    const std::string& rootLinkName, const gtsam::Pose3& initialPose,
+    const gtsam::Values& measuredJoints, const Trajectory& trajectory,
+    double dt, contact_init::Result* diagnostics) const {
   Require(std::isfinite(dt) && dt > 0, "dt must be finite and positive");
-  const auto root = robot.link(root_link_name);
-  Require(static_cast<bool>(root), "unknown root link " + root_link_name);
+  const auto root = (*robot_).link(rootLinkName);
+  Require(static_cast<bool>(root), "unknown root link " + rootLinkName);
   Require(!root->isFixed(), "root link must be floating");
-  const auto frames = TrackContacts(robot, trajectory);
+  const auto frames = TrackContacts((*robot_), trajectory);
 
   std::set<size_t> event_indices;
   auto trustedFrames = frames;
-  if (contactBuffer > 0) {
+  if (contactBuffer_ > 0) {
     // A foot's stance may span several phases as the other foot changes
     // contact. Reuse the tracked stance IDs rather than trim each phase.
     std::map<std::string, std::pair<size_t, size_t>> spans;
@@ -157,11 +164,11 @@ gtsam::Values Initializer::InitializeSolutionContacts(
     }
     for (const auto& [stance, span] : spans) {
       const auto [first, last] = span;
-      Require(last > first && contactBuffer <= (last - first - 1) / 2,
+      Require(last > first && contactBuffer_ <= (last - first - 1) / 2,
               "stance " + stance + " has fewer than two slices after a " +
-                  std::to_string(contactBuffer) + "-slice contact buffer");
-      event_indices.insert(first + contactBuffer);
-      event_indices.insert(last - contactBuffer);
+                  std::to_string(contactBuffer_) + "-slice contact buffer");
+      event_indices.insert(first + contactBuffer_);
+      event_indices.insert(last - contactBuffer_);
     }
     // Filter observations as well as selection: a slice selected by one foot
     // must not reintroduce the other foot's touchdown/liftoff measurements.
@@ -170,8 +177,8 @@ gtsam::Values Initializer::InitializeSolutionContacts(
           std::remove_if(contacts.begin(), contacts.end(),
                          [&, sampleIndex = sample](const auto& c) {
                            const auto [first, last] = spans.at(c.stance);
-                           return sampleIndex - first < contactBuffer ||
-                                  last - sampleIndex < contactBuffer;
+                           return sampleIndex - first < contactBuffer_ ||
+                                  last - sampleIndex < contactBuffer_;
                          }),
           contacts.end());
     }
@@ -196,11 +203,11 @@ gtsam::Values Initializer::InitializeSolutionContacts(
   std::vector<contact_init::ContactMeasurements> measurements;
   for (size_t sample : event_indices) {
     const Slice slice(sample);
-    auto local_known = MeasuredSlice(robot, measured_joints, slice);
+    auto local_known = MeasuredSlice((*robot_), measuredJoints, slice);
     // An identity root COM frame makes every FK point a fixed root measurement.
     InsertPose(&local_known, root->id(), sample, gtsam::Pose3());
     const auto local_fk =
-        robot.forwardKinematics(local_known, sample, root_link_name);
+        (*robot_).forwardKinematics(local_known, sample, rootLinkName);
     contact_init::ContactMeasurements measurement{slice, sample * dt, {}};
     for (const auto& contact : trustedFrames.at(sample)) {
       measurement.observations.push_back(
@@ -210,15 +217,14 @@ gtsam::Values Initializer::InitializeSolutionContacts(
     measurements.push_back(std::move(measurement));
   }
 
-  auto solver_options = options;
+  auto solver_options = options_;
   // The caller's first root COM pose is the exact gauge. Sparse root keys use
   // original sample indices so returned Values match normal GTDynamics keys.
-  solver_options.anchorPose = wTroot_i;
   solver_options.poseKey = [root_id = root->id(), &measurements](size_t i) {
     return PoseKey(root_id, measurements.at(i).slice.k);
   };
-  auto result = contact_init::ContactInitializer().Initialize(measurements,
-                                                              solver_options);
+  auto result = contact_init::ContactInitializer(solver_options)
+                    .run(measurements, initialPose);
   // Weak motion can explicitly join components; independent gauges alone cannot
   // define the single world trajectory required for dense interpolation.
   Require(result.graph.components.size() == 1,
@@ -244,15 +250,10 @@ gtsam::Values Initializer::InitializeSolutionContacts(
       pose = gtsam::interpolate<gtsam::Pose3>(pose, result.poses[interval + 1],
                                               fraction);
     }
-    auto known = MeasuredSlice(robot, measured_joints, Slice(sample));
+    auto known = MeasuredSlice((*robot_), measuredJoints, Slice(sample));
     InsertPose(&known, root->id(), sample, pose);
-    auto fk = robot.forwardKinematics(known, sample, root_link_name);
-    PointOnLinks points;
-    for (const auto& contact : active_contacts) points.push_back(contact.point);
-    // ZeroValues already seeds one aggregate wrench per link for sole patches.
-    auto slice = ZeroValues(robot, sample, 0.0, points);
-    slice.update(fk);
-    values.insert(slice);
+    auto fk = (*robot_).forwardKinematics(known, sample, rootLinkName);
+    values.insert(fk);
   }
   if (diagnostics) *diagnostics = std::move(result);
   return values;

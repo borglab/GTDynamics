@@ -62,7 +62,7 @@
  -m_z+s_x(bf_x-\eta m_x)+s_y(af_y-\eta m_y)&\le\eta(a+b)f_z.
  \end{aligned}
 \]
-<p>Swing sole wrenches are exactly zero. Actuator effort limits remain diagnostic. Translation and wrapped-yaw costs choose the world frame at the first selected double-support initialization slice. Their standard deviations are 1 m and 1 rad. All six root-pose coordinates remain in the tangent basis. Roll and pitch are estimated from gravity and IMU observations; the initializer’s tilt and height are only a starting guess. No upright or ground-height observations enter the coupled solve.</p>
+<p>Swing sole wrenches are exactly zero. Actuator effort limits remain diagnostic. Translation and wrapped-yaw costs choose the world frame at the first selected supported initialization slice. Their standard deviations are 1 m and approximately 57.3° (converted to radians in the factor). All six root-pose coordinates remain in the tangent basis. Roll and pitch are estimated from gravity and IMU observations; the initializer’s tilt and height are only a starting guess. No upright or ground-height observations enter the coupled solve.</p>
 <h4>Magnitude and temporal regularization</h4>
 \[
  r_{\mathrm{effort}}=\tau_j,\qquad r_{\mathrm{wrench}}=D_f^{-1}\lambda_f,

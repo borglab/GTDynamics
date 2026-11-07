@@ -20,6 +20,11 @@ try{
       await page.locator('.kinodynamics-scene[data-ready="true"]').waitFor();
       assert.equal(await page.getByRole('heading',{name:'Kinodynamics',exact:true}).count(),1);
       assert.match(await page.locator('.timing-grid').innerText(),/1,000/);
+      assert.match(await page.locator('.initialization-comparison').innerText(),/Contact → GP → linear seed \(default\)/);
+      assert.match(await page.locator('.initialization-comparison').innerText(),/Fixed-pelvis FK/);
+      assert.match(await page.locator('.recorded-settings').innerText(),/57.2958°/);
+      assert.match(await page.locator('.solve-section').innerText(),/Dynamics initializer: constrained Gaussian QR/);
+      assert.match(await page.locator('.solve-section').innerText(),/Dynamics initializer: mechanics and wrench checks/);
       assert.equal(await page.locator('canvas').count(),1);
       const slider=page.getByRole('slider',{name:'Kinodynamics time'});
       await slider.fill('500');assert.equal(await page.locator('main').getAttribute('data-frame'),'500');
@@ -27,7 +32,7 @@ try{
       assert(Number(await page.locator('main').getAttribute('data-frame'))>500);
       const estimate=page.getByRole('combobox',{name:'Estimate',exact:true});
       await estimate.selectOption('initial');
-      assert.equal(await page.locator('.kinodynamics-scene').getAttribute('data-force-arrows'),'0');
+      assert(Number(await page.locator('.kinodynamics-scene').getAttribute('data-force-arrows'))>0);
       await estimate.selectOption('final');
       assert(Number(await page.locator('.kinodynamics-scene').getAttribute('data-force-arrows'))>0);
       await page.getByRole('checkbox',{name:'All joint torques',exact:true}).check();
@@ -36,6 +41,7 @@ try{
       await page.getByRole('checkbox',{name:'All joint velocities',exact:true}).check();
       await page.getByRole('button',{name:'Fit trajectory',exact:true}).click();
       await page.getByRole('button',{name:'Follow robot',exact:true}).click();
+      if(base==='/')await page.screenshot({path:process.env.KINODYNAMICS_SCREENSHOT||'/tmp/kinodynamics-refreshed.png',fullPage:false});
       await page.setViewportSize({width:390,height:844});
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
       assert(!requests.some(url=>/mujoco.*\.(wasm|js)(?:\?|$)/.test(url)));

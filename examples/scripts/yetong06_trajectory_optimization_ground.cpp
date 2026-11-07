@@ -14,14 +14,12 @@
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmarkIE.h>
-#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
-
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/OptimizerSetting.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/PointOnLink.h>
 #include <gtsam/base/Value.h>
 #include <gtsam/base/Vector.h>
@@ -34,18 +32,19 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/expressions.h>
 
-#include "gtdynamics/factors/ContactPointFactor.h"
-#include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/ConstraintManifold.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
-#include "gtdynamics/utils/DynamicsSymbol.h"
-#include "gtdynamics/utils/GraphUtils.h"
-#include "gtdynamics/utils/values.h"
-
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
+
+#include "CmcBenchmark.h"
+#include "gtdynamics/cmcopt/IERetractor.h"
+#include "gtdynamics/cmopt/ConstraintManifold.h"
+#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/factors/ContactPointFactor.h"
+#include "gtdynamics/utils/DynamicsSymbol.h"
+#include "gtdynamics/utils/GraphUtils.h"
+#include "gtdynamics/utils/values.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -157,7 +156,9 @@ void TrajectoryOptimization() {
   ie_params.lmParams.setMaxIterations(10);
 
   // optimize IELM
-  auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+  auto lm_result = cmc_benchmark::measure(problem, "LM", [&] {
+    return OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+  });
   Values result_values = lm_result.second.back().state.baseValues();
   for (const auto &iter_details : lm_result.second) {
     IEOptimizer::printIterationDetails(
@@ -174,7 +175,8 @@ void TrajectoryOptimization() {
   auto barrier_params = std::make_shared<PenaltyParameters>();
   barrier_params->initial_mu = 1e0;
   barrier_params->num_iterations = 5;
-  auto barrier_result = OptimizeIE_Penalty(problem, barrier_params);
+  auto barrier_result = cmc_benchmark::other(
+      [&] { return OptimizeIE_Penalty(problem, barrier_params); });
   EvaluateCosts(barrier_result.second.rbegin()->values);
   IEVision60Robot::PrintValues(barrier_result.second.rbegin()->values,
                                num_steps);
@@ -187,6 +189,11 @@ void TrajectoryOptimization() {
 }
 
 int main(int argc, char **argv) {
-  TrajectoryOptimization();
-  return 0;
+  cmc_benchmark::configure(argc, argv);
+  try {
+    TrajectoryOptimization();
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
+  }
 }

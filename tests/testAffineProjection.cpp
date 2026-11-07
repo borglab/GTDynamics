@@ -124,7 +124,7 @@ TEST(AffineProjection, ObjectiveAndOriginalConstraintEquivalence) {
       EXPECT(assert_equal(m.iConstraints()->at(0)->whitenedExpr(recovered),
                           problem.iConstraints().at(0)->whitenedExpr(values),
                           1e-12));
-      EXPECT(internal::testFactorJacobians(
+      EXPECT(gtsam::internal::testFactorJacobians(
           "shared projection objective",
           dynamic_cast<const NoiseModelFactor &>(*problem.costs().at(0)),
           values, 1e-5, 1e-7));

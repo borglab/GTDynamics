@@ -22,6 +22,8 @@
 
 #include <filesystem>
 
+#include "CmcBenchmark.h"
+
 using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_vertical_jump;
@@ -49,7 +51,12 @@ void RunRetractorBenchMark(
     std::cout << exp_name << ":\n";
 
     // run experiment
-    auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+    auto lm_result = cmc_benchmark::measure(
+        problem, "LM", [&, benchmarkParams = iecm_params] {
+          return OptimizeIE_CMCOptLM(problem, ie_params, benchmarkParams,
+                                     "CMOpt(IE)",
+                                     cmc_benchmark::method.empty());
+        });
 
     // print result and evaluation
     Values result_values = lm_result.second.back().state.baseValues();
@@ -108,7 +115,12 @@ void RunMultiStageOptimization(
     }
 
     // run experiment
-    auto lm_result = OptimizeIE_CMCOptLM(problem, ie_params, iecm_params);
+    auto lm_result = cmc_benchmark::measure(
+        problem, "LM", [&, benchmarkParams = iecm_params] {
+          return OptimizeIE_CMCOptLM(problem, ie_params, benchmarkParams,
+                                     "CMOpt(IE)",
+                                     cmc_benchmark::method.empty());
+        });
 
     // print result and evaluation
     Values result_values = lm_result.second.back().state.baseValues();
@@ -301,7 +313,10 @@ IECM_PARAMS_LIST ConstructExpIECMParams(const EXP_SETTING_LIST &exp_settings,
 /* <========================= Benchmark Script ==========================> */
 /* <=====================================================================> */
 void RetractorBenchMark() {
-  auto [problem, vision60_multi_phase, params] = CreateProblem();
+  auto setup = CreateProblem();
+  auto &problem = std::get<0>(setup);
+  auto &vision60_multi_phase = std::get<1>(setup);
+  [[maybe_unused]] auto &params = std::get<2>(setup);
 
   /* <=========== IELM params ===========> */
   IELMParams ie_params;
@@ -328,7 +343,9 @@ void RetractorBenchMark() {
   // exp_settings.emplace_back("Orthonormal", "Hierarchical", "basisT");
 
   // exp_settings.emplace_back("EliminationT", "Barrier", "all");
-  exp_settings.emplace_back("EliminationT", "Barrier", "cost");
+  // Run the second independent retractor even if the first times out.
+  if (cmc_benchmark::variant != "basis-retractor")
+    exp_settings.emplace_back("EliminationT", "Barrier", "cost");
   // exp_settings.emplace_back("EliminationT", "Barrier", "costscale");
   // // exp_settings.emplace_back("EliminationT", "Barrier", "basisa");
   exp_settings.emplace_back("EliminationT", "Barrier", "basisT");
@@ -349,7 +366,10 @@ void RetractorBenchMark() {
 /* <================= Multi-stage Optimization Script ===================> */
 /* <=====================================================================> */
 void MultiStageOptimization() {
-  auto [problem, vision60_multi_phase, params] = CreateProblem();
+  auto setup = CreateProblem();
+  auto &problem = std::get<0>(setup);
+  auto &vision60_multi_phase = std::get<1>(setup);
+  [[maybe_unused]] auto &params = std::get<2>(setup);
 
   /* <=========== IELM params ===========> */
   IELMParams ie_params;
@@ -381,7 +401,16 @@ void MultiStageOptimization() {
 }
 
 int main(int argc, char **argv) {
-  // RetractorBenchMark();
-  MultiStageOptimization();
-  return 0;
+  cmc_benchmark::configure(argc, argv);
+  try {
+    // RetractorBenchMark();
+    if (cmc_benchmark::variant == "retractors" ||
+        cmc_benchmark::variant == "basis-retractor")
+      RetractorBenchMark();
+    else
+      MultiStageOptimization();
+    return 0;
+  } catch (const cmc_benchmark::Finished &) {
+    return 0;
+  }
 }

@@ -24,6 +24,7 @@
 
 using namespace gtsam;
 
+// Substitution preserves the base residual and free-variable Jacobian.
 TEST(ConstVarFactor, errorAndJacobian) {
   // Keys.
   Key x1_key = 1;
@@ -59,10 +60,12 @@ TEST(ConstVarFactor, errorAndJacobian) {
 
   // A factor with all variables fixed should not be active.
   fixed_keys.insert(x2_key);
-  gtdynamics::ConstVarFactor const_var_factor_all_fixed(base_factor, fixed_keys);
+  gtdynamics::ConstVarFactor const_var_factor_all_fixed(base_factor,
+                                                        fixed_keys);
   EXPECT(!const_var_factor_all_fixed.checkActive());
 }
 
+// Graph substitution removes fully fixed factors and preserves remaining costs.
 TEST(ConstVarGraph, error) {
   // Keys.
   Key x1_key = 1;
@@ -71,7 +74,8 @@ TEST(ConstVarGraph, error) {
   // Construct original factor graph.
   auto noise = noiseModel::Unit::Create(6);
   NonlinearFactorGraph graph;
-  graph.emplace_shared<BetweenFactor<Pose3>>(x1_key, x2_key, Pose3(Rot3(), Point3(1, 0, 0)), noise);
+  graph.emplace_shared<BetweenFactor<Pose3>>(
+      x1_key, x2_key, Pose3(Rot3(), Point3(1, 0, 0)), noise);
   graph.addPrior<Pose3>(x1_key, Pose3(Rot3(), Point3(0, 0, 0)));
   graph.addPrior<Pose3>(x2_key, Pose3(Rot3(), Point3(0, 0, 0)));
 
@@ -84,7 +88,8 @@ TEST(ConstVarGraph, error) {
   // Construct const var graph with fixed keys.
   NonlinearFactorGraph new_graph;
   gtdynamics::ConstVarFactors const_var_factors;
-  std::tie(new_graph, const_var_factors) = gtdynamics::ConstVarGraph(graph, fixed_keys);
+  std::tie(new_graph, const_var_factors) =
+      gtdynamics::ConstVarGraph(graph, fixed_keys);
   EXPECT_LONGS_EQUAL(2, new_graph.size());
   EXPECT_LONGS_EQUAL(1, const_var_factors.size());
 
@@ -96,6 +101,39 @@ TEST(ConstVarGraph, error) {
   EXPECT_DOUBLES_EQUAL(0.25, new_graph.error(values), 1e-5);
 }
 
+/* ************************************************************************* */
+namespace fixed_value_updates {
+
+// Only this factor's fixed keys are copied; partial updates retain other keys.
+TEST(ConstVarFactor, LocalKeysAndPartialUpdates) {
+  const auto base = std::make_shared<BetweenFactor<Pose3>>(
+      1, 2, Pose3(), noiseModel::Unit::Create(6));
+  gtdynamics::ConstVarFactor factor(base, KeySet{1, 2, 9999});
+  Values trajectory;
+  for (Key key = 1; key <= 10000; ++key)
+    trajectory.insert(key, Pose3(Rot3(), Point3(key, 0, 0)));
+  factor.setFixedValues(trajectory);
+  EXPECT_LONGS_EQUAL(2, factor.fixedValues().size());
+
+  Values update;
+  const Pose3 replacement(Rot3::Rz(0.2), Point3(3, 4, 5));
+  update.insert(1, replacement);
+  update.insert(9999, Pose3());
+  factor.setFixedValues(update);
+  EXPECT(assert_equal(replacement, factor.fixedValues().at<Pose3>(1)));
+  EXPECT(
+      assert_equal(trajectory.at<Pose3>(2), factor.fixedValues().at<Pose3>(2)));
+  EXPECT_LONGS_EQUAL(2, factor.fixedValues().size());
+  factor.setFixedValues(Values());
+  Values expected;
+  expected.insert(1, replacement);
+  expected.insert(2, trajectory.at<Pose3>(2));
+  EXPECT(assert_equal(base->unwhitenedError(expected),
+                      factor.unwhitenedError(Values()), 1e-12));
+}
+
+}  // namespace fixed_value_updates
+/* ************************************************************************* */
 
 int main() {
   TestResult tr;

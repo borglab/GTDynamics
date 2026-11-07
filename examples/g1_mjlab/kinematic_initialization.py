@@ -3,6 +3,9 @@
 # Atlanta, Georgia 30332-0415. All Rights Reserved.
 # See LICENSE for the license information.
 # ----------------------------------------------------------------------------
+## @file kinematic_initialization.py
+# @brief Initialize G1 configurations using the shared contact sampling policy.
+# @author GTDynamics contributors
 """Initialize G1 kinematics and retain the native contact-selected slices."""
 
 from __future__ import annotations
@@ -98,7 +101,6 @@ def initialize_contact_slices(
     source: KinematicRecording,
     options: gtd.pose_contact_init.Options | None = None,
     contact_buffer: int = 1,
-    double_support_only: bool = True,
     long_phase_seconds: float = 0.2,
     rotation_sigma_degrees: float | None = None,
     max_slice_interval_ms: float = 200.0,
@@ -106,10 +108,9 @@ def initialize_contact_slices(
 ) -> tuple[KinematicRecording, gtsam.Values, dict[str, int | float | bool]]:
     """Initialize on buffered contacts and retain exactly those slices for fitting.
 
-    With double_support_only, select one central slice in phases of at most
-    long_phase_seconds (sample count * dt), otherwise evenly spaced slices
-    between inward-buffered endpoints, at most max_slice_interval_ms apart.
-    Omit all single-stance slices but retain their foothold history.
+    Use the initialization app's shared native sampler in every supported phase:
+    a central slice for short phases and evenly spaced buffered slices for long
+    phases. The interval bound is max_slice_interval_ms within each phase.
     No interpolated Values are created.
     rotation_sigma_degrees overrides the contact observation's per-axis rotation
     standard deviation; conversion to the native API's radians happens here.
@@ -129,31 +130,30 @@ def initialize_contact_slices(
             raise ValueError("rotation_sigma_degrees must be finite and positive")
         settings.rotationSigma = float(np.deg2rad(rotation_sigma_degrees))
     settings.interpolateOutput = False
-    if double_support_only:
-        settings.selectedSlices = initialization_slices(
-            source.trajectory,
-            source.dt,
-            max_slice_interval_ms,
-            contact_buffer,
-            long_phase_seconds,
-        )
-        if not settings.selectedSlices:
-            raise ValueError("No double-support phases available for initialization")
+    selected_slices = initialization_slices(
+        source.trajectory,
+        source.dt,
+        max_slice_interval_ms,
+        contact_buffer,
+        long_phase_seconds,
+    )
+    if not selected_slices:
+        raise ValueError("No supported phases available for initialization")
     diagnostics = (
         contact_diagnostics
         if contact_diagnostics is not None
         else gtd.pose_contact_init.Result()
     )
-    values: gtsam.Values = gtd.Initializer().InitializeSolutionContactPoses(
-        source.robot,
-        source.root.name(),
-        source.anchor,
-        source.measured,
-        source.trajectory,
-        source.dt,
-        settings,
-        diagnostics,
-        0 if double_support_only else contact_buffer,
+    values: gtsam.Values = gtd.PoseContactInitializer(
+        robot=source.robot, options=settings, contactBuffer=0
+    ).run(
+        rootLinkName=source.root.name(),
+        initialPose=source.anchor,
+        measuredJoints=source.measured,
+        trajectory=source.trajectory,
+        dt=source.dt,
+        diagnostics=diagnostics,
+        selectedSlices=selected_slices,
     )
     indices = np.array([s.k for s in diagnostics.slices()], dtype=np.int64)
     if len(indices) < 2:
@@ -206,7 +206,7 @@ def initialize_contact_slices(
             **contact_initialization_info(settings, diagnostics),
             "source_frames": source.count,
             "contact_buffer": contact_buffer,
-            "double_support_only": double_support_only,
+            "supported_phases": True,
             "long_phase_seconds": min(
                 long_phase_seconds, max_slice_interval_ms / 1000.0
             ),
@@ -256,7 +256,7 @@ def initialize(
         raise ValueError(
             "Use the seed returned by initialize_contact_slices for irregular slices"
         )
-    initializer = gtd.Initializer()
+
     if method == "contact":
         options = (
             contact_options
@@ -269,29 +269,29 @@ def initialize(
             if contact_diagnostics is not None
             else gtd.pose_contact_init.Result()
         )
-        values: gtsam.Values = initializer.InitializeSolutionContactPoses(
-            walk.robot,
-            walk.root.name(),
-            walk.anchor,
-            walk.measured,
-            walk.trajectory,
-            walk.dt,
-            options,
-            diagnostics,
+        values: gtsam.Values = gtd.PoseContactInitializer(
+            robot=walk.robot, options=options
+        ).run(
+            rootLinkName=walk.root.name(),
+            initialPose=walk.anchor,
+            measuredJoints=walk.measured,
+            trajectory=walk.trajectory,
+            dt=walk.dt,
+            diagnostics=diagnostics,
         )
         info = contact_initialization_info(options, diagnostics)
         return seed_contact_landmarks(walk, values).extract(keys), info
     if method != "ik":
         raise ValueError(f"Unknown initialization: {method}")
     root_guesses: list[gtsam.Pose3] = [nominal_root(walk, k) for k in range(walk.count)]
-    values: gtsam.Values = initializer.InitializeSolutionPoseIK(
-        walk.robot,
-        walk.root.name(),
-        root_guesses,
-        walk.measured,
-        walk.trajectory,
-        10,
-        ik_iteration,
+    values: gtsam.Values = gtd.PoseIKInitializer(
+        robot=walk.robot, maxIterations=10
+    ).run(
+        rootLinkName=walk.root.name(),
+        rootGuesses=root_guesses,
+        measuredJoints=walk.measured,
+        trajectory=walk.trajectory,
+        iterationCallback=ik_iteration,
     )
     return seed_contact_landmarks(walk, values).extract(keys), {
         "slice_calls": walk.count

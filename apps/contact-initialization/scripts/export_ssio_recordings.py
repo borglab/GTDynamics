@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file export_ssio_recordings.py
+# @brief Export contact initialization for SSIO snippets.
+# @author GTDynamics contributors
 """Replay the Contact Labels snippets through the native pose initializer.
 
 The saved max-product labels (velocity, duration and walking constraints on)
@@ -113,7 +121,13 @@ def main() -> None:
         fk = robot.forwardKinematics(fk_input, first, "pelvis")
         frames = contact_frames(model, robot)
         ground_height = float(
-            np.mean([c.predict(fk, first).z() for c in frames.values()])
+            np.mean(
+                [
+                    frames[side].predict(fk, first).z()
+                    for side, active in support[first].items()
+                    if active
+                ]
+            )
         )
         shift = np.array([0.0, 0.0, -ground_height])
         anchor = gtsam.Pose3(anchor.rotation(), anchor.translation() + shift)
@@ -122,10 +136,9 @@ def main() -> None:
         data["metadata"]["snippetWorldTranslation"] = shift.tolist()
         data["metadata"][
             "groundSource"
-        ] = "Mean sole height at the first selected double-support slice"
+        ] = "Mean sole height at the first selected supported slice"
         runs = {}
         for name, between, ground, options in prior_configurations():
-            options.selectedSlices = selected
             options.interpolateOutput = False
             options.groundHeight = 0.0
             result, benchmark = record_run(
@@ -141,6 +154,7 @@ def main() -> None:
                 args.warmup,
                 options,
                 anchor,
+                selected_slices=selected,
             )
             run = package_run(
                 result,
@@ -168,15 +182,15 @@ def main() -> None:
             Path(__file__),
             APP / "scripts/export_native_recordings.py",
             REPO / "examples/g1_mjlab/contact_phases.py",
-            REPO / "gtdynamics/utils/PoseContactInitializer.cpp",
-            REPO / "gtdynamics/utils/PoseContactInitializer.h",
+            REPO / "gtdynamics/kinematics/PoseContactInitializer.cpp",
+            REPO / "gtdynamics/kinematics/PoseContactInitializer.h",
             REPO / "gtdynamics/utils/ContactInitializationFactors.h",
             REPO / "gtdynamics.i",
             labels_path,
         ]
         recording = {
             "schemaVersion": 3,
-            "solver": "Initializer.InitializeSolutionContactPoses",
+            "solver": "PoseContactInitializer.run",
             "recordedAtUtc": datetime.now(timezone.utc).isoformat(),
             "sequenceId": sequence_id,
             "defaultVariant": "between-ground-upright",
@@ -197,7 +211,7 @@ def main() -> None:
                 "sourceIndices": indices.tolist(),
                 "selectedSourceIndices": [int(indices[s.k]) for s in selected],
                 "sampling": {
-                    "mode": "double-support",
+                    "mode": "supported-phases",
                     "maxSliceIntervalMs": args.max_slice_interval_ms,
                     "contactBuffer": 1,
                     "longPhaseSeconds": min(0.2, args.max_slice_interval_ms / 1000.0),

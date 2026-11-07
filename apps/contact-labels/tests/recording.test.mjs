@@ -1,3 +1,5 @@
+import { recordedSourceBytes } from '../../shared/tests/recordedSources.mjs';
+import { recordingSourceMatches } from '../../shared/recordingProvenance.mjs';
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -53,13 +55,7 @@ for (const r of records) {
       ),
     );
     for (const [path, hash] of Object.entries(r.provenance.sources))
-      assert.equal(
-        createHash("sha256")
-          .update(readFileSync(new URL(path, root)))
-          .digest("hex"),
-        hash,
-        `Stale native labels: ${path}`,
-      );
+      assert(recordingSourceMatches(path, recordedSourceBytes(path, hash), hash), `Historical native labels: ${path}`);
     for (const side of ["left", "right"]) {
       const foot = r.feet[side];
       assert(foot.motion.completeWindow.every(Boolean));

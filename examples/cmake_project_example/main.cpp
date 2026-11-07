@@ -5,10 +5,10 @@
  * This cpp file should be the same as `example_forward_dynamics/main.cpp`.
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -40,8 +40,8 @@ int main(int argc, char** argv) {
   kdfg.add(fd_priors);
 
   // Initialize solution.
-  Initializer initializer;
-  auto init_values = initializer.ZeroValues(simple_rr, 0);
+  ZeroSliceInitializer initializer(simple_rr);
+  auto init_values = initializer.run(0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);

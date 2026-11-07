@@ -35,11 +35,16 @@ functions to compare the initialization and solve timings (`--repeats 3`).
 free configuration, velocity, acceleration, sole/reaction wrench and torque
 variables. Native articulated constraints and rectangular sole-wrench cones
 are exact; root/joint trapezoidal collocation factors couple adjacent slices.
-The initial configurations come from the shared contact initializer; all other
-state variables, including the shared IMU bias, start at zero.
+The default `--initialization contact-gp-dynamics` fits contact poses, estimates
+velocities with the native floating-base GP, and constructs one affine linear
+dynamics seed. The coupled optimizer retains the fitted motion, accelerations,
+wrenches and torques. `--initialization contact` keeps the contact-only, zero-motion
+alternative. `--initialization fk` uses measured-joint FK at a fixed upright pelvis
+with gravity-support forces. The shared IMU bias starts at zero in all modes.
 
 ```bash
 python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
+python examples/g1_mjlab/kinodynamic_walk.py --initialization fk --output /tmp/kinodynamics-fk
 python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
 ```
 
@@ -51,7 +56,7 @@ The private module composes existing library builders; its settings live in
 to the main package. `ArticulatedRetractor` and the reusable factor/builder
 extensions remain in GTDynamics.
 
-The coupled solve adds translation and wrapped-yaw gauge costs (1 m and 1 rad
+The coupled solve adds translation and wrapped-yaw gauge costs (1 m and 57.3°
 standard deviations) at the selected initialization slice. Roll and pitch are
 free: initializer tilt is a starting guess, not an enforced observation. No
 upright or ground-height factors enter this solve.
@@ -59,12 +64,32 @@ Run `test_kinodynamics.py` to check tilt recovery and
 `validate_kinodynamics.py --result /tmp/kinodynamics` for the independent
 MuJoCo inverse-dynamics and contact-feasibility checks.
 `--max-iterations` defaults to 5; `--start 78 --end 79` gives a small development
-run. The example saves `kinodynamics.npz` and `summary.json`, separating contact
+run. The example saves `kinodynamics.npz` and `summary.json`, separating configuration
 initialization, measurement preparation, graph assembly, initial feasibility,
 and coupled optimization. The [Kinodynamics app](../../apps/kinodynamics/README.md)
 replays the saved initial/final states, forces, velocities, torques and error
-history. Neither the saved Kinematics result nor GP interpolation initializes
-this solve. Support labels remain privileged, as described in the app.
+history. The default uses the native GP directly from contact-initialized poses;
+it does not load the saved Kinematics app result. Support labels remain privileged,
+as described in the app.
+
+### Initialization timing comparison
+
+The recorded runs (2026-11-05, Release build, eight retraction workers) use
+five coupled iterations on identical 1,000 source slices at 50 Hz. Contact fitting
+retains 171 slices: 114 in single support and 57 in double support. Each strategy
+ran once in a separate process with `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1`.
+All three runs are feasible.
+
+| Initialization | Initialization (s) | Coupled optimization (s) | Total (s) | Final objective |
+| --- | ---: | ---: | ---: | ---: |
+| `contact-gp-dynamics (default)` | 1.245 | 28.01 | 39.64 | 9,074.082857 |
+| `contact` | 0.074 | 32.97 | 42.75 | 9,047.406663 |
+| `fk` | 0.034 | 37.36 | 47.19 | 67,966.670103 |
+
+Total time includes initialization, measurement preparation, native graph
+assembly, feasibility restoration and optimization; loading and export are
+excluded. The Kinodynamics replay and comparison table use these saved results.
+See the native initialization section below for the stage breakdown.
 
 ## Walking dynamics example
 
@@ -293,3 +318,91 @@ latencies are 17.63, 52.29, 34.30, and 101.36 ms respectively; these medians use
 different populations and are not direct speedup ratios. All 36 independent
 prescribed-force checks pass. Fresh MuJoCo CPU and MJLab/Warp measurements and
 accuracy checks are included in the report.
+
+## Native initialization for the Python kinodynamics example
+
+`kinodynamic_walk.py` defaults to `--initialization contact-gp-dynamics`, which selects
+`gtd.KinodynamicInitializer(robot=walk.robot, options=options).run(...)`.
+Its immutable strategy copies the supplied options and returns an
+owning result with values, stage diagnostics, and timings. The sequence is:
+
+1. `kinematics/PoseContactInitializer` fits root poses and stance landmarks on
+   the buffered source slices, with the existing upright, motion, and height
+   priors configured by `kinodynamic_initialization.py`.
+2. `kinematics/ContactInterpolationInitializer` uses those poses as GP knots,
+   constrains interpolation with dense encoder measurements, and evaluates
+   native FK and velocities at every original 50 Hz slice. It has no external
+   root-velocity measurements. Boundary knots hold the nearest contact pose.
+3. `dynamics/KinodynamicInitializer` differentiates the GP velocities locally
+   and calls `fixedKinematicsDynamicsSeed`. Configurations and velocities remain
+   fixed. Positive normal gravity-support loads and exact articulated mechanics
+   determine accelerations, sole/reaction wrenches and actuator torques in one
+   constrained Gaussian QR solve. Acceleration-prior means choose the remaining
+   degrees of freedom. The seed checks wrench-cone feasibility without running
+   a dynamics optimizer or constructing manifolds. Effort/rate objectives belong
+   to full optimization; the seed reports acceleration-prior error only.
+
+The coupled optimization retains all these initialized variables. Its report
+separates contact fitting, GP fitting/evaluation, the linear dynamics seed,
+measurement construction, feasibility restoration and coupled optimization.
+
+The default pipeline takes **1.245 s** to initialize and **39.64 s** through the
+coupled solve. Its final objective is **9,074.082857** at the five-iteration limit.
+
+| Initialization stage | Wall time (s) |
+| --- | ---: |
+| Contact-pose fit and sparse output | 0.045 |
+| GP assembly, fitting and dense FK | 0.075 |
+| Linear dynamics stage, including temporary-state cleanup | 1.123 |
+| ↳ Mechanics graph assembly | 0.346 |
+| ↳ Equality-system linearization and assembly | 0.142 |
+| ↳ Constrained Gaussian QR | 0.330 |
+| ↳ Dynamics-variable reconstruction | 0.064 |
+| ↳ Mechanics/wrench checks and acceleration-prior error | 0.108 |
+
+The indented rows are substages of linear dynamics. The stage total also includes
+GP-velocity differentiation, merging the kinematic state, world-velocity
+construction and destruction of temporary graphs/maps. QR time excludes those
+operations. Dynamics initialization performs zero CMC iterations or manifold
+projections. Effort and temporal-cost graphs are constructed only for full
+optimization; the seed reports acceleration-prior error. The combined pipeline
+owns one state map and separate stage diagnostics. Contact root poses feed GP
+knots directly, and dense FK is evaluated after the GP fit. The GP uses no
+external root-velocity observations.
+
+`ConstVarFactor::setFixedValues` visits only its own fixed keys. Equality assembly
+reuses freshly linearized Jacobians with constrained noise models. The later
+coupled solve optimizes configurations, velocities, accelerations, forces and
+torques. These bounded runs do not establish convergence or cross-machine speedups.
+
+Initializer constructors hold the robot and tuning parameters, such as noise scales,
+iteration limits, and sampling policy. Each `run()` receives measured joints,
+contact phases, timestamps, gauge pose, and any explicit source-slice selection.
+The same initializer can therefore process several recordings. Python keyword
+names match the C++ API, including its `lowerCamelCase` convention:
+
+```python
+initializer = gtd.PoseContactInitializer(
+    robot=walk.robot, options=settings, contactBuffer=0
+)
+values = initializer.run(
+    rootLinkName=walk.root.name(),
+    initialPose=walk.anchor,
+    measuredJoints=walk.measured,
+    trajectory=walk.trajectory,
+    dt=walk.dt,
+    selectedSlices=[gtd.Slice(k) for k in selected_slices],
+)
+```
+
+`--initialization fk` selects the native kinematic-only
+`ForwardKinematicsInitializer` instead; the coupled assembler supplies its
+zero motion and gravity-support seed. The shared IMU bias starts at zero for
+all three strategies.
+
+All kinematic-only initialization classes live under `gtdynamics/kinematics/`
+and return no acceleration, force, or torque keys. Dynamics initializers live
+under `gtdynamics/dynamics/` and may call the kinematic strategies. Existing
+interpolation and IK clients that need a full dynamics seed explicitly compose
+kinematic output with `ZeroTrajectoryInitializer` rather than relying on an
+umbrella initializer to insert hidden dynamics variables.

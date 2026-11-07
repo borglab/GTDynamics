@@ -1,5 +1,12 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415. All Rights Reserved.
+ * See LICENSE for the license information.
+ * -------------------------------------------------------------------------- */
 /**
  * @file ContactInitializer.cpp
+ * @brief Register contact points and optimize sparse root poses.
+ * @author GTDynamics contributors
  * Contact association, rigid-registration seeds, and sparse GTSAM optimization.
  *
  * Shared stance points define the measured connectivity. Each contact component
@@ -9,6 +16,7 @@
 
 #include "ContactInitializer.h"
 
+#include <gtdynamics/utils/ContactInitializationFactors.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/PriorFactor.h>
@@ -22,8 +30,6 @@
 #include <map>
 #include <set>
 #include <stdexcept>
-
-#include "ContactInitializationFactors.h"
 
 namespace gtdynamics::contact_init {
 namespace {
@@ -156,7 +162,8 @@ double seedContactError(const Graph& graph, const std::vector<Pose3>& poses) {
 // points. A component's first frame fixes its gauge; subsequent frames inherit
 // placement through measured overlaps. Disconnected components have arbitrary
 // placements.
-void seed(Graph& graph, const Options& options) {
+void seed(Graph& graph, const Options& options,
+          const std::optional<Pose3>& anchorPose) {
   const size_t n = graph.measurements.size();
   graph.seedPoses.resize(n);
   std::vector<bool> assigned(n, false), known(graph.landmarks.size(), false);
@@ -164,11 +171,9 @@ void seed(Graph& graph, const Options& options) {
   if (options.model == Model::Ground) {
     const auto level = levelRotation(
         graph.measurements[0]);  // Validate even with a supplied anchor.
-    const auto rotation =
-        options.anchorPose ? options.anchorPose->rotation() : level;
-    const Pose3 anchor(rotation, options.anchorPose
-                                     ? options.anchorPose->translation()
-                                     : Point3::Zero());
+    const auto rotation = anchorPose ? anchorPose->rotation() : level;
+    const Pose3 anchor(rotation,
+                       anchorPose ? anchorPose->translation() : Point3::Zero());
     std::vector<Point3> points;
     const auto& id = graph.measurements[0].observations.front().stanceId;
     for (const auto& o : graph.measurements[0].observations)
@@ -184,9 +189,9 @@ void seed(Graph& graph, const Options& options) {
       position = graph.seedPoses[anchor - 1].translation();
       rotation = graph.seedPoses[anchor - 1].rotation();
     }
-    if (anchor == 0 && options.anchorPose) {
-      rotation = options.anchorPose->rotation();
-      position = options.anchorPose->translation();
+    if (anchor == 0 && anchorPose) {
+      rotation = anchorPose->rotation();
+      position = anchorPose->translation();
     } else if (graph.groundHeight) {
       rotation = levelRotation(graph.measurements[anchor]);
       std::vector<Point3> points;
@@ -247,7 +252,7 @@ void seed(Graph& graph, const Options& options) {
       Options centerOptions = options;
       centerOptions.model = Model::Point;
       centerOptions.perturb = false;
-      seed(centers, centerOptions);
+      seed(centers, centerOptions, anchorPose);
       if (seedContactError(graph, centers.seedPoses) <
           seedContactError(graph, graph.seedPoses))
         graph.seedPoses = std::move(centers.seedPoses);
@@ -450,19 +455,22 @@ Pose3 FitRigidTransform(const std::vector<Point3>& local,
   return Pose3(rotation, b - rotation.rotate(a));
 }
 
-Result ContactInitializer::Initialize(
+ContactInitializer::ContactInitializer(const Options& options)
+    : options_(options) {}
+
+Result ContactInitializer::run(
     const std::vector<ContactMeasurements>& measurements,
-    const Options& options) const {
+    const std::optional<gtsam::Pose3>& anchorPose) const {
   if (measurements.empty())
     throw std::invalid_argument(
         "At least one slice of contact measurements is required.");
   for (double sigma :
-       {options.betweenTranslationSigma, options.betweenRotationSigma,
-        options.uprightSigma, options.groundSigma})
+       {options_.betweenTranslationSigma, options_.betweenRotationSigma,
+        options_.uprightSigma, options_.groundSigma})
     if (!(sigma > 0) || !std::isfinite(sigma))
       throw std::invalid_argument(
           "Regularizer standard deviations must be finite and positive.");
-  if (options.groundPriorHeight && !std::isfinite(*options.groundPriorHeight))
+  if (options_.groundPriorHeight && !std::isfinite(*options_.groundPriorHeight))
     throw std::invalid_argument("Ground prior height must be finite.");
   Result result;
   const auto totalStart = Clock::now();
@@ -471,29 +479,29 @@ Result ContactInitializer::Initialize(
   indexObservations(result.graph);
   result.timings.graphBuildMs = elapsed(phaseStart);
   phaseStart = Clock::now();
-  seed(result.graph, options);
+  seed(result.graph, options_, anchorPose);
   result.timings.seedMs = elapsed(phaseStart);
   phaseStart = Clock::now();
-  buildFactors(result.graph, options);
-  buildRegularizers(result.graph, options);
+  buildFactors(result.graph, options_);
+  buildRegularizers(result.graph, options_);
   result.timings.graphBuildMs += elapsed(phaseStart);
   phaseStart = Clock::now();
   // Native optimization timing includes LM construction and the iteration loop.
   // Optional history capture is inside this scope; benchmarks turn it off.
   gtsam::LevenbergMarquardtParams params;
-  params.maxIterations = options.maxIterations;
+  params.maxIterations = options_.maxIterations;
   params.setLinearSolverType("MULTIFRONTAL_CHOLESKY");
   params.setDiagonalDamping(true);  // Numerical LM damping, not a pose prior.
   params.lambdaInitial = 1e-3;
-  params.relativeErrorTol = options.relativeErrorTolerance;
-  params.absoluteErrorTol = options.absoluteErrorTolerance;
+  params.relativeErrorTol = options_.relativeErrorTolerance;
+  params.absoluteErrorTol = options_.absoluteErrorTolerance;
   gtsam::LevenbergMarquardtOptimizer optimizer(
       result.graph.factors, result.graph.initialValues, params);
   result.objectiveInitial = 2 * optimizer.error();
-  if (options.recordHistory)
+  if (options_.recordHistory)
     result.history.push_back(
-        snapshot(result.graph, options, optimizer.values(), 0));
-  for (size_t iteration = 0; iteration < options.maxIterations; ++iteration) {
+        snapshot(result.graph, options_, optimizer.values(), 0));
+  for (size_t iteration = 0; iteration < options_.maxIterations; ++iteration) {
     const double before = optimizer.error();
     if (before < 1e-20) {
       result.converged = true;
@@ -505,18 +513,18 @@ Result ContactInitializer::Initialize(
     if (!std::isfinite(after) || after > before + 1e-12 * std::max(1.0, before))
       throw std::runtime_error(
           "Native LM objective became non-finite or increased.");
-    if (options.recordHistory)
-      result.history.push_back(snapshot(result.graph, options,
+    if (options_.recordHistory)
+      result.history.push_back(snapshot(result.graph, options_,
                                         optimizer.values(), result.iterations));
-    if (before - after <= options.absoluteErrorTolerance ||
-        (before - after) / before <= options.relativeErrorTolerance) {
+    if (before - after <= options_.absoluteErrorTolerance ||
+        (before - after) / before <= options_.relativeErrorTolerance) {
       result.converged = true;
       break;
     }
   }
   result.timings.optimizationMs = elapsed(phaseStart);
   auto final =
-      snapshot(result.graph, options, optimizer.values(), result.iterations);
+      snapshot(result.graph, options_, optimizer.values(), result.iterations);
   result.poses = std::move(final.poses);
   result.landmarks = std::move(final.landmarks);
   result.objectiveFinal = final.objective;
@@ -532,7 +540,7 @@ Result ContactInitializer::Initialize(
   result.values = optimizer.values();
   // Downstream code receives ordinary Values containing the fixed gauges too.
   for (const size_t anchor : result.graph.anchors)
-    result.values.insert(options.poseKey(anchor),
+    result.values.insert(options_.poseKey(anchor),
                          result.graph.seedPoses[anchor]);
   result.timings.totalMs = elapsed(totalStart);
   return result;

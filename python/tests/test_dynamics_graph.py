@@ -19,14 +19,17 @@ import numpy as np
 
 class TestDynamicsGraph(unittest.TestCase):
     """Unit tests for DynamicsGraph."""
+
     def test_dynamics_graph(self):
         """Test construction of DynamicsGraph."""
 
         # load example robot
-        SDF_PATH = osp.join(osp.dirname(osp.realpath(__file__)), "..", "..",
-                            "models", "sdfs")
+        SDF_PATH = osp.join(
+            osp.dirname(osp.realpath(__file__)), "..", "..", "models", "sdfs"
+        )
         simple_rr = gtd.CreateRobotFromFile(
-            osp.join(SDF_PATH, "test", "simple_rr.sdf"), "simple_rr_sdf")
+            osp.join(SDF_PATH, "test", "simple_rr.sdf"), "simple_rr_sdf"
+        )
 
         # check links and joints
         self.assertEqual(simple_rr.numLinks(), 3)
@@ -43,27 +46,27 @@ class TestDynamicsGraph(unittest.TestCase):
         noise1 = gtsam.noiseModel.Unit.Create(1)
         noise6 = gtsam.noiseModel.Unit.Create(6)
         graph = gtsam.NonlinearFactorGraph()
-        graph.push_back(gtd.LinkObjectives(1, k=777)\
-            .pose(gtsam.Pose3(), noise6)\
-            .twistAccel(np.zeros(6), noise6))
+        graph.push_back(
+            gtd.LinkObjectives(1, k=777)
+            .pose(gtsam.Pose3(), noise6)
+            .twistAccel(np.zeros(6), noise6)
+        )
         self.assertEqual(graph.size(), 2)
-        graph.push_back(gtd.JointObjectives(2, 777)\
-            .angle(0., noise1)\
-            .velocity(0., noise1))
+        graph.push_back(
+            gtd.JointObjectives(2, 777).angle(0.0, noise1).velocity(0.0, noise1)
+        )
         self.assertEqual(graph.size(), 4)
         self.assertEqual(graph.keys().size(), 4)
-        graph.push_back(gtd.JointObjectives(2, 777)\
-            .acceleration(0., noise1)\
-            .angle(0., noise1))  # duplicate angle
+        graph.push_back(
+            gtd.JointObjectives(2, 777).acceleration(0.0, noise1).angle(0.0, noise1)
+        )  # duplicate angle
         self.assertEqual(graph.size(), 6)
         self.assertEqual(graph.keys().size(), 5)
         # optional time index and noise model
-        graph.push_back(gtd.JointObjectives(2)\
-            .acceleration(0.)\
-            .angle(0.))
-        graph.push_back(gtd.LinkObjectives(1)\
-            .pose(gtsam.Pose3())\
-            .twistAccel(np.zeros(6)))
+        graph.push_back(gtd.JointObjectives(2).acceleration(0.0).angle(0.0))
+        graph.push_back(
+            gtd.LinkObjectives(1).pose(gtsam.Pose3()).twistAccel(np.zeros(6))
+        )
         self.assertEqual(graph.size(), 10)
         self.assertEqual(graph.keys().size(), 9)
 
@@ -77,9 +80,14 @@ class TestDynamicsGraph(unittest.TestCase):
         graph = chain_graph.dynamicsFactorGraph(a1, 0, None, None)
         self.assertGreater(graph.size(), 0)
 
-        chain_initializer = gtd.ChainInitializer()
-        init_values = chain_initializer.ZeroValues(a1, 0, 0.0, None)
+        chain_initializer = gtd.ChainInitializer(robot=a1)
+        init_values = chain_initializer.run(t=0, contactPoints=None)
         self.assertGreater(init_values.size(), 0)
+        # A supplied slice strategy retains virtual dispatch through the binding.
+        trajectory = gtd.ZeroTrajectoryInitializer(robot=a1).run(
+            numSteps=1, sliceInitializer=chain_initializer
+        )
+        self.assertEqual(trajectory.size(), 2 * init_values.size())
 
 
 if __name__ == "__main__":

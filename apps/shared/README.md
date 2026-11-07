@@ -99,6 +99,23 @@ in `paper/graph.js` and offline equations in
 stay with the results, while the method distinguishes hard mechanics constraints
 from soft measurements and temporal collocation.
 
+### Historical replay source checks
+
+Saved replays retain the source hashes from their original computation. Their
+provenance tests first check the current source, then the immutable revision in
+`recordingSourceRevision.txt`. The checkpoint must match the original recorded
+hash; new, unknown hashes still fail. These checks validate the historical
+artifact and its numerical invariants. Native tests validate the current solver.
+The checkpoint is fetched without checking out or hydrating historical assets:
+
+```bash
+git fetch --no-tags --depth=1 origin "$(cat apps/shared/recordingSourceRevision.txt)"
+```
+
+Regenerated Kinodynamics data uses the new sampler and stores its own source and
+binary hashes. Older Contact Initialization and Interpolation replays remain
+historical measurements until explicitly regenerated.
+
 ## Shared appearance
 
 App entry points import `theme.js`, which applies the saved light/dark preference,

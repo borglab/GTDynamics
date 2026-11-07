@@ -20,7 +20,6 @@
 #include <gtdynamics/kinematics/PoseFactor.h>
 #include <gtdynamics/kinematics/TwistFactor.h>
 #include <gtdynamics/kinematics/endEffGoalFactor.h>
-#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtdynamics/utils/Slice.h>
 #include <gtsam/linear/Sampler.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
@@ -204,9 +203,9 @@ NonlinearFactorGraph Kinematics::contactHeightObjectives(
 
   for (const PointOnLink& cp : contact_points) {
     if (!cp.isGround) continue;
-    graph.emplace_shared<ContactHeightFactor>(
-        PoseKey(cp.link->id(), slice.k), p_.cp_cost_model, cp.point, gravity,
-        ground_plane_height);
+    graph.emplace_shared<ContactHeightFactor>(PoseKey(cp.link->id(), slice.k),
+                                              p_.cp_cost_model, cp.point,
+                                              gravity, ground_plane_height);
   }
 
   return graph;
@@ -327,12 +326,12 @@ NonlinearFactorGraph Kinematics::jointAngleLimits<Slice>(
     // Override URDF limits for joints listed in p_.joint_limit_overrides.
     auto it = p_.joint_limit_overrides.find(joint->key());
     const auto& limits = joint->parameters().scalar_limits;
-    const double lower =
-        (it != p_.joint_limit_overrides.end()) ? it->second.first
-                                               : limits.value_lower_limit;
-    const double upper =
-        (it != p_.joint_limit_overrides.end()) ? it->second.second
-                                               : limits.value_upper_limit;
+    const double lower = (it != p_.joint_limit_overrides.end())
+                             ? it->second.first
+                             : limits.value_lower_limit;
+    const double upper = (it != p_.joint_limit_overrides.end())
+                             ? it->second.second
+                             : limits.value_upper_limit;
     graph.add(JointLimitFactor(JointAngleKey(joint->id(), slice.k),
                                gtsam::noiseModel::Isotropic::Sigma(1, 0.001),
                                lower, upper, 0.04));
@@ -411,9 +410,10 @@ Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
 }
 
 template <>
-gtsam::Values Kinematics::inverse<Slice>(
-    const Slice& slice, const Robot& robot, const PoseGoals& pose_goals,
-    const gtsam::Values& joint_priors, bool pose_goals_as_constraints) const {
+gtsam::Values Kinematics::inverse<Slice>(const Slice& slice, const Robot& robot,
+                                         const PoseGoals& pose_goals,
+                                         const gtsam::Values& joint_priors,
+                                         bool pose_goals_as_constraints) const {
   auto graph = this->graph(slice, robot);
 
   // Add prior on joint angles to prefer solution close to our initial estimates

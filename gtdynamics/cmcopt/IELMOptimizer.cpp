@@ -161,7 +161,7 @@ void IELMOptimizer::rememberMode(const IELMIterationDetails &iteration) const {
       const auto &constraints = *manifold.iConstraints();
       Vector residuals(constraints.size());
       for (size_t i = 0; i < constraints.size(); ++i)
-        residuals(i) = constraints.at(i)->unwhitenedExpr(manifold.values())(0);
+        residuals(i) = manifold.inequalityResidual(i)(0);
       modeStartResiduals_.emplace(key, std::move(residuals));
     }
   }
@@ -190,9 +190,7 @@ bool IELMOptimizer::checkModeChange(
     std::optional<size_t> selected;
     for (size_t index : candidate->second) {
       if (manifold.activeIndices().count(index)) continue;
-      const double residual =
-          manifold.iConstraints()->at(index)->unwhitenedExpr(manifold.values())(
-              0);
+      const double residual = manifold.inequalityResidual(index)(0);
       const double rate = modeStartResiduals_.at(key)(index) / residual;
       if (rate > best) {
         best = rate;

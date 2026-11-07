@@ -11,6 +11,7 @@
  * @authors Yetong Zhang, Alejandro Escontrela
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtsam/base/VectorConstants.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
@@ -18,7 +19,6 @@
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/base/Testable.h>
@@ -131,8 +131,8 @@ TEST(dynamicsFactorGraph_FD, simple_urdf_eq_mass) {
     graph.addPrior<Vector6>(TwistKey(i, t), gtsam::Z_6x1,
                             graph_builder.opt().bv_cost_model);
   }
-  Initializer initializer;
-  gtsam::GaussNewtonOptimizer optimizer(graph, initializer.ZeroValues(robot, t));
+  ZeroSliceInitializer initializer(robot);
+  gtsam::GaussNewtonOptimizer optimizer(graph, initializer.run(t));
   Values result = optimizer.optimize();
 
   gtsam::Vector actual_qAccel = DynamicsGraph::jointAccels(robot, result, t);
@@ -173,8 +173,8 @@ TEST(dynamicsFactorGraph_FD, four_bar_linkage_pure) {
                                                  kGroundHeight);
   graph.add(prior_factors);
 
-  Initializer initializer;
-  Values init_values = initializer.ZeroValues(robot, 0);
+  ZeroSliceInitializer initializer(robot);
+  Values init_values = initializer.run(0);
 
   // test the four bar linkage FD in the free-floating scenario
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
@@ -218,8 +218,8 @@ TEST(dynamicsFactorGraph_FD, jumping_robot) {
   graph.add(graph_builder.forwardDynamicsPriors(robot, 0, known_values));
 
   // test jumping robot FD
-  Initializer initializer;
-  gtsam::GaussNewtonOptimizer optimizer(graph, initializer.ZeroValues(robot, 0));
+  ZeroSliceInitializer initializer(robot);
+  gtsam::GaussNewtonOptimizer optimizer(graph, initializer.run(0));
   Values result = optimizer.optimize();
 
   // check acceleration
@@ -343,8 +343,8 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
     }
   }
 
-  Initializer initializer;
-  Values init_values = initializer.ZeroValuesTrajectory(robot, num_steps);
+  Values init_values =
+      gtdynamics::ZeroTrajectoryInitializer(robot).run(num_steps);
 
   // test Euler
   auto euler_graph = graph_builder.trajectoryFG(robot, num_steps, dt,
@@ -393,7 +393,7 @@ TEST(dynamicsTrajectoryFG, simple_urdf_eq_mass) {
                                          graph_builder.opt().time_cost_model));
   mp_prior_graph.add(PriorFactor<double>(PhaseKey(1), dt1,
                                          graph_builder.opt().time_cost_model));
-  init_values = initializer.ZeroValuesTrajectory(robot, num_steps, 2);
+  init_values = gtdynamics::ZeroTrajectoryInitializer(robot).run(num_steps, 2);
 
   // multi-phase Euler
   NonlinearFactorGraph mp_euler_graph = graph_builder.multiPhaseTrajectoryFG(
@@ -476,8 +476,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rr) {
                               gtsam::noiseModel::Isotropic::Sigma(1, 1)));
 
   // Set initial values.
-  Initializer initializer;
-  Values init_values = initializer.ZeroValues(robot, 0, 0.0, contact_points);
+  ZeroSliceInitializer initializer(robot);
+  Values init_values = initializer.run(0, contact_points);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);
@@ -536,8 +536,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_biped) {
                               gtsam::noiseModel::Isotropic::Sigma(1, 1)));
 
   // Set initial values.
-  Initializer initializer;
-  Values init_values = initializer.ZeroValues(biped, 0, 0.0, contact_points);
+  ZeroSliceInitializer initializer(biped);
+  Values init_values = initializer.run(0, contact_points);
 
   // Regression on graph and values size.
   EXPECT_LONGS_EQUAL(74, graph.size());
@@ -613,8 +613,8 @@ TEST(dynamicsFactorGraph_Contacts, dynamics_graph_simple_rrr) {
                               gtsam::noiseModel::Isotropic::Sigma(1, 0.1)));
 
   // Set initial values.
-  Initializer initializer;
-  Values init_values = initializer.ZeroValues(robot, 0, 0.0, contact_points);
+  ZeroSliceInitializer initializer(robot);
+  Values init_values = initializer.run(0, contact_points);
 
   // Optimize!
   gtsam::GaussNewtonOptimizer optimizer(graph, init_values);

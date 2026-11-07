@@ -103,7 +103,9 @@ jobs:
             BUILD_PYTHON=OFF
             PYTHON_ARGS=""
           fi
+          # GTDynamics uses stable GTSAM APIs; unstable Python wrappers are not needed.
           cmake -D GTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+                -D GTSAM_BUILD_UNSTABLE=OFF \
                 -D GTSAM_BUILD_WITH_MARCH_NATIVE=${MARCH_NATIVE} \
                 -D GTSAM_BUILD_PYTHON=${BUILD_PYTHON} \
                 -D GTSAM_WITH_TBB=OFF \

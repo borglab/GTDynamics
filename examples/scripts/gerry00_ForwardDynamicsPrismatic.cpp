@@ -11,10 +11,10 @@
  * @authors Frank Dellaert, Alejandro Escontrela, Gerry Chen
  */
 
+#include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -65,8 +65,9 @@ int main(int argc, char** argv) {
   kdfg.add(fd_priors);
 
   // Initialize solution.
-  Initializer initializer;
-  auto init_values = initializer.ZeroValuesTrajectory(simple_rpr, T, 0);
+
+  auto init_values =
+      gtdynamics::ZeroTrajectoryInitializer(simple_rpr).run(T, 0);
 
   // Compute the forward dynamics.
   gtsam::LevenbergMarquardtOptimizer optimizer(kdfg, init_values);

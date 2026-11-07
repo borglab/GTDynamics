@@ -1,10 +1,11 @@
+#include <gtdynamics/dynamics/ZeroInitializer.h>
+#include <gtdynamics/kinematics/KinematicInitializer.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/utils/GraphUtils.h>
-#include <gtdynamics/utils/Initializer.h>
 
 namespace gtdynamics {
 using namespace gtsam;
@@ -291,7 +292,6 @@ Values IEVision60Robot::getInitValuesTrajectory(
     const std::string initialization_technique) const {
   // Initialize solution.
   Values init_vals;
-  Initializer initializer;
 
   // solve 1 step value
   Values init_values_0 = getInitValuesStep(0, base_pose_init);
@@ -305,9 +305,10 @@ Values IEVision60Robot::getInitValuesTrajectory(
     }
   } else if (initialization_technique == "interp") {
     /// interpolate base pose
-    auto interp_values = initializer.InitializeSolutionInterpolationMultiPhase(
-        robot, "body", base_pose_init, des_poses, des_poses_t, dt, 0.0,
-        contact_points);
+    auto interp_values =
+        gtdynamics::MultiPhaseInterpolationInitializer(robot, 0.0)
+            .run("body", base_pose_init, des_poses, des_poses_t, dt,
+                 contact_points);
     Values base_link_values;
     for (int t = 0; t <= num_steps; t++) {
       base_link_values.insert(PoseKey(base_id, t),

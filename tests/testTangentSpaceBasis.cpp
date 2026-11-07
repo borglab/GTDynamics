@@ -18,7 +18,6 @@
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/cmopt/TangentSpaceBasis.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
-#include <gtdynamics/utils/Initializer.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>

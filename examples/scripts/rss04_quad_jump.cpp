@@ -16,6 +16,8 @@
 
 #include <filesystem>
 
+#include "CmcBenchmark.h"
+
 using namespace gtdynamics;
 using namespace gtsam;
 using namespace quadruped_forward_jump_land;
@@ -228,12 +230,18 @@ SecondPhaseOptimization(const Values values, std::string exp_name) {
   IELMParams ie_params = NominalIELMParams();
   ie_params.lmParams.setLinearSolverType("MULTIFRONTAL_QR");
   // ie_params.boundaryApproachRateThreshold = 10;
-  return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name, false);
+  return cmc_benchmark::measure(problem, "LM", [&] {
+    return OptimizeIE_CMCOptLM(problem, ie_params, GetIECMParamsCR(), exp_name,
+                               false);
+  });
 }
 
 /* ************************************************************************* */
 void TrajectoryOptimization() {
-  auto [problem, vision60_multi_phase, params] = CreateProblem();
+  auto setup = CreateProblem();
+  auto& problem = std::get<0>(setup);
+  auto& vision60_multi_phase = std::get<1>(setup);
+  [[maybe_unused]] auto& params = std::get<2>(setup);
   EvaluateAndExportInitValues(problem, *vision60_multi_phase, scenario_folder);
 
   IEResultSummary soft_summary;
@@ -258,7 +266,9 @@ void TrajectoryOptimization() {
     LevenbergMarquardtParams lmParams;
     lmParams.setlambdaUpperBound(1e10);
     lmParams.setVerbosityLM("SUMMARY");
-    std::tie(soft_summary, soft_iters_details) = OptimizeIE_Soft(problem, lmParams, 1e4, evaluate_projected);
+    std::tie(soft_summary, soft_iters_details) = cmc_benchmark::other([&] {
+      return OptimizeIE_Soft(problem, lmParams, 1e4, evaluate_projected);
+    });
   }
 
 
@@ -272,7 +282,10 @@ void TrajectoryOptimization() {
     penaltyParams->lmParams.setVerbosityLM("SUMMARY");
     penaltyParams->lmParams.setlambdaUpperBound(1e10);
     penaltyParams->lmParams.setMaxIterations(30);
-    std::tie(penalty_summary, penalty_iters_details) = OptimizeIE_Penalty(problem, penaltyParams, evaluate_projected);
+    std::tie(penalty_summary, penalty_iters_details) =
+        cmc_benchmark::other([&] {
+          return OptimizeIE_Penalty(problem, penaltyParams, evaluate_projected);
+        });
   }
 
   if (run_augl) {
@@ -293,8 +306,10 @@ void TrajectoryOptimization() {
       al_params->store_iter_details = true;
       al_params->store_lm_details = true;
     }
-    std::tie(augl_summary, augl_iters_details) =
-        OptimizeIE_AugmentedLagrangian(problem, al_params, evaluate_projected);
+    std::tie(augl_summary, augl_iters_details) = cmc_benchmark::other([&] {
+      return OptimizeIE_AugmentedLagrangian(problem, al_params,
+                                            evaluate_projected);
+    });
   }
 
   // SQP method
@@ -311,20 +326,26 @@ void TrajectoryOptimization() {
     sqp_params->lm_params.setlambdaUpperBound(1e20);
     sqp_params->lm_params.linearSolverType =
         gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-    std::tie(sqp_summary, sqp_iters_details) = OptimizeIE_SQP(problem, sqp_params, evaluate_projected);
+    std::tie(sqp_summary, sqp_iters_details) = cmc_benchmark::other([&] {
+      return OptimizeIE_SQP(problem, sqp_params, evaluate_projected);
+    });
   }
 
   // IP method
   if (run_ip) {
     std::cout << "optimize IP...\n";
-    std::tie(ip_summary, ip_iters_details) = OptimizeIE_IPOPT(problem, evaluate_projected);
+    std::tie(ip_summary, ip_iters_details) = cmc_benchmark::other(
+        [&] { return OptimizeIE_IPOPT(problem, evaluate_projected); });
   }
 
   // CM-Opt with penalty for i-constraints
   if (run_cmopt) {
   std::cout << "optimize CMOpt(E-LM)...\n";
   std::tie(cmopt_summary, cmopt_iters_details) =
-      OptimizeIE_CMOpt(problem, NominalIELMParams(), GetIECMParamsSP(), 1e4, evaluate_projected);
+      cmc_benchmark::measure(problem, "CM", [&] {
+        return OptimizeIE_CMOpt(problem, NominalIELMParams(), GetIECMParamsSP(),
+                                1e4, evaluate_projected);
+      });
   }
 
 
@@ -341,8 +362,11 @@ void TrajectoryOptimization() {
   // IELM standard projection
   if (run_cmcopt) {
   std::cout << "optimize CMOpt(IE-LM-SP)...\n";
-  std::tie(cmcopt_summary, cmcopt_iters_details) =
-      OptimizeIE_CMCOptLM(problem, NominalIELMParams(), GetIECMParamsSP(), "CMC-Opt", evaluate_projected);
+  std::tie(cmcopt_summary,
+           cmcopt_iters_details) = cmc_benchmark::measure(problem, "LM", [&] {
+    return OptimizeIE_CMCOptLM(problem, NominalIELMParams(), GetIECMParamsSP(),
+                               "CMC-Opt", evaluate_projected);
+  });
   }
 
 
@@ -423,6 +447,11 @@ void TrajectoryOptimization() {
 }
 
 int main(int argc, char **argv) {
-  TrajectoryOptimization();
-  return 0;
+  cmc_benchmark::configure(argc, argv);
+  try {
+    TrajectoryOptimization();
+    return 0;
+  } catch (const cmc_benchmark::Finished&) {
+    return 0;
+  }
 }

@@ -19,12 +19,11 @@
 
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
-#include <gtsam/constrained/ConstrainedOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
+#include <gtsam/constrained/ConstrainedOptimizer.h>
 
 namespace gtdynamics {
 using namespace gtsam;
-
 
 struct IELMState;
 struct IELMTrial;
@@ -43,13 +42,9 @@ public:
   size_t iterations = 0;
   size_t totalInnerIterations = 0;
   VectorValues gradient;
-  IndexSetMap gradientBlockingIndicesMap; // blocking indices map by neg grad
+  IndexSetMap gradientBlockingIndicesMap;  // blocking indices map by neg grad
   GaussianFactorGraph::shared_ptr baseLinear;
   GaussianFactorGraph::shared_ptr linearManifoldGraph;
-  LinearInequalityConstraints linearBaseInequalityConstraints;
-  LinearInequalityConstraints linearManifoldInequalityConstraints;
-  IndexSetMapTranslator linearInequalityIndexTranslator;
-
   /// Default constructor.
   IELMState() {}
 
@@ -87,7 +82,6 @@ protected:
   void construct(const NonlinearFactorGraph &graph,
                  const NonlinearFactorGraph &manifold_graph);
 
-  void linearizeIConstraints();
 
   /// Compute gradient and identify the blocking constraints by neg grad.
   void computeGradient(const NonlinearFactorGraph &manifold_graph);
@@ -121,59 +115,48 @@ struct IELMTrial {
     LinearUpdate() {}
 
     /** Compute a damped LM step and its blocking inequality constraints.
-     * First find a feasible step, then optionally refine it with GTSAM's
-     * active-set QP solver. Lift the result to ambient tangent coordinates and
-     * record the predicted reduction in the undamped cost model.
+     * First find a feasible step, then optionally refine its working set.
+     * Every global solve uses soft costs in local working-face coordinates.
+     * Lift the result to ambient tangent coordinates and record the predicted
+     * reduction in the undamped cost model.
      */
     LinearUpdate(const double &_lambda, const NonlinearFactorGraph &graph,
                  const IELMState &state, const IELMParams &params);
 
+    /// Construct a zero step for a boundary-mode change.
     static LinearUpdate zero(const IELMState &state);
 
-    /** Generate an initial estimate for the IQP problem using active
-     * constraints that include the blocking constraint for neg-gradient.
-     * @return [delta, blocking_indices, numSolves, solve_sucessful]
+    /** Find a feasible step by adding blocking blocks to the initial working
+     * set from the projected negative gradient. Each solve uses local face
+     * coordinates; this approximation does not release faces to certify a QP
+     * optimum. Returns [delta, blockingIndices, numSolves, solveSuccessful].
      */
-    static std::tuple<VectorValues, IndexSet, size_t, bool>
-    initialEstimate(const GaussianFactorGraph &quadratic_cost,
-                 const IELMState &state,
-                 const LevenbergMarquardtParams &params);
+    static std::tuple<VectorValues, IndexSetMap, size_t, bool> initialEstimate(
+        const GaussianFactorGraph &quadraticCost, const IELMState &state,
+        const LevenbergMarquardtParams &params);
 
-    /** Check that the generated linear update is indeed a valid solution to the
-     * IQP problem (using base variables).
-     * (1) All linear i-constraints are satisfied.
-     * (2) Blocking linear i-constraints are active at delta.
-     * (3) (optional) blocking constraints fully block the neg-gradient, e.g.,
-     * gradient can be expressed as linear combination of bllcking constraint
-     * jacobians.
-     * @param state State of the optimizer.
-     * @param tangentVector Solution to the IQP problem.
-     * @param blocking_indices Indices of constraints that are active in IQP
-     * w.r.t. delta.
+    /** Check directional feasibility and selected-face tightness in component
+     * coordinates. This check does not certify QP stationarity or optimality.
      */
     static bool checkSolutionValid(const IELMState &state,
-                                   const VectorValues &tangentVector,
-                                   const IndexSet &blocking_indices);
+                                   const VectorValues &delta,
+                                   const IndexSetMap &blockingIndices);
 
-  protected:
-    /** Refine the feasible delta and blocking indices with GTSAM's QP solver.
+   protected:
+    /** Refine delta with component-local faces and unconstrained global solves.
      * Updates delta, blockingIndices, numSolves, and solveSuccessful. Numerical
      * failure, infeasible initialization, or iteration exhaustion sets
      * solveSuccessful to false.
      */
     void refineIQPStep(const GaussianFactorGraph &dampedSystem,
-                       const LinearInequalityConstraints &constraints,
-                       IndexSet &blockingIndices, size_t maxIterations);
+                       const IELMState &state, IndexSetMap &blockingIndices,
+                       const LevenbergMarquardtParams &params,
+                       size_t maxIterations);
 
-    /** Translate GTSAM's row working set into fully active constraint blocks.
-     * Only those blocks can be imposed as equalities during retraction.
+    /** Retain the working set, lift delta, and record undamped cost reduction.
      */
-    static IndexSet fullyActiveConstraintIndices(
-        const LinearInequalityConstraints &constraints,
-        const std::vector<bool> &activeRows);
-
-    /** Decode the working set, lift delta, and record undamped cost reduction. */
-    void recordSolution(const IELMState &state, const IndexSet &blockingIndices);
+    void recordSolution(const IELMState &state,
+                        const IndexSetMap &blockingIndices);
 
     /** Following functions are adapted from LMOptimizerState. */
     mutable std::vector<LMCachedModel> noiseModelCache;
@@ -281,4 +264,4 @@ public:
                   const std::string &trial_file_path) const;
 };
 
-} // namespace gtdynamics
+}  // namespace gtdynamics

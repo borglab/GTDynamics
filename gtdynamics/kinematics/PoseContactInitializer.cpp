@@ -3,12 +3,17 @@
  * Atlanta, Georgia 30332-0415. All Rights Reserved.
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
+/**
+ * @file PoseContactInitializer.cpp
+ * @brief Initialize floating-root poses from shared sole-pose landmarks.
+ * @author GTDynamics contributors
+ */
 #include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/kinematics/ContactHeightFactor.h>
+#include <gtdynamics/kinematics/ContactInitializer.h>
 #include <gtdynamics/kinematics/ContactPoseEqualityFactor.h>
+#include <gtdynamics/kinematics/PoseContactInitializer.h>
 #include <gtdynamics/utils/ContactInitializationFactors.h>
-#include <gtdynamics/utils/Initializer.h>
-#include <gtdynamics/utils/PoseContactInitializer.h>
 #include <gtdynamics/utils/Trajectory.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
@@ -108,38 +113,46 @@ std::map<size_t, std::vector<TrackedPoseContact>> contactPoseFrames(
   return frames;
 }
 
-std::vector<Slice> doubleSupportSlices(const Trajectory& trajectory, double dt,
-                                       double longPhaseSeconds,
-                                       size_t contactBuffer) {
-  require(std::isfinite(dt) && dt > 0 && std::isfinite(longPhaseSeconds) &&
+std::vector<Slice> contactInitializationSlices(const Trajectory& trajectory,
+                                               double dt,
+                                               double maxSliceInterval,
+                                               size_t contactBuffer,
+                                               double longPhaseSeconds) {
+  require(std::isfinite(dt) && dt > 0 && std::isfinite(maxSliceInterval) &&
+              maxSliceInterval >= dt && std::isfinite(longPhaseSeconds) &&
               longPhaseSeconds > 0,
-          "invalid double-support sampling period");
-
-  // Validate the schedule and material-frame identities using the common path.
-  contactPoseFrames(trajectory);
+          "invalid contact sampling interval");
+  contactPoseFrames(
+      trajectory);  // Validate phase bounds and contact identities.
 
   std::set<size_t> selected;
   for (const auto& phase : trajectory.phases()) {
-    size_t ground = 0;
-    for (const auto& contact : phase.constraintSpec()->contactPoses())
-      ground += contact.isGround;
-    if (ground != 2) continue;
-
-    // Duration here is the number of source samples times dt. A short phase
-    // contributes its central sample (the earlier one for an even sample
-    // count). This preserves even a one-sample double-support phase; it does
-    // not certify that either foot is flat or motionless at the selected
-    // instant.
+    if (phase.constraintSpec()->contactPoses().empty()) continue;
     const size_t width = phase.k_end - phase.k_start;
-    if ((width + 1) * dt <= longPhaseSeconds + 1e-12) {
+    if ((width + 1) * dt <=
+        std::min(longPhaseSeconds, maxSliceInterval) + 1e-12) {
+      // Preserve even a one-sample support phase, including a short handover.
       selected.insert(phase.k_start + width / 2);
-    } else {
-      // For a longer phase, retain both ends of its buffered interior. Capping
-      // the buffer avoids an empty interior; the set also removes duplicates.
-      const size_t buffer = std::min(contactBuffer, width / 2);
-      selected.insert(phase.k_start + buffer);
-      selected.insert(phase.k_end - buffer);
+      continue;
     }
+
+    // Buffer each phase inward, capping the margin to retain a nonempty
+    // interior. Stance identity is still determined on the original trajectory.
+    const size_t buffer = std::min(contactBuffer, width / 2);
+    const size_t first = phase.k_start + buffer, last = phase.k_end - buffer;
+    const size_t span = last - first;
+    if (span == 0) {
+      selected.insert(first);
+      continue;
+    }
+    const size_t maxSteps = std::max<size_t>(
+        1, size_t(std::min(double(span),
+                           std::floor(maxSliceInterval / dt + 1e-12))));
+    const size_t intervals = (span + maxSteps - 1) / maxSteps;
+    // Integer nearest rounding spreads gaps evenly; every gap <= maxSteps.
+    // Ties choose the later sample. No interpolated sample is synthesized.
+    for (size_t i = 0; i <= intervals; ++i)
+      selected.insert(first + (i * span + intervals / 2) / intervals);
   }
 
   std::vector<Slice> result;
@@ -147,12 +160,16 @@ std::vector<Slice> doubleSupportSlices(const Trajectory& trajectory, double dt,
   return result;
 }
 
-gtsam::Values Initializer::InitializeSolutionContactPoses(
-    const Robot& robot, const std::string& rootLinkName,
-    const gtsam::Pose3& initialPose, const gtsam::Values& measuredJoints,
-    const Trajectory& trajectory, double dt,
-    const pose_contact_init::Options& options,
-    pose_contact_init::Result* diagnostics, size_t contactBuffer) const {
+PoseContactInitializer::PoseContactInitializer(
+    const Robot& robot, const pose_contact_init::Options& options,
+    size_t contactBuffer)
+    : robot_(robot), options_(options), contactBuffer_(contactBuffer) {}
+
+gtsam::Values PoseContactInitializer::run(
+    const std::string& rootLinkName, const gtsam::Pose3& initialPose,
+    const gtsam::Values& measuredJoints, const Trajectory& trajectory,
+    double dt, pose_contact_init::Result* diagnostics,
+    const std::vector<Slice>& selectedSlices) const {
   using gtsam::Pose3;
   using gtsam::Values;
   using Clock = std::chrono::steady_clock;
@@ -164,84 +181,47 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
   // Options.
   require(std::isfinite(dt) && dt > 0, "positive source dt required");
   for (double sigma :
-       {options.rotationSigma, options.translationSigma, options.groundSigma,
-        options.normalSigma, options.uprightSigma,
-        options.betweenTranslationSigma, options.betweenRotationSigma})
+       {options_.rotationSigma, options_.translationSigma, options_.groundSigma,
+        options_.normalSigma, options_.uprightSigma,
+        options_.betweenTranslationSigma, options_.betweenRotationSigma})
     require(std::isfinite(sigma) && sigma > 0,
             "positive finite noise scales required");
-  require(options.maxIterations > 0 && initialPose.matrix().allFinite(),
+  require(
+      std::isfinite(options_.maxSliceInterval) && options_.maxSliceInterval > 0,
+      "positive finite sampling interval required");
+  require(options_.maxIterations > 0 && initialPose.matrix().allFinite(),
           "invalid optimizer options or gauge");
-  const auto root = robot.link(rootLinkName);
+  const auto root = robot_.link(rootLinkName);
   require(bool(root) && !root->isFixed(), "floating root required");
 
-  // Keep the original association for the whole trajectory. `trusted` is a
-  // separate observation mask: buffering can remove a contact observation at a
-  // slice without changing which material foothold later observations refer to.
+  // Associate footholds on the whole trajectory before sampling. Skipping
+  // slices must neither split continuing stances nor merge separate footholds.
   const auto frames = contactPoseFrames(trajectory);
-  auto trusted = frames;
-  std::map<size_t, std::pair<size_t, size_t>> spans;
   std::map<size_t, PoseOnLink> definitions;
   for (const auto& [k, contacts] : frames)
     for (const auto& c : contacts) {
-      require(robot.link(c.contact.link->name()) == c.contact.link,
+      require(robot_.link(c.contact.link->name()) == c.contact.link,
               "foreign contact link");
-      spans.emplace(c.stance, std::make_pair(k, k)).first->second.second = k;
       definitions.emplace(c.stance, c.contact);
     }
 
   // Select source indices, not newly synthesized times. Explicit selection has
-  // already applied its policy (for example, double-support-only sampling), so
+  // already applied its policy (including phase buffering), so
   // it must not be buffered a second time.
   std::set<size_t> selected;
-  if (!options.selectedSlices.empty()) {
-    require(contactBuffer == 0, "explicit slices cannot be buffered again");
-    for (const auto& slice : options.selectedSlices) {
+  if (!selectedSlices.empty()) {
+    require(contactBuffer_ == 0, "explicit slices cannot be buffered again");
+    for (const auto& slice : selectedSlices) {
       require(frames.count(slice.k) && !frames.at(slice.k).empty() &&
                   (selected.empty() || slice.k > *selected.rbegin()),
               "explicit slices must be ordered, unique, and have contact");
       selected.insert(slice.k);
     }
   } else {
-    if (contactBuffer) {
-      // Trim each uninterrupted stance as a whole, not each phase separately.
-      // Retain both interior endpoints, then mask boundary observations from
-      // any additional selected slices that happen to include those boundaries.
-      for (const auto& [stance, span] : spans) {
-        const auto [first, last] = span;
-        require(last > first && contactBuffer <= (last - first - 1) / 2,
-                "stance too short for contact buffer");
-        selected.insert(first + contactBuffer);
-        selected.insert(last - contactBuffer);
-      }
-
-      for (auto& [k, contacts] : trusted) {
-        const size_t sliceIndex = k;
-        contacts.erase(
-            std::remove_if(contacts.begin(), contacts.end(),
-                           [&](const auto& c) {
-                             const auto [first, last] = spans.at(c.stance);
-                             return sliceIndex - first < contactBuffer ||
-                                    last - sliceIndex < contactBuffer;
-                           }),
-            contacts.end());
-      }
-    }
-
-    // The legacy automatic policy supplements stance endpoints with supported
-    // phase boundaries and roughly one-second samples in long phases. Explicit
-    // selection bypasses this entire policy, keeping the requested graph
-    // sparse.
-    for (const auto& phase : trajectory.phases()) {
-      for (size_t k : {phase.k_start, phase.k_end})
-        if (!trusted.at(k).empty()) selected.insert(k);
-      const size_t stride =
-          size_t(std::max(1.0, std::min(double(phase.k_end - phase.k_start),
-                                        std::floor((1.0 + 1e-8) / dt))));
-      for (size_t k = phase.k_start; phase.k_end - k > stride;) {
-        k += stride;
-        if (!trusted.at(k).empty()) selected.insert(k);
-      }
-    }
+    for (const auto& slice : contactInitializationSlices(
+             trajectory, dt, std::max(dt, options_.maxSliceInterval),
+             contactBuffer_))
+      selected.insert(slice.k);
   }
   require(!selected.empty(), "no active contact frames");
 
@@ -257,11 +237,11 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
   std::vector<std::vector<Observation>> observations;
   pose_contact_init::Result result;
   for (size_t k : selected) {
-    auto known = measuredSlice(robot, measuredJoints, k);
+    auto known = measuredSlice(robot_, measuredJoints, k);
     InsertPose(&known, root->id(), k, Pose3());
-    const auto fk = robot.forwardKinematics(known, k, rootLinkName);
+    const auto fk = robot_.forwardKinematics(known, k, rootLinkName);
     std::vector<Observation> row;
-    for (const auto& c : trusted.at(k))
+    for (const auto& c : frames.at(k))
       row.push_back({c.stance, c.contact.predict(fk, k)});
     observations.push_back(row);
     result.selectedSlices.emplace_back(k);
@@ -313,7 +293,7 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
         for (const auto& o : observations[i])
           if (contacts.count(o.stance)) {
             Pose3 pose = contacts.at(o.stance) * o.local.inverse();
-            if (options.initializeUpright) {
+            if (options_.initializeUpright) {
               const auto& [previous, local] = contactReferences.at(o.stance);
               const auto relative = local * o.local.inverse();
               // Only yaw is carried from this relative root observation.
@@ -343,7 +323,7 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
     // Only explicitly enabled motion priors allow us to bridge it; the seed
     // assumes zero motion across that bridge, matching the factors added below.
     if (!changed && roots.size() < observations.size() &&
-        options.addBetweenFactors) {
+        options_.addBetweenFactors) {
       for (size_t i = 1; i < observations.size(); ++i)
         if (!roots.count(i) && roots.count(i - 1)) {
           roots.emplace(i, roots.at(i - 1));
@@ -359,9 +339,9 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
   // Pose3 residual order is rotation followed by translation. The translational
   // part uses Pose3 local coordinates, not a separate world-XYZ subtraction.
   gtsam::Vector6 sigmas;
-  sigmas << options.rotationSigma, options.rotationSigma, options.rotationSigma,
-      options.translationSigma, options.translationSigma,
-      options.translationSigma;
+  sigmas << options_.rotationSigma, options_.rotationSigma,
+      options_.rotationSigma, options_.translationSigma,
+      options_.translationSigma, options_.translationSigma;
   const auto noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
   gtsam::NonlinearFactorGraph graph;
   Values seed;
@@ -393,9 +373,9 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
   // Optional zero-motion priors couple every pair of selected roots, not just
   // disconnected components. They are explicit modeling assumptions; there is
   // no measured root motion or IMU integration behind these factors.
-  if (options.addBetweenFactors) {
-    sigmas.head<3>().setConstant(options.betweenRotationSigma);
-    sigmas.tail<3>().setConstant(options.betweenTranslationSigma);
+  if (options_.addBetweenFactors) {
+    sigmas.head<3>().setConstant(options_.betweenRotationSigma);
+    sigmas.tail<3>().setConstant(options_.betweenTranslationSigma);
     const auto motion = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
     for (size_t i = 1; i < observations.size(); ++i) {
       if (i == 1)
@@ -410,15 +390,15 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
   // Reuse the point-contact initializer's attitude factor. The first root is
   // fixed exactly, so its constant upright cost is omitted. Heading and all
   // translation components remain free; this is a soft roll/pitch assumption.
-  if (options.addUprightFactors)
+  if (options_.addUprightFactors)
     for (size_t i = 1; i < observations.size(); ++i)
       graph.emplace_shared<contact_init::UprightFactor>(rootKey(i),
-                                                        options.uprightSigma);
+                                                        options_.uprightSigma);
 
   // Ground objectives act once per landmark. Unless a height was supplied, use
   // the mean seeded ground-contact height at the anchored first selected slice.
   // Height and sole-normal alignment leave world XY and yaw unconstrained.
-  if (options.addGroundFactors) {
+  if (options_.addGroundFactors) {
     double height = 0;
     size_t count = 0;
     for (const auto& o : observations.front())
@@ -426,18 +406,18 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
         height += contacts.at(o.stance).z();
         ++count;
       }
-    height = options.groundHeight.value_or(count ? height / count : 0.0);
+    height = options_.groundHeight.value_or(count ? height / count : 0.0);
     require(std::isfinite(height), "invalid ground height");
     for (const auto& [stance, pose] : contacts)
       if (definitions.at(stance).isGround) {
         graph.emplace_shared<ContactHeightFactor>(
             contactKey(stance),
-            gtsam::noiseModel::Isotropic::Sigma(1, options.groundSigma),
+            gtsam::noiseModel::Isotropic::Sigma(1, options_.groundSigma),
             gtsam::Point3::Zero(), gtsam::Vector3(0, 0, -1), height);
-        if (options.addNormalFactors)
+        if (options_.addNormalFactors)
           graph.emplace_shared<ContactNormalFactor>(
               contactKey(stance), Pose3(), gtsam::Vector3::UnitZ(),
-              gtsam::noiseModel::Isotropic::Sigma(3, options.normalSigma));
+              gtsam::noiseModel::Isotropic::Sigma(3, options_.normalSigma));
       }
   }
 
@@ -478,16 +458,16 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
 
   auto snapshot = capture(seed, 0);
   result.objectiveInitial = snapshot.objective;
-  if (options.recordHistory) result.history.push_back(snapshot);
+  if (options_.recordHistory) result.history.push_back(snapshot);
 
   // Record each completed outer LM iteration. Internal damping trials are not
   // separate snapshots. Small objective improvement marks numerical
   // convergence; reaching maxIterations leaves converged=false, even if the fit
   // is finite.
   gtsam::LevenbergMarquardtParams params;
-  params.setMaxIterations(options.maxIterations);
+  params.setMaxIterations(options_.maxIterations);
   gtsam::LevenbergMarquardtOptimizer optimizer(graph, seed, params);
-  for (size_t i = 0; i < options.maxIterations; ++i) {
+  for (size_t i = 0; i < options_.maxIterations; ++i) {
     const double before = optimizer.error();
     optimizer.iterate();
     ++result.iterations;
@@ -495,7 +475,7 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
         std::isfinite(optimizer.error()) && optimizer.error() <= before + 1e-8,
         "invalid LM cost");
     snapshot = capture(optimizer.values(), result.iterations);
-    if (options.recordHistory) result.history.push_back(snapshot);
+    if (options_.recordHistory) result.history.push_back(snapshot);
 
     // LM can return unchanged values after rejecting all trial steps, including
     // when its internal relative-error test stops the damping search. That is
@@ -541,9 +521,9 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
   Values output;
   size_t interval = 0, sparseIndex = 0;
   for (const auto& [k, active] : frames) {
-    if (!options.interpolateOutput && !selected.count(k)) continue;
+    if (!options_.interpolateOutput && !selected.count(k)) continue;
     Pose3 pose;
-    if (!options.interpolateOutput) {
+    if (!options_.interpolateOutput) {
       pose = result.poses.at(sparseIndex++);
     } else {
       // Legacy dense output interpolates between selected roots and holds the
@@ -562,26 +542,26 @@ gtsam::Values Initializer::InitializeSolutionContactPoses(
       }
     }
 
-    auto known = measuredSlice(robot, measuredJoints, k);
+    auto known = measuredSlice(robot_, measuredJoints, k);
     InsertPose(&known, root->id(), k, pose);
-    const auto fk = robot.forwardKinematics(known, k, rootLinkName);
-    auto slice = ZeroValues(robot, k, 0.0);
-    slice.update(fk);
-    output.insert(slice);
+    const auto fk = robot_.forwardKinematics(known, k, rootLinkName);
+    output.insert(fk);
   }
 
   if (diagnostics) *diagnostics = std::move(result);
   return output;
 }
 
-gtsam::Values Initializer::InitializeSolutionPoseIK(
-    const Robot& robot, const std::string& rootLinkName,
+PoseIKInitializer::PoseIKInitializer(const Robot& robot, size_t maxIterations)
+    : robot_(robot), maxIterations_(maxIterations) {}
+
+gtsam::Values PoseIKInitializer::run(
+    const std::string& rootLinkName,
     const std::vector<gtsam::Pose3>& rootGuesses,
     const gtsam::Values& measuredJoints, const Trajectory& trajectory,
-    size_t maxIterations,
     const InitializationIterationCallback& iterationCallback) const {
   const auto frames = contactPoseFrames(trajectory);
-  require(rootGuesses.size() == frames.size() && maxIterations > 0,
+  require(rootGuesses.size() == frames.size() && maxIterations_ > 0,
           "IK root guesses must match slices");
 
   // IK solves a separate articulated configuration at every source slice.
@@ -597,14 +577,15 @@ gtsam::Values Initializer::InitializeSolutionPoseIK(
   for (const auto& [k, contacts] : frames) {
     // Guesses are in traversal order; variable keys retain the original slice
     // k.
-    auto known = measuredSlice(robot, measuredJoints, k);
-    InsertPose(&known, robot.link(rootLinkName)->id(), k,
+    auto known = measuredSlice(robot_, measuredJoints, k);
+    InsertPose(&known, robot_.link(rootLinkName)->id(), k,
                rootGuesses.at(ordinal++));
-    auto seed = robot.forwardKinematics(known, k, rootLinkName);
+    auto seed = robot_.forwardKinematics(known, k, rootLinkName);
 
-    auto graph = kinematics.graph(Slice(k), robot);
-    graph.add(kinematics.jointAngleObjectives(Slice(k), robot, measuredJoints));
-    graph.addPrior(PoseKey(robot.link(rootLinkName)->id(), k),
+    auto graph = kinematics.graph(Slice(k), robot_);
+    graph.add(
+        kinematics.jointAngleObjectives(Slice(k), robot_, measuredJoints));
+    graph.addPrior(PoseKey(robot_.link(rootLinkName)->id(), k),
                    rootGuesses.at(ordinal - 1),
                    gtsam::noiseModel::Isotropic::Sigma(6, 0.001));
 
@@ -631,11 +612,11 @@ gtsam::Values Initializer::InitializeSolutionPoseIK(
     // Callback iteration zero is the seed; subsequent callbacks are completed
     // outer LM iterations for this slice, not a whole-trajectory optimization.
     gtsam::LevenbergMarquardtParams params;
-    params.setMaxIterations(maxIterations);
+    params.setMaxIterations(maxIterations_);
     gtsam::LevenbergMarquardtOptimizer optimizer(graph, seed, params);
     if (iterationCallback)
       iterationCallback(k, 0, optimizer.error(), optimizer.values());
-    for (size_t i = 0; i < maxIterations; ++i) {
+    for (size_t i = 0; i < maxIterations_; ++i) {
       double before = optimizer.error();
       optimizer.iterate();
       if (iterationCallback)

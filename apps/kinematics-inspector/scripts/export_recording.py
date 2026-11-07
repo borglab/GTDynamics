@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# ----------------------------------------------------------------------------
+# GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+# Atlanta, Georgia 30332-0415. All Rights Reserved.
+# See LICENSE for the license information.
+# ----------------------------------------------------------------------------
+## @file export_recording.py
+# @brief Export kinematics estimates for offline replay.
+# @author GTDynamics contributors
 """Record the G1 example's actual initializer and CM-Opt iterates for static replay.
 
 All FK, optimization, residual evaluation, and COM/body conversion happen here.
@@ -302,15 +310,10 @@ def main() -> None:
         "--final-only", action="store_true", help="Keep only final results"
     )
     parser.add_argument(
-        "--double-support-slices",
-        action="store_true",
-        default=True,
-        help="Infer binary contact phases and solve only representative double-stance slices",
-    )
-    parser.add_argument(
         "--contact-slices",
         action="store_true",
-        help="Estimate only the contact initializer's slices, with a one-source-slice stance buffer",
+        default=True,
+        help="Infer binary contact phases and solve only representative supported slices",
     )
     parser.add_argument(
         "--imu",
@@ -349,8 +352,6 @@ def main() -> None:
     parser.add_argument("--height-prior", action="store_true")
     parser.add_argument("--max-slice-interval-ms", type=float, default=200.0)
     args = parser.parse_args()
-    if args.double_support_slices:
-        args.contact_slices = True
     if args.final_only:
         args.methods = ["contact"]
         args.smoothing_only = True
@@ -373,16 +374,16 @@ def main() -> None:
     contact_options.maxIterations = 200
     contact_options.groundHeight = 0.0
     phase_info = None
-    if args.double_support_slices:
+    if args.contact_slices:
         walk, phase_info = example.infer_contact_phases(walk, args.data)
     model = load_g1_model()
     anchor_slice = 0
-    if args.double_support_slices:
+    if args.contact_slices:
         selected = initialization_slices(
             walk.trajectory, walk.dt, args.max_slice_interval_ms
         )
         if not selected:
-            raise ValueError("No double-support slice for the initial gauge")
+            raise ValueError("No supported slice for the initial gauge")
         anchor_slice = selected[0].k
         qpos = input_arrays["qpos"][anchor_slice]
         body = model.body("robot/pelvis").id
@@ -409,7 +410,6 @@ def main() -> None:
             walk,
             contact_options,
             contact_buffer=1,
-            double_support_only=args.double_support_slices,
             max_slice_interval_ms=args.max_slice_interval_ms,
             contact_diagnostics=selected_diagnostics,
         )
@@ -610,7 +610,7 @@ def main() -> None:
             credit["changes"] += (
                 " For this replay, replaced the imported height/speed schedule "
                 "with binary-foot max-product labels and retained only "
-                "double-stance slices for initialization and smoothing."
+                "supported slices for initialization and smoothing."
             )
     metadata["motionSource"]["contactInitialization"] = {
         "addBetweenFactors": True,
@@ -679,12 +679,12 @@ def main() -> None:
         REPO / "apps/contact-initialization/scripts/export_native_recordings.py",
         REPO / "examples/g1_mjlab/mujoco_io.py",
         REPO / "gtdynamics.i",
-        REPO / "gtdynamics/utils/Initializer.cpp",
-        REPO / "gtdynamics/utils/PoseContactInitializer.cpp",
-        REPO / "gtdynamics/utils/PoseContactInitializer.h",
+        REPO / "gtdynamics/kinematics/KinematicInitializer.cpp",
+        REPO / "gtdynamics/kinematics/PoseContactInitializer.cpp",
+        REPO / "gtdynamics/kinematics/PoseContactInitializer.h",
         REPO / "gtdynamics/utils/ContactMotion.cpp",
         REPO / "examples/g1_mjlab/g1_model.py",
-        REPO / "gtdynamics/utils/ContactInitializer.cpp",
+        REPO / "gtdynamics/kinematics/ContactInitializer.cpp",
         REPO / "gtdynamics/kinematics/KinematicsTrajectory.cpp",
         REPO / "gtdynamics/kinematics/Kinematics.h",
         REPO / "gtdynamics/utils/values.h",
@@ -732,14 +732,10 @@ def main() -> None:
         "dt": walk.dt,
         "timestamps": walk.times.tolist(),
         "sampling": {
-            "mode": (
-                "double-support"
-                if args.double_support_slices
-                else "contact-initializer" if args.contact_slices else "uniform"
-            ),
+            "mode": ("supported-phases" if args.contact_slices else "uniform"),
             "longPhaseSeconds": (
                 min(0.2, args.max_slice_interval_ms / 1000.0)
-                if args.double_support_slices
+                if args.contact_slices
                 else None
             ),
             "interpolatedSolveStates": False,
@@ -747,7 +743,7 @@ def main() -> None:
             "sourcePeriodSeconds": walk.dt,
             "contactBuffer": 1 if args.contact_slices else 0,
             "maxSliceIntervalMs": (
-                args.max_slice_interval_ms if args.double_support_slices else None
+                args.max_slice_interval_ms if args.contact_slices else None
             ),
             "contactBreaks": sorted(walk.contact_breaks),
             "intervalSeconds": np.diff(walk.times).tolist(),
