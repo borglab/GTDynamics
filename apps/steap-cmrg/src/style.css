@@ -1,0 +1,21 @@
+@import '../../shared/dynamics/style.css';
+.steap-app{max-width:1800px}
+.steap-scene{height:570px;position:relative}.steap-scene canvas{display:block;width:100%;height:100%}
+.steap-viewer{border:1px solid #dbe2d7;border-radius:10px;overflow:hidden;background:#fff}
+.steap-viewer .timeline{border:0;border-top:1px solid #e1e7dc;border-radius:0;margin:0}
+.path-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;font-size:12px}
+.path-legend i{display:inline-block;width:18px;height:0;border-top:3px solid;margin-right:6px;vertical-align:middle}
+.path-legend .planned{border-color:#8a8f94;border-top-style:dashed}
+.path-legend .replan{border-color:#d4883a}
+.path-legend .executed{border-color:#2a7f6f}
+.path-legend .cable{border-color:#4c6fb2}
+.maneuver-readout{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin:20px 0}
+.maneuver-readout article{display:grid;gap:6px;padding:16px 20px;border:1px solid #dce4d7;border-radius:8px;background:#fff}
+.maneuver-readout h3{font-size:13px}.maneuver-readout strong{font-size:22px}.maneuver-readout small{font-size:12px;font-weight:400}
+.maneuver-readout span{font-size:11px;color:#65796c;font-variant-numeric:tabular-nums}
+.maneuver-table tbody tr{cursor:pointer}.maneuver-table tbody tr.active{background:#ebf1e7}
+.maneuver-table th:first-child,.maneuver-table td:first-child{text-align:left}
+.plot-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+.preset-select{padding:5px 8px}
+@media(max-width:1200px){.plot-row{grid-template-columns:minmax(0,1fr)}.maneuver-readout{grid-template-columns:repeat(2,minmax(0,1fr))}.steap-scene{height:510px}}
+@media(max-width:700px){.steap-scene{height:430px}.maneuver-readout{grid-template-columns:minmax(0,1fr)}}
