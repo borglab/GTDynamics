@@ -1,4 +1,4 @@
-# STEAP Assembly
+# CAST: A Collaborative Construction Application of STEAP
 
 Two gantry-mounted ABB IRB6620 arms of the BAR Lab CMRG build a post-and-lintel frame from 2×4 stock. The setup presented in this visualization is a simplified version of the one in the original paper. Each maneuver is planned offline with GPMP2 (RRT-Connect seed, learned dress-cable factors), then executed with simulated disturbances and replanned by STEAP: measurement priors fused in an ISAM2 Bayes tree. The browser replays the recording.
 
@@ -9,7 +9,7 @@ Primary source: Shaji, Kim, D'Amato, Bruun, and Dellaert, "CAST: Collision-Aware
 ```bash
 cd apps
 npm ci
-npm run dev        # http://127.0.0.1:3000/ then open the STEAP Assembly tab
+npm run dev        # http://127.0.0.1:3000/ then open the CAST: A Collaborative Construction Application of STEAP tab
 # or only this app:
 cd steap-cmrg && npm run dev   # http://127.0.0.1:3010/
 ```

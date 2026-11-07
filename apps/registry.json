@@ -49,7 +49,7 @@
   },
   {
     "id": "steap-cmrg",
-    "title": "STEAP Assembly",
+    "title": "CAST: A Collaborative Construction Application of STEAP",
     "description": "Two gantry-mounted arms build a post-and-lintel frame from distant stock. GPMP2 plans each maneuver offline with learned dress-cable factors, and STEAP replans against simulated disturbances.",
     "tag": "Multi-robot assembly planning"
   },

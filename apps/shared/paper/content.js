@@ -153,7 +153,7 @@ export const papers = {
       { id: 'limits', name: 'Joint-angle limit costs', description: 'Limit factors penalize angles outside the configured joint range. Collision avoidance, wrench feasibility, and full dynamic trajectory optimization remain extensions to this kinematic example.' },
     ],
     discussion: 'MuJoCo tracks the optimized kinematic trajectory with position control, which introduces execution error. The Franka problem uses its own robot model and endpoint targets. Extending the G1 estimation pipeline toward dynamic motion planning requires contact consistency, actuator limits, and collision constraints in the optimization problem.',
-    next: 'steap-cmrg', nextTitle: 'STEAP Assembly',
+    next: 'steap-cmrg', nextTitle: 'CAST: A Collaborative Construction Application of STEAP',
   },
   'steap-cmrg': {
     abstract: 'This app shows two gantry-mounted ABB arms building a post-and-lintel frame from 2×4 stock. The setup presented in this visualization is a simplified version of the one in the original paper. GPMP2 plans every maneuver offline from an RRT-Connect seed under joint, floor, wood, cross-arm and learned dress-cable factors. STEAP then executes each plan against simulated disturbances, fusing measurement factors in an ISAM2 Bayes tree and replanning the remaining states. The recording stores nominal, replanned and executed tool paths for every maneuver.',

@@ -67,7 +67,7 @@ onBeforeUnmount(()=>{controller.abort();pause();scene?.dispose();});
 </script>
 <template>
   <main id="demo" class="steap-app" :data-frame="frame">
-    <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / BAR LAB CMRG</span><h1>STEAP Assembly</h1><AppAbstract app="steap-cmrg" /></div><span class="recorded-badge"><i />OFFLINE GPMP2 PLAN · SIMULATED STEAP EXECUTION</span></header>
+    <header class="page-header"><div><span class="eyebrow">GTDYNAMICS / BAR LAB CMRG</span><h1>CAST: A Collaborative Construction Application of STEAP</h1><AppAbstract app="steap-cmrg" /></div><span class="recorded-badge"><i />OFFLINE GPMP2 PLAN · SIMULATED STEAP EXECUTION</span></header>
     <div v-if="error" class="error-banner" role="alert">{{error}}</div>
     <div v-else-if="!data" class="loading" role="status">Loading assembly recording…</div>
     <template v-else>
