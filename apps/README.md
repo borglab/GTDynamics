@@ -37,7 +37,7 @@ disabled.
 ## Local preview
 
 Use **Node.js 22+**, npm, Python 3, Git, and [Git LFS](https://git-lfs.com/).
-Recordings and compiled display geometry are stored in LFS. Install Git LFS,
+Recordings and compiled display geometry are stored in LFS. Download and install Git LFS (see [Git LFS Install Instructions](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage)),
 then hydrate the app assets from the repository root before running the apps:
 
 ```bash
