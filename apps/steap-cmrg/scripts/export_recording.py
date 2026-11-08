@@ -135,7 +135,6 @@ class BuildRecorder:
         self.segments: list[dict] = []
         self.field_cache: dict[tuple, object] = {}
         self.lift_configurations: dict[str, np.ndarray] = {}
-        self.endpoints: dict[str, dict[str, np.ndarray]] = {}
         self.grasp = np.eye(4)
         self.planner.set_tables(structure.static_spheres())
 
@@ -177,13 +176,8 @@ class BuildRecorder:
         for index, target in enumerate(segment.goals):
             if isinstance(target, np.ndarray):
                 goal[index] = target
-            elif isinstance(target, sq.Endpoint):
-                goal[index] = self.member_endpoints(segment.member)[target.key]
         for index, target in enumerate(segment.goals):
-            if (
-                isinstance(target, (sq.Blend, sq.Endpoint, np.ndarray))
-                or target is None
-            ):
+            if isinstance(target, (sq.Blend, np.ndarray)) or target is None:
                 continue
             goal[index] = self.planner.solve_ik(
                 self.planner.specs[index],
@@ -198,7 +192,7 @@ class BuildRecorder:
                 goal[index] = self.blend_goal(
                     segment, index, target, parts, goal, maneuver
                 )
-        if segment.key.endswith(":carry") and isinstance(segment.goals[0], gtsam.Pose3):
+        if segment.key.endswith(":carry"):
             member = next(m for m in self.structure.members if m.name == segment.member)
             nails = sq.member_nails(member, self.structure)
             if nails:
@@ -220,46 +214,6 @@ class BuildRecorder:
                 self.planner.solve_ik(spec, nail, configs[-1], arm1, warm=True)
             )
         return configs
-
-    def member_endpoints(self, name: str) -> dict[str, np.ndarray]:
-        """Return a lintel's joint endpoints, solved once as in the paper's ``generate_endpoints``.
-
-        Nails are warm-chained from the previous standoff; each standoff is its nail raised
-        ``NAIL_STANDOFF`` on arm 2's gantry z. Arm 1's hold is reseeded until the bridges clear,
-        and both arms hover ``LINTEL_DROP`` above their carry endpoints on gantry z.
-        """
-        if name in self.endpoints:
-            return self.endpoints[name]
-        member = next(m for m in self.structure.members if m.name == name)
-        spec, arm1 = self.planner.specs[1], self.q[:9]
-
-        def raised(q: np.ndarray, dz: float) -> np.ndarray:
-            q = np.array(q, dtype=float)
-            q[2] += dz
-            return q
-
-        nails = sq.member_nails(member, self.structure)
-        configs = [self.planner.solve_ik(spec, nails[0], self.q[9:], arm1, warm=False)]
-        for nail in nails[1:]:
-            seed = raised(configs[-1], sq.NAIL_STANDOFF)
-            configs.append(self.planner.solve_ik(spec, nail, seed, arm1, warm=True))
-        hold = self.planner.solve_hold(
-            self.planner.specs[0], member.grip, configs, member.name
-        )
-        endpoints = {"carry": hold, "carry_clear": raised(hold, sq.LINTEL_DROP)}
-        for i, q in enumerate(configs):
-            endpoints[f"nail:{i}"] = q
-            endpoints[f"stand:{i}"] = raised(q, sq.NAIL_STANDOFF)
-        endpoints["carry_stand"] = endpoints["stand:0"]
-        endpoints["carry_clear_stand"] = raised(endpoints["stand:0"], sq.LINTEL_DROP)
-        for key, q in endpoints.items():
-            arm = slice(0, 9) if key in ("carry", "carry_clear") else slice(9, 18)
-            if np.any(q < self.planner.lower[arm]) or np.any(
-                q > self.planner.upper[arm]
-            ):
-                raise RuntimeError(f"{name}:{key} endpoint is outside the joint limits")
-        self.endpoints[name] = endpoints
-        return endpoints
 
     def prepare_blocks(self, segments: list[sq.Segment]) -> None:
         """Group segments sharing a blended goal and record each block's member segments in order."""
@@ -392,7 +346,7 @@ class BuildRecorder:
                 cell.CABLE_ANCHORS,
                 st.TABLE_TOP_Z,
                 self.structure.stock_distance,
-                "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-16nails-gp-playback-wait-lift-time-still-grasp-no-extra-priors-solve-hold-lintel-endpoints",
+                "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-16nails-gp-playback-wait-lift-time-still-grasp-no-extra-priors-solve-hold",
             ],
             sort_keys=True,
             default=str,
@@ -412,7 +366,6 @@ class BuildRecorder:
             "segments": self.segments,
             "rng": self.rng.bit_generator.state,
             "lift": self.lift_configurations,
-            "endpoints": self.endpoints,
             "grasp": self.grasp,
             "blocks": {
                 k: {f: v for f, v in b.items() if f in ("start", "end_q", "fractions")}
@@ -444,7 +397,6 @@ class BuildRecorder:
         self.frames, self.segments = state["frames"], state["segments"]
         self.rng.bit_generator.state = state["rng"]
         self.lift_configurations, self.grasp = state["lift"], state["grasp"]
-        self.endpoints = state.get("endpoints", {})
         for name, cached in state["blocks"].items():
             self.blocks[name].update(cached)
         print(f"resumed {state['count']} segments from {path}", flush=True)
