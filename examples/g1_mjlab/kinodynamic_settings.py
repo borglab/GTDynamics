@@ -22,6 +22,11 @@ def solver_settings() -> dict[str, Any]:
     return {
         "initialization": "contact-gp-dynamics",
         "maxIterations": 5,
+        "qpMaxIterations": 1000,
+        "qpBackend": "gtsam",
+        "qpUseProjectedGradientInitialization": False,
+        "qpUseFeasibleStep": True,
+        "qpUseTemporalOrdering": False,
         "gaugeSlice": 0,
         "retractionThreads": 8,
         "historyWindow": 1,
@@ -61,19 +66,34 @@ def configure_solve(
     gauge_time: float,
     max_iterations: int,
     retraction_threads: int,
+    *,
+    qp_backend: str = "gtsam",
+    qp_use_feasible_step: bool = True,
+    qp_use_projected_gradient_initialization: bool = False,
+    qp_use_temporal_ordering: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return native options and report metadata for the selected root gauge.
 
     Translation and yaw select coordinates at the first retained support slice.
     Roll and pitch remain free; the initializer supplies only their starting
-    guess. Earlier dense configurations remain free in the coupled solve.
+    guess. Every retained configuration remains free in the coupled solve.
     """
+    if qp_backend not in ("gtsam", "proxqp"):
+        raise ValueError(f"Unknown QP backend: {qp_backend}")
+    if qp_backend == "proxqp" and (
+        qp_use_feasible_step or qp_use_projected_gradient_initialization
+    ):
+        raise ValueError("ProxQP requires --qp-step full and projected gradients off")
     options = solver_settings()
     options.update(
         initialization=initialization,
         gaugeSlice=gauge_slice,
         maxIterations=max_iterations,
         retractionThreads=retraction_threads,
+        qpBackend=qp_backend,
+        qpUseFeasibleStep=qp_use_feasible_step,
+        qpUseProjectedGradientInitialization=qp_use_projected_gradient_initialization,
+        qpUseTemporalOrdering=qp_use_temporal_ordering,
     )
     metadata = {
         "gauge": {

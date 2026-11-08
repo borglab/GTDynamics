@@ -7,7 +7,7 @@
 ## @file kinodynamic_preparation.py
 # @brief Prepare measured joints, support phases, and the initial G1 root gauge.
 # @author GTDynamics contributors
-"""Prepare the 50 Hz G1 clip for either kinodynamic initialization strategy.
+"""Select sparse support slices from the 50 Hz G1 clip for kinodynamics.
 
 LiDAR poses supply the horizontal/yaw gauge and evaluation overlay; the contact
 option also uses the initial tilt. FK starts with an upright pelvis body.
@@ -145,7 +145,14 @@ def prepare_walk(
     end: float,
     initialization: str = "contact-gp-dynamics",
 ) -> tuple[KinematicRecording, dict[str, Any]]:
-    """Assemble the 50 Hz clip and align its gauge-slice stance soles to z=0."""
+    """Retain support knots, original times and stance labels; align the gauge.
+
+    Every supported phase contributes slices, including single support during
+    swing. Selection happens before constructing any optimization variables.
+    Because every phase is represented, downsampling cannot merge a lift-off
+    and recontact into one stance. Solver indices are renumbered consecutively;
+    source_indices and timestamps keep their original recording coordinates.
+    """
     if initialization not in ("fk", "contact", "contact-gp-dynamics"):
         raise ValueError(
             "initialization must be 'fk', 'contact', or 'contact-gp-dynamics'"
@@ -156,15 +163,21 @@ def prepare_walk(
     robot: gtd.Robot = import_robot(model_bodies(model))
     root: gtd.Link = robot.link("pelvis")
     frames: dict[str, gtd.PoseOnLink] = contact_frames(model, robot)
-    measured = measured_joint_angles(model, robot, arrays["qpos"], indices)
     trajectory = support_trajectory(states, frames)
     retained = retained_initialization_slices(trajectory, initialization)
+    selected = np.array([s.k for s in retained], dtype=np.int64)
+    if len(selected) < 2:
+        raise ValueError("Kinodynamics requires at least two retained support slices")
+    source_count = len(times)
+    times, indices, states = times[selected], indices[selected], states[selected]
+    measured = measured_joint_angles(model, robot, arrays["qpos"], indices)
+    trajectory = support_trajectory(states, frames)
     body_to_com: gtsam.Pose3 = pose(
         model.body_ipos[root.id()], model.body_iquat[root.id()]
     )
     references = [pose(q[:3], q[3:7]) * body_to_com for q in arrays["qpos"][indices]]
     anchor = initial_root_pose(
-        references[retained[0].k], body_to_com, float(model.qpos0[2]), initialization
+        references[0], body_to_com, float(model.qpos0[2]), initialization
     )
     walk = KinematicRecording(
         robot,
@@ -180,11 +193,23 @@ def prepare_walk(
         times,
         indices,
     )
-    walk, shift = align_contact_ground(walk, retained[0].k)
+    walk, shift = align_contact_ground(walk, 0)
     return walk, {
         "source": metadata,
         "groundTranslation": shift.tolist(),
-        "initializationSlices": [s.k for s in retained],
+        "initializationSlices": list(range(len(selected))),
+        "optimizationSourceSlices": selected.tolist(),
+        "optimizationSampling": {
+            "method": "contactInitializationSlices",
+            "sourceSlices": source_count,
+            "sourceSampleRateHz": 50,
+            "selectedSlices": len(selected),
+            "singleSupportSlices": int(np.count_nonzero(states != 2)),
+            "doubleSupportSlices": int(np.count_nonzero(states == 2)),
+            "maxSliceIntervalMs": 200,
+            "contactBuffer": 1,
+            "irregularTimestamps": True,
+        },
         "referenceUsage": "Privileged support labels; initial root translation/yaw choose coordinates, tilt only initializes; later poses are evaluation data",
         "labels": (
             str(labels_path.relative_to(REPO))

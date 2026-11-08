@@ -152,12 +152,12 @@ public:
 
   /// Map equality-manifold coordinates to the original variable tangents.
   VectorValues toAmbient(const Vector &delta) const {
-    return e_basis_->computeTangentVector(delta);
+    return dim_ ? e_basis_->computeTangentVector(delta) : values_.zeroVectors();
   }
 
   /// Map original variable tangents to equality-manifold coordinates.
   Vector toCoordinates(const VectorValues &tangent) const {
-    return e_basis_->computeXi(tangent);
+    return dim_ ? e_basis_->computeXi(tangent) : Vector(0);
   }
 
   /// Raw expression of one inequality block, including inactive constraints.

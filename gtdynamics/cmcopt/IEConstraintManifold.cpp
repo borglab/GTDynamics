@@ -162,7 +162,8 @@ IEConstraintManifold::constructLinearization(
     Matrix rows = Matrix::Zero(linear->rows(), t_basis->dim());
     std::vector<std::pair<Key, Matrix>> terms;
     for (auto it = linear->begin(); it != linear->end(); ++it) {
-      rows += linear->getA(it) * t_basis->recoverJacobian(*it);
+      if (t_basis->dim())
+        rows += linear->getA(it) * t_basis->recoverJacobian(*it);
       terms.emplace_back(*it, linear->getA(it));
     }
     const auto noise = noiseModel::Diagonal::Sigmas(constraint->sigmas());

@@ -177,7 +177,7 @@ void TrajectoryOptimization() {
   ie_params.lmParams.setMaxIterations(200);
   ie_params.lmParams.setLinearSolverType("SEQUENTIAL_QR");
   ie_params.lmParams.setlambdaUpperBound(1e10);
-  ie_params.iqpMaxIterations = 100;
+  ie_params.qpMaxIterations = 100;
   ie_params.showActiveConstraints = true;
   ie_params.activeConstraintsGroupedAsCategories = true;
 

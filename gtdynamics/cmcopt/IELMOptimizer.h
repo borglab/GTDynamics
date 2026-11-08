@@ -26,13 +26,35 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-
 struct IELMParams {
+  /// Numerical backend for the global reduced QP.
+  enum class QpBackend { Gtsam, ProxQP };
+
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
+  /** LM settings. ordering, when set, supplies the complete reduced-key QP
+   * ordering; zero-dimensional components are removed before forwarding it.
+   */
   LevenbergMarquardtParams lmParams;
-  /// Strict local-face working-set iteration limit; zero skips QP refinement.
-  size_t iqpMaxIterations = 0;
+  /** Global QP backend. ProxQP requires GTDYNAMICS_WITH_PROXQP and full solves
+   * with projected-gradient initialization disabled. GTSAM remains the default.
+   */
+  QpBackend qpBackend = QpBackend::Gtsam;
+  /** Backend QP iteration limit; exhaustion rejects the LM trial. For ProxQP
+   * this bounds outer iterations; qpIterations reports total inner iterations.
+   */
+  size_t qpMaxIterations = 1000;
+  /** Seed primal working sets with GTSAM's componentwise projected gradient.
+   * Full QP solves use GTSAM's Automatic formulation; dual solves ignore this
+   * initialization option. Feasible-step calls always use the primal solver.
+   */
+  bool qpUseProjectedGradientInitialization = false;
+  /** Request GTSAM's feasible descent step instead of full QP convergence.
+   * Initialization follows qpUseProjectedGradientInitialization. A no-progress
+   * result supplies a zero trial without certifying QP optimality; numerical
+   * failure and iteration exhaustion reject the trial.
+   */
+  bool qpUseFeasibleStep = false;
   /** Bound retained full iteration states for long trajectories; zero retains
    * all. This does not affect the state used by mode-change detection.
    * Scalar convergence data can be collected through iterationCallback.

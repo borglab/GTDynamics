@@ -26,6 +26,7 @@
 #include <iostream>
 
 #include "KinodynamicGauge.h"
+#include "KinodynamicOrdering.h"
 namespace py = pybind11;
 namespace {
 using namespace gtdynamics;
@@ -37,36 +38,6 @@ double elapsed(Clock::time_point start) {
 template <class T>
 T setting(const py::dict& settings, const char* name) {
   return settings[py::str(name)].cast<T>();
-}
-// Retire each stance landmark at its final observation, keeping a shared bias
-// until its last factor. Time-block elimination preserves the chain structure.
-Ordering chronologicalOrdering(const NonlinearFactorGraph& cost,
-                               const IEManifoldValues& manifolds,
-                               const Values& unconstrained, size_t firstSlice) {
-  const auto ownership = IEOptimizer::varToManifoldKeyMap(manifolds);
-  std::map<Key, size_t> lastSlice;
-  for (Key key : unconstrained.keys()) lastSlice[key] = firstSlice;
-  for (const auto& factor : cost) {
-    size_t last = firstSlice;
-    for (Key key : factor->keys()) {
-      const auto owner = ownership.find(key);
-      if (owner != ownership.end())
-        last = std::max(last, DynamicsSymbol(owner->second).time());
-    }
-    for (Key key : factor->keys())
-      if (unconstrained.exists(key))
-        lastSlice[key] = std::max(lastSlice[key], last);
-  }
-  std::map<size_t, Key> chronological;
-  for (const auto& [key, manifold] : manifolds)
-    chronological.emplace(DynamicsSymbol(key).time(), key);
-  Ordering ordering;
-  for (const auto& [k, key] : chronological) {
-    ordering.push_back(key);
-    for (const auto& [freeKey, last] : lastSlice)
-      if (last == k) ordering.push_back(freeKey);
-  }
-  return ordering;
 }
 // Locate the floating root independently of the initialization strategy.
 LinkSharedPtr floatingRoot(const Robot& robot) {
@@ -529,6 +500,15 @@ py::dict solve(
   result["reducedDimension"] = reducedDimension;
   result["objectiveInitial"] = cost.error(initial);
   IELMParams params;
+  const auto qpBackend = setting<std::string>(settings, "qpBackend");
+  if (qpBackend == "proxqp")
+    params.qpBackend = IELMParams::QpBackend::ProxQP;
+  else if (qpBackend != "gtsam")
+    throw std::invalid_argument("Unknown QP backend: " + qpBackend);
+  params.qpMaxIterations = setting<size_t>(settings, "qpMaxIterations");
+  params.qpUseProjectedGradientInitialization =
+      setting<bool>(settings, "qpUseProjectedGradientInitialization");
+  params.qpUseFeasibleStep = setting<bool>(settings, "qpUseFeasibleStep");
   params.historyWindow = setting<size_t>(settings, "historyWindow");
   params.retractionThreads = setting<size_t>(settings, "retractionThreads");
   params.lmParams.maxIterations = setting<size_t>(settings, "maxIterations");
@@ -539,13 +519,15 @@ py::dict solve(
   params.lmParams.lambdaInitial = setting<double>(settings, "lambdaInitial");
   params.lmParams.setDiagonalDamping(
       setting<bool>(settings, "diagonalDamping"));
-  // Eliminate one time block at a time. Multifrontal amalgamation can turn the
-  // chain's dense 111-coordinate blocks plus a shared bias into one large QR
-  // front when active cone faces are present. Retire each stance landmark at
-  // its final observation, keeping only the shared bias until the end.
-  params.lmParams.setLinearSolverType("SEQUENTIAL_CHOLESKY");
-  params.lmParams.ordering =
-      chronologicalOrdering(cost, manifolds, unconstrained, slices.front().k);
+  std::vector<std::string> orderingKeys;
+  if (setting<bool>(settings, "qpUseTemporalOrdering")) {
+    params.lmParams.ordering = g1_example::chronologicalOrdering(
+        cost, manifolds, unconstrained, slices.front().k);
+    for (Key key : *params.lmParams.ordering)
+      orderingKeys.push_back(std::to_string(key));
+  }
+  result["qpOrderingKeys"] = orderingKeys;
+  // Each backend owns elimination. ProxQP uses the supplied order for packing.
   params.lmParams.verbosityLM = LevenbergMarquardtParams::SUMMARY;
   const auto optimizeStart = Clock::now();
   params.iterationCallback = [&](const IELMState& state) {
@@ -580,6 +562,11 @@ py::dict solve(
 PYBIND11_MODULE(_g1_kinodynamics, module) {
   py::module_::import("gtsam");
   py::module_::import("gtdynamics");
+#ifdef GTDYNAMICS_WITH_PROXQP
+  module.attr("has_proxqp") = true;
+#else
+  module.attr("has_proxqp") = false;
+#endif
   module.def("solve", &solve, py::arg("robot"), py::arg("trajectory"),
              py::arg("slices"), py::arg("times"), py::arg("initial_values"),
              py::arg("measurement_groups"), py::arg("measurement_names"),

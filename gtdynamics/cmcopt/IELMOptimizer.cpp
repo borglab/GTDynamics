@@ -138,6 +138,13 @@ IELMIterationDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
       break;
     }
   }
+  if (std::none_of(iter_details.trials.begin(), iter_details.trials.end(),
+                   [](const IELMTrial &trial) {
+                     return trial.linearUpdate.solveSuccessful;
+                   }))
+    throw std::runtime_error(
+        "CMC LM exhausted damping trials: " +
+        iter_details.trials.back().linearUpdate.failureReason);
   return iter_details;
 }
 
