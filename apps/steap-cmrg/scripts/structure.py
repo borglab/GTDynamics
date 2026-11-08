@@ -35,7 +35,9 @@ PROFILE_THICK = 1.5 * 0.0254
 TABLE_TOP_Z = 0.91355
 TABLE_HEIGHT = TABLE_TOP_Z
 GRIP_Z_ABOVE = 0.035
-GRIP_FROM_TOP = 0.20
+# The gripper's pads reach 0.40 m either side of its centre: both pads hold the post, the upper one
+# ending flush with the post's un-nailed top end.
+GRIP_FROM_TOP = 0.40
 STOCK_SPACING = 0.28
 STOCK_MARGIN = 0.10
 APPROACH = 0.30

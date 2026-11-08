@@ -244,16 +244,36 @@ def member_segments(
             )
         )
     hover = waiting(standoffs[-1]) if standoffs else ready
+    # After a later post's last nail the arms are close, so the gripper backs off alone first.
+    pull = member.kind == "post" and previous is not None
+    if pull:
+        segments.append(
+            Segment(
+                f"{name}:pull",
+                f"{name}: open gripper and pull back from the post",
+                name,
+                (st.standoff(hold), None),
+                straight=(True, False),
+                block_clearance=0.0,
+                contact=True,
+                event="grip_open",
+                event_at="start",
+            )
+        )
     segments.append(
         Segment(
             f"{name}:release",
-            f"{name}: open gripper, back off and lift the nailer",
+            (
+                f"{name}: back off and lift the nailer"
+                if pull
+                else f"{name}: open gripper, back off and lift the nailer"
+            ),
             name,
             (st.standoff(hold), hover),
             straight=(True, False),
             block_clearance=0.0,
             contact=True,
-            event="grip_open",
+            event=None if pull else "grip_open",
             event_at="start",
         )
     )

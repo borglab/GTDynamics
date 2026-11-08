@@ -192,7 +192,28 @@ class BuildRecorder:
                 goal[index] = self.blend_goal(
                     segment, index, target, parts, goal, maneuver
                 )
+        if segment.key.endswith(":carry"):
+            member = next(m for m in self.structure.members if m.name == segment.member)
+            nails = sq.member_nails(member, self.structure)
+            if nails:
+                # Arm 1 holds this pose through every nail, so it is reseeded until the bridges clear.
+                goal[0] = self.planner.solve_hold(
+                    self.planner.specs[0],
+                    segment.goals[0],
+                    self.nail_configurations(nails),
+                    member.name,
+                )
         return self.planner.join(goal)
+
+    def nail_configurations(self, nails: list[gtsam.Pose3]) -> list[np.ndarray]:
+        """Return arm 2's configurations at each nail: a cold first solve, then each warm from the last."""
+        spec, arm1 = self.planner.specs[1], self.q[:9]
+        configs = [self.planner.solve_ik(spec, nails[0], self.q[9:], arm1, warm=False)]
+        for nail in nails[1:]:
+            configs.append(
+                self.planner.solve_ik(spec, nail, configs[-1], arm1, warm=True)
+            )
+        return configs
 
     def prepare_blocks(self, segments: list[sq.Segment]) -> None:
         """Group segments sharing a blended goal and record each block's member segments in order."""
@@ -325,7 +346,7 @@ class BuildRecorder:
                 cell.CABLE_ANCHORS,
                 st.TABLE_TOP_Z,
                 self.structure.stock_distance,
-                "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-16nails-gp-playback-wait-lift-time-still-grasp-no-extra-priors",
+                "split-tables-flush-slack-park-lm-margin-via-hover-guard-lintel-16nails-gp-playback-wait-lift-time-still-grasp-no-extra-priors-solve-hold",
             ],
             sort_keys=True,
             default=str,

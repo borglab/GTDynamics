@@ -87,6 +87,26 @@ class TestStructure(unittest.TestCase):
                     np.all(np.abs(corners - platform.center[:2]) <= platform.half[:2])
                 )
 
+    def test_upper_gripper_pad_is_on_the_un_nailed_end_of_each_post(self):
+        """Both gripper pads hold each post: the upper ends at the top end, the lower stays on the wood."""
+        import cell
+        import urdf_display as ud
+
+        vertices = ud.read_stl(cell.TOOL_MESHES["gripper"])[0].reshape(-1, 3)
+        tool0 = np.linalg.inv(cell.tool_tcp_pose("gripper").matrix())
+        for member in st.build_structure(st.PRESETS["portal"]).members:
+            if member.kind != "post":
+                continue
+            world_tool0 = member.grip_staging.matrix() @ tool0
+            to_post = np.linalg.inv(member.staging) @ world_tool0
+            local = vertices @ to_post[:3, :3].T + to_post[:3, 3]
+            pads = local[np.abs(local[:, 1]) < member.size[1] / 2.0]
+            half = member.size[0] / 2.0
+            self.assertAlmostEqual(float(pads[:, 0].max()), half, delta=0.01)
+            self.assertGreater(float(pads[:, 0].min()), -half)
+            # Top end in the build: the staged +x end stands highest at the target.
+            self.assertGreater(member.target[2, 0], 0.0)
+
     def test_grip_offset_carries_the_member_into_place(self):
         """The in-hand offset maps the target grip back to the target member pose."""
         structure = st.build_structure(st.PRESETS["portal"])
@@ -125,6 +145,7 @@ class TestSequence(unittest.TestCase):
                 (["clear"] if clear else [])
                 + ["reach", "grip", "carry"]
                 + nails
+                + (["pull"] if member == "post_2" else [])
                 + ["release"]
             )
             if member == "lintel_1":

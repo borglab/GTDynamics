@@ -50,6 +50,18 @@ CABLE_RADIUS = 3.0 * 0.0254 / 2.0
 CABLE_SAMPLES = 57
 CONVERGENCE_ERROR = 3.3e4
 LM_ERROR_TOLERANCE = 1e-10
+# Holder reseed, after the paper's generate_endpoints.solve_hold: the bridge gap must clear
+# BRIDGE_PAD by HOLD_GAP_MARGIN, within HOLD_GAP_BAND above that, so arm 1 stretches no further than needed.
+HOLD_GAP_MARGIN = 0.05
+HOLD_GAP_BAND = 0.2
+# Arm 1's gantry-x bracket for the bisection, m below arm 2's nailing gantry x.
+HOLD_SEP_MIN = 1.0
+HOLD_SEP_MAX = 2.6
+HOLD_ITERATIONS = 10
+# Stiffer gantry prior while arm 1's gantry is driven to its target x.
+HOLD_GANTRY_SIGMA = 0.005
+# Tool reach error above which a hold solve is rejected, m.
+HOLD_DRIFT_TOLERANCE = 0.003
 ENDPOINT_RADIUS = 0.15
 # Contact poses: tool spheres overlap a table by up to 6.9 cm where the tool meshes clear it.
 TABLE_CONTACT_SLACK = 0.07
@@ -176,6 +188,9 @@ class CmrgPlanner:
         self.joint_names = [n for spec in self.specs for n in spec.q_names]
         self.dof = len(self.joint_names)
         self.models = col.build_collision_models(robot, self.joint_names)
+        self.bridge_pair_indices = [
+            (pair.a, pair.b) for pair in self.models.bridge_pairs
+        ]
         self.cables = [
             build_cable(robot, spec.arm, self.joint_names, 9 * i)
             for i, spec in enumerate(self.specs)
@@ -338,6 +353,85 @@ class CmrgPlanner:
         position = np.asarray(tip.translation()) - np.asarray(goal.translation())
         rotation = gtsam.Rot3.Logmap(tip.rotation().between(goal.rotation()))
         return np.concatenate([position, rotation])
+
+    def bridge_gap(self, q: np.ndarray) -> float:
+        """Return the least bridge1-to-bridge2 sphere gap at a full configuration, m."""
+        q = np.asarray(q, dtype=float)
+        points = np.asarray(self.models.bridge_model.worldPoints(q)).T
+        radii = self.models.bridge_radii
+        return float(
+            min(
+                np.linalg.norm(points[a] - points[b]) - radii[a] - radii[b]
+                for a, b in self.bridge_pair_indices
+            )
+        )
+
+    def solve_at_x(
+        self, spec: cell.ArmSpec, goal: gtsam.Pose3, target_x: float
+    ) -> tuple[np.ndarray, float]:
+        """Return (q, reach drift in m) for one arm's IK with its gantry x seeded at ``target_x``.
+
+        A stiff gantry prior keeps the gantry near that x while the arm reaches the goal.
+        """
+        seed, _ = next(self.ik_seeds(spec, goal))
+        seed[spec.q_names[0]] = target_x
+        q = self._polish(
+            spec, goal, self._solve_ik(spec, goal, seed, HOLD_GANTRY_SIGMA, False)
+        )
+        return q, float(np.linalg.norm(self._residual(spec, goal, q)[:3]))
+
+    def solve_hold(
+        self,
+        spec: cell.ArmSpec,
+        goal: gtsam.Pose3,
+        arm2_configs: list[np.ndarray],
+        name: str,
+    ) -> np.ndarray:
+        """Return arm 1's hold, bisecting its gantry x until the bridges clear every arm-2 nail config.
+
+        Bracketing on the measured bridge gap is robust to the strongly nonlinear gantry-x response
+        near the reach limit (the paper's generate_endpoints.solve_hold). When every reachable target
+        clears by more than the band, the closest-in clear solution is used.
+        """
+        need = col.BRIDGE_PAD + HOLD_GAP_MARGIN
+        top = need + HOLD_GAP_BAND
+        arm2_x = min(q2[0] for q2 in arm2_configs)
+        # A lower target puts arm 1's gantry further out and widens the bridge gap.
+        low, high = arm2_x - HOLD_SEP_MAX, arm2_x - HOLD_SEP_MIN
+        gap, drift = -1e9, 1e9
+        clear = None
+        for _ in range(HOLD_ITERATIONS):
+            middle = 0.5 * (low + high)
+            q, drift = self.solve_at_x(spec, goal, middle)
+            gap = min(self.bridge_gap(np.concatenate([q, q2])) for q2 in arm2_configs)
+            if drift <= HOLD_DRIFT_TOLERANCE and gap >= need:
+                if clear is None or middle > clear[0]:
+                    clear = (middle, q, gap)
+            if drift > HOLD_DRIFT_TOLERANCE:
+                low = middle
+            elif gap < need:
+                high = middle
+            elif gap > top:
+                low = middle
+            else:
+                print(
+                    f"  {name}: holder gantry x={q[0]:.2f}, bridge gap {gap:+.3f} "
+                    f"in [{need:.2f}, {top:.2f}]",
+                    flush=True,
+                )
+                return q
+        if clear is not None:
+            _, q, gap = clear
+            print(
+                f"  {name}: holder gantry x={q[0]:.2f}, bridge gap {gap:+.3f} "
+                f"(clear beyond the band at the closest target)",
+                flush=True,
+            )
+            return q
+        raise RuntimeError(
+            f"{name}: holder reseed did not converge (last gap {gap:+.3f}, "
+            f"drift {drift * 1000:.1f} mm)"
+        )
 
     def _solve_ik(
         self,
