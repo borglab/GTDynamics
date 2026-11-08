@@ -40,6 +40,7 @@
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/constrained/LinearConstraint.h>
+#include "constrainedExample.h"
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -143,6 +144,24 @@ TEST(identifyConnectedComponents, Dome) {
     EXPECT_LONGS_EQUAL(1, point.values().size());
   }
   EXPECT_LONGS_EQUAL(num_steps + 1, points.size());
+}
+
+// Equality-only nonlinear spaces use the same optimizer with empty inequalities.
+TEST(IELMOptimizer, NonlinearEqualityOnlyExample) {
+  using namespace e_constrained_example;
+  Values initial;
+  const double x = -.2;
+  initial.insert(x1_key, x);
+  initial.insert(x2_key, (-1 + std::sqrt(1 - 4 * (x + x * x * x))) / 2);
+  EXPECT(constraints.violationNorm(initial) < 1e-10);
+
+  IELMParams params;
+  params.lmParams.absoluteErrorTol = 1e-12;
+  params.lmParams.relativeErrorTol = 1e-12;
+  const auto result = IELMOptimizer(params).optimize(cost, constraints, {}, initial);
+  EXPECT_DOUBLES_EQUAL(0., result.atDouble(x1_key), 1e-4);
+  EXPECT_DOUBLES_EQUAL(0., result.atDouble(x2_key), 1e-4);
+  EXPECT(constraints.violationNorm(result) < 1e-7);
 }
 
 // Build a real CMC state at a unilateral contact boundary, with an objective

@@ -16,25 +16,31 @@ using namespace gtsam;
 using namespace gtdynamics;
 
 
-// /* ************************************************************************* */
-// TEST(GeneralPriorFactor, ConstructorPose3) {
-//   Key x_key = 1;
-//   Values values;
-//   values.insert(x_key, Pose3(Rot3::Rx(0.5), Point3(1, 2, 3)));
+/* ************************************************************************* */
+TEST(GeneralPriorFactor, ConstructorPose3) {
+  Key x_key = 1;
+  Values values;
+  values.insert(x_key, Pose3(Rot3::Rx(0.5), Point3(1, 2, 3)));
   
-//   SharedNoiseModel model = noiseModel::Isotropic::Sigma(6, 1.0);
-//   GeneralPriorFactor factor(x_key, values.at(x_key), model);
+  SharedNoiseModel model = noiseModel::Isotropic::Sigma(6, 1.0);
+  GeneralPriorFactor factor(x_key, values.at(x_key), model);
 
-//   // Check Error and Jacobians
-//   Vector6 expected_error = Vector::Zero(6);
-//   EXPECT(assert_equal(expected_error,
-//                     factor.unwhitenedError(values), 1e-6));
-//   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
+  // Check Error and Jacobians
+  Vector6 expected_error = Vector::Zero(6);
+  EXPECT(assert_equal(expected_error,
+                    factor.unwhitenedError(values), 1e-6));
+  EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values, 1e-7, 1e-5);
 
-//   Values values1;
-//   values1.insert(x_key, Pose3(Rot3::Rx(0.6), Point3(1, 3, 3)));
-//   EXPECT_CORRECT_FACTOR_JACOBIANS(factor, values1, 1e-7, 1e-5);
-// }
+  Values values1;
+  values1.insert(x_key, Pose3(Rot3::Rx(0.5), Point3(1, 3, 3)));
+  // The prior uses an identity Jacobian at its anchor. Check the changed
+  // translation residual in the rotated local frame without assuming it stays
+  // an exact identity-Jacobian model away from that anchor.
+  Vector6 expectedTranslation = Vector6::Zero();
+  expectedTranslation(4) = std::cos(0.5);
+  expectedTranslation(5) = -std::sin(0.5);
+  EXPECT(assert_equal(expectedTranslation, factor.unwhitenedError(values1), 1e-6));
+}
 
 /* ************************************************************************* */
 TEST(GeneralPriorFactor, ConstructorPoint3) {

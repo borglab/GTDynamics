@@ -66,8 +66,6 @@ IEVision60Robot GetVision60() {
 auto vision60 = GetVision60();
 size_t k = 1;
 Pose3 base_pose(Rot3::Ry(-0.2), Point3(0.2, 0, vision60.nominal_height + 0.1));
-// Pose3 base_pose(Rot3::Ry(-0.0), Point3(0.0, 0, vision60.nominal_height +
-// 0.0));
 Vector6 base_twist = (Vector(6) << 0, 0, 0.1, 0, 0, 0.2).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.1, 0, 0, 0.1).finished();
 Values values =
@@ -119,8 +117,6 @@ IEVision60Robot GetVision60() {
 auto vision60 = GetVision60();
 size_t k = 1;
 Pose3 base_pose(Rot3::Ry(0), Point3(0.0, 0, vision60.nominal_height + 0.1));
-// Pose3 base_pose(Rot3::Ry(-0.0), Point3(0.0, 0, vision60.nominal_height +
-// 0.0));
 Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
@@ -170,8 +166,6 @@ IEVision60Robot GetVision60() {
 auto vision60 = GetVision60();
 size_t k = 1;
 Pose3 base_pose(Rot3::Ry(0), Point3(0.0, 0, vision60.nominal_height + 0.1));
-// Pose3 base_pose(Rot3::Ry(-0.0), Point3(0.0, 0, vision60.nominal_height +
-// 0.0));
 Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
@@ -226,8 +220,6 @@ IEVision60Robot GetVision60() {
 auto vision60 = GetVision60();
 size_t k = 1;
 Pose3 base_pose(Rot3::Ry(0), Point3(0.0, 0, vision60.nominal_height + 0.1));
-// Pose3 base_pose(Rot3::Ry(-0.0), Point3(0.0, 0, vision60.nominal_height +
-// 0.0));
 Vector6 base_twist = (Vector(6) << 0, 0, 0.0, 0, 0, 0.0).finished();
 Vector6 base_accel = (Vector(6) << 0, 0, -0.0, 0, 0, 0.0).finished();
 Values values =
@@ -368,7 +360,7 @@ TEST(IEVision60Robot_ground_air_boundary, constraints_and_values) {
   // check base values are indeed the specified ones
   EXPECT(assert_equal(base_pose, Pose(values, vision60.base_id, k)));
   EXPECT(assert_equal(base_twist, Twist(values, vision60.base_id, k)));
-  // EXPECT(assert_equal(base_accel, TwistAccel(values, vision60.base_id, k)));
+  // Acceleration is solved to satisfy the takeoff mechanics.
 
   // check all constraints are satisfied
   EXPECT(assert_equal(e_constraints->violationNorm(values), 0.0));
@@ -402,7 +394,7 @@ TEST(IEVision60Robot_ground_air_boundary, constraints_and_values) {
   EXPECT_LONGS_EQUAL(16, i_constraints->dim());
 }
 
-// /// Test create ie-manifold from IEVision60Robot
+// Construct a point using the selected equality chart and retraction policy.
 TEST(IEVision60Robot_4c, point) {
   using namespace vision60_4c_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
@@ -413,8 +405,6 @@ TEST(IEVision60Robot_4c, point) {
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
-  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
-  // retractor_params->lmParams.minModelFidelity = 0.5;
   retractor_params->checkFeasible = true;
   retractor_params->feasibleThreshold = 1e-3;
   retractor_params->priorSigma = 0.1;
@@ -485,31 +475,22 @@ TEST(IEVision60Robot_4c, point) {
         Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
         Twist(point.values(), vision60.base_id, k) + delta_V;
-    // Vector6 new_base_accel = TwistAccel(point.values(), vision60.base_id,
-    // k) + delta_A;
     EXPECT(assert_equal(
         new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
                         Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
-    // EXPECT(assert_equal(new_base_accel, TwistAccel(newPoint.values(),
-    // vision60.base_id, k), 1e-6));
+    // Torque-limit projection may change accelerations to remain feasible.
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
         e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
         i_constraints->violationNorm(newPoint.values()), 0.0));
-    // for (const auto& joint: vision60.robot.orderedJoints()) {
-    //   int j = joint->id();
-    //   // double q = JointAngle(newPoint.values(), j, k);
-    //   double torque = Torque(newPoint.values(), j, k);
-    //   std::cout << joint->name()  << "\t" << torque << "\n";
-    // }
   }
 }
 
-// /// Test create ie-manifold from IEVision60Robot
+// Construct a point using the selected equality chart and retraction policy.
 TEST(IEVision60Robot_back_on_ground, point) {
   using namespace vision60_back_on_ground_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
@@ -520,8 +501,6 @@ TEST(IEVision60Robot_back_on_ground, point) {
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
-  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
-  // retractor_params->lmParams.minModelFidelity = 0.5;
   retractor_params->checkFeasible = true;
   retractor_params->feasibleThreshold = 1e-3;
   retractor_params->priorSigma = 0.1;
@@ -529,9 +508,6 @@ TEST(IEVision60Robot_back_on_ground, point) {
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
   iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
-
-  // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
-  // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *iecm_params);
@@ -609,17 +585,10 @@ TEST(IEVision60Robot_back_on_ground, point) {
         e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
         i_constraints->violationNorm(newPoint.values()), 0.0));
-
-    // for (const auto& joint: vision60.robot.orderedJoints()) {
-    //   int j = joint->id();
-    //   // double q = JointAngle(newPoint.values(), j, k);
-    //   double torque = Torque(newPoint.values(), j, k);
-    //   std::cout << joint->name()  << "\t" << torque << "\n";
-    // }
   }
 }
 
-// /// Test create ie-manifold from IEVision60Robot
+// Construct a point using the selected equality chart and retraction policy.
 TEST(IEVision60Robot_in_air, point) {
   using namespace vision60_in_air_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
@@ -630,8 +599,6 @@ TEST(IEVision60Robot_in_air, point) {
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
-  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
-  // retractor_params->lmParams.minModelFidelity = 0.5;
   retractor_params->checkFeasible = true;
   retractor_params->feasibleThreshold = 1e-3;
   retractor_params->priorSigma = 0.1;
@@ -639,9 +606,6 @@ TEST(IEVision60Robot_in_air, point) {
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
   iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
-
-  // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
-  // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *iecm_params);
@@ -723,17 +687,10 @@ TEST(IEVision60Robot_in_air, point) {
         e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
         i_constraints->violationNorm(newPoint.values()), 0.0));
-
-    // for (const auto& joint: vision60.robot.orderedJoints()) {
-    //   int j = joint->id();
-    //   // double q = JointAngle(newPoint.values(), j, k);
-    //   double torque = Torque(newPoint.values(), j, k);
-    //   std::cout << joint->name()  << "\t" << torque << "\n";
-    // }
   }
 }
 
-// /// Test create ie-manifold from IEVision60Robot
+// Construct a point using the selected equality chart and retraction policy.
 TEST(IEVision60Robot_ground_air_boundary, point) {
   using namespace vision60_ground_air_boundary_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
@@ -744,8 +701,6 @@ TEST(IEVision60Robot_ground_air_boundary, point) {
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
-  // retractor_params->lmParams.setVerbosityLM("SUMMARY");
-  // retractor_params->lmParams.minModelFidelity = 0.5;
   retractor_params->checkFeasible = true;
   retractor_params->feasibleThreshold = 1e-3;
   retractor_params->priorSigma = 0.1;
@@ -753,9 +708,6 @@ TEST(IEVision60Robot_ground_air_boundary, point) {
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
   iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
-
-  // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
-  // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *iecm_params);

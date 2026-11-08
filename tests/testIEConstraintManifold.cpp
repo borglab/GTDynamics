@@ -73,7 +73,6 @@ TEST(CMPoint, HalfSphere) {
     EXPECT(active_indices.size() == 1);
 
     // Test project tangent cone.
-    // point.eBasis()->print();
     Vector2 xi1(1, 1);
     Vector2 xi2(1, 0);
     Vector2 xi3(1, -1);
@@ -116,7 +115,7 @@ TEST(CMPoint, HalfSphere) {
     EXPECT(point.blockingIndices(delta2).size() == 0);
     EXPECT(point.blockingIndices(delta3).size() == 1);
 
-    // Test construct emanifold
+    // Check the internal equality-only compatibility view.
     auto e_manifold = gtdynamics::internal::equalityPoint(point);
     EXPECT(e_manifold.dim() == 2);
     IndexSet a_indices;

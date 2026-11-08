@@ -39,12 +39,6 @@ TEST(PenaltyOptimizer, EConstrainedExample) {
   gt_results.insert(x2_key, 0.0);
   double tol = 1e-4;
   EXPECT(assert_equal(gt_results, results, tol));
-
-  // // TODO: add check for lambda and mu values across iterations.
-  // for (int i=0; i<intermediate_result.mu_values.size(); i++) {
-  //   std::cout << i << "\t" << intermediate_result.mu_values[i] << "\t" <<
-  //   intermediate_result.num_iters[i] << "\n";
-  // }
 }
 
 /* ************************************************************************* */
