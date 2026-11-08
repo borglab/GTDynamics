@@ -35,9 +35,10 @@ Consequently, the implemented tangent cone uses `Dc(x) B xi <= 0`, and a positiv
 directional derivative identifies an outward step. The local gradient-projection QP uses
 `LinearConstraint::LessEqual` with GTSAM's `ActiveSetSolver`.
 
-GTSAM owns working-set selection and multiplier calculations. CMC consumes
-its returned active rows and promotes only fully active nonlinear blocks during
-retraction. The global LM QP explicitly selects GTSAM's sparse backend.
+The selected QP backend owns working-set selection and multiplier calculations.
+CMC consumes its returned active rows and promotes only fully active nonlinear
+blocks during retraction. The global LM QP uses GTSAM's sparse backend by default,
+or the optional native ProxQP backend.
 
 Constraint sigmas are applied once to the raw expression Jacobian. Reading an
 already-whitened equality linearization and attaching the sigma again would
@@ -188,7 +189,8 @@ Thesis reference: Eq. (4.45) defines the blocking set as active inequalities who
 
 `IELMState::construct` assembles one undamped `gtsam::QpProblem` in the existing
 component equality coordinates. For each LM trial, `LinearUpdate` copies it,
-adds the usual damping factors, and calls GTSAM's sparse `ActiveSetSolver`:
+adds the usual damping factors, and calls GTSAM's sparse `ActiveSetSolver` or
+the optional ProxQP adapter:
 
 $$
 \min_\xi \frac12\|JB\xi+r\|^2 + \frac\lambda2\|D\xi\|^2,
@@ -208,13 +210,16 @@ active-set handling begins. See [SparseQpValidation.md](SparseQpValidation.md)
 for the required dependency fixes and regression results.
 
 Zero is a feasible QP starting point. `qpMaxIterations` defaults to 1,000;
-exhaustion or a numerical failure rejects the LM trial. There is no approximate
-feasible-step mode or global solver fallback. Extra QP regularization is disabled
-because damping is already represented in the costs. The predicted reduction
-is measured using the undamped objective. `qpIterations` reports returned
-active-set iterations, not a count of numerical factorizations.
+exhaustion or a numerical failure rejects the LM trial. GTSAM can return either
+a full QP optimum or an explicitly requested feasible descent step through
+`qpUseFeasibleStep`. ProxQP supports full solves only, with projected-gradient
+initialization disabled. There is no backend fallback. Extra GTSAM QP
+regularization is disabled because damping is already represented in the costs.
+The predicted reduction is measured using the undamped objective. `qpIterations`
+reports GTSAM working-set iterations or ProxQP total inner iterations; these
+count different operations and neither is a count of numerical factorizations.
 
-GTSAM owns the complete working-set solve. The former active-face basis $N$,
+The numerical backend owns the working-set solve. The former active-face basis $N$,
 local face substitution, boundary search, and multiplier loop have been removed
 from GTDynamics. The result is lifted through $B$ and sent to the existing
 component retractors. A contiguous row mapping recovers original constraint
@@ -224,6 +229,10 @@ Component-local cone projection remains available to GD and other callers.
 Changing from the old default feasible approximation to a converged QP can
 change steps and nonlinear trajectories even though the tangent-cone model is
 unchanged. See [ComponentCoordinates.md](ComponentCoordinates.md).
+
+To enable ProxQP, install ProxSuite and configure `GTDYNAMICS_WITH_PROXQP=ON`,
+then select `IELMParams::QpBackend::ProxQP` in `qpBackend`. See the
+[installation instructions](../../README.md#optional-sparse-proxqp-backend).
 
 ## 9) Nonlinear Update and Retraction
 

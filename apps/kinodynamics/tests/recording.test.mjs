@@ -61,6 +61,17 @@ test('the measured run reduces cost and satisfies the exact mechanics and sole c
   assert.equal(new Set(jointGroups(record.jointNames).flatMap(g=>g.indices)).size,29);
 });
 
+test('the replay identifies its native ProxQP full solve and source',()=>{
+  const d=record.diagnostics;
+  assert.equal(d.solverSettings.qpBackend,'proxqp');
+  assert.equal(d.solverSettings.qpUseFeasibleStep,false);
+  assert.equal(d.solverSettings.qpUseProjectedGradientInitialization,false);
+  assert.match(d.solver.name,/ProxQP sparse QP/);
+  assert.equal(record.provenance.solver.qp_backend,'proxqp');
+  assert.match(record.provenance.solver.gtdynamics_revision,/^[a-f0-9]{40}$/);
+  assert(record.attribution.some(credit=>credit.label==='ProxQP / ProxSuite'&&credit.url==='https://github.com/Simple-Robotics/proxsuite'));
+});
+
 
 test('the recorded gauge is a translation/yaw cost and leaves tilt free',()=>{
   const d=record.diagnostics;

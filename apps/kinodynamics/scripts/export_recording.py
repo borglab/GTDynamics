@@ -157,6 +157,8 @@ def export(
     """Package model geometry, initial/final replay, forces, velocities and timing."""
     arrays = dict(np.load(result_path / "kinodynamics.npz", allow_pickle=False))
     report = json.loads((result_path / "summary.json").read_text())
+    qp_backend = report.get("solverSettings", {}).get("qpBackend", "gtsam")
+    qp_name = "ProxQP" if qp_backend == "proxqp" else "GTSAM"
     validation = result_path / "validation.json"
     if validation.exists():
         report["validation"] = json.loads(validation.read_text())
@@ -277,7 +279,7 @@ def export(
         "diagnostics": {
             **report,
             "solver": {
-                "name": "CMC-Opt · IELM · articulated FK / affine AL retraction",
+                "name": f"CMC-Opt · IELM · {qp_name} sparse QP · articulated FK / affine AL retraction",
                 "iterations": report["iterations"],
                 "elapsedSeconds": report["coupledSolveSeconds"],
             },
@@ -342,6 +344,14 @@ def export(
             },
         ],
     }
+    if qp_backend == "proxqp":
+        record["attribution"].append(
+            {
+                "label": "ProxQP / ProxSuite",
+                "url": "https://github.com/Simple-Robotics/proxsuite",
+                "text": "Optional native sparse QP solver; BSD 2-Clause",
+            }
+        )
     write_gzip(output / "recording.json.gz", record)
     write_gzip(output / "model.json.gz", browser_geometry(model))
     # Preserve authors and licenses, then document this derived recording.

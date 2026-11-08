@@ -1,4 +1,17 @@
-# Sparse tangent-QP validation — 2026-11-05
+# Sparse tangent-QP validation history
+
+The current implementation uses GTSAM `c940b4415` or the optional native
+ProxQP backend. The refreshed 171-slice, 20-second kinodynamics comparison
+passes nonlinear feasibility and independent physics checks for both full-QP
+backends: median optimization is 11.1138 s for ProxQP and 23.9122 s for GTSAM,
+with final objective 8,931.759726. The app replays the median ProxQP run.
+See the [current results and dependency information](../../apps/kinodynamics/README.md#native-proxqp-comparison).
+
+The notes below preserve the earlier solver failures, fixes, and measurements;
+their acceptance status and dependency revisions describe those historical
+experiments.
+
+## November 5, 2026
 
 Two numerical defects exposed by G1 now have local fixes on top of GTSAM PR
 2912. All targeted suites and the 51-sample trajectory pass. The full cold-start

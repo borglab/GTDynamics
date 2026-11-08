@@ -21,6 +21,8 @@ try{
       assert.equal(await page.getByRole('heading',{name:'Kinodynamics',exact:true}).count(),1);
       assert.match(await page.locator('.timing-grid').innerText(),/171/);
       assert.match(await page.locator('.timing-grid').innerText(),/original timestamps/);
+      assert.match(await page.locator('.qp-backend').innerText(),/ProxQP.*full QP solves/);
+      assert.equal(await page.locator('.qp-backend a').getAttribute('href'),'https://github.com/Simple-Robotics/proxsuite');
       if(await page.locator('.initialization-comparison').count()){
         assert.match(await page.locator('.initialization-comparison').innerText(),/Contact → GP → linear seed \(default\)/);
         assert.match(await page.locator('.initialization-comparison').innerText(),/Fixed-pelvis FK/);

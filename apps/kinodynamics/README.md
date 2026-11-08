@@ -34,12 +34,9 @@ path. The private extension is built with the standard wrapper’s pybind11
 provider and is not installed into the GTDynamics package:
 
 ```bash
-python examples/g1_mjlab/kinodynamic_walk.py --output /tmp/kinodynamics
-python examples/g1_mjlab/kinodynamic_walk.py --initialization contact --output /tmp/kinodynamics-contact
-python examples/g1_mjlab/kinodynamic_walk.py --initialization fk --output /tmp/kinodynamics-fk
-python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics \
-  --comparison /tmp/kinodynamics-contact/summary.json \
-  --comparison /tmp/kinodynamics-fk/summary.json
+python examples/g1_mjlab/kinodynamic_walk.py --qp-backend proxqp --qp-step full \
+  --initialization contact-gp-dynamics --output /tmp/kinodynamics
+python apps/kinodynamics/scripts/export_recording.py --result /tmp/kinodynamics
 cd apps
 npm run build
 ```
@@ -64,7 +61,7 @@ Its main saves numerical arrays and a JSON report. The exporter converts those
 arrays to offline browser assets and adds independently compiled model geometry.
 No optimization runs in the browser. All recording/model gzip files use Git LFS.
 
-The optional native ProxQP backend is selected with
+The optional native [ProxQP / ProxSuite](https://github.com/Simple-Robotics/proxsuite) backend is selected with
 `--qp-backend proxqp --qp-step full`. It requires a build with
 `GTDYNAMICS_WITH_PROXQP=ON`; the [root installation instructions](../../README.md#optional-sparse-proxqp-backend)
 include a minimal ProxSuite installation without Python bindings. GTSAM remains
@@ -90,7 +87,7 @@ coupled solve.
 
 CMC-Opt eliminates each constraint-connected component's linearized equalities
 through its basis B. The coupled linear step solves the reduced objective and
-active-boundary inequalities with GTSAM's sparse QP solver. Nonlinear retractions
+active-boundary inequalities with GTSAM or the optional ProxQP solver. Nonlinear retractions
 remain local to each component.
 CMC-Opt relinearizes the full nonlinear equality basis. Each retraction recovers
 link poses/twists with native FK, fixes those q/v values through ConstVarFactor,
@@ -111,33 +108,37 @@ Feasibility restoration changes the raw initial dynamics and is included in tota
 A feasible result or an objective-change stopping condition does not establish
 that the objective is globally optimal.
 
-The saved sparse replay predates the projected-gradient and feasible-step APIs.
-It is one five-iteration run with TBB enabled and eight
-retraction workers. Initialization took 0.226 s, coupled optimization took
-204.172 s, and initialization through optimization took 206.057 s. The objective
+The saved sparse replay uses full ProxQP solves with TBB enabled and eight
+retraction workers. Its initialization pipeline took 0.248 s, coupled optimization
+took 11.114 s, and initialization through optimization took 13.119 s. The objective
 decreased from 7,341,612.101 to 8,931.760. Equality and inequality residual norms
-are 1.76e-12 and 3.70e-8, respectively. The expensive second QP required 173
-active-set iterations. The smaller variable count does not resolve the GTSAM
-solver performance issue. The native binary/revision and modified Python
-source fingerprints are included in the replay provenance.
+are 1.82e-12 and 3.82e-8, respectively. The native binary/revision, runtime-library
+fingerprints, backend settings, and physics validation are included in the replay.
+The earlier sparse replay used 204.172 s of optimization before the subsequent
+GTSAM updates and optional ProxQP integration; it has been replaced.
 
 ## Native ProxQP comparison
 
-The optional ProxSuite 0.7.3 backend solves the full QP on the same 78–98 s
-clip, 171 support slices, and five outer LM iterations. Both backends run in
+The November 7 PR refresh reruns the optional ProxSuite 0.7.3 backend on the
+full QP for the same 78–98 s clip, 171 support slices, and five outer LM iterations. Both backends run in
 identical Release binaries with system TBB 2021.11, CPUs 0–7, eight retraction
 workers, single-thread BLAS/OpenMP, automatic ordering, and projected-gradient
 initialization disabled. ProxSuite uses the base native target with matching
 Eigen 3.4, no additional SIMD/OpenMP features, and no Python bindings. Three
 fresh runs per backend execute sequentially in ProxQP/GTSAM, GTSAM/ProxQP,
-ProxQP/GTSAM order after all builds and tests.
+ProxQP/GTSAM order after the native builds and tests. GTDynamics is at
+`144e7715`, linked against GTSAM `c940b4415` from
+[borglab/gtsam#2918](https://github.com/borglab/gtsam/pull/2918). The app now
+replays the ProxQP run with median optimization time, including its actual
+per-stage timings, solver provenance, and independent validation. This selects
+ProxQP for the published recording; the example and library defaults remain GTSAM.
 
 | Full QP backend | Optimization runs (s) | Median optimization (s) | Median initialization through optimization (s) | Final objective |
 | --- | --- | ---: | ---: | ---: |
-| Native ProxQP | 11.0158, 11.0271, 11.0106 | 11.0158 | 13.0192 | 8,931.759726 |
-| GTSAM Automatic (dual-first) | 23.8526, 23.7033, 23.6800 | 23.7033 | 25.6818 | 8,931.759726 |
+| Native ProxQP | 11.1138, 11.1252, 11.0673 | 11.1138 | 13.1074 | 8,931.759726 |
+| GTSAM Automatic (dual-first) | 24.0166, 23.9122, 23.8608 | 23.9122 | 25.9000 | 8,931.759726 |
 
-ProxQP reduces optimization time by 53.53% (2.15 times faster), including sparse
+ProxQP reduces optimization time by 53.52% (2.15 times faster), including sparse
 packing, original-factor KKT validation, retraction, and relinearization. All six
 runs pass nonlinear feasibility and independent MuJoCo/contact checks. Maximum
 cross-backend array differences are 7.5e-12 for pose matrices, 1.3e-8 for joint
@@ -151,7 +152,7 @@ backend disabled, an increase of 298,008 bytes for this Linux Release build.
 Six affected native suites, the disabled-backend QP suite, and seven Python
 tests (including the native ProxQP path) pass. The enabled library exports no
 ProxSuite link dependency. Raw arrays, per-run provenance and validations,
-installation settings, and `comparison.json` are in `build/proxqp-comparison/`.
+installation settings, and `comparison.json` are in `build/pr-proxqp-comparison/`.
 The ordinary build option remains off and the example's default remains GTSAM
 feasible descent; this table compares full solves explicitly.
 
