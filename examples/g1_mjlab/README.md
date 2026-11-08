@@ -93,6 +93,11 @@ See the native initialization section below for the stage breakdown.
 
 ## Walking dynamics example
 
+The [Dynamics affine showcase](../../apps/dynamics/README.md#affine-equality-only-showcase)
+compares CMC Gaussian, GTSAM QP, optional ProxQP, and old CM-Opt on the same
+frozen-q/v 57-knot problem. `benchmark_fixed_dynamics.py` records repeated timings
+and numerical agreement without changing app recordings.
+
 [`dynamics_walk.py`](dynamics_walk.py) estimates accelerations, two sole-frame
 wrenches, and all 29 actuator torques from the best saved Kinematics trajectory.
 Start with `solve_walk()`: it calls the shared GP fit, prepares fixed poses and

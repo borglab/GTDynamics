@@ -661,6 +661,7 @@ class ContactWrenchFactor : gtsam::NoiseModelFactor {
 
 #include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
 namespace fixed_dynamics {
+enum class LinearSolver { Automatic, Gaussian, GtsamQP, ProxQP };
 class Contact {
   Contact();
   Contact(const gtdynamics::PoseOnLink& pose, double halfLength, double halfWidth,
@@ -672,6 +673,9 @@ class Contact {
 };
 class Options {
   Options();
+  bool equalityOnly;
+  gtdynamics::fixed_dynamics::LinearSolver linearSolver;
+  size_t retractionThreads;
   size_t maxIterations;
   gtsam::Vector3 gravity;
   double effortSigma;
@@ -712,6 +716,19 @@ class Diagnostics {
   double linearSolveSeconds;
   double valueAssemblySeconds;
   double validationSeconds;
+  double conditioningSeconds;
+  size_t conditionedVariableDimension;
+  bool affineEqualities;
+  bool equalityOnly;
+  size_t originalInequalityDimension;
+  double originalInequalityL2;
+  double optimizerLinearizationSeconds;
+  double optimizerLinearSolveSeconds;
+  double retractionSeconds;
+  size_t equalityPreparations;
+  size_t affineBasisConstructions;
+  size_t gaussianSolves;
+  size_t qpSolves;
   double manifoldSeconds;
   double optimizationSeconds;
   size_t iterations;

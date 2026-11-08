@@ -189,6 +189,29 @@ class TestKinodynamics(unittest.TestCase):
         )
         self.assertTrue(full["feasible"])
         self.assertLess(full["objectiveFinal"], full["objectiveInitial"])
+        # Equality-only relaxation uses the same CMC charts and retraction.
+        options["equalityOnly"] = True
+        equality_results = []
+        for linear_solver in ("gaussian", "qp"):
+            options["linearSolver"] = linear_solver
+            relaxed = solve(
+                robot, trajectory, [gtd.Slice(k) for k in range(3)],
+                [0.0, 0.02, 0.04], initial, [measurements],
+                ["Root observations"],
+                [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.6)],
+                np.empty(0), options,
+            )
+            self.assertTrue(relaxed["equalityOnly"])
+            self.assertEqual(relaxed["inequalityDimension"], 0)
+            self.assertGreater(relaxed["originalInequalityDimension"], 0)
+            self.assertLess(relaxed["equalityL2"], 1e-7)
+            self.assertGreater(relaxed["gaussianSolves"] if linear_solver == "gaussian"
+                               else relaxed["qpSolves"], 0)
+            equality_results.append(relaxed)
+        self.assertTrue(equality_results[0]["values"].equals(
+            equality_results[1]["values"], 1e-7))
+        options["equalityOnly"] = False
+        options["linearSolver"] = "automatic"
         if has_proxqp:
             options["qpBackend"] = "proxqp"
             prox = solve(

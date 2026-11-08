@@ -125,15 +125,13 @@ TEST(IELMQp, SameScopeCostsAreCompactedWithoutChangingTheModel) {
   initial.insert(7, Vector(Vector2::Zero()));
   const auto state = makeState(graph, {}, initial);
   EXPECT_LONGS_EQUAL(2, state.linearPointGraph->size());
-  EXPECT_LONGS_EQUAL(1, state.tangentQp.costs().size());
+  EXPECT_LONGS_EQUAL(1, state.reducedObjective.size());
   for (const Vector& step :
        {Vector(Vector2::Zero()), Vector(Vector2(0.4, -0.7))}) {
-    Values qpValues;
-    qpValues.insert(7, step);
     VectorValues delta;
     delta.insert(7, step);
     EXPECT_DOUBLES_EQUAL(state.linearPointGraph->error(delta),
-                         state.tangentQp.costs().error(qpValues), 1e-9);
+                         state.reducedObjective.error(delta), 1e-9);
   }
 }
 
@@ -194,6 +192,7 @@ TEST(IELMQp, DiagonalDampingAndUndampedPrediction) {
   initial.insert(7, Vector(Vector2::Zero()));
   const auto state = makeState(graph, {}, initial);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.lmParams.setDiagonalDamping(true);
   const IELMTrial::LinearUpdate update(0.2, graph, state, params);
   EXPECT(update.solveSuccessful);
@@ -204,7 +203,7 @@ TEST(IELMQp, DiagonalDampingAndUndampedPrediction) {
                            state.baseLinear->error(update.tangentVector),
                        update.costChange, 1e-9);
   EXPECT_LONGS_EQUAL(state.linearPointGraph->size(),
-                     state.tangentQp.costs().size());
+                     state.reducedObjective.size());
 }
 
 // Keep equality directions eliminated and restore fixed ambient components.
@@ -228,6 +227,7 @@ TEST(IELMQp, EqualityReductionAndZeroDimensionalComponent) {
   const auto state = makeState(graph, {}, initial, equalities);
   EXPECT(state.tangentQp.eConstraints().empty());
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.lmParams.ordering = Ordering{reducedKey(state, 8),
                reducedKey(state, 7)};  // Fixed key 7 is omitted by CMC.
   const IELMTrial::LinearUpdate update(0.2, graph, state, params);
@@ -305,6 +305,7 @@ TEST(IELMQp, ExhaustedRetriesAreNotConvergence) {
                                             noiseModel::Unit::Create(1));
   const auto state = makeState(graph, {}, initial);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpMaxIterations = 0;
   params.lmParams.lambdaUpperBound = 0.2;
   auto manifoldParams = std::make_shared<IEConstraintManifold::Params>();
@@ -339,6 +340,7 @@ TEST(IELMQp, ProjectedInitializationAndFeasibleStepModes) {
   EXPECT(full.solveSuccessful);
   for (bool projected : {false, true}) {
     IELMParams params;
+    params.linearSolver = IELMParams::LinearSolver::QP;
     params.qpUseProjectedGradientInitialization = projected;
     const IELMTrial::LinearUpdate seeded(0.2, graph, state, params);
     EXPECT(seeded.solveSuccessful);
@@ -382,6 +384,7 @@ TEST(IELMQp, FeasibleStepNoProgressAndFailures) {
       bound(7, -Matrix1::Identity(), Vector1::Zero(), Vector1::Ones()));
   const auto state = makeState(graph, inequalities, initial);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpUseFeasibleStep = true;
   const IELMTrial::LinearUpdate stopped(0.2, graph, state, params);
   EXPECT(stopped.solveSuccessful);
@@ -415,6 +418,7 @@ TEST(IELMQp, CustomOrderingValidation) {
                                               noiseModel::Unit::Create(1));
   const auto state = makeState(graph, {}, initial);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpUseFeasibleStep = true;
   params.lmParams.ordering = Ordering{reducedKey(state, 8), reducedKey(state, 7)};
   const IELMTrial::LinearUpdate custom(0.2, graph, state, params);
@@ -438,6 +442,7 @@ TEST(IELMQp, ProxQpConfigurationErrors) {
                                             noiseModel::Unit::Create(1));
   const auto state = makeState(graph, {}, initial);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpBackend = IELMParams::QpBackend::ProxQP;
 #ifndef GTDYNAMICS_WITH_PROXQP
   CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
@@ -480,6 +485,7 @@ TEST(IELMQp, ProxQpCoupledOptimum) {
     cost.emplace_shared<JacobianFactor>(
         key, std::sqrt(0.2) * Matrix2::Identity(), Vector2::Zero());
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpBackend = IELMParams::QpBackend::ProxQP;
   params.lmParams.ordering = Ordering{
       reducedKey(state, 3), reducedKey(state, 2), reducedKey(state, 1)};
@@ -513,6 +519,7 @@ TEST(IELMQp, ProxQpDependentAndOpposingRows) {
               Vector2::Zero(), Vector2(0.3, 7.)));
     const auto state = makeState(graph, inequalities, initial);
     IELMParams params;
+    params.linearSolver = IELMParams::LinearSolver::QP;
     params.qpBackend = IELMParams::QpBackend::ProxQP;
     const IELMTrial::LinearUpdate update(0.2, graph, state, params);
     EXPECT(update.solveSuccessful);
@@ -537,6 +544,7 @@ TEST(IELMQp, ProxQpPartialBlockAndRetraction) {
       bound(7, -Matrix2::Identity(), Vector2::Zero(), Vector2(2., 3.)));
   const auto state = makeState(graph, inequalities, initial);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpBackend = IELMParams::QpBackend::ProxQP;
   const IELMTrial::LinearUpdate update(0.2, graph, state, params);
   EXPECT(update.solveSuccessful);
@@ -565,6 +573,7 @@ TEST(IELMQp, ProxQpDampingAndFixedComponents) {
           .createEqualityFactor());
   const auto state = makeState(graph, {}, initial, equalities);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpBackend = IELMParams::QpBackend::ProxQP;
   params.lmParams.setDiagonalDamping(true);
   params.lmParams.ordering = Ordering{reducedKey(state, 8), reducedKey(state, 7)};
@@ -585,6 +594,7 @@ TEST(IELMQp, ProxQpFailureHandling) {
                                             noiseModel::Unit::Create(1));
   auto state = makeState(graph, {}, initial);
   IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
   params.qpBackend = IELMParams::QpBackend::ProxQP;
   params.qpMaxIterations = 0;
   const IELMTrial::LinearUpdate exhausted(0.2, graph, state, params);

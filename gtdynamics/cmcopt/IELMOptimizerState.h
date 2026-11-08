@@ -47,7 +47,12 @@ public:
   VectorValues gradient;
   GaussianFactorGraph::shared_ptr baseLinear;
   GaussianFactorGraph::shared_ptr linearPointGraph;
-  /// Undamped objective and homogeneous active inequalities in B coordinates.
+  /// Common compacted objective, independent of the selected linear solver.
+  GaussianFactorGraph reducedObjective;
+  bool equalityOnly = true;
+  double linearizationSeconds = 0;
+  /// Constrained states pack the undamped objective and active rows here.
+  /// Equality-only states leave it empty until a QP trial is requested.
   QpProblem tangentQp;
   /// Contiguous QP rows belonging to one original nonlinear constraint block.
   struct QpConstraintBlock {
@@ -108,6 +113,8 @@ struct IELMTrial {
   IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
             const IndexSetMap &forcedIndicesMap);
 
+  double retractionSeconds = 0;
+
   struct LinearUpdate {
     double lambda = 0;
     IndexSetMap blockingIndicesMap;
@@ -120,13 +127,16 @@ struct IELMTrial {
     std::string failureReason;
     /// Main GTSAM working-face solves; excludes initialization projections.
     size_t qpIterations = 0;
+    double linearSolveSeconds = 0;
+    size_t gaussianSolves = 0;
+    size_t qpSolves = 0;
 
     /** Default constructor. */
     LinearUpdate() {}
 
     /** Compute a damped LM step and its blocking inequality constraints.
-     * Solve the global tangent-cone QP with GTSAM's sparse active-set solver.
-     * Optionally request feasible descent instead of QP convergence.
+     * Equality-only problems can use a direct damped Gaussian solve.
+     * QP trials use the selected backend and may request feasible descent.
      * Equality constraints have already been eliminated by B.
      * Lift the result to ambient tangent coordinates and record the predicted
      * reduction in the undamped cost model.

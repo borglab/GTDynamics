@@ -32,6 +32,11 @@ Values IELMOptimizer::optimize(
     const NonlinearFactorGraph &graph, const CMPoints &points,
     const Values &unconstrainedValues) const {
   validatePoints(points, unconstrainedValues);
+  if (ielm_params_.linearSolver == IELMParams::LinearSolver::Gaussian)
+    for (const auto& [key, point] : points)
+      if (point.manifold()->inequalityCount(point))
+        throw std::invalid_argument("Gaussian CMC solves require empty inequalities");
+  timings_ = {};
   details_->clear();
   mode_.reset();
   modeStartResiduals_.clear();
@@ -47,6 +52,7 @@ Values IELMOptimizer::optimize(
   // Construct initial state
   IELMState state(points, unconstrainedValues, graph, pointGraph,
                   lmParams.lambdaInitial, lmParams.lambdaFactor, 0);
+  timings_.linearizationSeconds += state.linearizationSeconds;
 
   if (ielm_params_.iterationCallback) ielm_params_.iterationCallback(state);
 
@@ -66,8 +72,15 @@ Values IELMOptimizer::optimize(
   do {
     prev_state = state;
     IELMIterationDetails iter_details = iterate(graph, state);
+    for (const auto& trial : iter_details.trials) {
+      timings_.linearSolveSeconds += trial.linearUpdate.linearSolveSeconds;
+      timings_.retractionSeconds += trial.retractionSeconds;
+      timings_.gaussianSolves += trial.linearUpdate.gaussianSolves;
+      timings_.qpSolves += trial.linearUpdate.qpSolves;
+    }
     state = IELMState::fromLastIteration(iter_details, graph, pointGraph,
                                          lmParams);
+    timings_.linearizationSeconds += state.linearizationSeconds;
     rememberMode(iter_details);
     details_->push_back(iter_details);
     if (ielm_params_.historyWindow &&

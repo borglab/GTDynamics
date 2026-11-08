@@ -217,6 +217,13 @@ least-squares factors to Hessians and back can lose weak directions before
 active-set handling begins. See [SparseQpValidation.md](SparseQpValidation.md)
 for the required dependency fixes and regression results.
 
+Equality-only problems can solve the same reduced damped objective directly.
+`IELMParams::linearSolver` defaults to `Automatic`, which selects Gaussian
+elimination only when there are no inequalities at all. Select `Gaussian` to
+require that case, or `QP` to compare the existing QP backends. See
+[EqualityOnlyOptimization.md](EqualityOnlyOptimization.md) for the shared LM
+behavior and bounded G1 timing procedure.
+
 Zero is a feasible QP starting point. `qpMaxIterations` defaults to 1,000;
 exhaustion or a numerical failure rejects the LM trial. GTSAM can return either
 a full QP optimum or an explicitly requested feasible descent step through

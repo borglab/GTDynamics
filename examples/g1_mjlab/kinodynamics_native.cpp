@@ -25,6 +25,8 @@
 #include <chrono>
 #include <iostream>
 
+#include "EqualityOnlyBaseline.h"
+#include "FixedDynamicsBaseline.h"
 #include "KinodynamicGauge.h"
 #include "KinodynamicOrdering.h"
 namespace py = pybind11;
@@ -419,6 +421,10 @@ py::dict solve(
   names.push_back("Translation/yaw gauge");
   NonlinearFactorGraph cost;
   for (const auto& group : groups) cost.add(group);
+  // Keep the omitted bounds only for diagnostics, never for retraction.
+  const auto originalInequalities = inequalities;
+  const bool equalityOnly = setting<bool>(settings, "equalityOnly");
+  if (equalityOnly) inequalities = NonlinearInequalityConstraints();
   const auto equalities = NonlinearEqualityConstraints::FromCostGraph(exact);
   py::dict result;
   result["initialValues"] = seed;
@@ -426,6 +432,8 @@ py::dict solve(
   result["variableDimension"] = seed.dim();
   result["equalityDimension"] = equalities.dim();
   result["inequalityDimension"] = inequalities.dim();
+  result["equalityOnly"] = equalityOnly;
+  result["originalInequalityDimension"] = originalInequalities.dim();
   result["errorNames"] = names;
   result["contactKeys"] = contactKeys;
   result["torqueKeys"] = torqueKeys;
@@ -501,6 +509,13 @@ py::dict solve(
   result["reducedDimension"] = reducedDimension;
   result["objectiveInitial"] = cost.error(initial);
   IELMParams params;
+  const auto linearSolver = setting<std::string>(settings, "linearSolver");
+  if (linearSolver == "gaussian")
+    params.linearSolver = IELMParams::LinearSolver::Gaussian;
+  else if (linearSolver == "qp")
+    params.linearSolver = IELMParams::LinearSolver::QP;
+  else if (linearSolver != "automatic")
+    throw std::invalid_argument("Unknown linear solver: " + linearSolver);
   const auto qpBackend = setting<std::string>(settings, "qpBackend");
   if (qpBackend == "proxqp")
     params.qpBackend = IELMParams::QpBackend::ProxQP;
@@ -527,9 +542,21 @@ py::dict solve(
       orderingKeys.push_back(std::to_string(key));
   }
   result["qpOrderingKeys"] = orderingKeys;
+  const std::string equalityBaseline = settings.contains("equalityOnlyBaseline")
+      ? setting<std::string>(settings, "equalityOnlyBaseline") : "none";
+  if (equalityBaseline != "none" &&
+      (!equalityOnly || params.retractionThreads != 1 ||
+       equalityBaseline != "legacy"))
+    throw std::invalid_argument("Equality baseline requires empty inequalities and one worker");
+  result["equalityOnlyBaseline"] = equalityBaseline;
+  const BasisKeyFunction select = [independent](const KeyVector& keys) {
+    KeyVector selected;
+    for (Key key : keys) if (independent.exists(key)) selected.push_back(key);
+    return selected;
+  };
+  const auto optimizeStart = Clock::now();
   // Each backend owns elimination. ProxQP uses the supplied order for packing.
   params.lmParams.verbosityLM = LevenbergMarquardtParams::SUMMARY;
-  const auto optimizeStart = Clock::now();
   params.iterationCallback = [&](const IELMState& state) {
     const Values values = state.baseValues();
     Vector errors(groups.size());
@@ -542,16 +569,51 @@ py::dict solve(
               << ": error=" << state.error << ", seconds=" << wallSeconds.back()
               << std::endl;
   };
-  IELMOptimizer optimizer(params, manifoldParams);
-  const Values values =
-      optimizer.optimize(cost, points, unconstrained);
+  Values values;
+  IELMOptimizer::Timings timings;
+  if (equalityBaseline == "legacy") {
+    const auto prepareStart = Clock::now();
+    const auto problem = g1_example::legacyEqualityProblem(
+        cost, points, unconstrained, manifoldParams->equalityBasisCreator, select);
+    result["legacyPreparationSeconds"] = elapsed(prepareStart);
+    LMManifoldOptimizer optimizer(ManifoldOptimizerParameters{}, params.lmParams);
+    values = optimizer.optimize(cost, problem);
+    iterations = optimizer.details().back().state.iterations;
+    // Old CM has no callback hook. Evaluate the same stored-state diagnostics
+    // here, including their cost in the reported optimization wall time.
+    for (const auto& iteration : optimizer.details()) {
+      const auto ambient = iteration.state.baseValues();
+      Vector errors(groups.size());
+      for (size_t i = 0; i < groups.size(); ++i)
+        errors(i) = groups[i].error(ambient);
+      errorHistory.push_back(errors);
+      timings.gaussianSolves += iteration.trials.size();
+    }
+  } else {
+    IELMOptimizer optimizer(params, manifoldParams);
+    values = optimizer.optimize(cost, points, unconstrained);
+    timings = optimizer.timings();
+    if (equalityBaseline == "none") result["legacyPreparationSeconds"] = 0.;
+  }
   result["values"] = values;
   result["optimizationSeconds"] = elapsed(optimizeStart);
+  result["linearizationSeconds"] = timings.linearizationSeconds;
+  result["linearSolveSeconds"] = timings.linearSolveSeconds;
+  result["retractionSeconds"] = timings.retractionSeconds;
+  if (equalityBaseline == "legacy") {
+    // The old optimizer exposes total trial times, not these phase timings.
+    result["linearizationSeconds"] = py::none();
+    result["linearSolveSeconds"] = py::none();
+    result["retractionSeconds"] = py::none();
+  }
+  result["gaussianSolves"] = timings.gaussianSolves;
+  result["qpSolves"] = timings.qpSolves;
   result["objectiveFinal"] = cost.error(values);
   const double equalityL2 = equalities.violationNorm(values);
   const double inequalityL2 = inequalities.violationNorm(values);
   result["equalityL2"] = equalityL2;
   result["inequalityL2"] = inequalityL2;
+  result["originalInequalityL2"] = originalInequalities.violationNorm(values);
   result["feasible"] = equalityL2 < 1e-5 && inequalityL2 < 1e-5;
   result["errorHistory"] = errorHistory;
   result["wallSeconds"] = wallSeconds;
@@ -567,6 +629,16 @@ PYBIND11_MODULE(_g1_kinodynamics, module) {
 #else
   module.attr("has_proxqp") = false;
 #endif
+  module.def("solve_fixed_dynamics_legacy", [](
+      const Robot& robot, const Trajectory& trajectory,
+      const std::vector<Slice>& slices, const std::vector<double>& times,
+      const Values& fixed, const Values& priors,
+      const std::vector<fixed_dynamics::Contact>& contacts, const Vector& armature,
+      const fixed_dynamics::Options& options) {
+    auto output = g1_example::solveLegacyFixedDynamics(
+        robot, trajectory, slices, times, fixed, priors, contacts, armature, options);
+    return py::make_tuple(output.result, output.legacyPreparationSeconds);
+  });
   module.def("solve", &solve, py::arg("robot"), py::arg("trajectory"),
              py::arg("slices"), py::arg("times"), py::arg("initial_values"),
              py::arg("measurement_groups"), py::arg("measurement_names"),

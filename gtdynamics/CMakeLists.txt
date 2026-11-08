@@ -68,6 +68,11 @@ list(APPEND headers ${cmc_internal_headers})
 install(FILES ${cmc_internal_headers}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cmcopt/internal)
 
+file(GLOB dynamics_internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/dynamics/internal/*.h")
+list(APPEND headers ${dynamics_internal_headers})
+install(FILES ${dynamics_internal_headers}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/dynamics/internal)
+
 ## Generate and install config file
 configure_file(config.h.in config.h)
 list(APPEND sources "${PROJECT_BINARY_DIR}/${PROJECT_NAME}/config.h")
