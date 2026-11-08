@@ -18,6 +18,7 @@ const ready = {
   interpolation: '.interpolation-scene canvas', dynamics: '.dynamics-scene[data-ready="true"] canvas',
   kinodynamics: '.kinodynamics-scene[data-ready="true"] canvas', 'motion-planning': '.robot-canvas canvas',
   'scate/ur5': '#stage[data-ready="true"] canvas',
+  urdf: '.urdf-app[data-mode="browser"] #status-badge:has-text("Ready")',
 };
 try {
   for (const base of ['/', '/GTDynamics/']) {
@@ -68,7 +69,10 @@ try {
         await page.getByRole('button', {name: 'Dark theme', exact: true}).click();
         console.log(`PASS ${base}${app.id}: loads dark, recolors in place`);
       }
+      // Select SCATE explicitly: the loop above ends on whichever app is registered last.
+      await page.getByRole('tab', {name: 'SCATE UR5', exact: true}).click();
       const scate = page.frameLocator('iframe');
+      await scate.locator(ready['scate/ur5']).waitFor();
       await scate.locator('.signal-plot[data-ready="true"]').first().waitFor();
       await scate.locator('html[data-theme="dark"]').waitFor();
       const plotColor = await scate.locator('.js-plotly-plot').first().evaluate(async plot => {

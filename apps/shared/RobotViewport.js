@@ -39,7 +39,8 @@ export class RobotViewport {
     this.camera.up.set(0, 0, 1);
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatio));
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    if ('outputColorSpace' in this.renderer) this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    else this.renderer.outputEncoding = THREE.sRGBEncoding;
     if (exposure !== undefined) {
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = exposure;

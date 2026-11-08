@@ -9,6 +9,7 @@ import apps from '../registry.json' with { type: 'json' };
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const ready = {
+  urdf: '.urdf-app[data-mode="browser"] #status-badge:has-text("Ready")',
   'contact-labels': '.label-scene canvas',
   'contact-initialization': '.scene canvas',
   'contact-vs-ik': '.comparison .scene canvas',
@@ -20,6 +21,7 @@ const ready = {
   'scate/ur5': '#stage[data-ready="true"] canvas',
 };
 const controls = {
+  urdf: '#panel',
   'contact-labels': '.time-controls',
   'contact-initialization': '.prior-controls',
   'contact-vs-ik': '.iteration-controls',
@@ -106,7 +108,10 @@ try {
           await frame.getByRole('slider', { name: 'Contact initialization iteration', exact: true }).fill('0');
           await frame.locator('.method-results.contact[data-result-iteration="0"]').waitFor();
         }
-        if (app.id === 'contact-initialization') {
+        if (app.id === 'urdf') {
+          assert.equal(await paper.locator('mjx-container[jax="SVG"]').count(), 3);
+          await frame.getByText('Live browser solve', { exact: true }).waitFor();
+        } else if (app.id === 'contact-initialization') {
           await frame.getByRole('button', { name: 'Select event 1', exact: true }).click();
           assert.equal(await frame.locator('main').getAttribute('data-event'), '1');
         } else if (nativePaper) {

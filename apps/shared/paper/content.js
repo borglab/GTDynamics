@@ -1,4 +1,5 @@
 import { scatePaper } from '../../scate/ur5/src/paper.js';
+import { urdfPaper } from '../../urdf/src/paper.js';
 // Presentation only: numerical settings and results remain in the recordings.
 const contact = {
   id: 'contact', name: 'Contact-pose observation',
@@ -46,6 +47,7 @@ const gauge = {
 };
 
 export const papers = {
+  urdf: urdfPaper,
   'scate/ur5': scatePaper,
   'contact-labels': {
     abstract: 'This app infers left, right, and double support from G1 foot motion using a discrete factor graph. Max-product combines displacement and joint-velocity evidence with walking priors; the resulting phases supply the contact schedule for initialization. For the default 24–44 s clip with velocity aiding and walking constraints, recorded max-product inference took 0.113 s.',

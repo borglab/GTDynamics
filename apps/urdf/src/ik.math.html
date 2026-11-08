@@ -1,0 +1,18 @@
+<h4>Transforms and residuals</h4>
+<p>Each pose X maps a link’s COM frame to the world. The model transform Fⱼ(qⱼ) maps the child COM frame into the parent COM frame, and C maps the tool frame into its carrier’s COM frame. The target pose T★ maps the desired tool frame to the world, with translation t★. The goal uses either a pose prior on the carrier pose X꜀ or a world-frame point residual.</p>
+\[
+r_K=\operatorname{Log}\!\left(F_j(q_j)^{-1}X_p^{-1}X_c\right),\qquad
+r_T=\operatorname{Log}\!\left((T^\star C^{-1})^{-1}X_c\right),\qquad
+r_P=\operatorname{trans}(X_c C)-t^\star.
+\]
+<p>The fixed-link residual anchors a pose to its model rest transform X₀. Joint priors use the coordinate q₀ from the current configuration. The interval [a, b] comes from the URDF, and ε is the interior margin.</p>
+\[
+r_B=\operatorname{Log}(X_0^{-1}X),\qquad
+r_Q=q_j-q_0,\qquad
+r_L=\max(0,a+\epsilon-q_j,q_j-b+\epsilon).
+\]
+<h4>Browser joint-space solve</h4>
+<p>MuJoCo evaluates the tool pose and its world-frame geometric Jacobian J. The error vector e contains position error in metres and, for a pose goal, the shortest rotation vector scaled by half the chain’s reach, clamped to 0.05–1 m/rad. The solver applies the same scale to the rotational rows of J. It caps the largest joint step at 0.5 rad, clips the candidate to the URDF limits, and accepts a step when the weighted error decreases. Damping λ decreases after an accepted step and increases after a rejected step.</p>
+\[
+(J^\mathsf{T}J+\lambda^2 I)\,\Delta q=J^\mathsf{T} e.
+\]

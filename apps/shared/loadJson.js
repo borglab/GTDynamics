@@ -1,8 +1,10 @@
 // Accept both gzip archives and responses already decoded by the HTTP server.
-export async function loadJson(path, signal, compressed = false) {
-  const response = await fetch(`${import.meta.env.BASE_URL}${path}`, {
-    signal,
-  });
+export function loadJson(path, signal, compressed = false) {
+  return loadJsonUrl(`${import.meta.env.BASE_URL}${path}`, signal, compressed);
+}
+
+export async function loadJsonUrl(path, signal, compressed = false) {
+  const response = await fetch(path, { signal });
   if (!response.ok)
     throw new Error(`Could not load ${path} (${response.status})`);
   if (!compressed) return response.json();
