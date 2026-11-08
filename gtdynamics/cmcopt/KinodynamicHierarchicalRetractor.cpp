@@ -218,7 +218,7 @@ CMPoint KinodynamicHierarchicalRetractor::retract(
     }
   }
 
-  return point->createWithNewValues(known_values, active_indices);
+  return point->manifold()->point(point->bindings(), known_values, active_indices);
 }
 
 } // namespace gtdynamics

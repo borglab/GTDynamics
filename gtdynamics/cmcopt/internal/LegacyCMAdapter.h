@@ -13,6 +13,7 @@
 #pragma once
 
 #include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/internal/ReadOnlyBasis.h>
 #include <gtdynamics/cmopt/ConstraintManifold.h>
 
 namespace gtdynamics::internal {
@@ -48,7 +49,7 @@ inline ConstraintManifold equalityPoint(
 
   // Preserve the point's chart unless the compatibility view adds a boundary.
   auto basis = active.empty()
-                   ? std::const_pointer_cast<TangentSpaceBasis>(point.eBasis())
+                   ? std::make_shared<ReadOnlyBasis>(point.eBasis())
                    : point.eBasis()->createWithAdditionalConstraints(
                          extra, point.values(),
                          fromScratch.value_or(LegacyCMAccess::basisFromScratch(

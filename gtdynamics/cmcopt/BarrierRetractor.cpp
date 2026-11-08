@@ -112,7 +112,7 @@ BarrierRetractor::moveToBoundary(const CMPoint *point,
     }
   }
 
-  return point->createWithNewValues(result, blocking_indices);
+  return point->manifold()->point(point->bindings(), result, blocking_indices);
 }
 
 /* ************************************************************************* */
@@ -197,7 +197,7 @@ BarrierRetractor::retract(const CMPoint *point,
     // TODO
   }
 
-  return point->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 /* ************************************************************************* */
@@ -213,10 +213,10 @@ CMPoint BarrierRetractor::retractReduced(
                               std::max(1e-7, params_->feasibleThreshold),
                               false);
   if (const auto result = projection.feasibleProjection(blocking, info))
-    return point.createWithNewValues(result->values, result->active);
+    return point.manifold()->point(point.bindings(), result->values, result->active);
   if (!projection.dim()) {
     const Values result = projection.recover(Vector());
-    return point.createWithNewValues(
+    return point.manifold()->point(point.bindings(),
         result, projection.validateResult(result, blocking));
   }
   if (!params_->penaltyParams)
@@ -258,7 +258,7 @@ CMPoint BarrierRetractor::retractReduced(
       projection.recover(cleaned.at<Vector>(AffineProjection::kReduced));
   // Unlike legacy ambient cleanup, this opt-in path never silently accepts
   // infeasible results or loses a required blocking face.
-  return point.createWithNewValues(
+  return point.manifold()->point(point.bindings(),
       result, projection.validateResult(result, active));
 }
 

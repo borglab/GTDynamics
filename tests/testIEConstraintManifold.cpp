@@ -64,7 +64,9 @@ TEST(CMPoint, HalfSphere) {
     values.insert(point_key, Point3(0.6, 0.8, 0));
 
     // Test constructor.
-    CMPoint point(params, e_constraints, i_constraints, values);
+    const auto pointType = std::make_shared<IEConstraintManifold>(
+        *e_constraints, *i_constraints, values, *params);
+    CMPoint point = pointType->point(values);
 
     // Test active constraints.
     auto active_indices = point.activeIndices();
@@ -148,9 +150,9 @@ TEST(CMPoint, PenaltyRetractionRetainsNewBoundary) {
       std::make_shared<BarrierRetractorCreator>(retractionParams);
   Values values;
   values.insert(key, 1.0);
-  const CMPoint point(
-      params, std::make_shared<NonlinearEqualityConstraints>(), inequalities,
-      values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      NonlinearEqualityConstraints{}, *inequalities, values, *params);
+  const CMPoint point = pointType->point(values);
   EXPECT(point.activeIndices().empty());
   VectorValues step;
   step.insert(key, Vector1(-2.0));
@@ -183,9 +185,9 @@ TEST(CMPoint, ScaledInequalityLinearization) {
       params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
       Values values;
       values.insert(key, 0.0);
-      const CMPoint point(
-          params, std::make_shared<NonlinearEqualityConstraints>(), inequalities,
-          values);
+      const auto pointType = std::make_shared<IEConstraintManifold>(
+          NonlinearEqualityConstraints{}, *inequalities, values, *params);
+      const CMPoint point = pointType->point(values);
       VectorValues outward, inward;
       outward.insert(key, Vector1(lowerBound ? -2.0 : 2.0));
       inward.insert(key, -outward.at(key));

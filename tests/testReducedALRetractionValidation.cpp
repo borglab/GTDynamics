@@ -41,9 +41,9 @@ CMPoint makePoint(
   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(
       std::make_shared<ReducedALRetractor>(
           metric, ReducedALRetractor::Settings{}, priorKeys));
-  return CMPoint(
-      params, std::make_shared<NonlinearEqualityConstraints>(equalities),
-      std::make_shared<NonlinearInequalityConstraints>(inequalities), values);
+  const auto type = std::make_shared<IEConstraintManifold>(
+      equalities, inequalities, values, *params);
+  return type->point(values);
 }
 
 Values scalarVector(double x) {

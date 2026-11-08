@@ -34,13 +34,10 @@ class CMTangentSpace {
   explicit CMTangentSpace(const LinearIConstraintMap& tangentConstraints,
                           const LinearIConstraintMap& ambientConstraints = {});
 
-  /** Complete geometry with an equality basis. An explicitly affine successor
-   * may share its predecessor's metric cache, but always rebuilds boundaries.
-   */
-  CMTangentSpace(const TangentSpaceBasis::shared_ptr& basis,
+  /// Complete point geometry with a read-only equality basis and fresh metrics.
+  CMTangentSpace(const std::shared_ptr<const TangentSpaceBasis>& basis,
                  const LinearIConstraintMap& tangentConstraints,
-                 const LinearIConstraintMap& ambientConstraints,
-                 const CMTangentSpace* affinePredecessor = nullptr);
+                 const LinearIConstraintMap& ambientConstraints);
 
   /// Numerical equality basis at this point.
   const std::shared_ptr<const TangentSpaceBasis>& basis() const {

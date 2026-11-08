@@ -208,6 +208,11 @@ class OrthonormalBasis : public TangentSpaceBasis {
                    const Attributes::shared_ptr &attributes, const Matrix &mat)
       : TangentSpaceBasis(params), attributes_(attributes), basis_(mat) {}
 
+  /// Prepare layout and constraint structure without evaluating numerical values.
+  OrthonormalBasis(const NonlinearEqualityConstraints::shared_ptr &constraints,
+                   const std::map<Key, size_t> &dimensions,
+                   const TangentSpaceBasisParams::shared_ptr &params);
+
   /**
    * Constructor from another basis, reusing structural attributes.
    * @param values Current values.
@@ -445,6 +450,12 @@ class EliminationBasis : public TangentSpaceBasis {
                    const TangentSpaceBasisParams::shared_ptr &params,
                    std::optional<const KeyVector> basis_keys = {});
 
+  /// Prepare independent coordinates and ordering without numerical values.
+  EliminationBasis(const NonlinearEqualityConstraints::shared_ptr &constraints,
+                   const std::map<Key, size_t> &dimensions,
+                   const TangentSpaceBasisParams::shared_ptr &params,
+                   std::optional<const KeyVector> basisKeys = {});
+
   /**
    * Recreate a basis at new values while reusing structural attributes.
    *
@@ -626,6 +637,15 @@ class TangentSpaceBasisCreator {
         "A CMC basis policy must support immutable snapshots");
   }
 
+  /** Prepare immutable structure from slot metadata, with no linearization.
+   * Legacy create() retains its existing eager/lazy numerical behavior.
+   */
+  virtual std::shared_ptr<const TangentSpaceBasis> prepare(
+      const NonlinearEqualityConstraints::shared_ptr constraints,
+      const std::map<Key, size_t> &dimensions) const {
+    throw std::invalid_argument("CMC basis policy lacks structural preparation");
+  }
+
   /**
    * Create a basis object for a component.
    * @param constraints Equality constraints for the component.
@@ -661,6 +681,15 @@ class OrthonormalBasisCreator : public TangentSpaceBasisCreator {
   }
 
   virtual ~OrthonormalBasisCreator() {}
+
+  std::shared_ptr<const TangentSpaceBasis> prepare(
+      const NonlinearEqualityConstraints::shared_ptr constraints,
+      const std::map<Key, size_t> &dimensions) const override {
+    return std::make_shared<OrthonormalBasis>(
+        constraints, dimensions,
+        std::make_shared<TangentSpaceBasisParams>(*params_));
+  }
+
 
   TangentSpaceBasis::shared_ptr create(
       const NonlinearEqualityConstraints::shared_ptr constraints,
@@ -725,6 +754,19 @@ class EliminationBasisCreator : public TangentSpaceBasisCreator {
   }
 
   virtual ~EliminationBasisCreator() {}
+
+  std::shared_ptr<const TangentSpaceBasis> prepare(
+      const NonlinearEqualityConstraints::shared_ptr constraints,
+      const std::map<Key, size_t> &dimensions) const override {
+    KeyVector keys;
+    for (const auto &[key, dimension] : dimensions) keys.push_back(key);
+    auto settings = std::make_shared<TangentSpaceBasisParams>(*params_);
+    if (settings->useBasisKeys)
+      return std::make_shared<EliminationBasis>(
+          constraints, dimensions, settings, basisKeyFunction(keys));
+    return std::make_shared<EliminationBasis>(constraints, dimensions, settings);
+  }
+
 
   /**
    * Create basis for one constraint-connected component.

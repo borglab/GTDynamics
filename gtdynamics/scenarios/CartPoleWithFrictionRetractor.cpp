@@ -107,7 +107,7 @@ CMPoint CartPoleWithFrictionRetractor::retract(
     active_indices.insert(blocking_indices->begin(), blocking_indices->end());
   }
   new_values = cp_.computeValues(k, q, v, a);
-  return point->createWithNewValues(new_values, active_indices);
+  return point->manifold()->point(point->bindings(), new_values, active_indices);
 }
 
 /* ************************************************************************* */
@@ -199,7 +199,7 @@ CartPoleWithFrictionRetractor::retract1(const CMPoint *point,
   // std::cout << "result\n";
   // PrintValues(result, 0);
 
-  return point->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 } // namespace gtdynamics

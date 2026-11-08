@@ -81,11 +81,11 @@ This is the local component version of the CMC state space in thesis Eq. (4.2), 
 
 Pointers:
 
-- [identifyConnectedComponents](IEOptimizer.cpp#L87)
-- [IEOptimizer::identifyComponents](IEOptimizer.cpp#L127)
+- [identifyConnectedComponent](IEOptimizer.cpp#L81)
+- [IEOptimizer::identifyConnectedComponents](IEOptimizer.cpp#L127)
 - [CMPoint](CMPoint.h#L25)
 
-`IEOptimizer::identifyComponents` builds one [CMPoint](CMPoint.h#L25) per connected component. Each point references a separate immutable `IEConstraintManifold` definition and owns the current numerical state and bindings.
+`IEOptimizer::identifyConnectedComponents` returns separate `types` and `points` collections. It currently builds one immutable `IEConstraintManifold` definition and one [CMPoint](CMPoint.h#L25) per connected component. Every point references its type and owns its numerical state and bindings; callers must not assume the collections have matching indices or counts. Explicit construction can already share one type across many points.
 
 ## 3) CMPoint: Equality Basis + Active Set + Cone
 
@@ -112,7 +112,7 @@ Pointers:
 
 Implementation detail:
 
-- The equality tangent basis belongs to the point’s `CMTangentSpace`; basis algorithms are shared with CM-Opt.
+- The type owns symbolic equality preparation and its certified constant affine basis. A point’s `CMTangentSpace` references a bound read-only view; nonlinear numerical bases are rebuilt per point. Basis algorithms remain shared with CM-Opt.
 - The new CMC-Opt contribution is the `active_indices_` set plus the `TangentCone` built from linearized active inequalities.
 - Thesis references: active/inactive inequality sets are Eqs. (4.3)-(4.4), and the tangent cone parameterized by the equality basis is Eqs. (4.14)-(4.16).
 
@@ -132,8 +132,8 @@ In code, active inequalities are either:
 Pointers:
 
 - [IEConstraintManifold::identifyActive](IEConstraintManifold.cpp)
-- [CMPoint constructor](CMPoint.h#L55)
-- [CMPoint::createWithNewValues](CMPoint.h#L87)
+- [IEConstraintManifold::point](IEConstraintManifold.cpp)
+- [Type-owned equality preparation](IEConstraintManifold.md#conditioning-and-retraction)
 
 That is the mechanism by which a trial step can enter a new boundary mode, keep an old mode, or rebuild the mode after retraction.
 
@@ -285,18 +285,20 @@ inequalities directly, including nonlinear constraints involving multiple keys.
 It does not require an `InequalityModel`, construct a QCQP, or approximate
 nonlinear pose or trajectory equalities by a globally affine manifold.
 
-The component owns the recovery basis and projection geometry. For a known
-constant affine equality graph, set `IEConstraintManifold::Params::affineEqualities`
-to `true`: successor states share the numeric equality basis, avoiding repeated
-linearization and elimination. The default remains `false`, so nonlinear
-manifolds rebuild their numeric basis at each state. This option is a caller
+The type owns symbolic equality preparation and, for a certified constant affine
+equality graph, its local numerical basis. Set
+`IEConstraintManifold::Params::affineEqualities` to `true` to initialize that basis
+once per type and reuse it across independently constructed points and bindings.
+The default remains `false`, so nonlinear points rebuild their numerical basis
+from the type's prepared structure. This option is a caller
 contract about fixed affine equations in Euclidean variables; it is not inferred
 from one Jacobian and does not freeze active inequality faces.
 
 `CMPoint::projectionMetric()` caches a `TangentSpaceMetric` containing
-recovery maps and Cholesky whitening of `B' W B`. Affine successor states share
-this immutable geometry. Changes to effective prior weights or selected keys
-invalidate the cache; independent components do not share it. The metric follows
+recovery maps and Cholesky whitening of `B' W B` within one point's geometry.
+Each new point has a fresh metric cache; repeated queries on that point reuse
+matching weights. Changes to effective prior weights or selected keys invalidate
+the cache without changing the type's equality geometry. The metric follows
 the existing prior sigma conventions, including optional varying sigmas and
 partial priors. Only the target and common trial-length normalization change
 per retraction. Equality factors must remain unchanged during an affine solve.
@@ -436,9 +438,10 @@ CMC-Opt reuses the equality-manifold machinery from CM-Opt and adds active sets,
 
 ## Shared affine projection for AL and Barrier retraction
 
-`CMTangentSpace` owns the equality basis. With
-`IEConstraintManifold::Params::affineEqualities = true`, successive states reuse
-that numeric basis and its projection-metric cache. This is an explicit contract
+`CMTangentSpace` holds a read-only equality basis view. With
+`IEConstraintManifold::Params::affineEqualities = true`, the type owns a numerical
+basis shared across independent points. Projection-metric caches remain local to
+each point. This is an explicit contract
 for affine equalities in Euclidean variables; nonlinear manifolds continue to
 rebuild their bases.
 

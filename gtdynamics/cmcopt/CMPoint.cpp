@@ -15,50 +15,6 @@
 #include <iostream>
 
 namespace gtdynamics {
-CMPoint::CMPoint(
-    const IEConstraintManifold::Params::shared_ptr& params,
-    const std::shared_ptr<const NonlinearEqualityConstraints>& equalities,
-    const std::shared_ptr<const NonlinearInequalityConstraints>& inequalities,
-    const Values& values, const std::optional<IndexSet>& active) {
-  if (!params || !equalities || !inequalities)
-    throw std::invalid_argument("Null CMC construction input");
-  const auto type = std::make_shared<IEConstraintManifold>(
-      *equalities, *inequalities, values, *params);
-  *this = type->point(values, active);
-}
-
-CMPoint::CMPoint(IEConstraintManifold::shared_ptr manifold,
-                 const Bindings& bindings, const Values& values,
-                 const std::optional<IndexSet>& active, const CMPoint* previous)
-    : manifold_(std::move(manifold)), bindings_(bindings), values_(values) {
-  manifold_->validate(bindings_, values_);
-
-  // Successors retain the same bindings and can share their bound factor views.
-  if (previous) {
-    equalities_ = previous->equalities_;
-    inequalities_ = previous->inequalities_;
-  } else {
-    std::tie(equalities_, inequalities_) =
-        manifold_->boundConstraints(bindings_);
-  }
-
-  // Boundary selection and numerical geometry belong to this value.
-  active_indices_ = manifold_->identifyActive(*this, active);
-  tangentSpace_ = manifold_->linearizeAt(
-      *this, previous ? previous->tangentSpace_.get() : nullptr);
-
-  // Keep preparation frozen; each retraction receives an independent workspace.
-  if (manifold_->params_.retractorCreator)
-    retractionPreparation_ =
-        previous ? previous->retractionPreparation_
-                 : manifold_->params_.retractorCreator->create(*this);
-}
-
-CMPoint CMPoint::createWithNewValues(
-    const Values& values, const std::optional<IndexSet>& active) const {
-  return CMPoint(manifold_, bindings_, values, active, this);
-}
-
 const std::shared_ptr<const TangentSpaceBasis>& CMPoint::eBasis() const {
   if (!tangentSpace_)
     throw std::invalid_argument("Unbound CMPoint has no tangent space");

@@ -52,7 +52,9 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   values.insert(FxKey(k), cp.computeFx(q, v, a));
   values.insert(FyKey(k), cp.computeFy(q, v, a));
 
-  CMPoint point(params, e_constraints, i_constraints, values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values, *params);
+  CMPoint point = pointType->point(values);
 
   VectorValues delta;
   double new_a = 20.0;
@@ -98,7 +100,9 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   values.insert(FxKey(k), cp.computeFx(q, v, a));
 //   values.insert(FyKey(k), cp.computeFy(q, v, a));
 
-//   CMPoint point(params, e_cc, i_constraints, values);
+//   const auto type = std::make_shared<IEConstraintManifold>(
+//       *e_cc, *i_constraints, values, *params);
+//   auto point = type->point(values);
 
 //   {
 //     VectorValues delta;
@@ -186,7 +190,9 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   values.insert(FxKey(k), cp.computeFx(q, v, a));
 //   values.insert(FyKey(k), cp.computeFy(q, v, a));
 
-//   CMPoint point(params, e_cc, i_constraints, values);
+//   const auto type = std::make_shared<IEConstraintManifold>(
+//       *e_cc, *i_constraints, values, *params);
+//   auto point = type->point(values);
 
 //   {
 //     VectorValues delta;

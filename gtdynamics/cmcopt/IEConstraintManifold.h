@@ -19,6 +19,7 @@
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
 
 #include <typeindex>
+#include <mutex>
 
 namespace gtdynamics {
 namespace internal {
@@ -130,11 +131,9 @@ class IEConstraintManifold : public std::enable_shared_from_this<IEConstraintMan
   bool usesVaryingMetric() const;
 
  protected:
-  /** Internal successor path. CMPoint supplies geometry only from the same
-   * type, conditioning, and bindings; callers cannot inject an unrelated basis.
-   */
+  /// Build active geometry using this type's prepared local equality structure.
   virtual std::shared_ptr<const CMTangentSpace> linearizeAt(
-      const CMPoint& point, const CMTangentSpace* previous) const;
+      const CMPoint& point) const;
 
   /// Slot metadata; no sample numerical state is retained.
   struct Slot {
@@ -154,6 +153,15 @@ class IEConstraintManifold : public std::enable_shared_from_this<IEConstraintMan
  private:
   friend class CMPoint;
   friend struct internal::LegacyCMAccess;
+  struct EqualityPreparation {
+    std::shared_ptr<const TangentSpaceBasis> structure;
+    std::once_flag affineOnce;
+    std::shared_ptr<const TangentSpaceBasis> affineBasis;
+  };
+  std::shared_ptr<EqualityPreparation> equalityPreparation_;
+  void prepareEqualities();
+  std::shared_ptr<const TangentSpaceBasis> localEqualityBasis(
+      const CMPoint& point) const;
   void validate(const Bindings& bindings, const Values& values) const;
   std::pair<NonlinearEqualityConstraints::shared_ptr,
             NonlinearInequalityConstraints::shared_ptr>

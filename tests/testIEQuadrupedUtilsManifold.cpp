@@ -423,8 +423,9 @@ TEST(IEVision60Robot_4c, point) {
           vision60, retractor_params, true);
   iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
 
-  CMPoint point(iecm_params, e_constraints, i_constraints,
-                                values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values, *iecm_params);
+  CMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(24, point.dim());
 
   auto e_manifold = gtdynamics::internal::equalityPoint(point);
@@ -532,8 +533,9 @@ TEST(IEVision60Robot_back_on_ground, point) {
   // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  CMPoint point(iecm_params, e_constraints, i_constraints,
-                                values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values, *iecm_params);
+  CMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(36, point.dim());
 
   auto e_manifold = gtdynamics::internal::equalityPoint(point);
@@ -641,8 +643,9 @@ TEST(IEVision60Robot_in_air, point) {
   // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  CMPoint point(iecm_params, e_constraints, i_constraints,
-                                values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values, *iecm_params);
+  CMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(48, point.dim());
 
   auto e_manifold = gtdynamics::internal::equalityPoint(point);
@@ -754,8 +757,9 @@ TEST(IEVision60Robot_ground_air_boundary, point) {
   // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  CMPoint point(iecm_params, e_constraints, i_constraints,
-                                values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values, *iecm_params);
+  CMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(12, point.dim());
 
   auto e_manifold = gtdynamics::internal::equalityPoint(point);

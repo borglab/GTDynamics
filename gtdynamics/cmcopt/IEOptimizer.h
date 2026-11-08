@@ -46,8 +46,9 @@ public:
       const Values &initial_values) const {
     // Split the original problem into CMPoint values and free
     // variables before the concrete LM/GD solver takes over.
-    auto points = identifyComponents(e_constraints, i_constraints,
-                                       initial_values, iecm_params_);
+    auto [types, points] = identifyConnectedComponents(
+        e_constraints, i_constraints,
+        initial_values, iecm_params_);
     Values unconstrainedValues = identifyUnconstrainedValues(
         e_constraints, i_constraints, initial_values);
     return optimize(graph, points, unconstrainedValues);
@@ -73,9 +74,17 @@ public:
   static std::map<Key, Key>
   varToManifoldKeyMap(const CMPoints &points);
 
-  /// Build one IE manifold per constraint-connected component, following the
-  /// thesis CMC component construction in Eqs. (4.33)-(4.34).
-  static CMPoints identifyComponents(
+  /** Discovered runtime definitions and their initial points. Each point
+   * references its type; types and points need not have matching indices/counts.
+   */
+  struct Components {
+    std::vector<IEConstraintManifold::shared_ptr> types;
+    CMPoints points;
+  };
+
+  /// Discover constraint-connected components and construct their types/points.
+  /// Equivalent definitions are not yet shared automatically.
+  static Components identifyConnectedComponents(
       const NonlinearEqualityConstraints &e_constraints,
       const NonlinearInequalityConstraints &i_constraints,
       const Values &values,

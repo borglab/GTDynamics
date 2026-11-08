@@ -44,7 +44,7 @@
 using namespace gtdynamics;
 using namespace gtsam;
 
-TEST(identifyComponents, HalfSphere) {
+TEST(identifyConnectedComponents, HalfSphere) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
@@ -66,8 +66,9 @@ TEST(identifyComponents, HalfSphere) {
           std::make_shared<HalfSphereRetractor>(half_sphere));
   iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  auto points = IEOptimizer::identifyComponents(e_constraints, i_constraints,
-                                                  values, iecm_params);
+  auto [types, points] = IEOptimizer::identifyConnectedComponents(
+      e_constraints, i_constraints,
+      values, iecm_params);
   for (const auto &it : points) {
     const auto &point = it.second;
     EXPECT_LONGS_EQUAL(1, point.iConstraints()->size());
@@ -77,7 +78,7 @@ TEST(identifyComponents, HalfSphere) {
   EXPECT_LONGS_EQUAL(num_steps + 1, points.size());
 }
 
-TEST(identifyComponents, CartPoleWithFriction) {
+TEST(identifyConnectedComponents, CartPoleWithFriction) {
   IECartPoleWithFriction cp;
   size_t num_steps = 2;
 
@@ -99,8 +100,9 @@ TEST(identifyComponents, CartPoleWithFriction) {
           std::make_shared<CartPoleWithFrictionRetractor>(cp));
   iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  auto points = IEOptimizer::identifyComponents(e_constraints, i_constraints,
-                                                  values, iecm_params);
+  auto [types, points] = IEOptimizer::identifyConnectedComponents(
+      e_constraints, i_constraints,
+      values, iecm_params);
   for (const auto &it : points) {
     const auto &point = it.second;
     EXPECT_LONGS_EQUAL(2, point.iConstraints()->size());
@@ -110,7 +112,7 @@ TEST(identifyComponents, CartPoleWithFriction) {
   EXPECT_LONGS_EQUAL(num_steps + 1, points.size());
 }
 
-TEST(identifyComponents, Dome) {
+TEST(identifyConnectedComponents, Dome) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
@@ -131,8 +133,9 @@ TEST(identifyComponents, Dome) {
     values.insert(PointKey(k), Point3(0, 1, 0));
   }
 
-  auto points = IEOptimizer::identifyComponents(e_constraints, i_constraints,
-                                                  values, iecm_params);
+  auto [types, points] = IEOptimizer::identifyConnectedComponents(
+      e_constraints, i_constraints,
+      values, iecm_params);
   for (const auto &it : points) {
     const auto &point = it.second;
     EXPECT_LONGS_EQUAL(2, point.iConstraints()->size());
@@ -157,8 +160,9 @@ static IELMState unilateralContactState(double target = 4.0) {
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
-  const auto points = IEOptimizer::identifyComponents({}, inequalities,
-                                                        initial, params);
+  const auto [types, points] = IEOptimizer::identifyConnectedComponents(
+      {}, inequalities,
+      initial, params);
   const auto pointGraph = IEOptimizer::pointGraph(
       graph, points);
   IELMState state(points, {}, graph, pointGraph, 0.5, 10.0);
@@ -229,7 +233,7 @@ TEST(IELMLinearUpdate, CoupledBoundsWithBothSenses) {
           std::make_shared<OrthonormalBasisCreator>();
       manifoldParams->retractorCreator =
           std::make_shared<BarrierRetractorCreator>();
-      const auto points = IEOptimizer::identifyComponents(
+      const auto [types, points] = IEOptimizer::identifyConnectedComponents(
           {}, inequalities, initial, manifoldParams);
       const auto pointGraph = IEOptimizer::pointGraph(
           graph, points);

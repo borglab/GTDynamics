@@ -84,7 +84,7 @@ CPBarrierRetractor::retract(const CMPoint *point,
   LevenbergMarquardtOptimizer optimizer1(graph1, opt_values, params);
   Values result = optimizer1.optimize();
 
-  return point->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 } // namespace gtdynamics

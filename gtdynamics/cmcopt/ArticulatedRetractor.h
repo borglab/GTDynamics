@@ -56,6 +56,15 @@ class ArticulatedRetractor : public IERetractor {
                                const VectorValues& delta,
                                const std::optional<IndexSet>& blocking = {},
                                IERetractionInfo* info = nullptr) const override;
+
+ private:
+  friend class ArticulatedRetractorCreator;
+  ArticulatedRetractor(const CMPoint& point,
+                       const std::shared_ptr<const Robot>& robot,
+                       const LinkSharedPtr& root, const KeySet& independentAD,
+                       const IERetractorParams::shared_ptr& params,
+                       const ReducedALRetractor::Settings& settings);
+
 };
 
 /** Create a separate projection cache for each constraint component.
@@ -87,5 +96,9 @@ class ArticulatedRetractorCreator : public IERetractorCreator {
   virtual ~ArticulatedRetractorCreator() = default;
   IERetractor::shared_ptr create(
       const CMPoint& point) const override;
+
+ private:
+  LinkSharedPtr root_;
+
 };
 }  // namespace gtdynamics

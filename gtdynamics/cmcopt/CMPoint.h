@@ -32,20 +32,6 @@ class CMPoint {
   /// point.
   CMPoint() = default;
 
-  /** Convenience construction of one factor-defined type and its initial point.
-   * Reuse a IEConstraintManifold explicitly when several points share a
-   * definition.
-   */
-  CMPoint(
-      const IEConstraintManifold::Params::shared_ptr& params,
-      const std::shared_ptr<const NonlinearEqualityConstraints>& equalities,
-      const std::shared_ptr<const NonlinearInequalityConstraints>& inequalities,
-      const Values& values, const std::optional<IndexSet>& active = {});
-
-  /// Rebuild a value of the same type without modifying its origin.
-  CMPoint createWithNewValues(const Values& values,
-                              const std::optional<IndexSet>& active = {}) const;
-
   /// Ambient numerical state is authoritative.
   const Values& values() const { return values_; }
   /// Runtime type identity, including immutable conditioning.
@@ -154,9 +140,6 @@ class CMPoint {
   std::shared_ptr<const CMTangentSpace> tangentSpace_;
   // Frozen preparation only; every invocation clones/detaches mutable work.
   std::shared_ptr<const IERetractor> retractionPreparation_;
-  CMPoint(IEConstraintManifold::shared_ptr manifold, const Bindings& bindings,
-          const Values& values, const std::optional<IndexSet>& active,
-          const CMPoint* previous = nullptr);
 };
 
 /// Component-point keys are independent of ambient keys.

@@ -100,8 +100,8 @@ TEST(KinodynamicOrdering, RetireLandmarkBeforeSharedBias) {
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
-  const auto points =
-      IEOptimizer::identifyComponents(equalities, {}, initial, params);
+  const auto [types, points] =
+      IEOptimizer::identifyConnectedComponents(equalities, {}, initial, params);
   const auto ownership = IEOptimizer::varToManifoldKeyMap(points);
   const Ordering expected{ownership.at(JointAngleKey(0, 5)),
                           ownership.at(JointAngleKey(0, 6)), landmark,

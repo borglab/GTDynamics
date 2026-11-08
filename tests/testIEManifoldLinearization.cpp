@@ -43,9 +43,9 @@ CMPoint makePoint() {
   params->affineEqualities = true;
   Values values;
   values.insert(Key(7), 1.);
-  return CMPoint(params,
-                              std::make_shared<NonlinearEqualityConstraints>(),
-                              inequalities, values);
+  const auto type = std::make_shared<IEConstraintManifold>(
+      NonlinearEqualityConstraints{}, *inequalities, values, *params);
+  return type->point(values);
 }
 
 // Projection and QP row access share one derivative evaluation.
@@ -81,15 +81,16 @@ TEST(CMTangentSpace, FreshGeometryAtNewState) {
   const auto oldGeometry = point.tangentSpace();
   Values values;
   values.insert(Key(7), 2.);
-  const auto next = point.createWithNewValues(values, IndexSet{2});
+  const auto next = point.manifold()->point(point.bindings(), values, IndexSet{2});
   EXPECT(next.tangentSpace() != oldGeometry);
-  EXPECT(next.eBasis() == point.eBasis());
+  EXPECT(assert_equal(point.toAmbient(Vector::Ones(point.dim())),
+                        next.toAmbient(Vector::Ones(next.dim()))));
   EXPECT_LONGS_EQUAL(2, derivativeCalls);
   EXPECT(assert_equal(Matrix1::Constant(4.), next.tangentSpace()->rows(2)));
   EXPECT(assert_equal(Matrix1::Constant(2.), oldGeometry->rows(2)));
   EXPECT_DOUBLES_EQUAL(3., next.inequalityResidual(2)(0), 0.);
   values.update(Key(7), 0.5);
-  point = point.createWithNewValues(values);
+  point = point.manifold()->point(point.bindings(), values);
   EXPECT(point.tangentSpace()->indices().empty());
   EXPECT_LONGS_EQUAL(2, derivativeCalls);
   EXPECT(assert_equal(Matrix1::Constant(2.), oldGeometry->rows(2)));

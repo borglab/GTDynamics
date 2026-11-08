@@ -555,7 +555,7 @@ json::object solve(const json::object &input) {
     }
     mp->retractorCreator =
         std::make_shared<UniversalIERetractorCreator>(retractor);
-    auto points = IEOptimizer::identifyComponents(
+    auto [types, points] = IEOptimizer::identifyConnectedComponents(
         problem.equalities, problem.inequalities, problem.initial, mp);
     manifoldSeconds = elapsed(start);
     for (const auto &[key, point] : points)

@@ -58,7 +58,7 @@ class LimitedRetractor : public IERetractor {
       ++*rejected;
       throw RetractionFailure("Synthetic projection convergence failure");
     }
-    return point->createWithNewValues(point->values().retract(delta));
+    return point->manifold()->point(point->bindings(), point->values().retract(delta));
   }
 };
 // Failed projections reject the trial and increase damping. Bounded details
@@ -115,7 +115,7 @@ class PositiveRetractor : public IERetractor {
     v.update(Key(1), blocking && !blocking->empty()
                          ? 0.
                          : std::max(0., v.at<double>(1)));
-    return point->createWithNewValues(v);
+    return point->manifold()->point(point->bindings(), v);
   }
   CMPoint moveToBoundary(
       const CMPoint* point, const IndexSet& blocking,

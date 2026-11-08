@@ -124,12 +124,12 @@ CMPoint ReducedALRetractor::retract(
                               settings_.feasibilityTolerance,
                               settings_.activeTolerance);
   if (const auto result = projection.feasibleProjection(blocking, info))
-    return point->createWithNewValues(result->values, result->active);
+    return point->manifold()->point(point->bindings(), result->values, result->active);
   Values result = projection.recover(Vector::Zero(projection.dim()));
   if (projection.dim())
     result = projection.recover(
         solveProblem(projection.buildProblem(blocking), projection, info));
-  return point->createWithNewValues(
+  return point->manifold()->point(point->bindings(),
       result, projection.validateResult(result, blocking));
 }
 

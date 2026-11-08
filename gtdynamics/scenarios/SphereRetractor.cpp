@@ -33,7 +33,7 @@ SphereRetractor::retract(const CMPoint *point,
   new_p = normalize(new_p) * r_;
   Values new_values;
   new_values.insert(key, new_p);
-  return point->createWithNewValues(new_values);
+  return point->manifold()->point(point->bindings(), new_values);
 }
 
 } // namespace gtdynamics

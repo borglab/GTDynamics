@@ -481,8 +481,9 @@ py::dict solve(
                                                     independentKeys, projection,
                                                     projectionSettings);
   auto start = Clock::now();
-  auto points = IEOptimizer::identifyComponents(equalities, inequalities,
-                                                  seed, manifoldParams);
+  auto components = IEOptimizer::identifyConnectedComponents(
+      equalities, inequalities, seed, manifoldParams);
+  auto& points = components.points;
   const auto componentKeys = pointKeys(points);
   gtdynamics::internal::forIndependentComponents(
       componentKeys.size(), setting<size_t>(settings, "retractionThreads"),

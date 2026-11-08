@@ -12,14 +12,53 @@
 #include <set>
 
 namespace gtdynamics {
+namespace {
+// Robot topology is independent of numerical values and ambient bindings.
+LinkSharedPtr validatedRoot(const std::shared_ptr<const Robot>& robot,
+                            const std::string& rootName) {
+  if (!robot) throw std::invalid_argument("Missing articulated robot");
+  const auto root = robot->link(rootName);
+  if (!root || root->isFixed())
+    throw std::invalid_argument(
+        "ArticulatedRetractor requires a floating root");
+  for (const auto& link : robot->links())
+    if (link->isFixed())
+      throw std::invalid_argument("Fixed links are unsupported");
+  std::set<int> reached{root->id()};
+  for (size_t pass = 0; pass < robot->links().size(); ++pass)
+    for (const auto& joint : robot->joints())
+      if (reached.count(joint->parent()->id()))
+        reached.insert(joint->child()->id());
+  std::set<int> children;
+  for (const auto& joint : robot->joints())
+    if (!children.insert(joint->child()->id()).second ||
+        joint->child() == root)
+      throw std::invalid_argument("ArticulatedRetractor requires a tree");
+  if (reached.size() != robot->links().size() ||
+      robot->joints().size() + 1 != robot->links().size())
+    throw std::invalid_argument(
+        "ArticulatedRetractor requires one connected tree");
+  return root;
+}
+}  // namespace
+
 ArticulatedRetractor::ArticulatedRetractor(
     const CMPoint& point,
     const std::shared_ptr<const Robot>& robot, const std::string& rootName,
     const KeySet& independentAD, const IERetractorParams::shared_ptr& params,
     const ReducedALRetractor::Settings& settings)
+    : ArticulatedRetractor(point, robot, validatedRoot(robot, rootName),
+                           independentAD, params, settings) {}
+
+ArticulatedRetractor::ArticulatedRetractor(
+    const CMPoint& point, const std::shared_ptr<const Robot>& robot,
+    const LinkSharedPtr& root, const KeySet& independentAD,
+    const IERetractorParams::shared_ptr& params,
+    const ReducedALRetractor::Settings& settings)
     : IERetractor(params ? std::make_shared<IERetractorParams>(*params)
                          : nullptr),
       robot_(robot),
+      root_(root),
       settings_(settings) {
   if (!robot_ || !params_ || point.values().empty())
     throw std::invalid_argument(
@@ -27,28 +66,8 @@ ArticulatedRetractor::ArticulatedRetractor(
   if (!(params_->feasibleThreshold > 0) ||
       !std::isfinite(params_->feasibleThreshold))
     throw std::invalid_argument("Invalid articulated feasibility tolerance");
-  root_ = robot_->link(rootName);
-  if (!root_ || root_->isFixed())
-    throw std::invalid_argument(
-        "ArticulatedRetractor requires a floating root");
   slice_ = DynamicsSymbol(point.values().keys().front()).time();
-  std::set<int> reached{root_->id()};
-  for (size_t pass = 0; pass < robot_->links().size(); ++pass)
-    for (const auto& joint : robot_->joints())
-      if (reached.count(joint->parent()->id()))
-        reached.insert(joint->child()->id());
-  std::set<int> children;
-  for (const auto& joint : robot_->joints())
-    if (!children.insert(joint->child()->id()).second ||
-        joint->child() == root_)
-      throw std::invalid_argument("ArticulatedRetractor requires a tree");
-  if (reached.size() != robot_->links().size() ||
-      robot_->joints().size() + 1 != robot_->links().size())
-    throw std::invalid_argument(
-        "ArticulatedRetractor requires one connected tree");
   for (const auto& link : robot_->links()) {
-    if (link->isFixed())
-      throw std::invalid_argument("Fixed links are unsupported");
     qvKeys_.insert(PoseKey(link->id(), slice_));
     qvKeys_.insert(TwistKey(link->id(), slice_));
   }
@@ -172,8 +191,9 @@ CMPoint ArticulatedRetractor::retract(
       });
   localParams->retractorCreator = std::make_shared<UniversalIERetractorCreator>(
       std::make_shared<ReducedALRetractor>(params_, settings_, priorKeys_));
-  CMPoint adPoint(localParams, equalities,
-                                  point->iConstraints(), anchor);
+  const auto adType = std::make_shared<IEConstraintManifold>(
+      *equalities, *point->iConstraints(), anchor, *localParams);
+  CMPoint adPoint = adType->point(anchor);
   const auto projected =
       adPoint.retract(anchor.zeroVectors(), blocking, info);
   trial.update(projected.values());
@@ -181,7 +201,7 @@ CMPoint ArticulatedRetractor::retract(
   if (violation > params_->feasibleThreshold || !std::isfinite(violation))
     throw RetractionFailure("Articulated retraction equality violation: " +
                             std::to_string(violation));
-  return point->createWithNewValues(trial, projected.activeIndices());
+  return point->manifold()->point(point->bindings(), trial, projected.activeIndices());
 }
 
 ArticulatedRetractorCreator::ArticulatedRetractorCreator(
@@ -197,6 +217,7 @@ ArticulatedRetractorCreator::ArticulatedRetractorCreator(
       settings_(settings) {
   if (!robot_ || !params_)
     throw std::invalid_argument("Missing articulated retractor inputs");
+  root_ = validatedRoot(robot_, rootName_);
   // The outer optimizer must not replace a caller-specified projection metric.
   params_->useVaryingSigma = false;
   params_->metricSigmas.reset();
@@ -207,8 +228,10 @@ IERetractorCreator::shared_ptr ArticulatedRetractorCreator::cloneFor(
   for (Key key : keys)
     if (independentAD_.exists(key)) independent.insert(key);
   auto projection = IERetractorParams::snapshot(projectionParams_, &keys);
-  return std::make_shared<ArticulatedRetractorCreator>(
-      robot_, rootName_, independent, projection, settings_);
+  auto result = std::make_shared<ArticulatedRetractorCreator>(*this);
+  result->independentAD_ = std::move(independent);
+  result->projectionParams_ = std::move(projection);
+  return result;
 }
 IERetractor::shared_ptr ArticulatedRetractorCreator::create(
     const CMPoint& point) const {
@@ -226,8 +249,7 @@ IERetractor::shared_ptr ArticulatedRetractorCreator::create(
         bound->insert(key, projection->metricSigmas->at(slot));
     projection->metricSigmas = bound;
   }
-  return std::make_shared<ArticulatedRetractor>(point, robot_, rootName_,
-                                                independent,
-                                                projection, settings_);
+  return IERetractor::shared_ptr(new ArticulatedRetractor(
+      point, robot_, root_, independent, projection, settings_));
 }
 }  // namespace gtdynamics

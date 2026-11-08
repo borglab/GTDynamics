@@ -38,7 +38,7 @@ HalfSphereRetractor::retract(const CMPoint *point,
 
   Values new_values;
   new_values.insert(key, new_p);
-  return point->createWithNewValues(new_values);
+  return point->manifold()->point(point->bindings(), new_values);
 }
 
 } // namespace gtdynamics

@@ -28,8 +28,9 @@ IELMState makeState(const NonlinearFactorGraph& graph,
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
-  const auto points =
-      IEOptimizer::identifyComponents(equalities, inequalities, initial, params);
+  const auto [types, points] =
+      IEOptimizer::identifyConnectedComponents(equalities, inequalities, initial,
+                                               params);
   const auto free = IEOptimizer::identifyUnconstrainedValues(
       equalities, inequalities, initial);
   const auto pointGraph = IEOptimizer::pointGraph(

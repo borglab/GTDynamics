@@ -73,7 +73,7 @@ CMPoint CartPoleWithLimitsRetractor::retract(
   // result.print("==============================result============================\n",
   // GTDKeyFormatter);
 
-  return point->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 } // namespace gtdynamics

@@ -526,7 +526,7 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
       std::make_shared<UniversalIERetractorCreator>(retractor);
 
   start = Clock::now();
-  auto points = IEOptimizer::identifyComponents(
+  auto [types, points] = IEOptimizer::identifyConnectedComponents(
       problem.equalities, problem.inequalities, initial, manifoldParams);
   for (auto& [key, point] : points) {
     try {

@@ -9,13 +9,15 @@ inequalities limit contact wrenches and torques.
 `IEConstraintManifold` defines a component's space through constraint factors and selected
 linearization/retraction policies. `CMPoint` is a numerical value with bindings
 from local slots to ambient pose, joint, force, and torque keys.
-`CMTangentSpace` contains the equality basis and active-boundary derivatives at
-that point. A step is an ordinary vector in the equality coordinates.
+The type owns symbolic equality preparation and, when certified affine, its
+constant local equality basis. `CMTangentSpace` references a read-only bound
+basis and contains the active-boundary derivatives at that point. Nonlinear
+numerical bases are rebuilt per point, independently of LM weights. A step is an ordinary vector in the equality coordinates.
 
 The G1 example still discovers its components automatically. Their component
 keys are independent of ambient keys; temporal ordering obtains time from each
-point's bindings. Retraction preparation is immutable, and mutable projection
-work is detached per call. Different fixed q/v values produce different temporary
+point's bindings. Binding-specific factor views and retraction preparation are
+rebuilt on point construction; mutable projection work is detached per call. Different fixed q/v values produce different temporary
 affine dynamics projections, even when the slices share structure.
 
 See the [type/value API](../../gtdynamics/cmcopt/IEConstraintManifold.md) and the

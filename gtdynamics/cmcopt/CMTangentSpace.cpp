@@ -46,13 +46,11 @@ CMTangentSpace::CMTangentSpace(const LinearIConstraintMap& tangentConstraints,
   cone_ = std::make_shared<TangentCone>(coneConstraints);
 }
 
-CMTangentSpace::CMTangentSpace(const TangentSpaceBasis::shared_ptr& basis,
+CMTangentSpace::CMTangentSpace(const std::shared_ptr<const TangentSpaceBasis>& basis,
                                const LinearIConstraintMap& tangent,
-                               const LinearIConstraintMap& ambient,
-                               const CMTangentSpace* predecessor)
+                               const LinearIConstraintMap& ambient)
     : CMTangentSpace(tangent, ambient) {
   basis_ = basis;
-  if (predecessor) metricCache_ = predecessor->metricCache_;
 }
 
 TangentSpaceMetric::shared_ptr CMTangentSpace::projectionMetric(

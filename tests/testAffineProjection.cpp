@@ -47,7 +47,9 @@ CMPoint line(const IERetractor::shared_ptr &retractor,
       [](const KeyVector &) { return KeyVector{kX}; });
   params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  return CMPoint(params, equalities, inequalities, anchor);
+  const auto type = std::make_shared<IEConstraintManifold>(
+      *equalities, *inequalities, anchor, *params);
+  return type->point(anchor);
 }
 IERetractorParams::shared_ptr weights() {
   auto p = IERetractorParams::createVaryingSigmas();
@@ -167,7 +169,8 @@ TEST(AffineProjection, ThreeSolversAndBlockingFaces) {
       EXPECT_DOUBLES_EQUAL(1, result.values().at<Vector>(kX)(0), 1e-7);
       EXPECT_DOUBLES_EQUAL(3, result.values().at<Vector>(kY)(0), 1e-7);
       EXPECT(result.activeIndices().exists(0));
-      EXPECT(result.eBasis() == point.eBasis());
+      EXPECT(assert_equal(point.toAmbient(Vector::Ones(point.dim())),
+                        result.toAmbient(Vector::Ones(result.dim()))));
       if (backend == 1)
         EXPECT_LONGS_EQUAL(1, info.numPenaltySolveCalls);
       // A feasible interior trial must still land on a requested boundary face.
@@ -234,9 +237,9 @@ TEST(AffineProjection, NonlinearEqualityKeepsAmbientRecovery) {
       NonlinearEqualityConstraints::FromCostGraph(factors));
   Values values;
   values.insert(kX, Vector(Vector2(1, 0)));
-  CMPoint point(params, equalities,
-                         std::make_shared<NonlinearInequalityConstraints>(),
-                         values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *equalities, NonlinearInequalityConstraints{}, values, *params);
+  CMPoint point = pointType->point(values);
   VectorValues delta;
   delta.insert(kX, Vector2(0, .2));
   IERetractionInfo info;

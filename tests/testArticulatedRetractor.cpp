@@ -95,10 +95,9 @@ struct Fixture {
     return p;
   }
   CMPoint makePoint() const {
-    return CMPoint(
-        parameters(),
-        std::make_shared<NonlinearEqualityConstraints>(equalities),
-        std::make_shared<NonlinearInequalityConstraints>(inequalities), values);
+    const auto type = std::make_shared<IEConstraintManifold>(
+        equalities, inequalities, values, *parameters());
+    return type->point(values);
   }
 };
 TEST(ArticulatedRetractor, MovingTreeAndOptionalWorldVelocity) {
@@ -198,10 +197,9 @@ TEST(ArticulatedRetractor, RejectMultipleSlices) {
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   bool rejected = false;
   try {
-    CMPoint point(
-        p, std::make_shared<NonlinearEqualityConstraints>(f.equalities),
-        std::make_shared<NonlinearInequalityConstraints>(f.inequalities),
-        f.values);
+    const auto pointType = std::make_shared<IEConstraintManifold>(
+        f.equalities, f.inequalities, f.values, *p);
+    CMPoint point = pointType->point(f.values);
   } catch (const std::invalid_argument&) {
     rejected = true;
   }
@@ -216,10 +214,9 @@ TEST(ArticulatedRetractor, RejectNonaffineMechanics) {
   f.equalities.add(NonlinearEqualityConstraints::FromCostGraph(graph));
   auto p = f.parameters();
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
-  CMPoint point(
-      p, std::make_shared<NonlinearEqualityConstraints>(f.equalities),
-      std::make_shared<NonlinearInequalityConstraints>(f.inequalities),
-      f.values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      f.equalities, f.inequalities, f.values, *p);
+  CMPoint point = pointType->point(f.values);
   bool rejected = false;
   try {
     point.retract(point.values().zeroVectors());
@@ -251,10 +248,9 @@ TEST(ArticulatedRetractor, RejectExtraConfigurationEquality) {
   // basis.
   auto p = f.parameters();
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
-  CMPoint point(
-      p, std::make_shared<NonlinearEqualityConstraints>(f.equalities),
-      std::make_shared<NonlinearInequalityConstraints>(f.inequalities),
-      f.values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      f.equalities, f.inequalities, f.values, *p);
+  CMPoint point = pointType->point(f.values);
   bool rejected = false;
   try {
     point.retract(point.values().zeroVectors());

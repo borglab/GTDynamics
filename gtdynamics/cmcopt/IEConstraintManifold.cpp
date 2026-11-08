@@ -13,6 +13,7 @@
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/internal/ReadOnlyBasis.h>
 #include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 
 namespace gtdynamics {
@@ -182,8 +183,7 @@ BoundInequality::createEqualityConstraint() const {
 }
 
 /** Bind a numerical basis without reinterpreting local coordinate choices. */
-class BoundBasis final : public TangentSpaceBasis {
-  TangentSpaceBasis::shared_ptr local_;
+class BoundBasis final : public internal::ReadOnlyBasis {
   IEConstraintManifold::Bindings bindings_, inverse_;
 
   Values localValues(const Values& ambient) const {
@@ -194,16 +194,16 @@ class BoundBasis final : public TangentSpaceBasis {
   }
 
  public:
-  BoundBasis(const TangentSpaceBasis::shared_ptr& basis,
+  BoundBasis(const std::shared_ptr<const TangentSpaceBasis>& basis,
              const IEConstraintManifold::Bindings& bindings)
-      : local_(basis), bindings_(bindings) {
+      : ReadOnlyBasis(basis), bindings_(bindings) {
     for (const auto& [slot, key] : bindings_) inverse_[key] = slot;
-    is_constructed_ = local_->isConstructed();
   }
 
   shared_ptr createWithNewValues(const Values& values) const override {
     return std::make_shared<BoundBasis>(
-        local_->createWithNewValues(localValues(values)), bindings_);
+        constructed(source_->createWithNewValues(localValues(values)),
+                    localValues(values)), bindings_);
   }
 
   shared_ptr createWithAdditionalConstraints(
@@ -213,14 +213,14 @@ class BoundBasis final : public TangentSpaceBasis {
     for (const auto& factor : constraints)
       local.emplace_shared<BoundEquality>(factor, inverse_, Values());
     return std::make_shared<BoundBasis>(
-        local_->createWithAdditionalConstraints(local, localValues(values),
-                                                fromScratch),
-        bindings_);
+        constructed(source_->createWithAdditionalConstraints(
+                        local, localValues(values), fromScratch),
+                    localValues(values)), bindings_);
   }
 
   VectorValues computeTangentVector(const Vector& xi) const override {
     VectorValues result;
-    for (const auto& [slot, value] : local_->computeTangentVector(xi))
+    for (const auto& [slot, value] : source_->computeTangentVector(xi))
       result.insert(bindings_.at(slot), value);
     return result;
   }
@@ -229,26 +229,19 @@ class BoundBasis final : public TangentSpaceBasis {
     VectorValues local;
     for (const auto& [slot, key] : bindings_)
       local.insert(slot, ambient.at(key));
-    return local_->computeXi(local);
+    return source_->computeXi(local);
   }
 
   Matrix recoverJacobian(const Key& key) const override {
-    return local_->recoverJacobian(inverse_.at(key));
+    return source_->recoverJacobian(inverse_.at(key));
   }
 
   Vector localCoordinates(const Values& a, const Values& b) const override {
-    return local_->localCoordinates(localValues(a), localValues(b));
+    return source_->localCoordinates(localValues(a), localValues(b));
   }
 
-  size_t dim() const override { return local_->dim(); }
-  void construct(const Values& values) override {
-    local_->construct(localValues(values));
-    is_constructed_ = true;
-  }
+  size_t dim() const override { return source_->dim(); }
 
-  void print(const KeyFormatter& formatter = DefaultKeyFormatter) override {
-    local_->print(formatter);
-  }
 };
 
 }  // namespace
@@ -298,6 +291,8 @@ IEConstraintManifold::IEConstraintManifold(const NonlinearEqualityConstraints& e
     for (Key key : graphKeys)
       if (!slots_.count(key))
         throw std::invalid_argument("Constraint references an undeclared slot");
+
+  prepareEqualities();
 }
 
 std::map<Key, size_t> IEConstraintManifold::dimensions() const {
@@ -361,7 +356,19 @@ IEConstraintManifold::boundConstraints(const Bindings& bindings) const {
 
 CMPoint IEConstraintManifold::point(const Bindings& bindings, const Values& values,
                          const std::optional<IndexSet>& active) const {
-  return CMPoint(shared_from_this(), bindings, values, active);
+  validate(bindings, values);
+  CMPoint result;
+  result.manifold_ = shared_from_this();
+  result.bindings_ = bindings;
+  result.values_ = values;
+
+  // Binding-specific factor views and retraction preparation are freshly built.
+  std::tie(result.equalities_, result.inequalities_) = boundConstraints(bindings);
+  result.active_indices_ = identifyActive(result, active);
+  result.tangentSpace_ = linearizeAt(result);
+  if (params_.retractorCreator)
+    result.retractionPreparation_ = params_.retractorCreator->create(result);
+  return result;
 }
 
 CMPoint IEConstraintManifold::point(const Values& values,
@@ -407,6 +414,7 @@ IEConstraintManifold::shared_ptr IEConstraintManifold::condition(const Values& f
   for (const auto& [key, slot] : result->slots_) freeSlots.insert(key);
   result->params_.retractorCreator =
       result->params_.retractorCreator->cloneFor(freeSlots);
+  result->prepareEqualities();
   return result;
 }
 
@@ -414,55 +422,62 @@ std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearize(
     const CMPoint& point) const {
   if (point.manifold().get() != this)
     throw std::invalid_argument("Point belongs to a different runtime type");
-  return linearizeAt(point, nullptr);
+  return linearizeAt(point);
+}
+
+void IEConstraintManifold::prepareEqualities() {
+  Bindings identity;
+  for (const auto& [key, slot] : slots_) identity.emplace(key, key);
+  auto preparation = std::make_shared<EqualityPreparation>();
+  preparation->structure = params_.equalityBasisCreator->prepare(
+      boundConstraints(identity).first, dimensions());
+  if (preparation->structure->isConstructed())
+    throw std::invalid_argument("Equality preparation must not construct numerics");
+  equalityPreparation_ = std::move(preparation);
+}
+
+std::shared_ptr<const TangentSpaceBasis> IEConstraintManifold::localEqualityBasis(
+    const CMPoint& point) const {
+  const auto construct = [&]() -> std::shared_ptr<const TangentSpaceBasis> {
+    bool identity = true;
+    for (const auto& [slot, ambient] : point.bindings()) identity &= slot == ambient;
+    Values local;
+    if (!identity)
+      for (const auto& [slot, ambient] : point.bindings())
+        local.insert(slot, point.values().at(ambient));
+    const Values& values = identity ? point.values() : local;
+    auto basis = equalityPreparation_->structure->createWithNewValues(values);
+    if (!basis->isConstructed()) basis->construct(values);
+    if (basis->dim() != dim())
+      throw RetractionFailure("CMC equality chart changed dimension");
+    for (Key key : values.keys()) {
+      const Matrix block = basis->recoverJacobian(key);
+      if (!block.allFinite() || (dim() && block.cols() != dim()) ||
+          (!dim() && block.norm() > 1e-12))
+        throw RetractionFailure(
+            "Equalities do not define the declared constant-rank chart");
+      if (dim()) break;
+    }
+    return basis;
+  };
+  if (!params_.affineEqualities) return construct();
+
+  // Only certified constant geometry is published once, after full construction.
+  std::call_once(equalityPreparation_->affineOnce, [&] {
+    equalityPreparation_->affineBasis = construct();
+  });
+  return equalityPreparation_->affineBasis;
 }
 
 std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearizeAt(
-    const CMPoint& point, const CMTangentSpace* previous) const {
+    const CMPoint& point) const {
   const auto& values = point.values();
   if (point.manifold().get() != this)
     throw std::invalid_argument("Point belongs to a different runtime type");
-
-  // Reuse numerical geometry only under the explicit affine contract.
-  TangentSpaceBasis::shared_ptr basis;
-  if (previous) {
-    basis = params_.affineEqualities
-                ? std::const_pointer_cast<TangentSpaceBasis>(previous->basis())
-                : previous->basis()->createWithNewValues(values);
-  } else {
-    bool identity = true;
-    Values local;
-    Bindings slots;
-    for (const auto& [slot, ambient] : point.bindings()) {
-      identity &= slot == ambient;
-      local.insert(slot, values.at(ambient));
-      slots.emplace(slot, slot);
-    }
-    if (identity)
-      basis = params_.equalityBasisCreator->create(point.equalities_, values);
-    else {
-      auto constraints = boundConstraints(slots).first;
-      auto localBasis =
-          params_.equalityBasisCreator->create(constraints, local);
-      if (!localBasis->isConstructed()) localBasis->construct(local);
-      basis = std::make_shared<BoundBasis>(localBasis, point.bindings());
-    }
-  }
-
-  // Finish lazy basis construction before publishing read-only geometry.
-  if (!basis->isConstructed()) basis->construct(values);
-  if (basis->dim() != dim())
-    throw RetractionFailure("CMC equality chart changed dimension");
-  // Eigen's full-rank kernel can use a single zero placeholder column.
-  // A nonzero placeholder or a different positive chart width indicates a
-  // rank change, rather than a different point of this fixed-dimensional type.
-  for (Key key : values.keys()) {
-    const Matrix block = basis->recoverJacobian(key);
-    if ((dim() && block.cols() != dim()) || (!dim() && block.norm() > 1e-12))
-      throw RetractionFailure(
-          "Equalities do not define the declared constant-rank chart");
-    if (dim()) break;
-  }
+  auto basis = localEqualityBasis(point);
+  bool identity = true;
+  for (const auto& [slot, ambient] : point.bindings()) identity &= slot == ambient;
+  if (!identity) basis = std::make_shared<BoundBasis>(basis, point.bindings());
 
   // Pull each active block into equality coordinates and retain its raw rows.
   LinearIConstraintMap tangent, ambient;
@@ -488,7 +503,7 @@ std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearizeAt(
   }
 
   return std::make_shared<CMTangentSpace>(
-      basis, tangent, ambient, params_.affineEqualities ? previous : nullptr);
+      basis, tangent, ambient);
 }
 
 CMPoint IEConstraintManifold::retract(const CMPoint& point, const Vector& delta,

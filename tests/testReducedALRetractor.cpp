@@ -45,9 +45,9 @@ CMPoint makePoint(
   params->equalityBasisCreator = basis;
   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(
       std::make_shared<ReducedALRetractor>(metric, settings));
-  return CMPoint(
-      params, std::make_shared<NonlinearEqualityConstraints>(equalities),
-      std::make_shared<NonlinearInequalityConstraints>(inequalities), values);
+  const auto type = std::make_shared<IEConstraintManifold>(
+      equalities, inequalities, values, *params);
+  return type->point(values);
 }
 
 NonlinearInequalityConstraint::shared_ptr bound(
@@ -84,9 +84,11 @@ TEST(ReducedALRetractor, FeasibleTrialSkipsAL) {
   EXPECT_DOUBLES_EQUAL(1, result.values().at<Vector>(kX)(0), 0);
   EXPECT_LONGS_EQUAL(1, info.numFeasibleTrials);
   EXPECT_LONGS_EQUAL(0, info.numALSolveCalls);
-  EXPECT(start.eBasis() == result.eBasis());
+  EXPECT(assert_equal(start.toAmbient(Vector::Ones(start.dim())),
+                        result.toAmbient(Vector::Ones(result.dim()))));
   IERetractorParams metric;
-  EXPECT(start.projectionMetric(metric) == result.projectionMetric(metric));
+  EXPECT(assert_equal(start.projectionMetric(metric)->costJacobian(),
+                      result.projectionMetric(metric)->costJacobian()));
 
   // A feasible interior point cannot satisfy a request to land on the face.
   IERetractionInfo forced;
@@ -125,7 +127,8 @@ TEST(ReducedALRetractor, AffineMetricReuseAndInvalidation) {
   EXPECT_LONGS_EQUAL(1, info.numFeasibleProjections);
   EXPECT_DOUBLES_EQUAL(1, projected.values().at<Vector>(kX)(0), 1e-12);
   EXPECT_DOUBLES_EQUAL(2, projected.values().at<Vector>(kY)(0), 1e-12);
-  EXPECT(first == projected.projectionMetric(*weights));
+  EXPECT(assert_equal(first->costJacobian(),
+                      projected.projectionMetric(*weights)->costJacobian()));
 
   weights->metricSigmas->at(kY)(0) = 1;
   auto changed = start.projectionMetric(*weights);
@@ -170,11 +173,12 @@ TEST(ReducedALRetractor, NonlinearManifoldRebuildsBasisAndMetric) {
   Values a, b;
   a.insert(kX, Vector(Vector2(1, 0)));
   b.insert(kX, Vector(Vector2(0, 1)));
-  CMPoint start(params, equalities,
-      std::make_shared<NonlinearInequalityConstraints>(), a);
+  const auto startType = std::make_shared<IEConstraintManifold>(
+      *equalities, NonlinearInequalityConstraints{}, a, *params);
+  CMPoint start = startType->point(a);
   IERetractorParams metric;
   auto first = start.projectionMetric(metric);
-  const auto next = start.createWithNewValues(b);
+  const auto next = start.manifold()->point(start.bindings(), b);
   EXPECT(start.eBasis() != next.eBasis());
   EXPECT(first != next.projectionMetric(metric));
   EXPECT_DOUBLES_EQUAL(0, start.eBasis()->recoverJacobian(kX)(0, 0), 1e-12);

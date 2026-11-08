@@ -72,7 +72,9 @@ TEST(HalfSphereRetractor, retract) {
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   Values values1;
   values1.insert(PointKey(0), Point3(3, 0, 0));
-  CMPoint point1(params, e_constraints, i_constraints, values1);
+  const auto point1Type = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values1, *params);
+  CMPoint point1 = point1Type->point(values1);
 
   // retract
   VectorValues delta1;
@@ -107,7 +109,9 @@ TEST(HalfSphere, Dome) {
       std::make_shared<UniversalIERetractorCreator>(retractor);
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  CMPoint point(params, e_constraints, i_constraints, values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values, *params);
+  CMPoint point = pointType->point(values);
 
   {
     VectorValues delta;

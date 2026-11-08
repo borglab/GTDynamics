@@ -130,7 +130,7 @@ class CompiledIEConstraintManifold final : public IEConstraintManifold {
  protected:
   /// Construct numerical recovery and active-boundary geometry at this point.
   std::shared_ptr<const CMTangentSpace> linearizeAt(
-      const CMPoint& point, const CMTangentSpace* = nullptr) const override {
+      const CMPoint& point) const override {
     const auto values = local(point);
     const T native = recovery_.fromAmbient(values);
     if (!values.equals(recovery_.ambient(native), 1e-8))
@@ -180,7 +180,7 @@ class CompiledIEConstraintManifold final : public IEConstraintManifold {
     // The compiled type owns explicit movement onto a blocking face.
     if (blocking && !blocking->empty())
       next = recovery_.boundary(next, *blocking);
-    return point.createWithNewValues(ambient(next, point));
+    return point.manifold()->point(point.bindings(), ambient(next, point));
   }
 
   /// Lifted updates use the same native chart, never a factor-graph retractor.
@@ -250,7 +250,8 @@ class CompiledIEConstraintManifold final : public IEConstraintManifold {
   CMPoint moveToBoundary(const CMPoint& point, const IndexSet& active,
                          IERetractionInfo* = nullptr,
                          const VectorValues* = nullptr) const override {
-    return point.createWithNewValues(
+    return point.manifold()->point(
+        point.bindings(),
         ambient(recovery_.boundary(recovery_.fromAmbient(local(point)), active),
                 point),
         active);

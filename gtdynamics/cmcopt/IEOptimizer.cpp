@@ -122,75 +122,46 @@ ComponentInfo identifyConnectedComponent(
 }
 
 /* ************************************************************************* */
-  std::vector<std::pair<NonlinearEqualityConstraints::shared_ptr,
-                      NonlinearInequalityConstraints::shared_ptr>>
-identifyConnectedComponents(
-    const NonlinearEqualityConstraints &e_constraints,
-    const NonlinearInequalityConstraints &i_constraints) {
-
-  VariableIndex e_var_index(e_constraints);
-  VariableIndex i_var_index(i_constraints);
-
-  // Get all the keys in constraints.
-  KeySet keys = e_constraints.keys();
-  keys.merge(i_constraints.keys());
-
-  std::vector<std::pair<NonlinearEqualityConstraints::shared_ptr,
-                        NonlinearInequalityConstraints::shared_ptr>>
-      components;
-  while (!keys.empty()) {
-    auto component_info = identifyConnectedComponent(
-        e_constraints, i_constraints, e_var_index, i_var_index, *keys.begin());
-    for (const Key &key : component_info.keys) {
-      keys.erase(key);
-    }
-
-    // e_constraints
-    auto component_e_constraints =
-        std::make_shared<NonlinearEqualityConstraints>();
-    for (const auto &idx : component_info.e_indices) {
-      component_e_constraints->push_back(e_constraints.at(idx));
-    }
-    // i_constraints
-    auto component_i_constraints =
-        std::make_shared<NonlinearInequalityConstraints>();
-    for (const auto &idx : component_info.i_indices) {
-      component_i_constraints->push_back(i_constraints.at(idx));
-    }
-
-    components.emplace_back(component_e_constraints, component_i_constraints);
-  }
-  return components;
-}
-
-/* ************************************************************************* */
-CMPoints IEOptimizer::identifyComponents(
+IEOptimizer::Components IEOptimizer::identifyConnectedComponents(
     const NonlinearEqualityConstraints &e_constraints,
     const NonlinearInequalityConstraints &i_constraints,
     const Values &values,
     const IEConstraintManifold::Params::shared_ptr &iecm_params) {
-  // Each thesis Eq. (4.33) connected component becomes one Eq. (4.34)
-  // CMPoint with its own active set, basis, and tangent cone.
-  auto components = identifyConnectedComponents(e_constraints, i_constraints);
+  if (!iecm_params) throw std::invalid_argument("Missing CMC type parameters");
+  VariableIndex e_var_index(e_constraints);
+  VariableIndex i_var_index(i_constraints);
 
-  CMPoints points;
-  for (const auto &[component_e_constraints, component_i_constraints] : components) {
-    KeySet keys = component_e_constraints->keys();
-    keys.merge(component_i_constraints->keys());
-    size_t index = points.size();
-    Key component_key = Symbol('c', index);
-    while (values.exists(component_key) || points.count(component_key))
-      component_key = Symbol('c', ++index);
-    Values component_values;
-    for (const Key &key : keys) {
-      component_values.insert(key, values.at(key));
-    }
-    points.emplace(
-        component_key, CMPoint(iecm_params, component_e_constraints,
-                                            component_i_constraints,
-                                            component_values));
+  // Only constraint factors determine connectivity; costs may couple points.
+  KeySet keys = e_constraints.keys();
+  keys.merge(i_constraints.keys());
+  Components result;
+  while (!keys.empty()) {
+    auto component_info = identifyConnectedComponent(
+        e_constraints, i_constraints, e_var_index, i_var_index, *keys.begin());
+    for (const Key &key : component_info.keys) keys.erase(key);
+
+    NonlinearEqualityConstraints equalities;
+    for (const auto &idx : component_info.e_indices)
+      equalities.push_back(e_constraints.at(idx));
+    NonlinearInequalityConstraints inequalities;
+    for (const auto &idx : component_info.i_indices)
+      inequalities.push_back(i_constraints.at(idx));
+
+    Values componentValues;
+    for (const Key &key : component_info.keys)
+      componentValues.insert(key, values.at(key));
+    const auto type = std::make_shared<IEConstraintManifold>(
+        equalities, inequalities, componentValues, *iecm_params);
+
+    // Point keys are independent of both ambient keys and the type collection.
+    size_t index = result.points.size();
+    Key pointKey = Symbol('c', index);
+    while (values.exists(pointKey) || result.points.count(pointKey))
+      pointKey = Symbol('c', ++index);
+    result.types.push_back(type);
+    result.points.emplace(pointKey, type->point(componentValues));
   }
-  return points;
+  return result;
 }
 
 /* ************************************************************************* */
