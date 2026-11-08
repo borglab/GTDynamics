@@ -146,13 +146,6 @@ kbd { font: 11px ui-monospace, monospace; padding: 0 3px; border: 1px solid var(
   font-size: 12px;
 }
 
-.offline { position: absolute; inset: 0; z-index: 2; overflow: auto; padding: 14px; display: grid; align-items: center; background: var(--theme-scene); }
-.offline-card { width: min(100%, 460px); margin: auto; padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
-.offline-card h2 { margin: 0; font-size: 16px; }
-.offline-card pre { overflow: auto; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; }
-.offline-card p:last-child { margin-bottom: 0; }
-.urdf-app[data-mode="offline"] #panel { opacity: .6; }
-
 .solve-details { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
 .solve-details section { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); padding: 12px 14px; }
 .solve-details h3 { margin: 0; font-size: 15px; }

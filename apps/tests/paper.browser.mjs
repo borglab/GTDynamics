@@ -9,7 +9,7 @@ import apps from '../registry.json' with { type: 'json' };
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const ready = {
-  urdf: '.urdf-app[data-mode="offline"] #viewport canvas',
+  urdf: '.urdf-app[data-mode="browser"] #status-badge:has-text("Ready")',
   'contact-labels': '.label-scene canvas',
   'contact-initialization': '.scene canvas',
   'contact-vs-ik': '.comparison .scene canvas',
@@ -109,8 +109,8 @@ try {
           await frame.locator('.method-results.contact[data-result-iteration="0"]').waitFor();
         }
         if (app.id === 'urdf') {
-          assert.equal(await paper.locator('mjx-container[jax="SVG"]').count(), 2);
-          await frame.getByRole('heading', { name: 'Local GTDynamics server required' }).waitFor();
+          assert.equal(await paper.locator('mjx-container[jax="SVG"]').count(), 3);
+          await frame.getByText('Live browser solve', { exact: true }).waitFor();
         } else if (app.id === 'contact-initialization') {
           await frame.getByRole('button', { name: 'Select event 1', exact: true }).click();
           assert.equal(await frame.locator('main').getAttribute('data-event'), '1');

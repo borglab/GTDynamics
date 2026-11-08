@@ -18,8 +18,7 @@ const ready = {
   interpolation: '.interpolation-scene canvas', dynamics: '.dynamics-scene[data-ready="true"] canvas',
   kinodynamics: '.kinodynamics-scene[data-ready="true"] canvas', 'motion-planning': '.robot-canvas canvas',
   'scate/ur5': '#stage[data-ready="true"] canvas',
-  // The static build has no Python backend, so URDF IK settles in its offline notice.
-  urdf: '.urdf-app[data-mode="offline"] #viewport canvas',
+  urdf: '.urdf-app[data-mode="browser"] #status-badge:has-text("Ready")',
 };
 try {
   for (const base of ['/', '/GTDynamics/']) {

@@ -1,15 +1,18 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppAbstract from '../../shared/paper/AppAbstract.vue';
 import AppPaper from '../../shared/paper/AppPaper.vue';
 import MathTypeset from '../../shared/paper/MathTypeset.vue';
 import PaperGraph from '../../shared/paper/PaperGraph.vue';
-import license from '../../../models/urdfs/ur10e/LICENSE?url';
+import ur10eLicense from '../../../models/urdfs/ur10e/LICENSE?url';
+import ur5License from '../../../models/urdfs/ur5/LICENSE?url';
 import { createExplorer } from './explorer.js';
 import equations from './ik.math.html?math';
 
 const mode = ref('loading');
-const offlineReason = ref('');
+const modeLabel = computed(() => ({
+  browser: 'Live browser solve', native: 'Live native solve', loading: 'Connecting…', error: 'Solver unavailable',
+})[mode.value]);
 const poseGoal = ref(true);
 const graphSolver = ref(true);
 let explorer;
@@ -17,8 +20,7 @@ let explorer;
 onMounted(() => {
   explorer = createExplorer({
     backend: import.meta.env.DEV,
-    onLive: () => { mode.value = 'live'; },
-    onOffline: (message) => { mode.value = 'offline'; offlineReason.value = message; },
+    onMode: (solver) => { mode.value = solver; },
     onMethod: (scheme, orientation) => {
       graphSolver.value = scheme === 'gtd';
       poseGoal.value = orientation;
@@ -35,7 +37,7 @@ onBeforeUnmount(() => explorer?.dispose());
         <h1>URDF IK Explorer</h1>
         <AppAbstract app="urdf" />
       </div>
-      <span class="mode-label">{{ mode === 'live' ? 'Live native solve' : mode === 'offline' ? 'Local backend required' : 'Connecting…' }}</span>
+      <span class="mode-label">{{ modeLabel }}</span>
     </header>
 
     <section id="demo" aria-label="Interactive inverse kinematics">
@@ -50,19 +52,9 @@ onBeforeUnmount(() => explorer?.dispose());
           <button id="fit" class="small secondary">Fit view</button>
         </div>
         <div id="toast" hidden></div>
-
-        <div v-if="mode === 'offline'" class="offline" role="region" aria-labelledby="offline-title">
-          <div class="offline-card">
-            <h2 id="offline-title">Local GTDynamics server required</h2>
-            <p>Live solving runs in the GTDynamics Python bindings ({{ offlineReason }}). Install the bindings, then start the site from <code>apps/</code>.</p>
-            <pre><code>python -c "import gtdynamics"
-npm run dev</code></pre>
-            <p><a href="https://github.com/borglab/GTDynamics/tree/master/apps/urdf#readme" target="_blank" rel="noopener">URDF IK setup ↗</a></p>
-          </div>
-        </div>
       </div>
 
-      <aside id="panel" aria-label="Inverse kinematics controls" :inert="mode === 'offline' || undefined">
+      <aside id="panel" aria-label="Inverse kinematics controls">
         <div class="selectors">
           <label>Model <select id="model"></select></label>
           <label>End-effector frame <select id="ee" disabled></select></label>
@@ -112,7 +104,7 @@ npm run dev</code></pre>
       <div id="solve-details" class="solve-details">
         <section>
           <h3>Latest solve</h3>
-          <p>The demo reports world-frame position error in millimetres and, for pose goals, rotation error in degrees. Time measures the native solve in milliseconds. The iteration count appears when the solver reports it.</p>
+          <p>The demo reports world-frame position error in millimetres and, for pose goals, rotation error in degrees. Time measures computation in the selected solver in milliseconds. The iteration count appears when the solver reports it.</p>
           <p id="result-summary" class="result-summary"></p>
           <ul id="reasons"></ul>
           <p id="quat" class="hint mono"></p>
@@ -121,7 +113,8 @@ npm run dev</code></pre>
         <section>
           <h3>Solver settings</h3>
           <p id="scheme-desc"></p>
-          <div class="grid3" :inert="mode === 'offline' || undefined">
+          <p v-if="mode === 'browser'">The browser includes the UR10e and UR5. <a href="https://github.com/borglab/GTDynamics/tree/master/apps/urdf#running">Run the app locally</a> to use the native factor graph and the full model catalogue.</p>
+          <div class="grid3">
             <label>Pos tol (mm) <input type="number" id="pos-tol" value="1" min="0.001" step="0.1"></label>
             <label>Rot tol (°) <input type="number" id="rot-tol" value="0.5" min="0.001" step="0.1"></label>
             <label>Max iters <input type="number" id="max-iters" min="1" step="1" placeholder="auto"></label>
@@ -132,7 +125,8 @@ npm run dev</code></pre>
       </div>
 
       <template #discussion>
-        <p>The UR10e model and meshes come from Universal Robots’ ROS 2 Description 4.4.0 (81f7c9fe). <a :href="license" download="UR10e-LICENSE">UR10e model license</a>.</p>
+        <p>The UR10e model and meshes come from Universal Robots’ ROS 2 Description 4.4.0 (81f7c9fe). <a :href="ur10eLicense" download="UR10e-LICENSE">UR10e model license</a>.</p>
+        <p>The UR5 model is based on ROS-Industrial’s <code>ur_description</code> package. The bundled visual meshes match the <a href="https://github.com/ros-industrial/universal_robot/tree/06d8b9e2f5f86aa54f9f2845f11edbc84e2f951e/ur_description">ROS Kinetic revision</a>. <a :href="ur5License" download="UR5-LICENSE">UR5 model license</a>.</p>
       </template>
     </AppPaper>
   </main>

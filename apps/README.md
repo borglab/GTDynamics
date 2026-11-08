@@ -5,7 +5,7 @@ tab. [registry.json](registry.json) supplies the tab labels, overview links, and
 the list of apps to build. Each app keeps its own Vue/Vite project and can also
 be opened directly.
 
-- [URDF IK](urdf/README.md): move a robot’s tool and compare GTDynamics factor graph IK with joint-space solvers. Live solves require a [local Python backend](#python-backed-apps).
+- [URDF IK](urdf/README.md): move the UR10e or UR5 tool with live browser IK. [Local mode](#python-backed-apps) adds the GTDynamics factor graph and full model catalogue.
 - [Contact Labels](contact-labels/README.md): inspect privileged stationarity targets derived from SSIO reference-world sole motion.
 - [Contact Initialization](contact-initialization/README.md): inspect native pose-contact initialization and independently selectable priors on SSIO and additional G1 recordings.
 - [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
@@ -113,8 +113,8 @@ and the shared navigation. Asset URLs are relative, so the same build works at
 
 ## Python-backed apps
 
-URDF IK is a Vite app like the others, but it solves every drag on a Python
-backend built on the GTDynamics bindings. For a registry entry with
+URDF IK runs damped least squares in a browser worker on the static site.
+Local development uses the GTDynamics Python bindings when available. For a registry entry with
 `"backend": "python"`, the launcher also starts the app's
 `scripts/backend.mjs`. That script runs `scripts/server.py`, and the app's Vite
 config proxies the page's API requests to it on port 8767 (`URDF_BACKEND_PORT`
@@ -133,10 +133,8 @@ python -c "import gtdynamics"
 GTDYNAMICS_PYTHON=/absolute/path/to/python npm run dev
 ```
 
-If that interpreter cannot import `gtdynamics`, the launcher says so and the
-page shows a notice explaining how to run the backend. GitHub Pages cannot run
-Python either, so the static build shows the same notice without contacting a
-backend. To run the app on its own, see
+If that interpreter cannot import `gtdynamics`, the app uses the same UR10e and
+UR5 browser solver as the static build. To run the app on its own, see
 [the URDF IK README](urdf/README.md#running).
 
 ## Live motion planning
@@ -202,7 +200,7 @@ The workflow follows GitHub's [custom Pages workflow](https://docs.github.com/en
    registry entry and provides `scripts/backend.mjs` exporting
    `startBackend()`. That function returns the spawned server process, or
    `null` when Python is unavailable. The app's Vite config proxies relative API
-   paths to the server, and a static build shows how to run the server instead
+   paths to the server, and the static build can use a browser solver
    (see [`urdf/`](urdf/README.md)). Use an app browser test to exercise live
    behavior alongside the shared paper check on the static build.
 5. Start robot visualization with [the shared viewport and camera](shared/README.md).

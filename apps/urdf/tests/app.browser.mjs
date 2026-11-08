@@ -1,4 +1,4 @@
-/** URDF IK: offline notice on the static build, and (with GTDynamics Python) a live solve. */
+/** Live browser IK from static assets and native IK when GTDynamics is available. */
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -27,18 +27,67 @@ async function check(url, run) {
 
 let backend;
 try {
-  // npm run build first: the static site has no backend, so the page explains how to run one.
+  // The static site must load and solve with only its built assets.
   for (const base of ['/', '/GTDynamics/urdf/']) {
     const server = await preview({ root, configFile: false, base, preview: { host: '127.0.0.1', port: 0, strictPort: true } });
     try {
       await check(`http://127.0.0.1:${server.httpServer.address().port}${base}`, async (page) => {
-        await page.locator('.urdf-app[data-mode="offline"]').waitFor();
-        await page.getByRole('heading', { name: 'Local GTDynamics server required' }).waitFor();
-        assert.equal(await page.locator('#status-badge').innerText(), 'Backend not running');
+        const origin = new URL(page.url()).origin;
+        const unexpected = [], failures = [];
+        page.on('response', response => {
+          if (response.status() >= 400 && !response.url().endsWith('/favicon.ico')) failures.push(response.url());
+        });
+        await page.route('**/*', route => {
+          const url = new URL(route.request().url());
+          if (url.origin !== origin || /\/(api|files|pkg)\//.test(url.pathname)) {
+            unexpected.push(url.href);
+            return route.abort();
+          }
+          return route.continue();
+        });
+        await page.reload();
+        await page.locator('.urdf-app[data-mode="browser"]').waitFor();
+        const status = page.locator('#status-badge');
+        const model = page.locator('#model');
+        await status.filter({ hasText: /^Ready$/ }).waitFor();
+        assert.deepEqual(await model.locator('option').evaluateAll(options => options.map(option => option.value)),
+          ['ur10e/ur10e.urdf', 'ur5/ur5.urdf']);
+        assert.deepEqual(await page.locator('#scheme option').allTextContents(), ['Damped least squares']);
+        const coordinate = async axis => Number(await page.locator(`#cur-${axis}`).innerText());
+        for (const [name, home] of [
+          ['ur10e/ur10e.urdf', [1.18425, 0.2907, 0.06085]],
+          ['ur5/ur5.urdf', [0.81725, 0.19145, -0.005491]],
+        ]) {
+          if (await model.inputValue() !== name) await model.selectOption(name);
+          await status.filter({ hasText: /^Ready$/ }).waitFor();
+          assert.equal(await page.locator('#ee').inputValue(), 'tool0');
+          assert.equal(await page.locator('#joints input[type=range]').count(), 6);
+          assert(await page.locator('#orientation').isChecked());
+          const targetX = (await coordinate(0) - 0.035).toFixed(4);
+          await page.locator('#tgt-0').fill(targetX);
+          await page.locator('#solve').click();
+          await status.filter({ hasText: /^Solved$/ }).waitFor();
+          assert(Math.abs(await coordinate(0) - Number(targetX)) <= 0.0011);
+          assert.match(await page.locator('#result-summary').innerText(), /mm.*°/);
+          await page.locator('#home').click();
+          await status.filter({ hasText: 'Forward kinematics' }).waitFor();
+          for (const [axis, expected] of home.entries()) {
+            assert(Math.abs(await coordinate(axis) - expected) < 0.0001, `${name} home axis ${axis}`);
+          }
+          await page.locator('#tgt-0').fill('5');
+          await page.locator('#solve').click();
+          await status.filter({ hasText: /^Not solved$/ }).waitFor();
+          assert.match(await page.locator('#reasons').innerText(), /maximum reach/);
+        }
+        await page.waitForFunction(() =>
+          new Set(performance.getEntriesByType('resource').map(entry => entry.name)
+            .filter(url => url.endsWith('.dae'))).size === 14);
         assert.equal(await page.locator('#viewport canvas').count(), 1);
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        assert.deepEqual(unexpected, []);
+        assert.deepEqual(failures, []);
       });
-      console.log(`PASS offline ${base}`);
+      console.log(`PASS browser IK ${base}: both models, FK, pose solve and reach diagnostics without a backend`);
     } finally {
       server.httpServer.closeAllConnections();
       await new Promise((resolve) => server.httpServer.close(resolve));
@@ -47,7 +96,7 @@ try {
 
   backend = startBackend();
   if (!backend) {
-    console.log('SKIP live: no GTDynamics Python');
+    console.log('SKIP native IK: no GTDynamics Python');
   } else {
     await waitForBackend();
     // The dev server proxies api/, files/ and pkg/ to the backend, also under a base path.
@@ -56,10 +105,11 @@ try {
     await server.listen();
     try {
       await check(`http://127.0.0.1:${server.httpServer.address().port}/urdf/`, async (page) => {
-        await page.locator('.urdf-app[data-mode="live"]').waitFor();
+        await page.locator('.urdf-app[data-mode="native"]').waitFor();
         await page.locator('#status-badge', { hasText: 'Ready' }).waitFor();
         assert.match(await page.locator('#model').inputValue(), /^ur10e\//);
         assert.equal(await page.locator('#joints input[type=range]').count(), 6);
+        assert.equal(await page.locator('#scheme').inputValue(), 'gtd');
         for (const size of [{ width: 1440, height: 775 }, { width: 1280, height: 675 }]) {
           // The shell consumes about 125 pixels above the app at these widths.
           await page.setViewportSize(size);
@@ -84,7 +134,7 @@ try {
         await page.setViewportSize({ width: 390, height: 730 });
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       });
-      console.log('PASS live /urdf/');
+      console.log('PASS native factor graph /urdf/');
     } finally {
       await server.close();
     }

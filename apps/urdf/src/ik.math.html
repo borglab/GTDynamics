@@ -11,3 +11,8 @@ r_B=\operatorname{Log}(X_0^{-1}X),\qquad
 r_Q=q_j-q_0,\qquad
 r_L=\max(0,a+\epsilon-q_j,q_j-b+\epsilon).
 \]
+<h4>Browser joint-space solve</h4>
+<p>MuJoCo evaluates the tool pose and its world-frame geometric Jacobian J. The error vector e contains position error in metres and, for a pose goal, the shortest rotation vector scaled by half the chain’s reach, clamped to 0.05–1 m/rad. The solver applies the same scale to the rotational rows of J. It caps the largest joint step at 0.5 rad, clips the candidate to the URDF limits, and accepts a step when the weighted error decreases. Damping λ decreases after an accepted step and increases after a rejected step.</p>
+\[
+(J^\mathsf{T}J+\lambda^2 I)\,\Delta q=J^\mathsf{T} e.
+\]

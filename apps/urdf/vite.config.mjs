@@ -11,6 +11,7 @@ export default defineConfig({
   plugins: [Vue(), paperMath()],
   // The URDF loader requires a newer Three.js than the shared workspace default.
   resolve: { dedupe: ['three'] },
+  worker: { format: 'es' },
   server: {
     proxy: {
       // The page requests api/, files/ and pkg/ relative to its own URL, so

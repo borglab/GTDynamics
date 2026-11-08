@@ -1,7 +1,6 @@
 /**
- * URDF IK Explorer: the three.js scene and side-panel logic, driving the
- * GTDynamics backend (../scripts/server.py). App.vue owns the markup and mounts
- * this with createExplorer().
+ * URDF IK Explorer: the three.js scene and side-panel logic for the browser
+ * worker and local GTDynamics backend. App.vue owns the markup.
  */
 import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
@@ -10,6 +9,7 @@ import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import URDFLoader from 'urdf-loader';
 import { api, latestOnly } from './api.js';
+import { createBrowserBackend } from './browser-backend.js';
 import {
   POSE_FIELDS, endEffectorLabel, homeConfiguration, quaternionFromRpyDeg,
   rpyDegFromQuaternion, sliderRange, solveSummary,
@@ -21,16 +21,17 @@ const $ = (id) => document.getElementById(id);
 
 /**
  * Builds the scene inside #viewport and wires the controls rendered by App.vue.
- * hooks.backend: whether a backend can be reached (false for a static build,
- * which has no proxy to it). hooks.onOffline(message) runs when there is no
- * backend or it does not answer; hooks.onLive() runs once it lists its IK schemes.
+ * hooks.backend enables the local Python probe on a development server.
+ * hooks.onMode reports the selected solver before model loading begins.
  * Returns { dispose }.
  */
 export function createExplorer(hooks = {}) {
   const lifetime = new AbortController();
   let modelLoad;
+  let browserBackend;
   const request = (path, body, signal = lifetime.signal) =>
-    api(path, body, (url, init) => fetch(url, { ...init, signal }));
+    browserBackend ? browserBackend.request(path, body, signal) :
+      api(path, body, (url, init) => fetch(url, { ...init, signal }));
   const state = {
     generation: 0,      // bumped on every model / end-effector change
     modelPath: null,
@@ -468,7 +469,8 @@ export function createExplorer(hooks = {}) {
     const ext = path.split(/[?#]/)[0].split('.').pop().toLowerCase();
     manager.itemStart(path);
     try {
-      const response = await fetch(manager.resolveURL(path), { signal });
+      const url = manager.resolveURL(path);
+      const response = await fetch(url, { signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       if (ext === 'stl') {
         const data = await response.arrayBuffer();
@@ -480,7 +482,7 @@ export function createExplorer(hooks = {}) {
       } else {
         const data = await response.text();
         signal.throwIfAborted();
-        if (ext === 'dae') done(new ColladaLoader(manager).parse(data, THREE.LoaderUtils.extractUrlBase(path)).scene);
+        if (ext === 'dae') done(new ColladaLoader(manager).parse(data, THREE.LoaderUtils.extractUrlBase(url)).scene);
         else if (ext === 'obj') done(new OBJLoader(manager).parse(data));
         else throw new Error(`No loader for .${ext} meshes`);
       }
@@ -497,11 +499,18 @@ export function createExplorer(hooks = {}) {
       const loader = new URDFLoader(manager);
       const missingMeshes = state.missingMeshes;
       loader.fetchOptions = { signal };
-      loader.packages = (pkg) => `pkg/${pkg}`;
+      let url = state.urdfPrefix + modelPath;
+      if (browserBackend) {
+        url = browserBackend.urdfUrl(modelPath);
+        loader.workingPath = './';
+        manager.setURLModifier(path => browserBackend.resolveAsset(modelPath, path));
+      } else {
+        loader.packages = (pkg) => `pkg/${pkg}`;
+      }
       loader.loadMeshCb = (path, manager, done) => loadMesh(path, manager, done, signal, missingMeshes);
       let robot = null;
       manager.onLoad = () => resolve(robot);
-      loader.load(state.urdfPrefix + modelPath, (result) => { robot = result; }, undefined, () => resolve(null));
+      loader.load(url, (result) => { robot = result; }, undefined, () => resolve(null));
     });
   }
 
@@ -576,7 +585,7 @@ export function createExplorer(hooks = {}) {
         text: `${err.message} The URDF is shown for reference only.`, kind: 'reason',
       }]);
       showNotes(currentNotes());
-      refreshModelList();
+      if (!browserBackend) refreshModelList();
       return;
     }
     if (gen !== state.generation) return;
@@ -604,7 +613,7 @@ export function createExplorer(hooks = {}) {
       text: 'Drag the orange handle to solve IK.', kind: 'info',
     }]);
     showNotes(currentNotes());
-    refreshModelList();
+    if (!browserBackend) refreshModelList();
 
     await visual;
   }
@@ -642,7 +651,7 @@ export function createExplorer(hooks = {}) {
     try {
       const { models, urdf_url_prefix: prefix } = await request('api/models');
       if (lifetime.signal.aborted) return [];
-      state.urdfPrefix = prefix;
+      if (prefix) state.urdfPrefix = prefix;
       const select = $('model');
       const selected = select.value || state.modelPath;
       select.replaceChildren(...models.map((m) => {
@@ -654,7 +663,7 @@ export function createExplorer(hooks = {}) {
       if (selected) select.value = selected;
       return models;
     } catch (err) {
-      if (!lifetime.signal.aborted) showError(`Cannot reach the server: ${err.message}`);
+      if (!lifetime.signal.aborted) showError(`Could not list robot models: ${err.message}`);
       return [];
     }
   }
@@ -664,20 +673,20 @@ export function createExplorer(hooks = {}) {
   async function init() {
     buildPoseTable();
     let schemes;
-    try {
-      if (hooks.backend === false) throw new Error('this static build has no backend');
-      schemes = await request('api/schemes');
-    } catch (err) {
-      if (lifetime.signal.aborted) return;
-      setStatus('error', 'Backend not running', '', [{
-        text: 'IK runs on a local GTDynamics Python server. See the notice for how to start it.',
-        kind: 'reason',
-      }]);
-      hooks.onOffline?.(err.message);
-      return;
+    if (hooks.backend) {
+      try {
+        schemes = await request('api/schemes');
+      } catch {
+        // A development server can still run the two browser models without Python.
+      }
     }
     if (lifetime.signal.aborted) return;
-    hooks.onLive?.();
+    if (!schemes?.length) {
+      browserBackend = createBrowserBackend();
+      schemes = await request('api/schemes');
+    }
+    if (lifetime.signal.aborted) return;
+    hooks.onMode?.(browserBackend ? 'browser' : 'native');
     $('scheme').replaceChildren(...schemes.map((s) => {
       const opt = document.createElement('option');
       opt.value = s.id;
@@ -732,13 +741,18 @@ export function createExplorer(hooks = {}) {
     }
   }
 
-  init().catch((err) => { if (!lifetime.signal.aborted) showError(err.message); });
+  init().catch((err) => {
+    if (lifetime.signal.aborted) return;
+    hooks.onMode?.('error');
+    showError(err.message);
+  });
 
   return {
     dispose() {
       state.generation++;
       lifetime.abort();
       modelLoad?.abort();
+      browserBackend?.dispose();
       stopThemeSync();
       clearTimeout(toastTimer);
       scene.remove(gizmo);

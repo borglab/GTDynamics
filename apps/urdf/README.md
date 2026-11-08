@@ -1,31 +1,31 @@
 # URDF IK Explorer
 
 An interactive browser app for inverse kinematics on the robots in [`models/urdfs`](../../models/urdfs).
-Pick a URDF and an end-effector frame, then drag the end-effector around.
-Each move runs the selected IK scheme on GTDynamics' kinematic model.
+Pick a model and an end-effector frame, then drag the tool.
+GitHub Pages runs live damped least squares on the UR10e and UR5 in a browser worker.
+Local mode adds the GTDynamics factor graph, the other solvers, and the full URDF catalogue.
 The app shows the resulting joint angles and end-effector pose.
 If the target can't be reached, it explains why.
 The paper below the demo describes the factor graph and shows solver settings, residuals, and diagnostics. [Using the app](#using-the-app) lists every control.
 
 ## Requirements
 
-- The GTDynamics Python bindings (`import gtdynamics` must work), built and installed as described in [`python/README.md`](../../python/README.md) (`make python-install`).
+- For native mode, build and install the GTDynamics Python bindings as described in [`python/README.md`](../../python/README.md) (`make python-install`). Check that `import gtdynamics` works.
   `numpy` and `gtsam` come with them.
   No other Python packages are needed: the backend uses only the standard library.
-- Node.js 22+ and the apps workspace installed with `npm ci` in `apps/` (see [the apps README](../README.md#local-preview)).
-  [three.js](https://threejs.org) 0.160.0 and [urdf-loader](https://github.com/gkjohnson/urdf-loaders) 0.12.3 are npm dependencies of this workspace.
+- For local development, install the apps workspace with `npm ci` in `apps/` using Node.js 22+ (see [the apps README](../README.md#local-preview)).
+- The browser worker uses the workspace’s MuJoCo WebAssembly package for forward kinematics and Jacobians. The build bundles the two URDFs and their visual meshes.
 - A modern web browser with WebGL.
 
 ## Running
 
 The **URDF IK** tab is the first app after Overview on the [GTDynamics apps site](../README.md).
-Like the other apps it is a Vite project, but every solve runs on a local Python backend, [`scripts/server.py`](scripts/server.py).
-The Vite dev server proxies the page's `api/`, `files/` and `pkg/` requests to that backend on port 8767.
-On GitHub Pages, the paper is available alongside instructions for running the interactive demo locally.
+The static build always uses browser IK. In native mode, Vite proxies the page’s
+`api/`, `files/` and `pkg/` requests to the Python backend on port 8767.
 The app follows the site's Light/Dark setting.
 
 `npm run dev` looks for Python in this order: `GTDYNAMICS_PYTHON`, then the repository's `.venv/bin/python`, then `python3`.
-If that interpreter can't import `gtdynamics`, it says so and the page shows the same notice.
+If the backend is unavailable, the app uses browser IK.
 
 To run the whole apps site, including this tab, start it from `apps/` and open <http://127.0.0.1:3000/#urdf>:
 
@@ -64,8 +64,8 @@ Backend options:
 
 | Action | How |
 | --- | --- |
-| Load a robot | **Model** dropdown. Every `*.urdf` under `models/urdfs` is listed. The root link of the URDF is fixed in the world. |
-| Pick what to move | **End-effector frame** dropdown. It lists every GTDynamics link plus URDF frames rigidly attached to one (for example, `tool0` on the UR arms or the `*_toe` frames on the A1). It also shows how many joints move that frame. |
+| Load a robot | **Model** dropdown. Browser mode includes the UR10e and UR5. Native mode lists every `*.urdf` under `models/urdfs`. Both use a fixed base. |
+| Pick what to move | **End-effector frame** dropdown. It shows how many joints move each frame. Browser mode preserves fixed tool frames such as `tool0`. Native mode also offers frames such as the `*_toe` frames on the A1. |
 | Pick the solver | **IK scheme** dropdown (see below). Changing it re-solves to the current target. |
 | Move the end-effector | Click and hold the **orange handle**, then drag. It moves in the plane facing the camera. IK runs continuously while you drag, warm-started from the previous solution. |
 | Change the end-effector pose | **Double-click the handle.** A rotation gizmo appears and the pose panel is highlighted: drag the rings to rotate, press <kbd>W</kbd> for the axis-arrow move gizmo and <kbd>E</kbd> for rotate, and <kbd>Esc</kbd> (or double-click again) when done. You can also type an exact target (x, y, z in meters; roll, pitch, yaw in degrees, URDF convention `R = Rz(yaw)·Ry(pitch)·Rx(roll)`) and press Enter or **Solve to target**. |
@@ -77,7 +77,7 @@ Backend options:
 The viewport shows:
 
 - The robot meshes.
-- A blue stick-figure **skeleton** of GTDynamics' link frames.
+- A blue stick-figure **skeleton** of the robot’s link frames.
 - The **target**: the orange handle and its faded axes.
 - The **achieved end-effector pose**: solid axes.
 
@@ -94,14 +94,16 @@ The pose panel always shows the current end-effector position, roll/pitch/yaw an
 | **Jacobian transpose** | Gradient descent (`Δq = α Jᵀe` with the optimal step length). Each step is cheap, but convergence is slow, especially for orientation. |
 | **Cyclic coordinate descent (CCD)** | Solves for one joint at a time, tip to base, rotating each joint toward the target. It is robust for position goals and weaker for orientation. |
 
-The Jacobian-based schemes and CCD only move the joints between the fixed base and the end-effector, and they use GTDynamics for all forward kinematics.
+Browser mode offers damped least squares and uses MuJoCo for forward kinematics.
+It starts from a bent configuration for dragging. **Home** resets to the URDF zero configuration.
+The native joint-space schemes use GTDynamics for forward kinematics.
 
 ## Why a target can't be solved
 
-A solve is **Solved** when both the position and orientation errors are within tolerance.
+A solve is **Solved** when position error and any constrained orientation error are within tolerance.
 Otherwise the status panel says **Not solved** and lists the reasons it found.
 It still shows the best configuration the solver reached.
-The checks are:
+The native mode checks are:
 
 | Reason | How it is detected |
 | --- | --- |
@@ -115,9 +117,10 @@ The checks are:
 | Local minimum | No small joint motion reduces the remaining error. |
 | Solver error | The optimizer raised an exception. Its message is shown. |
 
-When a solve succeeds, the panel still warns if the arm is near a singularity or if a joint sits at a limit.
+Native mode can warn about singularities and joint limits even when a solve succeeds.
+Browser mode reports reach, insufficient degrees of freedom, stalled solves, iteration limits, and joints at their bounds.
 
-## Model notes
+## Native model notes
 
 - Every model is test-parsed in a separate process before it is loaded, because some URDFs crash GTDynamics' native parser (for example, `test/four_bar_linkage.urdf`).
   Models that GTDynamics can't load still render in the viewport, with the parser's error in the status panel.
@@ -154,8 +157,8 @@ To run only these, from `apps/`:
 npm test --workspace urdf
 ```
 
-The browser test checks the offline notice on the static build at `/` and under a project prefix.
-When `gtdynamics` imports, it also starts the backend and drives a live solve.
+The browser test checks both bundled models, pose solves, and forward kinematics on the static build at `/` and under a project prefix. It rejects backend requests on those pages.
+When `gtdynamics` imports, it also exercises the native factor graph.
 Build the app first, from `apps/`:
 
 ```sh
@@ -172,9 +175,10 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/app.browser.
 
 | File | Contents |
 | --- | --- |
-| `index.html`, `src/main.js`, `src/App.vue` | Vite entry and the page markup, including the offline notice. |
+| `index.html`, `src/main.js`, `src/App.vue` | Vite entry, page markup, and solver mode. |
 | `src/explorer.js` | The three.js scene, dragging and pose editing, and the side-panel logic (`createExplorer`). |
 | `src/pose.js`, `src/api.js` | Pose, joint and status helpers, and requests to the backend. |
+| `src/browser-backend.js`, `src/browser-worker.js`, `src/browser-ik.js` | Bundled model assets, worker transport, MuJoCo kinematics, and browser IK. |
 | `src/style.css` | Styles, with light and dark palettes keyed on the shared theme. |
 | `vite.config.mjs` | Proxies `api/`, `files/` and `pkg/` to the backend, also under the site's `/urdf/` prefix. |
 | `scripts/server.py` | Standard-library HTTP backend. It serves URDF and mesh files and a JSON API: `GET /api/models`, `GET /api/schemes`, `POST /api/load`, `POST /api/fk`, `POST /api/ik`. |
@@ -182,4 +186,4 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/app.browser.
 | `scripts/backend.mjs`, `scripts/dev.mjs` | Start the backend for `npm run dev`, here and in the apps launcher. |
 | `tests/test_ik_backend.py` | Backend unit tests. |
 | `tests/pose.test.mjs` | Node tests for `src/pose.js` and `src/api.js`. |
-| `tests/app.browser.mjs` | Browser test: offline notice, and a live solve when GTDynamics is available. |
+| `tests/app.browser.mjs` | Static browser solves and the native mode when GTDynamics is available. |

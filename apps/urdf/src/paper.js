@@ -1,8 +1,8 @@
 /** The formulation follows the two native GTDynamics IK paths in ik_backend.py. */
 export const urdfPaper = {
-  abstract: 'Inverse kinematics finds joint coordinates that move a robot’s tool to a requested position or pose. This demo compares GTDynamics’ factor graph, which couples link poses and joint coordinates, with four joint-space solvers on the same URDF model.',
+  abstract: 'Inverse kinematics finds joint coordinates that move a robot’s tool to a requested position or pose. The browser demo solves in joint space on the UR10e and UR5. Local mode also offers a GTDynamics factor graph that couples link poses and joint coordinates.',
   motivation: 'A tool target may admit several joint configurations or lie beyond the robot’s reach. Joint-space methods use forward kinematics to evaluate candidate configurations. A factor graph estimates link poses alongside the joint coordinates, which exposes how the target, joint geometry, and priors compete.',
-  approach: 'The GTDynamics scheme solves one configuration at a time with Levenberg–Marquardt, starting from the current joint coordinates and their forward kinematics. The selected end-effector frame may have a fixed offset from its carrier link. The diagram shows one joint and the factors for the selected goal type.',
+  approach: 'The GTDynamics scheme solves one configuration at a time with Levenberg–Marquardt, starting from the current joint coordinates and their forward kinematics. The selected end-effector frame may have a fixed offset from its carrier link. The diagram shows one joint and the factors for the selected goal type. The browser solver uses the same URDF joint geometry and starts from a bent configuration to make the first drag easier.',
   graph: 'urdf-pose',
   factors: [
     { id: 'kinematics', name: 'K · Articulated joint geometry', description: 'A PoseFactor connects the parent and child world-frame centre-of-mass (COM) poses to their joint coordinate. Its six-dimensional pose residual compares the relative COM transform with the one predicted by the URDF joint. Full-pose IK also includes the joint equality residual as a penalty in the default optimizer.' },

@@ -11,11 +11,11 @@ export const python = process.env.GTDYNAMICS_PYTHON || (existsSync(venvPython) ?
 
 /**
  * Spawns scripts/server.py, or returns null (after explaining why) when the
- * interpreter cannot import gtdynamics. The page then shows its offline notice.
+ * interpreter cannot import gtdynamics. The app then uses browser IK.
  */
 export function startBackend({ port = process.env.URDF_BACKEND_PORT || 8767 } = {}) {
   if (spawnSync(python, ['-c', 'import gtdynamics'], { stdio: 'ignore' }).status !== 0) {
-    console.log(`${python} cannot import gtdynamics; URDF IK will show its local-setup notice. `
+    console.log(`${python} cannot import gtdynamics; URDF IK will use the browser solver. `
       + 'Set GTDYNAMICS_PYTHON to use another interpreter.');
     return null;
   }

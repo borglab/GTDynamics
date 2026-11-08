@@ -2,7 +2,7 @@
   {
     "id": "urdf",
     "title": "URDF IK",
-    "description": "Move a robot’s end effector and compare factor graph and joint-space inverse kinematics. Inspect the joint configuration, pose error, and solver diagnostics. Live solving requires a local GTDynamics Python server.",
+    "description": "Drag the UR10e or UR5 tool and solve inverse kinematics in the browser. Inspect joint configurations and pose errors. Local mode adds the GTDynamics factor graph and more robots.",
     "tag": "Interactive inverse kinematics",
     "backend": "python"
   },
