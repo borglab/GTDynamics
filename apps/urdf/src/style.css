@@ -12,7 +12,6 @@
   --fail-bg: #fbeaea;
   --warn: #9a6400;
   --input: #ffffff;
-  --viewport: #20232a;
 }
 
 /* ../../shared/theme.js sets data-theme from the apps site's Light/Dark choice. */
@@ -219,7 +218,7 @@ table.pose input { margin: 0; padding: 3px 5px; }
   position: relative;
   flex: 1;
   min-width: 0;
-  background: var(--viewport);
+  background: var(--theme-scene);
 }
 
 #viewport canvas { display: block; touch-action: none; }
@@ -229,7 +228,7 @@ table.pose input { margin: 0; padding: 3px 5px; }
   left: 12px;
   right: 12px;
   bottom: 12px;
-  color: #c9ced6;
+  color: var(--theme-secondary);
   font-size: 12px;
   pointer-events: none;
 }
@@ -237,7 +236,7 @@ table.pose input { margin: 0; padding: 3px 5px; }
 kbd {
   font: 11px ui-monospace, monospace;
   padding: 0 4px;
-  border: 1px solid #555b66;
+  border: 1px solid var(--theme-border);
   border-radius: 3px;
 }
 
@@ -249,8 +248,8 @@ kbd {
   gap: 12px;
   align-items: center;
 }
-#view-tools label.check { color: #d4d8de; margin: 0; }
-#view-tools button.secondary { color: #d4d8de; border-color: #4a4f58; }
+#view-tools label.check { color: var(--theme-text); margin: 0; }
+#view-tools button.secondary { color: var(--theme-text); border-color: var(--theme-border); }
 
 #toast {
   position: absolute;

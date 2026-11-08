@@ -15,6 +15,7 @@ import {
   POSE_FIELDS, endEffectorLabel, homeConfiguration, quaternionFromRpyDeg,
   rpyDegFromQuaternion, sliderRange, solveSummary,
 } from './pose.js';
+import { getTheme, onThemeChange, themeColor } from '../../shared/theme.js';
 
 // URDFs are Z-up; make three.js follow.
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -52,7 +53,7 @@ export function createExplorer(hooks = {}) {
   viewport.prepend(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x20232a);
+  scene.background = new THREE.Color();
   scene.add(new THREE.HemisphereLight(0xf0f3ff, 0x40362c, 1.6));
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
   sun.position.set(3, -2, 5);
@@ -61,9 +62,7 @@ export function createExplorer(hooks = {}) {
   fill.position.set(-3, 4, 2);
   scene.add(fill);
 
-  const grid = new THREE.GridHelper(10, 50, 0x5a606b, 0x363a42);
-  grid.rotation.x = Math.PI / 2;
-  scene.add(grid);
+  let grid = null;
   const worldAxes = new THREE.AxesHelper(0.3);
   scene.add(worldAxes);
 
@@ -112,15 +111,37 @@ export function createExplorer(hooks = {}) {
   const skeleton = new THREE.Group();
   const skeletonLines = new THREE.LineSegments(
     new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x5ad1ff, transparent: true, opacity: 0.8, depthTest: false }),
+    new THREE.LineBasicMaterial({ transparent: true, opacity: 0.8, depthTest: false }),
   );
   const skeletonPoints = new THREE.Points(
     new THREE.BufferGeometry(),
-    new THREE.PointsMaterial({ color: 0x5ad1ff, size: 6, sizeAttenuation: false, depthTest: false }),
+    new THREE.PointsMaterial({ size: 6, sizeAttenuation: false, depthTest: false }),
   );
   skeletonLines.renderOrder = skeletonPoints.renderOrder = 18;
   skeleton.add(skeletonLines, skeletonPoints);
   scene.add(skeleton);
+
+  // Follow the apps site's Light/Dark toggle (../../shared/theme.js). The grid is
+  // rebuilt because GridHelper bakes its colors into vertex attributes.
+  function applyTheme() {
+    scene.background.set(themeColor('scene'));
+    const scale = grid ? grid.scale.x : 1;
+    if (grid) {
+      scene.remove(grid);
+      grid.geometry.dispose();
+      grid.material.dispose();
+    }
+    grid = new THREE.GridHelper(10, 50, themeColor('grid-major'), themeColor('grid-minor'));
+    grid.rotation.x = Math.PI / 2;
+    grid.scale.setScalar(scale);
+    scene.add(grid);
+    // Light cyan reads on the dark scene; a deeper blue keeps contrast on the light one.
+    const bone = getTheme() === 'dark' ? 0x5ad1ff : 0x1479b8;
+    skeletonLines.material.color.set(bone);
+    skeletonPoints.material.color.set(bone);
+  }
+  applyTheme();
+  const stopThemeSync = onThemeChange(applyTheme);
 
   const gizmo = new TransformControls(camera, renderer.domElement);
   gizmo.setSpace('local');
@@ -715,6 +736,7 @@ export function createExplorer(hooks = {}) {
     dispose() {
       state.generation++;
       window.removeEventListener('keydown', onKeyDown);
+      stopThemeSync();
       clearTimeout(toastTimer);
       resizer.disconnect();
       renderer.setAnimationLoop(null);
