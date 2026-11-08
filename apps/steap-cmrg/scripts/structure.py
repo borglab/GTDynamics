@@ -204,15 +204,22 @@ def build_structure(spec: dict) -> Structure:
             )
         )
     stock_x = site[0] - stock_distance + (len(movable) - 1) / 2.0 * STOCK_SPACING
+    posts_staged = 0
     for slot, member in enumerate(movable):
         length = member.size[0]
         x = stock_x + (slot - (len(movable) - 1) / 2.0) * STOCK_SPACING
         y_center = site[1]
         z = TABLE_TOP_Z + PROFILE_WIDTH / 2.0
-        member.staging = on_edge_pose(x, y_center, z, math.pi / 2.0)
-        end = y_center + length / 2.0
-        grip_y = end - GRIP_FROM_TOP if member.kind == "post" else y_center
-        add_grip(member, x, y_center, grip_y, math.pi / 2.0)
+        # Alternate posts lie end for end, so arm 1 grips them from the opposite end of the stock.
+        flip = member.kind == "post" and posts_staged % 2 == 1
+        posts_staged += member.kind == "post"
+        yaw = -math.pi / 2.0 if flip else math.pi / 2.0
+        member.staging = on_edge_pose(x, y_center, z, yaw)
+        top = y_center - length / 2.0 if flip else y_center + length / 2.0
+        grip_y = y_center
+        if member.kind == "post":
+            grip_y = top + GRIP_FROM_TOP if flip else top - GRIP_FROM_TOP
+        add_grip(member, x, y_center, grip_y, yaw)
     members.extend(movable)
     return Structure(
         spec.get("name", "structure"),
