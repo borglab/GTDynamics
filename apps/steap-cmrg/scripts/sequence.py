@@ -37,6 +37,15 @@ LINTEL_HOVER_HEIGHT = 0.15
 CARRY_APPROACH_HEIGHT = 0.35
 CLEAR_HEIGHT = 0.40
 READY_HEIGHT = 1.8
+# Lintel: both arms hover this far up on gantry z, then descend together (paper's carry_clear).
+LINTEL_DROP = 0.10
+
+
+@dataclass
+class Endpoint:
+    """A member's precomputed joint vector, named as in the paper's ``traj_endpoints``."""
+
+    key: str
 
 
 @dataclass
@@ -123,8 +132,9 @@ def member_segments(
     Arm 2 parks while arm 1 clears, reaches and grips (``Blend`` goals), travels from park to its
     first nail hover during the carry, and withdraws while arm 1 backs off after the release. For
     the first member arm 2 starts parked, so it travels to the hover across the whole fetch. A lintel
-    comes down through arm 2's nail site, so arm 2 stays parked for its carry and sweeps to the first
-    nail afterwards. Arm 1 holds until every nail is in. The build ends on the last member's last nail,
+    follows the paper's beam endpoints: arm 1 lifts, both arms move to a hover ``LINTEL_DROP`` up on
+    gantry z (arm 1 over the hold, arm 2 over its first nail standoff), then descend together; each
+    nail is a gantry-z move from its standoff. Arm 1 holds until every nail is in. The build ends on the last member's last nail,
     where both arms freeze.
     """
     name = member.name
@@ -183,39 +193,77 @@ def member_segments(
             contact=True,
             event="grip_close",
         ),
-        Segment(
-            f"{name}:carry",
-            f"{name}: carry into place",
-            name,
-            (hold, carry_goal),
-            carried=True,
-            block_clearance=0.0,
-            rrt_via=(reach, st.lifted(hold, CARRY_APPROACH_HEIGHT)),
-        ),
     ]
+    if lintel:
+        segments += [
+            Segment(
+                f"{name}:lift",
+                f"{name}: lift off the staging",
+                name,
+                (reach, fetch_goal),
+                straight=(True, False),
+                carried=True,
+                block_clearance=0.0,
+                contact=True,
+            ),
+            Segment(
+                f"{name}:carry_clear",
+                f"{name}: carry above the post tops",
+                name,
+                (Endpoint("carry_clear"), Endpoint("carry_clear_stand")),
+                carried=True,
+                block_clearance=0.0,
+                rrt_via=(reach, st.lifted(hold, CARRY_APPROACH_HEIGHT)),
+            ),
+            Segment(
+                f"{name}:carry",
+                f"{name}: lower onto the post tops",
+                name,
+                (Endpoint("carry"), Endpoint("carry_stand")),
+                straight=(True, True),
+                carried=True,
+                block_clearance=0.0,
+                contact=True,
+            ),
+        ]
+    else:
+        segments.append(
+            Segment(
+                f"{name}:carry",
+                f"{name}: carry into place",
+                name,
+                (hold, carry_goal),
+                carried=True,
+                block_clearance=0.0,
+                rrt_via=(reach, st.lifted(hold, CARRY_APPROACH_HEIGHT)),
+            )
+        )
     for i, nail in enumerate(nails):
         # A lintel's first nail on each post top is a long move rather than a nailing step.
         sweep = lintel and i % len(NAIL_OFFSETS) == 0
-        segments.append(
-            Segment(
-                f"{name}:reposition:{i}",
-                f"{name}: reposition nailer",
-                name,
-                (None, standoffs[i]),
-                carried=True,
-                carried_other_only=True,
-                block_clearance=0.0,
-                use_rrt=sweep,
-                contact=True,
-                nailing=not sweep,
+        standoff = Endpoint(f"stand:{i}") if lintel else standoffs[i]
+        # The lintel's carry already ends at the first nail's standoff.
+        if not (lintel and i == 0):
+            segments.append(
+                Segment(
+                    f"{name}:reposition:{i}",
+                    f"{name}: reposition nailer",
+                    name,
+                    (None, standoff),
+                    carried=True,
+                    carried_other_only=True,
+                    block_clearance=0.0,
+                    use_rrt=sweep,
+                    contact=True,
+                    nailing=not sweep,
+                )
             )
-        )
         segments.append(
             Segment(
                 f"{name}:nail:{i}",
                 f"{name}: nail",
                 name,
-                (None, nail),
+                (None, Endpoint(f"nail:{i}") if lintel else nail),
                 straight=(False, True),
                 carried=True,
                 carried_other_only=True,
@@ -233,7 +281,7 @@ def member_segments(
                 f"{name}:withdraw:{i}",
                 f"{name}: withdraw",
                 name,
-                (None, standoffs[i]),
+                (None, standoff),
                 straight=(False, True),
                 carried=True,
                 carried_other_only=True,

@@ -149,7 +149,15 @@ class TestSequence(unittest.TestCase):
                 + ["release"]
             )
             if member == "lintel_1":
-                expected = expected[:-2]
+                # Paper's beam: lift, hover, lower; the carry ends at the first standoff.
+                expected = [
+                    "clear",
+                    "reach",
+                    "grip",
+                    "lift",
+                    "carry_clear",
+                    "carry",
+                ] + nails[1:-1]
             self.assertEqual(steps, expected)
         self.assertEqual(segments[-1].key, f"lintel_1:nail:7")
         for segment in segments:
