@@ -52,5 +52,12 @@
     "title": "SCATE UR5",
     "description": "Replay SCATE on a UR5: an obstacle discovered online is avoided by re-solving after every step, beside a blind run that hits it. Inspect the replanned paths, the obstacle estimate, and clearances.",
     "tag": "Online planning"
+  },
+  {
+    "id": "urdf",
+    "title": "URDF IK",
+    "description": "Drag the end-effector of any robot in models/urdfs and solve inverse kinematics with the GTDynamics factor graph or classic Jacobian schemes. Failed solves explain why the target is out of reach. Requires a local GTDynamics Python server.",
+    "tag": "Interactive inverse kinematics",
+    "backend": "python"
   }
 ]

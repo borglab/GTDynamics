@@ -1,12 +1,12 @@
 """
- * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
- * Atlanta, Georgia 30332-0415
- * All Rights Reserved
- * See LICENSE for the license information
- *
- * @file  ik_backend.py
- * @brief Robot model, inverse kinematics schemes and failure diagnostics for
- *        the interactive URDF IK app.
+* GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+* Atlanta, Georgia 30332-0415
+* All Rights Reserved
+* See LICENSE for the license information
+*
+* @file  ik_backend.py
+* @brief Robot model, inverse kinematics schemes and failure diagnostics for
+*        the interactive URDF IK app.
 """
 
 from __future__ import annotations
@@ -30,8 +30,15 @@ import gtdynamics as gtd
 DEFAULT_URDF_ROOT = Path(gtd.URDF_PATH).resolve()
 
 # Frame names commonly used for a robot's tool frame, most preferred first.
-PREFERRED_EE_NAMES = ("tool0", "ee_link", "flange", "panda_hand", "hand",
-                      "tool", "end_effector")
+PREFERRED_EE_NAMES = (
+    "tool0",
+    "ee_link",
+    "flange",
+    "panda_hand",
+    "hand",
+    "tool",
+    "end_effector",
+)
 
 MOVABLE_TYPES = ("revolute", "continuous", "prismatic")
 
@@ -47,8 +54,7 @@ def read_urdf_xml(path: Path) -> ET.Element:
     """Parse a URDF, tolerating undeclared namespace prefixes (xacro:, etc.)."""
     text = Path(path).read_text()
     text = re.sub(r"(</?)([A-Za-z_][\w.-]*):", r"\1\2_", text)
-    text = re.sub(r"(\s)([A-Za-z_][\w.-]*):([A-Za-z_][\w.-]*\s*=)", r"\1\2_\3",
-                  text)
+    text = re.sub(r"(\s)([A-Za-z_][\w.-]*):([A-Za-z_][\w.-]*\s*=)", r"\1\2_\3", text)
     return ET.fromstring(text)
 
 
@@ -59,6 +65,7 @@ def _floats(text: Optional[str], default) -> list:
 @dataclass
 class UrdfJoint:
     """The parts of a URDF <joint> that GTDynamics' Python API does not expose."""
+
     name: str
     type: str
     parent: str
@@ -77,14 +84,12 @@ def parse_urdf(path: Path) -> tuple[list[str], dict[str, UrdfJoint]]:
     for el in root.findall("joint"):
         jtype = el.get("type", "fixed")
         origin_el = el.find("origin")
-        xyz = _floats(None if origin_el is None else origin_el.get("xyz"),
-                      (0, 0, 0))
-        rpy = _floats(None if origin_el is None else origin_el.get("rpy"),
-                      (0, 0, 0))
+        xyz = _floats(None if origin_el is None else origin_el.get("xyz"), (0, 0, 0))
+        rpy = _floats(None if origin_el is None else origin_el.get("rpy"), (0, 0, 0))
         axis_el = el.find("axis")
         axis = np.array(
-            _floats(None if axis_el is None else axis_el.get("xyz"),
-                    (1, 0, 0)))
+            _floats(None if axis_el is None else axis_el.get("xyz"), (1, 0, 0))
+        )
         norm = np.linalg.norm(axis)
         axis = axis / norm if norm > 0 else np.array([1.0, 0.0, 0.0])
 
@@ -105,7 +110,8 @@ def parse_urdf(path: Path) -> tuple[list[str], dict[str, UrdfJoint]]:
             origin=gtsam.Pose3(gtsam.Rot3.RzRyRx(*rpy), gtsam.Point3(*xyz)),
             axis=axis,
             lower=lower,
-            upper=upper)
+            upper=upper,
+        )
     return links, joints
 
 
@@ -118,14 +124,18 @@ def check_loadable(path: Path, timeout: float = 120.0) -> Optional[str]:
     Returns:
         None if the model loads, otherwise a human readable error.
     """
-    code = ("import sys, gtdynamics as gtd\n"
-            "r = gtd.CreateRobotFromFile(sys.argv[1])\n"
-            "print('NUM_LINKS', r.numLinks())\n")
+    code = (
+        "import sys, gtdynamics as gtd\n"
+        "r = gtd.CreateRobotFromFile(sys.argv[1])\n"
+        "print('NUM_LINKS', r.numLinks())\n"
+    )
     try:
-        proc = subprocess.run([sys.executable, "-c", code, str(path)],
-                              capture_output=True,
-                              text=True,
-                              timeout=timeout)
+        proc = subprocess.run(
+            [sys.executable, "-c", code, str(path)],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
     except subprocess.TimeoutExpired:
         return f"GTDynamics did not finish parsing within {timeout:.0f} s."
     if proc.returncode < 0:
@@ -133,7 +143,8 @@ def check_loadable(path: Path, timeout: float = 120.0) -> Optional[str]:
         return f"GTDynamics' URDF parser crashed ({name}) on this file."
     if proc.returncode != 0:
         lines = [
-            line.strip() for line in (proc.stdout + proc.stderr).splitlines()
+            line.strip()
+            for line in (proc.stdout + proc.stderr).splitlines()
             if line.startswith(("ERROR", "RuntimeError", "Error"))
         ]
         detail = " ".join(dict.fromkeys(lines[-4:])) or "unknown error"
@@ -202,16 +213,17 @@ class RobotModel:
             raise ModelError(
                 "The model has a closed kinematic loop (link "
                 f"'{loops[0]}' has several parent joints); this app only "
-                "handles kinematic trees.")
+                "handles kinematic trees."
+            )
         roots = [l.name() for l in robot.links() if l.name() not in parent_counts]
         if not roots:
-            raise ModelError("Every link has a parent joint, so there is no "
-                             "base link to fix.")
+            raise ModelError(
+                "Every link has a parent joint, so there is no " "base link to fix."
+            )
 
         children: dict[str, list[str]] = {}
         for joint in robot.joints():
-            children.setdefault(joint.parent().name(), []).append(
-                joint.child().name())
+            children.setdefault(joint.parent().name(), []).append(joint.child().name())
 
         def subtree_size(name: str) -> int:
             return 1 + sum(subtree_size(c) for c in children.get(name, []))
@@ -220,12 +232,12 @@ class RobotModel:
         if len(roots) > 1:
             self.notes.append(
                 f"The model has {len(roots)} disconnected parts; '{self.base}' "
-                "is fixed and the others float freely.")
+                "is fixed and the others float freely."
+            )
         self.robot = robot.fixLink(self.base)
 
         self.links = {
-            l.name(): LinkInfo(l.name(), l.id(),
-                               l.bMcom().between(l.bMlink()))
+            l.name(): LinkInfo(l.name(), l.id(), l.bMcom().between(l.bMlink()))
             for l in self.robot.links()
         }
         self.joints: dict[str, JointInfo] = {}
@@ -238,21 +250,26 @@ class RobotModel:
                 type=jtype,
                 parent=joint.parent().name(),
                 child=joint.child().name(),
-                axis=(urdf_joint.axis if urdf_joint is not None else
-                      np.array([1.0, 0.0, 0.0])),
+                axis=(
+                    urdf_joint.axis
+                    if urdf_joint is not None
+                    else np.array([1.0, 0.0, 0.0])
+                ),
                 lower=urdf_joint.lower if urdf_joint is not None else -math.inf,
-                upper=urdf_joint.upper if urdf_joint is not None else math.inf)
+                upper=urdf_joint.upper if urdf_joint is not None else math.inf,
+            )
         self.parent_joint = {j.child: j for j in self.joints.values()}
 
         dropped = [
-            j.name for j in urdf_joints.values()
+            j.name
+            for j in urdf_joints.values()
             if j.type in MOVABLE_TYPES and j.name not in self.joints
         ]
         if dropped:
             self.notes.append(
                 "GTDynamics does not model these URDF joints (their links have "
-                "no valid inertia), so IK leaves them at zero: " +
-                ", ".join(dropped))
+                "no valid inertia), so IK leaves them at zero: " + ", ".join(dropped)
+            )
 
         self.end_effectors = self._find_end_effectors(urdf_links, urdf_joints)
         self.default_ee = self._pick_default_ee()
@@ -260,8 +277,7 @@ class RobotModel:
     def _find_end_effectors(self, urdf_links, urdf_joints):
         """GTD links plus URDF frames rigidly attached to them (e.g. tool0)."""
         effs = {
-            name: EndEffector(name, name, gtsam.Pose3())
-            for name in sorted(self.links)
+            name: EndEffector(name, name, gtsam.Pose3()) for name in sorted(self.links)
         }
         by_child = {j.child: j for j in urdf_joints.values()}
         for name in urdf_links:
@@ -285,8 +301,11 @@ class RobotModel:
 
         def score(name):
             chain = self.chain(name)
-            return (len([j for j in chain if j.movable]), len(chain),
-                    name != self.end_effectors[name].link)
+            return (
+                len([j for j in chain if j.movable]),
+                len(chain),
+                name != self.end_effectors[name].link,
+            )
 
         return max(sorted(self.end_effectors), key=score)
 
@@ -301,7 +320,8 @@ class RobotModel:
                 raise ModelError(
                     f"Link '{current}' is not connected to the fixed base "
                     f"'{self.base}', so it cannot be moved by the base's "
-                    "joints.")
+                    "joints."
+                )
             chain.append(joint)
             current = joint.parent
         return chain[::-1]
@@ -339,12 +359,18 @@ class RobotModel:
 
     def skeleton(self, frames: dict[str, gtsam.Pose3]) -> list[dict]:
         """Link origins and their parents, for drawing a stick figure."""
-        return [{
-            "link": name,
-            "parent": (self.parent_joint[name].parent
-                       if name in self.parent_joint else None),
-            "position": list(map(float, frames[name].translation())),
-        } for name in sorted(frames)]
+        return [
+            {
+                "link": name,
+                "parent": (
+                    self.parent_joint[name].parent
+                    if name in self.parent_joint
+                    else None
+                ),
+                "position": list(map(float, frames[name].translation())),
+            }
+            for name in sorted(frames)
+        ]
 
     def describe(self) -> dict:
         def limit(v):
@@ -353,17 +379,23 @@ class RobotModel:
         return {
             "model": self.rel_path,
             "base": self.base,
-            "joints": [{
-                "name": j.name,
-                "type": j.type,
-                "lower": limit(j.lower),
-                "upper": limit(j.upper),
-            } for j in sorted(self.joints.values(), key=lambda j: j.id)],
-            "end_effectors": [{
-                "name": e.name,
-                "link": e.link,
-                "dof": len(self.movable_chain(e.name)),
-            } for e in self.end_effectors.values()],
+            "joints": [
+                {
+                    "name": j.name,
+                    "type": j.type,
+                    "lower": limit(j.lower),
+                    "upper": limit(j.upper),
+                }
+                for j in sorted(self.joints.values(), key=lambda j: j.id)
+            ],
+            "end_effectors": [
+                {
+                    "name": e.name,
+                    "link": e.link,
+                    "dof": len(self.movable_chain(e.name)),
+                }
+                for e in self.end_effectors.values()
+            ],
             "default_ee": self.default_ee,
             "notes": self.notes,
         }
@@ -380,8 +412,9 @@ def pose_to_json(pose: gtsam.Pose3) -> dict:
 
 def pose_from_json(data: dict) -> gtsam.Pose3:
     x, y, z, w = data["quat_xyzw"]
-    return gtsam.Pose3(gtsam.Rot3.Quaternion(w, x, y, z),
-                       gtsam.Point3(*data["position"]))
+    return gtsam.Pose3(
+        gtsam.Rot3.Quaternion(w, x, y, z), gtsam.Point3(*data["position"])
+    )
 
 
 # ------------------------------------------------------------------ IK problem
@@ -420,12 +453,11 @@ class IkProblem:
         self.chain = model.movable_chain(req.ee)
         for j in self.chain:
             if j.type == "helical":
-                raise ModelError(f"Joint '{j.name}' is helical, which these "
-                                 "IK schemes do not support.")
-        self.q_full = {
-            name: float(req.q0.get(name, 0.0))
-            for name in model.joints
-        }
+                raise ModelError(
+                    f"Joint '{j.name}' is helical, which these "
+                    "IK schemes do not support."
+                )
+        self.q_full = {name: float(req.q0.get(name, 0.0)) for name in model.joints}
         self.lower = np.array([j.lower for j in self.chain])
         self.upper = np.array([j.upper for j in self.chain])
         self.x0 = self.clamp(np.array([self.q_full[j.name] for j in self.chain]))
@@ -452,17 +484,18 @@ class IkProblem:
     def rot_error(self, T: gtsam.Pose3) -> np.ndarray:
         """World-frame rotation vector taking the current to the goal orientation."""
         return gtsam.Rot3.Logmap(
-            self.req.target.rotation().compose(T.rotation().inverse()))
+            self.req.target.rotation().compose(T.rotation().inverse())
+        )
 
     def errors(self, T: gtsam.Pose3) -> tuple[float, float]:
-        pos = float(np.linalg.norm(self.req.target.translation() -
-                                   T.translation()))
+        pos = float(np.linalg.norm(self.req.target.translation() - T.translation()))
         return pos, float(np.linalg.norm(self.rot_error(T)))
 
     def converged(self, T: gtsam.Pose3) -> bool:
         pos, rot = self.errors(T)
-        return pos <= self.req.pos_tol and (not self.req.orientation or
-                                            rot <= self.req.rot_tol)
+        return pos <= self.req.pos_tol and (
+            not self.req.orientation or rot <= self.req.rot_tol
+        )
 
     def error(self, T: gtsam.Pose3) -> np.ndarray:
         """Weighted task error [w_rot * rotation; position], or position only."""
@@ -509,8 +542,7 @@ class IkProblem:
             if j.type == "prismatic":
                 total += max(abs(j.lower), abs(j.upper))
         axis, origin = self.joint_axis_origin(frames, self.chain[0])
-        anchor = (origin - axis * x[0]
-                  if self.chain[0].type == "prismatic" else origin)
+        anchor = origin - axis * x[0] if self.chain[0].type == "prismatic" else origin
         return anchor, total
 
 
@@ -564,8 +596,9 @@ def solve_dls(p: IkProblem, max_iters: int) -> SolverOutput:
             if lam > 1e4:
                 stalled = True
                 break
-    return SolverOutput(p.to_q(best.x), iters, max_iters, stalled,
-                        best.still_improving())
+    return SolverOutput(
+        p.to_q(best.x), iters, max_iters, stalled, best.still_improving()
+    )
 
 
 def solve_pinv(p: IkProblem, max_iters: int) -> SolverOutput:
@@ -582,8 +615,7 @@ def solve_pinv(p: IkProblem, max_iters: int) -> SolverOutput:
         frames, T = p.fk(x)
         e = p.error(T)
         best.update(x, e)
-    return SolverOutput(p.to_q(best.x), iters, max_iters, False,
-                        best.still_improving())
+    return SolverOutput(p.to_q(best.x), iters, max_iters, False, best.still_improving())
 
 
 def solve_transpose(p: IkProblem, max_iters: int) -> SolverOutput:
@@ -610,8 +642,9 @@ def solve_transpose(p: IkProblem, max_iters: int) -> SolverOutput:
         frames, T = p.fk(x)
         e = p.error(T)
         best.update(x, e)
-    return SolverOutput(p.to_q(best.x), iters, max_iters, stalled,
-                        best.still_improving())
+    return SolverOutput(
+        p.to_q(best.x), iters, max_iters, stalled, best.still_improving()
+    )
 
 
 def solve_ccd(p: IkProblem, max_iters: int) -> SolverOutput:
@@ -634,22 +667,27 @@ def solve_ccd(p: IkProblem, max_iters: int) -> SolverOutput:
                 u, v = p_ee - origin, target - origin
                 u, v = u - axis * (axis @ u), v - axis * (axis @ v)
                 w_pos = float(np.linalg.norm(u) * np.linalg.norm(v))
-                step = (math.atan2(float(axis @ np.cross(u, v)), float(u @ v))
-                        if w_pos > 1e-12 else 0.0)
+                step = (
+                    math.atan2(float(axis @ np.cross(u, v)), float(u @ v))
+                    if w_pos > 1e-12
+                    else 0.0
+                )
                 if p.req.orientation:
                     # Blend in the rotation about this axis that best reduces
                     # the orientation error.
                     w_rot = p.w_rot**2
-                    step = (w_pos * step + w_rot * float(
-                        axis @ p.rot_error(T))) / (w_pos + w_rot)
+                    step = (w_pos * step + w_rot * float(axis @ p.rot_error(T))) / (
+                        w_pos + w_rot
+                    )
             x[i] = float(np.clip(x[i] + step, p.lower[i], p.upper[i]))
             frames, T = p.fk(x)
         best.update(x, p.error(T))
         if np.allclose(x, x_start, atol=1e-10):
             stalled = True
             break
-    return SolverOutput(p.to_q(best.x), iters, max_iters, stalled,
-                        best.still_improving())
+    return SolverOutput(
+        p.to_q(best.x), iters, max_iters, stalled, best.still_improving()
+    )
 
 
 def solve_gtd(p: IkProblem, max_iters: int) -> SolverOutput:
@@ -673,24 +711,27 @@ def solve_gtd(p: IkProblem, max_iters: int) -> SolverOutput:
         lm.setMaxIterations(max_iters)
         params.lm_parameters = lm
         goal = gtd.PoseGoal(link, comTee, p.req.target)
-        result = gtd.Kinematics(params).inverse(gtd.Slice(0), model.robot,
-                                                {0: goal}, warm_start, False)
+        result = gtd.Kinematics(params).inverse(
+            gtd.Slice(0), model.robot, {0: goal}, warm_start, False
+        )
         iterations = None  # Kinematics.inverse does not report it.
         limit_tol = 0.045  # JointLimitFactor pushes back 0.04 before a limit.
     else:
-        graph = gtd.DynamicsGraph(gtd.OptimizerSetting()).qFactors(
-            model.robot, 0, None)
+        graph = gtd.DynamicsGraph(gtd.OptimizerSetting()).qFactors(model.robot, 0, None)
         graph.push_back(
-            gtd.PointGoalFactor(gtd.PoseKey(link.id(), 0),
-                                gtsam.noiseModel.Isotropic.Sigma(3, 1e-4),
-                                comTee.translation(),
-                                p.req.target.translation()))
+            gtd.PointGoalFactor(
+                gtd.PoseKey(link.id(), 0),
+                gtsam.noiseModel.Isotropic.Sigma(3, 1e-4),
+                comTee.translation(),
+                p.req.target.translation(),
+            )
+        )
         joint_prior = gtsam.noiseModel.Isotropic.Sigma(1, 0.5)
         for j in model.joints.values():
             key = gtd.JointAngleKey(j.id, 0)
             graph.push_back(
-                gtsam.PriorFactorDouble(key, warm_start.atDouble(key),
-                                        joint_prior))
+                gtsam.PriorFactorDouble(key, warm_start.atDouble(key), joint_prior)
+            )
         initial = gtsam.Values(warm_start)
         fk = model.robot.forwardKinematics(warm_start, 0, model.base)
         for info in model.links.values():
@@ -702,16 +743,11 @@ def solve_gtd(p: IkProblem, max_iters: int) -> SolverOutput:
         iterations = optimizer.iterations()
         limit_tol = 1e-6
 
-    q = {
-        j.name: gtd.JointAngle(result, j.id, 0)
-        for j in model.joints.values()
-    }
+    q = {j.name: gtd.JointAngle(result, j.id, 0) for j in model.joints.values()}
     solver_ee_pose = gtd.Pose(result, link.id(), 0).compose(comTee)
-    return SolverOutput(q,
-                        iterations,
-                        max_iters,
-                        limit_tol=limit_tol,
-                        solver_ee_pose=solver_ee_pose)
+    return SolverOutput(
+        q, iterations, max_iters, limit_tol=limit_tol, solver_ee_pose=solver_ee_pose
+    )
 
 
 @dataclass
@@ -723,41 +759,49 @@ class Scheme:
 
 
 SCHEMES = {
-    "gtd":
-        Scheme(
-            "GTDynamics factor graph (LM)",
-            "Optimizes link poses and joint angles together over GTDynamics' "
-            "kinematic factor graph, with Levenberg-Marquardt warm-started "
-            "from the current configuration. Pose goals use "
-            "Kinematics.inverse with a PoseGoal and joint-limit factors. "
-            "Position-only goals use a PointGoalFactor and do not enforce "
-            "joint limits.", solve_gtd, 100),
-    "dls":
-        Scheme(
-            "Damped least squares",
-            "Levenberg-Marquardt in joint space on the geometric Jacobian. "
-            "The damping adapts each step, so it stays stable near "
-            "singularities. Joints are clamped to their limits.", solve_dls,
-            200),
-    "pinv":
-        Scheme(
-            "Jacobian pseudo-inverse",
-            "Newton-Raphson with the undamped Moore-Penrose pseudo-inverse. "
-            "It converges fast near a solution but can jump around near "
-            "singularities.", solve_pinv, 200),
-    "transpose":
-        Scheme(
-            "Jacobian transpose",
-            "Gradient descent with dq = alpha * J^T e and the optimal step "
-            "length. Each step is cheap, but convergence is slow, especially "
-            "for orientation.", solve_transpose, 1000),
-    "ccd":
-        Scheme(
-            "Cyclic coordinate descent (CCD)",
-            "Solves for one joint at a time, from the tip to the base, "
-            "rotating each joint to bring the end-effector toward the target. "
-            "It is robust for position goals and weaker for orientation.",
-            solve_ccd, 300),
+    "gtd": Scheme(
+        "GTDynamics factor graph (LM)",
+        "Optimizes link poses and joint angles together over GTDynamics' "
+        "kinematic factor graph, with Levenberg-Marquardt warm-started "
+        "from the current configuration. Pose goals use "
+        "Kinematics.inverse with a PoseGoal and joint-limit factors. "
+        "Position-only goals use a PointGoalFactor and do not enforce "
+        "joint limits.",
+        solve_gtd,
+        100,
+    ),
+    "dls": Scheme(
+        "Damped least squares",
+        "Levenberg-Marquardt in joint space on the geometric Jacobian. "
+        "The damping adapts each step, so it stays stable near "
+        "singularities. Joints are clamped to their limits.",
+        solve_dls,
+        200,
+    ),
+    "pinv": Scheme(
+        "Jacobian pseudo-inverse",
+        "Newton-Raphson with the undamped Moore-Penrose pseudo-inverse. "
+        "It converges fast near a solution but can jump around near "
+        "singularities.",
+        solve_pinv,
+        200,
+    ),
+    "transpose": Scheme(
+        "Jacobian transpose",
+        "Gradient descent with dq = alpha * J^T e and the optimal step "
+        "length. Each step is cheap, but convergence is slow, especially "
+        "for orientation.",
+        solve_transpose,
+        1000,
+    ),
+    "ccd": Scheme(
+        "Cyclic coordinate descent (CCD)",
+        "Solves for one joint at a time, from the tip to the base, "
+        "rotating each joint to bring the end-effector toward the target. "
+        "It is robust for position goals and weaker for orientation.",
+        solve_ccd,
+        300,
+    ),
 }
 
 
@@ -769,8 +813,9 @@ def _fmt_limit(j: JointInfo, value: float) -> str:
     return f"{value:.3f} {unit}"
 
 
-def diagnose(p: IkProblem, out: SolverOutput, T: gtsam.Pose3,
-             frames) -> tuple[list[str], list[str], list[str]]:
+def diagnose(
+    p: IkProblem, out: SolverOutput, T: gtsam.Pose3, frames
+) -> tuple[list[str], list[str], list[str]]:
     """Explain why a solve missed its target.
 
     Returns:
@@ -792,29 +837,35 @@ def diagnose(p: IkProblem, out: SolverOutput, T: gtsam.Pose3,
         for i, j in enumerate(p.chain):
             if x[i] > j.upper + 1e-3 or x[i] < j.lower - 1e-3:
                 bound = j.upper if x[i] > j.upper else j.lower
-                violated.append(f"{j.name} = {_fmt_limit(j, x[i])} (limit "
-                                f"{_fmt_limit(j, bound)})")
+                violated.append(
+                    f"{j.name} = {_fmt_limit(j, x[i])} (limit "
+                    f"{_fmt_limit(j, bound)})"
+                )
             if x[i] >= j.upper - tol:
                 at_limit.append(j.name)
                 if g[i] > 1e-9:
-                    blocked.append(f"{j.name} (upper limit "
-                                   f"{_fmt_limit(j, j.upper)})")
+                    blocked.append(
+                        f"{j.name} (upper limit " f"{_fmt_limit(j, j.upper)})"
+                    )
             elif x[i] <= j.lower + tol:
                 at_limit.append(j.name)
                 if g[i] < -1e-9:
-                    blocked.append(f"{j.name} (lower limit "
-                                   f"{_fmt_limit(j, j.lower)})")
+                    blocked.append(
+                        f"{j.name} (lower limit " f"{_fmt_limit(j, j.lower)})"
+                    )
         sv = np.linalg.svd(J, compute_uv=False)
         conditioning = float(sv[-1] / sv[0]) if sv[0] > 1e-12 else 0.0
-        gradient_ratio = (float(np.linalg.norm(g)) /
-                          (float(sv[0]) * float(np.linalg.norm(e)) + 1e-15))
+        gradient_ratio = float(np.linalg.norm(g)) / (
+            float(sv[0]) * float(np.linalg.norm(e)) + 1e-15
+        )
 
     if solved:
         if dof and conditioning < 1e-2:
             warnings.append(
                 "Close to a kinematic singularity (Jacobian condition "
                 f"{conditioning:.1e}): small target moves can need large joint "
-                "motions.")
+                "motions."
+            )
         if at_limit:
             warnings.append("Joints at their limits: " + ", ".join(at_limit))
         return reasons, warnings, at_limit
@@ -822,7 +873,8 @@ def diagnose(p: IkProblem, out: SolverOutput, T: gtsam.Pose3,
     if dof == 0:
         reasons.append(
             f"'{req.ee}' is rigidly attached to the fixed base '{p.model.base}' "
-            "(no movable joints in between), so it cannot move.")
+            "(no movable joints in between), so it cannot move."
+        )
         return reasons, warnings, at_limit
 
     anchor, reach = p.reach(frames, x)
@@ -831,69 +883,83 @@ def diagnose(p: IkProblem, out: SolverOutput, T: gtsam.Pose3,
         reasons.append(
             f"Target is out of reach: it is {distance:.3f} m from joint "
             f"'{p.chain[0].name}', but the chain can extend at most "
-            f"{reach:.3f} m ({distance - reach:.3f} m short).")
+            f"{reach:.3f} m ({distance - reach:.3f} m short)."
+        )
     if dof < task:
         what = "6-DoF pose" if req.orientation else "3-D position"
-        hint = (" Uncheck 'Constrain orientation' to solve for position only."
-                if req.orientation else "")
+        hint = (
+            " Uncheck 'Constrain orientation' to solve for position only."
+            if req.orientation
+            else ""
+        )
         reasons.append(
             f"The chain to '{req.ee}' has only {dof} movable joint"
             f"{'s' if dof != 1 else ''}, fewer than the {task} needed for an "
             f"arbitrary {what}; only a {dof}-D subset of targets is "
-            f"reachable.{hint}")
+            f"reachable.{hint}"
+        )
     if violated:
         reasons.append(
             "The solution violates joint limits (this solver does not "
-            "enforce them): " + "; ".join(violated))
+            "enforce them): " + "; ".join(violated)
+        )
     if blocked:
         reasons.append(
             "Blocked by joint limits: getting closer would need these joints "
-            "to move past their limits: " + ", ".join(blocked) + ".")
+            "to move past their limits: " + ", ".join(blocked) + "."
+        )
     if conditioning < 1e-3 and dof >= task:
         reasons.append(
             "The arm is at a kinematic singularity (Jacobian condition "
             f"{conditioning:.1e}): it has lost the ability to move the "
             "end-effector in some direction, e.g. fully stretched or with "
-            "aligned joint axes.")
+            "aligned joint axes."
+        )
     if out.solver_ee_pose is not None:
-        gap = float(
-            np.linalg.norm(out.solver_ee_pose.translation() - T.translation()))
+        gap = float(np.linalg.norm(out.solver_ee_pose.translation() - T.translation()))
         if gap > req.pos_tol:
             reasons.append(
                 "The factor graph settled where link poses and joint angles "
                 f"disagree: its end-effector link pose is {gap * 1000:.1f} mm "
                 "from the pose implied by its joint angles, because the soft "
                 "joint constraints were traded off against the goal. This "
-                "is a local minimum.")
+                "is a local minimum."
+            )
     start_frames, start_T = p.fk(p.x0)
-    start_sv = np.linalg.svd(p.jacobian(start_frames, start_T),
-                             compute_uv=False)
-    if start_sv[0] > 1e-12 and start_sv[-1] / start_sv[0] < 1e-3 and \
-            dof >= task:
+    start_sv = np.linalg.svd(p.jacobian(start_frames, start_T), compute_uv=False)
+    if start_sv[0] > 1e-12 and start_sv[-1] / start_sv[0] < 1e-3 and dof >= task:
         reasons.append(
             "The solve started from a singular configuration (for example "
             "the fully stretched home pose), where the Jacobian gives no "
             "useful direction for some motions. Bend the arm first with the "
-            "joint sliders, or move the target in smaller steps.")
-    if out.iterations is not None and out.iterations >= out.max_iters and \
-            out.still_improving:
+            "joint sliders, or move the target in smaller steps."
+        )
+    if (
+        out.iterations is not None
+        and out.iterations >= out.max_iters
+        and out.still_improving
+    ):
         reasons.append(
             f"Hit the iteration limit ({out.max_iters}) while the error was "
             "still decreasing. Raise 'Max iterations' or use a faster "
-            "converging scheme.")
+            "converging scheme."
+        )
     if not reasons and gradient_ratio < 1e-3:
         reasons.append(
             "Stuck in a local minimum: no small joint motion reduces the "
             "remaining error. Try another scheme, or approach the target from "
-            "a different configuration.")
+            "a different configuration."
+        )
     if not reasons and out.stalled:
-        reasons.append("The solver stopped making progress before reaching "
-                       "the tolerance.")
+        reasons.append(
+            "The solver stopped making progress before reaching " "the tolerance."
+        )
     if not reasons:
         reasons.append(
             "The solver stopped while the error could still be reduced. "
             "Try again from here, raise 'Max iterations', or try another "
-            "scheme.")
+            "scheme."
+        )
 
     pos_err, rot_err = p.errors(T)
     residual = f"{pos_err * 1000:.2f} mm"
@@ -902,8 +968,9 @@ def diagnose(p: IkProblem, out: SolverOutput, T: gtsam.Pose3,
     tolerance = f"{req.pos_tol * 1000:.2f} mm"
     if req.orientation:
         tolerance += f", {math.degrees(req.rot_tol):.2f}°"
-    reasons.append(f"Remaining error {residual} exceeds the tolerance "
-                   f"({tolerance}).")
+    reasons.append(
+        f"Remaining error {residual} exceeds the tolerance " f"({tolerance})."
+    )
     return reasons, warnings, at_limit
 
 
@@ -920,8 +987,11 @@ def solve(model: RobotModel, scheme_id: str, req: IkRequest) -> dict:
 
     start = time.perf_counter()
     try:
-        out = (scheme.solve(p, max_iters) if p.chain else SolverOutput(
-            p.to_q(p.x0), 0, max_iters))
+        out = (
+            scheme.solve(p, max_iters)
+            if p.chain
+            else SolverOutput(p.to_q(p.x0), 0, max_iters)
+        )
     except RuntimeError as e:  # GTSAM/GTDynamics optimizer failures
         frames, T = p.fk(p.x0)
         return {

@@ -9,12 +9,15 @@
 """
 
 import math
+import sys
 import unittest
+from pathlib import Path
 
 import gtsam
 import numpy as np
 
-import ik_backend as ik
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import ik_backend as ik  # noqa: E402
 
 ROOT = ik.DEFAULT_URDF_ROOT
 

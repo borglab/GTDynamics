@@ -5,42 +5,59 @@ Pick a URDF and an end-effector frame, then drag the end-effector around.
 Each move runs the selected IK scheme on GTDynamics' kinematic model.
 The app shows the resulting joint angles and end-effector pose.
 If the target can't be reached, it explains why.
+The side panel opens with a short statement of the demo's purpose and quick usage steps; [Using the app](#using-the-app) lists every control.
 
 ## Requirements
 
 - The GTDynamics Python bindings (`import gtdynamics` must work), built and installed as described in [`python/README.md`](../../python/README.md) (`make python-install`).
   `numpy` and `gtsam` come with them.
-  No other Python packages are needed: the server uses only the standard library.
+  No other Python packages are needed: the backend uses only the standard library.
+- Node.js 22+ and the apps workspace installed with `npm ci` in `apps/` (see [the apps README](../README.md#local-preview)).
+  [three.js](https://threejs.org) 0.160.0 and [urdf-loader](https://github.com/gkjohnson/urdf-loaders) 0.12.3 are npm dependencies of this workspace.
 - A modern web browser with WebGL.
-  The page loads [three.js](https://threejs.org) 0.160.0 and [urdf-loader](https://github.com/gkjohnson/urdf-loaders) 0.12.3 from the jsDelivr CDN, so the browser needs internet access.
 
 ## Running
 
-1. Activate the Python environment that has GTDynamics installed (for example, the repository's `.venv`):
+The app is the **URDF IK** tab of the [GTDynamics apps site](../README.md).
+Like the other apps it is a Vite project, but every solve runs on a local Python backend, [`scripts/server.py`](scripts/server.py).
+The Vite dev server proxies the page's `api/`, `files/` and `pkg/` requests to that backend on port 8767.
+The hosted GitHub Pages site is a static build with no backend, so the tab shows a notice explaining how to run the app locally.
+The app follows the site's Light/Dark setting.
 
-   ```sh
-   source .venv/bin/activate
-   ```
+`npm run dev` looks for Python in this order: `GTDYNAMICS_PYTHON`, then the repository's `.venv/bin/python`, then `python3`.
+If that interpreter can't import `gtdynamics`, it says so and the page shows the same notice.
 
-2. Start the server from the repository root:
+To run the whole apps site, including this tab, start it from `apps/` and open <http://127.0.0.1:3000/#urdf>:
 
-   ```sh
-   python apps/urdf/server.py
-   ```
+```sh
+npm run dev
+```
 
-3. Open <http://127.0.0.1:8000/> in a browser.
-   You can also pass `--open` to open it automatically:
+To run only this app, start it from `apps/` and open <http://127.0.0.1:3010/>:
 
-   ```sh
-   python apps/urdf/server.py --open
-   ```
+```sh
+npm run dev --workspace urdf
+```
 
-Server options:
+To use a specific interpreter, set `GTDYNAMICS_PYTHON`:
+
+```sh
+GTDYNAMICS_PYTHON=/absolute/path/to/python npm run dev --workspace urdf
+```
+
+`npm run server --workspace urdf` starts only the backend, and `npm run frontend --workspace urdf` only the Vite server.
+To start the backend directly, run this from the repository root with the GTDynamics environment active:
+
+```sh
+python apps/urdf/scripts/server.py
+```
+
+Backend options:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--port` | `8000` | Port to listen on. |
-| `--host` | `127.0.0.1` | Interface to bind. Use `0.0.0.0` to reach the app from other machines. |
+| `--port` | `8767` | Port to listen on. If you change it, set `URDF_BACKEND_PORT` to the same value for the Vite server. |
+| `--host` | `127.0.0.1` | Interface to bind. Browsers reach the backend through the Vite proxy, so the default is usually right. |
 | `--urdf-root` | `models/urdfs` (`gtd.URDF_PATH`) | Directory searched recursively for `*.urdf` files. |
 
 ## Using the app
@@ -123,17 +140,46 @@ The backend tests check four things:
 - That every scheme solves reachable goals.
 - That each failure reason is reported.
 
-Run them from this directory:
+Run them from this directory with the GTDynamics environment active:
 
 ```sh
-cd apps/urdf && python -m unittest test_ik_backend -v
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+The Node tests cover the pose, joint and status helpers and the request helpers in `src/`.
+`npm test` in `apps/` runs them with the other apps' tests.
+To run only these, from `apps/`:
+
+```sh
+npm test --workspace urdf
+```
+
+The browser test checks the offline notice on the static build at `/` and under a project prefix.
+When `gtdynamics` imports, it also starts the backend and drives a live solve.
+Build the app first, from `apps/`:
+
+```sh
+npm run build --workspace urdf
+```
+
+Then run the test from `apps/urdf`:
+
+```sh
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/app.browser.mjs
 ```
 
 ## Files
 
 | File | Contents |
 | --- | --- |
-| `server.py` | Standard-library HTTP server. It serves the UI, URDF and mesh files, and a JSON API: `GET /api/models`, `GET /api/schemes`, `POST /api/load`, `POST /api/fk`, `POST /api/ik`. |
-| `ik_backend.py` | Robot model (GTDynamics + URDF XML), the IK schemes and the failure diagnostics. |
-| `static/` | The browser UI (`index.html`, `app.js`, `style.css`). |
-| `test_ik_backend.py` | Backend unit tests. |
+| `index.html`, `src/main.js`, `src/App.vue` | Vite entry and the page markup, including the offline notice. |
+| `src/explorer.js` | The three.js scene, dragging and pose editing, and the side-panel logic (`createExplorer`). |
+| `src/pose.js`, `src/api.js` | Pose, joint and status helpers, and requests to the backend. |
+| `src/style.css` | Styles, with light and dark palettes keyed on the shared theme. |
+| `vite.config.mjs` | Proxies `api/`, `files/` and `pkg/` to the backend, also under the site's `/urdf/` prefix. |
+| `scripts/server.py` | Standard-library HTTP backend. It serves URDF and mesh files and a JSON API: `GET /api/models`, `GET /api/schemes`, `POST /api/load`, `POST /api/fk`, `POST /api/ik`. |
+| `scripts/ik_backend.py` | Robot model (GTDynamics + URDF XML), the IK schemes and the failure diagnostics. |
+| `scripts/backend.mjs`, `scripts/dev.mjs` | Start the backend for `npm run dev`, here and in the apps launcher. |
+| `tests/test_ik_backend.py` | Backend unit tests. |
+| `tests/pose.test.mjs` | Node tests for `src/pose.js` and `src/api.js`. |
+| `tests/app.browser.mjs` | Browser test: offline notice, and a live solve when GTDynamics is available. |

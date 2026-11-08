@@ -13,12 +13,14 @@ be opened directly.
 - [Dynamics](dynamics/README.md): CMC-Opt inference of sole-frame contact wrenches and all 29 G1 joint torques on the SSIO 78–98 s clip.
 - [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
-- [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run. This is the last tab.
+- [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run.
+- [URDF IK](urdf/README.md): drag the end-effector of any robot in `models/urdfs` and compare GTDynamics factor-graph IK with classic Jacobian schemes. It needs a local GTDynamics Python backend (see [Python-backed apps](#python-backed-apps)). This is the last tab.
 
-Each app starts with a short technical abstract and its interactive demo, then
+Each paper app starts with a short technical abstract and its interactive demo, then
 continues with motivation, a factor graph formulation and factor definitions,
-existing numerical results, and a discussion. Read the tabs in order: inferred
-contact phases support initialization, initialization supports smoothing, and
+existing numerical results, and a discussion. URDF IK, the last tab, is an
+interactive tool rather than a paper, so it has no such sections. Read the paper
+tabs in order: inferred contact phases support initialization, initialization supports smoothing, and
 Gaussian-process interpolation supplies velocities for the dynamics example.
 Kinodynamics then estimates motion and forces together. Motion Planning illustrates a
 separate desired-motion problem. It does not currently plan from the G1 estimate.
@@ -67,8 +69,10 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:3000/**. The overview is the leftmost, default tab.
-The launcher starts the shared page, each app's Vite server, and the native
-planner bridge when the optimizer has been built. Ctrl-C stops the servers.
+The launcher starts the shared page, each app's Vite server, the native
+planner bridge when the optimizer has been built, and the URDF IK Python backend
+when GTDynamics' Python bindings import (see [Python-backed apps](#python-backed-apps)).
+Ctrl-C stops the servers.
 Only port 3000 needs forwarding if previewing on a remote machine.
 
 To connect directly over Tailscale, bind the shared server to this machine's
@@ -81,8 +85,8 @@ MOTION_PLANNING_ALLOWED_ORIGINS=http://100.x.y.z:3000 npm run dev
 ```
 
 Open `http://100.x.y.z:3000/` from another device on the same tailnet. The app
-servers and optimizer bridge continue listening on loopback; the shared server
-proxies them. Without these overrides, the preview accepts local connections.
+servers, optimizer bridge, and URDF IK backend (port 8767) continue listening on
+loopback; the shared server proxies them. Without these overrides, the preview accepts local connections.
 
 To use the machine's Tailscale hostname instead of its IP, also set
 `GTDYNAMICS_APPS_ALLOWED_HOSTS` to that hostname (for example, `cyber`) and add
@@ -106,6 +110,34 @@ Both commands use port 3000, so stop the dev server before starting preview.
 The static site is assembled in `apps/dist/`, including all registered apps, model assets,
 and the shared navigation. Asset URLs are relative, so the same build works at
 `/`, `/GTDynamics/`, and on a custom domain.
+
+## Python-backed apps
+
+URDF IK is a Vite app like the others, but it solves every drag on a Python
+backend built on the GTDynamics bindings. For a registry entry with
+`"backend": "python"`, the launcher also starts the app's
+`scripts/backend.mjs`. That script runs `scripts/server.py`, and the app's Vite
+config proxies the page's API requests to it on port 8767 (`URDF_BACKEND_PORT`
+overrides it). Build and install the bindings as
+described in [`python/README.md`](../python/README.md), then check that they
+import:
+
+```bash
+python -c "import gtdynamics"
+```
+
+`npm run dev` uses the repository's `.venv/bin/python` when it exists and
+`python3` otherwise. To use another interpreter, set `GTDYNAMICS_PYTHON`:
+
+```bash
+GTDYNAMICS_PYTHON=/absolute/path/to/python npm run dev
+```
+
+If that interpreter cannot import `gtdynamics`, the launcher says so and the
+page shows a notice explaining how to run the backend. GitHub Pages cannot run
+Python either, so the static build shows the same notice without contacting a
+backend. To run the app on its own, see
+[the URDF IK README](urdf/README.md#running).
 
 ## Live motion planning
 
@@ -166,6 +198,13 @@ The workflow follows GitHub's [custom Pages workflow](https://docs.github.com/en
    in the development launcher and Pages build.
 4. If it needs downloaded assets, add its bootstrap to the `models` script.
    Native/server functionality needs an explicit static mode for Pages.
+   An app whose computation runs in Python sets `"backend": "python"` in its
+   registry entry and provides `scripts/backend.mjs` exporting
+   `startBackend()`. That function returns the spawned server process, or
+   `null` when Python is unavailable. The app's Vite config proxies relative API
+   paths to the server, and a static build shows how to run the server instead
+   (see [`urdf/`](urdf/README.md)). The paper browser check skips such apps;
+   give them their own `tests/app.browser.mjs`.
 5. Start robot visualization with [the shared viewport and camera](shared/README.md).
    Use `RobotViewport` for canvas, controls, stage, resizing, animation, and
    cleanup; use `CameraController` for fit and follow views. Supply live MuJoCo
@@ -177,12 +216,21 @@ back/forward restores the selected tab; a URL with no tab hash opens Overview.
 
 ## Checks
 
+`npm test` runs every app's Node tests, including URDF IK's, and needs no Python
+bindings.
+
 ```bash
 cd apps
 npm test
 npm run build
 # From the repository root, with the native targets built:
 ctest --test-dir build -R '^motion_planning_' --output-on-failure
+```
+
+The URDF IK backend tests need the GTDynamics Python bindings. Run them from `apps/urdf`:
+
+```bash
+python -m unittest discover -s tests -p 'test_*.py'
 ```
 
 The shared site's browser smoke test accepts an external Playwright installation:
@@ -196,7 +244,9 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 It checks navigation, keyboard tabs, mobile layout, physics playback, recorded
 iteration scrubbing, and requests under a project-site prefix.
 
-The presentation check covers all registered apps at 1440 × 900 and 1280 × 800,
+The presentation check covers all registered paper apps (every app except URDF IK,
+which has its own browser test, `urdf/tests/app.browser.mjs`; see
+[its README](urdf/README.md#tests)) at 1440 × 900 and 1280 × 800,
 including shared navigation, visible primary controls, diagram/time selection,
 relocated results, next-tab links, and mobile width:
 

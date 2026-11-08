@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { preview } from 'vite';
 import apps from '../registry.json' with { type: 'json' };
 
+// URDF IK (a Python-backed tool, tested by urdf/tests/app.browser.mjs) has no paper layout.
+const paperApps = apps.filter(app => !app.backend);
+
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const ready = {
@@ -59,7 +62,7 @@ try {
         if (response.status() >= 400 && !response.url().endsWith('/favicon.ico')) failures.push(response.url());
       });
       const url = `http://127.0.0.1:${server.httpServer.address().port}${base}`;
-      for (const app of apps) {
+      for (const app of paperApps) {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto(`${url}#${app.id}`);
         const frame = page.frameLocator('iframe');
@@ -129,8 +132,8 @@ try {
           await page.setViewportSize({ width: 390, height: 844 });
           assert(await fitsWidth(frame), `${app.id}: fits mobile width`);
         }
-        if (app.id !== apps.at(-1).id) {
-          const next = apps[apps.indexOf(app) + 1];
+        if (app.id !== paperApps.at(-1).id) {
+          const next = paperApps[paperApps.indexOf(app) + 1];
           await frame.getByRole('link', { name: `Next: ${next.title} →`, exact: true }).click();
           await page.getByRole('tab', { name: next.title, selected: true }).waitFor();
           assert.equal(new URL(page.url()).pathname, base, 'Next-app link preserves deployment prefix');
