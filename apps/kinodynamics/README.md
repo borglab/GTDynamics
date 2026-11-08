@@ -49,18 +49,30 @@ The example defaults to five iterations and accepts
 `--retraction-threads` (8 by default; 1 runs projections serially).
 It defaults to GTSAM's feasible-step API with projected-gradient initialization
 disabled. Use `--qp-step full` for a converged QP and
-`--projected-gradient-initialization` to enable seeding in either mode.
+`--projected-gradient-initialization` to enable primal working-set seeding.
+Full solves use GTSAM's default dual-first `Automatic` formulation, which ignores
+primal initialization strategies. Feasible-step calls always use Primal.
 `--qp-ordering temporal` passes our chronological component ordering, retiring
 each stance landmark at its last observation and keeping the bias until the end.
 `--qp-ordering automatic` (default) lets GTSAM use COLAMD. The supplied order
 is recorded as decimal key strings in `qpOrderingKeys`.
 The selected options are recorded in `solverSettings`; `qpMaxIterations` remains
-1,000. The linked GTSAM build must provide `computeFeasibleStep()` and
-`useProjectedGradientInitialization`, and `setOrdering()`, including matching
+1,000. The linked GTSAM build must provide `computeFeasibleStep()`,
+`qpInitialization` with `QpInitialization`, and `setOrdering()`, including matching
 Python bindings.
 Its main saves numerical arrays and a JSON report. The exporter converts those
 arrays to offline browser assets and adds independently compiled model geometry.
 No optimization runs in the browser. All recording/model gzip files use Git LFS.
+
+The optional native ProxQP backend is selected with
+`--qp-backend proxqp --qp-step full`. It requires a build with
+`GTDYNAMICS_WITH_PROXQP=ON`; the [root installation instructions](../../README.md#optional-sparse-proxqp-backend)
+include a minimal ProxSuite installation without Python bindings. GTSAM remains
+the default backend. ProxQP requires projected-gradient initialization off and
+reports its selection in `solverSettings.qpBackend`. It uses the same global QP,
+LM damping, lifting, and retraction. An unavailable backend or unsupported
+policy is an error. ProxQP chooses its own sparse elimination order;
+`--qp-ordering temporal` controls scalar packing for this backend.
 
 Articulated q/v/a kinematics, Newton–Euler balance, motor armature, reaction
 wrench transmission, sole transforms, zero swing wrenches, and rectangular wrench
@@ -109,7 +121,140 @@ active-set iterations. The smaller variable count does not resolve the GTSAM
 solver performance issue. The native binary/revision and modified Python
 source fingerprints are included in the replay provenance.
 
-The latest comparison uses GTSAM `e0fb6ad4f`, feasible steps, and projected-gradient
+## Native ProxQP comparison
+
+The optional ProxSuite 0.7.3 backend solves the full QP on the same 78–98 s
+clip, 171 support slices, and five outer LM iterations. Both backends run in
+identical Release binaries with system TBB 2021.11, CPUs 0–7, eight retraction
+workers, single-thread BLAS/OpenMP, automatic ordering, and projected-gradient
+initialization disabled. ProxSuite uses the base native target with matching
+Eigen 3.4, no additional SIMD/OpenMP features, and no Python bindings. Three
+fresh runs per backend execute sequentially in ProxQP/GTSAM, GTSAM/ProxQP,
+ProxQP/GTSAM order after all builds and tests.
+
+| Full QP backend | Optimization runs (s) | Median optimization (s) | Median initialization through optimization (s) | Final objective |
+| --- | --- | ---: | ---: | ---: |
+| Native ProxQP | 11.0158, 11.0271, 11.0106 | 11.0158 | 13.0192 | 8,931.759726 |
+| GTSAM Automatic (dual-first) | 23.8526, 23.7033, 23.6800 | 23.7033 | 25.6818 | 8,931.759726 |
+
+ProxQP reduces optimization time by 53.53% (2.15 times faster), including sparse
+packing, original-factor KKT validation, retraction, and relinearization. All six
+runs pass nonlinear feasibility and independent MuJoCo/contact checks. Maximum
+cross-backend array differences are 7.5e-12 for pose matrices, 1.3e-8 for joint
+accelerations, 4.3e-8 for sole wrenches, and 2.1e-8 for joint torques. Each run
+accepts five LM trials without retry. ProxQP reports 86 total inner iterations;
+GTSAM reports 366 working-set iterations. These count different operations and
+are not factorization counts.
+
+The enabled shared library is 8,236,296 bytes versus 7,938,288 bytes with the
+backend disabled, an increase of 298,008 bytes for this Linux Release build.
+Six affected native suites, the disabled-backend QP suite, and seven Python
+tests (including the native ProxQP path) pass. The enabled library exports no
+ProxSuite link dependency. Raw arrays, per-run provenance and validations,
+installation settings, and `comparison.json` are in `build/proxqp-comparison/`.
+The ordinary build option remains off and the example's default remains GTSAM
+feasible descent; this table compares full solves explicitly.
+
+## Dual-first GTSAM comparison
+
+The November 7, 2026 comparison links GTSAM branch
+`codex/qp-dual-formulation` at `c940b4415`. Both libraries use Release builds
+with TBB enabled. Every case runs only `contact-gp-dynamics` on 78–98 s, with
+171 support slices, five outer LM iterations, CPUs 0–7, eight retraction workers,
+single-thread BLAS/OpenMP, explicit LM damping, and zero extra QP regularization.
+Each table entry is the median of three sequential fresh processes, after all
+builds and tests. Runtime library maps and hashes confirm the same system
+TBB 2021.11 libraries and GTSAM binary for every case.
+
+| Solver and ordering | Optimization (s) | Initialization through optimization (s) | Final objective |
+| --- | ---: | ---: | ---: |
+| Global feasible step, automatic | 7.7282 | 9.7325 | 9,272.533830 |
+| Global feasible step, temporal | 7.8496 | 9.8561 | 9,272.533830 |
+| Global full QP, automatic | 24.3698 | 26.3655 | 8,931.759726 |
+| Global full QP, temporal | 26.5527 | 28.5551 | 8,931.759726 |
+| Master default, temporal | 8.5413 | 10.7773 | 8,980.796615 |
+| Master with all-tight face selection, temporal (diagnostic) | 5.0845 | 7.0977 | 9,272.533830 |
+
+`computeFeasibleStep()` always uses Primal, so the default app path does not
+exercise the new dual optimizer. Its temporal result improves by 11.61% over
+the previous matched system-TBB measurement of 8.8808 s on GTSAM `e0fb6ad4f`.
+Automatic ordering is slightly faster here and remains the app default.
+
+Full solves use GTSAM's default dual-first `Automatic` formulation. The first
+QP has no inequalities and uses Primal; subsequent QPs use Dual. These runs
+attempt 366 main QP iterations across five accepted LM trials, versus five
+working-face solves in feasible-step mode. Every full trial requires GTSAM's
+original-QP convergence certificate. Temporal ordering increases full-solve
+time by 8.96% without changing the result. Use
+`--qp-step full --qp-ordering automatic` to request converged QP steps.
+
+Master was rebuilt against the same GTSAM library in an isolated build directory;
+its source tree `ad64754e` is identical to merged master `c88f3699`. Default
+master and global feasible steps choose different faces and reach different
+objectives. The diagnostic all-tight override gives master the same initial
+face policy as the global feasible-step solver. Their pose matrices agree to
+3.0e-12 and wrenches to 1.5e-10, while the global solve remains 1.52 times as
+expensive. Thus the new branch narrows the previous same-face gap but retains
+the cost of global constrained QR and QP assembly relative to master's local
+face reduction and unconstrained Cholesky. The override is confined to the
+baseline diagnostic; GTDynamics production retains the ordinary GTSAM QP call.
+
+All 18 runs pass nonlinear feasibility and independent MuJoCo, sole-cone, and
+swing-wrench checks. Equality norms are at most 1.99e-12 and inequality norms
+at most 5.99e-8; the largest sampled MuJoCo disagreement is 4.15e-12. Changing
+ordering alters pose matrices by at most 1.21e-13. Seven GTSAM native suites,
+six GTDynamics optimizer/retractor suites, two master working-face suites,
+12 GTSAM Python tests, and seven G1 Python tests pass. Two existing optimizer
+assertions were updated because they assumed an inward scalar QP must take
+multiple primal iterations; Dual certifies it in one iteration. The replacement
+budget assertion does not assume a particular working-set strategy.
+
+Raw arrays, logs, library/source provenance, per-run physics checks, main QP
+iteration counts, and `comparison.json` are in
+`build/dual-qp-comparison/`. The integration maps the existing projected-gradient
+boolean to GTSAM's new `QpInitialization` enum. No app solver default changed.
+
+## Projected-gradient face selection
+
+A follow-up uses the identical GTSAM/GTDynamics binaries, inputs, runtime
+libraries, worker counts, and five-iteration limit, enabling only
+`--projected-gradient-initialization`. Each seeded entry is the median of three
+fresh sequential processes; the unseeded control is from the preceding table.
+All six seeded trajectories pass nonlinear feasibility and independent physics
+validation.
+
+| Feasible-step initialization and ordering | Optimization (s) | Initialization through optimization (s) | Final objective | Main QP iterations |
+| --- | ---: | ---: | ---: | ---: |
+| Tight rows, automatic | 7.7282 | 9.7325 | 9,272.533830 | 5 |
+| Projected gradient, automatic | 43.4688 | 45.4773 | 9,000.936808 | 166 |
+| Projected gradient, temporal | 53.5152 | 55.5015 | 9,000.936808 | 169 |
+
+The current initialization improves the objective but costs more than the full
+dual solve, which reaches 8,931.759726 in 24.3698 s with automatic ordering.
+It preserves the zero starting increment and releases rows whose projected
+gradient points strictly inward. The subsequent QP working-face minimizer can
+violate those released rows at the same corner. GTSAM retries these zero-length
+blockers individually before returning its first feasible descent. Automatic
+ordering attempts 1, 41, 45, 44, and 35 main working solves across the five LM
+trials. Auxiliary component projections are excluded from those counts, but
+their complete cost is included in the timing. Master's bulk activation policy
+does not perform this same sequence of individual blocking updates.
+
+Selecting a working face differs from moving to a feasible projected-gradient
+starting point. The latter would require an objective-decreasing step along
+the projected direction; it is not what the existing flag requests. Full Dual
+ignores primal initialization strategies, and with zero additional proximal
+regularization its supplied primal values do not affect the dual search.
+Projected-gradient initialization of Dual would instead need to supply an
+initial working set and nonnegative multipliers. Neither proposed starting-point
+change is implemented here; the default remains tight-row feasible descent.
+
+The new logs, arrays, binary identity checks, physics validations, and
+`comparison.json` are in `build/projected-gradient-qp-comparison/`.
+
+## Earlier ordering comparison
+
+The earlier comparison uses GTSAM `e0fb6ad4f`, feasible steps, and projected-gradient
 initialization disabled. Only `contact-gp-dynamics` was run, on the same 78–98 s
 clip with 171 support slices and five outer iterations. Both modes use identical
 Release binaries, TBB with CPUs 0–7, eight retraction workers,

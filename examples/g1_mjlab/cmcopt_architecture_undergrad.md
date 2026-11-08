@@ -30,14 +30,20 @@ still enforce all inequalities, and can operate independently in parallel.
 Only wholly active vector constraint blocks are promoted to equalities.
 
 The global solver defaults to full convergence within `qpMaxIterations`
-(default 1,000). `qpUseProjectedGradientInitialization` optionally seeds this
-solve. `qpUseFeasibleStep` instead requests feasible descent using GTSAM's
-`computeFeasibleStep`, using the same optional projected-gradient initialization.
+(default 1,000), using GTSAM's default dual-first `Automatic` formulation.
+`qpUseProjectedGradientInitialization` optionally seeds primal solves; dual
+solves ignore initialization strategies. `qpUseFeasibleStep` instead requests
+feasible descent using GTSAM's `computeFeasibleStep`, using the same optional
+projected-gradient initialization.
 The G1 example selects this mode by default; `--qp-step full` requests convergence,
 and `--projected-gradient-initialization` enables seeding (now disabled by default).
 `--qp-ordering temporal` passes the chronological component ordering, retiring
 each stance landmark at its last observation and keeping the bias until the end.
 The default `--qp-ordering automatic` leaves ordering to GTSAM's COLAMD.
+An optional native ProxQP backend uses the same QP and retraction pipeline;
+select `--qp-backend proxqp --qp-step full` after installing ProxSuite and
+enabling `GTDYNAMICS_WITH_PROXQP`. It does not offer feasible-step or
+projected-gradient modes. Installation instructions are in the root README.
 A numerical failure or exhausted iteration budget rejects the trial. A no-progress
 result supplies a zero trial and does not certify QP optimality.
 `qpIterations` counts main active-set iterations, excluding initialization solves,

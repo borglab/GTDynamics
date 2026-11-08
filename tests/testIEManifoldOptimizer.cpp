@@ -142,8 +142,8 @@ TEST(identifyManifolds, Dome) {
   EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
 }
 
-// Build a real CMC state at a unilateral contact boundary. GTSAM starts
-// with the tight row active and must release it for an inward optimum.
+// Build a real CMC state at a unilateral contact boundary, with an objective
+// target on either side of the boundary.
 static IELMState unilateralContactState(double target = 4.0) {
   const Key key = 5;
   NonlinearFactorGraph graph;
@@ -165,7 +165,7 @@ static IELMState unilateralContactState(double target = 4.0) {
   return state;
 }
 
-// Verifies GTSAM releases a face while retaining the LM damping.
+// Verifies an initially tight contact permits inward motion with LM damping.
 TEST(IELMLinearUpdate, ReleaseUnilateralContact) {
   const auto state = unilateralContactState();
   IELMParams params;
@@ -175,15 +175,15 @@ TEST(IELMLinearUpdate, ReleaseUnilateralContact) {
   // Preserve both the prior precision 1/4 and LM damping 1/2.
   EXPECT_DOUBLES_EQUAL(4.0 / 3.0, update.tangentVector.at(5)(0), 1e-8);
   EXPECT(update.blockingIndicesMap.empty());
-  EXPECT(update.qpIterations > 1);
+  EXPECT(update.qpIterations > 0);
 }
 
 // Verifies an exhausted working-set budget rejects the LM trial.
 TEST(IELMLinearUpdate, IterationExhaustionIsFailure) {
   const auto state = unilateralContactState();
   IELMParams params;
-  // A single iteration releases the boundary; it cannot certify the new step.
-  params.qpMaxIterations = 1;
+  // Exhaust the budget without assuming a particular working-set strategy.
+  params.qpMaxIterations = 0;
   const IELMTrial::LinearUpdate update(0.5, {}, state, params);
   EXPECT(!update.solveSuccessful);
 }

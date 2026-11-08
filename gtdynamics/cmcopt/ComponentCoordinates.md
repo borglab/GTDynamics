@@ -32,16 +32,31 @@ zero-dimensional component keys; GTSAM validates the remaining complete
 permutation. An unset ordering selects automatic COLAMD. LM `linearSolverType`
 does not select the global QP backend.
 
+`IELMParams::qpBackend` can instead select the optional native `ProxQP` backend,
+built with `GTDYNAMICS_WITH_PROXQP=ON` (see the root README for installation).
+This backend requires full solves with projected-gradient initialization off.
+It sparsely scatters the QP costs' existing local Hessian blocks, preserves the
+inequality block/row order, and checks solved status plus original-factor KKT
+residuals before lifting the step. ProxQP multipliers and tight row residuals
+identify active rows. The supplied ordering controls scalar packing; ProxQP
+chooses its own sparse elimination order. Numerical failure rejects the trial
+without switching backends. Its `qpMaxIterations` controls outer iterations;
+reported `qpIterations` is ProxQP's total inner iteration count.
+
 The solver owns row additions, releases, and multipliers. GTDynamics no longer
 constructs an active-face kernel $N$, transforms the objective through $N$,
 or implements an active-set iteration. `qpMaxIterations` replaces
 `iqpMaxIterations` and defaults to 1,000. Full convergence is the default.
-`qpUseProjectedGradientInitialization` seeds this full solve with GTSAM's
-componentwise projection of the negative gradient (default false).
+Full solves use GTSAM's default `Automatic` formulation, which selects Dual for
+cold QPs with inequalities and invertible reduced curvature. Equality-only QPs
+use Primal. `qpUseProjectedGradientInitialization` maps to GTSAM's
+`QpInitialization::ProjectedGradient` or `TightConstraints` (default); this
+initialization choice applies to primal solves and is ignored by Dual.
 
 With `qpUseFeasibleStep=true`, each trial calls
-`ActiveSetSolver::computeFeasibleStep` instead. It honors the same projected-gradient
-initialization flag and returns at feasible descent, without certifying
+`ActiveSetSolver::computeFeasibleStep` instead. This API always uses Primal. It
+honors the same projected-gradient initialization flag and returns at feasible
+descent, without certifying
 optimality or multiplier validity. `NoProgress` supplies the original zero
 increment to the existing LM stopping logic. Numerical failures and iteration
 limits reject the trial. This mode does not add a GTDynamics working-set solver.

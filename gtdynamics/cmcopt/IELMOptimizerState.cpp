@@ -14,6 +14,7 @@
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/IndependentComponents.h>
+#include <gtdynamics/cmcopt/ProxQpSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
@@ -531,6 +532,16 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const IELMState &state,
                                       const IELMParams &params)
     : lambda(_lambda) {
+  if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
+#ifndef GTDYNAMICS_WITH_PROXQP
+    throw std::invalid_argument(
+        "ProxQP backend requires a build with GTDYNAMICS_WITH_PROXQP=ON");
+#endif
+    if (params.qpUseFeasibleStep || params.qpUseProjectedGradientInitialization)
+      throw std::invalid_argument(
+          "ProxQP requires full QP solves and no projected-gradient "
+          "initialization");
+  }
   const auto &linear = *state.linearManifoldGraph;
   const auto sqrtHessianDiagonal = SqrtHessianDiagonal(linear, params.lmParams);
   QpProblem problem = state.tangentQp;
@@ -551,8 +562,10 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         ActiveSetSolverParams::QpSubproblemSolver::Sparse;
     qpParams->regularization = 0;
     qpParams->maxIterations = params.qpMaxIterations;
-    qpParams->useProjectedGradientInitialization =
-        params.qpUseProjectedGradientInitialization;
+    qpParams->qpInitialization =
+        params.qpUseProjectedGradientInitialization
+            ? gtsam::ActiveSetSolverParams::QpInitialization::ProjectedGradient
+            : gtsam::ActiveSetSolverParams::QpInitialization::TightConstraints;
     if (params.lmParams.ordering) {
       Ordering ordering;
       for (Key key : *params.lmParams.ordering) {
@@ -564,29 +577,44 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       qpParams->setOrdering(ordering);
     }
     try {
-      const ActiveSetSolver solver(problem, qpParams);
       Values solution;
       std::vector<bool> activeRows;
-      if (params.qpUseFeasibleStep) {
-        const auto result = solver.computeFeasibleStep(initial);
+#ifdef GTDYNAMICS_WITH_PROXQP
+      if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
+        const auto result = internal::solveProxQp(
+            problem, initial, qpParams->ordering, params.qpMaxIterations);
         qpIterations = result.iterations;
-        using Status = ActiveSetFeasibleStepResult::Status;
-        if (result.status != Status::FeasibleProgress &&
-            result.status != Status::NoProgress) {
+        if (!result.converged) {
           failureReason = result.message;
           return;
         }
         solution = result.values;
-        activeRows = result.activeInequalityRows;
-      } else {
-        const auto [values, result] = solver.optimizeWithState(initial);
-        qpIterations = result.iterations;
-        if (!result.converged) {
-          failureReason = "Sparse QP did not converge";
-          return;
+        activeRows = result.activeRows;
+      } else
+#endif
+      {
+        const ActiveSetSolver solver(problem, qpParams);
+        if (params.qpUseFeasibleStep) {
+          const auto result = solver.computeFeasibleStep(initial);
+          qpIterations = result.iterations;
+          using Status = ActiveSetFeasibleStepResult::Status;
+          if (result.status != Status::FeasibleProgress &&
+              result.status != Status::NoProgress) {
+            failureReason = result.message;
+            return;
+          }
+          solution = result.values;
+          activeRows = result.activeInequalityRows;
+        } else {
+          const auto [values, result] = solver.optimizeWithState(initial);
+          qpIterations = result.iterations;
+          if (!result.converged) {
+            failureReason = "Sparse QP did not converge";
+            return;
+          }
+          solution = values;
+          activeRows = result.activeInequalityRows;
         }
-        solution = values;
-        activeRows = result.activeInequalityRows;
       }
       for (auto &[key, value] : delta) {
         if (value.size()) value = solution.at<Vector>(key);

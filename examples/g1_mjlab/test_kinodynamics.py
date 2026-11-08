@@ -13,6 +13,7 @@ import gtdynamics as gtd
 import gtsam
 import numpy as np
 from _g1_kinodynamics import solve
+from _g1_kinodynamics import has_proxqp
 from kinodynamic_settings import solver_settings
 
 
@@ -188,6 +189,25 @@ class TestKinodynamics(unittest.TestCase):
         )
         self.assertTrue(full["feasible"])
         self.assertLess(full["objectiveFinal"], full["objectiveInitial"])
+        if has_proxqp:
+            options["qpBackend"] = "proxqp"
+            prox = solve(
+                robot,
+                trajectory,
+                [gtd.Slice(k) for k in range(3)],
+                [0.0, 0.02, 0.04],
+                initial,
+                [measurements],
+                ["Root observations"],
+                [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.6)],
+                np.empty(0),
+                options,
+            )
+            self.assertTrue(prox["feasible"])
+            self.assertAlmostEqual(
+                prox["objectiveFinal"], full["objectiveFinal"], places=6
+            )
+            options["qpBackend"] = "gtsam"
         options["qpUseFeasibleStep"] = True
         # The complete example objective has the same value after a global
         # translation/yaw change, with the gauge anchor transformed alongside it.

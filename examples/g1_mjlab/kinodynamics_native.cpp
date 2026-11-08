@@ -500,6 +500,11 @@ py::dict solve(
   result["reducedDimension"] = reducedDimension;
   result["objectiveInitial"] = cost.error(initial);
   IELMParams params;
+  const auto qpBackend = setting<std::string>(settings, "qpBackend");
+  if (qpBackend == "proxqp")
+    params.qpBackend = IELMParams::QpBackend::ProxQP;
+  else if (qpBackend != "gtsam")
+    throw std::invalid_argument("Unknown QP backend: " + qpBackend);
   params.qpMaxIterations = setting<size_t>(settings, "qpMaxIterations");
   params.qpUseProjectedGradientInitialization =
       setting<bool>(settings, "qpUseProjectedGradientInitialization");
@@ -522,7 +527,7 @@ py::dict solve(
       orderingKeys.push_back(std::to_string(key));
   }
   result["qpOrderingKeys"] = orderingKeys;
-  // GTSAM owns elimination; an unset ordering selects its automatic COLAMD.
+  // Each backend owns elimination. ProxQP uses the supplied order for packing.
   params.lmParams.verbosityLM = LevenbergMarquardtParams::SUMMARY;
   const auto optimizeStart = Clock::now();
   params.iterationCallback = [&](const IELMState& state) {
@@ -557,6 +562,11 @@ py::dict solve(
 PYBIND11_MODULE(_g1_kinodynamics, module) {
   py::module_::import("gtsam");
   py::module_::import("gtdynamics");
+#ifdef GTDYNAMICS_WITH_PROXQP
+  module.attr("has_proxqp") = true;
+#else
+  module.attr("has_proxqp") = false;
+#endif
   module.def("solve", &solve, py::arg("robot"), py::arg("trajectory"),
              py::arg("slices"), py::arg("times"), py::arg("initial_values"),
              py::arg("measurement_groups"), py::arg("measurement_names"),

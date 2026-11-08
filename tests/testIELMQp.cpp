@@ -418,6 +418,179 @@ TEST(IELMQp, CustomOrderingValidation) {
                   std::invalid_argument);
 }
 
+// Reject unavailable backends and unsupported solve policies explicitly.
+TEST(IELMQp, ProxQpConfigurationErrors) {
+  Values initial;
+  initial.insert(7, Vector(Vector1::Zero()));
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<Vector>>(7, Vector(Vector1(2.)),
+                                            noiseModel::Unit::Create(1));
+  const auto state = makeState(graph, {}, initial);
+  IELMParams params;
+  params.qpBackend = IELMParams::QpBackend::ProxQP;
+#ifndef GTDYNAMICS_WITH_PROXQP
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
+#endif
+  params.qpUseFeasibleStep = true;
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
+  params.qpUseFeasibleStep = false;
+  params.qpUseProjectedGradientInitialization = true;
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
+}
+
+#ifdef GTDYNAMICS_WITH_PROXQP
+// Compare coupled ProxQP steps to exhaustive faces, including both bound
+// senses, noise scales, a free variable, and a custom scalar packing
+// permutation.
+TEST(IELMQp, ProxQpCoupledOptimum) {
+  Values initial;
+  for (Key key : {1, 2, 3}) initial.insert(key, Vector(Vector2::Zero()));
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<Vector>>(1, Vector(Vector2(-1., 2.)),
+                                            noiseModel::Unit::Create(2));
+  graph.emplace_shared<BetweenFactor<Vector>>(1, 2, Vector(Vector2(2., -3.)),
+                                              noiseModel::Unit::Create(2));
+  graph.emplace_shared<BetweenFactor<Vector>>(2, 3, Vector(Vector2(-1., 2.)),
+                                              noiseModel::Unit::Create(2));
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(
+      bound(1, -Matrix2::Identity(), Vector2::Zero(), Vector2(0.3, 7.)));
+  inequalities.push_back(
+      LinearConstraint::GreaterEqual(
+          JacobianFactor(2, Matrix2::Identity(), Vector2::Zero()),
+          Vector2(2., 0.5))
+          .createInequalityFactor());
+  const auto state = makeState(graph, inequalities, initial);
+  auto cost = *state.linearManifoldGraph;
+  for (Key key : {1, 2, 3})
+    cost.emplace_shared<JacobianFactor>(
+        key, std::sqrt(0.2) * Matrix2::Identity(), Vector2::Zero());
+  IELMParams params;
+  params.qpBackend = IELMParams::QpBackend::ProxQP;
+  params.lmParams.ordering = Ordering{3, 2, 1};
+  const IELMTrial::LinearUpdate update(0.2, graph, state, params);
+  EXPECT(update.solveSuccessful);
+  if (!update.solveSuccessful) return;
+  EXPECT(assert_equal(exhaustiveOptimum(cost), update.tangentVector, 1e-7));
+  EXPECT_DOUBLES_EQUAL(state.linearManifoldGraph->error(initial.zeroVectors()) -
+                           state.linearManifoldGraph->error(update.delta),
+                       update.costChange, 1e-9);
+  params.lmParams.ordering = Ordering{1, 2};
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
+  params.lmParams.ordering = Ordering{1, 2, 2};
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
+}
+
+// Dependent and opposing bounds must remain solvable without another backend.
+TEST(IELMQp, ProxQpDependentAndOpposingRows) {
+  for (bool opposing : {false, true}) {
+    Values initial;
+    initial.insert(7, Vector(Vector1::Zero()));
+    NonlinearFactorGraph graph;
+    graph.emplace_shared<PriorFactor<Vector>>(7, Vector(Vector1(2.)),
+                                              noiseModel::Unit::Create(1));
+    NonlinearInequalityConstraints inequalities;
+    inequalities.push_back(
+        bound(7, (Matrix(2, 1) << -1., opposing ? 1. : -2.).finished(),
+              Vector2::Zero(), Vector2(0.3, 7.)));
+    const auto state = makeState(graph, inequalities, initial);
+    IELMParams params;
+    params.qpBackend = IELMParams::QpBackend::ProxQP;
+    const IELMTrial::LinearUpdate update(0.2, graph, state, params);
+    EXPECT(update.solveSuccessful);
+    if (update.solveSuccessful)
+      EXPECT_DOUBLES_EQUAL(opposing ? 0. : 2. / 1.2,
+                           update.tangentVector.at(7)(0), 1e-7);
+  }
+}
+
+// Recover original block indices while keeping partially active blocks as
+// inequalities; inactive boundaries still belong to nonlinear retraction.
+TEST(IELMQp, ProxQpPartialBlockAndRetraction) {
+  Values initial;
+  initial.insert(7, Vector(Vector2::Zero()));
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<Vector>>(7, Vector(Vector2(2., -2.)),
+                                            noiseModel::Unit::Create(2));
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(
+      bound(7, Matrix2::Identity(), Vector2::Ones(), Vector2::Ones()));
+  inequalities.push_back(
+      bound(7, -Matrix2::Identity(), Vector2::Zero(), Vector2(2., 3.)));
+  const auto state = makeState(graph, inequalities, initial);
+  IELMParams params;
+  params.qpBackend = IELMParams::QpBackend::ProxQP;
+  const IELMTrial::LinearUpdate update(0.2, graph, state, params);
+  EXPECT(update.solveSuccessful);
+  if (!update.solveSuccessful) return;
+  EXPECT(assert_equal(Vector2(2. / 1.2, 0.), update.tangentVector.at(7), 1e-7));
+  EXPECT(update.blockingIndicesMap.empty());
+  const IELMTrial::NonlinearUpdate retracted(state, update, graph);
+  EXPECT(retracted.newManifolds.at(7).evaluateInequalityViolation() <= 1e-3);
+}
+
+// Preserve diagonal LM damping and omit fixed components from packing even
+// when their keys appear in the requested ordering.
+TEST(IELMQp, ProxQpDampingAndFixedComponents) {
+  Values initial;
+  initial.insert(7, Vector(Vector2::Zero()));
+  initial.insert(8, Vector(Vector2::Zero()));
+  NonlinearFactorGraph graph;
+  for (Key key : {7, 8})
+    graph.emplace_shared<PriorFactor<Vector>>(
+        key, Vector(Vector2(2., -3.)),
+        noiseModel::Diagonal::Sigmas(Vector2(0.5, 2.)));
+  NonlinearEqualityConstraints equalities;
+  equalities.push_back(
+      LinearConstraint::Equal(
+          JacobianFactor(7, Matrix2::Identity(), Vector2::Zero()))
+          .createEqualityFactor());
+  const auto state = makeState(graph, {}, initial, equalities);
+  IELMParams params;
+  params.qpBackend = IELMParams::QpBackend::ProxQP;
+  params.lmParams.setDiagonalDamping(true);
+  params.lmParams.ordering = Ordering{8, 7};
+  const IELMTrial::LinearUpdate update(0.2, graph, state, params);
+  EXPECT(update.solveSuccessful);
+  if (!update.solveSuccessful) return;
+  EXPECT(assert_equal(Vector2::Zero(), update.tangentVector.at(7), 1e-9));
+  EXPECT(
+      assert_equal(Vector2(2., -3.) / 1.2, update.tangentVector.at(8), 1e-7));
+}
+
+// Never accept exhausted or nonfinite ProxQP trials as a converged update.
+TEST(IELMQp, ProxQpFailureHandling) {
+  Values initial;
+  initial.insert(7, Vector(Vector1::Zero()));
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<Vector>>(7, Vector(Vector1(2.)),
+                                            noiseModel::Unit::Create(1));
+  auto state = makeState(graph, {}, initial);
+  IELMParams params;
+  params.qpBackend = IELMParams::QpBackend::ProxQP;
+  params.qpMaxIterations = 0;
+  const IELMTrial::LinearUpdate exhausted(0.2, graph, state, params);
+  EXPECT(!exhausted.solveSuccessful);
+  EXPECT(!exhausted.failureReason.empty());
+  params.qpMaxIterations = 1;
+  const IELMTrial::LinearUpdate limited(0.2, graph, state, params);
+  EXPECT(!limited.solveSuccessful);
+  EXPECT(limited.qpIterations > 0);
+  params.qpMaxIterations = 1000;
+  state.tangentQp.addCost(JacobianFactor(
+      7, Matrix1::Constant(std::numeric_limits<double>::infinity()),
+      Vector1::Zero()));
+  const IELMTrial::LinearUpdate nonfinite(0.2, graph, state, params);
+  EXPECT(!nonfinite.solveSuccessful);
+  EXPECT(!nonfinite.failureReason.empty());
+}
+#endif
+
 }  // namespace tangent_qp
 
 int main() {

@@ -70,6 +70,7 @@ def solve_walk(
     max_iterations: int = 5,
     retraction_threads: int = 8,
     initialization: str = "contact-gp-dynamics",
+    qp_backend: str = "gtsam",
     qp_use_feasible_step: bool = True,
     qp_use_projected_gradient_initialization: bool = False,
     qp_use_temporal_ordering: bool = False,
@@ -86,9 +87,11 @@ def solve_walk(
         initialization: "fk" uses fixed-pelvis FK and gravity-support forces;
             "contact" fits contact poses with zero motion and forces;
             "contact-gp-dynamics" adds GP interpolation and a linear dynamics seed (default).
-        qp_use_feasible_step: Request feasible descent instead of QP convergence.
-        qp_use_projected_gradient_initialization: Seed either QP mode by projecting
-            the negative gradient; disabled by default.
+        qp_backend: "gtsam" (default) or the optional native "proxqp" backend.
+            ProxQP requires full solves with projected gradients disabled.
+        qp_use_feasible_step: Request feasible descent from GTSAM instead of convergence.
+        qp_use_projected_gradient_initialization: Seed primal GTSAM solves by projecting
+            the negative gradient; disabled by default and ignored by Dual.
         qp_use_temporal_ordering: Pass the example's chronological component and
             last-observation ordering instead of automatic COLAMD.
 
@@ -128,6 +131,7 @@ def solve_walk(
         float(walk.times[gauge_slice]),
         max_iterations,
         retraction_threads,
+        qp_backend=qp_backend,
         qp_use_feasible_step=qp_use_feasible_step,
         qp_use_projected_gradient_initialization=qp_use_projected_gradient_initialization,
         qp_use_temporal_ordering=qp_use_temporal_ordering,
@@ -347,6 +351,12 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-iterations", type=int, default=5)
     parser.add_argument("--retraction-threads", type=int, default=8)
     parser.add_argument(
+        "--qp-backend",
+        choices=("gtsam", "proxqp"),
+        default="gtsam",
+        help="QP backend (default: gtsam); proxqp requires --qp-step full",
+    )
+    parser.add_argument(
         "--qp-step",
         choices=("feasible", "full"),
         default="feasible",
@@ -362,7 +372,7 @@ def argument_parser() -> argparse.ArgumentParser:
         "--qp-ordering",
         choices=("automatic", "temporal"),
         default="automatic",
-        help="Automatic COLAMD (default) or chronological elimination with landmark retirement",
+        help="Backend automatic order (default) or chronological order (ProxQP: packing only)",
     )
     return parser
 
@@ -380,6 +390,7 @@ def main() -> None:
         max_iterations=args.max_iterations,
         retraction_threads=args.retraction_threads,
         initialization=args.initialization,
+        qp_backend=args.qp_backend,
         qp_use_feasible_step=args.qp_step == "feasible",
         qp_use_projected_gradient_initialization=args.projected_gradient_initialization,
         qp_use_temporal_ordering=args.qp_ordering == "temporal",
