@@ -21,8 +21,8 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-CMPoint
-CPBarrierRetractor::retract(const CMPoint *point,
+IECMPoint
+CPBarrierRetractor::retract(const IECMPoint *point,
                             const VectorValues &delta,
                             const std::optional<IndexSet> &blocking_indices,
                             IERetractionInfo *retract_info) const {

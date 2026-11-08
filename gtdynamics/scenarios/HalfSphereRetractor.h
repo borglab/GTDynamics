@@ -36,8 +36,8 @@ public:
   HalfSphereRetractor(const IEHalfSphere &half_sphere);
 
   /** Retract a tangent update and project back to the upper half-sphere. */
-  CMPoint
-  retract(const CMPoint *point, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 };

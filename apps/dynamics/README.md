@@ -94,9 +94,11 @@ mechanics/conditioning API remains future work.
 
 The [comparison runner](../../examples/g1_mjlab/benchmark_fixed_dynamics.py)
 uses exactly this app's inputs, acceleration priors, objective, and anchor for
-all solvers. Its private old-CM adapter calls the actual `LMManifoldOptimizer`
-and `ConstraintManifold`, using the production problem builders. It keeps old
-CM dependencies out of the public API. Run with matching built bindings:
+all solvers. Its `manifold-lm` case calls the retained `LMManifoldOptimizer`
+with `EConstraintManifold` definitions and concrete `ECMPoint` values, using
+the production problem builders and original equality retraction algorithm.
+CMC and equality-only LM share geometry and substitution code. Run with
+matching built bindings:
 
 ```bash
 taskset -c 8-15 python examples/g1_mjlab/benchmark_fixed_dynamics.py \
@@ -112,10 +114,17 @@ CPUs, alternates case order, and saves input, source, binary, and library hashes
 Use single-thread BLAS/OpenMP and the same TBB-enabled GTSAM/GTDynamics build.
 It writes benchmark artifacts only; it does not export browser recordings.
 
+### Historical baseline at `6aea8ba1`
+
+The table below preserves the pre-migration comparison at commit `6aea8ba1`.
+Its old-CM row used the removed `ConstraintManifold` value class and duplicate
+`SubstituteFactor`. Current `manifold-lm` runs use `ECMPoint`, so they must not
+be labeled as fresh measurements of that old value implementation.
+
 On 2026-11-08, three fresh runs per case used Release Clang 18.1.3, TBB,
 ProxSuite 0.7.3, one retraction worker, CPUs 8–15, and single-thread BLAS/OpenMP.
 GTSAM revision was `c940b44158d8bfa7394da233dd63aa225bc8fed2`, matching the
-[nonlinear comparison](../../gtdynamics/cmcopt/EqualityOnlyOptimization.md).
+[nonlinear comparison](../../gtdynamics/cmopt/EqualityOnlyOptimization.md).
 Another benchmark was confined to CPUs 0–7; no builds/tests ran during timing.
 These are local wall times, with some host variability.
 
@@ -169,7 +178,9 @@ The earlier overlapping-core preflight campaign is excluded.
 
 Together with the nonlinear equality benchmark, this establishes numerical
 agreement with old CM and useful direct-Gaussian performance for both kinds of
-equality geometry. Old CM remains available pending broader migration coverage.
+equality geometry before migration. The current code preserves the equality
+optimizer algorithms on shared `EConstraintManifold` / `ECMPoint` machinery;
+the old value representation has been removed.
 The checked-in browser recording and its historical timings above are unchanged.
 
 ## Regenerate

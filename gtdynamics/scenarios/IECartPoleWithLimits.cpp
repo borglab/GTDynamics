@@ -12,7 +12,7 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>

@@ -12,7 +12,7 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/scenarios/CartPoleWithLimitsRetractor.h>
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>
@@ -22,8 +22,8 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-CMPoint CartPoleWithLimitsRetractor::retract(
-    const CMPoint *point, const VectorValues &delta,
+IECMPoint CartPoleWithLimitsRetractor::retract(
+    const IECMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
     IERetractionInfo *retract_info) const {
   Values new_values = point->values().retract(delta);

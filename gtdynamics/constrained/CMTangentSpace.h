@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/TangentCone.h>
-#include <gtdynamics/cmopt/TangentSpaceMetric.h>
+#include <gtdynamics/constrained/TangentCone.h>
+#include <gtdynamics/constrained/TangentSpaceMetric.h>
 
 #include <mutex>
 

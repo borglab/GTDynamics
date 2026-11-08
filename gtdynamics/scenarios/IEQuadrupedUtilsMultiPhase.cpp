@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>

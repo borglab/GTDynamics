@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/inference/VariableIndex.h>
@@ -44,14 +44,14 @@ using gtsam::NonlinearEqualityConstraints;
  * @see README.md#equivalent-factors
  */
 struct ManifoldOptimizationProblem {
-  NonlinearFactorGraph graph;  // cost function on constraint manifolds
-  std::vector<NonlinearEqualityConstraints::shared_ptr>
-      components;  // All the constraint-connected components
+  NonlinearFactorGraph graph;  // cost function on equality points
+  std::vector<EConstraintManifold::shared_ptr>
+      types;  // Immutable definitions discovered from the constraints
   Values
-      values;  // values for constraint manifolds and unconstrained variables
-  Values fixedManifolds;     // fully constrained variables
+      values;  // equality points and unconstrained variables
+  ECMPoints fixedPoints;     // fully constrained points
   KeySet unconstrainedKeys;  // keys for unconstrained variables
-  KeySet manifoldKeys;       // keys for constraint manifold variables
+  KeySet manifoldKeys;       // keys for equality point variables
 
   /** Dimension of the manifold optimization problem, as factor dimension x
    * variable dimension.
@@ -63,10 +63,10 @@ struct ManifoldOptimizationProblem {
   Values unconstrainedValues() const;
 
   /// Return free (non-fixed) constraint manifold values.
-  EManifoldValues manifolds() const;
+  ECMPoints points() const;
 
   /// Return fixed (zero-dimensional) manifold values.
-  EManifoldValues constManifolds() const;
+  ECMPoints constPoints() const;
 
   /**
    * Print a summary of manifold optimization problem contents.
@@ -85,7 +85,7 @@ struct ManifoldOptimizationProblem {
  */
 struct ManifoldOptimizerParameters : public ConstrainedOptimizationParameters {
   using Base = ConstrainedOptimizationParameters;
-  ConstraintManifold::Params::shared_ptr
+  EConstraintManifold::Params::shared_ptr
       constraintManifoldParams;               // Parameter for constraint-connected components
   bool retractInitialValues = true;    // Perform retraction on constructing values for
                                // connected component.
@@ -99,7 +99,7 @@ struct ManifoldOptimizerParameters : public ConstrainedOptimizationParameters {
  * Base class that transforms equality-constrained problems into manifold form.
  *
  * This class identifies constraint-connected components, builds
- * `ConstraintManifold` values, and replaces base factors with equivalent
+ * `ECMPoint` values, and replaces base factors with equivalent
  * factors over manifold variables.
  *
  * @see README.md#ccc-transformation
@@ -122,33 +122,16 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
 
  public:
   /**
-   * Find a connected component containing `start_key` using DFS.
-   * @param constraints Equality constraints.
-   * @param start_key Starting key for DFS.
-   * @param keys In/out set of unexplored keys; keys in the found component are
-   * removed.
-   * @param var_index Variable index over constraints.
-   * @return Constraint subset corresponding to the connected component.
-   */
-  static NonlinearEqualityConstraints::shared_ptr identifyConnectedComponent(
-      const NonlinearEqualityConstraints &constraints, const Key start_key, KeySet &keys,
-      const VariableIndex &var_index);
-
-  /// Identify the connected components by constraints.
-  static std::vector<NonlinearEqualityConstraints::shared_ptr>
-  identifyConnectedComponents(const NonlinearEqualityConstraints &constraints);
-
-  /**
    * Create equivalent cost graph on manifold variables.
    * @param graph Original factor graph.
    * @param var2man_keymap Mapping from base variable key to manifold key.
-   * @param fc_manifolds Values of fully constrained manifolds.
+   * @param fixedPoints Values of fully constrained points.
    * @return Transformed manifold graph.
    */
   static NonlinearFactorGraph manifoldGraph(
       const NonlinearFactorGraph &graph,
       const std::map<Key, Key> &var2man_keymap,
-      const Values &fc_manifolds = Values());
+      const ECMPoints &fixedPoints = ECMPoints());
 
   /** Create values for the manifold optimization problem by (1) create
    * constraint manifolds for constraint-connected components; (2) identify if
@@ -205,6 +188,11 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
   ManifoldOptimizationProblem initializeManifoldOptimizationProblem(
       const NonlinearFactorGraph &costs, const NonlinearEqualityConstraints &constraints,
       const Values &init_values) const;
+
+  /// Build the same transformed graph from explicitly typed equality points.
+  ManifoldOptimizationProblem initializeManifoldOptimizationProblem(
+      const NonlinearFactorGraph &costs, const ECMPoints &points,
+      const Values &unconstrainedValues = Values()) const;
 
   /**
    * Reconstruct base variable values from optimized manifold values.

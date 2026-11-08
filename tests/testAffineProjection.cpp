@@ -13,7 +13,7 @@
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/AffineProjection.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/constrained/LinearConstraint.h>
@@ -24,7 +24,7 @@ using namespace gtdynamics;
 
 namespace {
 constexpr Key kX = 1, kY = 2;
-CMPoint line(const IERetractor::shared_ptr &retractor,
+IECMPoint line(const IERetractor::shared_ptr &retractor,
                           bool affine = true) {
   Values anchor;
   anchor.insert(kX, Vector(Vector1(0)));
@@ -239,7 +239,7 @@ TEST(AffineProjection, NonlinearEqualityKeepsAmbientRecovery) {
   values.insert(kX, Vector(Vector2(1, 0)));
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *equalities, NonlinearInequalityConstraints{}, values, *params);
-  CMPoint point = pointType->point(values);
+  IECMPoint point = pointType->point(values);
   VectorValues delta;
   delta.insert(kX, Vector2(0, .2));
   IERetractionInfo info;

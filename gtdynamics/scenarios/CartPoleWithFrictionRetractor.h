@@ -38,13 +38,13 @@ public:
       : IERetractor(), cp_(cp) {}
 
   /** Retract a tangent update and enforce active friction constraints. */
-  CMPoint
-  retract(const CMPoint *point, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 
   /** Fallback penalty-based retraction for boundary corner cases. */
-  CMPoint retract1(const CMPoint *point,
+  IECMPoint retract1(const IECMPoint *point,
                                 const VectorValues &delta) const;
 };
 

@@ -378,7 +378,7 @@ class NonlinearEqualityConstraints {
   gtsam::NonlinearFactorGraph penaltyGraph(double mu = 1.0) const;
 };
 
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 class TangentSpaceBasisParams {
   TangentSpaceBasisParams(bool useBasisKeys = false, bool alwaysConstructBasis = true);
   bool alwaysConstructBasis;
@@ -403,30 +403,73 @@ class RetractionParams {
   bool applyBaseRetraction;
   bool recompute;
 };
-virtual class RetractorCreator {};
+#include <gtdynamics/cmcopt/IERetractor.h>
+virtual class IERetractorCreator {};
+virtual class RetractorCreator : gtdynamics::IERetractorCreator {};
 #include <gtdynamics/cmopt/BasisRetractor.h>
 virtual class BasisRetractorCreator : gtdynamics::RetractorCreator {
   BasisRetractorCreator(gtdynamics::BasisKeyFunction basisKeyFunction,
                         gtdynamics::RetractionParams* params);
 };
 
-// ConstraintManifoldParams is a wrapper alias for ConstraintManifold::Params.
-#include <gtdynamics/cmopt/ConstraintManifold.h>
-class ConstraintManifoldParams {
-  ConstraintManifoldParams();
-  gtdynamics::TangentSpaceBasisCreator* basisCreator;
-  gtdynamics::RetractorCreator* retractorCreator;
+// Expose the equality-only runtime type and concrete point values.
+#include <gtdynamics/constrained/ConstraintManifold.h>
+virtual class ConstraintManifold {};
+#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+virtual class IEConstraintManifold : gtdynamics::ConstraintManifold {
+  size_t dim() const;
+  @pybind_lambda
+  gtdynamics::IECMPoint point(const gtsam::Values& values) const;
+};
+#include <gtdynamics/cmopt/EConstraintManifold.h>
+class EConstraintManifoldParams {
+  EConstraintManifoldParams();
+  gtdynamics::TangentSpaceBasisCreator* equalityBasisCreator;
+  gtdynamics::IERetractorCreator* retractorCreator;
+  bool affineEqualities;
+};
+virtual class EConstraintManifold : gtdynamics::IEConstraintManifold {
+  EConstraintManifold(const gtdynamics::NonlinearEqualityConstraints& equalities,
+                      const gtsam::Values& prototype);
+  EConstraintManifold(const gtdynamics::NonlinearEqualityConstraints& equalities,
+                      const gtsam::Values& prototype,
+                      const gtdynamics::EConstraintManifoldParams& params);
+  @pybind_lambda
+  gtdynamics::ECMPoint point(const gtsam::Values& values) const;
+  @pybind_lambda
+  std::shared_ptr<gtdynamics::EConstraintManifold> condition(const gtsam::Values& fixed) const;
+};
+#include <gtdynamics/constrained/CMPoint.h>
+virtual class CMPoint {
+  size_t dim() const;
+  @pybind_lambda
+  gtsam::Values values() const;
+  void print(const string& prefix = "") const;
+};
+#include <gtdynamics/cmcopt/IECMPoint.h>
+virtual class IECMPoint : gtdynamics::CMPoint {
+  gtdynamics::IECMPoint retract(const gtsam::Vector& delta) const;
+  gtsam::Vector localCoordinates(const gtdynamics::IECMPoint& other) const;
+  @pybind_lambda
+  bool equals(const gtdynamics::IECMPoint& other, double tolerance = 1e-8) const;
+};
+#include <gtdynamics/cmopt/ECMPoint.h>
+virtual class ECMPoint : gtdynamics::IECMPoint {
+  gtdynamics::ECMPoint retract(const gtsam::Vector& delta) const;
+  gtsam::Vector localCoordinates(const gtdynamics::ECMPoint& other) const;
+  @pybind_lambda
+  bool equals(const gtdynamics::ECMPoint& other, double tolerance = 1e-8) const;
 };
 class ManifoldOptimizerParameters {
   ManifoldOptimizerParameters();
-  gtdynamics::ConstraintManifoldParams* constraintManifoldParams;
+  gtdynamics::EConstraintManifoldParams* constraintManifoldParams;
   bool retractInitialValues;
   bool retractFinalValues;
 };
 class ManifoldOptimizationProblem {
   gtsam::NonlinearFactorGraph graph;
   gtsam::Values values;
-  std::vector<std::shared_ptr<gtdynamics::NonlinearEqualityConstraints>> components;
+  std::vector<std::shared_ptr<gtdynamics::EConstraintManifold>> types;
   std::pair<size_t, size_t> problemDimension() const;
 };
 virtual class ManifoldOptimizer {

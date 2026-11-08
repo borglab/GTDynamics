@@ -13,7 +13,7 @@
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
-#include <gtdynamics/cmcopt/IndependentComponents.h>
+#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/cmcopt/ProxQpSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
@@ -48,7 +48,7 @@ class ElapsedTime {
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-IELMState::IELMState(const CMPoints &componentPoints,
+IELMState::IELMState(const IECMPoints &componentPoints,
                      const Values &unconstrainedValues,
                      const NonlinearFactorGraph &graph,
                      const NonlinearFactorGraph &pointGraph,
@@ -101,7 +101,7 @@ IELMState::fromLastIteration(const IELMIterationDetails &iter_details,
 }
 
 /* ************************************************************************* */
-Values IELMState::allValues(const CMPoints &points,
+Values IELMState::allValues(const IECMPoints &points,
                             const Values &unconstrainedValues) {
   Values values;
   for (const auto &[key, point] : points) values.insert(key, point);
@@ -173,7 +173,7 @@ void IELMState::construct(const NonlinearFactorGraph &graph,
 
 /* ************************************************************************* */
 double IELMState::evaluateGraphError(const NonlinearFactorGraph &graph,
-                                     const CMPoints &componentPoints,
+                                     const IECMPoints &componentPoints,
                                      const Values &_unconstrained_values) {
   Values all_values = ambientValues(componentPoints);
   all_values.insert(_unconstrained_values);
@@ -336,9 +336,9 @@ void IELMTrial::setDecreasedNextLambda(
 
 /* ************************************************************************* */
 std::map<std::pair<Key, size_t>, size_t>
-IdentifyConstraintType(const CMPoints &statePoints,
+IdentifyConstraintType(const IECMPoints &statePoints,
                        const IndexSetMap blockingIndicesMap,
-                       const CMPoints &newPoints) {
+                       const IECMPoints &newPoints) {
   std::map<std::pair<Key, size_t>, size_t> constraint_type_map;
 
   for (const auto &[key, newPoint] : newPoints) {
@@ -402,9 +402,9 @@ std::string ColoredStr(const std::string &str, const size_t constraint_type,
 }
 
 /* ************************************************************************* */
-std::string ConstraintInfoStr(const CMPoints &statePoints,
+std::string ConstraintInfoStr(const IECMPoints &statePoints,
                               const IndexSetMap blockingIndicesMap,
-                              const CMPoints &newPoints,
+                              const IECMPoints &newPoints,
                               const KeyFormatter &key_formatter,
                               bool stepIsSuccessful,
                               bool group_as_categories) {
@@ -489,7 +489,7 @@ double VectorMax(const std::vector<double> &vec) {
 }
 
 /* ************************************************************************* */
-std::string ConstraintInfoStr(const CMPoints &points,
+std::string ConstraintInfoStr(const IECMPoints &points,
                               const IndexSetMap &indices_map,
                               const KeyFormatter &key_formatter) {
   std::string str = "";
@@ -865,7 +865,7 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
       break;
     }
   const KeyVector keys = pointKeys(state.points);
-  std::vector<std::optional<CMPoint>> projected(keys.size());
+  std::vector<std::optional<IECMPoint>> projected(keys.size());
   std::vector<IERetractionInfo> information(keys.size());
   internal::forIndependentComponents(
       keys.size(), retractionThreads, [&](size_t i) {
@@ -940,8 +940,8 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(
 /* ************************************************************************* */
 std::pair<VectorValues, double>
 IELMTrial::NonlinearUpdate::evaluateRetractionDeviation(
-    const CMPoint &point,
-    const CMPoint &newPoint,
+    const IECMPoint &point,
+    const IECMPoint &newPoint,
     const VectorValues &tangentVector) {
   VectorValues retract_delta =
       point.values().localCoordinates(newPoint.values());

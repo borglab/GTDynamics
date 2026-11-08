@@ -212,7 +212,7 @@ TEST(IELMEqualityOnly, CompiledAndRuntimeCharts) {
   for (const IEConstraintManifold::shared_ptr& type :
        {IEConstraintManifold::shared_ptr(native),
         IEConstraintManifold::shared_ptr(runtime)}) {
-    CMPoints points{{100, type->point({{0, 10}, {1, 11}}, initial)}};
+    IECMPoints points{{100, type->point({{0, 10}, {1, 11}}, initial)}};
     for (auto solver :
          {IELMParams::LinearSolver::Gaussian, IELMParams::LinearSolver::QP}) {
       IELMParams params;

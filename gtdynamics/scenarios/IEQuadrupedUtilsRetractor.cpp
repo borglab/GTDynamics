@@ -14,7 +14,7 @@
 
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <gtdynamics/cmcopt/KinodynamicHierarchicalRetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
@@ -24,7 +24,7 @@ using namespace gtsam;
 
 /* ************************************************************************* */
 IERetractor::shared_ptr Vision60HierarchicalRetractorCreator::create(
-    const CMPoint &point) const {
+    const IECMPoint &point) const {
   if (use_basis_keys_) {
     KeyVector basis_keys = robot_.getBasisKeyFunction()(point.values().keys());
     return std::make_shared<KinodynamicHierarchicalRetractor>(point, params_,
@@ -35,7 +35,7 @@ IERetractor::shared_ptr Vision60HierarchicalRetractorCreator::create(
 
 /* ************************************************************************* */
 IERetractor::shared_ptr Vision60BarrierRetractorCreator::create(
-    const CMPoint &point) const {
+    const IECMPoint &point) const {
   if (use_basis_keys_) {
     KeyVector basis_keys = robot_.getBasisKeyFunction()(point.values().keys());
     return std::make_shared<BarrierRetractor>(params_, basis_keys);
@@ -45,7 +45,7 @@ IERetractor::shared_ptr Vision60BarrierRetractorCreator::create(
 
 /* ************************************************************************* */
 IERetractor::shared_ptr Vision60MultiPhaseHierarchicalRetractorCreator::create(
-    const CMPoint &point) const {
+    const IECMPoint &point) const {
   if (point.values().size() == 1) {
     return std::make_shared<BarrierRetractor>(params_);
   }
@@ -62,7 +62,7 @@ IERetractor::shared_ptr Vision60MultiPhaseHierarchicalRetractorCreator::create(
 
 /* ************************************************************************* */
 IERetractor::shared_ptr Vision60MultiPhaseBarrierRetractorCreator::create(
-    const CMPoint &point) const {
+    const IECMPoint &point) const {
   if (use_basis_keys_) {
     size_t k =
         DynamicsSymbol(*point.values().keys().begin()).time();

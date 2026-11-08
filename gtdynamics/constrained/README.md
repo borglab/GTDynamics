@@ -2,18 +2,48 @@
 
 Authors: Yetong Zhang and Frank Dellaert.
 
-`IEConstraintManifold` defines a space. `CMPoint` is a value in that space, and
-`CMTangentSpace` contains the numerical geometry at one point. A tangent
-increment is an ordinary `gtsam::Vector`.
+The runtime types and point values have matching specialization hierarchies:
 
-`IEConstraintManifold` retains the existing public name for this PR and now
-denotes the runtime definition; numerical point values use `CMPoint`.
+```text
+ConstraintManifold           CMPoint
+└── IEConstraintManifold      └── IECMPoint
+    └── EConstraintManifold       └── ECMPoint
+```
+
+`ConstraintManifold` is the abstract chart and recovery contract.
+`IEConstraintManifold` defines equalities and inequalities;
+`EConstraintManifold` guarantees an empty inequality collection. Equality-only
+problems can therefore use CMC, while equality-only optimizer entry points take
+`ECMPoints`. A tangent increment remains an ordinary `gtsam::Vector`.
+
+## Directory layout
+
+| Directory | Code |
+| --- | --- |
+| `constrained` | `ConstraintManifold`, `CMPoint`, `CMTangentSpace`, shared basis/metric/Jacobian operations, tangent-cone geometry, and `CMCSubstituteFactor` |
+| `constrained/internal` | Read-only basis views, independent-component scheduling, and the shared compiled-chart implementation |
+| `cmopt` | `EConstraintManifold`, `ECMPoint`, equality retractors, and equality optimizer backends |
+| `cmopt/internal` | The compiled equality-only adapter |
+| `cmcopt` | `IEConstraintManifold`, `IECMPoint`, corner-aware retractors, and IE optimizer/QP backends |
+| `cmcopt/internal` | The compiled IE adapter |
+
+Common point operations are implemented in `CMPoint.cpp`; default recovery is
+implemented in `ConstraintManifold.cpp`. The equality point owns its assignment
+validation, so the common point implementation does not depend on either
+concrete point category. Existing class names and numerical algorithms are
+unchanged by this directory organization.
+
+The directory move is validated by 32 native suites, 25 Python tests, three
+selected ProxQP-disabled suites, and seven example builds. A temporary install
+also compiles the common/E/IE headers without source-tree include paths, covering
+the new public and internal header installation locations.
 
 | Object | Owns |
 | --- | --- |
-| `IEConstraintManifold` | Local constraint definitions, slot types/dimensions, immutable conditioning, symbolic equality structure, constant affine equality geometry, and retraction policy |
-| `CMPoint` | Its runtime type, ambient-key bindings, numerical ambient values, active boundary blocks, and derived geometry |
-| `CMTangentSpace` | A read-only view of the equality basis, raw and whitened active rows, cone projection, and point-local metric caches |
+| Runtime type | Local definitions, slot types/dimensions, immutable conditioning, symbolic equality structure, constant affine equality geometry, and retraction policy |
+| `CMPoint` base | Runtime type identity, ambient-key bindings, numerical ambient values, and shared geometry |
+| `IECMPoint` / `ECMPoint` | Concrete GTSAM value contract; IE points additionally expose active boundary blocks |
+| `CMTangentSpace` | Read-only equality basis, raw/whitened active rows, cone projection, and point-local metric caches |
 
 The type contains the operations for constructing the geometry and retracting a
 point. It does not contain the current configuration, a current active set, or a
@@ -36,7 +66,9 @@ auto next = first.retract(delta);
 ```
 
 The prototype supplies only value types and dimensions; its numerical state is
-not retained. Empty inequalities define an equality-only space. Bindings must be
+not retained. Use `EConstraintManifold(equalities, prototype, settings)`
+when the absence of inequalities is part of the public contract. General IE
+definitions may also have an empty inequality collection. Bindings must be
 complete and one-to-one, and a point must contain exactly the expected ambient
 values with matching types and dimensions. A point retains its type and bindings
 when retracted. Chart comparisons require the same type identity and bindings;
@@ -44,10 +76,14 @@ points from differently conditioned spaces cannot be compared accidentally.
 
 Types are constructed with `std::make_shared` and held through
 `std::shared_ptr<const IEConstraintManifold>`. Create values with `type->point(...)`;
-`CMPoint` never constructs a type. Its default constructor exists only for GTSAM
+`IECMPoint` never constructs a type. Its default constructor exists only for GTSAM
 value-container compatibility. Copies of points share immutable geometry.
+Each concrete point has its own GTSAM traits and nonvirtual chart methods:
+`ECMPoint::retract(Vector)` returns an `ECMPoint`, while the IE version returns
+an `IECMPoint`. The common `CMPoint` base is used by reference, never stored
+as a GTSAM value.
 `IEConstraintManifold::linearize` constructs geometry without changing the type or point;
-`CMPoint::tangentSpace` accesses the cached geometry for that value.
+`IECMPoint::tangentSpace` accesses the cached geometry for that value.
 
 The [small manual example](../../examples/example_constraint_manifold/main_shared_ieconstraint_manifold.cpp)
 constructs two differently bound points on y=2x, x>=0, shares one definition,
@@ -70,9 +106,11 @@ building the transformed graph. Unconstrained variables keep their existing
 keys. Ambient-to-point ownership and slot bindings are explicit.
 
 CMC substitution factors recover ambient values and Jacobians directly from
-`CMPoint`, including zero-dimensional points. GTSAM Values hold these points
-through their dynamic-dimensional manifold traits. Normal CMC linearization no
-longer constructs equality-only CM value objects.
+`IECMPoint`, including zero-dimensional points. GTSAM Values hold these points
+through their dynamic-dimensional manifold traits. Equality optimization stores `ECMPoint`
+values instead, using the same substitution implementation with its equality
+point category. GTSAM values require the exact concrete value type; inheritance
+does not permit `values.at<IECMPoint>(key)` when that key stores an `ECMPoint`.
 
 G1's temporal ordering reads the slice from ambient bindings. Component-point
 keys have no time encoding. Raw QP captures therefore use the new point keys;
@@ -86,18 +124,21 @@ slots from the free layout, and chooses a fresh general equality chart. Fully
 fixed equalities must be satisfied; remaining inequality block indices are
 preserved. Original bindings and points remain valid and unchanged.
 
+<a id="tangent-basis"></a>
+
 Equality preparation belongs to the type. `TangentSpaceBasisCreator::prepare`
 uses only local slot dimensions and constraints to build variable layout,
 independent-coordinate selection, and symbolic ordering. It performs no numerical
-linearization and retains no sample point values. Existing equality-only CM
-`create` behavior remains unchanged.
+linearization and retains no sample point values. Equality-only and CMC
+optimizers share this preparation and the same numerical basis algorithms.
 
 Each nonlinear point constructs its numerical basis from that prepared structure.
 Under the explicit Euclidean `affineEqualities` contract, the type instead builds
 its local numerical basis once on first use, using `std::call_once`. The fully
 constructed basis is published read-only; a failed attempt can be retried. Ambient
-bindings only wrap this local geometry. A legacy read-only adapter prevents old
-mutable basis interfaces from changing geometry shared by other points.
+bindings only wrap this local geometry. `ReadOnlyBasis` prevents mutable basis
+interfaces from changing geometry shared by other points; this is a shared
+geometry safeguard, not an adapter to the removed value implementation.
 
 Every conditioning gets fresh preparation and its own affine cache. Conditioning
 does not infer affinity: q*x-y=0 at different fixed q defines different spaces,
@@ -110,7 +151,7 @@ The type selects the immutable retraction policy and captures binding-independen
 preparation, including articulated robot topology validation. Every
 `type->point(bindings, values, active)` construction rebuilds bound factor views
 and binding-specific retraction preparation; there is no previous-point argument
-or `CMPoint::createWithNewValues`. Active boundary geometry and projection metric
+or `IECMPoint::createWithNewValues`. Active boundary geometry and projection metric
 caches are fresh per point. Repeated metric queries on the same point can reuse
 matching weights. Every retraction call clones mutable work, including
 fixed-variable factors and metric parameters. Different points sharing a type can retract in
@@ -128,11 +169,18 @@ values.
 
 ## Compiled types and GTSAM
 
-The internal [compiled adapter](internal/CompiledIEConstraintManifold.h) accepts a type T
+The internal [shared compiled chart](internal/CompiledChart.h) accepts a type T
 satisfying `gtsam::traits<T>` plus an immutable recovery object providing
 `fromAmbient`, `ambient`, recovery `jacobians`, inequality `boundaries`, and
 explicit `boundary` movement. The native type owns Local and Retract; no
-constraint factors are fabricated. Conditioning for a native type is expressed
+constraint factors are fabricated. The [IE adapter](../cmcopt/internal/CompiledIEConstraintManifold.h)
+adds native boundary operations. The [equality adapter](../cmopt/internal/CompiledEConstraintManifold.h),
+`CompiledEConstraintManifold<T, Recovery>`, needs only recovery/Jacobians and
+ordinary GTSAM traits. A generic compiled IE chart cannot be relaxed through
+`equalityView()` because its boundary-free chart and recovery policy cannot be
+inferred from constraint factors; that operation rejects the conversion. Supply
+an explicit `CompiledEConstraintManifold` recovery policy instead. Conditioning
+for a native type is expressed
 through its immutable recovery parameters.
 
 The nonnegative-line test implements an ordinary compiled GTSAM value and runs
@@ -147,24 +195,99 @@ in the interior and along admissible boundary directions.
 
 ## Migration and solver behavior
 
-CMC value APIs formerly named `IEConstraintManifold` and `IEManifoldValues` become
-`CMPoint` and `CMPoints`. Construction choices move to `IEConstraintManifold::Params`.
-Use `identifyConnectedComponents` and `optimize`; iteration state exposes `points`
-and trial updates expose `newPoints`.
+The old equality-only `ConstraintManifold` value class, `EManifoldValues`,
+duplicate `SubstituteFactor`, and `LegacyCMAdapter` are removed.
+`ConstraintManifold` now names the abstract runtime type, while
+`IEConstraintManifold` retains its existing runtime name and
+`EConstraintManifold` adds the equality-only specialization. Point values use
+the separate `IECMPoint` and `ECMPoint` classes; no aliases retain the old value
+representation.
 
-Equality-only CM-Opt remains unchanged. The internal legacy adapter isolates its
-old `ConstraintManifold` value class while downstream code migrates toward this
-single type/point architecture. Custom CMC basis/retraction policies must
-implement `clone()` to capture immutable configuration and detach mutable
-workspace state; legacy CM-only policies do not need this new hook.
-New CMC public interfaces do not require that
-legacy value type.
+- Use `EConstraintManifold` / `ECMPoint` / `ECMPoints` for equality-only APIs;
+  use `IEConstraintManifold` / `IECMPoint` / `IECMPoints` for the general CMC API.
+- `ManifoldOptimizerParameters::constraintManifoldParams` holds
+  `EConstraintManifold::Params`. Rename `basisCreator` to
+  `equalityBasisCreator`; `retractorCreator` captures the selected policy.
+  Python exposes `EConstraintManifoldParams` and the same field names.
+- Construct types with constraint factors and slot prototypes, then construct
+  points only with `type->point(bindings, values, active)` or identity-binding
+  `type->point(values, active)`. Point constructors never create runtime types.
+- Existing equality `BasisRetractorCreator`, `ProjectionRetractorCreator`,
+  `UnconstrainedOptimizationRetractorCreator`, and `DynamicsRetractorCreator`
+  implement the shared `IERetractorCreator` interface. Configure their original
+  `RetractionParams` before constructing the type. Policies snapshot parameters
+  and isolate mutable workspaces; approximate CM(I) budgets retain their meanings.
+  Explicit retraction LM orderings use local slots, are bound independently for
+  each point, and are restricted after conditioning and for each inner graph.
+  `ProjectionRetractorCreator` with `useBasisKeys=true` uses the prepared
+  elimination basis's bound coordinate keys. A positive-dimensional basis
+  without variable-key coordinates rejects that option explicitly.
+- `ManifoldOptimizationProblem.types` holds definitions; `values` stores
+  concrete `ECMPoint` values and free variables; `fixedPoints` holds
+  zero-dimensional points. Replace `components` with `types` when counting
+  discovered definitions. `points()` and `constPoints()` return typed maps.
+- `NonlinearManifoldOptimizer` keeps GTSAM LM, Gauss–Newton, and Dogleg;
+  `LMManifoldOptimizer` retains its own LM loop. CMC keeps `IELMOptimizer` and
+  `IEGDOptimizer`. Their damping, acceptance, stopping, and callback contracts
+  are preserved. The custom LM loops remain separate.
+
+Equality points widen explicitly with `widenPoints(equalityPoints)`, or through
+CMC's `optimize(costs, ECMPoints, freeValues)` overload. This preserves numerical
+values, runtime type identity, and geometry. Once inserted in general CMC
+`gtsam::Values`, the concrete stored value is `IECMPoint`; retrieve that exact
+value type. Python adds `Values.insert(key, point)`, `atECMPoint(key)`, and
+`atIECMPoint(key)` with the same exact-value rule. To relax inequalities, call `ieType->equalityView()` or
+`iePoint.equalityView()`: the operation creates a distinct equality-only runtime
+type and an `ECMPoint`. If the runtime type is already equality-only, the view
+preserves its existing identity, including compiled equality charts. Ordinary
+base-class conversion never removes constraints. Python `point.values()` returns
+an independent snapshot so mutation cannot invalidate a point's cached geometry.
+Runtime definitions cannot be assigned through base references. Assigning through
+an IE point reference to a concrete `ECMPoint` checks the equality-only type
+guarantee before changing its state.
+
+Requested initial feasibility projection runs before the first numerical basis
+construction through shared discovery. Optional final projection and approximate
+retraction remain available. Custom basis/retraction policies must implement the
+shared cloning contract so configuration and mutable work are separated.
 
 The global tangent-cone QP, GTSAM/ProxQP backends, LM damping, active-block
-promotion, nonlinear boundary handling, callbacks, and history behavior are
-unchanged. See [component coordinates](ComponentCoordinates.md) for that solver
-contract. This refactor does not promise a speedup or redesign the QP algorithms.
+promotion, nonlinear boundary handling, callbacks, and history behavior retain
+their algorithms. See [component coordinates](../cmcopt/ComponentCoordinates.md) for the
+linear-step contract. Manifold traits alone do not make unconstrained GTSAM
+optimizers aware of corners.
 
+## Validation of the typed migration
+
+The final Release/TBB build passes 30 selected native suites with ProxQP and
+all 29 available without ProxQP; the additional suite in the enabled build is
+the optional G1 gauge test. Coverage includes every retained optimizer, affine
+and nonlinear equalities, concrete GTSAM value casts, compiled charts,
+zero-dimensional and coupled points, free variables, callbacks, all equality
+retraction policies, CM(I), initial/final projection, and concurrent workspaces.
+New regressions also cover assignment through point base references, immutable
+type definitions, bound explicit orderings, conditioning of inner solve graphs,
+and projection with prepared basis keys.
+
+All 25 affected Python tests pass, including G1 integration, concrete point
+insertion/extraction in `gtsam::Values`, callbacks, and independent `values()`
+snapshots. A further compatibility check runs those enabled Python modules
+against the disabled runtime library: the library rejects ProxQP explicitly,
+and the optional ProxQP branch is then gated off in that test process. This is
+not a separately built disabled Python wrapper. Seven enabled example
+executables link, and eleven additional optional source checks pass.
+
+The three-repeat bounded affine/nonlinear G1 comparison against committed
+baseline `6aea8ba1` preserves objectives and state arrays exactly for every
+matched case. No median slowdown exceeds 5%; see the
+[timings and reproduction commands](../cmopt/EqualityOnlyOptimization.md#typed-migration-comparison).
+No other initializer, full-trajectory optimization, or app recording was changed.
+
+## Historical validation records
+
+The records below are preserved from the pre-migration baseline commit
+`6aea8ba1`. Their test names and timing scopes describe those earlier versions;
+they are not claims that removed implementation tests still exist today.
 
 ## Validation of this refactor
 

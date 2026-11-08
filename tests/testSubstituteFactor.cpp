@@ -12,8 +12,8 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
-#include <gtdynamics/factors/SubstituteFactor.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
+#include <gtdynamics/constrained/CMCSubstituteFactor.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -44,14 +44,15 @@ TEST(SubstituteFactor, pose) {
   constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor12);
   constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
-  // Create manifold values for testing.
+  // Create point values for testing.
   Values cm_base_values;
   cm_base_values.insert(x1_key, Point3(0, 0, 0));
   cm_base_values.insert(x2_key, Point3(0, 0, 1));
   cm_base_values.insert(x3_key, Point3(0, 1, 1));
 
-  // Construct manifold.
-  ConstraintManifold manifold(constraints, cm_base_values);
+  // Construct point.
+  auto type = std::make_shared<EConstraintManifold>(*constraints, cm_base_values);
+  ECMPoint point = type->point(cm_base_values);
 
   // Construct cost factor.
   auto cost_factor1 = std::make_shared<BetweenFactor<Point3>>(
@@ -66,8 +67,8 @@ TEST(SubstituteFactor, pose) {
   replacement_map[x3_key] = cm_key;
 
   // Test constructor.
-  SubstituteFactor subs_factor1(cost_factor1, replacement_map);
-  SubstituteFactor subs_factor2(cost_factor2, replacement_map);
+  CMCSubstituteFactor subs_factor1(cost_factor1, replacement_map, Values(), CMCSubstituteFactor::PointType::Equality);
+  CMCSubstituteFactor subs_factor2(cost_factor2, replacement_map, Values(), CMCSubstituteFactor::PointType::Equality);
 
   // Test keys.
   EXPECT(subs_factor1.isReplaced(x3_key));
@@ -77,7 +78,7 @@ TEST(SubstituteFactor, pose) {
 
   // Construct values for testing.
   Values values;
-  values.insert(cm_key, manifold);
+  values.insert(cm_key, point);
   values.insert(x4_key, Point3(2, 2, 2));
 
   // Check error.
@@ -113,14 +114,15 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
   constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor12);
   constraints->emplace_shared<gtsam::ZeroCostConstraint>(factor23);
 
-  // Create manifold values for testing.
+  // Create point values for testing.
   Values cm_base_values;
   cm_base_values.insert(x1_key, Point3(0, 0, 0));
   cm_base_values.insert(x2_key, Point3(0, 0, 1));
   cm_base_values.insert(x3_key, Point3(0, 1, 1));
 
-  // Construct manifold.
-  ConstraintManifold manifold(constraints, cm_base_values);
+  // Construct point.
+  auto type = std::make_shared<EConstraintManifold>(*constraints, cm_base_values);
+  ECMPoint point = type->point(cm_base_values);
 
   // Construct cost factor.
   auto cost_factor1 = std::make_shared<BetweenFactor<Point3>>(
@@ -134,11 +136,11 @@ TEST(SubstituteFactor, fully_constrained_manifold) {
   replacement_map[x2_key] = cm_key;
   replacement_map[x3_key] = cm_key;
   Values fc_manifolds;
-  fc_manifolds.insert(cm_key, manifold);
+  fc_manifolds.insert(cm_key, point);
 
   // Test constructor.
-  SubstituteFactor subs_factor1(cost_factor1, replacement_map, fc_manifolds);
-  SubstituteFactor subs_factor2(cost_factor2, replacement_map, fc_manifolds);
+  CMCSubstituteFactor subs_factor1(cost_factor1, replacement_map, fc_manifolds, CMCSubstituteFactor::PointType::Equality);
+  CMCSubstituteFactor subs_factor2(cost_factor2, replacement_map, fc_manifolds, CMCSubstituteFactor::PointType::Equality);
   EXPECT(!subs_factor2.checkActive());
 
   // Construct values for testing.

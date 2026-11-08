@@ -16,7 +16,7 @@
 #include <gtdynamics/scenarios/HalfSphereRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
@@ -74,7 +74,7 @@ TEST(HalfSphereRetractor, retract) {
   values1.insert(PointKey(0), Point3(3, 0, 0));
   const auto point1Type = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values1, *params);
-  CMPoint point1 = point1Type->point(values1);
+  IECMPoint point1 = point1Type->point(values1);
 
   // retract
   VectorValues delta1;
@@ -111,7 +111,7 @@ TEST(HalfSphere, Dome) {
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *params);
-  CMPoint point = pointType->point(values);
+  IECMPoint point = pointType->point(values);
 
   {
     VectorValues delta;

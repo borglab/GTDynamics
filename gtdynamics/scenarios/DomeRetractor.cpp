@@ -20,8 +20,8 @@ namespace gtdynamics {
 DomeRetractor::DomeRetractor(const IEHalfSphere &half_sphere)
     : IERetractor(), r_(half_sphere.radius_) {}
 
-CMPoint
-DomeRetractor::retract(const CMPoint *point,
+IECMPoint
+DomeRetractor::retract(const IECMPoint *point,
                        const VectorValues &delta,
                        const std::optional<IndexSet> &blocking_indices,
                        IERetractionInfo *retract_info) const {
@@ -40,8 +40,8 @@ DomeRetractor::retract(const CMPoint *point,
   return point->manifold()->point(point->bindings(), new_values);
 }
 
-CMPoint
-DomeRetractor::moveToBoundary(const CMPoint *point,
+IECMPoint
+DomeRetractor::moveToBoundary(const IECMPoint *point,
                               const IndexSet &blocking_indices,
                               IERetractionInfo *retract_info) const {
   Key key = point->values().keys().front();

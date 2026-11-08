@@ -10,14 +10,14 @@
  */
 #pragma once
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/cmopt/BasisRetractor.h>
 #include <gtdynamics/cmopt/LMManifoldOptimizer.h>
 
 namespace g1_example {
 
-// Configure the existing legacy projection to preserve the same free
-// coordinates.
+// Configure equality projection to preserve the same free coordinates.
 inline gtdynamics::RetractionParams::shared_ptr equalityBaselineParams() {
   auto params = std::make_shared<gtdynamics::RetractionParams>();
   params->feasibleThreshold = 1e-14;
@@ -26,8 +26,8 @@ inline gtdynamics::RetractionParams::shared_ptr equalityBaselineParams() {
   return params;
 }
 
-inline gtdynamics::ManifoldOptimizationProblem legacyEqualityProblem(
-    const gtsam::NonlinearFactorGraph& cost, const gtdynamics::CMPoints& points,
+inline gtdynamics::ManifoldOptimizationProblem manifoldLmProblem(
+    const gtsam::NonlinearFactorGraph& cost, const gtdynamics::IECMPoints& points,
     const gtsam::Values& unconstrained,
     const gtdynamics::TangentSpaceBasisCreator::shared_ptr& basisCreator,
     const gtdynamics::BasisKeyFunction& select) {
@@ -37,24 +37,27 @@ inline gtdynamics::ManifoldOptimizationProblem legacyEqualityProblem(
   problem.unconstrainedKeys = gtsam::KeySet(unconstrained.keys());
   std::map<gtsam::Key, gtsam::Key> ownership;
   for (const auto& [key, point] : points) {
-    auto params = std::make_shared<ConstraintManifold::Params>();
-    params->basisCreator = basisCreator;
+    if (point.manifold()->inequalityCount(point) != 0)
+      throw std::invalid_argument("Manifold LM comparison requires equality-only points");
+    auto params = std::make_shared<EConstraintManifold::Params>();
+    params->equalityBasisCreator = basisCreator;
     params->retractorCreator = std::make_shared<BasisRetractorCreator>(
         select, equalityBaselineParams());
-    ConstraintManifold value(
-        std::make_shared<gtsam::NonlinearEqualityConstraints>(
-            *point.eConstraints()),
-        point.values(), params, false);
+    params->affineEqualities = point.hasAffineEqualities();
+    const auto type = std::make_shared<EConstraintManifold>(
+        *point.eConstraints(), point.values(), *params);
+    const auto value = type->point(point.values());
+    problem.types.push_back(type);
     if (value.dim()) {
       problem.values.insert(key, value);
       problem.manifoldKeys.insert(key);
     } else {
-      problem.fixedManifolds.insert(key, value);
+      problem.fixedPoints.emplace(key, value);
     }
     for (gtsam::Key ambient : point.values().keys()) ownership[ambient] = key;
   }
   problem.graph =
-      ManifoldOptimizer::manifoldGraph(cost, ownership, problem.fixedManifolds);
+      ManifoldOptimizer::manifoldGraph(cost, ownership, problem.fixedPoints);
   return problem;
 }
 

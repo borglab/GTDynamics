@@ -41,8 +41,8 @@ void UpdateBoundary(const double &a, const double &b, const size_t &index,
 }
 
 /* ************************************************************************* */
-CMPoint CartPoleWithFrictionRetractor::retract(
-    const CMPoint *point, const VectorValues &delta,
+IECMPoint CartPoleWithFrictionRetractor::retract(
+    const IECMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
     IERetractionInfo *retract_info) const {
   Values new_values = point->values().retract(delta);
@@ -111,8 +111,8 @@ CMPoint CartPoleWithFrictionRetractor::retract(
 }
 
 /* ************************************************************************* */
-CMPoint
-CartPoleWithFrictionRetractor::retract1(const CMPoint *point,
+IECMPoint
+CartPoleWithFrictionRetractor::retract1(const IECMPoint *point,
                                         const VectorValues &delta) const {
   const NonlinearInequalityConstraints &i_constraints =
       *point->iConstraints();

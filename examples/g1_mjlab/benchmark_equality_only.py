@@ -40,12 +40,12 @@ def worker(args):
         g1_model.prepare_model = lambda: args.model_cache
 
     from kinodynamic_walk import solve_walk, solution_arrays, summary
-    if args.worker == "legacy":
+    if args.worker == "manifold-lm":
         import kinodynamic_settings
         original_settings = kinodynamic_settings.solver_settings
         kinodynamic_settings.solver_settings = lambda: {
             **original_settings(),
-            "equalityOnlyBaseline": "legacy",
+            "equalityOnlyBaseline": "manifold-lm",
         }
 
     output = args.output / f"{args.worker}-{args.repetition}"
@@ -53,7 +53,7 @@ def worker(args):
     solution = solve_walk(
         args.data, args.labels, start=78.0, end=98.0,
         max_iterations=5,
-        retraction_threads=1 if args.worker in ("legacy", "gaussian-serial") else 8,
+        retraction_threads=1 if args.worker in ("manifold-lm", "gaussian-serial") else 8,
         initialization="contact-gp-dynamics", equality_only=True,
         linear_solver="gaussian" if args.worker in ("gaussian", "gaussian-serial") else "qp",
         qp_backend="proxqp" if args.worker == "proxqp" else "gtsam",
@@ -68,7 +68,7 @@ def worker(args):
     assert report["iterations"] == 5, report["iterations"]
     assert report["inequalityDimension"] == 0
     assert report["equalityL2"] < 1e-5
-    if args.worker != "legacy":
+    if args.worker != "manifold-lm":
         gaussian = args.worker in ("gaussian", "gaussian-serial")
         unused = "qpSolves" if gaussian else "gaussianSolves"
         used = "gaussianSolves" if gaussian else "qpSolves"
@@ -138,18 +138,18 @@ def compare(args, cases):
             differences[case] = maxima
         comparison["maximumArrayDifferencesFromGaussian"] = differences
     (args.output / "comparison.json").write_text(json.dumps(comparison, indent=2) + "\n")
-    # Compare the old serial baseline directly, without the eight-worker confound.
-    if "legacy" in cases:
-        old = comparison["legacy"]["median"]["optimizationSeconds"]
+    # Compare serial manifold LM directly, without the eight-worker confound.
+    if "manifold-lm" in cases:
+        old = comparison["manifold-lm"]["median"]["optimizationSeconds"]
         new = comparison["gaussian-serial"]["median"]["optimizationSeconds"]
-        comparison["serialCmcOverLegacyTimeRatio"] = new / old
-        with np.load(args.output / "legacy-1" / "states.npz") as a, np.load(
+        comparison["serialCmcOverManifoldLmTimeRatio"] = new / old
+        with np.load(args.output / "manifold-lm-1" / "states.npz") as a, np.load(
             args.output / "gaussian-serial-1" / "states.npz") as b:
-            comparison["serialLegacyArrayDifferences"] = {
+            comparison["serialManifoldLmArrayDifferences"] = {
                 key: float(np.max(np.abs(a[key] - b[key]), initial=0))
                 for key in a.files if a[key].dtype.kind in "fciu"
             }
-        for case in ("legacy", "gaussian-serial"):
+        for case in ("manifold-lm", "gaussian-serial"):
             report = json.loads((args.output / f"{case}-1" / "summary.json").read_text())
             comparison[case]["errorHistory"] = report["errorHistory"]
         (args.output / "comparison.json").write_text(json.dumps(comparison, indent=2) + "\n")
@@ -164,8 +164,8 @@ def main():
     parser.add_argument("--model-cache", type=Path)
     parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument("--include-proxqp", action="store_true")
-    parser.add_argument("--include-legacy", action="store_true")
-    parser.add_argument("--worker", choices=("gaussian", "gtsam", "proxqp", "legacy", "gaussian-serial"))
+    parser.add_argument("--include-manifold-lm", action="store_true")
+    parser.add_argument("--worker", choices=("gaussian", "gtsam", "proxqp", "manifold-lm", "gaussian-serial"))
     parser.add_argument("--repetition", type=int, default=1)
     args = parser.parse_args()
     if args.repetitions < 1:
@@ -185,7 +185,7 @@ def main():
         if Path(name).is_file() and Path(name).suffix in (".cpp", ".h", ".py", ".cmake")
     }, indent=2) + "\n")
     cases = ["gaussian", "gtsam"] + (["proxqp"] if args.include_proxqp else [])
-    cases += ["legacy", "gaussian-serial"] if args.include_legacy else []
+    cases += ["manifold-lm", "gaussian-serial"] if args.include_manifold_lm else []
     for repetition in range(1, args.repetitions + 1):
         # Alternate run order to reduce systematic warm-cache or thermal bias.
         for case in cases if repetition % 2 else list(reversed(cases)):

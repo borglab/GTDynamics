@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
@@ -36,7 +36,7 @@ struct IELMParams;
 /** State corresponding to each LM iteration. */
 struct IELMState {
 public:
-  CMPoints points;
+  IECMPoints points;
   Values values;
   KeySet unconstrainedKeys;
   double error = 0;
@@ -66,7 +66,7 @@ public:
   IELMState() {}
 
   /// Constructor.
-  IELMState(const CMPoints &componentPoints,
+  IELMState(const IECMPoints &componentPoints,
             const Values &_unconstrained_values,
             const NonlinearFactorGraph &graph,
             const NonlinearFactorGraph &pointGraph, const double &_lambda,
@@ -85,7 +85,7 @@ public:
   Values baseValues() const;
 
   static double evaluateGraphError(const NonlinearFactorGraph &graph,
-                                   const CMPoints &componentPoints,
+                                   const IECMPoints &componentPoints,
                                    const Values &_unconstrained_values);
 
   /// Compute the hessian diagonal of the linearized graph. It is used to
@@ -93,7 +93,7 @@ public:
   VectorValues computeMetricSigmas(const NonlinearFactorGraph &graph) const;
 
 protected:
-  static Values allValues(const CMPoints &points,
+  static Values allValues(const IECMPoints &points,
                           const Values &unconstrainedValues);
 
   void construct(const NonlinearFactorGraph &graph,
@@ -184,7 +184,7 @@ struct IELMTrial {
   };
 
   struct NonlinearUpdate {
-    CMPoints newPoints;
+    IECMPoints newPoints;
     Values newUnconstrainedValues;
     double newError = std::numeric_limits<double>::infinity();
     double costChange = -std::numeric_limits<double>::infinity();
@@ -209,8 +209,8 @@ struct IELMTrial {
                       const double &oldError);
 
     static std::pair<VectorValues, double> evaluateRetractionDeviation(
-        const CMPoint &point,
-        const CMPoint &newPoint,
+        const IECMPoint &point,
+        const IECMPoint &newPoint,
         const VectorValues &tangentVector);
   };
 

@@ -55,10 +55,19 @@ Values LMManifoldOptimizer::optimize(
   LMState state(graph, mopt_problem, params_.lambdaInitial,
                 params_.lambdaFactor, 0);
 
+  // Final projection shares the same recovery path as the GTSAM wrappers.
+  const auto recover = [&](const LMState& finalState) {
+    if (!p_.retractFinalValues) return finalState.baseValues();
+    Values finalValues = finalState.unconstrainedValues;
+    for (const auto& entry : finalState.points)
+      finalValues.insert(entry.first, entry.second);
+    return baseValues(mopt_problem, finalValues);
+  };
+
   // check if we're already close enough
-  if (state.error <= params_.errorTol) {
+  if (state.error <= params_.errorTol || mopt_problem.values.empty()) {
     details_->emplace_back(state);
-    return state.baseValues();
+    return recover(state);
   }
 
   // Iterative loop
@@ -77,7 +86,7 @@ Values LMManifoldOptimizer::optimize(
            !checkConvergence(prev_state, state) &&
            checkLambdaWithinLimits(state.lambda) && std::isfinite(state.error));
   details_->emplace_back(state);
-  return state.baseValues();
+  return recover(state);
 }
 
 /* ************************************************************************* */
@@ -151,6 +160,15 @@ bool LMManifoldOptimizer::checkConvergence(const LMState &prev_state,
                     (relativeDecrease <= params_.relativeErrorTol)) ||
                    (absoluteDecrease <= params_.absoluteErrorTol);
   return converged;
+}
+
+/* ************************************************************************* */
+Values LMManifoldOptimizer::optimize(
+    const NonlinearFactorGraph& graph, const ECMPoints& points,
+    const Values& unconstrainedValues) const {
+  auto problem = initializeManifoldOptimizationProblem(
+      graph, points, unconstrainedValues);
+  return optimize(graph, problem);
 }
 
 } /* namespace gtdynamics */

@@ -11,6 +11,7 @@
  * @author Yetong Zhang
  */
 
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
@@ -216,7 +217,7 @@ void kinematic_planning(const RangeConstraintArgs& args) {
   runner.setOuterLmBaseParams(LevenbergMarquardtParams());
   runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
-    moptParams.constraintManifoldParams->retractorCreator->params()
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()
         ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     return moptParams;

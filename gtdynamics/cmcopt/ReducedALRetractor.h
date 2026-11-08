@@ -50,7 +50,7 @@ namespace gtdynamics {
 class ReducedALRetractor : public IERetractor {
 public:
   /// Bind policy-specific local coordinate/prior keys to this point.
-  IERetractor::shared_ptr bind(const CMPoint &point) const override;
+  IERetractor::shared_ptr bind(const IECMPoint &point) const override;
   /// Isolated copy used by runtime manifold types.
   IERetractor::shared_ptr clone() const override {
     return std::make_shared<ReducedALRetractor>(*this);
@@ -78,8 +78,8 @@ public:
    * The non-owning point pointer follows the virtual IERetractor API and
    * must be nonnull; a null pointer throws std::invalid_argument.
    */
-  CMPoint
-  retract(const CMPoint *point, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blockingIndices = {},
           IERetractionInfo *info = nullptr) const override;
 

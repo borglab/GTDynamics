@@ -12,6 +12,7 @@
  * @author Yetong Zhang
  */
 
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/kinematics/JointLimitFactor.h>
@@ -412,7 +413,7 @@ void kinematic_planning(const ArmBenchmarkArgs& args) {
     auto moptParams =
         ConstrainedOptBenchmark::DefaultMoptParamsSV(&FindBasisKeys);
     auto* retractLm =
-        &moptParams.constraintManifoldParams->retractorCreator->params()->lmParams;
+        &std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()->lmParams;
     retractLm->linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     retractLm->setlambdaUpperBound(1e2);

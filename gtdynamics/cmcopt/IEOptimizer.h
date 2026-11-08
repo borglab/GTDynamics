@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
@@ -22,6 +23,7 @@
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 
 #include <iomanip>
+#include <functional>
 
 namespace gtdynamics {
 using namespace gtsam;
@@ -44,7 +46,7 @@ public:
       const NonlinearEqualityConstraints &e_constraints,
       const NonlinearInequalityConstraints &i_constraints,
       const Values &initial_values) const {
-    // Split the original problem into CMPoint values and free
+    // Split the original problem into IECMPoint values and free
     // variables before the concrete LM/GD solver takes over.
     auto [types, points] = identifyConnectedComponents(
         e_constraints, i_constraints,
@@ -56,31 +58,43 @@ public:
 
   /// Solve the reduced problem once the IE manifold blocks are identified.
   virtual Values optimize(const NonlinearFactorGraph &graph,
-                                   const CMPoints &points,
+                                   const IECMPoints &points,
                                    const Values &unconstrainedValues) const = 0;
 
 public:
-  /// Transform ambient cost factors to CMPoint variables without legacy CM
+  /// Transform ambient cost factors to IECMPoint variables without legacy CM
   /// values.
   static NonlinearFactorGraph pointGraph(const NonlinearFactorGraph &graph,
-                                         const CMPoints &points);
+                                         const IECMPoints &points);
   /// Reject ambiguous ownership and component-key collisions before
   /// optimization.
-  static void validatePoints(const CMPoints &points,
+  static void validatePoints(const IECMPoints &points,
                              const Values &unconstrained);
 
   /// Map each original variable key to the connected-component point key
   /// that owns it.
   static std::map<Key, Key>
-  varToManifoldKeyMap(const CMPoints &points);
+  varToManifoldKeyMap(const IECMPoints &points);
 
   /** Discovered runtime definitions and their initial points. Each point
    * references its type; types and points need not have matching indices/counts.
    */
   struct Components {
     std::vector<IEConstraintManifold::shared_ptr> types;
-    CMPoints points;
+    IECMPoints points;
   };
+
+  using TypeFactory = std::function<IEConstraintManifold::shared_ptr(
+      const NonlinearEqualityConstraints&, const NonlinearInequalityConstraints&,
+      const Values&, const IEConstraintManifold::Params::shared_ptr&)>;
+  using ValueInitializer = std::function<Values(
+      const NonlinearEqualityConstraints&, const Values&)>;
+
+  /// Explicit widening preserves the equality runtime type and its geometry.
+  Values optimize(const NonlinearFactorGraph& graph, const ECMPoints& points,
+                  const Values& freeValues = Values()) const {
+    return optimize(graph, widenPoints(points), freeValues);
+  }
 
   /// Discover constraint-connected components and construct their types/points.
   /// Equivalent definitions are not yet shared automatically.
@@ -88,7 +102,9 @@ public:
       const NonlinearEqualityConstraints &e_constraints,
       const NonlinearInequalityConstraints &i_constraints,
       const Values &values,
-      const IEConstraintManifold::Params::shared_ptr &iecm_params);
+      const IEConstraintManifold::Params::shared_ptr &iecm_params,
+      const TypeFactory& typeFactory = {},
+      const ValueInitializer& initialize = {});
 
   /// Extract variables that do not participate in any equality or inequality
   /// component.
@@ -99,36 +115,36 @@ public:
 
   /// Lift manifold coordinates xi back to ambient tangent vectors via the
   /// equality-manifold basis B_x.
-  static VectorValues computeTangentVector(const CMPoints &points,
+  static VectorValues computeTangentVector(const IECMPoints &points,
                                            const VectorValues &delta);
 
   /// Project each component direction into its tangent cone, matching thesis
   /// Eq. (4.31) componentwise as in Eq. (4.42).
   /// Note: xi is given in the equality-only basis before cone projection.
   static std::pair<IndexSetMap, VectorValues>
-  projectTangentCone(const CMPoints &points, const VectorValues &v);
+  projectTangentCone(const IECMPoints &points, const VectorValues &v);
 
   /// Retract each point independently back to the feasible set.
-  static CMPoints retractPoints(const CMPoints &points,
+  static IECMPoints retractPoints(const IECMPoints &points,
                                            const VectorValues &delta);
 
   /// Two iterates are in the same mode when their active sets agree on every
   /// IE manifold component; modes are the corners defined in thesis Eq. (4.9).
-  static bool isSameMode(const CMPoints &points1,
-                         const CMPoints &points2);
+  static bool isSameMode(const IECMPoints &points1,
+                         const IECMPoints &points2);
 
   /// Return newly activated inequality indices, i.e. constraints that entered
   /// the active set from thesis Eq. (4.3) after a trial step.
   static IndexSetMap
-  identifyChangeIndices(const CMPoints &points,
-                        const CMPoints &newPoints);
+  identifyChangeIndices(const IECMPoints &points,
+                        const IECMPoints &newPoints);
 
   /// From points to new points, check which boundaries are approached
   /// with rate larger than the threshold. If multiple boundaries are approached
   /// for a manifold, pick the boundary with max approach rate.
   static IndexSetMap
-  identifyApproachingIndices(const CMPoints &points,
-                             const CMPoints &newPoints,
+  identifyApproachingIndices(const IECMPoints &points,
+                             const IECMPoints &newPoints,
                              const IndexSetMap &change_indices_map,
                              const double &approach_rate_threshold);
 
@@ -137,7 +153,7 @@ public:
              const KeyFormatter &keyFormatter = DefaultKeyFormatter);
 
   static std::string
-  indicesString(const CMPoints &points,
+  indicesString(const IECMPoints &points,
              const KeyFormatter &keyFormatter = DefaultKeyFormatter);
 
   typedef std::function<void(const Values &values, const size_t num_steps)>

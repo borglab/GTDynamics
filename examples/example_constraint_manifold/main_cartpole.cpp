@@ -11,6 +11,7 @@
  * @author Yetong Zhang
  */
 
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
@@ -108,7 +109,7 @@ void dynamic_planning(size_t numSteps,
   runner.setMoptFactory([&](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(
         cartpole.getBasisKeyFunction(true));
-    auto retractorParams = moptParams.constraintManifoldParams->retractorCreator->params();
+    auto retractorParams = std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params();
     retractorParams->checkFeasible = true;
     retractorParams->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;

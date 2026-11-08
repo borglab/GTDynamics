@@ -4,19 +4,19 @@
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 /**
- * @file CMPoints.cpp
+ * @file IECMPoints.cpp
  * @brief Ambient recovery and boundary operations for collections of points.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 
 namespace gtdynamics {
 using namespace gtsam;
 
 /* ************************************************************************* */
-Values ambientValues(const CMPoints& points) {
+Values ambientValues(const IECMPoints& points) {
   Values values;
   for (const auto& it : points) {
     values.insert(it.second.values());
@@ -26,7 +26,7 @@ Values ambientValues(const CMPoints& points) {
 }
 
 /* ************************************************************************* */
-KeyVector pointKeys(const CMPoints& points) {
+KeyVector pointKeys(const IECMPoints& points) {
   KeyVector key_vector;
   for (const auto& it : points) {
     key_vector.push_back(it.first);
@@ -36,10 +36,10 @@ KeyVector pointKeys(const CMPoints& points) {
 }
 
 /* ************************************************************************* */
-CMPoints movePointsToBoundaries(const CMPoints& points,
+IECMPoints movePointsToBoundaries(const IECMPoints& points,
                                 const IndexSetMap& approach_indices_map,
                                 const VectorValues* metricSigmas) {
-  CMPoints newPoints;
+  IECMPoints newPoints;
   // Preserve each type's metric policy while forcing the requested boundaries.
   for (const auto& [key, point] : points) {
     if (approach_indices_map.find(key) == approach_indices_map.end()) {

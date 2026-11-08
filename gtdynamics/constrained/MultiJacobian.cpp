@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/constrained/MultiJacobian.h>
 
 namespace gtdynamics {
 

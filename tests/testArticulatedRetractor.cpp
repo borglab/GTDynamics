@@ -1,8 +1,8 @@
 /* GTDynamics Copyright 2026, Georgia Tech Research Corporation. See LICENSE. */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/ArticulatedRetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
-#include <gtdynamics/cmcopt/IndependentComponents.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
+#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/WorldVelocityFactor.h>
 #include <gtdynamics/kinematics/Kinematics.h>
@@ -94,7 +94,7 @@ struct Fixture {
         std::make_shared<ArticulatedRetractorCreator>(robot, "body", ad, rp);
     return p;
   }
-  CMPoint makePoint() const {
+  IECMPoint makePoint() const {
     const auto type = std::make_shared<IEConstraintManifold>(
         equalities, inequalities, values, *parameters());
     return type->point(values);
@@ -131,7 +131,7 @@ TEST(ArticulatedRetractor, IndependentCachesAndLifetime) {
   f.robot.reset();
   auto expected = point.retract(point.values().zeroVectors());
   auto otherExpected = other.retract(other.values().zeroVectors());
-  std::vector<std::optional<CMPoint>> results(2);
+  std::vector<std::optional<IECMPoint>> results(2);
   gtdynamics::internal::forIndependentComponents(2, 2, [&](size_t i) {
     const auto& input = i ? other : point;
     results[i] = input.retract(input.values().zeroVectors());
@@ -158,7 +158,7 @@ TEST(ArticulatedRetractor, SharedTypeAcrossSlices) {
   const auto b = type->point(bindings, second.values);
   const auto expectedA = a.retract(a.values().zeroVectors());
   const auto expectedB = b.retract(b.values().zeroVectors());
-  std::vector<std::optional<CMPoint>> results(2);
+  std::vector<std::optional<IECMPoint>> results(2);
   gtdynamics::internal::forIndependentComponents(2, 2, [&](size_t i) {
     const auto& point = i ? b : a;
     results[i] = point.retract(point.values().zeroVectors());
@@ -199,7 +199,7 @@ TEST(ArticulatedRetractor, RejectMultipleSlices) {
   try {
     const auto pointType = std::make_shared<IEConstraintManifold>(
         f.equalities, f.inequalities, f.values, *p);
-    CMPoint point = pointType->point(f.values);
+    IECMPoint point = pointType->point(f.values);
   } catch (const std::invalid_argument&) {
     rejected = true;
   }
@@ -216,7 +216,7 @@ TEST(ArticulatedRetractor, RejectNonaffineMechanics) {
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   const auto pointType = std::make_shared<IEConstraintManifold>(
       f.equalities, f.inequalities, f.values, *p);
-  CMPoint point = pointType->point(f.values);
+  IECMPoint point = pointType->point(f.values);
   bool rejected = false;
   try {
     point.retract(point.values().zeroVectors());
@@ -250,7 +250,7 @@ TEST(ArticulatedRetractor, RejectExtraConfigurationEquality) {
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   const auto pointType = std::make_shared<IEConstraintManifold>(
       f.equalities, f.inequalities, f.values, *p);
-  CMPoint point = pointType->point(f.values);
+  IECMPoint point = pointType->point(f.values);
   bool rejected = false;
   try {
     point.retract(point.values().zeroVectors());

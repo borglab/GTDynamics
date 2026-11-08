@@ -13,6 +13,7 @@
  * @author Gerry Chen
  */
 
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/cablerobot/factors/CableLengthFactor.h>
 #include <gtdynamics/cablerobot/factors/CableTensionFactor.h>
 #include <gtdynamics/cablerobot/factors/CableVelocityFactor.h>
@@ -150,10 +151,10 @@ void kinematic_planning(const ConstrainedOptBenchmark::Options& runOptions) {
   runner.setOuterLmBaseParams(lmParams);
   runner.setMoptFactory([](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
-    moptParams.constraintManifoldParams->retractorCreator->params()
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()
         ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::MULTIFRONTAL_QR;
-    moptParams.constraintManifoldParams->retractorCreator->params()
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()
         ->lmParams.setlambdaUpperBound(1e2);
     return moptParams;
   });

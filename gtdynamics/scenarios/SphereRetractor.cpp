@@ -20,8 +20,8 @@ namespace gtdynamics {
 SphereRetractor::SphereRetractor(const IEHalfSphere &half_sphere)
     : IERetractor(), r_(half_sphere.radius_) {}
 
-CMPoint
-SphereRetractor::retract(const CMPoint *point,
+IECMPoint
+SphereRetractor::retract(const IECMPoint *point,
                          const VectorValues &delta,
                          const std::optional<IndexSet> &blocking_indices,
                          IERetractionInfo *retract_info) const {

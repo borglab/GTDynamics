@@ -132,7 +132,6 @@ void TrajectoryOptimization() {
   /* <========================== Optimize IELM ============================> */
   /* <=====================================================================> */
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityBasisBuildFromScratch = false;
 
   /* <=========== retractor ===========> */
   auto retractor_params = std::make_shared<IERetractorParams>();

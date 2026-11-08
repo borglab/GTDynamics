@@ -27,7 +27,7 @@
 
 #include "CmcBenchmark.h"
 #include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;

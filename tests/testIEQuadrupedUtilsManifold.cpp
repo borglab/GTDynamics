@@ -15,11 +15,11 @@
 #include <gtdynamics/cmopt/BasisRetractor.h>
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmcopt/internal/LegacyCMAdapter.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 
@@ -400,8 +400,6 @@ TEST(IEVision60Robot_4c, point) {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityRetractionCreator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
@@ -415,10 +413,10 @@ TEST(IEVision60Robot_4c, point) {
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *iecm_params);
-  CMPoint point = pointType->point(values);
+  IECMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(24, point.dim());
 
-  auto e_manifold = gtdynamics::internal::equalityPoint(point);
+  auto e_manifold = point.equalityView();
   EXPECT_LONGS_EQUAL(24, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated
@@ -496,8 +494,6 @@ TEST(IEVision60Robot_back_on_ground, point) {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityRetractionCreator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
@@ -511,10 +507,10 @@ TEST(IEVision60Robot_back_on_ground, point) {
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *iecm_params);
-  CMPoint point = pointType->point(values);
+  IECMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(36, point.dim());
 
-  auto e_manifold = gtdynamics::internal::equalityPoint(point);
+  auto e_manifold = point.equalityView();
   EXPECT_LONGS_EQUAL(36, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated
@@ -594,8 +590,6 @@ TEST(IEVision60Robot_in_air, point) {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityRetractionCreator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
@@ -609,10 +603,10 @@ TEST(IEVision60Robot_in_air, point) {
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *iecm_params);
-  CMPoint point = pointType->point(values);
+  IECMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(48, point.dim());
 
-  auto e_manifold = gtdynamics::internal::equalityPoint(point);
+  auto e_manifold = point.equalityView();
   EXPECT_LONGS_EQUAL(48, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated
@@ -696,8 +690,6 @@ TEST(IEVision60Robot_ground_air_boundary, point) {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
   iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityRetractionCreator =
-      std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
   retractor_params->lmParams = LevenbergMarquardtParams();
@@ -711,10 +703,10 @@ TEST(IEVision60Robot_ground_air_boundary, point) {
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *iecm_params);
-  CMPoint point = pointType->point(values);
+  IECMPoint point = pointType->point(values);
   EXPECT_LONGS_EQUAL(12, point.dim());
 
-  auto e_manifold = gtdynamics::internal::equalityPoint(point);
+  auto e_manifold = point.equalityView();
   EXPECT_LONGS_EQUAL(12, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated

@@ -122,7 +122,7 @@ TEST(CableRobotUtils, ManifoldRetractionAndOptimization) {
   EXPECT_LONGS_EQUAL(1, options.cmIRetractorMaxIterations);
   for (bool feasible : {true, false}) {
     auto manifoldParams = cableRobotManifoldParams();
-    manifoldParams.constraintManifoldParams->retractorCreator->params()
+    std::dynamic_pointer_cast<RetractorCreator>(manifoldParams.constraintManifoldParams->retractorCreator)->params()
         ->lmParams.maxIterations = feasible ? options.cmFRetractorMaxIterations
                                             : options.cmIRetractorMaxIterations;
     LevenbergMarquardtParams lmParams;
@@ -130,7 +130,7 @@ TEST(CableRobotUtils, ManifoldRetractionAndOptimization) {
     NonlinearManifoldOptimizer optimizer(manifoldParams, lmParams);
     const auto problem = optimizer.initializeManifoldOptimizationProblem(
         costs, constraints, initialValues);
-    EXPECT_LONGS_EQUAL(numSteps, problem.components.size());
+    EXPECT_LONGS_EQUAL(numSteps, problem.types.size());
     EXPECT_LONGS_EQUAL(16 * numSteps - 12, problem.values.dim());
     const auto result = optimizer.optimizeManifoldProblem(problem);
     EXPECT(std::isfinite(costs.error(result)));

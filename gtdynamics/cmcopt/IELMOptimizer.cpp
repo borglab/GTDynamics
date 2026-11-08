@@ -29,7 +29,7 @@ using namespace gtsam;
 
 /* ************************************************************************* */
 Values IELMOptimizer::optimize(
-    const NonlinearFactorGraph &graph, const CMPoints &points,
+    const NonlinearFactorGraph &graph, const IECMPoints &points,
     const Values &unconstrainedValues) const {
   validatePoints(points, unconstrainedValues);
   if (ielm_params_.linearSolver == IELMParams::LinearSolver::Gaussian)
@@ -44,7 +44,7 @@ Values IELMOptimizer::optimize(
 
   const LevenbergMarquardtParams &lmParams = ielm_params_.lmParams;
 
-  // Construct the cost graph on CMPoint values.
+  // Construct the cost graph on IECMPoint values.
   std::map<Key, Key> ambientToPoint = varToManifoldKeyMap(points);
   NonlinearFactorGraph pointGraph =
       IEOptimizer::pointGraph(graph, points);
@@ -159,7 +159,7 @@ IELMIterationDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
 
 /* ************************************************************************* */
 namespace {
-IndexSetMap activeModes(const CMPoints &points) {
+IndexSetMap activeModes(const IECMPoints &points) {
   IndexSetMap result;
   for (const auto &[key, point] : points)
     result.emplace(key, point.activeIndices());

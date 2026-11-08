@@ -182,7 +182,6 @@ IERetractorParams::shared_ptr GetNominalRetractorParams() {
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsSP() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityBasisBuildFromScratch = false;
   iecm_params->retractorCreator =
       std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(
           vision60_multi_phase, GetNominalRetractorParams(), false);
@@ -193,7 +192,6 @@ IEConstraintManifold::Params::shared_ptr GetIECMParamsSP() {
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsCR() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityBasisBuildFromScratch = false;
   auto retractor_params_cr = GetNominalRetractorParams();
   retractor_params_cr->useVaryingSigma = true;
   retractor_params_cr->metricSigmas = std::make_shared<VectorValues>();

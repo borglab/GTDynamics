@@ -4,7 +4,7 @@
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 #include <gtdynamics/cmcopt/ArticulatedRetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/linear/JacobianFactor.h>
 
@@ -43,7 +43,7 @@ LinkSharedPtr validatedRoot(const std::shared_ptr<const Robot>& robot,
 }  // namespace
 
 ArticulatedRetractor::ArticulatedRetractor(
-    const CMPoint& point,
+    const IECMPoint& point,
     const std::shared_ptr<const Robot>& robot, const std::string& rootName,
     const KeySet& independentAD, const IERetractorParams::shared_ptr& params,
     const ReducedALRetractor::Settings& settings)
@@ -51,7 +51,7 @@ ArticulatedRetractor::ArticulatedRetractor(
                            independentAD, params, settings) {}
 
 ArticulatedRetractor::ArticulatedRetractor(
-    const CMPoint& point, const std::shared_ptr<const Robot>& robot,
+    const IECMPoint& point, const std::shared_ptr<const Robot>& robot,
     const LinkSharedPtr& root, const KeySet& independentAD,
     const IERetractorParams::shared_ptr& params,
     const ReducedALRetractor::Settings& settings)
@@ -117,8 +117,8 @@ ArticulatedRetractor::ArticulatedRetractor(
             "Inequality key is outside articulated mechanics");
 }
 
-CMPoint ArticulatedRetractor::retract(
-    const CMPoint* point, const VectorValues& delta,
+IECMPoint ArticulatedRetractor::retract(
+    const IECMPoint* point, const VectorValues& delta,
     const std::optional<IndexSet>& blocking, IERetractionInfo* info) const {
   if (!point) throw std::invalid_argument("Null articulated manifold");
   Values trial = point->values().retract(delta);
@@ -193,7 +193,7 @@ CMPoint ArticulatedRetractor::retract(
       std::make_shared<ReducedALRetractor>(params_, settings_, priorKeys_));
   const auto adType = std::make_shared<IEConstraintManifold>(
       *equalities, *point->iConstraints(), anchor, *localParams);
-  CMPoint adPoint = adType->point(anchor);
+  IECMPoint adPoint = adType->point(anchor);
   const auto projected =
       adPoint.retract(anchor.zeroVectors(), blocking, info);
   trial.update(projected.values());
@@ -234,7 +234,7 @@ IERetractorCreator::shared_ptr ArticulatedRetractorCreator::cloneFor(
   return result;
 }
 IERetractor::shared_ptr ArticulatedRetractorCreator::create(
-    const CMPoint& point) const {
+    const IECMPoint& point) const {
   KeySet independent;
   for (Key slot : independentAD_) {
     const auto binding = point.bindings().find(slot);

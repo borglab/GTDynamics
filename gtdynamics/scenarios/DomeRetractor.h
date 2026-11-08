@@ -36,14 +36,14 @@ public:
   DomeRetractor(const IEHalfSphere &half_sphere);
 
   /** Retract a tangent update and clamp to the dome boundary if needed. */
-  CMPoint
-  retract(const CMPoint *point, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 
   /** Move the current point onto active dome boundary constraints. */
-  CMPoint
-  moveToBoundary(const CMPoint *point,
+  IECMPoint
+  moveToBoundary(const IECMPoint *point,
                  const IndexSet &blocking_indices,
                  IERetractionInfo *retract_info = nullptr) const override;
 };

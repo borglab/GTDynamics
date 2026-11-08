@@ -207,7 +207,7 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
                 "gaussianSolves",
                 "qpSolves",
                 "equalityOnlyBaseline",
-                "legacyPreparationSeconds",
+                "manifoldLmPreparationSeconds",
             )
         },
         "errorNames": list(result["errorNames"]),

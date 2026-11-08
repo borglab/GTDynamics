@@ -6,7 +6,7 @@
  */
 #include <gtdynamics/cmcopt/ArticulatedRetractor.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
-#include <gtdynamics/cmcopt/IndependentComponents.h>
+#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/dynamics/ContactWrenchFactor.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
@@ -489,8 +489,15 @@ py::dict solve(
                                                     independentKeys, projection,
                                                     projectionSettings);
   auto start = Clock::now();
+  IEOptimizer::TypeFactory makeType;
+  if (equalityOnly)
+    makeType = [](const NonlinearEqualityConstraints& equalities,
+                  const NonlinearInequalityConstraints&, const Values& values,
+                  const IEConstraintManifold::Params::shared_ptr& params) {
+      return std::make_shared<EConstraintManifold>(equalities, values, *params);
+    };
   auto components = IEOptimizer::identifyConnectedComponents(
-      equalities, inequalities, seed, manifoldParams);
+      equalities, inequalities, seed, manifoldParams, makeType);
   auto& points = components.points;
   const auto componentKeys = pointKeys(points);
   gtdynamics::internal::forIndependentComponents(
@@ -546,7 +553,7 @@ py::dict solve(
       ? setting<std::string>(settings, "equalityOnlyBaseline") : "none";
   if (equalityBaseline != "none" &&
       (!equalityOnly || params.retractionThreads != 1 ||
-       equalityBaseline != "legacy"))
+       equalityBaseline != "manifold-lm"))
     throw std::invalid_argument("Equality baseline requires empty inequalities and one worker");
   result["equalityOnlyBaseline"] = equalityBaseline;
   const BasisKeyFunction select = [independent](const KeyVector& keys) {
@@ -571,15 +578,15 @@ py::dict solve(
   };
   Values values;
   IELMOptimizer::Timings timings;
-  if (equalityBaseline == "legacy") {
+  if (equalityBaseline == "manifold-lm") {
     const auto prepareStart = Clock::now();
-    const auto problem = g1_example::legacyEqualityProblem(
+    const auto problem = g1_example::manifoldLmProblem(
         cost, points, unconstrained, manifoldParams->equalityBasisCreator, select);
-    result["legacyPreparationSeconds"] = elapsed(prepareStart);
+    result["manifoldLmPreparationSeconds"] = elapsed(prepareStart);
     LMManifoldOptimizer optimizer(ManifoldOptimizerParameters{}, params.lmParams);
     values = optimizer.optimize(cost, problem);
     iterations = optimizer.details().back().state.iterations;
-    // Old CM has no callback hook. Evaluate the same stored-state diagnostics
+    // Manifold LM has no callback hook. Evaluate the same stored-state diagnostics
     // here, including their cost in the reported optimization wall time.
     for (const auto& iteration : optimizer.details()) {
       const auto ambient = iteration.state.baseValues();
@@ -593,15 +600,15 @@ py::dict solve(
     IELMOptimizer optimizer(params, manifoldParams);
     values = optimizer.optimize(cost, points, unconstrained);
     timings = optimizer.timings();
-    if (equalityBaseline == "none") result["legacyPreparationSeconds"] = 0.;
+    if (equalityBaseline == "none") result["manifoldLmPreparationSeconds"] = 0.;
   }
   result["values"] = values;
   result["optimizationSeconds"] = elapsed(optimizeStart);
   result["linearizationSeconds"] = timings.linearizationSeconds;
   result["linearSolveSeconds"] = timings.linearSolveSeconds;
   result["retractionSeconds"] = timings.retractionSeconds;
-  if (equalityBaseline == "legacy") {
-    // The old optimizer exposes total trial times, not these phase timings.
+  if (equalityBaseline == "manifold-lm") {
+    // Manifold LM exposes total trial times, not these phase timings.
     result["linearizationSeconds"] = py::none();
     result["linearSolveSeconds"] = py::none();
     result["retractionSeconds"] = py::none();
@@ -629,15 +636,15 @@ PYBIND11_MODULE(_g1_kinodynamics, module) {
 #else
   module.attr("has_proxqp") = false;
 #endif
-  module.def("solve_fixed_dynamics_legacy", [](
+  module.def("solve_fixed_dynamics_manifold_lm", [](
       const Robot& robot, const Trajectory& trajectory,
       const std::vector<Slice>& slices, const std::vector<double>& times,
       const Values& fixed, const Values& priors,
       const std::vector<fixed_dynamics::Contact>& contacts, const Vector& armature,
       const fixed_dynamics::Options& options) {
-    auto output = g1_example::solveLegacyFixedDynamics(
+    auto output = g1_example::solveManifoldLmFixedDynamics(
         robot, trajectory, slices, times, fixed, priors, contacts, armature, options);
-    return py::make_tuple(output.result, output.legacyPreparationSeconds);
+    return py::make_tuple(output.result, output.manifoldLmPreparationSeconds);
   });
   module.def("solve", &solve, py::arg("robot"), py::arg("trajectory"),
              py::arg("slices"), py::arg("times"), py::arg("initial_values"),

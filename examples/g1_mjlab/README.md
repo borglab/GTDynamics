@@ -94,9 +94,12 @@ See the native initialization section below for the stage breakdown.
 ## Walking dynamics example
 
 The [Dynamics affine showcase](../../apps/dynamics/README.md#affine-equality-only-showcase)
-compares CMC Gaussian, GTSAM QP, optional ProxQP, and old CM-Opt on the same
-frozen-q/v 57-knot problem. `benchmark_fixed_dynamics.py` records repeated timings
-and numerical agreement without changing app recordings.
+compares CMC Gaussian, GTSAM QP, optional ProxQP, and the retained equality-only
+manifold LM on the same frozen-q/v 57-knot problem. The current `manifold-lm`
+case uses `EConstraintManifold` / `ECMPoint`, sharing recovery and geometry
+with CMC. Historical old-value implementation timings remain identified with
+pre-migration commit `6aea8ba1`. `benchmark_fixed_dynamics.py` records repeated
+timings and numerical agreement without changing app recordings.
 
 [`dynamics_walk.py`](dynamics_walk.py) estimates accelerations, two sole-frame
 wrenches, and all 29 actuator torques from the best saved Kinematics trajectory.

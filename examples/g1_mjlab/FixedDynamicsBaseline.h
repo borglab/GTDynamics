@@ -4,7 +4,7 @@
  * -------------------------------------------------------------------------- */
 /**
  * @file FixedDynamicsBaseline.h
- * @brief Old CM-Opt on the same conditioned Dynamics app problem.
+ * @brief Equality-only manifold LM on the same conditioned Dynamics app problem.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
@@ -17,12 +17,12 @@
 #include "EqualityOnlyBaseline.h"
 
 namespace g1_example {
-struct LegacyFixedDynamicsResult {
+struct ManifoldLmFixedDynamicsResult {
   gtdynamics::fixed_dynamics::Result result;
-  double legacyPreparationSeconds = 0;
+  double manifoldLmPreparationSeconds = 0;
 };
 
-inline LegacyFixedDynamicsResult solveLegacyFixedDynamics(
+inline ManifoldLmFixedDynamicsResult solveManifoldLmFixedDynamics(
     const gtdynamics::Robot& robot, const gtdynamics::Trajectory& trajectory,
     const std::vector<gtdynamics::Slice>& slices,
     const std::vector<double>& times, const gtsam::Values& fixedValues,
@@ -39,7 +39,7 @@ inline LegacyFixedDynamicsResult solveLegacyFixedDynamics(
   const auto snapshot = gtdynamics::internal::prepareFixedDynamicsBenchmark(
       robot, trajectory, slices, times, fixedValues, accelerationPriors,
       contacts, armature, options);
-  LegacyFixedDynamicsResult output;
+  ManifoldLmFixedDynamicsResult output;
   auto& result = output.result;
   static_cast<fixed_dynamics::Diagnostics&>(result) = snapshot->diagnostics;
   const auto independent = snapshot->independentKeys;
@@ -58,12 +58,12 @@ inline LegacyFixedDynamicsResult solveLegacyFixedDynamics(
       snapshot->equalities, {}, snapshot->initial, settings);
   for (const auto& [key, point] : components.points)
     result.reducedDimension += point.dim();
-  // Conversion is measured separately from the actual old LM loop.
+  // Type and point conversion is measured separately from the LM loop.
   const auto prepareStart = Clock::now();
   const auto problem =
-      legacyEqualityProblem(snapshot->cost, components.points, {},
+      manifoldLmProblem(snapshot->cost, components.points, {},
                             settings->equalityBasisCreator, select);
-  output.legacyPreparationSeconds = elapsed(prepareStart);
+  output.manifoldLmPreparationSeconds = elapsed(prepareStart);
   result.manifoldSeconds = elapsed(started);
   result.objectiveInitial = snapshot->cost.error(snapshot->initial);
   LevenbergMarquardtParams lm;

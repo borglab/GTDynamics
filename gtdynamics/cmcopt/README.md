@@ -14,11 +14,14 @@ the equality reduction, global sparse QP, and nonlinear retraction boundary.
 
 ## Runtime types and values
 
-[IEConstraintManifold, CMPoint, and CMTangentSpace](IEConstraintManifold.md) define the public
-ownership boundary. The type owns factor definitions and operations; points own
-ambient identities and numerical state; tangent spaces own point-dependent
-geometry. Tangent increments are ordinary vectors. Automatic discovery remains
-the default; manual sharing and compiled implementations use the same optimizer.
+[Runtime manifold types and points](../constrained/README.md) share the hierarchy
+`ConstraintManifold` → `IEConstraintManifold` → `EConstraintManifold`, with
+`CMPoint` → `IECMPoint` → `ECMPoint` for values. The equality-only leaf guarantees
+an empty inequality collection. Types own definitions and operations; points own
+ambient identities and numerical state; `CMTangentSpace` owns point-dependent
+geometry. Tangent increments are ordinary vectors. Automatic discovery, manual
+sharing, and compiled implementations use this same model. The linked guide
+covers parameter, factory, point-container, and GTSAM value migration.
 
 ## Source Note
 
@@ -83,11 +86,11 @@ Pointers:
 
 - [identifyConnectedComponent](IEOptimizer.cpp#L81)
 - [IEOptimizer::identifyConnectedComponents](IEOptimizer.cpp#L127)
-- [CMPoint](CMPoint.h#L25)
+- [IECMPoint](IECMPoint.h#L25)
 
-`IEOptimizer::identifyConnectedComponents` returns separate `types` and `points` collections. It currently builds one immutable `IEConstraintManifold` definition and one [CMPoint](CMPoint.h#L25) per connected component. Every point references its type and owns its numerical state and bindings; callers must not assume the collections have matching indices or counts. Explicit construction can already share one type across many points.
+`IEOptimizer::identifyConnectedComponents` returns separate `types` and `points` collections. It currently builds one immutable `IEConstraintManifold` definition and one [IECMPoint](IECMPoint.h#L25) per connected component. Every point references its type and owns its numerical state and bindings; callers must not assume the collections have matching indices or counts. Explicit construction can already share one type across many points.
 
-## 3) CMPoint: Equality Basis + Active Set + Cone
+## 3) IECMPoint: Equality Basis + Active Set + Cone
 
 The core CMC-Opt state for one component is:
 
@@ -104,11 +107,11 @@ where:
 
 Pointers:
 
-- [CMPoint](CMPoint.h#L25)
-- [CMPoint::activeIndices](CMPoint.h#L98)
+- [IECMPoint](IECMPoint.h#L25)
+- [IECMPoint::activeIndices](IECMPoint.h#L98)
 - [IEConstraintManifold::identifyActive](IEConstraintManifold.cpp)
 - [IEConstraintManifold::linearize](IEConstraintManifold.cpp)
-- [TangentCone](TangentCone.h#L25)
+- [TangentCone](../constrained/TangentCone.h#L25)
 
 Implementation detail:
 
@@ -133,7 +136,7 @@ Pointers:
 
 - [IEConstraintManifold::identifyActive](IEConstraintManifold.cpp)
 - [IEConstraintManifold::point](IEConstraintManifold.cpp)
-- [Type-owned equality preparation](IEConstraintManifold.md#conditioning-and-retraction)
+- [Type-owned equality preparation](../constrained/README.md#conditioning-and-retraction)
 
 That is the mechanism by which a trial step can enter a new boundary mode, keep an old mode, or rebuild the mode after retraction.
 
@@ -153,7 +156,7 @@ Pointers:
 
 - [IEConstraintManifold::linearize](IEConstraintManifold.cpp)
 
-The manifold constructs one [immutable local linearization](CMTangentSpace.h) per state. Cone projection and global LM QP assembly share its active inequality derivatives.
+The manifold constructs one [immutable local linearization](../constrained/CMTangentSpace.h) per state. Cone projection and global LM QP assembly share its active inequality derivatives.
 
 Thesis reference: Eqs. (4.14)-(4.16) define the tangent cone as `v = B theta` with `K theta >= 0`, where `K = Dg_A(x) B`.
 
@@ -168,11 +171,11 @@ $$
 
 Pointers:
 
-- [TangentCone::project](TangentCone.cpp#L23)
-- [CMPoint::projectTangentCone](CMPoint.cpp#L79)
+- [TangentCone::project](../constrained/TangentCone.cpp#L23)
+- [IECMPoint::projectTangentCone](IECMPoint.cpp#L79)
 - [IEOptimizer::projectTangentCone](IEOptimizer.cpp#L185)
 
-`TangentCone::project` solves the convex IQP. `CMTangentSpace::project` maps the cone-local blocking set back to original inequality indices for `CMPoint::projectTangentCone`. `IEOptimizer::projectTangentCone` applies that componentwise across the whole problem.
+`TangentCone::project` solves the convex IQP. `CMTangentSpace::project` maps the cone-local blocking set back to original inequality indices for `IECMPoint::projectTangentCone`. `IEOptimizer::projectTangentCone` applies that componentwise across the whole problem.
 
 Thesis reference: Eq. (4.31) projects a descent direction into the cone for one CMC. Eq. (4.42) applies the same projection componentwise across multiple CMCs. The code generalizes this projection to any trial vector, not only a gradient vector.
 
@@ -184,7 +187,7 @@ Mathematically, these are the active inequalities whose directional derivative w
 
 Pointers:
 
-- [CMPoint::blockingIndices](CMPoint.cpp#L121)
+- [IECMPoint::blockingIndices](IECMPoint.cpp#L121)
 - [IELMTrial::LinearUpdate](IELMOptimizerState.cpp)
 
 For LM, blocking sets come from the global QP solution, not a preliminary
@@ -221,7 +224,7 @@ Equality-only problems can solve the same reduced damped objective directly.
 `IELMParams::linearSolver` defaults to `Automatic`, which selects Gaussian
 elimination only when there are no inequalities at all. Select `Gaussian` to
 require that case, or `QP` to compare the existing QP backends. See
-[EqualityOnlyOptimization.md](EqualityOnlyOptimization.md) for the shared LM
+[EqualityOnlyOptimization.md](../cmopt/EqualityOnlyOptimization.md) for the shared LM
 behavior and bounded G1 timing procedure.
 
 Zero is a feasible QP starting point. `qpMaxIterations` defaults to 1,000;
@@ -301,7 +304,7 @@ from the type's prepared structure. This option is a caller
 contract about fixed affine equations in Euclidean variables; it is not inferred
 from one Jacobian and does not freeze active inequality faces.
 
-`CMPoint::projectionMetric()` caches a `TangentSpaceMetric` containing
+`IECMPoint::projectionMetric()` caches a `TangentSpaceMetric` containing
 recovery maps and Cholesky whitening of `B' W B` within one point's geometry.
 Each new point has a fresh metric cache; repeated queries on that point reuse
 matching weights. Changes to effective prior weights or selected keys invalidate
@@ -362,8 +365,8 @@ Pointers:
 - [IEOptimizer::identifyChangeIndices](IEOptimizer.h#L115)
 - [IEOptimizer::identifyApproachingIndices](IEOptimizer.cpp#L284)
 - [IELMOptimizer::checkModeChange](IELMOptimizer.cpp#L133)
-- [CMPoint::moveToBoundary](CMPoint.cpp#L146)
-- [movePointsToBoundaries](CMPoints.cpp)
+- [IECMPoint::moveToBoundary](IECMPoint.cpp#L146)
+- [movePointsToBoundaries](IECMPoints.cpp)
 - [BarrierRetractor::moveToBoundary](BarrierRetractor.cpp)
 
 This is where CMC-Opt moves from a purely smooth local method to a boundary-mode method.
@@ -431,8 +434,8 @@ Thesis reference: metric retractions are written generically in Eq. (5.12), with
 If you want to trace the math in code order, read these files in this order:
 
 1. [IEOptimizer.h](IEOptimizer.h#L31) and [IEOptimizer.cpp](IEOptimizer.cpp#L85)
-2. [CMPoint.h](CMPoint.h#L25) and [CMPoint.cpp](CMPoint.cpp)
-3. [TangentCone.h](TangentCone.h#L25) and [TangentCone.cpp](TangentCone.cpp#L23)
+2. [IECMPoint.h](IECMPoint.h#L25) and [IECMPoint.cpp](IECMPoint.cpp)
+3. [TangentCone.h](../constrained/TangentCone.h#L25) and [TangentCone.cpp](../constrained/TangentCone.cpp#L23)
 4. [IELMOptimizerState.h](IELMOptimizerState.h#L35) and [IELMOptimizerState.cpp](IELMOptimizerState.cpp#L493)
 5. [IERetractor.h](IERetractor.h) and [IERetractor.cpp](IERetractor.cpp)
 6. [IELMOptimizer.h](IELMOptimizer.h#L40) and [IELMOptimizer.cpp](IELMOptimizer.cpp#L31)
@@ -440,7 +443,13 @@ If you want to trace the math in code order, read these files in this order:
 
 ## 15) Relation to CM-Opt
 
-CMC-Opt reuses the equality-manifold machinery from CM-Opt and adds active sets, tangent cones, and boundary-aware retraction. For the equality-only side, see [../cmopt/README.md](../cmopt/README.md).
+CMC and the equality-only optimizers now share runtime definitions, point
+values, discovery, recovery, basis preparation, retraction interfaces, and
+`CMCSubstituteFactor`. The old equality-only value representation has been
+removed. GTSAM LM/Gauss–Newton/Dogleg wrappers and both hand-written LM loops
+remain available; this migration does not merge their optimization algorithms.
+For equality-only construction and retraction choices, see
+[../cmopt/README.md](../cmopt/README.md).
 
 
 ## Shared affine projection for AL and Barrier retraction

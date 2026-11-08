@@ -86,6 +86,8 @@ class IELMOptimizer : public IEOptimizer {
   std::shared_ptr<IELMOptimizationDetails> details_;
 
  public:
+  using IEOptimizer::optimize;
+
   /// Wall times cover all attempts, including rejected LM trials.
   struct Timings {
     double linearizationSeconds = 0;
@@ -126,11 +128,10 @@ class IELMOptimizer : public IEOptimizer {
   const IELMParams &ielmParams() const { return ielm_params_; }
 
   // Keep the ambient-values overload visible.
-  using IEOptimizer::optimize;
 
   /** Perform optimization on points. */
   Values optimize(const NonlinearFactorGraph &graph,
-                           const CMPoints &points,
+                           const IECMPoints &points,
                            const Values &unconstrainedValues) const override;
 
   /** Convergence check including

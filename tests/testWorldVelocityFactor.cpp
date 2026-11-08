@@ -10,7 +10,7 @@
  */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
-#include <gtdynamics/cmcopt/TangentCone.h>
+#include <gtdynamics/constrained/TangentCone.h>
 #include <gtdynamics/dynamics/WorldVelocityFactor.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/utils/PoseContactConstraintSpec.h>

@@ -48,7 +48,7 @@ def worker(args):
         "gaussian": gtd.fixed_dynamics.LinearSolver.Gaussian,
         "gtsam": gtd.fixed_dynamics.LinearSolver.GtsamQP,
         "proxqp": gtd.fixed_dynamics.LinearSolver.ProxQP,
-        "legacy": gtd.fixed_dynamics.LinearSolver.Gaussian,
+        "manifold-lm": gtd.fixed_dynamics.LinearSolver.Gaussian,
     }[args.worker]
     native = gtd.solveFixedKinematicsDynamics
     extra = {}
@@ -56,9 +56,9 @@ def worker(args):
     # Both calls consume exactly the public app's prepared inputs and objective.
     def solve(*inputs):
         before = gtsam.Values(inputs[4])
-        if args.worker == "legacy":
-            result, preparation = _g1_kinodynamics.solve_fixed_dynamics_legacy(*inputs)
-            extra["legacy_preparation_seconds"] = preparation
+        if args.worker == "manifold-lm":
+            result, preparation = _g1_kinodynamics.solve_fixed_dynamics_manifold_lm(*inputs)
+            extra["manifold_lm_preparation_seconds"] = preparation
         else:
             result = native(*inputs)
         assert before.equals(inputs[4], 1e-12), "Solver mutated fixed kinematics"
@@ -78,8 +78,8 @@ def worker(args):
         assert report["original_inequality_l2"] < 1e-5
     else:
         assert report["equality_only"] and report["stationary"], report
-    if args.worker == "legacy":
-        # The old optimizer has no matching per-phase instrumentation.
+    if args.worker == "manifold-lm":
+        # Manifold LM has no matching per-phase instrumentation.
         for field in ("optimizer_linearization_seconds", "optimizer_linear_solve_seconds",
                       "retraction_seconds", "equality_preparations", "affine_basis_constructions"):
             report[field] = None
@@ -170,7 +170,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument("--include-proxqp", action="store_true")
-    parser.add_argument("--worker", choices=("constrained", "gaussian", "gtsam", "proxqp", "legacy"))
+    parser.add_argument("--worker", choices=("constrained", "gaussian", "gtsam", "proxqp", "manifold-lm"))
     parser.add_argument("--repetition", type=int, default=1)
     args = parser.parse_args()
     if args.repetitions < 1:
@@ -187,7 +187,7 @@ def main():
     (args.output / "source-hashes.json").write_text(json.dumps({
         p: digest(p) for p in sorted(set(sources)) if Path(p).is_file()
         and Path(p).suffix in (".h", ".cpp", ".py", ".cmake")}, indent=2) + "\n")
-    cases = ["constrained", "gaussian", "gtsam", "legacy"]
+    cases = ["constrained", "gaussian", "gtsam", "manifold-lm"]
     if args.include_proxqp:
         cases.append("proxqp")
     for repetition in range(1, args.repetitions + 1):

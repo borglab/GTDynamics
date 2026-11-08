@@ -11,13 +11,54 @@
  */
 
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
-#include <gtdynamics/cmcopt/internal/ReadOnlyBasis.h>
-#include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
+#include <gtdynamics/constrained/internal/ReadOnlyBasis.h>
+#include <gtdynamics/cmopt/EConstraintManifold.h>
 
 namespace gtdynamics {
 namespace {
+/** A fixed chart has no tangent directions, independent of redundant rows.
+ * Its template stores only the slot layout; no constraint is dropped or solved.
+ */
+class FixedEqualityBasis final : public TangentSpaceBasis {
+  std::map<Key, size_t> dimensions_;
+
+ public:
+  explicit FixedEqualityBasis(const std::map<Key, size_t>& dimensions,
+                              bool constructed = false)
+      : dimensions_(dimensions) {
+    is_constructed_ = constructed;
+  }
+  shared_ptr createWithNewValues(const Values&) const override {
+    return std::make_shared<FixedEqualityBasis>(dimensions_, true);
+  }
+  shared_ptr createWithAdditionalConstraints(
+      const NonlinearEqualityConstraints&, const Values&,
+      bool = false) const override {
+    return std::make_shared<FixedEqualityBasis>(dimensions_, true);
+  }
+  VectorValues computeTangentVector(const Vector& xi) const override {
+    if (xi.size()) throw std::invalid_argument("A fixed chart has no coordinates");
+    VectorValues result;
+    for (const auto& [key, dimension] : dimensions_)
+      result.insert(key, Vector::Zero(dimension));
+    return result;
+  }
+  Vector computeXi(const VectorValues&) const override { return Vector(0); }
+  Matrix recoverJacobian(const Key& key) const override {
+    return Matrix::Zero(dimensions_.at(key), 0);
+  }
+  Vector localCoordinates(const Values&, const Values&) const override {
+    return Vector(0);
+  }
+  size_t dim() const override { return 0; }
+  void construct(const Values&) override { is_constructed_ = true; }
+  void print(const KeyFormatter& = DefaultKeyFormatter) override {
+    std::cout << "Fixed equality chart\n";
+  }
+};
+
 /** Preserve a constraint's embedded expression and derivative ordering while
  * assigning ambient identities and immutably fixing selected local variables.
  */
@@ -200,6 +241,13 @@ class BoundBasis final : public internal::ReadOnlyBasis {
     for (const auto& [slot, key] : bindings_) inverse_[key] = slot;
   }
 
+  std::optional<KeyVector> basisKeys() const override {
+    auto keys = source_->basisKeys();
+    if (keys)
+      for (Key &key : *keys) key = bindings_.at(key);
+    return keys;
+  }
+
   shared_ptr createWithNewValues(const Values& values) const override {
     return std::make_shared<BoundBasis>(
         constructed(source_->createWithNewValues(localValues(values)),
@@ -265,8 +313,18 @@ IEConstraintManifold::IEConstraintManifold(const Values& prototype, size_t dimen
 IEConstraintManifold::IEConstraintManifold(const NonlinearEqualityConstraints& equalities,
                      const NonlinearInequalityConstraints& inequalities,
                      const Values& prototype, const Params& params)
+    : IEConstraintManifold(equalities, inequalities, prototype, params,
+                            EqualityLayout::Ordinary) {}
+
+IEConstraintManifold::IEConstraintManifold(
+    const NonlinearEqualityConstraints& equalities,
+    const NonlinearInequalityConstraints& inequalities,
+    const Values& prototype, const Params& params, EqualityLayout layout)
     : IEConstraintManifold(prototype, 0) {
-  if (equalities.dim() > prototype.dim())
+  equalityOnlyLayout_ = layout == EqualityLayout::EqualityOnly;
+  if (equalityOnlyLayout_ && !inequalities.empty())
+    throw std::invalid_argument("An equality layout cannot contain inequalities");
+  if (!equalityOnlyLayout_ && equalities.dim() > prototype.dim())
     throw std::invalid_argument("More equality rows than ambient dimensions");
 
   // Snapshot policy settings before this definition is shared across points.
@@ -278,15 +336,13 @@ IEConstraintManifold::IEConstraintManifold(const NonlinearEqualityConstraints& e
   params_.retractorCreator =
       params_.retractorCreator->cloneFor(KeySet(prototype.keys()));
   params_.equalityBasisCreator = params_.equalityBasisCreator->clone();
-  if (!params_.equalityRetractionCreator)
-    params_.equalityRetractionCreator =
-        std::make_shared<UnconstrainedOptimizationRetractorCreator>();
 
   // Factor definitions stay local; point bindings supply ambient identities.
   equalities_ = std::make_shared<NonlinearEqualityConstraints>(equalities);
   inequalities_ =
       std::make_shared<NonlinearInequalityConstraints>(inequalities);
-  dimension_ = prototype.dim() - equalities.dim();
+  dimension_ = prototype.dim() > equalities.dim()
+                   ? prototype.dim() - equalities.dim() : 0;
   for (const auto& graphKeys : {equalities.keys(), inequalities.keys()})
     for (Key key : graphKeys)
       if (!slots_.count(key))
@@ -304,7 +360,7 @@ std::map<Key, size_t> IEConstraintManifold::dimensions() const {
 void IEConstraintManifold::validate(const Bindings& bindings, const Values& values) const {
   if (bindings.size() != slots_.size() || values.size() != slots_.size())
     throw std::invalid_argument(
-        "CMPoint requires complete bindings and exactly its ambient values");
+        "IECMPoint requires complete bindings and exactly its ambient values");
 
   // Require one ambient owner for every declared local slot.
   KeySet targets;
@@ -312,12 +368,12 @@ void IEConstraintManifold::validate(const Bindings& bindings, const Values& valu
     auto found = bindings.find(key);
     if (found == bindings.end() || !targets.insert(found->second).second ||
         !values.exists(found->second))
-      throw std::invalid_argument("Invalid CMPoint slot binding");
+      throw std::invalid_argument("Invalid IECMPoint slot binding");
     const Value& value = values.at(found->second);
     if (slot.type != std::type_index(typeid(value)) ||
         slot.dimension != value.dim())
       throw std::invalid_argument(
-          "CMPoint slot value has a different type or dimension");
+          "IECMPoint slot value has a different type or dimension");
   }
 }
 
@@ -354,10 +410,10 @@ IEConstraintManifold::boundConstraints(const Bindings& bindings) const {
   return {equalities, inequalities};
 }
 
-CMPoint IEConstraintManifold::point(const Bindings& bindings, const Values& values,
+IECMPoint IEConstraintManifold::point(const Bindings& bindings, const Values& values,
                          const std::optional<IndexSet>& active) const {
   validate(bindings, values);
-  CMPoint result;
+  IECMPoint result;
   result.manifold_ = shared_from_this();
   result.bindings_ = bindings;
   result.values_ = values;
@@ -371,7 +427,7 @@ CMPoint IEConstraintManifold::point(const Bindings& bindings, const Values& valu
   return result;
 }
 
-CMPoint IEConstraintManifold::point(const Values& values,
+IECMPoint IEConstraintManifold::point(const Values& values,
                          const std::optional<IndexSet>& active) const {
   Bindings bindings;
   for (const auto& [key, slot] : slots_) bindings.emplace(key, key);
@@ -379,10 +435,7 @@ CMPoint IEConstraintManifold::point(const Values& values,
 }
 
 IEConstraintManifold::shared_ptr IEConstraintManifold::condition(const Values& fixed) const {
-  if (typeid(*this) != typeid(IEConstraintManifold))
-    throw std::invalid_argument(
-        "Native conditioning is specified by immutable recovery parameters");
-  auto result = std::make_shared<IEConstraintManifold>(*this);
+  auto result = cloneDefinition();
   // Fixing a selected basis slot changes the chart. Choose a fresh general
   // equality chart rather than retaining an invalid independent-key selector.
   result->params_.equalityBasisCreator =
@@ -407,9 +460,10 @@ IEConstraintManifold::shared_ptr IEConstraintManifold::condition(const Values& f
   }
 
   const auto constraints = result->boundConstraints(identity);
-  if (constraints.first->dim() > total)
+  if (!result->equalityOnlyLayout_ && constraints.first->dim() > total)
     throw std::invalid_argument("Conditioned equalities have unsupported rank");
-  result->dimension_ = total - constraints.first->dim();
+  result->dimension_ = total > constraints.first->dim()
+                           ? total - constraints.first->dim() : 0;
   KeySet freeSlots;
   for (const auto& [key, slot] : result->slots_) freeSlots.insert(key);
   result->params_.retractorCreator =
@@ -419,25 +473,53 @@ IEConstraintManifold::shared_ptr IEConstraintManifold::condition(const Values& f
 }
 
 std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearize(
-    const CMPoint& point) const {
+    const IECMPoint& point) const {
   if (point.manifold().get() != this)
     throw std::invalid_argument("Point belongs to a different runtime type");
   return linearizeAt(point);
+}
+
+std::shared_ptr<IEConstraintManifold> IEConstraintManifold::cloneDefinition() const {
+  if (typeid(*this) != typeid(IEConstraintManifold))
+    throw std::invalid_argument("Native conditioning belongs to its recovery policy");
+  return std::make_shared<IEConstraintManifold>(*this);
+}
+
+std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearize(
+    const CMPoint& point) const {
+  return linearize(dynamic_cast<const IECMPoint&>(point));
+}
+
+Values IEConstraintManifold::retractValues(const CMPoint& point,
+                                           const Vector& delta) const {
+  validatePointType(point);
+  return retract(dynamic_cast<const IECMPoint&>(point), delta).values();
+}
+
+std::shared_ptr<const EConstraintManifold> IEConstraintManifold::equalityView() const {
+  if (auto equality = std::dynamic_pointer_cast<const EConstraintManifold>(
+          shared_from_this())) return equality;
+  // Retain local factors, bindings and conditioning, but choose an equality policy.
+  return EConstraintManifold::fromEqualityView(*this);
 }
 
 void IEConstraintManifold::prepareEqualities() {
   Bindings identity;
   for (const auto& [key, slot] : slots_) identity.emplace(key, key);
   auto preparation = std::make_shared<EqualityPreparation>();
-  preparation->structure = params_.equalityBasisCreator->prepare(
-      boundConstraints(identity).first, dimensions());
+  const auto constraints = boundConstraints(identity).first;
+  if (equalityOnlyLayout_ && !dim())
+    preparation->structure = std::make_shared<FixedEqualityBasis>(dimensions());
+  else
+    preparation->structure = params_.equalityBasisCreator->prepare(
+        constraints, dimensions());
   if (preparation->structure->isConstructed())
     throw std::invalid_argument("Equality preparation must not construct numerics");
   equalityPreparation_ = std::move(preparation);
 }
 
 std::shared_ptr<const TangentSpaceBasis> IEConstraintManifold::localEqualityBasis(
-    const CMPoint& point) const {
+    const IECMPoint& point) const {
   const auto construct = [&]() -> std::shared_ptr<const TangentSpaceBasis> {
     bool identity = true;
     for (const auto& [slot, ambient] : point.bindings()) identity &= slot == ambient;
@@ -470,7 +552,7 @@ std::shared_ptr<const TangentSpaceBasis> IEConstraintManifold::localEqualityBasi
 }
 
 std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearizeAt(
-    const CMPoint& point) const {
+    const IECMPoint& point) const {
   const auto& values = point.values();
   if (point.manifold().get() != this)
     throw std::invalid_argument("Point belongs to a different runtime type");
@@ -506,23 +588,28 @@ std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearizeAt(
       basis, tangent, ambient);
 }
 
-CMPoint IEConstraintManifold::retract(const CMPoint& point, const Vector& delta,
+IECMPoint IEConstraintManifold::retract(const IECMPoint& point, const Vector& delta,
                            const std::optional<IndexSet>& blocking,
                            IERetractionInfo* info,
                            const VectorValues* metricSigmas) const {
+  validatePointType(point);
   return point.retractor(metricSigmas)
       ->retract(&point, point.toAmbient(delta), blocking, info);
 }
 
-Vector IEConstraintManifold::localCoordinates(const CMPoint& origin,
-                                   const CMPoint& other) const {
+Vector IEConstraintManifold::localCoordinates(const IECMPoint& origin,
+                                   const IECMPoint& other) const {
+  validatePointType(origin);
+  validatePointType(other);
+  if (origin.bindings() != other.bindings())
+    throw std::invalid_argument("Local coordinates require identical bindings");
   return dim() ? origin.eBasis()->localCoordinates(origin.values(),
                                                    other.values())
                : Vector(0);
 }
 
 IndexSet IEConstraintManifold::identifyActive(
-    const CMPoint& point, const std::optional<IndexSet>& supplied) const {
+    const IECMPoint& point, const std::optional<IndexSet>& supplied) const {
   if (supplied) {
     for (size_t index : *supplied)
       if (index >= point.iConstraints()->size())
@@ -536,19 +623,19 @@ IndexSet IEConstraintManifold::identifyActive(
   return indices;
 }
 
-size_t IEConstraintManifold::inequalityCount(const CMPoint& point) const {
+size_t IEConstraintManifold::inequalityCount(const IECMPoint& point) const {
   return point.iConstraints()->size();
 }
 
-Vector IEConstraintManifold::inequalityResidual(const CMPoint& point, size_t index) const {
+Vector IEConstraintManifold::inequalityResidual(const IECMPoint& point, size_t index) const {
   return point.iConstraints()->at(index)->unwhitenedExpr(point.values());
 }
 
-double IEConstraintManifold::equalityViolation(const CMPoint& point) const {
+double IEConstraintManifold::equalityViolation(const IECMPoint& point) const {
   return point.eConstraints()->violationNorm(point.values());
 }
 
-double IEConstraintManifold::inequalityViolation(const CMPoint& point) const {
+double IEConstraintManifold::inequalityViolation(const IECMPoint& point) const {
   return point.iConstraints()->violationNorm(point.values());
 }
 
@@ -557,18 +644,25 @@ bool IEConstraintManifold::usesVaryingMetric() const {
          params_.retractorCreator->params()->useVaryingSigma;
 }
 
-CMPoint IEConstraintManifold::retractAmbient(const CMPoint& point,
+IECMPoint IEConstraintManifold::retractAmbient(const IECMPoint& point,
                                   const VectorValues& delta,
                                   const std::optional<IndexSet>& blocking,
                                   IERetractionInfo* info,
                                   const VectorValues* metricSigmas) const {
+  validatePointType(point);
   return point.retractor(metricSigmas)->retract(&point, delta, blocking, info);
 }
 
-CMPoint IEConstraintManifold::moveToBoundary(const CMPoint& point, const IndexSet& active,
+IECMPoint IEConstraintManifold::moveToBoundary(const IECMPoint& point, const IndexSet& active,
                                   IERetractionInfo* info,
                                   const VectorValues* metricSigmas) const {
+  validatePointType(point);
   return point.retractor(metricSigmas)->moveToBoundary(&point, active, info);
+}
+
+void IEConstraintManifold::validatePointType(const CMPoint& point) const {
+  if (point.manifold().get() != this)
+    throw std::invalid_argument("Point belongs to a different runtime type");
 }
 
 }  // namespace gtdynamics

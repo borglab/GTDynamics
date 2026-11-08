@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 
 #include <atomic>
 

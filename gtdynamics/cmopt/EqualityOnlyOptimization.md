@@ -2,10 +2,15 @@
 
 Authors: Yetong Zhang and Frank Dellaert.
 
-Empty inequality collections define equality-only spaces. These problems use
-`IEConstraintManifold`, `CMPoint`, `CMTangentSpace`, and the same CMC LM loop as
-problems with corners. The old equality-only `ConstraintManifold` value and its
-optimizer are not involved.
+Equality-only problems have the stronger `EConstraintManifold` / `ECMPoint`
+contract, specializing `IEConstraintManifold` / `IECMPoint`. Both categories
+share equality preparation, `CMTangentSpace`, recovery, and transformed factors.
+The GTSAM LM/Gauss–Newton/Dogleg wrappers and hand-written
+`LMManifoldOptimizer` use `ECMPoints`; CMC's LM also accepts them through explicit
+widening. General IE definitions can still describe empty inequality collections.
+The old `ConstraintManifold` value representation and duplicate substitution
+implementation have been removed. See the
+[migration guide](../constrained/README.md#migration-and-solver-behavior).
 
 ## Selecting the linear step
 
@@ -61,11 +66,13 @@ python examples/g1_mjlab/benchmark_equality_only.py \
   --labels apps/contact-labels/public/snippets/middle.json.gz \
   --model-cache /path/to/prepared/g1-mjlab \
   --output build/equality-only-comparison \
-  --include-proxqp --include-legacy
+  --include-proxqp --include-manifold-lm
 ```
 
-Omit `--include-proxqp` for a build without that backend. `--include-legacy`
-adds old CM-Opt and a one-worker CMC run; the old optimizer has serial retraction. The optional model cache
+Omit `--include-proxqp` for a build without that backend.
+`--include-manifold-lm` adds the migrated `LMManifoldOptimizer` on `ECMPoint`
+values and a one-worker CMC run. It measures the retained equality-only LM
+algorithm, not the removed historical value implementation. The optional model cache
 must contain the existing prepared `scene.xml` and its assets; otherwise normal
 G1 model loading is used. This runner uses Linux CPU affinity and runtime library
 maps. Configure its environment for matching GTSAM/GTDynamics libraries and TBB,
@@ -87,7 +94,12 @@ not sum to the entire optimization time: graph transformation, state bookkeeping
 callbacks, and stopping logic also take time. Initial feasibility restoration is
 reported separately. Solver-call counts distinguish Gaussian and QP attempts.
 
-## Measured comparison
+## Historical pre-migration comparison (`6aea8ba1`)
+
+The numerical tables below are preserved from baseline commit `6aea8ba1`.
+Reproducing the old value implementation requires that revision and its
+`--include-legacy` option. The current runner uses `manifold-lm` for the migrated
+backend and does not relabel these historical results as new measurements.
 
 Three fresh runs per case used the same Release Clang 18.1.3 build, GTSAM
 `c940b44158d8bfa7394da233dd63aa225bc8fed2` (the existing local benchmark build),
@@ -114,8 +126,8 @@ for CMC Gaussian because teardown was then outside that timer; its median
 initialization-through-solve time was 6.674308 s, compared with 6.685277 s
 in the final campaign. Use the final campaign for comparisons.
 
-This baseline calls the existing `LMManifoldOptimizer` with actual
-`ConstraintManifold` values and `SubstituteFactor` costs. It does not replace the
+At that revision, this baseline called `LMManifoldOptimizer` with actual
+`ConstraintManifold` values and `SubstituteFactor` costs. It did not replace the
 old optimizer with CMC under a different label. Both start from the same restored
 ambient values and use the same equality constraints, independent-coordinate
 selection, objective, LM damping, ordering, and iteration budget. Old CM uses its
@@ -124,7 +136,8 @@ for the remaining values. CMC uses articulated forward kinematics and conditione
 affine mechanics. They implement the same equality chart in this workload through
 different numerical procedures. This is an optimizer comparison from common
 restored values, not a rerun of an old application's entire initialization
-pipeline. The old CM implementation is unchanged.
+pipeline. The old CM implementation was unchanged for that comparison; the
+current implementation retains its LM loop on the shared typed representation.
 
 The old/new objective difference is **2.27e-9**; the maximum group-error history
 difference is **1.43e-9**. Final equality violation L2 is **3.78e-11** for old CM
@@ -158,7 +171,9 @@ The [Dynamics app](../../apps/dynamics/README.md#affine-equality-only-showcase)
 provides the affine counterpart to the nonlinear benchmark above. Its GP-derived
 q/v snapshot is substituted before constructing types; estimated accelerations,
 contact wrenches, and torques remain free. It uses the same native problem
-builders for CMC and an actual old-CM baseline.
+builders for CMC and, at baseline commit `6aea8ba1`, the actual old-CM value
+implementation. The current runner compares the migrated `manifold-lm` backend
+using `ECMPoint`; the times below remain historical baseline measurements.
 
 Three bounded 57-knot runs per solver produce median complete native-call times
 of **0.616 s** for CMC Gaussian, **0.685 s** for CMC GTSAM QP, **0.802 s** for old
@@ -175,5 +190,84 @@ scopes, relaxed-bound diagnostics, state differences, and a reproduction command
 Independent MuJoCo validation agrees within 1.9e-12 N/Nm, and independent
 resultant/corner contact checks agree at all 57 knots. The normal constrained
 solve and checked-in recordings are unchanged. Both
-nonlinear and affine comparisons support migration toward a single optimizer;
-they do not remove the old CM implementation.
+nonlinear and affine historical comparisons established agreement before the
+representation migration. The current code shares the typed representation
+while preserving the separate optimizer algorithms.
+
+## Typed migration comparison
+
+The migration was compared with the independently preserved source and binaries
+from baseline commit **`6aea8ba1`**, rather than reusing the historical timings
+above. Both versions used the same Release Clang 18.1.3 configuration, GTSAM
+`c940b44158d8bfa7394da233dd63aa225bc8fed2`, ProxSuite 0.7.3, system TBB,
+CPUs **8–15**, single-thread BLAS/OpenMP, and identical input/model files.
+The comparison checks GTSAM/TBB binary hashes, CPU affinity, input hashes, and
+nonlinear solver settings. Each case ran three times in fresh processes,
+sequentially with alternating case order. No builds or tests ran during timing.
+
+The affine workload contains 57 fixed-q/v knots in 78–98 seconds, 2,337 reduced
+coordinates, and one retraction worker. These times measure the complete native
+Dynamics call, including preparation and diagnostics, excluding GP fitting:
+
+| Backend | Baseline median (s) | Migrated median (s) | Change |
+| --- | ---: | ---: | ---: |
+| Constrained CMC reference | 0.650716 | 0.662025 | +1.7% |
+| Equality CMC Gaussian | 0.591452 | 0.602626 | +1.9% |
+| Equality CMC GTSAM QP | 0.637837 | 0.651371 | +2.1% |
+| Equality CMC ProxQP | 2.466586 | 2.574530 | +4.4% |
+| Equality `LMManifoldOptimizer` | 0.757107 | 0.539048 | −28.8% |
+
+For `LMManifoldOptimizer`, median LM time falls from 0.472522 to 0.257588 s;
+manifold preparation changes from 0.172791 to 0.181494 s. Its migrated values
+use type-owned constant affine geometry throughout the LM loop. Construction
+counter tests independently verify that affine geometry is constructed once per
+type, rather than once per point. Other CMC affine cases retain one numerical
+equality construction for each of their 57 types.
+
+The nonlinear workload uses the default `contact-gp-dynamics` initializer,
+171 support slices in the same 78–98 second clip, 18,297 reduced coordinates,
+and five outer LM iterations. These times measure the solver stage, including
+transformed-problem preparation for manifold LM and optimizer teardown, and
+exclude initial feasibility restoration:
+
+| Backend | Workers | Baseline median (s) | Migrated median (s) | Change |
+| --- | ---: | ---: | ---: | ---: |
+| Equality CMC Gaussian | 8 | 4.850847 | 4.862299 | +0.2% |
+| Equality CMC GTSAM QP | 8 | 7.687887 | 7.753216 | +0.8% |
+| Equality CMC ProxQP | 8 | 8.332356 | 8.327177 | −0.1% |
+| Equality CMC Gaussian | 1 | 10.399411 | 10.309044 | −0.9% |
+| Equality `LMManifoldOptimizer` | 1 | 13.568809 | 14.069335 | +3.7% |
+
+No median slowdown exceeds the 5% investigation threshold. The nonlinear
+manifold-LM loop remains serial and separate from CMC's loop; no new solver
+algorithm or parallelization is implied by this migration.
+
+Every matched before/after case has exactly equal objectives and state arrays
+in all three repetitions. Affine final objectives are 13.100276284396958
+(13.10027628439752 for ProxQP); maximum equality violation L2 is 2.17e-12.
+Nonlinear final objectives remain approximately 8891.10444204, with maximum
+equality violation L2 3.78e-11. Original omitted-bound violation remains
+approximately 149.1588343 for the nonlinear relaxation and zero for this affine
+workload. Equality-only feasibility does not assert satisfaction of omitted
+inequalities. App recordings are unchanged.
+
+An additional independent MuJoCo check agrees within 1.84e-12 N/Nm and verifies
+resultant/corner contact-cone agreement at all 57 affine knots. Its temporary
+export is under `/tmp/typed-affine-validation/`; the validation report is
+`build/typed-final-affine/independent-validation.json`.
+
+Raw runs, state arrays, provenance, source patches, and source hashes are in
+`build/typed-baseline-affine/`, `build/typed-baseline-nonlinear/`,
+`build/typed-final-affine/`, and `build/typed-final-nonlinear/`.
+`build/typed-after-affine/` and the incomplete `build/typed-after-nonlinear/`
+were preliminary runs before final review fixes and are excluded above.
+Recreate the checked comparison with:
+
+```sh
+python examples/g1_mjlab/compare_manifold_migration.py \
+  --affine-before build/typed-baseline-affine \
+  --affine-after build/typed-final-affine \
+  --nonlinear-before build/typed-baseline-nonlinear \
+  --nonlinear-after build/typed-final-nonlinear \
+  --output build/typed-migration-comparison.json
+```

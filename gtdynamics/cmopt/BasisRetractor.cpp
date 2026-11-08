@@ -13,6 +13,7 @@
  */
 
 #include <gtdynamics/cmopt/BasisRetractor.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
@@ -69,7 +70,28 @@ BasisRetractor::BasisRetractor(
     }
   }
   // set the graph for optimizer
-  optimizer_.setGraph(graph);
+  setOptimizerGraph(optimizer_, graph);
+}
+
+BasisRetractor::BasisRetractor(const BasisRetractor &other)
+    : Retractor(other), merit_graph_(other.merit_graph_),
+      basis_keys_(other.basis_keys_), optimizer_(equalityParams_->lmParams),
+      factors_with_fixed_vars_(other.factors_with_fixed_vars_) {
+  auto graph = other.optimizer_.graph();
+  detachFixedFactors(graph, factors_with_fixed_vars_);
+  setOptimizerGraph(optimizer_, graph);
+}
+
+IERetractor::shared_ptr BasisRetractorCreator::create(
+    const IECMPoint &point) const {
+  validatePointType(point);
+  KeyVector slots;
+  for (const auto &[slot, key] : point.bindings()) slots.push_back(slot);
+  KeyVector keys = basisKeyFunction(slots);
+  for (Key &key : keys) key = point.bindings().at(key);
+  auto constraints =
+      std::make_shared<NonlinearEqualityConstraints>(*point.eConstraints());
+  return std::make_shared<BasisRetractor>(constraints, boundParams(point), keys);
 }
 
 /* ************************************************************************* */
@@ -78,9 +100,9 @@ Values BasisRetractor::retractConstraints(const Values &values) {
     const char *env = std::getenv("GTDYN_DEBUG_RETRACTOR_STATS");
     return env && std::string(env) != "0";
   }();
-  static size_t total_calls = 0;
-  static size_t fast_path_calls = 0;
-  static double total_ms = 0.0;
+  static thread_local size_t total_calls = 0;
+  static thread_local size_t fast_path_calls = 0;
+  static thread_local double total_ms = 0.0;
 
   const auto start = std::chrono::steady_clock::now();
   ++total_calls;
@@ -98,7 +120,7 @@ Values BasisRetractor::retractConstraints(const Values &values) {
   // Fast path: if constraints are already satisfied to threshold, avoid
   // repeatedly running tiny LM solves.
   const double initial_error = optimizer_.graph().error(opt_values);
-  if (initial_error <= params_->feasibleThreshold) {
+  if (initial_error <= equalityParams_->feasibleThreshold) {
     ++fast_path_calls;
     Values result = opt_values;
     for (const Key &key : basis_keys_) {
@@ -122,7 +144,7 @@ Values BasisRetractor::retractConstraints(const Values &values) {
   // optimize
   Values result = optimizer_.optimize();
 
-  if (params_->recompute) {
+  if (equalityParams_->recompute) {
     if (optimizer_.graph().error(result) > 1e-5) {
       std::cout << "recompute\n";
       for (const Key &key : basis_keys_) {

@@ -15,6 +15,7 @@
 #include <gtdynamics/dynamics/ContactWrenchFactor.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
+#include <gtdynamics/cmopt/EConstraintManifold.h>
 #include <gtdynamics/dynamics/internal/FixedDynamicsBenchmark.h>
 #include <gtdynamics/dynamics/internal/AffineBasisCounter.h>
 #include <gtdynamics/dynamics/TwistAccelFactor.h>
@@ -64,7 +65,7 @@ class CountedReducedALRetractor : public ReducedALRetractor {
   explicit CountedReducedALRetractor(
       const IERetractorParams::shared_ptr& params)
       : ReducedALRetractor(params) {}
-  CMPoint retract(const CMPoint* point,
+  IECMPoint retract(const IECMPoint* point,
                                const VectorValues& delta,
                                const std::optional<IndexSet>& blockingIndices,
                                IERetractionInfo* info) const override {
@@ -582,8 +583,15 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
       std::make_shared<UniversalIERetractorCreator>(retractor);
 
   start = Clock::now();
+  IEOptimizer::TypeFactory makeType;
+  if (options.equalityOnly)
+    makeType = [](const NonlinearEqualityConstraints& equalities,
+                  const NonlinearInequalityConstraints&, const Values& values,
+                  const IEConstraintManifold::Params::shared_ptr& params) {
+      return std::make_shared<EConstraintManifold>(equalities, values, *params);
+    };
   auto [types, points] = IEOptimizer::identifyConnectedComponents(
-      problem.equalities, problem.inequalities, initial, manifoldParams);
+      problem.equalities, problem.inequalities, initial, manifoldParams, makeType);
   for (auto& [key, point] : points) {
     try {
       IERetractionInfo info;

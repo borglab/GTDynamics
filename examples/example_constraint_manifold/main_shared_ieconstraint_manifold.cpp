@@ -25,7 +25,7 @@ int main() {
   const auto type = lineType();
 
   // Two ambient bindings share the same runtime manifold definition.
-  CMPoints points;
+  IECMPoints points;
   points.emplace(Symbol('c', 0),
                  type->point({{0, 10}, {1, 11}}, lineValues(10, 11, 0)));
   points.emplace(Symbol('c', 1),

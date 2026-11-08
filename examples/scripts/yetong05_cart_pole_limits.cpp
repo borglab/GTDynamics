@@ -34,7 +34,7 @@
 #include <string>
 
 #include "CmcBenchmark.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 
 using namespace gtsam;
@@ -92,7 +92,6 @@ int main(int argc, char **argv) {
     iecm_params->retractorCreator =
         std::make_shared<UniversalIERetractorCreator>(
             std::make_shared<CartPoleWithLimitsRetractor>(cp));
-    iecm_params->equalityBasisBuildFromScratch = false;
 
     // optimize IELM
     IELMParams ie_params;

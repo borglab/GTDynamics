@@ -4,7 +4,12 @@
 ## Overview
 This note maps CM-Opt as presented in Zhang et al., *Constraint Manifolds for
 Robotic Inference and Planning* (ICRA 2023), to the GTDynamics implementation
-in `gtdynamics/cmopt`.
+in `gtdynamics/cmopt`. Equality-only and corner-aware optimization now share
+runtime definitions, point values, discovery, recovery, and transformed factors.
+`EConstraintManifold` is a runtime type and `ECMPoint` is its numerical value;
+the former `ConstraintManifold` value implementation has been removed.
+See the [type and migration guide](../constrained/README.md#migration-and-solver-behavior)
+for the common hierarchy and API changes.
 
 Equation references use the ICRA paper as the primary source. The June 2024
 thesis, *Constraint Manifold Optimization for Robotic Inference and Planning
@@ -31,9 +36,12 @@ constraint-manifold variable, and cost factors touching constrained variables
 are replaced by equivalent factors on those manifold variables.
 
 In code, this transformation happens in three stages:
-- Find CCCs from equality constraints: [`ManifoldOptimizer::identifyConnectedComponents`](ManifoldOptimizer.cpp#L120)
-- Build one `ConstraintManifold` per CCC: [`ManifoldOptimizer::constructManifoldValues`](ManifoldOptimizer.cpp#L184)
-- Build equivalent cost factors on manifold variables: [`ManifoldOptimizer::constructManifoldOptimizationGraph`](ManifoldOptimizer.cpp#L232), using [`SubstituteFactor`](../factors/SubstituteFactor.h#L39)
+
+- Shared [component discovery](../cmcopt/IEOptimizer.cpp) groups the equality graph.
+- [ManifoldOptimizer](ManifoldOptimizer.cpp) constructs immutable
+  `EConstraintManifold` definitions and concrete `ECMPoint` values.
+- [CMCSubstituteFactor](../constrained/CMCSubstituteFactor.h) transforms costs using
+  the equality point category and the same recovery/Jacobian implementation as CMC.
 
 Useful cross-reference:
 
@@ -48,11 +56,9 @@ Useful cross-reference:
 | Approximate retraction / approximate CM | Eq. (26) | Eqs. (5.22)-(5.27) |
 | LM loop details | discussed around Eq. (16) | Eqs. (3.50)-(3.54), Algorithm 1 |
 
-If you are looking for where the transformed equivalent factors are created,
-start at:
-- [`ManifoldOptimizer.cpp#L251`](ManifoldOptimizer.cpp#L251)
-- [`ManifoldOptimizer.cpp#L262`](ManifoldOptimizer.cpp#L262)
-- [`SubstituteFactor.cpp#L82`](../factors/SubstituteFactor.cpp#L82)
+For transformed-factor construction, start with
+[`ManifoldOptimizer::manifoldGraph`](ManifoldOptimizer.cpp) and
+[`CMCSubstituteFactor`](../constrained/CMCSubstituteFactor.cpp).
 
 <a id="ccc-transformation"></a>
 ## 1) CCC Identification and Problem Transformation (Paper Sec. III-A)
@@ -71,17 +77,21 @@ For each CCC, CM-Opt constructs:
 - the transformed unconstrained problem, paper Eq. (16).
 
 Code mapping:
-- DFS over the constraint-variable bipartite graph: [`identifyConnectedComponent`](ManifoldOptimizer.cpp#L88)
-- All components: [`identifyConnectedComponents`](ManifoldOptimizer.cpp#L120)
-- Full transformation pipeline: [`transformProblem`](ManifoldOptimizer.cpp#L165)
-- Map from base keys to manifold keys: [`constructManifoldOptimizationGraph`](ManifoldOptimizer.cpp#L232)
-- Equivalent factor construction: [`SubstituteFactor`](../factors/SubstituteFactor.h#L39)
+
+- Shared constraint-variable graph traversal:
+  [`IEOptimizer::identifyConnectedComponents`](../cmcopt/IEOptimizer.cpp).
+- Equality-only definition creation and requested initial projection:
+  [`ManifoldOptimizer::constructManifoldOptimizationValues`](ManifoldOptimizer.cpp).
+- Ambient-key ownership and transformed costs:
+  [`ManifoldOptimizer::manifoldGraph`](ManifoldOptimizer.cpp).
+- Shared recovery and chain rule:
+  [`CMCSubstituteFactor`](../constrained/CMCSubstituteFactor.h).
 
 Implementation detail:
 - A CCC whose manifold dimension is positive becomes a free manifold-valued
   variable in `mopt_problem.values`.
-- A fully constrained CCC becomes a fixed manifold in
-  `mopt_problem.fixedManifolds`; equivalent factors can still recover values
+- A fully constrained CCC becomes a fixed `ECMPoint` in
+  `mopt_problem.fixedPoints`; equivalent factors can still recover values
   from it, but it is not optimized as a free variable.
 - Variables untouched by equality constraints are copied as ordinary
   unconstrained variables.
@@ -104,15 +114,22 @@ full-rank constraint differential, dimension reduction, and tangent space as a
 kernel in paper Eqs. (8)-(10).
 
 Code mapping:
-- Core type: [`ConstraintManifold`](ConstraintManifold.h#L59)
-- Dimension: `embedding_dim - constraint_dim` in [`ConstraintManifold`](ConstraintManifold.h#L117)
-- Optional initial feasibility projection: [`ConstraintManifold::constructValues`](ConstraintManifold.cpp#L23)
-- Recover base variables for substituted factors: [`ConstraintManifold::recover`](ConstraintManifold.cpp#L34)
 
-The `ConstraintManifold` object stores exactly the data needed by paper
-Eqs. (13)-(14): the base values \(X_c^C\), equality constraints \(H_c\),
-the tangent-space basis, and the retractor used to move from a tangent update
-back to feasible values.
+- Runtime definition: [`EConstraintManifold`](EConstraintManifold.h).
+- Numerical state and bindings: [`ECMPoint`](ECMPoint.h), with common
+  recovery and dimension operations on [`CMPoint`](../constrained/CMPoint.h).
+- Equality basis and point-dependent geometry:
+  [`CMTangentSpace`](../constrained/CMTangentSpace.h).
+- Initial projection before the first numerical basis:
+  [`ManifoldOptimizer`](ManifoldOptimizer.cpp), through shared discovery's
+  value-initialization hook.
+
+The runtime type owns constraint factors, immutable conditioning, structural
+preparation, and retraction policy. Points own ambient values and bindings.
+Numerical bases are built per nonlinear point; explicitly certified affine
+geometry is initialized once per runtime type and published read-only.
+Conditioning constructs a distinct type with fresh preparation. Equality
+geometry is independent of objective weights, damping, and retraction metrics.
 
 Thesis context: Eq. (3.4) gives the simple dimension formula \(n=N-n_h\) for
 Euclidean embedding spaces, while Eqs. (3.33)-(3.45) expand the product-manifold
@@ -138,17 +155,17 @@ B_{\theta_c}\mathcal{M}_c = B_{X_c^C}\tilde{\mathcal{M}}_c \, N,
 paper Eq. (20), where \(N\) is a null-space basis of the constraint Jacobian.
 
 Code mapping:
-- Abstract basis API: [`TangentSpaceBasis`](TangentSpaceBasis.h#L90)
-- Orthonormal/null-space basis: [`OrthonormalBasis`](TangentSpaceBasis.h#L164)
-- Constraint Jacobian: [`OrthonormalBasis::computeConstraintJacobian`](TangentSpaceBasis.cpp#L57)
-- Dense null-space basis: [`OrthonormalBasis::constructDense`](TangentSpaceBasis.cpp#L108)
-- Sparse null-space basis: [`OrthonormalBasis::constructSparse`](TangentSpaceBasis.cpp#L115)
-- Map reduced coordinates \(\xi\) to ambient `VectorValues`: [`OrthonormalBasis::computeTangentVector`](TangentSpaceBasis.cpp#L223)
+- Abstract basis API: [`TangentSpaceBasis`](../constrained/TangentSpaceBasis.h)
+- Orthonormal/null-space basis: [`OrthonormalBasis`](../constrained/TangentSpaceBasis.h)
+- Constraint Jacobian: [`OrthonormalBasis::computeConstraintJacobian`](../constrained/TangentSpaceBasis.cpp)
+- Dense null-space basis: [`OrthonormalBasis::constructDense`](../constrained/TangentSpaceBasis.cpp)
+- Sparse null-space basis: [`OrthonormalBasis::constructSparse`](../constrained/TangentSpaceBasis.cpp)
+- Map reduced coordinates \(\xi\) to ambient `VectorValues`: [`OrthonormalBasis::computeTangentVector`](../constrained/TangentSpaceBasis.cpp)
 
 Parameterized/basis-variable path:
-- Eliminate non-basis variables: [`EliminationBasis::construct`](TangentSpaceBasis.cpp#L492)
-- Propagate Bayes-net Jacobians: [`computeBayesNetJacobian`](MultiJacobian.cpp#L140)
-- Lift reduced coordinates to full tangent values: [`EliminationBasis::computeTangentVector`](TangentSpaceBasis.cpp#L572)
+- Eliminate non-basis variables: [`EliminationBasis::construct`](../constrained/TangentSpaceBasis.cpp)
+- Propagate Bayes-net Jacobians: [`computeBayesNetJacobian`](../constrained/MultiJacobian.cpp)
+- Lift reduced coordinates to full tangent values: [`EliminationBasis::computeTangentVector`](../constrained/TangentSpaceBasis.cpp)
 
 The thesis is useful here because it separates the two basis choices. Eqs.
 (3.7)-(3.11) describe the parameterized/elimination basis; Eqs. (3.12)-(3.14)
@@ -171,7 +188,7 @@ The paper gives three practical retraction schemes:
 
 Shared flow:
 - Reduced tangent coordinates \(\xi\) become an ambient tangent update through
-  the basis: [`ConstraintManifold::retract`](ConstraintManifold.cpp#L45)
+  the basis: [`ECMPoint::retract`](ECMPoint.cpp)
 - Base variables are retracted first: [`Retractor::retract`](Retractor.h)
 - The retractor then enforces the equality constraints: [`Retractor::retractConstraints`](Retractor.h)
 
@@ -212,32 +229,41 @@ J_f(\theta_c)=
 \sum_{k \in I_c^C \cap I_i^f} J_{r_k}(\theta_c)\,J_f(x_k).
 \]
 
-Code mapping:
-- Equivalent factor type: [`SubstituteFactor`](../factors/SubstituteFactor.h#L39)
-- New key list after substitution: [`computeNewKeys`](../factors/SubstituteFactor.cpp#L20)
-- Separate free, fixed, and unchanged keys: [`classifyKeys`](../factors/SubstituteFactor.cpp#L52)
-- Recover base values and evaluate the original factor: [`unwhitenedError`](../factors/SubstituteFactor.cpp#L82)
-- Accumulate chain-rule Jacobians: [`SubstituteFactor.cpp#L113`](../factors/SubstituteFactor.cpp#L113)
+The shared [`CMCSubstituteFactor`](../constrained/CMCSubstituteFactor.cpp) classifies
+point-owned, fixed, and ordinary free keys, recovers ambient values through the
+concrete point, and accumulates recovery Jacobians into the original factor's
+Jacobian blocks. Equality-only factors select `PointType::Equality`, matching
+`ECMPoint` values in `gtsam::Values`; general CMC factors select the IE category.
+GTSAM extraction must use the exact stored concrete type despite public point
+inheritance. Original factor expressions and noise models remain intact.
 
-The thesis derives the same chain rule through recover functions in
-Eqs. (3.29)-(3.32), which is the clearest way to read the `SubstituteFactor`
-implementation.
+The thesis derives this chain rule through recovery functions in
+Eqs. (3.29)-(3.32).
 
 <a id="solvers"></a>
 ## 6) Solving the Transformed Problem
 The paper's optimization target is the transformed unconstrained manifold
-problem in Eq. (16). In GTDynamics there are two optimizer paths:
+problem in Eq. (16). Both equality-only paths now accept `ECMPoints` and
+ordinary free values, as well as the existing ambient cost/equality/value entry
+point. They preserve their numerical loops:
 
-- Generic path: [`NonlinearManifoldOptimizer`](NonlinearManifoldOptimizer.cpp#L22) transforms
+- Generic path: [`NonlinearManifoldOptimizer`](NonlinearManifoldOptimizer.cpp) transforms
   the equality-constrained problem, then reuses standard GTSAM nonlinear
   optimizers on the manifold-valued variables.
-- Custom LM path: [`LMManifoldOptimizer`](LMManifoldOptimizer.cpp#L43) keeps
-  explicit state/trial bookkeeping for CM-Opt updates.
+- Custom LM path: [`LMManifoldOptimizer`](LMManifoldOptimizer.cpp) keeps
+  explicit state/trial bookkeeping for CM-Opt updates on `ECMPoint` values.
+
+`IELMOptimizer` can also optimize these equality points through explicit
+widening to the general CMC point category, using direct Gaussian or QP linear
+steps. The two custom LM implementations remain separate. Equality-only GTSAM
+wrappers do not accept general inequality points; manifold traits do not provide
+corner-aware optimization. Initial/final projection, callbacks, stopping rules,
+and CM(F)/CM(I) retraction budgets retain their existing meanings.
 
 Benchmark helpers:
-- `ConstrainedOptBenchmark::OptimizeCmOpt` uses `NonlinearManifoldOptimizer`: [`ConstrainedOptBenchmark.cpp#L514`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L514)
-- Dense/null-space plus approximate projection defaults: [`DefaultMoptParams`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L487)
-- Elimination basis plus basis-variable retraction defaults: [`DefaultMoptParamsSV`](../constrained_optimizer/ConstrainedOptBenchmark.cpp#L499)
+- `ConstrainedOptBenchmark::OptimizeCmOpt` uses `NonlinearManifoldOptimizer`: [`ConstrainedOptBenchmark.cpp`](../constrained_optimizer/ConstrainedOptBenchmark.cpp)
+- Dense/null-space plus approximate projection defaults: [`DefaultMoptParams`](../constrained_optimizer/ConstrainedOptBenchmark.cpp)
+- Elimination basis plus basis-variable retraction defaults: [`DefaultMoptParamsSV`](../constrained_optimizer/ConstrainedOptBenchmark.cpp)
 
 The thesis gives the LM details that are implicit in the paper: least-squares
 model and quadratic approximation in Eqs. (3.50)-(3.51), LM update and fidelity
@@ -251,7 +277,12 @@ Eqs. (23)-(24) exactly can dominate runtime. The approximate value may be
 temporarily infeasible, and the paper models it as lying on an approximate
 constraint manifold in Eq. (26).
 
-In code, approximate behavior appears through retractor settings rather than a
+The existing equality retractor factories implement `IERetractorCreator`
+directly. They snapshot configuration into a type, bind ambient keys for each
+point, and isolate mutable solver/factor work per call. `ECMPoint` construction
+does not add a stricter projection after an approximate retraction.
+
+Approximate behavior appears through retractor settings rather than a
 separate mathematical type:
 - limiting inner LM iterations in examples,
 - using `UnconstrainedOptimizationRetractor` for approximate metric projection,
@@ -270,16 +301,19 @@ Eqs. (5.22)-(5.27), and separates this from the standard feasible CM-Opt loop.
 <a id="walkthrough"></a>
 ## 8) Quick Follow-One-Run Pointers
 For a concrete end-to-end run, `examples/example_constraint_manifold/main_connected_poses.cpp` is a good example:
-- Build equality constraints from a constraint graph: [`main_connected_poses.cpp#L269`](../../examples/example_constraint_manifold/main_connected_poses.cpp#L269)
-- Build default CM params: [`main_connected_poses.cpp#L307`](../../examples/example_constraint_manifold/main_connected_poses.cpp#L307)
-- Run CM optimization: [`main_connected_poses.cpp#L317`](../../examples/example_constraint_manifold/main_connected_poses.cpp#L317)
+- Build equality constraints from a constraint graph: [`main_connected_poses.cpp`](../../examples/example_constraint_manifold/main_connected_poses.cpp)
+- Build default CM params: [`main_connected_poses.cpp`](../../examples/example_constraint_manifold/main_connected_poses.cpp)
+- Run CM optimization: [`main_connected_poses.cpp`](../../examples/example_constraint_manifold/main_connected_poses.cpp)
 
 Read the core implementation in this order:
 1. [`ManifoldOptimizer.h`](ManifoldOptimizer.h) and [`ManifoldOptimizer.cpp`](ManifoldOptimizer.cpp)
-2. [`ConstraintManifold.h`](ConstraintManifold.h) and [`ConstraintManifold.cpp`](ConstraintManifold.cpp)
-3. [`TangentSpaceBasis.h`](TangentSpaceBasis.h), [`TangentSpaceBasis.cpp`](TangentSpaceBasis.cpp), and [`MultiJacobian.cpp`](MultiJacobian.cpp)
+2. [`EConstraintManifold.h`](EConstraintManifold.h),
+   [`ECMPoint.h`](ECMPoint.h), and shared
+   [`IEConstraintManifold.cpp`](../cmcopt/IEConstraintManifold.cpp)
+3. [`TangentSpaceBasis.h`](../constrained/TangentSpaceBasis.h), [`TangentSpaceBasis.cpp`](../constrained/TangentSpaceBasis.cpp), and [`MultiJacobian.cpp`](../constrained/MultiJacobian.cpp)
 4. [`Retractor.h`](Retractor.h) and [`Retractor.cpp`](Retractor.cpp)
-5. [`SubstituteFactor.h`](../factors/SubstituteFactor.h) and [`SubstituteFactor.cpp`](../factors/SubstituteFactor.cpp)
+5. [`CMCSubstituteFactor.h`](../constrained/CMCSubstituteFactor.h) and
+   [`CMCSubstituteFactor.cpp`](../constrained/CMCSubstituteFactor.cpp)
 6. [`NonlinearManifoldOptimizer.h`](NonlinearManifoldOptimizer.h), [`NonlinearManifoldOptimizer.cpp`](NonlinearManifoldOptimizer.cpp), and optionally [`LMManifoldOptimizer.cpp`](LMManifoldOptimizer.cpp)
 
 For inequality boundaries and corners, see the separate CMC-Opt documentation in

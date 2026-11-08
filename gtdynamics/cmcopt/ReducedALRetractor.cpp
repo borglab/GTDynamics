@@ -13,7 +13,7 @@
  */
 
 #include <gtdynamics/cmcopt/AffineProjection.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 
 #include <algorithm>
@@ -22,7 +22,7 @@
 #include <stdexcept>
 
 namespace gtdynamics {
-IERetractor::shared_ptr ReducedALRetractor::bind(const CMPoint &point) const {
+IERetractor::shared_ptr ReducedALRetractor::bind(const IECMPoint &point) const {
   auto result = IERetractor::bind(point);
   if (priorKeys_) {
     KeyVector bound;
@@ -113,8 +113,8 @@ Vector ReducedALRetractor::solveProblem(const ConstrainedOptProblem &problem,
   return u;
 }
 
-CMPoint ReducedALRetractor::retract(
-    const CMPoint *point, const VectorValues &delta,
+IECMPoint ReducedALRetractor::retract(
+    const IECMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blockingIndices,
     IERetractionInfo *info) const {
   if (!point)

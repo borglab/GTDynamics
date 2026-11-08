@@ -13,7 +13,7 @@
  */
 
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 
 #include <stdexcept>
 
@@ -57,7 +57,7 @@ VectorValues IERetractorParams::priorPrecisions(
   return precisions;
 }
 
-IERetractor::shared_ptr IERetractor::bind(const CMPoint &point) const {
+IERetractor::shared_ptr IERetractor::bind(const IECMPoint &point) const {
   auto result = clone();
   if (params_->metricSigmas) {
     auto bound = std::make_shared<VectorValues>();
@@ -69,12 +69,12 @@ IERetractor::shared_ptr IERetractor::bind(const CMPoint &point) const {
   return result;
 }
 IERetractor::shared_ptr UniversalIERetractorCreator::create(
-    const CMPoint &point) const {
+    const IECMPoint &point) const {
   return retractor_->bind(point);
 }
 
-CMPoint
-IERetractor::moveToBoundary(const CMPoint *point,
+IECMPoint
+IERetractor::moveToBoundary(const IECMPoint *point,
                             const IndexSet &blocking_indices,
                             IERetractionInfo *retract_info) const {
   VectorValues delta = point->values().zeroVectors();

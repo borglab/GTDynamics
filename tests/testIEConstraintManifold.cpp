@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file testCMPoint.cpp
- * @brief Regression tests for CMPoint.
+ * @file testIECMPoint.cpp
+ * @brief Regression tests for IECMPoint.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
@@ -15,7 +15,7 @@
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmcopt/internal/LegacyCMAdapter.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
@@ -27,7 +27,7 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -41,7 +41,7 @@ bool container_equal(const Container &c1, const Container &c2) {
 }
 
 // Verify projection, retraction, and tangent geometry on a half sphere.
-TEST(CMPoint, HalfSphere) {
+TEST(IECMPoint, HalfSphere) {
   Key point_key = Symbol('p', 0);
 
   Expression<Point3> point_expr(point_key);
@@ -66,7 +66,7 @@ TEST(CMPoint, HalfSphere) {
     // Test constructor.
     const auto pointType = std::make_shared<IEConstraintManifold>(
         *e_constraints, *i_constraints, values, *params);
-    CMPoint point = pointType->point(values);
+    IECMPoint point = pointType->point(values);
 
     // Test active constraints.
     auto active_indices = point.activeIndices();
@@ -116,11 +116,14 @@ TEST(CMPoint, HalfSphere) {
     EXPECT(point.blockingIndices(delta3).size() == 1);
 
     // Check the internal equality-only compatibility view.
-    auto e_manifold = gtdynamics::internal::equalityPoint(point);
+    auto e_manifold = point.equalityView();
     EXPECT(e_manifold.dim() == 2);
     IndexSet a_indices;
     a_indices.insert(0);
-    auto e_manifold1 = gtdynamics::internal::equalityPoint(point, a_indices);
+    auto face = *point.eConstraints();
+    face.push_back(point.iConstraints()->at(0)->createEqualityConstraint());
+    auto faceType = std::make_shared<EConstraintManifold>(face, point.values());
+    auto e_manifold1 = faceType->point(point.values());
     EXPECT(e_manifold1.dim() == 1);
 
     // The cached tangent rows evaluate the same directional derivative.
@@ -135,7 +138,7 @@ TEST(CMPoint, HalfSphere) {
 }
 
 // A newly reached boundary remains active after penalty retraction.
-TEST(CMPoint, PenaltyRetractionRetainsNewBoundary) {
+TEST(IECMPoint, PenaltyRetractionRetainsNewBoundary) {
   const Key key = 7;
   auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
   inequalities->push_back(ScalarExpressionInequalityConstraint::GeqZero(
@@ -151,7 +154,7 @@ TEST(CMPoint, PenaltyRetractionRetainsNewBoundary) {
   values.insert(key, 1.0);
   const auto pointType = std::make_shared<IEConstraintManifold>(
       NonlinearEqualityConstraints{}, *inequalities, values, *params);
-  const CMPoint point = pointType->point(values);
+  const IECMPoint point = pointType->point(values);
   EXPECT(point.activeIndices().empty());
   VectorValues step;
   step.insert(key, Vector1(-2.0));
@@ -169,7 +172,7 @@ TEST(CMPoint, PenaltyRetractionRetainsNewBoundary) {
 }
 
 // Constraint sigma must be applied once, and must not change the feasible side.
-TEST(CMPoint, ScaledInequalityLinearization) {
+TEST(IECMPoint, ScaledInequalityLinearization) {
   const Key key = 7;
   const Key pointKey = 9;
   for (const double sigma : {0.01, 3.0}) {
@@ -186,7 +189,7 @@ TEST(CMPoint, ScaledInequalityLinearization) {
       values.insert(key, 0.0);
       const auto pointType = std::make_shared<IEConstraintManifold>(
           NonlinearEqualityConstraints{}, *inequalities, values, *params);
-      const CMPoint point = pointType->point(values);
+      const IECMPoint point = pointType->point(values);
       VectorValues outward, inward;
       outward.insert(key, Vector1(lowerBound ? -2.0 : 2.0));
       inward.insert(key, -outward.at(key));

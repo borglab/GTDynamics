@@ -17,6 +17,7 @@
 #pragma once
 
 #include <gtsam/nonlinear/NonlinearFactor.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
 
 #include <map>
 
@@ -38,7 +39,11 @@ using gtsam::Vector;
  * noisemodel of substitute factor. The noisemodel in the base factor will be
  * ignored. */
 class CMCSubstituteFactor : public NoiseModelFactor {
+ public:
+  enum class PointType { Inequality, Equality };
+
  protected:
+  PointType pointType_ = PointType::Inequality;
   typedef NoiseModelFactor Base;
   typedef CMCSubstituteFactor This;
 
@@ -46,7 +51,7 @@ class CMCSubstituteFactor : public NoiseModelFactor {
   Base::shared_ptr base_factor_;
   // map from ambient key to the key of its owning point
   std::map<Key, Key> replacement_map_;
-  // keys of CMPoint values
+  // keys of IECMPoint values
   KeySet pointKeys_;
   // keys of unconstrianed variables
   KeySet unconstrained_keys_;
@@ -72,9 +77,11 @@ class CMCSubstituteFactor : public NoiseModelFactor {
    */
   CMCSubstituteFactor(const Base::shared_ptr& base_factor,
                       const std::map<Key, Key>& replacement_map,
-                      const Values& fixedPoints = Values())
+                      const Values& fixedPoints = Values(),
+                      PointType pointType = PointType::Inequality)
       : Base(base_factor->noiseModel(),
              computeNewKeys(base_factor, replacement_map, fixedPoints)),
+        pointType_(pointType),
         base_factor_(base_factor),
         replacement_map_(replacement_map) {
     if (!checkActive()) {
@@ -130,6 +137,7 @@ class CMCSubstituteFactor : public NoiseModelFactor {
   void serialize(ARCHIVE& ar, const unsigned int /*version*/) {
     ar& boost::serialization::make_nvp(
         "CMCSubstituteFactor", boost::serialization::base_object<Base>(*this));
+    ar& BOOST_SERIALIZATION_NVP(pointType_);
     ar& BOOST_SERIALIZATION_NVP(base_factor_);
     ar& BOOST_SERIALIZATION_NVP(replacement_map_);
     ar& boost::serialization::make_nvp("cmanifold_keys_", pointKeys_);
@@ -141,5 +149,11 @@ class CMCSubstituteFactor : public NoiseModelFactor {
 #endif
 
 };  // \class CMCSubstituteFactor
+
+/// Shared transformed-factor construction for exact concrete point values.
+gtsam::NonlinearFactorGraph pointSubstitutionGraph(
+    const gtsam::NonlinearFactorGraph& graph,
+    const std::map<Key, Key>& ownership, const Values& fixedPoints,
+    CMCSubstituteFactor::PointType pointType);
 
 }  // namespace gtdynamics

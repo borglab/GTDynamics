@@ -7,7 +7,7 @@
 
 /**
  * @file IERetractor.h
- * @brief Retractor for CMPoint.
+ * @brief Retractor for IECMPoint.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
@@ -16,7 +16,7 @@
 
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/constrained/MultiJacobian.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/PenaltyOptimizer.h>
 #include <gtsam/geometry/Point3.h>
@@ -29,7 +29,7 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-class CMPoint;
+class IECMPoint;
 
 struct IERetractorParams {
   using shared_ptr = std::shared_ptr<IERetractorParams>;
@@ -168,7 +168,7 @@ public:
   /// Clone a prototype into one retraction workspace.
   virtual shared_ptr clone() const = 0;
   /// Bind local policy keys and metric entries to one point's ambient keys.
-  virtual shared_ptr bind(const CMPoint &point) const;
+  virtual shared_ptr bind(const IECMPoint &point) const;
   /// Restrict a prepared policy snapshot to the component's ambient variables.
   void scopeMetric(const KeySet &keys) {
     params_ = IERetractorParams::snapshot(params_, &keys);
@@ -180,14 +180,14 @@ public:
 
   /// Retract the ambient variables back to h(x)=0, g(x)<=0, optionally with
   /// selected blocking inequalities promoted to equalities.
-  virtual CMPoint retract(
-      const CMPoint *point, const VectorValues &delta,
+  virtual IECMPoint retract(
+      const IECMPoint *point, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
       IERetractionInfo *retract_info = nullptr) const = 0;
 
   /// Zero-step retraction that lands directly on the requested boundary face.
-  virtual CMPoint moveToBoundary(
-      const CMPoint *point, const IndexSet &blocking_indices,
+  virtual IECMPoint moveToBoundary(
+      const IECMPoint *point, const IndexSet &blocking_indices,
       IERetractionInfo *retract_info = nullptr) const;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
@@ -204,6 +204,7 @@ protected:
 
 public:
   using shared_ptr = std::shared_ptr<IERetractorCreator>;
+  virtual ~IERetractorCreator() = default;
 
   IERetractorCreator(const IERetractorParams::shared_ptr &params =
                          std::make_shared<IERetractorParams>())
@@ -222,7 +223,7 @@ public:
       : params_(IERetractorParams::snapshot(other.params_)) {}
 
   virtual IERetractor::shared_ptr
-  create(const CMPoint &point) const = 0;
+  create(const IECMPoint &point) const = 0;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
@@ -250,7 +251,7 @@ public:
   }
 
   IERetractor::shared_ptr
-  create(const CMPoint &point) const override;
+  create(const IECMPoint &point) const override;
 };
 
 } // namespace gtdynamics
