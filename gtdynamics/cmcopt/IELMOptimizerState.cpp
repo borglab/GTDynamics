@@ -13,10 +13,10 @@
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
-#include <gtdynamics/cmcopt/IELMWorkingSet.h>
 #include <gtdynamics/cmcopt/IndependentComponents.h>
-#include <gtdynamics/cmcopt/WorkingFace.h>
+#include <gtdynamics/cmcopt/ProxQpSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
+#include <gtsam/constrained/ActiveSetSolver.h>
 
 #include <algorithm>
 #include <iomanip>
@@ -58,14 +58,9 @@ IELMState::fromLastIteration(const IELMIterationDetails &iter_details,
   IELMState state;
   if (last_trial.stepIsSuccessful) {
     state = IELMState(last_trial.nonlinearUpdate.newManifolds,
-                      last_trial.nonlinearUpdate.newUnconstrainedValues,
-                      graph, manifold_graph, last_trial.linearUpdate.lambda,
+                      last_trial.nonlinearUpdate.newUnconstrainedValues, graph,
+                      manifold_graph, last_trial.linearUpdate.lambda,
                       prev_state.lambdaFactor);
-    // TODO: will this cause early ending? (converged in this mode, but not for
-    // the overall problem)
-    if (last_trial.forcedIndicesMap.size() > 0) {
-      state.gradientBlockingIndicesMap.mergeWith(last_trial.forcedIndicesMap);
-    }
   } else {
     // pick the trials with smallest error
     state =
@@ -104,18 +99,52 @@ void IELMState::construct(const NonlinearFactorGraph &graph,
   baseLinear = graph.linearize(baseValues());
   linearManifoldGraph = manifold_graph.linearize(values);
 
-  // compute graident
-  computeGradient(manifold_graph);
-}
-
-/* ************************************************************************* */
-void IELMState::computeGradient(const NonlinearFactorGraph &manifold_graph) {
+  const auto dimensions = values.dims();
+  std::map<KeyVector, GaussianFactorGraph> costScopes;
+  for (auto &factor : *linearManifoldGraph) {
+    if (!factor) continue;
+    // A fully fixed component can expose an all-zero placeholder Jacobian
+    // column. Its Values dimension is authoritative, not the factor width.
+    bool hasFixedComponent = false;
+    for (Key key : *factor) hasFixedComponent |= dimensions.at(key) == 0;
+    if (hasFixedComponent) {
+      const JacobianFactor jacobian(*factor);
+      std::vector<std::pair<Key, Matrix>> terms;
+      for (auto key = jacobian.begin(); key != jacobian.end(); ++key)
+        if (dimensions.at(*key)) terms.emplace_back(*key, jacobian.getA(key));
+      // Keep constant factors for undamped model-error bookkeeping.
+      factor = std::make_shared<JacobianFactor>(terms, jacobian.getb(),
+                                                jacobian.get_model());
+    }
+    if (!factor->empty()) {
+      KeyVector scope = factor->keys();
+      std::sort(scope.begin(), scope.end());
+      costScopes[scope].push_back(factor);
+    }
+  }
+  // Combine matching scopes without forming normal equations. Sparse QP
+  // elimination can then retain rank-deficient costs in square-root form.
+  for (const auto &[scope, factors] : costScopes)
+    tangentQp.addCost(JacobianFactor(factors, Ordering(scope)));
   gradient = linearManifoldGraph->gradientAtZero();
-  VectorValues descentDirection = -1 * gradient;
+  for (const auto &[key, dimension] : dimensions)
+    if (!dimension) gradient.insert(key, Vector(0));
 
-  // identify blocking constraints
-  gradientBlockingIndicesMap =
-      IEOptimizer::projectTangentCone(manifolds, descentDirection).first;
+  size_t firstRow = 0;
+  for (const auto &[key, manifold] : manifolds) {
+    const auto &local = *manifold.linearization();
+    for (size_t index : local.indices()) {
+      // Whiten exactly once, using the cached directional Jacobian. The RHS
+      // stays zero even for explicitly selected near-boundary modes.
+      const Matrix &rows = local.rows(index, true);
+      if (!rows.cols() || !rows.rows()) continue;
+      tangentQp.addConstraint(LinearConstraint::LessEqual(
+          JacobianFactor(key, rows, Vector::Zero(rows.rows()))));
+      qpConstraintBlocks.push_back(
+          {key, index, firstRow, static_cast<size_t>(rows.rows())});
+      firstRow += rows.rows();
+    }
+  }
 }
 
 /* ************************************************************************* */
@@ -193,6 +222,7 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
     // A failed projection is not a candidate state. Retry at a smaller LM step;
     // do not let stopping tests accept an uncomputed nonlinear error or delta.
     linearUpdate.solveSuccessful = false;
+    linearUpdate.failureReason = failure.what();
     nonlinearUpdate.newError = std::numeric_limits<double>::infinity();
     nonlinearUpdate.costChange = -std::numeric_limits<double>::infinity();
     modelFidelity = -std::numeric_limits<double>::infinity();
@@ -403,17 +433,12 @@ std::string ConstraintInfoStr(const IEManifoldValues &state_manifolds,
 
 /* ************************************************************************* */
 void printIELMTrialTitle() {
-  cout << setw(10) << "iter   "
-       << "|" << setw(12) << "error  "
-       << "|" << setw(12) << "nonlinear "
-       << "|" << setw(12) << "linear   "
-       << "|" << setw(12) << "linear_retr"
-       << "|" << setw(10) << "lambda  "
-       << "|" << setw(10) << "numSolves"
-       << "|" << setw(17) << "retract_devi "
-       << "|" << setw(10) << "time  "
-       << "|" << setw(10) << "delta_norm"
-       << "|" << setw(30) << "active constraints" << endl;
+  cout << setw(10) << "iter   " << "|" << setw(12) << "error  " << "|"
+       << setw(12) << "nonlinear " << "|" << setw(12) << "linear   " << "|"
+       << setw(12) << "linear_retr" << "|" << setw(10) << "lambda  " << "|"
+       << setw(10) << "QP/retract" << "|" << setw(17) << "retract_devi "
+       << "|" << setw(10) << "time  " << "|" << setw(10) << "delta_norm" << "|"
+       << setw(30) << "active constraints" << endl;
 }
 
 double VectorMean(const std::vector<double> &vec) {
@@ -461,10 +486,10 @@ void printIELMTrial(const IELMState &state, const IELMTrial &trial,
          << nonlinearUpdate.linearCostChangeWithRetractionDelta << "|";
     cout << setw(10) << setprecision(2) << linearUpdate.lambda << "|";
     if (!linearUpdate.solveSuccessful) {
-      cout << "linear solve not successful\n";
+      cout << "trial failed: " << linearUpdate.failureReason << "\033[0m\n";
       return;
     }
-    cout << setw(4) << linearUpdate.numSolves << "|" << setw(5) << std::left
+    cout << setw(4) << linearUpdate.qpIterations << "|" << setw(5) << std::left
          << nonlinearUpdate.numRetractionIterations << std::right << "|";
     cout << setw(8) << VectorMean(nonlinearUpdate.retractionDeviationRates) << "|"
          << setw(8) << std::left
@@ -506,74 +531,117 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const NonlinearFactorGraph &graph,
                                       const IELMState &state,
                                       const IELMParams &params)
-    : lambda(_lambda), numSolves(0) {
-  // Damping controls the trial step. Predicted cost reduction below is measured
-  // with the original, undamped model.
+    : lambda(_lambda) {
+  if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
+#ifndef GTDYNAMICS_WITH_PROXQP
+    throw std::invalid_argument(
+        "ProxQP backend requires a build with GTDYNAMICS_WITH_PROXQP=ON");
+#endif
+    if (params.qpUseFeasibleStep || params.qpUseProjectedGradientInitialization)
+      throw std::invalid_argument(
+          "ProxQP requires full QP solves and no projected-gradient "
+          "initialization");
+  }
   const auto &linear = *state.linearManifoldGraph;
-  const VectorValues sqrtHessianDiagonal =
-      SqrtHessianDiagonal(linear, params.lmParams);
-  const auto dampedSystem =
-      buildDampedSystem(linear, sqrtHessianDiagonal, state, params.lmParams);
+  const auto sqrtHessianDiagonal = SqrtHessianDiagonal(linear, params.lmParams);
+  QpProblem problem = state.tangentQp;
+  // Only damping changes across trials; the undamped QP belongs to the state.
+  for (const auto &factor :
+       buildDampedSystem({}, sqrtHessianDiagonal, state, params.lmParams))
+    problem.addCost(factor);
+
+  delta = state.values.zeroVectors();
+  Values initial;
+  for (const auto &[key, value] : delta)
+    if (value.size()) initial.insert(key, value);
+
   IndexSetMap blockingIndices;
-  const bool hasActive = std::any_of(
-      state.manifolds.begin(), state.manifolds.end(), [](const auto &entry) {
-        return !entry.second.linearization()->indices().empty();
-      });
-  if (!hasActive) {
-    // With no active inequality faces, this is an ordinary LM linear solve.
+  if (!initial.empty()) {
+    auto qpParams = std::make_shared<ActiveSetSolverParams>();
+    qpParams->qpSubproblemSolver =
+        ActiveSetSolverParams::QpSubproblemSolver::Sparse;
+    qpParams->regularization = 0;
+    qpParams->maxIterations = params.qpMaxIterations;
+    qpParams->qpInitialization =
+        params.qpUseProjectedGradientInitialization
+            ? gtsam::ActiveSetSolverParams::QpInitialization::ProjectedGradient
+            : gtsam::ActiveSetSolverParams::QpInitialization::TightConstraints;
+    if (params.lmParams.ordering) {
+      Ordering ordering;
+      for (Key key : *params.lmParams.ordering) {
+        // Fixed components have no QP variables. Keep other entries so GTSAM
+        // can reject missing, repeated or unknown keys in the requested order.
+        if (delta.exists(key) && delta.at(key).size() == 0) continue;
+        ordering.push_back(key);
+      }
+      qpParams->setOrdering(ordering);
+    }
     try {
-      delta = internal::solveWorkingFaces(dampedSystem, {}, params.lmParams);
-      solveSuccessful = true;
-    } catch (const IndeterminateSystemException &) {
-      solveSuccessful = false;
-    } catch (const std::runtime_error &) {
-      solveSuccessful = false;
-    }
-    numSolves = 1;
-  } else {
-    // First obtain a cone-feasible step using the gradient's blocking faces.
-    // This is also the final approximation when QP refinement is disabled.
-    std::tie(delta, blockingIndices, numSolves, solveSuccessful) =
-        initialEstimate(dampedSystem, state, params.lmParams);
-    if (!solveSuccessful) return;
-
-    // Refine both the step and working set; initially blocking faces may need
-    // to be released to reach the constrained minimum.
-    if (params.iqpMaxIterations > 0) {
-      refineIQPStep(dampedSystem, state, blockingIndices, params.lmParams,
-                    params.iqpMaxIterations);
-      if (!solveSuccessful) return;
+      Values solution;
+      std::vector<bool> activeRows;
+#ifdef GTDYNAMICS_WITH_PROXQP
+      if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
+        const auto result = internal::solveProxQp(
+            problem, initial, qpParams->ordering, params.qpMaxIterations);
+        qpIterations = result.iterations;
+        if (!result.converged) {
+          failureReason = result.message;
+          return;
+        }
+        solution = result.values;
+        activeRows = result.activeRows;
+      } else
+#endif
+      {
+        const ActiveSetSolver solver(problem, qpParams);
+        if (params.qpUseFeasibleStep) {
+          const auto result = solver.computeFeasibleStep(initial);
+          qpIterations = result.iterations;
+          using Status = ActiveSetFeasibleStepResult::Status;
+          if (result.status != Status::FeasibleProgress &&
+              result.status != Status::NoProgress) {
+            failureReason = result.message;
+            return;
+          }
+          solution = result.values;
+          activeRows = result.activeInequalityRows;
+        } else {
+          const auto [values, result] = solver.optimizeWithState(initial);
+          qpIterations = result.iterations;
+          if (!result.converged) {
+            failureReason = "Sparse QP did not converge";
+            return;
+          }
+          solution = values;
+          activeRows = result.activeInequalityRows;
+        }
+      }
+      for (auto &[key, value] : delta) {
+        if (value.size()) value = solution.at<Vector>(key);
+        if (!value.allFinite()) {
+          failureReason = "Sparse QP returned a nonfinite increment";
+          return;
+        }
+      }
+      for (const auto &block : state.qpConstraintBlocks) {
+        const auto begin = activeRows.begin() + block.firstRow;
+        // Retraction promotes whole blocks only. Partially active vector
+        // constraints remain inequalities, as in the existing cone projection.
+        if (std::all_of(begin, begin + block.numRows,
+                        [](bool active) { return active; }))
+          blockingIndices[block.component].insert(block.constraint);
+      }
+    } catch (const IndeterminateSystemException &error) {
+      failureReason = error.what();
+      return;
+    } catch (const std::runtime_error &error) {
+      // Includes iteration exhaustion. Invalid inputs still propagate.
+      failureReason = error.what();
+      return;
     }
   }
-
-  if (solveSuccessful) recordSolution(state, blockingIndices);
-}
-
-/* ************************************************************************* */
-void IELMTrial::LinearUpdate::refineIQPStep(
-    const GaussianFactorGraph &dampedSystem, const IELMState &state,
-    IndexSetMap &blockingIndices, const LevenbergMarquardtParams &params,
-    size_t maxIterations) {
-  try {
-    internal::ComponentLinearizations components;
-    for (const auto &[key, manifold] : state.manifolds)
-      components.emplace(key, manifold.linearization());
-    const auto result = internal::refineWorkingSet(
-        internal::compactGaussianCosts(dampedSystem), components, delta,
-        blockingIndices, params, maxIterations);
-    delta = result.delta;
-    numSolves += result.numSolves;
-    blockingIndices = result.blockingIndices;
-    solveSuccessful = result.converged;
-  } catch (const IndeterminateSystemException &) {
-    solveSuccessful = false;
-  } catch (const std::runtime_error &) {
-    solveSuccessful = false;
-  } catch (const std::invalid_argument &) {
-    // The optional refinement requires a tighter feasible warm start than the
-    // initial block-level approximation. Reject a trial outside that tolerance.
-    solveSuccessful = false;
-  }
+  solveSuccessful = true;
+  recordSolution(state, blockingIndices);
 }
 
 /* ************************************************************************* */
@@ -585,6 +653,7 @@ void IELMTrial::LinearUpdate::recordSolution(
   tangentVector = computeTangentVector(state, delta, state.unconstrainedKeys);
   if (!checkSolutionValid(state, delta, blockingIndices)) {
     solveSuccessful = false;
+    failureReason = "Sparse QP failed directional feasibility checks";
     return;
   }
   const auto &linear = *state.linearManifoldGraph;
@@ -600,53 +669,6 @@ IELMTrial::LinearUpdate IELMTrial::LinearUpdate::zero(const IELMState &state) {
   linearUpdate.delta = state.values.zeroVectors();
   linearUpdate.tangentVector = state.baseValues().zeroVectors();
   return linearUpdate;
-}
-
-/* ************************************************************************* */
-std::tuple<VectorValues, IndexSetMap, size_t, bool>
-IELMTrial::LinearUpdate::initialEstimate(
-    const GaussianFactorGraph &quadraticCost, const IELMState &state,
-    const LevenbergMarquardtParams &params) {
-  IndexSetMap blockingIndices = state.gradientBlockingIndicesMap;
-  size_t numSolves = 0;
-
-  const auto localCost = internal::compactGaussianCosts(quadraticCost);
-
-  while (true) {
-    numSolves += 1;
-    VectorValues delta;
-    try {
-      // Selected faces define local coordinates. The global solver only sees
-      // the objective in those coordinates, with the original LM damping.
-      internal::WorkingFaces charts;
-      for (const auto &[key, selected] : blockingIndices)
-        if (!selected.empty())
-          charts.emplace(
-              key,
-              state.manifolds.at(key).linearization()->workingFace(selected));
-      delta = internal::solveWorkingFaces(localCost, charts, params);
-    } catch (const IndeterminateSystemException &) {
-      return {delta, blockingIndices, numSolves, false};
-    } catch (const std::runtime_error &) {
-      return {delta, blockingIndices, numSolves, false};
-    }
-
-    bool feasible = true;
-    for (const auto &[key, manifold] : state.manifolds) {
-      const auto &local = *manifold.linearization();
-      if (local.indices().empty()) continue;
-      for (size_t index : local.violated(delta.at(key))) {
-        auto &selected = blockingIndices[key];
-        if (selected.exists(index))
-          return {delta, blockingIndices, numSolves, false};
-        feasible = false;
-        selected.insert(index);
-      }
-    }
-    if (feasible) {
-      return {delta, blockingIndices, numSolves, true};
-    }
-  }
 }
 
 /* ************************************************************************* */
@@ -683,6 +705,7 @@ GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
   for (const auto &key_dim : dims) {
     const Key &key = key_dim.first;
     const size_t &dim = key_dim.second;
+    if (!dim) continue;
     const LMCachedModel *item = getCachedModel(dim);
     damped.emplace_shared<JacobianFactor>(key, item->A, item->b, item->model);
   }
@@ -699,6 +722,7 @@ GaussianFactorGraph IELMTrial::LinearUpdate::buildDampedSystem(
     try {
       const Key key = key_vector.first;
       const size_t dim = key_vector.second.size();
+      if (!dim) continue;
       LMCachedModel *item = getCachedModel(dim);
       item->A.diagonal() = sqrtHessianDiagonal.at(key); // use diag(hessian)
       damped.emplace_shared<JacobianFactor>(key, item->A, item->b, item->model);
@@ -856,20 +880,12 @@ void IELMOptimizationDetails::exportFile(const std::string &state_file_path,
              << ",lambda"
              << ",error"
              << "\n";
-  trial_file << "iterations"
-             << ",lambda"
-             << ",error"
-             << ",stepIsSuccessful"
-             << ",linearCostChange"
-             << ",linearCostChangeWithRetractionDelta"
-             << ",nonlinearCostChange"
-             << ",modelFidelity"
-             << ",tangent_vector_norm"
-             << ",num_solves_linear"
-             << ",num_solves_retraction"
-             << ",avg_retract_deviation_rate"
-             << ",max_retract_deviation_rate"
-             << "\n";
+  trial_file << "iterations" << ",lambda" << ",error" << ",stepIsSuccessful"
+             << ",linearCostChange" << ",linearCostChangeWithRetractionDelta"
+             << ",nonlinearCostChange" << ",modelFidelity"
+             << ",tangent_vector_norm" << ",qp_iterations"
+             << ",num_solves_retraction" << ",avg_retract_deviation_rate"
+             << ",max_retract_deviation_rate" << "\n";
 
   for (const auto &iter_details : *this) {
     const auto &state = iter_details.state;
@@ -884,7 +900,7 @@ void IELMOptimizationDetails::exportFile(const std::string &state_file_path,
                  << "," << trial.nonlinearUpdate.costChange << ","
                  << trial.modelFidelity << ","
                  << trial.linearUpdate.tangentVector.norm() << ","
-                 << trial.linearUpdate.numSolves << ","
+                 << trial.linearUpdate.qpIterations << ","
                  << trial.nonlinearUpdate.numRetractionIterations << ","
                  << VectorMean(trial.nonlinearUpdate.retractionDeviationRates)
                  << ","

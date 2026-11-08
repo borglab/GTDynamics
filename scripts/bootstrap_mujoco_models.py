@@ -6,14 +6,20 @@ import json
 import os
 from pathlib import Path
 import sys
+import mujoco
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "examples/g1_mjlab"))
 from g1_model import prepare_model
+from g1_urdf import write_ik_urdf
 
 
 def main() -> int:
     source = prepare_model()
+    write_ik_urdf(
+        mujoco.MjModel.from_xml_path(str(source / "scene.xml")),
+        REPO / "models/urdfs/g1/g1.urdf",
+    )
     assets = REPO / "apps/contact-initialization/public/assets"
     assets.mkdir(parents=True, exist_ok=True)
     for link in (REPO / "models/mujoco/unitree_g1", assets / "unitree_g1"):

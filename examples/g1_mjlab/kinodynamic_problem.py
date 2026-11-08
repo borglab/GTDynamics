@@ -125,7 +125,7 @@ def solve_coupled_problem(
     armature: NDArray[np.float64],
     options: dict[str, Any],
 ) -> dict[str, Any]:
-    """Run native CMC-Opt on every original slice, returning states and diagnostics.
+    """Run native CMC-Opt on the retained support slices with their actual times.
 
     Native assembly adds motion and force variables, mechanical constraints,
     and collocation factors. It restores feasibility before joint optimization;

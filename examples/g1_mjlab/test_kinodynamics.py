@@ -13,10 +13,91 @@ import gtdynamics as gtd
 import gtsam
 import numpy as np
 from _g1_kinodynamics import solve
+from _g1_kinodynamics import has_proxqp
 from kinodynamic_settings import solver_settings
 
 
 class TestKinodynamics(unittest.TestCase):
+    def test_sparse_support_preparation_preserves_times_and_stances(self) -> None:
+        """Select before assembly; keep swing knots and continuous foothold IDs."""
+        import gzip
+        import json
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from contact_phases import stance_observations
+        from kinodynamic_preparation import prepare_walk
+
+        body = gtd.Link(0, "pelvis", 10.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
+        foot = gtd.Link(1, "foot", 1.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
+        joint = gtd.RevoluteJoint(
+            0, "joint", gtsam.Pose3(), body, foot, np.array([0.0, 0.0, 1.0])
+        )
+        body.addJoint(joint)
+        foot.addJoint(joint)
+        robot = gtd.Robot({"pelvis": body, "foot": foot}, {"joint": joint})
+        frames = {
+            "left": gtd.PoseOnLink(body, gtsam.Pose3(), True),
+            "right": gtd.PoseOnLink(foot, gtsam.Pose3(), True),
+        }
+        model = SimpleNamespace(
+            body_ipos=np.zeros((2, 3)),
+            body_iquat=np.array([[1.0, 0.0, 0.0, 0.0]] * 2),
+            qpos0=np.array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]),
+            jnt_qposadr=[7],
+            joint=lambda name: SimpleNamespace(id=0),
+        )
+        qpos = np.zeros((131, 8))
+        qpos[:, 2:4] = 1
+        qpos[:, 7] = np.arange(131) * 0.001
+        states = [2] * 3 + [0] * 3 + [2] + [1] * 4 + [2] * 20
+        selected = np.array([1, 4, 6, 8, 12, 21, 29])
+        with TemporaryDirectory() as directory:
+            labels = Path(directory) / "labels.json.gz"
+            labels.write_bytes(
+                gzip.compress(
+                    json.dumps(
+                        {
+                            "times": (2 + np.arange(31) * 0.02).tolist(),
+                            "supportGraph": {"states": states},
+                        }
+                    ).encode()
+                )
+            )
+            with patch.multiple(
+                "kinodynamic_preparation",
+                load_recording=lambda _: ({"qpos": qpos}, {}),
+                load_g1_model=lambda: model,
+                model_bodies=lambda _: [],
+                import_robot=lambda _: robot,
+                contact_frames=lambda *_: frames,
+            ):
+                walk, metadata = prepare_walk(Path(directory), labels, 2.0, 2.6)
+        self.assertEqual(walk.count, 7)
+        np.testing.assert_array_equal(walk.source_indices, 100 + selected)
+        np.testing.assert_allclose(walk.times, 2 + selected * 0.02)
+        np.testing.assert_allclose(
+            [
+                walk.measured.atDouble(gtd.JointAngleKey(0, k))
+                for k in range(walk.count)
+            ],
+            (100 + selected) * 0.001,
+        )
+        self.assertEqual(metadata["initializationSlices"], list(range(7)))
+        self.assertEqual(metadata["optimizationSourceSlices"], selected.tolist())
+        self.assertEqual(metadata["optimizationSampling"]["singleSupportSlices"], 2)
+        self.assertEqual(metadata["optimizationSampling"]["sourceSlices"], 31)
+        observations = {
+            (k, contact.link.id()): key for k, contact, key in stance_observations(walk)
+        }
+        # Left stays down across the first double/single/double transition.
+        self.assertEqual(observations[0, 0], observations[2, 0])
+        # The right foot lifts during the first single-support phase.
+        self.assertNotEqual(observations[0, 1], observations[2, 1])
+        self.assertEqual(observations[2, 1], observations[4, 1])
+
     def test_coupled_support_from_zero(self) -> None:
         """Upright measurements correct an initial tilt; only translation/yaw anchor."""
         body = gtd.Link(0, "body", 10.0, np.eye(3), gtsam.Pose3(), gtsam.Pose3())
@@ -55,6 +136,9 @@ class TestKinodynamics(unittest.TestCase):
         self.assertEqual(options["gaugeSlice"], 0)
         self.assertEqual(options["retractionThreads"], 8)
         self.assertEqual(options["initialization"], "contact-gp-dynamics")
+        self.assertFalse(options["qpUseProjectedGradientInitialization"])
+        self.assertTrue(options["qpUseFeasibleStep"])
+        self.assertFalse(options["qpUseTemporalOrdering"])
         options["maxIterations"] = 20
         options["gaugeSlice"] = 1
         result = solve(
@@ -71,6 +155,7 @@ class TestKinodynamics(unittest.TestCase):
         )
         options["retractionThreads"] = 1
         options["historyWindow"] = 0
+        options["qpUseTemporalOrdering"] = True
         serial = solve(
             robot,
             trajectory,
@@ -84,9 +169,46 @@ class TestKinodynamics(unittest.TestCase):
             options,
         )
         self.assertTrue(result["values"].equals(serial["values"], 1e-8))
+        self.assertEqual(len(result["qpOrderingKeys"]), 0)
+        self.assertGreater(len(serial["qpOrderingKeys"]), 0)
         np.testing.assert_allclose(
             result["errorHistory"], serial["errorHistory"], atol=1e-8
         )
+        options["qpUseFeasibleStep"] = False
+        full = solve(
+            robot,
+            trajectory,
+            [gtd.Slice(k) for k in range(3)],
+            [0.0, 0.02, 0.04],
+            initial,
+            [measurements],
+            ["Root observations"],
+            [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.6)],
+            np.empty(0),
+            options,
+        )
+        self.assertTrue(full["feasible"])
+        self.assertLess(full["objectiveFinal"], full["objectiveInitial"])
+        if has_proxqp:
+            options["qpBackend"] = "proxqp"
+            prox = solve(
+                robot,
+                trajectory,
+                [gtd.Slice(k) for k in range(3)],
+                [0.0, 0.02, 0.04],
+                initial,
+                [measurements],
+                ["Root observations"],
+                [gtd.fixed_dynamics.Contact(sole, 0.1, 0.04, 0.6)],
+                np.empty(0),
+                options,
+            )
+            self.assertTrue(prox["feasible"])
+            self.assertAlmostEqual(
+                prox["objectiveFinal"], full["objectiveFinal"], places=6
+            )
+            options["qpBackend"] = "gtsam"
+        options["qpUseFeasibleStep"] = True
         # The complete example objective has the same value after a global
         # translation/yaw change, with the gauge anchor transformed alongside it.
         change = gtsam.Pose3(gtsam.Rot3.Rz(0.7), np.array([2.0, -3.0, 1.0]))

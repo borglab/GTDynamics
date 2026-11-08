@@ -9,6 +9,7 @@ import apps from '../registry.json' with { type: 'json' };
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const ready = {
+  urdf: '.urdf-app[data-mode="browser"] #status-badge:has-text("Ready")',
   'contact-labels': '.label-scene canvas',
   'contact-initialization': '.scene canvas',
   'contact-vs-ik': '.comparison .scene canvas',
@@ -17,8 +18,10 @@ const ready = {
   dynamics: '.dynamics-scene[data-ready="true"]',
   kinodynamics: '.kinodynamics-scene[data-ready="true"]',
   'motion-planning': '.robot-canvas canvas',
+  'scate/ur5': '#stage[data-ready="true"] canvas',
 };
 const controls = {
+  urdf: '#panel',
   'contact-labels': '.time-controls',
   'contact-initialization': '.prior-controls',
   'contact-vs-ik': '.iteration-controls',
@@ -27,6 +30,7 @@ const controls = {
   dynamics: '.display-options',
   kinodynamics: '.display-options',
   'motion-planning': '.playback-controls',
+  'scate/ur5': '.transport',
 };
 async function fitsWidth(frame) {
   // Plotly resizes asynchronously after the viewport and its containers change.
@@ -96,7 +100,7 @@ try {
           }
           if (process.env.SCREENSHOT_DIR) {
             await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
-            await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/${app.id}.png` });
+            await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/${app.id.replaceAll('/', '-')}.png` });
           }
         }
         if (app.id === 'contact-vs-ik') {
@@ -104,7 +108,10 @@ try {
           await frame.getByRole('slider', { name: 'Contact initialization iteration', exact: true }).fill('0');
           await frame.locator('.method-results.contact[data-result-iteration="0"]').waitFor();
         }
-        if (app.id === 'contact-initialization') {
+        if (app.id === 'urdf') {
+          assert.equal(await paper.locator('mjx-container[jax="SVG"]').count(), 3);
+          await frame.getByText('Live browser solve', { exact: true }).waitFor();
+        } else if (app.id === 'contact-initialization') {
           await frame.getByRole('button', { name: 'Select event 1', exact: true }).click();
           assert.equal(await frame.locator('main').getAttribute('data-event'), '1');
         } else if (nativePaper) {
@@ -112,6 +119,7 @@ try {
           await frame.getByRole('button', { name: /^Go to knot / }).last().click();
           assert.notEqual(await frame.locator('main').getAttribute('data-frame'), before);
         } else {
+          if (app.id === 'scate/ur5') await frame.getByRole('slider', {name: 'Time', exact: true}).fill('0');
           await frame.getByRole('button', { name: /^Show slice 1 in demo/ }).first().click();
           if (app.id !== 'motion-planning') assert.equal(await frame.locator('main').getAttribute('data-frame'), '1');
         }
@@ -126,7 +134,7 @@ try {
           await page.setViewportSize({ width: 390, height: 844 });
           assert(await fitsWidth(frame), `${app.id}: fits mobile width`);
         }
-        if (app.id !== 'motion-planning') {
+        if (app.id !== apps.at(-1).id) {
           const next = apps[apps.indexOf(app) + 1];
           await frame.getByRole('link', { name: `Next: ${next.title} →`, exact: true }).click();
           await page.getByRole('tab', { name: next.title, selected: true }).waitFor();

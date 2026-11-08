@@ -5,9 +5,9 @@
 # See LICENSE for the license information.
 # ----------------------------------------------------------------------------
 ## @file kinodynamic_walk.py
-# @brief Solve dense G1 kinodynamics from FK or contact-pose initialization.
+# @brief Solve G1 kinodynamics on selected single- and double-support slices.
 # @author GTDynamics contributors
-"""Solve the SSIO mid-clip turns jointly at 50 Hz using native CMC-Opt.
+"""Solve the SSIO mid-clip turns on sparse support slices using native CMC-Opt.
 
 The saved Contact Labels max-product schedule supplies stance phases. The default
 runs the native contact -> GP -> dynamics pipeline. Use --initialization contact
@@ -52,7 +52,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 @dataclass
 class KinodynamicSolution:
-    """Full dense solution, initial pose estimate, physical model and timings."""
+    """Support-slice solution, initial pose estimate, physical model and timings."""
 
     walk: KinematicRecording
     result: dict[str, Any]
@@ -70,8 +70,12 @@ def solve_walk(
     max_iterations: int = 5,
     retraction_threads: int = 8,
     initialization: str = "contact-gp-dynamics",
+    qp_backend: str = "gtsam",
+    qp_use_feasible_step: bool = True,
+    qp_use_projected_gradient_initialization: bool = False,
+    qp_use_temporal_ordering: bool = False,
 ) -> KinodynamicSolution:
-    """Initialize and jointly optimize G1 poses, motion, and forces at 50 Hz.
+    """Initialize and jointly optimize G1 poses, motion, and forces at support knots.
 
     Args:
         directory: Recording directory containing encoders, reference, and IMU.
@@ -83,12 +87,19 @@ def solve_walk(
         initialization: "fk" uses fixed-pelvis FK and gravity-support forces;
             "contact" fits contact poses with zero motion and forces;
             "contact-gp-dynamics" adds GP interpolation and a linear dynamics seed (default).
+        qp_backend: "gtsam" (default) or the optional native "proxqp" backend.
+            ProxQP requires full solves with projected gradients disabled.
+        qp_use_feasible_step: Request feasible descent from GTSAM instead of convergence.
+        qp_use_projected_gradient_initialization: Seed primal GTSAM solves by projecting
+            the negative gradient; disabled by default and ignored by Dual.
+        qp_use_temporal_ordering: Pass the example's chronological component and
+            last-observation ordering instead of automatic COLAMD.
 
     Returns:
         The prepared clip, initial COM-to-world poses, native optimized values,
         sole patches, and timing metadata. The contact-gp-dynamics strategy retains fitted
-        velocities, accelerations, torques and wrenches. Every original
-        sample is optimized. Preparation, configuration initialization,
+        velocities, accelerations, torques and wrenches. Only the selected
+        single- and double-support slices are optimized. Preparation, initialization,
         measurement assembly, and native solve are timed separately; array
         extraction and serialization are excluded. Total initialization/solve
         time starts after clip preparation and includes measurement assembly.
@@ -120,13 +131,17 @@ def solve_walk(
         float(walk.times[gauge_slice]),
         max_iterations,
         retraction_threads,
+        qp_backend=qp_backend,
+        qp_use_feasible_step=qp_use_feasible_step,
+        qp_use_projected_gradient_initialization=qp_use_projected_gradient_initialization,
+        qp_use_temporal_ordering=qp_use_temporal_ordering,
     )
     metadata.update(solver_metadata)
     metadata["measurementPreparationSeconds"] = (
         time.perf_counter() - measurement_started
     )
 
-    # Restore feasibility, then jointly optimize on the same 50 Hz slices.
+    # Restore feasibility, then jointly optimize the same sparse support knots.
     started = time.perf_counter()
     result = solve_coupled_problem(
         walk, initial, measurements, patches, armature, options
@@ -145,7 +160,8 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
     return {
         **solution.metadata,
         "samples": solution.walk.count,
-        "sampleRateHz": 50,
+        "sampleRateHz": None,
+        "sourceSampleRateHz": 50,
         "initialization": (
             "Measured-joint FK at a fixed upright pelvis; gravity-support forces; "
             "zero velocities, accelerations, joint torques and bias"
@@ -174,6 +190,7 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
                 "equalityDimension",
                 "inequalityDimension",
                 "feasible",
+                "qpOrderingKeys",
             )
         },
         "errorNames": list(result["errorNames"]),
@@ -333,6 +350,30 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", type=float, default=98.0)
     parser.add_argument("--max-iterations", type=int, default=5)
     parser.add_argument("--retraction-threads", type=int, default=8)
+    parser.add_argument(
+        "--qp-backend",
+        choices=("gtsam", "proxqp"),
+        default="gtsam",
+        help="QP backend (default: gtsam); proxqp requires --qp-step full",
+    )
+    parser.add_argument(
+        "--qp-step",
+        choices=("feasible", "full"),
+        default="feasible",
+        help="feasible descent (default) or a converged QP solution",
+    )
+    parser.add_argument(
+        "--projected-gradient-initialization",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Seed QP solves with projected gradients (default: disabled)",
+    )
+    parser.add_argument(
+        "--qp-ordering",
+        choices=("automatic", "temporal"),
+        default="automatic",
+        help="Backend automatic order (default) or chronological order (ProxQP: packing only)",
+    )
     return parser
 
 
@@ -349,6 +390,10 @@ def main() -> None:
         max_iterations=args.max_iterations,
         retraction_threads=args.retraction_threads,
         initialization=args.initialization,
+        qp_backend=args.qp_backend,
+        qp_use_feasible_step=args.qp_step == "feasible",
+        qp_use_projected_gradient_initialization=args.projected_gradient_initialization,
+        qp_use_temporal_ordering=args.qp_ordering == "temporal",
     )
     args.output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output / "kinodynamics.npz", **solution_arrays(solution))

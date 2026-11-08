@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, system-ui, sans-serif;
-  color: #243438;
-  background: #f5f7f3;
+  color: var(--dark-text, #243438);
+  background: var(--dark-page, #f5f7f3);
   font-synthesis: none;
 }
 * {
@@ -17,10 +17,10 @@ select {
 }
 button,
 select {
-  border: 1px solid #ccd7d0;
+  border: 1px solid var(--dark-border, #ccd7d0);
   border-radius: 5px;
   padding: 7px 10px;
-  background: white;
+  background: var(--dark-panel, white);
   color: inherit;
 }
 button {
@@ -32,7 +32,7 @@ button:disabled {
 }
 button[aria-pressed="true"],
 tr.active {
-  background: #e0eee4;
+  background: var(--dark-surface, #e0eee4);
 }
 a {
   color: #24765f;
@@ -89,13 +89,13 @@ small {
   flex-direction: column;
   gap: 10px;
   padding: 18px;
-  background: white;
-  border: 1px solid #dce3dd;
+  background: var(--dark-panel, white);
+  border: 1px solid var(--dark-border, #dce3dd);
   border-radius: 6px;
 }
 .headline-metrics span {
   font-size: 12px;
-  color: #536b60;
+  color: var(--dark-secondary, #536b60);
 }
 .headline-metrics strong {
   font-size: 23px;
@@ -103,11 +103,11 @@ small {
 }
 .headline-metrics small {
   line-height: 1.5;
-  color: #61716a;
+  color: var(--dark-secondary, #61716a);
 }
 section {
-  background: white;
-  border: 1px solid #dce3dd;
+  background: var(--dark-panel, white);
+  border: 1px solid var(--dark-border, #dce3dd);
   border-radius: 7px;
   padding: 20px;
   margin: 20px 0;
@@ -117,7 +117,7 @@ section {
 }
 .scene {
   height: 570px;
-  background: #f0f2ed;
+  background: var(--dark-surface, #f0f2ed);
 }
 .scene canvas {
   display: block;
@@ -129,7 +129,7 @@ section {
   position: absolute;
   left: 15px;
   top: 15px;
-  background: #ffffffde;
+  background: var(--dark-overlay, #ffffffde);
   padding: 10px;
   border-radius: 5px;
   font:
@@ -139,7 +139,7 @@ section {
 }
 .scope,
 .notice {
-  color: #61716a;
+  color: var(--dark-secondary, #61716a);
   font-size: 12px;
 }
 .notice {
@@ -162,7 +162,7 @@ table {
 th,
 td {
   padding: 12px 10px;
-  border-bottom: 1px solid #e0e7e2;
+  border-bottom: 1px solid var(--dark-border, #e0e7e2);
 }
 td {
   font-variant-numeric: tabular-nums;
@@ -171,7 +171,7 @@ caption {
   text-align: left;
   font-size: 12px;
   padding-bottom: 12px;
-  color: #61716a;
+  color: var(--dark-secondary, #61716a);
 }
 .loss-plot {
   max-width: 600px;
@@ -181,7 +181,7 @@ caption {
 pre {
   max-height: 400px;
   overflow: auto;
-  background: #f4f6f2;
+  background: var(--dark-page, #f4f6f2);
   padding: 15px;
   font-size: 11px;
 }
@@ -190,11 +190,11 @@ summary {
 }
 footer {
   padding: 12px;
-  color: #536b60;
+  color: var(--dark-secondary, #536b60);
 }
 .error-banner {
   color: #a01e20;
-  background: #fff0ec;
+  background: var(--dark-page, #fff0ec);
   padding: 15px;
 }
 input[type="checkbox"] {
@@ -278,7 +278,7 @@ code {
   margin-top: 0;
 }
 .prior-controls {
-  border-top: 1px solid #e0e7e2;
+  border-top: 1px solid var(--dark-border, #e0e7e2);
   padding-top: 12px;
   margin-bottom: 0;
 }

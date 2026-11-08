@@ -43,8 +43,9 @@ test('every published, checked-in app asset has a replay or attribution consumer
   const steap='apps/steap-cmrg/public/';
   for(const name of ['model.json.gz','presets.json','MODEL_NOTICE.txt'])add(steap+name);
   for(const preset of json(`${steap}presets.json`))add(steap+preset.file);
+  for(const name of ['replay.json','meshes.json'])add(`apps/scate/ur5/public/${name}`);
   const published=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z','apps'],{cwd:root,encoding:'utf8'})
-    .split('\0').filter(path=>/^apps\/[^/]+\/public\//.test(path)&&existsSync(resolve(root,path)));
+    .split('\0').filter(path=>/^apps\/(?:[^/]+\/)+public\//.test(path)&&existsSync(resolve(root,path)));
   assert.deepEqual(published.filter(path=>!used.has(path)),[],'Unused public assets would be uploaded');
   assert.deepEqual([...used].filter(path=>!published.includes(path)),[],'Replay depends on an untracked or ignored asset');
   const large=published.filter(path=>readFileSync(resolve(root,path)).byteLength>1024*1024);

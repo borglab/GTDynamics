@@ -47,7 +47,8 @@ try {
       await page.getByRole('tab', { name: 'Overview' }).focus();
       await page.keyboard.press('ArrowRight');
       await page.getByRole('tab', { name: apps[0].title, selected: true }).waitFor();
-      assert.equal(apps.at(-1).id, 'scate/ur5');
+      assert.equal(apps[0].id, 'urdf');
+      assert.equal(await page.getByRole('tab').nth(1).innerText(), 'URDF IK');
       assert.equal(await page.getByRole('tab').last().innerText(), 'SCATE UR5');
       await page.getByRole('tab', { name: 'Motion Planning' }).click();
       assert.equal(await page.getByRole('tab', { name: 'Motion Snippets' }).count(), 0);

@@ -10,6 +10,7 @@ add_compile_options(-faligned-new)
 # Configuration options should appear even if dependency checks fail.
 option(GTDYNAMICS_ENABLE_BOOST_SERIALIZATION "Enable Boost serialization" ON)
 option(GTDYNAMICS_WITH_TBB "Use Intel Threaded Building Blocks (TBB) if available" OFF)
+option(GTDYNAMICS_WITH_PROXQP "Enable the optional sparse ProxQP CMC backend" OFF)
 option(GTDYNAMICS_WITH_SUITESPARSE "Enable SuiteSparse-based routines and IFOPT/IPOpt optimizer" OFF)
 option(GTDYNAMICS_BUILD_CABLE_ROBOT "Build Cable Robot" OFF)
 option(GTDYNAMICS_BUILD_JUMPING_ROBOT "Build Jumping Robot" OFF)
@@ -130,6 +131,10 @@ endif()
 
 include(cmake/HandleTBB.cmake)              # TBB
 
+if(GTDYNAMICS_WITH_PROXQP)
+  find_package(proxsuite 0.7.3 CONFIG REQUIRED)
+endif()
+
 add_subdirectory(gtdynamics)
 
 
@@ -174,6 +179,7 @@ else()
 message(STATUS "Use Intel TBB                               : NO")
 endif(TBB_FOUND)
 message(STATUS "Enable SuiteSparse                          : ${GTDYNAMICS_WITH_SUITESPARSE}")
+message(STATUS "Enable ProxQP                               : ${GTDYNAMICS_WITH_PROXQP}")
 
 message(STATUS "Build Python                                : ${GTDYNAMICS_BUILD_PYTHON}")
 if(GTDYNAMICS_BUILD_PYTHON)

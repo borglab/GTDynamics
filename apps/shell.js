@@ -1,5 +1,16 @@
 import './style.css';
 import apps from './registry.json';
+import { getTheme, setTheme, onThemeChange } from './shared/theme.js';
+
+const themeToggle = document.querySelector('#theme-toggle');
+function updateThemeToggle() {
+  const dark = getTheme() === 'dark';
+  themeToggle.setAttribute('aria-pressed', String(dark));
+  themeToggle.textContent = dark ? '☾ Dark' : '☀ Light';
+}
+themeToggle.addEventListener('click', () => setTheme(getTheme() === 'dark' ? 'light' : 'dark'));
+onThemeChange(updateThemeToggle);
+updateThemeToggle();
 
 const tabs = document.querySelector('.tabs');
 const overview = document.querySelector('#overview-panel');
@@ -63,6 +74,7 @@ function selectTab() {
     frame.title = `${app.title} · GTDynamics`;
     // Resolve from the document rather than the bundle's hashed assets/ directory.
     frame.src = new URL(`./${app.id}/`, location.href).href;
+    frame.addEventListener('load', () => setTheme(getTheme(), { persist: false }));
     panel.append(frame);
   }
   window.scrollTo(0, 0);

@@ -12,6 +12,7 @@ try {
     'motion-planning/public/recording.json',
     'contact-initialization/public/assets/manifest.json',
     'contact-initialization/public/assets/unitree_g1/scene.xml',
+    '../models/urdfs/g1/g1.urdf',
   ].map(path => access(resolve(root, path))));
 } catch (error) {
   throw new Error('App assets are missing. Run npm run models before building.', { cause: error });

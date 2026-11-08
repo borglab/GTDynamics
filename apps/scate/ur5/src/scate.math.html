@@ -1,0 +1,19 @@
+<h4>State transition and measurements</h4>
+<p>Let Δt be the control interval, and let T<sub>WS</sub>(q) map sensor coordinates to the fixed robot world frame. The dynamics residual stacks joint-position and velocity prediction errors. Every residual is weighted by its factor’s noise model in the least-squares objective.</p>
+\[
+r_{\mathrm{dyn}}=\begin{bmatrix}q_{k+1}-q_k-\Delta t\,v_k-\tfrac12\Delta t^2u_k\\v_{k+1}-v_k-\Delta t\,u_k\end{bmatrix},\quad
+r_q=q_k-z^q_k,\quad r_v=v_k-z^v_k,\quad
+r_\ell=T_{WS}(q_k)^{-1}\ell-z^\ell_k.
+\]
+<h4>Limits and collision costs</h4>
+<p>A componentwise hinge starts inside a bound by its margin ε. The signed distance d is the gap between collision-sphere surfaces, in metres. The obstacle factor uses a fixed estimated centre during each solve. These are penalties, not exact inequality constraints.</p>
+\[
+h(x;a,b,\epsilon)=\max(0,a+\epsilon-x,x-b+\epsilon),\qquad
+r_{\mathrm{obs}}=\max(0,\epsilon_{\mathrm{obs}}-d(q(\tau);\hat\ell)),\qquad
+r_{\mathrm{self}}=\max(0,\epsilon_{\mathrm{self}}-d_{ij}(q(\tau))).
+\]
+<p>The continuous configuration q(τ) is interpolated from the two endpoint configurations and velocities. Each retained collision sample contributes its own factor; the graph diagram groups samples that have the same variable scope.</p>
+\[
+\Theta=\{q_k,v_k,u_k,\ell\},\qquad
+\Theta^*=\arg\min_\Theta\frac12\sum_f\|r_f(\Theta_f)\|^2_{\Sigma_f}.
+\]

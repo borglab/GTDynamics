@@ -1,5 +1,12 @@
 [
   {
+    "id": "urdf",
+    "title": "URDF IK",
+    "description": "Drag a UR10e or UR5 tool or a Unitree G1 palm or sole. Inspect joint configurations and pose errors in the browser. Local mode adds the GTDynamics factor graph and more robots.",
+    "tag": "Interactive inverse kinematics",
+    "backend": "python"
+  },
+  {
     "id": "contact-labels",
     "title": "Contact Labels",
     "description": "World-frame sole motion provides contact labels for three SSIO G1 snippets. A discrete factor graph combines motion evidence with walking priors.",

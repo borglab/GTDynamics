@@ -1,4 +1,5 @@
 <script setup>
+import { themeColor, onThemeChange } from '../../shared/theme.js';
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({ title: String, unit: String, times: Array, series: Array, time: Number, range: Array });
@@ -15,10 +16,10 @@ async function draw() {
     marker: { size: 5, color: series.color },
   })), {
     height: 260, margin: { l: 62, r: 15, t: 8, b: 52 },
-    paper_bgcolor: '#fff', plot_bgcolor: '#fff',
-    font: { family: 'system-ui, sans-serif', size: 11, color: '#52625b' },
-    xaxis: { title: { text: 'Time (s)' }, range: props.range, gridcolor: '#e5eae3' },
-    yaxis: { title: { text: props.unit }, gridcolor: '#e5eae3', automargin: true },
+    paper_bgcolor: themeColor('panel'), plot_bgcolor: themeColor('panel'),
+    font: { family: 'system-ui, sans-serif', size: 11, color: themeColor('secondary') },
+    xaxis: { title: { text: 'Time (s)' }, range: props.range, gridcolor: themeColor('grid') },
+    yaxis: { title: { text: props.unit }, gridcolor: themeColor('grid'), automargin: true },
     legend: { orientation: 'h', y: -0.25 }, hovermode: 'x unified',
     dragmode: 'zoom', uirevision: `${props.title}-${props.unit}`,
     shapes: [{ type: 'line', xref: 'x', yref: 'paper', x0: props.time, x1: props.time,
@@ -27,6 +28,8 @@ async function draw() {
   if (!disposed) element.value.dataset.ready = 'true';
 }
 
+const stopTheme = onThemeChange(() => { if (Plotly && ready && !disposed && element.value) draw(); });
+onBeforeUnmount(stopTheme);
 onMounted(async () => {
   try {
     Plotly = (await import('plotly.js-basic-dist-min')).default;

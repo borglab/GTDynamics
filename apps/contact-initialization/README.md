@@ -11,6 +11,30 @@ from measured joint angles; saved root COM poses are converted to pelvis body
 poses explicitly for display. RGB axes show estimated sole frames. Origin dots
 are visual markers, not separate point variables.
 
+## Preview locally
+
+From the repository root, use Node.js 22 or later and hydrate the recordings with
+Git LFS. If the G1 assets are already present, start the app with:
+
+```sh
+git lfs pull --include="apps/contact-initialization/public/**" --exclude=""
+cd apps
+npm ci
+npm run dev --workspace contact-initialization
+```
+
+Open [http://127.0.0.1:3003/](http://127.0.0.1:3003/) and scroll to **Factor graph
+formulation**. Select a root pose, then move the **Contact event** slider to
+select a different pose from the viewer.
+
+On a fresh checkout, generate the G1 assets once before starting Vite. From the
+repository root, in a Python 3.12 environment with a suitable `torch>=2.7` build:
+
+```sh
+python -m pip install -r examples/g1_mjlab/requirements-model.txt
+python scripts/bootstrap_mujoco_models.py
+```
+
 ## SSIO experiments
 
 `export_ssio_recordings.py` consumes the exact saved max-product `supportGraph.states`

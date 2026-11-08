@@ -17,6 +17,13 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 * [gtwrap](https://github.com/borglab/wrap)
 * [sdformat15](https://github.com/osrf/sdformat)
 
+The CMC QP integration currently requires the APIs in
+[GTSAM PR 2918](https://github.com/borglab/gtsam/pull/2918), including its
+prerequisites. Build GTSAM at `c940b44158d8bfa7394da233dd63aa225bc8fed2`
+from `codex/qp-dual-formulation`, then configure GTDynamics with
+`-DGTSAM_DIR=/path/to/gtsam/build`. CI pins this same tested revision; the
+current GTSAM `develop` branch does not yet provide the required APIs.
+
 ## Installing SDFormat
 
 GTDynamics uses the SDFormat parser to parse SDF/URDF files containing robot descriptions.
@@ -73,6 +80,88 @@ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 make -j4
 sudo make install
 ```
+
+## Optional sparse ProxQP backend
+
+CMC-Opt can solve its global reduced QP with
+[ProxQP from ProxSuite](https://github.com/Simple-Robotics/proxsuite).
+`GTDYNAMICS_WITH_PROXQP` defaults to `OFF`; ordinary builds require no ProxSuite
+installation. Enabling it makes the backend available without changing the
+default GTSAM solver. ProxSuite's BSD-2-Clause header-only solver is compiled
+into GTDynamics, with no separate solver shared library or Python runtime
+dependency. Its [license notice](doc/third-party/proxsuite-LICENSE) is installed
+alongside enabled GTDynamics builds. The capability gap addressed by this
+optional backend is sparse QP solve performance on the coupled G1 workload;
+the GTSAM backend remains
+available for comparison.
+
+ProxSuite 0.7.3 is the tested release. Its native installation requires
+CMake 3.22 or newer, a C++ compiler, and Eigen. Use the same Eigen version and
+alignment/compiler settings as the GTSAM build. For an installation using a
+system Eigen package:
+
+```bash
+git clone --branch v0.7.3 --depth 1 \
+  https://github.com/Simple-Robotics/proxsuite.git /tmp/proxsuite-0.7.3
+git -C /tmp/proxsuite-0.7.3 submodule update --init --depth 1 cmake-module
+cmake -S /tmp/proxsuite-0.7.3 -B /tmp/proxsuite-build \
+  -DCMAKE_INSTALL_PREFIX="$HOME/.local" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTING=OFF -DBUILD_PYTHON_INTERFACE=OFF \
+  -DBUILD_BENCHMARK=OFF -DBUILD_WITH_VECTORIZATION_SUPPORT=OFF \
+  -DBUILD_WITH_OPENMP_SUPPORT=OFF
+cmake --install /tmp/proxsuite-build
+```
+
+For GTSAM's bundled Eigen, install matching Eigen headers and its CMake package
+into that prefix before configuring ProxSuite:
+
+```bash
+cmake -S /path/to/gtsam/gtsam/3rdparty/Eigen -B /tmp/eigen-for-proxqp \
+  -DCMAKE_INSTALL_PREFIX="$HOME/.local" \
+  -DBUILD_TESTING=OFF -DEIGEN_BUILD_DOC=OFF
+cmake --install /tmp/eigen-for-proxqp
+# Add this to the ProxSuite configure command above:
+# -DEigen3_DIR="$HOME/.local/share/eigen3/cmake"
+```
+
+Then configure GTDynamics, retaining the existing GTSAM and TBB settings:
+
+```bash
+cmake -S . -B build \
+  -DGTSAM_DIR=/path/to/gtsam/build \
+  -DGTDYNAMICS_WITH_TBB=ON -DGTDYNAMICS_WITH_PROXQP=ON \
+  -Dproxsuite_DIR="$HOME/.local/lib/cmake/proxsuite" \
+  -DEigen3_DIR="$HOME/.local/share/eigen3/cmake"
+cmake --build build --parallel 6
+```
+
+A package-manager ProxSuite installation can also supply these CMake files.
+Some packaged builds require SIMDe even when consuming the base target; the
+minimal native recipe above disables that optional dependency. No ProxSuite
+Python bindings, NumPy, or SciPy are required by the C++ backend.
+
+In C++, select `IELMParams::QpBackend::ProxQP` through `params.qpBackend`, with
+`qpUseFeasibleStep=false` and `qpUseProjectedGradientInitialization=false`.
+The G1 example exposes the same selection:
+
+```bash
+python examples/g1_mjlab/kinodynamic_walk.py \
+  --qp-backend proxqp --qp-step full --qp-ordering automatic \
+  --initialization contact-gp-dynamics --output /tmp/g1-proxqp
+```
+
+The example still requires its existing matching GTSAM/GTDynamics Python
+packages and model dependencies. ProxQP solves the same B-reduced tangent QP,
+including explicit LM damping, then uses the existing lifting and nonlinear
+retraction. Its internal proximal parameters do not add a permanent objective
+penalty. The adapter requires solved status and checks the original Gaussian
+gradient, primal/dual feasibility, and complementarity before accepting a trial.
+It preserves row order and promotes a vector block only when every row is active.
+Numerical failure or iteration exhaustion rejects the LM trial. Requesting an
+unavailable backend or unsupported step policy raises a configuration error;
+there is no automatic backend fallback. The supplied ordering controls scalar
+packing; ProxQP chooses its own internal sparse elimination order.
 
 ## Installing GTDynamics
 

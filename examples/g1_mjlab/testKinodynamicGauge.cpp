@@ -1,16 +1,21 @@
 /* GTDynamics Copyright 2026, Georgia Tech Research Corporation. See LICENSE. */
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/WorldVelocityFactor.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam/constrained/LinearConstraint.h>
 #include <gtsam/navigation/AttitudeFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 #include "KinodynamicGauge.h"
+#include "KinodynamicOrdering.h"
 using namespace gtsam;
 using namespace gtdynamics;
 
+// The gauge fixes translation and yaw while preserving tilt directions.
 TEST(KinodynamicGauge, JacobiansAndFreeTilt) {
   const Pose3 anchor(Rot3::RzRyRx(.1, -.2, 3.13), Point3(1, 2, 3));
   const Pose3 changed(Rot3::RzRyRx(.4, .3, -3.12), Point3(2, 4, 3));
@@ -33,6 +38,7 @@ TEST(KinodynamicGauge, JacobiansAndFreeTilt) {
   EXPECT_DOUBLES_EQUAL(0., graph.error(v), 1e-20);
 }
 
+// Physical objective terms are invariant to changes in translation and yaw.
 TEST(KinodynamicGauge, PhysicalCostsAreTranslationYawInvariant) {
   auto root = std::make_shared<Link>(0, "root", 8., Matrix3::Identity(),
                                      Pose3(), Pose3());
@@ -71,6 +77,36 @@ TEST(KinodynamicGauge, PhysicalCostsAreTranslationYawInvariant) {
   for (const auto& factor : graph)
     EXPECT_DOUBLES_EQUAL(factor->error(v), factor->error(shifted), 1e-10);
 }
+// Keep time blocks ordered and retire shared keys after their last observation.
+TEST(KinodynamicOrdering, RetireLandmarkBeforeSharedBias) {
+  const Key landmark = Symbol('l', 0), bias = Symbol('b', 0);
+  Values initial, free;
+  free.insert(landmark, Vector(Vector1::Zero()));
+  free.insert(bias, Vector(Vector1::Zero()));
+  NonlinearEqualityConstraints equalities;
+  NonlinearFactorGraph cost;
+  for (size_t k : {5, 6, 7}) {
+    const Key key = JointAngleKey(0, k);
+    initial.insert(key, Vector(Vector1::Zero()));
+    equalities.push_back(
+        LinearConstraint::Equal(
+            JacobianFactor(key, Matrix1::Identity(), Vector1::Zero()))
+            .createEqualityFactor());
+    cost.emplace_shared<BetweenFactor<Vector>>(key, k < 7 ? landmark : bias,
+                                               Vector(Vector1::Zero()),
+                                               noiseModel::Unit::Create(1));
+  }
+  auto params = std::make_shared<IEConstraintManifold::Params>();
+  params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
+  params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
+  const auto manifolds =
+      IEOptimizer::identifyManifolds(equalities, {}, initial, params);
+  const Ordering expected{JointAngleKey(0, 5), JointAngleKey(0, 6), landmark,
+                          JointAngleKey(0, 7), bias};
+  EXPECT(expected ==
+         g1_example::chronologicalOrdering(cost, manifolds, free, 5));
+}
+
 int main() {
   TestResult result;
   return TestRegistry::runAllTests(result);
