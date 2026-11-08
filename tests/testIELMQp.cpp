@@ -28,13 +28,21 @@ IELMState makeState(const NonlinearFactorGraph& graph,
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
-  const auto manifolds =
-      IEOptimizer::identifyManifolds(equalities, inequalities, initial, params);
+  const auto points =
+      IEOptimizer::identifyComponents(equalities, inequalities, initial, params);
   const auto free = IEOptimizer::identifyUnconstrainedValues(
       equalities, inequalities, initial);
-  const auto manifoldGraph = ManifoldOptimizer::manifoldGraph(
-      graph, IEOptimizer::varToManifoldKeyMap(manifolds));
-  return IELMState(manifolds, free, graph, manifoldGraph, 0.2, 10.0);
+  const auto pointGraph = IEOptimizer::pointGraph(
+      graph, points);
+  return IELMState(points, free, graph, pointGraph, 0.2, 10.0);
+}
+
+// Reduced identities are independent of ambient identities, including free
+// keys.
+Key reducedKey(const IELMState& state, Key ambient) {
+  const auto ownership = IEOptimizer::varToManifoldKeyMap(state.points);
+  auto found = ownership.find(ambient);
+  return found == ownership.end() ? ambient : found->second;
 }
 
 NonlinearInequalityConstraint::shared_ptr bound(Key key, const Matrix& rows,
@@ -90,7 +98,7 @@ TEST(IELMQp, CoupledComponentsAndFreeVariables) {
   EXPECT_LONGS_EQUAL(0, state.tangentQp.eConstraints().size());
   EXPECT_LONGS_EQUAL(2, state.tangentQp.iConstraints().size());
   EXPECT_LONGS_EQUAL(2, state.qpConstraintBlocks.size());
-  auto cost = *state.linearManifoldGraph;
+  auto cost = *state.baseLinear;
   for (Key key : {1, 2, 3})
     cost.emplace_shared<JacobianFactor>(
         key, Matrix2::Identity(), Vector2::Zero(),
@@ -99,8 +107,8 @@ TEST(IELMQp, CoupledComponentsAndFreeVariables) {
   EXPECT(update.solveSuccessful);
   if (!update.solveSuccessful) return;
   EXPECT(assert_equal(exhaustiveOptimum(cost), update.tangentVector, 1e-8));
-  EXPECT_DOUBLES_EQUAL(state.linearManifoldGraph->error(initial.zeroVectors()) -
-                           state.linearManifoldGraph->error(update.delta),
+  EXPECT_DOUBLES_EQUAL(state.linearPointGraph->error(state.values.zeroVectors()) -
+                           state.linearPointGraph->error(update.delta),
                        update.costChange, 1e-9);
 }
 
@@ -115,7 +123,7 @@ TEST(IELMQp, SameScopeCostsAreCompactedWithoutChangingTheModel) {
   Values initial;
   initial.insert(7, Vector(Vector2::Zero()));
   const auto state = makeState(graph, {}, initial);
-  EXPECT_LONGS_EQUAL(2, state.linearManifoldGraph->size());
+  EXPECT_LONGS_EQUAL(2, state.linearPointGraph->size());
   EXPECT_LONGS_EQUAL(1, state.tangentQp.costs().size());
   for (const Vector& step :
        {Vector(Vector2::Zero()), Vector(Vector2(0.4, -0.7))}) {
@@ -123,7 +131,7 @@ TEST(IELMQp, SameScopeCostsAreCompactedWithoutChangingTheModel) {
     qpValues.insert(7, step);
     VectorValues delta;
     delta.insert(7, step);
-    EXPECT_DOUBLES_EQUAL(state.linearManifoldGraph->error(delta),
+    EXPECT_DOUBLES_EQUAL(state.linearPointGraph->error(delta),
                          state.tangentQp.costs().error(qpValues), 1e-9);
   }
 }
@@ -143,7 +151,7 @@ TEST(IELMQp, PartialBlockAndOriginalConstraintIndices) {
   const auto state = makeState(graph, inequalities, initial);
   EXPECT_LONGS_EQUAL(1, state.tangentQp.iConstraints().size());
   EXPECT_LONGS_EQUAL(1, state.qpConstraintBlocks.at(0).constraint);
-  const auto& block = state.manifolds.at(7).linearization()->rows(1, true);
+  const auto& block = state.points.at(reducedKey(state, 7)).tangentSpace()->rows(1, true);
   EXPECT(assert_equal((Matrix2() << -0.5, 0., 0., -1. / 3.).finished(), block));
   const IELMTrial::LinearUpdate update(0.2, graph, state, {});
   EXPECT(update.solveSuccessful);
@@ -169,9 +177,9 @@ TEST(IELMQp, SlackBoundaryIsLeftToRetraction) {
   if (!update.solveSuccessful) return;
   EXPECT_DOUBLES_EQUAL(2. / 1.2, update.tangentVector.at(7)(0), 1e-9);
   const IELMTrial::NonlinearUpdate retracted(state, update, graph);
-  const auto& manifold = retracted.newManifolds.at(7);
-  EXPECT(manifold.values().at<Vector>(7)(0) <= 1. + 1e-3);
-  EXPECT(manifold.evaluateInequalityViolation() <= 1e-3);
+  const auto& point = retracted.newPoints.at(reducedKey(state, 7));
+  EXPECT(point.values().at<Vector>(7)(0) <= 1. + 1e-3);
+  EXPECT(point.evaluateInequalityViolation() <= 1e-3);
 }
 
 // Preserve diagonal damping while predicting reduction without damping.
@@ -194,7 +202,7 @@ TEST(IELMQp, DiagonalDampingAndUndampedPrediction) {
   EXPECT_DOUBLES_EQUAL(state.baseLinear->error(zero) -
                            state.baseLinear->error(update.tangentVector),
                        update.costChange, 1e-9);
-  EXPECT_LONGS_EQUAL(state.linearManifoldGraph->size(),
+  EXPECT_LONGS_EQUAL(state.linearPointGraph->size(),
                      state.tangentQp.costs().size());
 }
 
@@ -219,7 +227,8 @@ TEST(IELMQp, EqualityReductionAndZeroDimensionalComponent) {
   const auto state = makeState(graph, {}, initial, equalities);
   EXPECT(state.tangentQp.eConstraints().empty());
   IELMParams params;
-  params.lmParams.ordering = Ordering{8, 7};  // Fixed key 7 is omitted by CMC.
+  params.lmParams.ordering = Ordering{reducedKey(state, 8),
+               reducedKey(state, 7)};  // Fixed key 7 is omitted by CMC.
   const IELMTrial::LinearUpdate update(0.2, graph, state, params);
   EXPECT(update.solveSuccessful);
   if (!update.solveSuccessful) return;
@@ -353,8 +362,8 @@ TEST(IELMQp, ProjectedInitializationAndFeasibleStepModes) {
     // Only one row is active, so the vector block stays an inequality.
     EXPECT(feasible.blockingIndicesMap.empty());
     EXPECT_DOUBLES_EQUAL(
-        state.linearManifoldGraph->error(initial.zeroVectors()) -
-            state.linearManifoldGraph->error(feasible.delta),
+        state.linearPointGraph->error(state.values.zeroVectors()) -
+            state.linearPointGraph->error(feasible.delta),
         feasible.costChange, 1e-9);
   }
 }
@@ -406,14 +415,15 @@ TEST(IELMQp, CustomOrderingValidation) {
   const auto state = makeState(graph, {}, initial);
   IELMParams params;
   params.qpUseFeasibleStep = true;
-  params.lmParams.ordering = Ordering{8, 7};
+  params.lmParams.ordering = Ordering{reducedKey(state, 8), reducedKey(state, 7)};
   const IELMTrial::LinearUpdate custom(0.2, graph, state, params);
   EXPECT(custom.solveSuccessful);
   EXPECT(assert_equal(Vector1(2. / 1.2), custom.tangentVector.at(7), 1e-9));
-  params.lmParams.ordering = Ordering{7};
+  params.lmParams.ordering = Ordering{reducedKey(state, 7)};
   CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
                   std::invalid_argument);
-  params.lmParams.ordering = Ordering{7, 7, 8};
+  params.lmParams.ordering = Ordering{
+      reducedKey(state, 7), reducedKey(state, 7), reducedKey(state, 8)};
   CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
                   std::invalid_argument);
 }
@@ -464,24 +474,26 @@ TEST(IELMQp, ProxQpCoupledOptimum) {
           Vector2(2., 0.5))
           .createInequalityFactor());
   const auto state = makeState(graph, inequalities, initial);
-  auto cost = *state.linearManifoldGraph;
+  auto cost = *state.baseLinear;
   for (Key key : {1, 2, 3})
     cost.emplace_shared<JacobianFactor>(
         key, std::sqrt(0.2) * Matrix2::Identity(), Vector2::Zero());
   IELMParams params;
   params.qpBackend = IELMParams::QpBackend::ProxQP;
-  params.lmParams.ordering = Ordering{3, 2, 1};
+  params.lmParams.ordering = Ordering{
+      reducedKey(state, 3), reducedKey(state, 2), reducedKey(state, 1)};
   const IELMTrial::LinearUpdate update(0.2, graph, state, params);
   EXPECT(update.solveSuccessful);
   if (!update.solveSuccessful) return;
   EXPECT(assert_equal(exhaustiveOptimum(cost), update.tangentVector, 1e-7));
-  EXPECT_DOUBLES_EQUAL(state.linearManifoldGraph->error(initial.zeroVectors()) -
-                           state.linearManifoldGraph->error(update.delta),
+  EXPECT_DOUBLES_EQUAL(state.linearPointGraph->error(state.values.zeroVectors()) -
+                           state.linearPointGraph->error(update.delta),
                        update.costChange, 1e-9);
-  params.lmParams.ordering = Ordering{1, 2};
+  params.lmParams.ordering = Ordering{reducedKey(state, 1), reducedKey(state, 2)};
   CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
                   std::invalid_argument);
-  params.lmParams.ordering = Ordering{1, 2, 2};
+  params.lmParams.ordering = Ordering{
+      reducedKey(state, 1), reducedKey(state, 2), reducedKey(state, 2)};
   CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
                   std::invalid_argument);
 }
@@ -531,7 +543,7 @@ TEST(IELMQp, ProxQpPartialBlockAndRetraction) {
   EXPECT(assert_equal(Vector2(2. / 1.2, 0.), update.tangentVector.at(7), 1e-7));
   EXPECT(update.blockingIndicesMap.empty());
   const IELMTrial::NonlinearUpdate retracted(state, update, graph);
-  EXPECT(retracted.newManifolds.at(7).evaluateInequalityViolation() <= 1e-3);
+  EXPECT(retracted.newPoints.at(reducedKey(state, 7)).evaluateInequalityViolation() <= 1e-3);
 }
 
 // Preserve diagonal LM damping and omit fixed components from packing even
@@ -554,7 +566,7 @@ TEST(IELMQp, ProxQpDampingAndFixedComponents) {
   IELMParams params;
   params.qpBackend = IELMParams::QpBackend::ProxQP;
   params.lmParams.setDiagonalDamping(true);
-  params.lmParams.ordering = Ordering{8, 7};
+  params.lmParams.ordering = Ordering{reducedKey(state, 8), reducedKey(state, 7)};
   const IELMTrial::LinearUpdate update(0.2, graph, state, params);
   EXPECT(update.solveSuccessful);
   if (!update.solveSuccessful) return;

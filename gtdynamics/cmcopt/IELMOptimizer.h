@@ -26,6 +26,7 @@
 namespace gtdynamics {
 using namespace gtsam;
 
+
 struct IELMParams {
   /// Numerical backend for the global reduced QP.
   enum class QpBackend { Gtsam, ProxQP };
@@ -106,9 +107,12 @@ class IELMOptimizer : public IEOptimizer {
   /** Read-only access the parameters */
   const IELMParams &ielmParams() const { return ielm_params_; }
 
-  /** Perform optimization on manifolds. */
-  Values optimizeManifolds(const NonlinearFactorGraph &graph,
-                           const IEManifoldValues &manifolds,
+  // Keep the ambient-values overload visible.
+  using IEOptimizer::optimize;
+
+  /** Perform optimization on points. */
+  Values optimize(const NonlinearFactorGraph &graph,
+                           const CMPoints &points,
                            const Values &unconstrainedValues) const override;
 
   /** Convergence check including

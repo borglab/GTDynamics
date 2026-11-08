@@ -12,15 +12,14 @@
  * @author Frank Dellaert
  */
 
-
 #include <gtdynamics/cmopt/BasisRetractor.h>
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/cmcopt/internal/LegacyCMAdapter.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
-
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
 
@@ -404,12 +403,12 @@ TEST(IEVision60Robot_ground_air_boundary, constraints_and_values) {
 }
 
 // /// Test create ie-manifold from IEVision60Robot
-TEST(IEVision60Robot_4c, manifold) {
+TEST(IEVision60Robot_4c, point) {
   using namespace vision60_4c_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityManifoldParams->basisCreator =
+  iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityManifoldParams->retractorCreator =
+  iecm_params->equalityRetractionCreator =
       std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
@@ -422,13 +421,13 @@ TEST(IEVision60Robot_4c, manifold) {
   iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+  CMPoint point(iecm_params, e_constraints, i_constraints,
                                 values);
-  EXPECT_LONGS_EQUAL(24, manifold.dim());
+  EXPECT_LONGS_EQUAL(24, point.dim());
 
-  auto e_manifold = manifold.eConstraintManifold();
+  auto e_manifold = gtdynamics::internal::equalityPoint(point);
   EXPECT_LONGS_EQUAL(24, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated
@@ -438,32 +437,32 @@ TEST(IEVision60Robot_4c, manifold) {
     Vector6 delta_A = (Vector(6) << 0, 0, 0, 0, 0, 0.1).finished();
     Vector6 delta_CR = (Vector(6) << 0, 20, 20, 0, 0, 0).finished();
     Vector xi = (Vector(24) << delta_P, delta_V, delta_A, delta_CR).finished();
-    auto new_manifold = manifold.retract(xi);
+    auto newPoint = point.retract(xi);
 
     IndexSet expected_active_indices;
     EXPECT(assert_container_equality(expected_active_indices,
-                                     new_manifold.activeIndices()));
+                                     newPoint.activeIndices()));
 
     Pose3 new_base_pose =
-        Pose(manifold.values(), vision60.base_id, k).retract(delta_P);
+        Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
-        Twist(manifold.values(), vision60.base_id, k) + delta_V;
+        Twist(point.values(), vision60.base_id, k) + delta_V;
     Vector6 new_base_accel =
-        TwistAccel(manifold.values(), vision60.base_id, k) + delta_A;
+        TwistAccel(point.values(), vision60.base_id, k) + delta_A;
     EXPECT(assert_equal(
-        new_base_pose, Pose(new_manifold.values(), vision60.base_id, k), 1e-6));
+        new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
-                        Twist(new_manifold.values(), vision60.base_id, k),
+                        Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
     EXPECT(assert_equal(new_base_accel,
-                        TwistAccel(new_manifold.values(), vision60.base_id, k),
+                        TwistAccel(newPoint.values(), vision60.base_id, k),
                         1e-6));
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints->violationNorm(new_manifold.values()), 0.0));
+        e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints->violationNorm(new_manifold.values()), 0.0));
+        i_constraints->violationNorm(newPoint.values()), 0.0));
   }
 
   /// Test retractor in the case of violating torque limits
@@ -473,49 +472,49 @@ TEST(IEVision60Robot_4c, manifold) {
     Vector6 delta_A = (Vector(6) << 0, 0, 0, 0, 0, 0.1).finished();
     Vector6 delta_CR = (Vector(6) << 0, 0, 0, 0, 0, 0).finished();
     Vector xi = (Vector(24) << delta_P, delta_V, delta_A, delta_CR).finished();
-    auto new_manifold = manifold.retract(xi);
+    auto newPoint = point.retract(xi);
 
     IndexSet expected_active_indices;
     expected_active_indices.insert(12);
     expected_active_indices.insert(13);
     EXPECT(assert_container_equality(expected_active_indices,
-                                     new_manifold.activeIndices()));
+                                     newPoint.activeIndices()));
 
     Pose3 new_base_pose =
-        Pose(manifold.values(), vision60.base_id, k).retract(delta_P);
+        Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
-        Twist(manifold.values(), vision60.base_id, k) + delta_V;
-    // Vector6 new_base_accel = TwistAccel(manifold.values(), vision60.base_id,
+        Twist(point.values(), vision60.base_id, k) + delta_V;
+    // Vector6 new_base_accel = TwistAccel(point.values(), vision60.base_id,
     // k) + delta_A;
     EXPECT(assert_equal(
-        new_base_pose, Pose(new_manifold.values(), vision60.base_id, k), 1e-6));
+        new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
-                        Twist(new_manifold.values(), vision60.base_id, k),
+                        Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
-    // EXPECT(assert_equal(new_base_accel, TwistAccel(new_manifold.values(),
+    // EXPECT(assert_equal(new_base_accel, TwistAccel(newPoint.values(),
     // vision60.base_id, k), 1e-6));
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints->violationNorm(new_manifold.values()), 0.0));
+        e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints->violationNorm(new_manifold.values()), 0.0));
+        i_constraints->violationNorm(newPoint.values()), 0.0));
     // for (const auto& joint: vision60.robot.orderedJoints()) {
     //   int j = joint->id();
-    //   // double q = JointAngle(new_manifold.values(), j, k);
-    //   double torque = Torque(new_manifold.values(), j, k);
+    //   // double q = JointAngle(newPoint.values(), j, k);
+    //   double torque = Torque(newPoint.values(), j, k);
     //   std::cout << joint->name()  << "\t" << torque << "\n";
     // }
   }
 }
 
 // /// Test create ie-manifold from IEVision60Robot
-TEST(IEVision60Robot_back_on_ground, manifold) {
+TEST(IEVision60Robot_back_on_ground, point) {
   using namespace vision60_back_on_ground_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityManifoldParams->basisCreator =
+  iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityManifoldParams->retractorCreator =
+  iecm_params->equalityRetractionCreator =
       std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
@@ -528,16 +527,16 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
   iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
 
   // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+  CMPoint point(iecm_params, e_constraints, i_constraints,
                                 values);
-  EXPECT_LONGS_EQUAL(36, manifold.dim());
+  EXPECT_LONGS_EQUAL(36, point.dim());
 
-  auto e_manifold = manifold.eConstraintManifold();
+  auto e_manifold = gtdynamics::internal::equalityPoint(point);
   EXPECT_LONGS_EQUAL(36, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated
@@ -550,27 +549,27 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
         (Vector(12) << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).finished();
     Vector xi =
         (Vector(36) << delta_P, delta_V, delta_q, delta_v, delta_T).finished();
-    auto new_manifold = manifold.retract(xi);
+    auto newPoint = point.retract(xi);
 
     IndexSet expected_active_indices;
     EXPECT(assert_container_equality(expected_active_indices,
-                                     new_manifold.activeIndices()));
+                                     newPoint.activeIndices()));
 
     Pose3 new_base_pose =
-        Pose(manifold.values(), vision60.base_id, k).retract(delta_P);
+        Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
-        Twist(manifold.values(), vision60.base_id, k) + delta_V;
+        Twist(point.values(), vision60.base_id, k) + delta_V;
     EXPECT(assert_equal(
-        new_base_pose, Pose(new_manifold.values(), vision60.base_id, k), 1e-6));
+        new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
-                        Twist(new_manifold.values(), vision60.base_id, k),
+                        Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints->violationNorm(new_manifold.values()), 0.0));
+        e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints->violationNorm(new_manifold.values()), 0.0));
+        i_constraints->violationNorm(newPoint.values()), 0.0));
   }
 
   /// Test retractor in the case of violating torque limits
@@ -583,7 +582,7 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
         (Vector(12) << 0, 0, 0, 0, 10, 10, -10, -10, 0, 0, 0, 0).finished();
     Vector xi =
         (Vector(36) << delta_P, delta_V, delta_q, delta_v, delta_T).finished();
-    auto new_manifold = manifold.retract(xi);
+    auto newPoint = point.retract(xi);
 
     IndexSet expected_active_indices;
     expected_active_indices.insert(10);
@@ -591,40 +590,40 @@ TEST(IEVision60Robot_back_on_ground, manifold) {
     expected_active_indices.insert(12);
     expected_active_indices.insert(13);
     EXPECT(assert_container_equality(expected_active_indices,
-                                     new_manifold.activeIndices()));
+                                     newPoint.activeIndices()));
 
     Pose3 new_base_pose =
-        Pose(manifold.values(), vision60.base_id, k).retract(delta_P);
+        Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
-        Twist(manifold.values(), vision60.base_id, k) + delta_V;
+        Twist(point.values(), vision60.base_id, k) + delta_V;
     EXPECT(assert_equal(
-        new_base_pose, Pose(new_manifold.values(), vision60.base_id, k), 1e-6));
+        new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
-                        Twist(new_manifold.values(), vision60.base_id, k),
+                        Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints->violationNorm(new_manifold.values()), 0.0));
+        e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints->violationNorm(new_manifold.values()), 0.0));
+        i_constraints->violationNorm(newPoint.values()), 0.0));
 
     // for (const auto& joint: vision60.robot.orderedJoints()) {
     //   int j = joint->id();
-    //   // double q = JointAngle(new_manifold.values(), j, k);
-    //   double torque = Torque(new_manifold.values(), j, k);
+    //   // double q = JointAngle(newPoint.values(), j, k);
+    //   double torque = Torque(newPoint.values(), j, k);
     //   std::cout << joint->name()  << "\t" << torque << "\n";
     // }
   }
 }
 
 // /// Test create ie-manifold from IEVision60Robot
-TEST(IEVision60Robot_in_air, manifold) {
+TEST(IEVision60Robot_in_air, point) {
   using namespace vision60_in_air_single_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityManifoldParams->basisCreator =
+  iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityManifoldParams->retractorCreator =
+  iecm_params->equalityRetractionCreator =
       std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
@@ -637,16 +636,16 @@ TEST(IEVision60Robot_in_air, manifold) {
   iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
 
   // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+  CMPoint point(iecm_params, e_constraints, i_constraints,
                                 values);
-  EXPECT_LONGS_EQUAL(48, manifold.dim());
+  EXPECT_LONGS_EQUAL(48, point.dim());
 
-  auto e_manifold = manifold.eConstraintManifold();
+  auto e_manifold = gtdynamics::internal::equalityPoint(point);
   EXPECT_LONGS_EQUAL(48, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated
@@ -661,27 +660,27 @@ TEST(IEVision60Robot_in_air, manifold) {
         (Vector(12) << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).finished();
     Vector xi =
         (Vector(48) << delta_P, delta_V, delta_q, delta_v, delta_T).finished();
-    auto new_manifold = manifold.retract(xi);
+    auto newPoint = point.retract(xi);
 
     IndexSet expected_active_indices;
     EXPECT(assert_container_equality(expected_active_indices,
-                                     new_manifold.activeIndices()));
+                                     newPoint.activeIndices()));
 
     Pose3 new_base_pose =
-        Pose(manifold.values(), vision60.base_id, k).retract(delta_P);
+        Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
-        Twist(manifold.values(), vision60.base_id, k) + delta_V;
+        Twist(point.values(), vision60.base_id, k) + delta_V;
     EXPECT(assert_equal(
-        new_base_pose, Pose(new_manifold.values(), vision60.base_id, k), 1e-6));
+        new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
-                        Twist(new_manifold.values(), vision60.base_id, k),
+                        Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints->violationNorm(new_manifold.values()), 0.0));
+        e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints->violationNorm(new_manifold.values()), 0.0));
+        i_constraints->violationNorm(newPoint.values()), 0.0));
   }
 
   /// Test retractor in the case of violating torque limits
@@ -696,7 +695,7 @@ TEST(IEVision60Robot_in_air, manifold) {
         (Vector(12) << 0, 0, 0, 0, 10, 10, -10, -10, 0, 0, 0, 0).finished();
     Vector xi =
         (Vector(48) << delta_P, delta_V, delta_q, delta_v, delta_T).finished();
-    auto new_manifold = manifold.retract(xi);
+    auto newPoint = point.retract(xi);
 
     IndexSet expected_active_indices;
     expected_active_indices.insert(10);
@@ -704,40 +703,40 @@ TEST(IEVision60Robot_in_air, manifold) {
     expected_active_indices.insert(12);
     expected_active_indices.insert(13);
     EXPECT(assert_container_equality(expected_active_indices,
-                                     new_manifold.activeIndices()));
+                                     newPoint.activeIndices()));
 
     Pose3 new_base_pose =
-        Pose(manifold.values(), vision60.base_id, k).retract(delta_P);
+        Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
-        Twist(manifold.values(), vision60.base_id, k) + delta_V;
+        Twist(point.values(), vision60.base_id, k) + delta_V;
     EXPECT(assert_equal(
-        new_base_pose, Pose(new_manifold.values(), vision60.base_id, k), 1e-6));
+        new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
-                        Twist(new_manifold.values(), vision60.base_id, k),
+                        Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints->violationNorm(new_manifold.values()), 0.0));
+        e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints->violationNorm(new_manifold.values()), 0.0));
+        i_constraints->violationNorm(newPoint.values()), 0.0));
 
     // for (const auto& joint: vision60.robot.orderedJoints()) {
     //   int j = joint->id();
-    //   // double q = JointAngle(new_manifold.values(), j, k);
-    //   double torque = Torque(new_manifold.values(), j, k);
+    //   // double q = JointAngle(newPoint.values(), j, k);
+    //   double torque = Torque(newPoint.values(), j, k);
     //   std::cout << joint->name()  << "\t" << torque << "\n";
     // }
   }
 }
 
 // /// Test create ie-manifold from IEVision60Robot
-TEST(IEVision60Robot_ground_air_boundary, manifold) {
+TEST(IEVision60Robot_ground_air_boundary, point) {
   using namespace vision60_ground_air_boundary_step;
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityManifoldParams->basisCreator =
+  iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(vision60.getBasisKeyFunction());
-  iecm_params->equalityManifoldParams->retractorCreator =
+  iecm_params->equalityRetractionCreator =
       std::make_shared<BasisRetractorCreator>(vision60.getBasisKeyFunction());
 
   auto retractor_params = std::make_shared<IERetractorParams>();
@@ -750,16 +749,16 @@ TEST(IEVision60Robot_ground_air_boundary, manifold) {
   iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->equalityBasisCreator = iecm_params->equalityManifoldParams->basisCreator;
+  iecm_params->equalityBasisCreator = iecm_params->equalityBasisCreator;
 
   // KeyVector basis_keys = iecm_params->equalityManifoldParams->basisKeyFunction(e_cc);
   // PrintKeyVector(basis_keys, "", GTDKeyFormatter);
 
-  IEConstraintManifold manifold(iecm_params, e_constraints, i_constraints,
+  CMPoint point(iecm_params, e_constraints, i_constraints,
                                 values);
-  EXPECT_LONGS_EQUAL(12, manifold.dim());
+  EXPECT_LONGS_EQUAL(12, point.dim());
 
-  auto e_manifold = manifold.eConstraintManifold();
+  auto e_manifold = gtdynamics::internal::equalityPoint(point);
   EXPECT_LONGS_EQUAL(12, e_manifold.dim());
 
   /// Test retractor in the case that no constraints are violated
@@ -774,27 +773,27 @@ TEST(IEVision60Robot_ground_air_boundary, manifold) {
         (Vector(12) << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).finished();
     Vector xi =
         (Vector(48) << delta_P, delta_V, delta_q, delta_v, delta_T).finished();
-    auto new_manifold = manifold.retract(xi);
+    auto newPoint = point.retract(xi);
 
     IndexSet expected_active_indices;
     EXPECT(assert_container_equality(expected_active_indices,
-                                     new_manifold.activeIndices()));
+                                     newPoint.activeIndices()));
 
     Pose3 new_base_pose =
-        Pose(manifold.values(), vision60.base_id, k).retract(delta_P);
+        Pose(point.values(), vision60.base_id, k).retract(delta_P);
     Vector6 new_base_twist =
-        Twist(manifold.values(), vision60.base_id, k) + delta_V;
+        Twist(point.values(), vision60.base_id, k) + delta_V;
     EXPECT(assert_equal(
-        new_base_pose, Pose(new_manifold.values(), vision60.base_id, k), 1e-6));
+        new_base_pose, Pose(newPoint.values(), vision60.base_id, k), 1e-6));
     EXPECT(assert_equal(new_base_twist,
-                        Twist(new_manifold.values(), vision60.base_id, k),
+                        Twist(newPoint.values(), vision60.base_id, k),
                         1e-6));
 
     // check all constraints are satisfied
     EXPECT(assert_equal(
-        e_constraints->violationNorm(new_manifold.values()), 0.0));
+        e_constraints->violationNorm(newPoint.values()), 0.0));
     EXPECT(assert_equal(
-        i_constraints->violationNorm(new_manifold.values()), 0.0));
+        i_constraints->violationNorm(newPoint.values()), 0.0));
   }
 
   // TODO: consider about handling cases that violate i-constraints.

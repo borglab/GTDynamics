@@ -13,7 +13,7 @@
  */
 
 #include <gtdynamics/cmcopt/AffineProjection.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 
 #include <algorithm>
@@ -22,6 +22,15 @@
 #include <stdexcept>
 
 namespace gtdynamics {
+IERetractor::shared_ptr ReducedALRetractor::bind(const CMPoint &point) const {
+  auto result = IERetractor::bind(point);
+  if (priorKeys_) {
+    KeyVector bound;
+    for (Key slot : *priorKeys_) bound.push_back(point.bindings().at(slot));
+    dynamic_cast<ReducedALRetractor &>(*result).priorKeys_ = bound;
+  }
+  return result;
+}
 
 ReducedALRetractor::Settings::Settings() {
   al.maxIterations = 80;
@@ -104,23 +113,23 @@ Vector ReducedALRetractor::solveProblem(const ConstrainedOptProblem &problem,
   return u;
 }
 
-IEConstraintManifold ReducedALRetractor::retract(
-    const IEConstraintManifold *manifold, const VectorValues &delta,
+CMPoint ReducedALRetractor::retract(
+    const CMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blockingIndices,
     IERetractionInfo *info) const {
-  if (!manifold)
+  if (!point)
     throw std::invalid_argument("Null reduced AL retraction manifold");
   const IndexSet blocking = blockingIndices.value_or(IndexSet{});
-  AffineProjection projection(*manifold, delta, *params_, priorKeys_, blocking,
+  AffineProjection projection(*point, delta, *params_, priorKeys_, blocking,
                               settings_.feasibilityTolerance,
                               settings_.activeTolerance);
   if (const auto result = projection.feasibleProjection(blocking, info))
-    return manifold->createWithNewValues(result->values, result->active);
+    return point->createWithNewValues(result->values, result->active);
   Values result = projection.recover(Vector::Zero(projection.dim()));
   if (projection.dim())
     result = projection.recover(
         solveProblem(projection.buildProblem(blocking), projection, info));
-  return manifold->createWithNewValues(
+  return point->createWithNewValues(
       result, projection.validateResult(result, blocking));
 }
 

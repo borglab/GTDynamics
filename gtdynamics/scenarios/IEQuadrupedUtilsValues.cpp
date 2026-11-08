@@ -1,10 +1,10 @@
 #include <gtdynamics/dynamics/ZeroInitializer.h>
 #include <gtdynamics/kinematics/KinematicInitializer.h>
-#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 
+#include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
 namespace gtdynamics {

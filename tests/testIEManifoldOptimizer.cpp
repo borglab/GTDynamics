@@ -44,7 +44,7 @@
 using namespace gtdynamics;
 using namespace gtsam;
 
-TEST(identifyManifolds, HalfSphere) {
+TEST(identifyComponents, HalfSphere) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
@@ -66,18 +66,18 @@ TEST(identifyManifolds, HalfSphere) {
           std::make_shared<HalfSphereRetractor>(half_sphere));
   iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  auto manifolds = IEOptimizer::identifyManifolds(e_constraints, i_constraints,
+  auto points = IEOptimizer::identifyComponents(e_constraints, i_constraints,
                                                   values, iecm_params);
-  for (const auto &it : manifolds) {
-    const auto &manifold = it.second;
-    EXPECT_LONGS_EQUAL(1, manifold.iConstraints()->size());
-    EXPECT_LONGS_EQUAL(1, manifold.eConstraints()->size());
-    EXPECT_LONGS_EQUAL(1, manifold.values().size());
+  for (const auto &it : points) {
+    const auto &point = it.second;
+    EXPECT_LONGS_EQUAL(1, point.iConstraints()->size());
+    EXPECT_LONGS_EQUAL(1, point.eConstraints()->size());
+    EXPECT_LONGS_EQUAL(1, point.values().size());
   }
-  EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
+  EXPECT_LONGS_EQUAL(num_steps + 1, points.size());
 }
 
-TEST(identifyManifolds, CartPoleWithFriction) {
+TEST(identifyComponents, CartPoleWithFriction) {
   IECartPoleWithFriction cp;
   size_t num_steps = 2;
 
@@ -99,18 +99,18 @@ TEST(identifyManifolds, CartPoleWithFriction) {
           std::make_shared<CartPoleWithFrictionRetractor>(cp));
   iecm_params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  auto manifolds = IEOptimizer::identifyManifolds(e_constraints, i_constraints,
+  auto points = IEOptimizer::identifyComponents(e_constraints, i_constraints,
                                                   values, iecm_params);
-  for (const auto &it : manifolds) {
-    const auto &manifold = it.second;
-    EXPECT_LONGS_EQUAL(2, manifold.iConstraints()->size());
-    EXPECT_LONGS_EQUAL(3, manifold.eConstraints()->size());
-    EXPECT_LONGS_EQUAL(6, manifold.values().size());
+  for (const auto &it : points) {
+    const auto &point = it.second;
+    EXPECT_LONGS_EQUAL(2, point.iConstraints()->size());
+    EXPECT_LONGS_EQUAL(3, point.eConstraints()->size());
+    EXPECT_LONGS_EQUAL(6, point.values().size());
   }
-  EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
+  EXPECT_LONGS_EQUAL(num_steps + 1, points.size());
 }
 
-TEST(identifyManifolds, Dome) {
+TEST(identifyComponents, Dome) {
   IEHalfSphere half_sphere;
   size_t num_steps = 2;
 
@@ -131,15 +131,15 @@ TEST(identifyManifolds, Dome) {
     values.insert(PointKey(k), Point3(0, 1, 0));
   }
 
-  auto manifolds = IEOptimizer::identifyManifolds(e_constraints, i_constraints,
+  auto points = IEOptimizer::identifyComponents(e_constraints, i_constraints,
                                                   values, iecm_params);
-  for (const auto &it : manifolds) {
-    const auto &manifold = it.second;
-    EXPECT_LONGS_EQUAL(2, manifold.iConstraints()->size());
-    EXPECT_LONGS_EQUAL(0, manifold.eConstraints()->size());
-    EXPECT_LONGS_EQUAL(1, manifold.values().size());
+  for (const auto &it : points) {
+    const auto &point = it.second;
+    EXPECT_LONGS_EQUAL(2, point.iConstraints()->size());
+    EXPECT_LONGS_EQUAL(0, point.eConstraints()->size());
+    EXPECT_LONGS_EQUAL(1, point.values().size());
   }
-  EXPECT_LONGS_EQUAL(num_steps + 1, manifolds.size());
+  EXPECT_LONGS_EQUAL(num_steps + 1, points.size());
 }
 
 // Build a real CMC state at a unilateral contact boundary, with an objective
@@ -157,11 +157,11 @@ static IELMState unilateralContactState(double target = 4.0) {
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
-  const auto manifolds = IEOptimizer::identifyManifolds({}, inequalities,
+  const auto points = IEOptimizer::identifyComponents({}, inequalities,
                                                         initial, params);
-  const auto manifoldGraph = ManifoldOptimizer::manifoldGraph(
-      graph, IEOptimizer::varToManifoldKeyMap(manifolds));
-  IELMState state(manifolds, {}, graph, manifoldGraph, 0.5, 10.0);
+  const auto pointGraph = IEOptimizer::pointGraph(
+      graph, points);
+  IELMState state(points, {}, graph, pointGraph, 0.5, 10.0);
   return state;
 }
 
@@ -197,7 +197,7 @@ TEST(IELMLinearUpdate, QpPreservesConstraintIndices) {
   EXPECT(update.solveSuccessful);
   EXPECT_DOUBLES_EQUAL(0.0, update.tangentVector.at(5)(0), 1e-8);
   EXPECT_LONGS_EQUAL(1, update.blockingIndicesMap.size());
-  EXPECT(update.blockingIndicesMap.at(5).exists(0));
+  EXPECT(update.blockingIndicesMap.at(state.points.begin()->first).exists(0));
 }
 
 // Coupling makes the projected gradient initially block x although the QP
@@ -229,11 +229,11 @@ TEST(IELMLinearUpdate, CoupledBoundsWithBothSenses) {
           std::make_shared<OrthonormalBasisCreator>();
       manifoldParams->retractorCreator =
           std::make_shared<BarrierRetractorCreator>();
-      const auto manifolds = IEOptimizer::identifyManifolds(
+      const auto points = IEOptimizer::identifyComponents(
           {}, inequalities, initial, manifoldParams);
-      const auto manifoldGraph = ManifoldOptimizer::manifoldGraph(
-          graph, IEOptimizer::varToManifoldKeyMap(manifolds));
-      const IELMState state(manifolds, {}, graph, manifoldGraph, damping, 10.0);
+      const auto pointGraph = IEOptimizer::pointGraph(
+          graph, points);
+      const IELMState state(points, {}, graph, pointGraph, damping, 10.0);
       IELMParams params;
       params.qpMaxIterations = 100;
       const IELMTrial::LinearUpdate update(damping, graph, state, params);
@@ -246,7 +246,7 @@ TEST(IELMLinearUpdate, CoupledBoundsWithBothSenses) {
       if (release) {
         EXPECT(update.blockingIndicesMap.empty());
       } else {
-        EXPECT(update.blockingIndicesMap.at(key).exists(0));
+        EXPECT(update.blockingIndicesMap.at(state.points.begin()->first).exists(0));
       }
     }
   }

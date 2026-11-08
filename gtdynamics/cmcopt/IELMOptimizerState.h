@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
@@ -36,7 +36,7 @@ struct IELMParams;
 /** State corresponding to each LM iteration. */
 struct IELMState {
 public:
-  IEManifoldValues manifolds;
+  CMPoints points;
   Values values;
   KeySet unconstrainedKeys;
   double error = 0;
@@ -46,7 +46,7 @@ public:
   size_t totalInnerIterations = 0;
   VectorValues gradient;
   GaussianFactorGraph::shared_ptr baseLinear;
-  GaussianFactorGraph::shared_ptr linearManifoldGraph;
+  GaussianFactorGraph::shared_ptr linearPointGraph;
   /// Undamped objective and homogeneous active inequalities in B coordinates.
   QpProblem tangentQp;
   /// Contiguous QP rows belonging to one original nonlinear constraint block.
@@ -61,16 +61,16 @@ public:
   IELMState() {}
 
   /// Constructor.
-  IELMState(const IEManifoldValues &_manifolds,
+  IELMState(const CMPoints &componentPoints,
             const Values &_unconstrained_values,
             const NonlinearFactorGraph &graph,
-            const NonlinearFactorGraph &manifold_graph, const double &_lambda,
+            const NonlinearFactorGraph &pointGraph, const double &_lambda,
             const double &_lambdaFactor, size_t _iterations = 0);
 
   /// Initialize the new state from the result of previous iteration.
   static IELMState fromLastIteration(const IELMIterationDetails &iter_details,
                                      const NonlinearFactorGraph &graph,
-                                     const NonlinearFactorGraph &manifold_graph,
+                                     const NonlinearFactorGraph &pointGraph,
                                      const LevenbergMarquardtParams &params);
 
   /// Values of unconstrained variables.
@@ -80,7 +80,7 @@ public:
   Values baseValues() const;
 
   static double evaluateGraphError(const NonlinearFactorGraph &graph,
-                                   const IEManifoldValues &_manifolds,
+                                   const CMPoints &componentPoints,
                                    const Values &_unconstrained_values);
 
   /// Compute the hessian diagonal of the linearized graph. It is used to
@@ -88,11 +88,11 @@ public:
   VectorValues computeMetricSigmas(const NonlinearFactorGraph &graph) const;
 
 protected:
-  static Values allValues(const IEManifoldValues &manifolds,
+  static Values allValues(const CMPoints &points,
                           const Values &unconstrainedValues);
 
   void construct(const NonlinearFactorGraph &graph,
-                 const NonlinearFactorGraph &manifold_graph);
+                 const NonlinearFactorGraph &pointGraph);
 };
 
 /** Trial for LM inner iteration with certain lambda setting. */
@@ -174,7 +174,7 @@ struct IELMTrial {
   };
 
   struct NonlinearUpdate {
-    IEManifoldValues newManifolds;
+    CMPoints newPoints;
     Values newUnconstrainedValues;
     double newError = std::numeric_limits<double>::infinity();
     double costChange = -std::numeric_limits<double>::infinity();
@@ -186,7 +186,7 @@ struct IELMTrial {
     /** Default constructor. */
     NonlinearUpdate() {}
 
-    /** Compute the new manifolds using the linear update delta and blocking
+    /** Compute the new points using the linear update delta and blocking
      * indices. */
     NonlinearUpdate(const IELMState &state, const LinearUpdate &linearUpdate,
                     const NonlinearFactorGraph &graph,
@@ -199,8 +199,8 @@ struct IELMTrial {
                       const double &oldError);
 
     static std::pair<VectorValues, double> evaluateRetractionDeviation(
-        const IEConstraintManifold &manifold,
-        const IEConstraintManifold &new_manifold,
+        const CMPoint &point,
+        const CMPoint &newPoint,
         const VectorValues &tangentVector);
   };
 

@@ -14,7 +14,8 @@
 #include <algorithm>
 #include <cmath>
 #include <gtdynamics/cmcopt/AffineProjection.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtsam/nonlinear/PriorFactor.h>
 #include <limits>
 #include <stdexcept>
@@ -170,23 +171,23 @@ private:
 };
 } // namespace
 
-AffineProjection::AffineProjection(const IEConstraintManifold &manifold,
+AffineProjection::AffineProjection(const CMPoint &point,
                                    const VectorValues &delta,
                                    const IERetractorParams &params,
                                    const std::optional<KeyVector> &priorKeys,
                                    const IndexSet &blocking,
                                    double feasibilityTolerance,
                                    double activeTolerance, bool normalize)
-    : manifold_(manifold), feasibility_tolerance_(feasibilityTolerance),
+    : point_(point), feasibility_tolerance_(feasibilityTolerance),
       active_tolerance_(activeTolerance), normalize_(normalize) {
   if (!(feasibilityTolerance > 0) || !std::isfinite(feasibilityTolerance) ||
       activeTolerance < feasibilityTolerance || !std::isfinite(activeTolerance))
     throw std::invalid_argument("Invalid affine projection tolerances");
   for (size_t index : blocking)
-    if (index >= manifold.iConstraints()->size())
+    if (index >= point.iConstraints()->size())
       throw std::invalid_argument("Invalid affine projection blocking index");
-  const auto &anchor = manifold.values();
-  if (infinityNorm(manifold.eConstraints()->violationVector(anchor)) >
+  const auto &anchor = point.values();
+  if (infinityNorm(point.eConstraints()->violationVector(anchor)) >
       feasibilityTolerance)
     throw std::invalid_argument(
         "Affine projection requires an equality-feasible anchor");
@@ -196,7 +197,7 @@ AffineProjection::AffineProjection(const IEConstraintManifold &manifold,
         !euclideanVector(trial_.at(kv.key)).allFinite())
       throw std::invalid_argument(
           "Nonfinite affine projection anchor or trial");
-  metric_ = manifold.projectionMetric(params, priorKeys);
+  metric_ = point.projectionMetric(params, priorKeys);
   const Vector projected = metric_->project(delta);
   length_scale_ =
       normalize ? std::max(1.0, (metric_->costJacobian() * projected).norm())
@@ -206,7 +207,7 @@ AffineProjection::AffineProjection(const IEConstraintManifold &manifold,
 
 Values AffineProjection::recover(const Vector &v) const {
   const Vector u = v + target_;
-  return manifold_.values().retract(metric_->recover(length_scale_ * u));
+  return point_.values().retract(metric_->recover(length_scale_ * u));
 }
 
 Values AffineProjection::initialValues(bool atAnchor) const {
@@ -246,9 +247,9 @@ AffineProjection::buildProblem(const IndexSet &blocking) const {
       noiseModel::Gaussian::SqrtInformation(metric_->costJacobian()));
   NonlinearEqualityConstraints equalities;
   NonlinearInequalityConstraints inequalities;
-  for (size_t i = 0; i < manifold_.iConstraints()->size(); ++i) {
+  for (size_t i = 0; i < point_.iConstraints()->size(); ++i) {
     auto expression = std::make_shared<ReducedExpression>(
-        manifold_.iConstraints()->at(i), manifold_.values(), metric_->maps(),
+        point_.iConstraints()->at(i), point_.values(), metric_->maps(),
         target_, length_scale_, normalize_);
     auto constraint = std::make_shared<ReducedInequality>(expression);
     if (blocking.count(i))
@@ -262,14 +263,14 @@ AffineProjection::buildProblem(const IndexSet &blocking) const {
 std::optional<IndexSet>
 AffineProjection::feasibleResult(const Values &values,
                                  const IndexSet &blocking) const {
-  const Vector h = manifold_.eConstraints()->violationVector(values);
+  const Vector h = point_.eConstraints()->violationVector(values);
   if (!h.allFinite())
     throw std::invalid_argument("Nonfinite original equality residual");
   if (infinityNorm(h) > feasibility_tolerance_)
     return {};
   IndexSet active = blocking;
-  for (size_t i = 0; i < manifold_.iConstraints()->size(); ++i) {
-    const Vector g = manifold_.iConstraints()->at(i)->whitenedExpr(values);
+  for (size_t i = 0; i < point_.iConstraints()->size(); ++i) {
+    const Vector g = point_.iConstraints()->at(i)->whitenedExpr(values);
     if (!g.allFinite() || g.size() != 1)
       throw std::invalid_argument("Invalid original inequality residual");
     if (g(0) > feasibility_tolerance_ ||

@@ -22,6 +22,12 @@ class IEHalfSphere;
 
 /** Manually defined retractor for half sphere manifold. */
 class HalfSphereRetractor : public IERetractor {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<HalfSphereRetractor>(*this);
+  }
+
   /// Sphere radius.
   double r_;
 
@@ -30,8 +36,8 @@ public:
   HalfSphereRetractor(const IEHalfSphere &half_sphere);
 
   /** Retract a tangent update and project back to the upper half-sphere. */
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+  CMPoint
+  retract(const CMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 };

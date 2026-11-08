@@ -555,18 +555,18 @@ json::object solve(const json::object &input) {
     }
     mp->retractorCreator =
         std::make_shared<UniversalIERetractorCreator>(retractor);
-    auto manifolds = IEOptimizer::identifyManifolds(
+    auto points = IEOptimizer::identifyComponents(
         problem.equalities, problem.inequalities, problem.initial, mp);
     manifoldSeconds = elapsed(start);
-    for (const auto &[key, manifold] : manifolds)
+    for (const auto &[key, point] : points)
       components.push_back(
-          json::object{{"variables", manifold.values().size()},
-                       {"ambient_dimension", manifold.values().dim()},
-                       {"reduced_dimension", manifold.dim()},
-                       {"basis_dimension", manifold.eBasis()->dim()}});
+          json::object{{"variables", point.values().size()},
+                       {"ambient_dimension", point.values().dim()},
+                       {"reduced_dimension", point.dim()},
+                       {"basis_dimension", point.eBasis()->dim()}});
     IELMOptimizer optimizer(p, mp);
-    result = optimizer.optimizeManifolds(
-        problem.cost, manifolds,
+    result = optimizer.optimize(
+        problem.cost, points,
         IEOptimizer::identifyUnconstrainedValues(
             problem.equalities, problem.inequalities, problem.initial));
     iterations = optimizer.details().size();

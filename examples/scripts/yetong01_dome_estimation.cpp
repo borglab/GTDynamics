@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
     auto barrier_error =
         TranslationError(gt, barrier_result.second.back().values);
     auto gd_error = TranslationError(
-        gt, gd_result.second.back().state.manifolds.baseValues());
+        gt, gd_result.second.back().state.baseValues());
     auto lm_error =
         TranslationError(gt, lm_result.second.back().state.baseValues());
     std::cout << soft_error << "\t" << barrier_error << "\t" << gd_error << "\t"

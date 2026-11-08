@@ -14,24 +14,25 @@
 
 #include <cmath>
 #include <gtdynamics/cmcopt/AffineProjection.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/KinodynamicHierarchicalRetractor.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
+
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
 using namespace gtsam;
 
 KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
-    const IEConstraintManifold &manifold, const Params::shared_ptr &params,
+    const CMPoint &point, const Params::shared_ptr &params,
     const std::optional<KeyVector> &basis_keys)
     : IERetractor(params), graph_q_(), graph_v_(), graph_ad_() {
 
   /// Create merit graph for e-constraints and i-constraints
-  merit_graph_ = manifold.eConstraints()->penaltyGraph(1.0);
-  const auto &i_constraints = *manifold.iConstraints();
+  merit_graph_ = point.eConstraints()->penaltyGraph(1.0);
+  const auto &i_constraints = *point.iConstraints();
   for (const auto &i_constraint : i_constraints) {
     merit_graph_.add(i_constraint->penaltyFactor(1.0));
   }
@@ -84,20 +85,20 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
 }
 
 /* ************************************************************************* */
-IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
-    const IEConstraintManifold *manifold, const VectorValues &delta,
+CMPoint KinodynamicHierarchicalRetractor::retract(
+    const CMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
     IERetractionInfo *retract_info) const {
 
-  size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
+  size_t k = DynamicsSymbol(point->values().keys().front()).time();
   std::string k_string = "(" + std::to_string(k) + ")";
 
   Values known_values;
   IndexSet active_indices;
-  const Values &values = manifold->values();
+  const Values &values = point->values();
   Values new_values = values.retract(delta);
   const NonlinearInequalityConstraints &i_constraints =
-      *manifold->iConstraints();
+      *point->iConstraints();
   bool failed = false;
 
   // solve q level with priors
@@ -212,12 +213,12 @@ IEConstraintManifold KinodynamicHierarchicalRetractor::retract(
     if (!CheckFeasible(merit_graph_, known_values, "all-levels" + k_string,
                        params_->feasibleThreshold)) {
       if (params_->ensureFeasible) {
-        return *manifold;
+        return *point;
       }
     }
   }
 
-  return manifold->createWithNewValues(known_values, active_indices);
+  return point->createWithNewValues(known_values, active_indices);
 }
 
 } // namespace gtdynamics

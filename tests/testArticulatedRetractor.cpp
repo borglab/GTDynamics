@@ -1,7 +1,7 @@
 /* GTDynamics Copyright 2026, Georgia Tech Research Corporation. See LICENSE. */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/ArticulatedRetractor.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/IndependentComponents.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/WorldVelocityFactor.h>
@@ -94,8 +94,8 @@ struct Fixture {
         std::make_shared<ArticulatedRetractorCreator>(robot, "body", ad, rp);
     return p;
   }
-  IEConstraintManifold manifold() const {
-    return IEConstraintManifold(
+  CMPoint makePoint() const {
+    return CMPoint(
         parameters(),
         std::make_shared<NonlinearEqualityConstraints>(equalities),
         std::make_shared<NonlinearInequalityConstraints>(inequalities), values);
@@ -104,8 +104,8 @@ struct Fixture {
 TEST(ArticulatedRetractor, MovingTreeAndOptionalWorldVelocity) {
   for (bool world : {false, true}) {
     Fixture f(0, world);
-    auto m = f.manifold();
-    auto result = m.retract(m.values().zeroVectors());
+    auto point = f.makePoint();
+    auto result = point.retract(point.values().zeroVectors());
     EXPECT(f.equalities.violationNorm(result.values()) < 1e-6);
     EXPECT(f.inequalities.violationNorm(result.values()) < 1e-6);
     EXPECT(assert_equal(f.values.at<Pose3>(PoseKey(0, 0)),
@@ -126,27 +126,59 @@ TEST(ArticulatedRetractor, MovingTreeAndOptionalWorldVelocity) {
 }
 TEST(ArticulatedRetractor, IndependentCachesAndLifetime) {
   Fixture f;
-  auto m = f.manifold();
+  auto point = f.makePoint();
   f.values.update(PoseKey(0, 0), Pose3(Rot3::Ry(.3), Point3(4, 2, 1)));
-  auto other = f.manifold();
+  auto other = f.makePoint();
   f.robot.reset();
-  auto expected = m.retract(m.values().zeroVectors());
+  auto expected = point.retract(point.values().zeroVectors());
   auto otherExpected = other.retract(other.values().zeroVectors());
-  std::vector<std::optional<IEConstraintManifold>> results(2);
+  std::vector<std::optional<CMPoint>> results(2);
   gtdynamics::internal::forIndependentComponents(2, 2, [&](size_t i) {
-    const auto& input = i ? other : m;
+    const auto& input = i ? other : point;
     results[i] = input.retract(input.values().zeroVectors());
   });
   EXPECT(assert_equal(expected.values(), results[0]->values(), 1e-8));
   EXPECT(assert_equal(otherExpected.values(), results[1]->values(), 1e-8));
   EXPECT(assert_equal(expected.values(),
-                      m.retract(m.values().zeroVectors()).values(), 1e-8));
+                      point.retract(point.values().zeroVectors()).values(), 1e-8));
+}
+// Shared definitions bind local dynamics slots to distinct slices, and each
+// retraction conditions its mechanics on that call's recovered q/v values.
+TEST(ArticulatedRetractor, SharedTypeAcrossSlices) {
+  Fixture first(0), second(1);
+  const auto type = std::make_shared<IEConstraintManifold>(
+      first.equalities, first.inequalities, first.values, *first.parameters());
+  const auto a = type->point(first.values);
+  IEConstraintManifold::Bindings bindings;
+  const auto localKeys = first.values.keys(),
+             ambientKeys = second.values.keys();
+  for (size_t i = 0; i < localKeys.size(); ++i)
+    bindings.emplace(localKeys[i], ambientKeys[i]);
+  second.values.update(JointAngleKey(0, 1), .6);
+  second.values.update(JointVelKey(0, 1), -.3);
+  const auto b = type->point(bindings, second.values);
+  const auto expectedA = a.retract(a.values().zeroVectors());
+  const auto expectedB = b.retract(b.values().zeroVectors());
+  std::vector<std::optional<CMPoint>> results(2);
+  gtdynamics::internal::forIndependentComponents(2, 2, [&](size_t i) {
+    const auto& point = i ? b : a;
+    results[i] = point.retract(point.values().zeroVectors());
+  });
+  EXPECT(a.manifold() == b.manifold());
+  EXPECT(assert_equal(expectedA.values(), results[0]->values(), 1e-8));
+  EXPECT(assert_equal(expectedB.values(), results[1]->values(), 1e-8));
+  EXPECT(results[0]->evaluateEqualityViolation() < 1e-6);
+  EXPECT(results[1]->evaluateEqualityViolation() < 1e-6);
+  EXPECT(results[1]->evaluateInequalityViolation() < 1e-6);
+  EXPECT_DOUBLES_EQUAL(.6, results[1]->values().at<double>(JointAngleKey(0, 1)),
+                       1e-12);
+  EXPECT_DOUBLES_EQUAL(.2, a.values().at<double>(JointAngleKey(0, 0)), 1e-12);
 }
 TEST(ArticulatedRetractor, ActiveTorqueAndWrenchBounds) {
   Fixture f;
   f.values.update(JointAccelKey(0, 0), 50.);
-  auto m = f.manifold();
-  auto result = m.retract(m.values().zeroVectors());
+  auto point = f.makePoint();
+  auto result = point.retract(point.values().zeroVectors());
   EXPECT(f.equalities.violationNorm(result.values()) < 1e-6);
   EXPECT(f.inequalities.violationNorm(result.values()) < 1e-6);
   EXPECT_DOUBLES_EQUAL(2., result.values().at<double>(TorqueKey(0, 0)), 1e-5);
@@ -166,7 +198,7 @@ TEST(ArticulatedRetractor, RejectMultipleSlices) {
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   bool rejected = false;
   try {
-    IEConstraintManifold m(
+    CMPoint point(
         p, std::make_shared<NonlinearEqualityConstraints>(f.equalities),
         std::make_shared<NonlinearInequalityConstraints>(f.inequalities),
         f.values);
@@ -184,13 +216,13 @@ TEST(ArticulatedRetractor, RejectNonaffineMechanics) {
   f.equalities.add(NonlinearEqualityConstraints::FromCostGraph(graph));
   auto p = f.parameters();
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
-  IEConstraintManifold m(
+  CMPoint point(
       p, std::make_shared<NonlinearEqualityConstraints>(f.equalities),
       std::make_shared<NonlinearInequalityConstraints>(f.inequalities),
       f.values);
   bool rejected = false;
   try {
-    m.retract(m.values().zeroVectors());
+    point.retract(point.values().zeroVectors());
   } catch (const std::invalid_argument&) {
     rejected = true;
   }
@@ -203,7 +235,7 @@ TEST(ArticulatedRetractor, RejectConfigurationInequalities) {
       Double_(JointAngleKey(0, 0)) - Double_(1.), 1.));
   bool rejected = false;
   try {
-    auto m = f.manifold();
+    auto point = f.makePoint();
   } catch (const std::invalid_argument&) {
     rejected = true;
   }
@@ -219,13 +251,13 @@ TEST(ArticulatedRetractor, RejectExtraConfigurationEquality) {
   // basis.
   auto p = f.parameters();
   p->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
-  IEConstraintManifold m(
+  CMPoint point(
       p, std::make_shared<NonlinearEqualityConstraints>(f.equalities),
       std::make_shared<NonlinearInequalityConstraints>(f.inequalities),
       f.values);
   bool rejected = false;
   try {
-    m.retract(m.values().zeroVectors());
+    point.retract(point.values().zeroVectors());
   } catch (const std::invalid_argument&) {
     rejected = true;
   }

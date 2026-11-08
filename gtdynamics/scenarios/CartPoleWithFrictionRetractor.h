@@ -22,6 +22,12 @@ class IECartPoleWithFriction;
 
 /** Retraction rule specialized for the cart-pole friction cone. */
 class CartPoleWithFrictionRetractor : public IERetractor {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<CartPoleWithFrictionRetractor>(*this);
+  }
+
 protected:
   /// Cart-pole problem parameters.
   const IECartPoleWithFriction &cp_;
@@ -32,13 +38,13 @@ public:
       : IERetractor(), cp_(cp) {}
 
   /** Retract a tangent update and enforce active friction constraints. */
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+  CMPoint
+  retract(const CMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 
   /** Fallback penalty-based retraction for boundary corner cases. */
-  IEConstraintManifold retract1(const IEConstraintManifold *manifold,
+  CMPoint retract1(const CMPoint *point,
                                 const VectorValues &delta) const;
 };
 

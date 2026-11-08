@@ -12,7 +12,6 @@
  * @author Frank Dellaert
  */
 
-
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/kinematics/PoseFactor.h>
@@ -23,9 +22,9 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/factorTesting.h>
-
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
 
 using namespace gtsam;
@@ -41,7 +40,6 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   e_constraints->add(cp.eConstraints(k));
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
@@ -54,7 +52,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   values.insert(FxKey(k), cp.computeFx(q, v, a));
   values.insert(FyKey(k), cp.computeFy(q, v, a));
 
-  IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
+  CMPoint point(params, e_constraints, i_constraints, values);
 
   VectorValues delta;
   double new_a = 20.0;
@@ -67,12 +65,12 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
   delta.insert(FyKey(k),
                Vector1(cp.computeFy(q, v, new_a) - cp.computeFy(q, v, a)));
 
-  auto new_manifold = manifold.retractor()->retract(&manifold, delta);
-  // new_manifold.values().print();
+  auto newPoint = point.retractor()->retract(&point, delta);
+  // newPoint.values().print();
   IndexSet expected_active_indices;
   expected_active_indices.insert(1);
   EXPECT(assert_container_equality(expected_active_indices,
-                                   new_manifold.activeIndices()));
+                                   newPoint.activeIndices()));
 }
 
 // TEST(IECartPoleWithFrictionCone, CPRetractor) {
@@ -86,8 +84,8 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
 
 //   auto params = std::make_shared<IEConstraintManifold::Params>();
-//   params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
-//   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
+//   params->retractorCreator =
+//   std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
 //   params->equalityBasisCreator =
 //       std::make_shared<TangentSpaceBasisCreator>(params->equalityManifoldParams->basis_params);
 
@@ -100,7 +98,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   values.insert(FxKey(k), cp.computeFx(q, v, a));
 //   values.insert(FyKey(k), cp.computeFy(q, v, a));
 
-//   IEConstraintManifold manifold(params, e_cc, i_constraints, values);
+//   CMPoint point(params, e_cc, i_constraints, values);
 
 //   {
 //     VectorValues delta;
@@ -114,7 +112,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     delta.insert(FyKey(k),
 //                  Vector1(cp.computeFy(q, v, new_a) - cp.computeFy(q, v, a)));
 
-//     auto new_manifold = manifold.retractor()->retract(&manifold, delta);
+//     auto newPoint = point.retractor()->retract(&point, delta);
 //     Values expected_values;
 //     new_a = cp.mu * (cp.M + cp.m) * cp.g;
 //     expected_values.insert(QKey(k), q);
@@ -123,12 +121,12 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     expected_values.insert(TauKey(k), cp.computeTau(q, new_a));
 //     expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
 //     expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
-//     EXPECT(assert_equal(expected_values, new_manifold.values()));
+//     EXPECT(assert_equal(expected_values, newPoint.values()));
 
 //     IndexSet expected_active_indices;
 //     expected_active_indices.insert(1);
 //     EXPECT(assert_container_equality(expected_active_indices,
-//                                      new_manifold.activeIndices()));
+//                                      newPoint.activeIndices()));
 //   }
 
 //   {
@@ -143,7 +141,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     delta.insert(FyKey(k),
 //                  Vector1(cp.computeFy(q, v, new_a) - cp.computeFy(q, v, a)));
 
-//     auto new_manifold = manifold.retractor()->retract(&manifold, delta);
+//     auto newPoint = point.retractor()->retract(&point, delta);
 //     Values expected_values;
 //     new_a = -cp.mu * (cp.M + cp.m) * cp.g;
 //     expected_values.insert(QKey(k), q);
@@ -152,12 +150,12 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     expected_values.insert(TauKey(k), cp.computeTau(q, new_a));
 //     expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
 //     expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
-//     EXPECT(assert_equal(expected_values, new_manifold.values()));
+//     EXPECT(assert_equal(expected_values, newPoint.values()));
 
 //     IndexSet expected_active_indices;
 //     expected_active_indices.insert(0);
 //     EXPECT(assert_container_equality(expected_active_indices,
-//                                      new_manifold.activeIndices()));
+//                                      newPoint.activeIndices()));
 //   }
 // }
 
@@ -174,8 +172,8 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   auto e_cc = std::make_shared<ConnectedComponent>(e_constraints);
 
 //   auto params = std::make_shared<IEConstraintManifold::Params>();
-//   params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
-//   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
+//   params->retractorCreator =
+//   std::make_shared<UniversalIERetractorCreator>(std::make_shared<BarrierRetractor>());
 //   params->equalityBasisCreator =
 //       std::make_shared<TangentSpaceBasisCreator>(params->equalityManifoldParams->basis_params);
 
@@ -188,7 +186,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //   values.insert(FxKey(k), cp.computeFx(q, v, a));
 //   values.insert(FyKey(k), cp.computeFy(q, v, a));
 
-//   IEConstraintManifold manifold(params, e_cc, i_constraints, values);
+//   CMPoint point(params, e_cc, i_constraints, values);
 
 //   {
 //     VectorValues delta;
@@ -202,7 +200,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     delta.insert(FyKey(k),
 //                  Vector1(cp.computeFy(q, v, new_a) - cp.computeFy(q, v, a)));
 
-//     auto new_manifold = manifold.retractor()->retract(&manifold, delta);
+//     auto newPoint = point.retractor()->retract(&point, delta);
 //     Values expected_values;
 //     new_a = cp.mu * (cp.M + cp.m) * cp.g;
 //     expected_values.insert(QKey(k), q);
@@ -211,12 +209,12 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     expected_values.insert(TauKey(k), cp.computeTau(q, new_a));
 //     expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
 //     expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
-//     EXPECT(assert_equal(expected_values, new_manifold.values()));
+//     EXPECT(assert_equal(expected_values, newPoint.values()));
 
 //     IndexSet expected_active_indices;
 //     expected_active_indices.insert(1);
 //     EXPECT(assert_container_equality(expected_active_indices,
-//                                      new_manifold.activeIndices()));
+//                                      newPoint.activeIndices()));
 //   }
 
 //   {
@@ -231,7 +229,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     delta.insert(FyKey(k),
 //                  Vector1(cp.computeFy(q, v, new_a) - cp.computeFy(q, v, a)));
 
-//     auto new_manifold = manifold.retractor()->retract(&manifold, delta);
+//     auto newPoint = point.retractor()->retract(&point, delta);
 //     Values expected_values;
 //     new_a = -cp.mu * (cp.M + cp.m) * cp.g;
 //     expected_values.insert(QKey(k), q);
@@ -240,12 +238,12 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 //     expected_values.insert(TauKey(k), cp.computeTau(q, new_a));
 //     expected_values.insert(FxKey(k), cp.computeFx(q, v, new_a));
 //     expected_values.insert(FyKey(k), cp.computeFy(q, v, new_a));
-//     EXPECT(assert_equal(expected_values, new_manifold.values()));
+//     EXPECT(assert_equal(expected_values, newPoint.values()));
 
 //     IndexSet expected_active_indices;
 //     expected_active_indices.insert(0);
 //     EXPECT(assert_container_equality(expected_active_indices,
-//                                      new_manifold.activeIndices()));
+//                                      newPoint.activeIndices()));
 //   }
 // }
 

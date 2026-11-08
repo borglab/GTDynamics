@@ -405,7 +405,7 @@ std::pair<IEResultSummary, IEGDOptimizationDetails> OptimizeIE_CMCOptGD(
   summary.total_iters = iters_details.back().state.iterations;
   for (const auto &iter_detail : iters_details) {
     const auto &state = iter_detail.state;
-    Values state_values = state.manifolds.baseValues();
+    Values state_values = ambientValues(state.points);
     IEIterSummary iter_summary;
     iter_summary.accum_iters = state.iterations;
     iter_summary.accum_inner_iters = state.totalInnerIterations;

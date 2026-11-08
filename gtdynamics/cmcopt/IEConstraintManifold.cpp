@@ -1,173 +1,484 @@
 /* ----------------------------------------------------------------------------
  * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
- * Atlanta, Georgia 30332-0415
- * All Rights Reserved
- * See LICENSE for the license information
+ * Atlanta, Georgia 30332-0415. All Rights Reserved.
+ * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
-
 /**
  * @file IEConstraintManifold.cpp
- * @brief Implement the equality and inequality constraint manifold.
+ * @brief Factor-defined types, immutable conditioning, and bound factor views.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/BarrierRetractor.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 
 namespace gtdynamics {
-using namespace gtsam;
-
 namespace {
-
-/** Form Dg(x) and -g(x) without whitening or clipping feasible rows.
- *
- * Equality-factor linearization already whitens by the constraint sigma.
- * Callers attach that sigma to the resulting linear inequality, so using an
- * equality linearization here would apply the scaling twice. Read g and Dg
- * directly; unlike an inequality's error Jacobian, Dg also retains inward rows.
+/** Preserve a constraint's embedded expression and derivative ordering while
+ * assigning ambient identities and immutably fixing selected local variables.
  */
-JacobianFactor::shared_ptr LinearizedIConstraint(
-    const NonlinearInequalityConstraint::shared_ptr &constraint,
-    const Values &values) {
-  std::vector<Matrix> jacobians(constraint->size());
-  const Vector expression = constraint->unwhitenedExpr(values, &jacobians);
-  std::vector<std::pair<Key, Matrix>> terms;
-  terms.reserve(constraint->size());
-  for (size_t index = 0; index < constraint->size(); ++index) {
-    terms.emplace_back(constraint->keys()[index], jacobians[index]);
+class BoundExpression {
+ public:
+  IEConstraintManifold::Bindings bindings;
+  Values fixed;
+  KeyVector source;
+  KeyVector keys;
+
+  BoundExpression(const KeyVector& slots, const IEConstraintManifold::Bindings& binding,
+                  const Values& fixedValues)
+      : bindings(binding), fixed(fixedValues), source(slots) {
+    for (Key slot : source)
+      if (!fixed.exists(slot)) keys.push_back(bindings.at(slot));
   }
-  return std::make_shared<JacobianFactor>(terms, -expression);
+
+  Values local(const Values& ambient) const {
+    // Evaluate the original expression using its local slot identities.
+    Values result;
+    for (Key slot : source)
+      result.insert(slot, fixed.exists(slot) ? fixed.at(slot)
+                                             : ambient.at(bindings.at(slot)));
+    return result;
+  }
+
+  void derivatives(const std::vector<Matrix>& full,
+                   OptionalMatrixVecType output) const {
+    if (!output) return;
+
+    // Fixed slots contribute values but have no columns in the bound Jacobian.
+    size_t j = 0;
+    for (size_t i = 0; i < source.size(); ++i)
+      if (!fixed.exists(source[i])) (*output)[j++] = full[i];
+  }
+};
+
+class BoundCost final : public NoiseModelFactor {
+  NoiseModelFactor::shared_ptr factor_;
+  BoundExpression expression_;
+
+ public:
+  BoundCost(const NoiseModelFactor::shared_ptr& factor,
+            const IEConstraintManifold::Bindings& bindings, const Values& fixed)
+      : NoiseModelFactor(factor->noiseModel(),
+                         BoundExpression(factor->keys(), bindings, fixed).keys),
+        factor_(factor),
+        expression_(factor->keys(), bindings, fixed) {}
+  Vector unwhitenedError(const Values& values,
+                         OptionalMatrixVecType H = nullptr) const override {
+    std::vector<Matrix> full(expression_.source.size());
+    const Vector result = factor_->unwhitenedError(expression_.local(values),
+                                                   H ? &full : nullptr);
+    expression_.derivatives(full, H);
+    return result;
+  }
+
+  bool active(const Values& values) const override {
+    return factor_->active(expression_.local(values));
+  }
+
+  NonlinearFactor::shared_ptr clone() const override {
+    return std::make_shared<BoundCost>(*this);
+  }
+};
+
+class BoundEquality final : public NonlinearEqualityConstraint {
+  NonlinearEqualityConstraint::shared_ptr factor_;
+  BoundExpression expression_;
+
+ public:
+  BoundEquality(const NonlinearEqualityConstraint::shared_ptr& factor,
+                const IEConstraintManifold::Bindings& bindings, const Values& fixed)
+      : NonlinearEqualityConstraint(
+            factor->noiseModel(),
+            BoundExpression(factor->keys(), bindings, fixed).keys),
+        factor_(factor),
+        expression_(factor->keys(), bindings, fixed) {}
+  Vector unwhitenedError(const Values& x,
+                         OptionalMatrixVecType H = nullptr) const override {
+    std::vector<Matrix> full(expression_.source.size());
+    Vector result =
+        factor_->unwhitenedError(expression_.local(x), H ? &full : nullptr);
+    expression_.derivatives(full, H);
+    return result;
+  }
+
+  NoiseModelFactor::shared_ptr penaltyFactor(double mu = 1) const override {
+    return std::make_shared<BoundCost>(factor_->penaltyFactor(mu),
+                                       expression_.bindings, expression_.fixed);
+  }
+
+  NonlinearFactor::shared_ptr clone() const override {
+    return std::make_shared<BoundEquality>(*this);
+  }
+};
+
+class BoundInequality final : public NonlinearInequalityConstraint {
+  NonlinearInequalityConstraint::shared_ptr factor_;
+  BoundExpression expression_;
+
+ public:
+  BoundInequality(const NonlinearInequalityConstraint::shared_ptr& factor,
+                  const IEConstraintManifold::Bindings& bindings, const Values& fixed)
+      : NonlinearInequalityConstraint(
+            factor->noiseModel(),
+            BoundExpression(factor->keys(), bindings, fixed).keys),
+        factor_(factor),
+        expression_(factor->keys(), bindings, fixed) {}
+  Vector unwhitenedExpr(const Values& x,
+                        OptionalMatrixVecType H = nullptr) const override {
+    std::vector<Matrix> full(expression_.source.size());
+    Vector result =
+        factor_->unwhitenedExpr(expression_.local(x), H ? &full : nullptr);
+    expression_.derivatives(full, H);
+    return result;
+  }
+
+  NoiseModelFactor::shared_ptr penaltyFactor(double mu = 1) const override {
+    return std::make_shared<BoundCost>(factor_->penaltyFactor(mu),
+                                       expression_.bindings, expression_.fixed);
+  }
+
+  NoiseModelFactor::shared_ptr penaltyFactorCustom(
+      InequalityPenaltyFunction::shared_ptr function,
+      double mu = 1) const override {
+    return std::make_shared<BoundCost>(
+        factor_->penaltyFactorCustom(function, mu), expression_.bindings,
+        expression_.fixed);
+  }
+
+  NonlinearEqualityConstraint::shared_ptr createEqualityConstraint()
+      const override;
+  NonlinearFactor::shared_ptr clone() const override {
+    return std::make_shared<BoundInequality>(*this);
+  }
+};
+
+/** Equality of the raw expression, never its clipped inequality residual. */
+class BoundBoundaryEquality final : public NonlinearEqualityConstraint {
+  std::shared_ptr<const BoundInequality> inequality_;
+
+ public:
+  explicit BoundBoundaryEquality(
+      const std::shared_ptr<const BoundInequality>& inequality)
+      : NonlinearEqualityConstraint(inequality->noiseModel(),
+                                    inequality->keys()),
+        inequality_(inequality) {}
+  Vector unwhitenedError(const Values& values,
+                         OptionalMatrixVecType H = nullptr) const override {
+    return inequality_->unwhitenedExpr(values, H);
+  }
+
+  NonlinearFactor::shared_ptr clone() const override {
+    return std::make_shared<BoundBoundaryEquality>(*this);
+  }
+};
+
+NonlinearEqualityConstraint::shared_ptr
+BoundInequality::createEqualityConstraint() const {
+  return std::make_shared<BoundBoundaryEquality>(
+      std::make_shared<BoundInequality>(*this));
 }
+
+/** Bind a numerical basis without reinterpreting local coordinate choices. */
+class BoundBasis final : public TangentSpaceBasis {
+  TangentSpaceBasis::shared_ptr local_;
+  IEConstraintManifold::Bindings bindings_, inverse_;
+
+  Values localValues(const Values& ambient) const {
+    Values result;
+    for (const auto& [slot, key] : bindings_)
+      result.insert(slot, ambient.at(key));
+    return result;
+  }
+
+ public:
+  BoundBasis(const TangentSpaceBasis::shared_ptr& basis,
+             const IEConstraintManifold::Bindings& bindings)
+      : local_(basis), bindings_(bindings) {
+    for (const auto& [slot, key] : bindings_) inverse_[key] = slot;
+    is_constructed_ = local_->isConstructed();
+  }
+
+  shared_ptr createWithNewValues(const Values& values) const override {
+    return std::make_shared<BoundBasis>(
+        local_->createWithNewValues(localValues(values)), bindings_);
+  }
+
+  shared_ptr createWithAdditionalConstraints(
+      const NonlinearEqualityConstraints& constraints, const Values& values,
+      bool fromScratch = false) const override {
+    NonlinearEqualityConstraints local;
+    for (const auto& factor : constraints)
+      local.emplace_shared<BoundEquality>(factor, inverse_, Values());
+    return std::make_shared<BoundBasis>(
+        local_->createWithAdditionalConstraints(local, localValues(values),
+                                                fromScratch),
+        bindings_);
+  }
+
+  VectorValues computeTangentVector(const Vector& xi) const override {
+    VectorValues result;
+    for (const auto& [slot, value] : local_->computeTangentVector(xi))
+      result.insert(bindings_.at(slot), value);
+    return result;
+  }
+
+  Vector computeXi(const VectorValues& ambient) const override {
+    VectorValues local;
+    for (const auto& [slot, key] : bindings_)
+      local.insert(slot, ambient.at(key));
+    return local_->computeXi(local);
+  }
+
+  Matrix recoverJacobian(const Key& key) const override {
+    return local_->recoverJacobian(inverse_.at(key));
+  }
+
+  Vector localCoordinates(const Values& a, const Values& b) const override {
+    return local_->localCoordinates(localValues(a), localValues(b));
+  }
+
+  size_t dim() const override { return local_->dim(); }
+  void construct(const Values& values) override {
+    local_->construct(localValues(values));
+    is_constructed_ = true;
+  }
+
+  void print(const KeyFormatter& formatter = DefaultKeyFormatter) override {
+    local_->print(formatter);
+  }
+};
 
 }  // namespace
 
+IEConstraintManifold::IEConstraintManifold(const NonlinearEqualityConstraints& equalities,
+                     const NonlinearInequalityConstraints& inequalities,
+                     const Values& prototype)
+    : IEConstraintManifold(equalities, inequalities, prototype, Params()) {}
 
-TangentSpaceMetric::shared_ptr IEConstraintManifold::projectionMetric(
-    const IERetractorParams &params,
-    const std::optional<KeyVector> &priorKeys) const {
-  const auto precisions = params.priorPrecisions(
-      values_, priorKeys ? *priorKeys : values_.keys());
-  std::lock_guard<std::mutex> lock(metric_cache_->mutex);
-  if (!metric_cache_->metric || !metric_cache_->metric->matches(precisions, params.whitenAffineCoordinates))
-    metric_cache_->metric =
-        std::make_shared<TangentSpaceMetric>(*e_basis_, values_, precisions, params.whitenAffineCoordinates);
-  return metric_cache_->metric;
-}
-
-/* ************************************************************************* */
-std::pair<IndexSet, Vector>
-IEConstraintManifold::projectTangentCone(const Vector &xi) const {
-  return linearization_->project(xi);
-}
-
-/* ************************************************************************* */
-std::pair<IndexSet, VectorValues> IEConstraintManifold::projectTangentCone(
-    const VectorValues &tangentVector) const {
-  Vector xi = e_basis_->computeXi(tangentVector);
-  auto result = projectTangentCone(xi);
-  VectorValues projected_tangent_vector =
-      e_basis_->computeTangentVector(result.second);
-  return std::make_pair(result.first, projected_tangent_vector);
-}
-
-/* ************************************************************************* */
-IEConstraintManifold
-IEConstraintManifold::retract(const Vector &xi,
-                              const std::optional<IndexSet> &blocking_indices,
-                              IERetractionInfo *retract_info) const {
-  auto tangentVector = e_basis_->computeTangentVector(xi);
-  return retract(tangentVector, blocking_indices, retract_info);
-}
-
-/* ************************************************************************* */
-IEConstraintManifold
-IEConstraintManifold::retract(const VectorValues &delta,
-                              const std::optional<IndexSet> &blocking_indices,
-                              IERetractionInfo *retract_info) const {
-  return retractor_->retract(this, delta, blocking_indices, retract_info);
-}
-
-/* ************************************************************************* */
-IndexSet IEConstraintManifold::blockingIndices(
-    const VectorValues &tangentVector) const {
-  return linearization_->blockingIndices(tangentVector);
-}
-
-/* ************************************************************************* */
-IEConstraintManifold
-IEConstraintManifold::moveToBoundary(const IndexSet &active_indices,
-                                     IERetractionInfo *retract_info) const {
-  return retractor_->moveToBoundary(this, active_indices, retract_info);
-}
-
-/* ************************************************************************* */
-ConstraintManifold IEConstraintManifold::eConstraintManifold() const {
-  return ConstraintManifold(e_constraints_, values_, params_->equalityManifoldParams, false,
-                            e_basis_);
-}
-
-/* ************************************************************************* */
-ConstraintManifold IEConstraintManifold::eConstraintManifold(
-    const IndexSet &active_indices) const {
-  if (active_indices.size() == 0) {
-    return eConstraintManifold();
+IEConstraintManifold::IEConstraintManifold(const Values& prototype, size_t dimension)
+    : dimension_(dimension) {
+  for (Key key : prototype.keys()) {
+    const Value& value = prototype.at(key);
+    slots_.emplace(key, Slot{typeid(value), value.dim()});
   }
 
-  // TODO: construct e-basis using createWithAdditionalConstraints
-  NonlinearEqualityConstraints new_active_constraints;
-  for (const auto &idx : active_indices) {
-    new_active_constraints.push_back(
-        i_constraints_->at(idx)->createEqualityConstraint());
-  }
-  auto active_constraints =
-      std::make_shared<NonlinearEqualityConstraints>(*e_constraints_);
-  active_constraints->add(new_active_constraints);
-
-  auto new_basis = e_basis_->createWithAdditionalConstraints(
-      new_active_constraints, values_, params_->equalityBasisBuildFromScratch);
-  return ConstraintManifold(active_constraints, values_, params_->equalityManifoldParams,
-                            false, new_basis);
+  equalities_ = std::make_shared<NonlinearEqualityConstraints>();
+  inequalities_ = std::make_shared<NonlinearInequalityConstraints>();
 }
 
-/* ************************************************************************* */
-IndexSet IEConstraintManifold::identifyActiveConstraints(
-    const NonlinearInequalityConstraints &i_constraints,
-    const Values &values, const std::optional<IndexSet> &active_indices) {
-  if (active_indices) {
-    // A retractor can approach a boundary from inside its feasibility
-    // tolerance. Its explicit mode is authoritative even if g is slightly
-    // negative; active(), which tests g>=0 exactly, is not a validity check.
-    return *active_indices;
+IEConstraintManifold::IEConstraintManifold(const NonlinearEqualityConstraints& equalities,
+                     const NonlinearInequalityConstraints& inequalities,
+                     const Values& prototype, const Params& params)
+    : IEConstraintManifold(prototype, 0) {
+  if (equalities.dim() > prototype.dim())
+    throw std::invalid_argument("More equality rows than ambient dimensions");
+
+  // Snapshot policy settings before this definition is shared across points.
+  params_ = params;
+  if (!params_.equalityBasisCreator)
+    throw std::invalid_argument("Missing equality basis policy");
+  if (!params_.retractorCreator)
+    params_.retractorCreator = std::make_shared<BarrierRetractorCreator>();
+  params_.retractorCreator =
+      params_.retractorCreator->cloneFor(KeySet(prototype.keys()));
+  params_.equalityBasisCreator = params_.equalityBasisCreator->clone();
+  if (!params_.equalityRetractionCreator)
+    params_.equalityRetractionCreator =
+        std::make_shared<UnconstrainedOptimizationRetractorCreator>();
+
+  // Factor definitions stay local; point bindings supply ambient identities.
+  equalities_ = std::make_shared<NonlinearEqualityConstraints>(equalities);
+  inequalities_ =
+      std::make_shared<NonlinearInequalityConstraints>(inequalities);
+  dimension_ = prototype.dim() - equalities.dim();
+  for (const auto& graphKeys : {equalities.keys(), inequalities.keys()})
+    for (Key key : graphKeys)
+      if (!slots_.count(key))
+        throw std::invalid_argument("Constraint references an undeclared slot");
+}
+
+std::map<Key, size_t> IEConstraintManifold::dimensions() const {
+  std::map<Key, size_t> result;
+  for (const auto& [key, slot] : slots_) result.emplace(key, slot.dimension);
+  return result;
+}
+
+void IEConstraintManifold::validate(const Bindings& bindings, const Values& values) const {
+  if (bindings.size() != slots_.size() || values.size() != slots_.size())
+    throw std::invalid_argument(
+        "CMPoint requires complete bindings and exactly its ambient values");
+
+  // Require one ambient owner for every declared local slot.
+  KeySet targets;
+  for (const auto& [key, slot] : slots_) {
+    auto found = bindings.find(key);
+    if (found == bindings.end() || !targets.insert(found->second).second ||
+        !values.exists(found->second))
+      throw std::invalid_argument("Invalid CMPoint slot binding");
+    const Value& value = values.at(found->second);
+    if (slot.type != std::type_index(typeid(value)) ||
+        slot.dimension != value.dim())
+      throw std::invalid_argument(
+          "CMPoint slot value has a different type or dimension");
+  }
+}
+
+std::pair<NonlinearEqualityConstraints::shared_ptr,
+          NonlinearInequalityConstraints::shared_ptr>
+IEConstraintManifold::boundConstraints(const Bindings& bindings) const {
+  // Unconditioned identity bindings can use the original factors directly.
+  bool identity = fixed_.empty();
+  for (const auto& [slot, ambient] : bindings) identity &= slot == ambient;
+  if (identity)
+    return {std::make_shared<NonlinearEqualityConstraints>(*equalities_),
+            std::make_shared<NonlinearInequalityConstraints>(*inequalities_)};
+
+  // Wrap evaluation rather than rekeying embedded expressions.
+  auto equalities = std::make_shared<NonlinearEqualityConstraints>();
+  auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
+  for (const auto& factor : *equalities_) {
+    auto bound = std::make_shared<BoundEquality>(factor, bindings, fixed_);
+    if (bound->empty()) {
+      if (!bound->feasible(Values(), 1e-7))
+        throw std::invalid_argument("Conditioning violates a fixed equality");
+    } else
+      equalities->push_back(bound);
   }
 
-  IndexSet active_set;
-  for (size_t i = 0; i < i_constraints.size(); i++) {
-    if (i_constraints.at(i)->active(values)) {
-      active_set.insert(i);
+  for (const auto& factor : *inequalities_) {
+    auto bound = std::make_shared<BoundInequality>(factor, bindings, fixed_);
+    // Retain constant inequality blocks so their original indices never shift.
+    if (bound->empty() && !bound->feasible(Values(), 1e-7))
+      throw std::invalid_argument("Conditioning violates a fixed inequality");
+    inequalities->push_back(bound);
+  }
+
+  return {equalities, inequalities};
+}
+
+CMPoint IEConstraintManifold::point(const Bindings& bindings, const Values& values,
+                         const std::optional<IndexSet>& active) const {
+  return CMPoint(shared_from_this(), bindings, values, active);
+}
+
+CMPoint IEConstraintManifold::point(const Values& values,
+                         const std::optional<IndexSet>& active) const {
+  Bindings bindings;
+  for (const auto& [key, slot] : slots_) bindings.emplace(key, key);
+  return point(bindings, values, active);
+}
+
+IEConstraintManifold::shared_ptr IEConstraintManifold::condition(const Values& fixed) const {
+  if (typeid(*this) != typeid(IEConstraintManifold))
+    throw std::invalid_argument(
+        "Native conditioning is specified by immutable recovery parameters");
+  auto result = std::make_shared<IEConstraintManifold>(*this);
+  // Fixing a selected basis slot changes the chart. Choose a fresh general
+  // equality chart rather than retaining an invalid independent-key selector.
+  result->params_.equalityBasisCreator =
+      std::make_shared<OrthonormalBasisCreator>();
+  for (Key key : fixed.keys()) {
+    const auto found = result->slots_.find(key);
+    const Value& value = fixed.at(key);
+    if (found == result->slots_.end() ||
+        found->second.type != std::type_index(typeid(value)) ||
+        found->second.dimension != value.dim())
+      throw std::invalid_argument("Invalid conditioning slot");
+    result->fixed_.insert(key, fixed.at(key));
+    result->slots_.erase(key);
+  }
+
+  // Recompute the free layout after capturing the conditioning values.
+  Bindings identity;
+  size_t total = 0;
+  for (const auto& [key, slot] : result->slots_) {
+    identity.emplace(key, key);
+    total += slot.dimension;
+  }
+
+  const auto constraints = result->boundConstraints(identity);
+  if (constraints.first->dim() > total)
+    throw std::invalid_argument("Conditioned equalities have unsupported rank");
+  result->dimension_ = total - constraints.first->dim();
+  KeySet freeSlots;
+  for (const auto& [key, slot] : result->slots_) freeSlots.insert(key);
+  result->params_.retractorCreator =
+      result->params_.retractorCreator->cloneFor(freeSlots);
+  return result;
+}
+
+std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearize(
+    const CMPoint& point) const {
+  if (point.manifold().get() != this)
+    throw std::invalid_argument("Point belongs to a different runtime type");
+  return linearizeAt(point, nullptr);
+}
+
+std::shared_ptr<const CMTangentSpace> IEConstraintManifold::linearizeAt(
+    const CMPoint& point, const CMTangentSpace* previous) const {
+  const auto& values = point.values();
+  if (point.manifold().get() != this)
+    throw std::invalid_argument("Point belongs to a different runtime type");
+
+  // Reuse numerical geometry only under the explicit affine contract.
+  TangentSpaceBasis::shared_ptr basis;
+  if (previous) {
+    basis = params_.affineEqualities
+                ? std::const_pointer_cast<TangentSpaceBasis>(previous->basis())
+                : previous->basis()->createWithNewValues(values);
+  } else {
+    bool identity = true;
+    Values local;
+    Bindings slots;
+    for (const auto& [slot, ambient] : point.bindings()) {
+      identity &= slot == ambient;
+      local.insert(slot, values.at(ambient));
+      slots.emplace(slot, slot);
+    }
+    if (identity)
+      basis = params_.equalityBasisCreator->create(point.equalities_, values);
+    else {
+      auto constraints = boundConstraints(slots).first;
+      auto localBasis =
+          params_.equalityBasisCreator->create(constraints, local);
+      if (!localBasis->isConstructed()) localBasis->construct(local);
+      basis = std::make_shared<BoundBasis>(localBasis, point.bindings());
     }
   }
-  return active_set;
-}
 
-/* ************************************************************************* */
-std::shared_ptr<const IEManifoldLinearization>
-IEConstraintManifold::constructLinearization(
-    const NonlinearInequalityConstraints &i_constraints, const Values &values,
-    const IndexSet &active_indices,
-    const TangentSpaceBasis::shared_ptr &t_basis) {
+  // Finish lazy basis construction before publishing read-only geometry.
+  if (!basis->isConstructed()) basis->construct(values);
+  if (basis->dim() != dim())
+    throw RetractionFailure("CMC equality chart changed dimension");
+  // Eigen's full-rank kernel can use a single zero placeholder column.
+  // A nonzero placeholder or a different positive chart width indicates a
+  // rank change, rather than a different point of this fixed-dimensional type.
+  for (Key key : values.keys()) {
+    const Matrix block = basis->recoverJacobian(key);
+    if ((dim() && block.cols() != dim()) || (!dim() && block.norm() > 1e-12))
+      throw RetractionFailure(
+          "Equalities do not define the declared constant-rank chart");
+    if (dim()) break;
+  }
+
+  // Pull each active block into equality coordinates and retain its raw rows.
   LinearIConstraintMap tangent, ambient;
-  for (size_t index : active_indices) {
-    const auto &constraint = i_constraints.at(index);
-    const auto linear = LinearizedIConstraint(constraint, values);
-    Matrix rows = Matrix::Zero(linear->rows(), t_basis->dim());
+  for (size_t index : point.activeIndices()) {
+    const auto& constraint = point.iConstraints()->at(index);
+    std::vector<Matrix> jacobians(constraint->size());
+    const Vector expression = constraint->unwhitenedExpr(values, &jacobians);
+    Matrix rows = Matrix::Zero(expression.size(), dim());
     std::vector<std::pair<Key, Matrix>> terms;
-    for (auto it = linear->begin(); it != linear->end(); ++it) {
-      if (t_basis->dim())
-        rows += linear->getA(it) * t_basis->recoverJacobian(*it);
-      terms.emplace_back(*it, linear->getA(it));
+    for (size_t i = 0; i < constraint->size(); ++i) {
+      if (dim())
+        rows += jacobians[i] * basis->recoverJacobian(constraint->keys()[i]);
+      terms.emplace_back(constraint->keys()[i], jacobians[i]);
     }
     const auto noise = noiseModel::Diagonal::Sigmas(constraint->sigmas());
-    const Vector zero = Vector::Zero(linear->rows());
+    const Vector zero = Vector::Zero(expression.size());
     tangent.emplace(
         index, std::make_shared<JacobianLinearInequalityConstraint>(
                    std::make_shared<JacobianFactor>(1, rows, zero, noise)));
@@ -175,7 +486,74 @@ IEConstraintManifold::constructLinearization(
                     std::make_shared<JacobianLinearInequalityConstraint>(
                         std::make_shared<JacobianFactor>(terms, zero, noise)));
   }
-  return std::make_shared<const IEManifoldLinearization>(tangent, ambient);
+
+  return std::make_shared<CMTangentSpace>(
+      basis, tangent, ambient, params_.affineEqualities ? previous : nullptr);
 }
 
-} // namespace gtdynamics
+CMPoint IEConstraintManifold::retract(const CMPoint& point, const Vector& delta,
+                           const std::optional<IndexSet>& blocking,
+                           IERetractionInfo* info,
+                           const VectorValues* metricSigmas) const {
+  return point.retractor(metricSigmas)
+      ->retract(&point, point.toAmbient(delta), blocking, info);
+}
+
+Vector IEConstraintManifold::localCoordinates(const CMPoint& origin,
+                                   const CMPoint& other) const {
+  return dim() ? origin.eBasis()->localCoordinates(origin.values(),
+                                                   other.values())
+               : Vector(0);
+}
+
+IndexSet IEConstraintManifold::identifyActive(
+    const CMPoint& point, const std::optional<IndexSet>& supplied) const {
+  if (supplied) {
+    for (size_t index : *supplied)
+      if (index >= point.iConstraints()->size())
+        throw std::invalid_argument("Invalid active constraint index");
+    return *supplied;
+  }
+
+  IndexSet indices;
+  for (size_t i = 0; i < point.iConstraints()->size(); ++i)
+    if (point.iConstraints()->at(i)->active(point.values())) indices.insert(i);
+  return indices;
+}
+
+size_t IEConstraintManifold::inequalityCount(const CMPoint& point) const {
+  return point.iConstraints()->size();
+}
+
+Vector IEConstraintManifold::inequalityResidual(const CMPoint& point, size_t index) const {
+  return point.iConstraints()->at(index)->unwhitenedExpr(point.values());
+}
+
+double IEConstraintManifold::equalityViolation(const CMPoint& point) const {
+  return point.eConstraints()->violationNorm(point.values());
+}
+
+double IEConstraintManifold::inequalityViolation(const CMPoint& point) const {
+  return point.iConstraints()->violationNorm(point.values());
+}
+
+bool IEConstraintManifold::usesVaryingMetric() const {
+  return params_.retractorCreator &&
+         params_.retractorCreator->params()->useVaryingSigma;
+}
+
+CMPoint IEConstraintManifold::retractAmbient(const CMPoint& point,
+                                  const VectorValues& delta,
+                                  const std::optional<IndexSet>& blocking,
+                                  IERetractionInfo* info,
+                                  const VectorValues* metricSigmas) const {
+  return point.retractor(metricSigmas)->retract(&point, delta, blocking, info);
+}
+
+CMPoint IEConstraintManifold::moveToBoundary(const CMPoint& point, const IndexSet& active,
+                                  IERetractionInfo* info,
+                                  const VectorValues* metricSigmas) const {
+  return point.retractor(metricSigmas)->moveToBoundary(&point, active, info);
+}
+
+}  // namespace gtdynamics

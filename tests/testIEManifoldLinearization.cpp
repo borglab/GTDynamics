@@ -4,13 +4,13 @@
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 /**
- * @file testIEManifoldLinearization.cpp
+ * @file testCMTangentSpace.cpp
  * @brief Verify state-owned geometry, index mapping and cache invalidation.
  * @author GTDynamics contributors
  */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtsam/base/TestableAssertions.h>
 
 /* ************************************************************************* */
@@ -29,7 +29,7 @@ double square(const double& x, OptionalJacobian<1, 1> H) {
 }
 
 /** Leave two inactive blocks before the nonlinear active block. */
-IEConstraintManifold makeManifold() {
+CMPoint makePoint() {
   auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
   inequalities->push_back(ScalarExpressionInequalityConstraint::LeqZero(
       Double_(Key(7)) - Double_(10.), 1.));
@@ -43,31 +43,31 @@ IEConstraintManifold makeManifold() {
   params->affineEqualities = true;
   Values values;
   values.insert(Key(7), 1.);
-  return IEConstraintManifold(params,
+  return CMPoint(params,
                               std::make_shared<NonlinearEqualityConstraints>(),
                               inequalities, values);
 }
 
 // Projection and QP row access share one derivative evaluation.
-TEST(IEManifoldLinearization, SharedAcrossConsumers) {
+TEST(CMTangentSpace, SharedAcrossConsumers) {
   derivativeCalls = 0;
-  const auto manifold = makeManifold();
-  const auto local = manifold.linearization();
+  const auto point = makePoint();
+  const auto local = point.tangentSpace();
   EXPECT_LONGS_EQUAL(1, derivativeCalls);
   EXPECT(local->indices() == IndexSet{2});
   EXPECT(assert_equal(Matrix1::Constant(2.), local->rows(2)));
   EXPECT(assert_equal(Matrix1::Constant(8.), local->rows(2, true)));
-  const auto copy = manifold;
-  EXPECT(copy.linearization() == local);
+  const auto copy = point;
+  EXPECT(copy.tangentSpace() == local);
 
   VectorValues ambient;
   ambient.insert(7, Vector1(1.));
-  EXPECT(manifold.blockingIndices(ambient) == IndexSet{2});
-  const auto projected = manifold.projectTangentCone(Vector(Vector1(1.)));
+  EXPECT(point.blockingIndices(ambient) == IndexSet{2});
+  const auto projected = point.projectTangentCone(Vector(Vector1(1.)));
   EXPECT(projected.first == IndexSet{2});
   EXPECT(assert_equal(Vector1::Zero(), projected.second, 1e-9));
   EXPECT(assert_equal(ambient,
-                      manifold.toAmbient(manifold.toCoordinates(ambient))));
+                      point.toAmbient(point.toCoordinates(ambient))));
   EXPECT(local->violated(Vector1(1.)) == IndexSet{2});
   EXPECT(!local->active(Vector1(1.), IndexSet{2}));
   EXPECT_LONGS_EQUAL(1, derivativeCalls);
@@ -75,22 +75,22 @@ TEST(IEManifoldLinearization, SharedAcrossConsumers) {
 
 // Even affine equality bases cannot reuse nonlinear inequality geometry at a
 // new state. Explicit modes and independently surviving snapshots remain valid.
-TEST(IEManifoldLinearization, FreshGeometryAtNewState) {
+TEST(CMTangentSpace, FreshGeometryAtNewState) {
   derivativeCalls = 0;
-  auto manifold = makeManifold();
-  const auto oldGeometry = manifold.linearization();
+  auto point = makePoint();
+  const auto oldGeometry = point.tangentSpace();
   Values values;
   values.insert(Key(7), 2.);
-  const auto next = manifold.createWithNewValues(values, IndexSet{2});
-  EXPECT(next.linearization() != oldGeometry);
-  EXPECT(next.eBasis() == manifold.eBasis());
+  const auto next = point.createWithNewValues(values, IndexSet{2});
+  EXPECT(next.tangentSpace() != oldGeometry);
+  EXPECT(next.eBasis() == point.eBasis());
   EXPECT_LONGS_EQUAL(2, derivativeCalls);
-  EXPECT(assert_equal(Matrix1::Constant(4.), next.linearization()->rows(2)));
+  EXPECT(assert_equal(Matrix1::Constant(4.), next.tangentSpace()->rows(2)));
   EXPECT(assert_equal(Matrix1::Constant(2.), oldGeometry->rows(2)));
   EXPECT_DOUBLES_EQUAL(3., next.inequalityResidual(2)(0), 0.);
   values.update(Key(7), 0.5);
-  manifold = manifold.createWithNewValues(values);
-  EXPECT(manifold.linearization()->indices().empty());
+  point = point.createWithNewValues(values);
+  EXPECT(point.tangentSpace()->indices().empty());
   EXPECT_LONGS_EQUAL(2, derivativeCalls);
   EXPECT(assert_equal(Matrix1::Constant(2.), oldGeometry->rows(2)));
 }

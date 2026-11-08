@@ -63,6 +63,11 @@ list(APPEND headers ${internal_headers})
 install(FILES ${internal_headers}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/factors/internal)
 
+file(GLOB cmc_internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/cmcopt/internal/*.h")
+list(APPEND headers ${cmc_internal_headers})
+install(FILES ${cmc_internal_headers}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cmcopt/internal)
+
 ## Generate and install config file
 configure_file(config.h.in config.h)
 list(APPEND sources "${PROJECT_BINARY_DIR}/${PROJECT_NAME}/config.h")

@@ -57,7 +57,7 @@ IERetractorParams::shared_ptr GetNominalRetractorParams() {
 /* ************************************************************************* */
 IEConstraintManifold::Params::shared_ptr GetIECMParamsManual() {
   auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-  iecm_params->equalityManifoldParams->basisCreator =
+  iecm_params->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(cp.getBasisKeyFunction());
   iecm_params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(

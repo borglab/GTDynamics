@@ -18,15 +18,15 @@
 #include <optional>
 
 namespace gtdynamics {
-class IEConstraintManifold;
+class CMPoint;
 struct IERetractorParams;
 struct IERetractionInfo;
 
 /** A shared projection problem on an exact affine equality manifold.
- * The manifold owns the basis and metric cache. This short-lived object owns
+ * Point geometry owns the basis and metric cache. This short-lived object owns
  * only the trial coordinates and builds constraints on recovered original keys.
  * Values must be Euclidean scalars/vectors; no nonlinear recovery is implied.
- * Its manifold reference must outlive it. Built factors own their anchor/maps.
+ * Its point reference must outlive it. Built factors own their anchor/maps.
  */
 class AffineProjection {
 public:
@@ -35,7 +35,7 @@ public:
    * normalization to preserve their original cost-versus-penalty weighting.
    * Whitening is independently controlled by params.whitenAffineCoordinates.
    */
-  AffineProjection(const IEConstraintManifold &manifold,
+  AffineProjection(const CMPoint &point,
                    const VectorValues &delta, const IERetractorParams &params,
                    const std::optional<KeyVector> &priorKeys,
                    const IndexSet &blocking, double feasibilityTolerance,
@@ -58,7 +58,7 @@ public:
   IndexSet validateResult(const Values &values, const IndexSet &blocking) const;
 
 private:
-  const IEConstraintManifold &manifold_;
+  const CMPoint &point_;
   TangentSpaceMetric::shared_ptr metric_;
   Values trial_;
   Vector target_;

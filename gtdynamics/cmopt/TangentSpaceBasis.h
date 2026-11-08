@@ -449,7 +449,7 @@ class EliminationBasis : public TangentSpaceBasis {
    * Recreate a basis at new values while reusing structural attributes.
    *
    * This is the path used by `createWithNewValues`, which is in turn called
-   * when `ConstraintManifold` or `IEConstraintManifold` creates a new manifold
+   * when `ConstraintManifold` or `CMPoint` creates a new manifold
    * state after retraction or between nonlinear iterations. It avoids
    * recomputing basis-key offsets and the symbolic ordering. If
    * `alwaysConstructBasis` is true, it still recomputes the numeric recovery
@@ -617,6 +617,14 @@ class TangentSpaceBasisCreator {
   TangentSpaceBasisCreator(TangentSpaceBasisParams::shared_ptr params) : params_(params) {}
 
   virtual ~TangentSpaceBasisCreator() {}
+  /// Copy construction snapshots numeric basis settings for runtime types.
+  TangentSpaceBasisCreator(const TangentSpaceBasisCreator &other)
+      : params_(std::make_shared<TangentSpaceBasisParams>(*other.params_)) {}
+  /// Capture a policy without retaining caller-mutable settings.
+  virtual shared_ptr clone() const {
+    throw std::invalid_argument(
+        "A CMC basis policy must support immutable snapshots");
+  }
 
   /**
    * Create a basis object for a component.
@@ -635,6 +643,12 @@ class TangentSpaceBasisCreator {
  * @see README.md#tangent-basis
  */
 class OrthonormalBasisCreator : public TangentSpaceBasisCreator {
+ public:
+  /// Immutable snapshot for runtime manifold definitions.
+  TangentSpaceBasisCreator::shared_ptr clone() const override {
+    return std::make_shared<OrthonormalBasisCreator>(*this);
+  }
+
  public:
   OrthonormalBasisCreator(TangentSpaceBasisParams::shared_ptr params =
                               std::make_shared<TangentSpaceBasisParams>())
@@ -668,6 +682,12 @@ class OrthonormalBasisCreator : public TangentSpaceBasisCreator {
  * @see README.md#tangent-basis
  */
 class EliminationBasisCreator : public TangentSpaceBasisCreator {
+ public:
+  /// Immutable snapshot for runtime manifold definitions.
+  TangentSpaceBasisCreator::shared_ptr clone() const override {
+    return std::make_shared<EliminationBasisCreator>(*this);
+  }
+
  protected:
   BasisKeyFunction basisKeyFunction;
 
@@ -695,14 +715,21 @@ class EliminationBasisCreator : public TangentSpaceBasisCreator {
   EliminationBasisCreator(BasisKeyFunction basisKeyFunction,
                           TangentSpaceBasisParams::shared_ptr params =
                               std::make_shared<TangentSpaceBasisParams>(true))
-      : TangentSpaceBasisCreator(params), basisKeyFunction(basisKeyFunction) {}
+      : TangentSpaceBasisCreator(params){ if(basisKeyFunction) {
+      const auto snapshot =
+          std::make_shared<const BasisKeyFunction>(std::move(basisKeyFunction));
+      this->basisKeyFunction = [snapshot](const KeyVector &keys) {
+        return (*snapshot)(keys);
+      };
+    }
+  }
 
   virtual ~EliminationBasisCreator() {}
 
   /**
    * Create basis for one constraint-connected component.
    *
-   * This is executed when a `ConstraintManifold` or `IEConstraintManifold`
+   * This is executed when a `ConstraintManifold` or `CMPoint`
    * creates the tangent basis for a component. It is not called on every
    * tangent lift, but it may be called again when a new manifold object is
    * created for updated values or active constraints. The returned basis

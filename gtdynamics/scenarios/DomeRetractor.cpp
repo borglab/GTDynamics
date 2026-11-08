@@ -20,13 +20,13 @@ namespace gtdynamics {
 DomeRetractor::DomeRetractor(const IEHalfSphere &half_sphere)
     : IERetractor(), r_(half_sphere.radius_) {}
 
-IEConstraintManifold
-DomeRetractor::retract(const IEConstraintManifold *manifold,
+CMPoint
+DomeRetractor::retract(const CMPoint *point,
                        const VectorValues &delta,
                        const std::optional<IndexSet> &blocking_indices,
                        IERetractionInfo *retract_info) const {
-  Key key = manifold->values().keys().front();
-  Point3 p = manifold->values().at<Point3>(key);
+  Key key = point->values().keys().front();
+  Point3 p = point->values().at<Point3>(key);
   Vector3 v = delta.at(key);
   Point3 new_p = p + v;
 
@@ -37,15 +37,15 @@ DomeRetractor::retract(const IEConstraintManifold *manifold,
 
   Values new_values;
   new_values.insert(key, new_p);
-  return manifold->createWithNewValues(new_values);
+  return point->createWithNewValues(new_values);
 }
 
-IEConstraintManifold
-DomeRetractor::moveToBoundary(const IEConstraintManifold *manifold,
+CMPoint
+DomeRetractor::moveToBoundary(const CMPoint *point,
                               const IndexSet &blocking_indices,
                               IERetractionInfo *retract_info) const {
-  Key key = manifold->values().keys().front();
-  Point3 p = manifold->values().at<Point3>(key);
+  Key key = point->values().keys().front();
+  Point3 p = point->values().at<Point3>(key);
 
   // std::cout << "old p: \n" << p << "\n";
 
@@ -53,7 +53,7 @@ DomeRetractor::moveToBoundary(const IEConstraintManifold *manifold,
   bool is_positive_z = false;
 
   IndexSet active_indices = blocking_indices;
-  for (const auto &constraint_idx : manifold->activeIndices()) {
+  for (const auto &constraint_idx : point->activeIndices()) {
     active_indices.insert(constraint_idx);
   }
 
@@ -78,7 +78,7 @@ DomeRetractor::moveToBoundary(const IEConstraintManifold *manifold,
 
   Values new_values;
   new_values.insert(key, p);
-  return manifold->createWithNewValues(new_values);
+  return point->createWithNewValues(new_values);
 }
 
 } // namespace gtdynamics

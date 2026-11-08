@@ -27,6 +27,14 @@ namespace gtdynamics {
  * the qv-level variables.
  */
 class KinodynamicHierarchicalRetractor : public IERetractor {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    auto copy = std::make_shared<KinodynamicHierarchicalRetractor>(*this);
+    detachFixedFactors(copy->graph_v_, copy->const_var_factors_v_);
+    detachFixedFactors(copy->graph_ad_, copy->const_var_factors_ad_);
+    return copy;
+  }
 
 public:
   using Params = IERetractorParams;
@@ -42,11 +50,11 @@ protected:
 
 public:
   KinodynamicHierarchicalRetractor(
-      const IEConstraintManifold &manifold, const Params::shared_ptr &params,
+      const CMPoint &point, const Params::shared_ptr &params,
       const std::optional<KeyVector> &basis_keys = {});
 
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+  CMPoint
+  retract(const CMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 };

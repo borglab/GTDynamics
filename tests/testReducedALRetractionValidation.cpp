@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/constrained/LinearConstraint.h>
@@ -29,7 +29,7 @@ using namespace gtdynamics;
 namespace {
 constexpr Key kX = 1, kY = 2;
 
-IEConstraintManifold makeManifold(
+CMPoint makePoint(
     const Values &values, const NonlinearEqualityConstraints &equalities = {},
     const NonlinearInequalityConstraints &inequalities = {},
     const IERetractorParams::shared_ptr &metric =
@@ -41,7 +41,7 @@ IEConstraintManifold makeManifold(
   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(
       std::make_shared<ReducedALRetractor>(
           metric, ReducedALRetractor::Settings{}, priorKeys));
-  return IEConstraintManifold(
+  return CMPoint(
       params, std::make_shared<NonlinearEqualityConstraints>(equalities),
       std::make_shared<NonlinearInequalityConstraints>(inequalities), values);
 }
@@ -72,7 +72,7 @@ TEST(ReducedALValidation, AsymmetricQuadraticProjection) {
   NonlinearInequalityConstraints inequalities;
   inequalities.push_back(
       QuadraticConstraint::LessEqual(kX, Q, 1).createInequalityFactor());
-  const auto start = makeManifold(values, {}, inequalities);
+  const auto start = makePoint(values, {}, inequalities);
   VectorValues delta;
   delta.insert(kX, Vector2(1.5, 1));
   const auto result = start.retract(delta);
@@ -90,7 +90,7 @@ TEST(ReducedALValidation, FullyFixedAffineManifold) {
       LinearConstraint::Equal(
           JacobianFactor(kX, Matrix::Identity(1, 1), Vector1(2)))
           .createEqualityFactor());
-  const auto start = makeManifold(values, equalities, upperBound(3));
+  const auto start = makePoint(values, equalities, upperBound(3));
   EXPECT_LONGS_EQUAL(0, start.eBasis()->dim());
   VectorValues delta;
   delta.insert(kX, Vector1(7));
@@ -114,7 +114,7 @@ TEST(ReducedALValidation, PartialPriorMetric) {
                            .createEqualityFactor());
   auto metric = std::make_shared<IERetractorParams>();
   const auto start =
-      makeManifold(values, equalities, {}, metric, KeyVector{kX});
+      makePoint(values, equalities, {}, metric, KeyVector{kX});
   VectorValues delta;
   delta.insert(kX, Vector1(2));
   delta.insert(kY, Vector1(0));
@@ -123,19 +123,19 @@ TEST(ReducedALValidation, PartialPriorMetric) {
   EXPECT_DOUBLES_EQUAL(-2, result.values().at<Vector>(kY)(0), 1e-7);
 
   const auto unconstrained =
-      makeManifold(values, {}, {}, metric, KeyVector{kX});
+      makePoint(values, {}, {}, metric, KeyVector{kX});
   CHECK_EXCEPTION(unconstrained.retract(delta), std::invalid_argument);
 }
 
 TEST(ReducedALValidation, InvalidMetricConfiguration) {
   auto metric = std::make_shared<IERetractorParams>();
   metric->useVaryingSigma = true;
-  CHECK_EXCEPTION(makeManifold(scalarVector(0), {}, {}, metric),
+  CHECK_EXCEPTION(makePoint(scalarVector(0), {}, {}, metric),
                   std::invalid_argument);
 }
 
 TEST(ReducedALValidation, RejectsNonfiniteTrial) {
-  const auto start = makeManifold(scalarVector(0));
+  const auto start = makePoint(scalarVector(0));
   VectorValues delta;
   delta.insert(kX, Vector1(std::numeric_limits<double>::infinity()));
   CHECK_EXCEPTION(start.retract(delta), std::invalid_argument);
@@ -179,7 +179,7 @@ TEST(ReducedALValidation, NonquadraticMultiKeyProjectionAndWhitening) {
     values.insert(kY, Vector(Vector1(0)));
     NonlinearInequalityConstraints inequalities;
     inequalities.emplace_shared<ExponentialBound>(sigma);
-    const auto start = makeManifold(values, {}, inequalities);
+    const auto start = makePoint(values, {}, inequalities);
     VectorValues delta;
     delta.insert(kX, Vector1(2));
     delta.insert(kY, Vector1(1));
@@ -203,7 +203,7 @@ TEST(ReducedALValidation, NonquadraticBoundaryOnAffineManifold) {
                            .createEqualityFactor());
   NonlinearInequalityConstraints inequalities;
   inequalities.emplace_shared<ExponentialBound>();
-  const auto start = makeManifold(values, equalities, inequalities);
+  const auto start = makePoint(values, equalities, inequalities);
   IndexSet blocking;
   blocking.insert(0);
   const auto result = start.retract(values.zeroVectors(), blocking);
@@ -219,13 +219,13 @@ TEST(ReducedALValidation, RejectsNonfiniteOriginalEvaluation) {
   values.insert(kY, Vector(Vector1(0)));
   NonlinearInequalityConstraints inequalities;
   inequalities.emplace_shared<ExponentialBound>();
-  const auto start = makeManifold(values, {}, inequalities);
+  const auto start = makePoint(values, {}, inequalities);
   VectorValues delta = values.zeroVectors();
   delta.at(kX)(0) = 1000;  // exp overflows only at the target.
   CHECK_EXCEPTION(start.retract(delta), std::invalid_argument);
   inequalities.resize(0);
   inequalities.emplace_shared<ExponentialBound>(1.0, true);
-  const auto invalid = makeManifold(values, {}, inequalities);
+  const auto invalid = makePoint(values, {}, inequalities);
   // An infeasible trial exercises the Jacobian path; a feasible zero trial
   // legitimately requires no derivative evaluation or AL solve.
   delta.at(kX)(0) = 2;

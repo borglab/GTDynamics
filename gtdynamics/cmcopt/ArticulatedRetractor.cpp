@@ -4,7 +4,7 @@
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 #include <gtdynamics/cmcopt/ArticulatedRetractor.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/linear/JacobianFactor.h>
 
@@ -13,7 +13,7 @@
 
 namespace gtdynamics {
 ArticulatedRetractor::ArticulatedRetractor(
-    const IEConstraintManifold& manifold,
+    const CMPoint& point,
     const std::shared_ptr<const Robot>& robot, const std::string& rootName,
     const KeySet& independentAD, const IERetractorParams::shared_ptr& params,
     const ReducedALRetractor::Settings& settings)
@@ -21,7 +21,7 @@ ArticulatedRetractor::ArticulatedRetractor(
                          : nullptr),
       robot_(robot),
       settings_(settings) {
-  if (!robot_ || !params_ || manifold.values().empty())
+  if (!robot_ || !params_ || point.values().empty())
     throw std::invalid_argument(
         "ArticulatedRetractor requires robot, parameters and values");
   if (!(params_->feasibleThreshold > 0) ||
@@ -31,7 +31,7 @@ ArticulatedRetractor::ArticulatedRetractor(
   if (!root_ || root_->isFixed())
     throw std::invalid_argument(
         "ArticulatedRetractor requires a floating root");
-  slice_ = DynamicsSymbol(manifold.values().keys().front()).time();
+  slice_ = DynamicsSymbol(point.values().keys().front()).time();
   std::set<int> reached{root_->id()};
   for (size_t pass = 0; pass < robot_->links().size(); ++pass)
     for (const auto& joint : robot_->joints())
@@ -57,11 +57,11 @@ ArticulatedRetractor::ArticulatedRetractor(
     qvKeys_.insert(JointVelKey(joint->id(), slice_));
   }
   for (Key key : qvKeys_)
-    if (!manifold.values().exists(key))
+    if (!point.values().exists(key))
       throw std::invalid_argument("Missing articulated q/v variable");
   const Key worldVelocity = LinearVelocityKey(root_->id(), slice_);
-  if (manifold.values().exists(worldVelocity)) qvKeys_.insert(worldVelocity);
-  for (Key key : manifold.values().keys()) {
+  if (point.values().exists(worldVelocity)) qvKeys_.insert(worldVelocity);
+  for (Key key : point.values().keys()) {
     if (DynamicsSymbol(key).time() != slice_)
       throw std::invalid_argument(
           "ArticulatedRetractor requires one time slice");
@@ -76,13 +76,13 @@ ArticulatedRetractor::ArticulatedRetractor(
   if (params_->metricSigmas)
     params_->metricSigmas =
         std::make_shared<VectorValues>(*params_->metricSigmas);
-  for (const auto& constraint : *manifold.iConstraints())
+  for (const auto& constraint : *point.iConstraints())
     for (Key key : constraint->keys())
       if (qvKeys_.exists(key))
         throw std::invalid_argument(
             "ArticulatedRetractor does not support q/v inequalities");
   NonlinearFactorGraph ad;
-  for (const auto& factor : manifold.eConstraints()->penaltyGraph()) {
+  for (const auto& factor : point.eConstraints()->penaltyGraph()) {
     bool hasAD = false;
     for (Key key : factor->keys()) hasAD |= !qvKeys_.exists(key);
     (hasAD ? ad : qvGraph_).push_back(factor);
@@ -91,18 +91,18 @@ ArticulatedRetractor::ArticulatedRetractor(
     throw std::invalid_argument("Missing articulated mechanics constraints");
   std::tie(adGraph_, fixedFactors_) = ConstVarGraph(ad, qvKeys_);
   const auto mechanicsKeys = adGraph_.keys();
-  for (const auto& constraint : *manifold.iConstraints())
+  for (const auto& constraint : *point.iConstraints())
     for (Key key : constraint->keys())
       if (!mechanicsKeys.exists(key))
         throw std::invalid_argument(
             "Inequality key is outside articulated mechanics");
 }
 
-IEConstraintManifold ArticulatedRetractor::retract(
-    const IEConstraintManifold* manifold, const VectorValues& delta,
+CMPoint ArticulatedRetractor::retract(
+    const CMPoint* point, const VectorValues& delta,
     const std::optional<IndexSet>& blocking, IERetractionInfo* info) const {
-  if (!manifold) throw std::invalid_argument("Null articulated manifold");
-  Values trial = manifold->values().retract(delta);
+  if (!point) throw std::invalid_argument("Null articulated manifold");
+  Values trial = point->values().retract(delta);
   Values known;
   const Key rootPoseKey = PoseKey(root_->id(), slice_);
   const Key rootTwistKey = TwistKey(root_->id(), slice_);
@@ -172,16 +172,16 @@ IEConstraintManifold ArticulatedRetractor::retract(
       });
   localParams->retractorCreator = std::make_shared<UniversalIERetractorCreator>(
       std::make_shared<ReducedALRetractor>(params_, settings_, priorKeys_));
-  IEConstraintManifold adManifold(localParams, equalities,
-                                  manifold->iConstraints(), anchor);
+  CMPoint adPoint(localParams, equalities,
+                                  point->iConstraints(), anchor);
   const auto projected =
-      adManifold.retract(anchor.zeroVectors(), blocking, info);
+      adPoint.retract(anchor.zeroVectors(), blocking, info);
   trial.update(projected.values());
-  const double violation = manifold->eConstraints()->violationNorm(trial);
+  const double violation = point->eConstraints()->violationNorm(trial);
   if (violation > params_->feasibleThreshold || !std::isfinite(violation))
     throw RetractionFailure("Articulated retraction equality violation: " +
                             std::to_string(violation));
-  return manifold->createWithNewValues(trial, projected.activeIndices());
+  return point->createWithNewValues(trial, projected.activeIndices());
 }
 
 ArticulatedRetractorCreator::ArticulatedRetractorCreator(
@@ -199,11 +199,35 @@ ArticulatedRetractorCreator::ArticulatedRetractorCreator(
     throw std::invalid_argument("Missing articulated retractor inputs");
   // The outer optimizer must not replace a caller-specified projection metric.
   params_->useVaryingSigma = false;
+  params_->metricSigmas.reset();
+}
+IERetractorCreator::shared_ptr ArticulatedRetractorCreator::cloneFor(
+    const KeySet& keys) const {
+  KeySet independent;
+  for (Key key : keys)
+    if (independentAD_.exists(key)) independent.insert(key);
+  auto projection = IERetractorParams::snapshot(projectionParams_, &keys);
+  return std::make_shared<ArticulatedRetractorCreator>(
+      robot_, rootName_, independent, projection, settings_);
 }
 IERetractor::shared_ptr ArticulatedRetractorCreator::create(
-    const IEConstraintManifold& manifold) const {
-  return std::make_shared<ArticulatedRetractor>(manifold, robot_, rootName_,
-                                                independentAD_,
-                                                projectionParams_, settings_);
+    const CMPoint& point) const {
+  KeySet independent;
+  for (Key slot : independentAD_) {
+    const auto binding = point.bindings().find(slot);
+    if (binding != point.bindings().end())
+      independent.insert(binding->second);
+  }
+  auto projection = IERetractorParams::snapshot(projectionParams_);
+  if (projection->metricSigmas) {
+    auto bound = std::make_shared<VectorValues>();
+    for (const auto& [slot, key] : point.bindings())
+      if (projection->metricSigmas->exists(slot))
+        bound->insert(key, projection->metricSigmas->at(slot));
+    projection->metricSigmas = bound;
+  }
+  return std::make_shared<ArticulatedRetractor>(point, robot_, rootName_,
+                                                independent,
+                                                projection, settings_);
 }
 }  // namespace gtdynamics
