@@ -5,7 +5,7 @@ Pick a URDF and an end-effector frame, then drag the end-effector around.
 Each move runs the selected IK scheme on GTDynamics' kinematic model.
 The app shows the resulting joint angles and end-effector pose.
 If the target can't be reached, it explains why.
-The side panel opens with a short statement of the demo's purpose and quick usage steps; [Using the app](#using-the-app) lists every control.
+The paper below the demo describes the factor graph and shows solver settings, residuals, and diagnostics. [Using the app](#using-the-app) lists every control.
 
 ## Requirements
 
@@ -18,10 +18,10 @@ The side panel opens with a short statement of the demo's purpose and quick usag
 
 ## Running
 
-The app is the **URDF IK** tab of the [GTDynamics apps site](../README.md).
+The **URDF IK** tab is the first app after Overview on the [GTDynamics apps site](../README.md).
 Like the other apps it is a Vite project, but every solve runs on a local Python backend, [`scripts/server.py`](scripts/server.py).
 The Vite dev server proxies the page's `api/`, `files/` and `pkg/` requests to that backend on port 8767.
-The hosted GitHub Pages site is a static build with no backend, so the tab shows a notice explaining how to run the app locally.
+On GitHub Pages, the paper is available alongside instructions for running the interactive demo locally.
 The app follows the site's Light/Dark setting.
 
 `npm run dev` looks for Python in this order: `GTDYNAMICS_PYTHON`, then the repository's `.venv/bin/python`, then `python3`.
@@ -70,7 +70,7 @@ Backend options:
 | Move the end-effector | Click and hold the **orange handle**, then drag. It moves in the plane facing the camera. IK runs continuously while you drag, warm-started from the previous solution. |
 | Change the end-effector pose | **Double-click the handle.** A rotation gizmo appears and the pose panel is highlighted: drag the rings to rotate, press <kbd>W</kbd> for the axis-arrow move gizmo and <kbd>E</kbd> for rotate, and <kbd>Esc</kbd> (or double-click again) when done. You can also type an exact target (x, y, z in meters; roll, pitch, yaw in degrees, URDF convention `R = Rz(yaw)·Ry(pitch)·Rx(roll)`) and press Enter or **Solve to target**. |
 | Position only vs. full pose | **Constrain orientation**. Off: only the end-effector position is solved for. On: the full 6-DoF pose is. It defaults to on for chains with 6 or more joints. |
-| Accuracy and effort | **Pos tol**, **Rot tol** and **Max iters** (blank uses the scheme's default). |
+| Accuracy and effort | **Diagnostics and solver settings** opens the results section with **Pos tol**, **Rot tol** and **Max iters** (blank uses the scheme's default). |
 | Set joints directly | The **Joints** sliders run forward kinematics, and the target snaps to the new end-effector pose. **Home** sets all joints to zero, or to mid-range when zero is outside a joint's limits. Joints at a limit are shown in red. |
 | Camera | Drag the background to orbit, right-drag to pan, scroll to zoom. **Fit view** frames the robot. |
 

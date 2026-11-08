@@ -51,6 +51,7 @@ try {
   } else {
     await waitForBackend();
     // The dev server proxies api/, files/ and pkg/ to the backend, also under a base path.
+    process.env.NODE_ENV = 'development';
     const server = await createServer({ root, base: '/urdf/', server: { host: '127.0.0.1', port: 0 } });
     await server.listen();
     try {
@@ -59,11 +60,29 @@ try {
         await page.locator('#status-badge', { hasText: 'Ready' }).waitFor();
         assert.match(await page.locator('#model').inputValue(), /^ur10e\//);
         assert.equal(await page.locator('#joints input[type=range]').count(), 6);
+        for (const size of [{ width: 1440, height: 775 }, { width: 1280, height: 675 }]) {
+          // The shell consumes about 125 pixels above the app at these widths.
+          await page.setViewportSize(size);
+          assert(await page.locator('#demo').evaluate(demo => demo.getBoundingClientRect().bottom <= innerHeight));
+          assert(await page.locator('#joints').evaluate(joints => joints.scrollHeight <= joints.clientHeight));
+        }
         await page.locator('#tgt-0').fill('0.6');
         await page.locator('#solve').click();
         await page.locator('#status-badge', { hasText: /^(Solved|Not solved)$/ }).waitFor();
+        assert.match(await page.locator('#result-summary').innerText(), /mm/);
         await page.locator('#home').click();
         await page.locator('#status-badge', { hasText: 'Forward kinematics' }).waitFor();
+        await page.locator('#orientation').uncheck();
+        await page.getByRole('group', { name: 'urdf-point factor graph schematic' }).waitFor();
+        await page.locator('#model').selectOption('ur5/ur5.urdf');
+        await page.locator('#status-badge', { hasText: 'Ready' }).waitFor();
+        await page.locator('#show-skeleton').uncheck();
+        await page.locator('#show-meshes').uncheck();
+        await page.locator('#show-meshes').check();
+        await page.locator('#fit').click();
+        assert.equal(await page.locator('#viewport canvas').count(), 1);
+        await page.setViewportSize({ width: 390, height: 730 });
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       });
       console.log('PASS live /urdf/');
     } finally {

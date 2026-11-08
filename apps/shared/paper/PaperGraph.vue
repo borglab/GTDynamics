@@ -33,8 +33,11 @@ const nodes = computed(() => new Map(graph.value.nodes.map(node => [node.id, nod
     </div>
     <figcaption>
       Circles: variables. Squares: factors. {{ graph.caption }}
-      This is a structural schematic; optional factors are shown for explanation and may be disabled in the selected run.
-      Select a numbered variable to update the demo’s time slice. Hover a square for its definition.
+      <template v-if="graph.nodes.some(node => node.slice !== undefined)">
+        This is a structural schematic; optional factors are shown for explanation and may be disabled in the selected run.
+        Select a numbered variable to update the demo’s time slice.
+      </template>
+      Hover a square for its definition.
       <a href="#demo">Return to demo ↑</a>
     </figcaption>
   </figure>

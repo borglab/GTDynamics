@@ -1,134 +1,139 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import AppAbstract from '../../shared/paper/AppAbstract.vue';
+import AppPaper from '../../shared/paper/AppPaper.vue';
+import MathTypeset from '../../shared/paper/MathTypeset.vue';
+import PaperGraph from '../../shared/paper/PaperGraph.vue';
+import license from '../../../models/urdfs/ur10e/LICENSE?url';
 import { createExplorer } from './explorer.js';
+import equations from './ik.math.html?math';
 
-// loading → live (backend answered) or offline (no backend, e.g. GitHub Pages).
 const mode = ref('loading');
 const offlineReason = ref('');
+const poseGoal = ref(true);
+const graphSolver = ref(true);
 let explorer;
+
 onMounted(() => {
   explorer = createExplorer({
-    // Only the Vite dev server proxies api/ to scripts/server.py; a static build never probes it.
     backend: import.meta.env.DEV,
     onLive: () => { mode.value = 'live'; },
     onOffline: (message) => { mode.value = 'offline'; offlineReason.value = message; },
+    onMethod: (scheme, orientation) => {
+      graphSolver.value = scheme === 'gtd';
+      poseGoal.value = orientation;
+    },
   });
 });
 onBeforeUnmount(() => explorer?.dispose());
 </script>
 
 <template>
-  <div class="urdf-app" :data-mode="mode">
-    <aside id="panel">
-      <header>
+  <main class="urdf-app" :data-mode="mode">
+    <header class="page-header">
+      <div>
         <h1>URDF IK Explorer</h1>
-        <span class="sub">GTDynamics</span>
-      </header>
-
-      <section class="intro" aria-label="About this demo">
-        <p>Load the URDF models in <code>models/urdfs</code> and test whether GTDynamics parses them
-          into a kinematic model that inverse kinematics can solve.</p>
-        <ul>
-          <li>Choose a <b>Model</b> and an <b>End-effector frame</b>.</li>
-          <li><b>Drag</b> the orange handle to move the end-effector. IK re-solves as you drag.</li>
-          <li><b>Double-click</b> the handle to rotate the end-effector with the gizmo
-            (<kbd>W</kbd> move, <kbd>E</kbd> rotate). Double-click again or press <kbd>Esc</kbd> to finish.</li>
-          <li>Choose an <b>IK scheme</b> to compare solvers on the same target.</li>
-          <li>Use the <b>Joints</b> sliders to set the configuration directly, or <b>Home</b> to reset it.</li>
-        </ul>
-      </section>
-
-      <section class="controls">
-        <label>Model
-          <select id="model"></select>
-        </label>
-        <label>End-effector frame
-          <select id="ee" disabled></select>
-        </label>
-        <label>IK scheme
-          <select id="scheme"></select>
-        </label>
-        <p id="scheme-desc" class="hint"></p>
-        <label class="check">
-          <input type="checkbox" id="orientation" checked>
-          Constrain orientation (full 6-DoF pose)
-        </label>
-        <div class="grid3">
-          <label>Pos tol (mm)
-            <input type="number" id="pos-tol" value="1" min="0.001" step="0.1">
-          </label>
-          <label>Rot tol (°)
-            <input type="number" id="rot-tol" value="0.5" min="0.001" step="0.1">
-          </label>
-          <label>Max iters
-            <input type="number" id="max-iters" min="1" step="1" placeholder="auto">
-          </label>
-        </div>
-      </section>
-
-      <section id="status" class="status idle">
-        <div class="status-head">
-          <span id="status-badge">Loading…</span>
-          <span id="status-meta"></span>
-        </div>
-        <ul id="reasons"></ul>
-      </section>
-
-      <section id="pose-section">
-        <h2>End-effector pose <span class="edit-flag">editing</span></h2>
-        <table class="pose">
-          <thead>
-            <tr><th></th><th>Current</th><th>Target</th></tr>
-          </thead>
-          <tbody id="pose-rows"></tbody>
-        </table>
-        <p class="hint mono" id="quat"></p>
-        <div class="buttons">
-          <button id="solve">Solve to target</button>
-          <button id="reset-target" class="secondary">Target = current</button>
-        </div>
-      </section>
-
-      <section>
-        <h2>Joints <button id="home" class="small secondary">Home</button></h2>
-        <div id="joints"></div>
-      </section>
-
-      <section id="notes" hidden></section>
-    </aside>
-
-    <main id="viewport">
-      <div id="help">
-        <b>Drag</b> the orange handle to move the end-effector ·
-        <b>double-click</b> it to edit its pose
-        (<kbd>W</kbd> move, <kbd>E</kbd> rotate, <kbd>Esc</kbd> done) ·
-        drag elsewhere to orbit, scroll to zoom
+        <AppAbstract app="urdf" />
       </div>
-      <div id="view-tools">
-        <label class="check"><input type="checkbox" id="show-skeleton" checked> Skeleton</label>
-        <label class="check"><input type="checkbox" id="show-meshes" checked> Meshes</label>
-        <button id="fit" class="small secondary">Fit view</button>
-      </div>
-      <div id="toast" hidden></div>
+      <span class="mode-label">{{ mode === 'live' ? 'Live native solve' : mode === 'offline' ? 'Local backend required' : 'Connecting…' }}</span>
+    </header>
 
-      <div v-if="mode === 'offline'" class="offline" role="region" aria-labelledby="offline-title">
-        <div class="offline-card">
-          <h2 id="offline-title">Local GTDynamics server required</h2>
-          <p>Pick a robot from <code>models/urdfs</code> and an end-effector frame, then drag the
-            end-effector around. Each move runs an IK scheme on GTDynamics' kinematic model: the
-            GTDynamics factor graph (LM), damped least squares, the Jacobian pseudo-inverse or
-            transpose, or cyclic coordinate descent. When a target can't be reached, the app
-            explains why.</p>
-          <p>Every solve runs in the GTDynamics Python bindings, so this page needs its local
-            backend, and none is available here ({{ offlineReason }}). To run the app on your machine:</p>
-          <p>1. Build and install the GTDynamics Python bindings (see <code>python/README.md</code>), then check that they import:</p>
-          <pre><code>python -c "import gtdynamics"</code></pre>
-          <p>2. From <code>apps/</code>, start the apps site. It starts this app's backend when it finds the bindings:</p>
-          <pre><code>npm run dev</code></pre>
-          <p>Set <code>GTDYNAMICS_PYTHON</code> to choose the interpreter. Details:
-            <a href="https://github.com/borglab/GTDynamics/tree/master/apps/urdf#readme" target="_blank" rel="noopener">apps/urdf/README.md ↗</a></p>
+    <section id="demo" aria-label="Interactive inverse kinematics">
+      <div id="viewport">
+        <div id="help">
+          <b>Drag</b> the orange target to move it · <b>double-click</b> to edit its pose
+          (<kbd>W</kbd> move, <kbd>E</kbd> rotate, <kbd>Esc</kbd> done) · drag the background to orbit
+        </div>
+        <div id="view-tools">
+          <label class="check"><input type="checkbox" id="show-skeleton" checked> Skeleton</label>
+          <label class="check"><input type="checkbox" id="show-meshes" checked> Meshes</label>
+          <button id="fit" class="small secondary">Fit view</button>
+        </div>
+        <div id="toast" hidden></div>
+
+        <div v-if="mode === 'offline'" class="offline" role="region" aria-labelledby="offline-title">
+          <div class="offline-card">
+            <h2 id="offline-title">Local GTDynamics server required</h2>
+            <p>Live solving runs in the GTDynamics Python bindings ({{ offlineReason }}). Install the bindings, then start the site from <code>apps/</code>.</p>
+            <pre><code>python -c "import gtdynamics"
+npm run dev</code></pre>
+            <p><a href="https://github.com/borglab/GTDynamics/tree/master/apps/urdf#readme" target="_blank" rel="noopener">URDF IK setup ↗</a></p>
+          </div>
         </div>
       </div>
-    </main>
-  </div>
+
+      <aside id="panel" aria-label="Inverse kinematics controls" :inert="mode === 'offline' || undefined">
+        <div class="selectors">
+          <label>Model <select id="model"></select></label>
+          <label>End-effector frame <select id="ee" disabled></select></label>
+          <label>IK scheme <select id="scheme"></select></label>
+          <label class="check"><input type="checkbox" id="orientation" checked> Constrain orientation</label>
+        </div>
+
+        <div class="configuration">
+          <section id="pose-section">
+            <h2>Tool pose <span class="edit-flag">Editing</span></h2>
+            <table class="pose">
+              <thead><tr><th scope="col">Axis</th><th scope="col">Current</th><th scope="col">Target</th></tr></thead>
+              <tbody id="pose-rows"></tbody>
+            </table>
+            <div class="buttons">
+              <button id="solve">Solve to target</button>
+              <button id="reset-target" class="secondary">Target = current</button>
+            </div>
+          </section>
+
+          <section aria-labelledby="joint-heading">
+            <div class="joint-heading">
+              <h2 id="joint-heading">Joints</h2>
+              <button id="home" class="small secondary">Home</button>
+            </div>
+            <div id="joints" role="region" aria-label="Joint coordinates" tabindex="0"></div>
+          </section>
+        </div>
+
+        <div id="status" class="status idle">
+          <div class="status-head" role="status">
+            <span id="status-badge">Loading…</span>
+            <span id="status-meta"></span>
+          </div>
+          <a href="#solve-details">Diagnostics and solver settings ↓</a>
+        </div>
+      </aside>
+    </section>
+
+    <AppPaper app="urdf">
+      <template #graph>
+        <p v-if="!graphSolver" class="hint">The selected solver works in joint space. This diagram shows the GTDynamics graph for the current goal type.</p>
+        <PaperGraph :kind="poseGoal ? 'urdf-pose' : 'urdf-point'" :frame="0" :samples="1" />
+      </template>
+      <template #mathematics><MathTypeset :html="equations" /></template>
+
+      <div id="solve-details" class="solve-details">
+        <section>
+          <h3>Latest solve</h3>
+          <p>The demo reports world-frame position error in millimetres and, for pose goals, rotation error in degrees. Time measures the native solve in milliseconds. The iteration count appears when the solver reports it.</p>
+          <p id="result-summary" class="result-summary"></p>
+          <ul id="reasons"></ul>
+          <p id="quat" class="hint mono"></p>
+          <div id="notes" hidden></div>
+        </section>
+        <section>
+          <h3>Solver settings</h3>
+          <p id="scheme-desc"></p>
+          <div class="grid3" :inert="mode === 'offline' || undefined">
+            <label>Pos tol (mm) <input type="number" id="pos-tol" value="1" min="0.001" step="0.1"></label>
+            <label>Rot tol (°) <input type="number" id="rot-tol" value="0.5" min="0.001" step="0.1"></label>
+            <label>Max iters <input type="number" id="max-iters" min="1" step="1" placeholder="auto"></label>
+          </div>
+          <p>The tolerances determine whether the app reports a solve as successful. The iteration limit sets the solver’s effort budget.</p>
+          <a href="#demo">Return to demo ↑</a>
+        </section>
+      </div>
+
+      <template #discussion>
+        <p>The UR10e model and meshes come from Universal Robots’ ROS 2 Description 4.4.0 (81f7c9fe). <a :href="license" download="UR10e-LICENSE">UR10e model license</a>.</p>
+      </template>
+    </AppPaper>
+  </main>
 </template>

@@ -13,6 +13,22 @@ export function paperGraph(kind, indices) {
     id: `f${factors.length}`, code, title, keys, x: px, y,
   });
 
+  if (kind === 'urdf-pose' || kind === 'urdf-point') {
+    const poseGoal = kind === 'urdf-pose';
+    node('parent', 'Xₚ', 225, 102);
+    node('child', 'X꜀', 660, 102);
+    node('joint', 'qⱼ', 440, 190);
+    factor('B', 'Fixed-link anchor, shown on a fixed parent', ['parent'], 100, 102);
+    factor('K', 'Joint pose factor on the parent, child, and joint coordinate', ['parent', 'child', 'joint'], 440, 102);
+    factor(poseGoal ? 'T' : 'P', poseGoal ? 'Full pose prior on the tool’s carrier link' : 'Point goal on the tool’s carrier link', ['child'], 790, 102);
+    factor('Q', 'Warm-start joint prior', ['joint'], 320, 190);
+    if (poseGoal) factor('L', 'Soft joint-limit penalty', ['joint'], 555, 190);
+    return {
+      nodes, factors, height: 235,
+      caption: `One joint is shown with parent and child COM poses Xₚ and X꜀ and joint coordinate qⱼ. B applies only to fixed links; the target factor attaches only to the selected tool’s carrier link. ${poseGoal ? 'T is the full pose prior, and L is the joint-limit penalty. K and B include the equality residuals that the default LM solver adds as penalties.' : 'P is the position-only goal. This graph has no joint-limit factor.'} Every square is a finite-weight cost in the illustrated solve.`,
+    };
+  }
+
   if (kind === 'scate') {
     node('l', 'ℓ', 820, 110);
     indices.forEach((k, i) => {

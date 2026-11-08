@@ -5,6 +5,7 @@ tab. [registry.json](registry.json) supplies the tab labels, overview links, and
 the list of apps to build. Each app keeps its own Vue/Vite project and can also
 be opened directly.
 
+- [URDF IK](urdf/README.md): move a robot’s tool and compare GTDynamics factor graph IK with joint-space solvers. Live solves require a [local Python backend](#python-backed-apps).
 - [Contact Labels](contact-labels/README.md): inspect privileged stationarity targets derived from SSIO reference-world sole motion.
 - [Contact Initialization](contact-initialization/README.md): inspect native pose-contact initialization and independently selectable priors on SSIO and additional G1 recordings.
 - [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
@@ -14,13 +15,12 @@ be opened directly.
 - [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run.
-- [URDF IK](urdf/README.md): drag the end-effector of any robot in `models/urdfs` and compare GTDynamics factor-graph IK with classic Jacobian schemes. It needs a local GTDynamics Python backend (see [Python-backed apps](#python-backed-apps)). This is the last tab.
 
-Each paper app starts with a short technical abstract and its interactive demo, then
+Each app starts with a short technical abstract and its interactive demo, then
 continues with motivation, a factor graph formulation and factor definitions,
-existing numerical results, and a discussion. URDF IK, the last tab, is an
-interactive tool rather than a paper, so it has no such sections. Read the paper
-tabs in order: inferred contact phases support initialization, initialization supports smoothing, and
+numerical results, and a discussion. URDF IK introduces the factor graph for
+one robot configuration. The walking examples then use inferred contact phases
+for initialization, initialization for smoothing, and
 Gaussian-process interpolation supplies velocities for the dynamics example.
 Kinodynamics then estimates motion and forces together. Motion Planning illustrates a
 separate desired-motion problem. It does not currently plan from the G1 estimate.
@@ -203,8 +203,8 @@ The workflow follows GitHub's [custom Pages workflow](https://docs.github.com/en
    `startBackend()`. That function returns the spawned server process, or
    `null` when Python is unavailable. The app's Vite config proxies relative API
    paths to the server, and a static build shows how to run the server instead
-   (see [`urdf/`](urdf/README.md)). The paper browser check skips such apps;
-   give them their own `tests/app.browser.mjs`.
+   (see [`urdf/`](urdf/README.md)). Use an app browser test to exercise live
+   behavior alongside the shared paper check on the static build.
 5. Start robot visualization with [the shared viewport and camera](shared/README.md).
    Use `RobotViewport` for canvas, controls, stage, resizing, animation, and
    cleanup; use `CameraController` for fit and follow views. Supply live MuJoCo
@@ -244,9 +244,7 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 It checks navigation, keyboard tabs, mobile layout, physics playback, recorded
 iteration scrubbing, and requests under a project-site prefix.
 
-The presentation check covers all registered paper apps (every app except URDF IK,
-which has its own browser test, `urdf/tests/app.browser.mjs`; see
-[its README](urdf/README.md#tests)) at 1440 × 900 and 1280 × 800,
+The presentation check covers all registered apps at 1440 × 900 and 1280 × 800,
 including shared navigation, visible primary controls, diagram/time selection,
 relocated results, next-tab links, and mobile width:
 

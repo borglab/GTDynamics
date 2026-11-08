@@ -1,5 +1,12 @@
 [
   {
+    "id": "urdf",
+    "title": "URDF IK",
+    "description": "Move a robot’s end effector and compare factor graph and joint-space inverse kinematics. Inspect the joint configuration, pose error, and solver diagnostics. Live solving requires a local GTDynamics Python server.",
+    "tag": "Interactive inverse kinematics",
+    "backend": "python"
+  },
+  {
     "id": "contact-labels",
     "title": "Contact Labels",
     "description": "World-frame sole motion provides contact labels for three SSIO G1 snippets. A discrete factor graph combines motion evidence with walking priors.",
@@ -52,12 +59,5 @@
     "title": "SCATE UR5",
     "description": "Replay SCATE on a UR5: an obstacle discovered online is avoided by re-solving after every step, beside a blind run that hits it. Inspect the replanned paths, the obstacle estimate, and clearances.",
     "tag": "Online planning"
-  },
-  {
-    "id": "urdf",
-    "title": "URDF IK",
-    "description": "Drag the end-effector of any robot in models/urdfs and solve inverse kinematics with the GTDynamics factor graph or classic Jacobian schemes. Failed solves explain why the target is out of reach. Requires a local GTDynamics Python server.",
-    "tag": "Interactive inverse kinematics",
-    "backend": "python"
   }
 ]
