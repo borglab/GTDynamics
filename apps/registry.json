@@ -2,7 +2,7 @@
   {
     "id": "urdf",
     "title": "URDF IK",
-    "description": "Drag the UR10e or UR5 tool and solve inverse kinematics in the browser. Inspect joint configurations and pose errors. Local mode adds the GTDynamics factor graph and more robots.",
+    "description": "Drag a UR10e or UR5 tool or a Unitree G1 palm or sole. Inspect joint configurations and pose errors in the browser. Local mode adds the GTDynamics factor graph and more robots.",
     "tag": "Interactive inverse kinematics",
     "backend": "python"
   },

@@ -25,6 +25,40 @@ async function check(url, run) {
   }
 }
 
+async function checkG1(page) {
+  const geometry = page.waitForResponse(response =>
+    response.ok() && /\/model\.json(?:-[^/]+)?\.gz$/.test(new URL(response.url()).pathname));
+  await page.locator('#model').selectOption({ label: 'Unitree G1' });
+  const status = page.locator('#status-badge');
+  await status.filter({ hasText: /^Ready$/ }).waitFor();
+  await (await geometry).finished();
+  assert.equal(await page.locator('#joints input[type=range]').count(), 29);
+  assert.equal(await page.locator('#ee').inputValue(), 'right_palm');
+  for (const side of ['left', 'right']) {
+    for (const tool of ['palm', 'sole']) {
+      assert.equal(await page.locator(`#ee option[value="${side}_${tool}"]`).count(), 1);
+    }
+  }
+  const x = async () => Number(await page.locator('#cur-0').innerText());
+  assert(Math.abs(await x() - 0.27977428) < 0.0001, 'G1 palm is expressed in the fixed pelvis frame');
+  const target = (await x() + 0.02).toFixed(4);
+  await page.locator('#tgt-0').fill(target);
+  await page.locator('#solve').click();
+  await status.filter({ hasText: /^Solved$/ }).waitFor();
+  assert(Math.abs(await x() - Number(target)) <= 0.0011);
+  await page.locator('#ee').selectOption('left_sole');
+  await status.filter({ hasText: /^Ready$/ }).waitFor();
+  assert.match(await page.locator('#status-meta').innerText(), /6 DoF/);
+  const z = async () => Number(await page.locator('#cur-2').innerText());
+  const lift = (await z() + 0.02).toFixed(4);
+  await page.locator('#tgt-2').fill(lift);
+  await page.locator('#solve').click();
+  await status.filter({ hasText: /^Solved$/ }).waitFor();
+  assert(Math.abs(await z() - Number(lift)) <= 0.0011);
+  assert.match(await page.locator('#notes').innerText(), /Fixed base link: pelvis/);
+  assert.doesNotMatch(await page.locator('#notes').innerText(), /Could not load robot meshes/);
+}
+
 let backend;
 try {
   // The static site must load and solve with only its built assets.
@@ -51,7 +85,7 @@ try {
         const model = page.locator('#model');
         await status.filter({ hasText: /^Ready$/ }).waitFor();
         assert.deepEqual(await model.locator('option').evaluateAll(options => options.map(option => option.value)),
-          ['ur10e/ur10e.urdf', 'ur5/ur5.urdf']);
+          ['ur10e/ur10e.urdf', 'ur5/ur5.urdf', 'g1/g1.urdf']);
         assert.deepEqual(await page.locator('#scheme option').allTextContents(), ['Damped least squares']);
         const coordinate = async axis => Number(await page.locator(`#cur-${axis}`).innerText());
         for (const [name, home] of [
@@ -82,12 +116,13 @@ try {
         await page.waitForFunction(() =>
           new Set(performance.getEntriesByType('resource').map(entry => entry.name)
             .filter(url => url.endsWith('.dae'))).size === 14);
+        await checkG1(page);
         assert.equal(await page.locator('#viewport canvas').count(), 1);
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         assert.deepEqual(unexpected, []);
         assert.deepEqual(failures, []);
       });
-      console.log(`PASS browser IK ${base}: both models, FK, pose solve and reach diagnostics without a backend`);
+      console.log(`PASS browser IK ${base}: UR10e, UR5 and G1 solve without a backend`);
     } finally {
       server.httpServer.closeAllConnections();
       await new Promise((resolve) => server.httpServer.close(resolve));
@@ -130,6 +165,8 @@ try {
         await page.locator('#show-meshes').uncheck();
         await page.locator('#show-meshes').check();
         await page.locator('#fit').click();
+        await checkG1(page);
+        assert.equal(await page.locator('#scheme').inputValue(), 'gtd');
         assert.equal(await page.locator('#viewport canvas').count(), 1);
         await page.setViewportSize({ width: 390, height: 730 });
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

@@ -2,7 +2,7 @@
 
 An interactive browser app for inverse kinematics on the robots in [`models/urdfs`](../../models/urdfs).
 Pick a model and an end-effector frame, then drag the tool.
-GitHub Pages runs live damped least squares on the UR10e and UR5 in a browser worker.
+GitHub Pages runs live damped least squares on the UR10e, UR5, and Unitree G1 in a browser worker.
 Local mode adds the GTDynamics factor graph, the other solvers, and the full URDF catalogue.
 The app shows the resulting joint angles and end-effector pose.
 If the target can't be reached, it explains why.
@@ -14,14 +14,15 @@ The paper below the demo describes the factor graph and shows solver settings, r
   `numpy` and `gtsam` come with them.
   No other Python packages are needed: the backend uses only the standard library.
 - For local development, install the apps workspace with `npm ci` in `apps/` using Node.js 22+ (see [the apps README](../README.md#local-preview)).
-- The browser worker uses the workspace’s MuJoCo WebAssembly package for forward kinematics and Jacobians. The build bundles the two URDFs and their visual meshes.
+- The browser worker uses the workspace’s MuJoCo WebAssembly package for forward kinematics and Jacobians. The build bundles the URDFs and visual meshes. Run `npm run models` from `apps/` to generate G1’s fixed-pelvis URDF from the pinned Menagerie/MJLab model.
 - A modern web browser with WebGL.
 
 ## Running
 
 The **URDF IK** tab is the first app after Overview on the [GTDynamics apps site](../README.md).
 The static build always uses browser IK. In native mode, Vite proxies the page’s
-`api/`, `files/` and `pkg/` requests to the Python backend on port 8767.
+`api/`, `files/` and `pkg/` requests to the Python backend on port 8767. The
+launcher points it at the checkout’s `models/urdfs` directory.
 The app follows the site's Light/Dark setting.
 
 `npm run dev` looks for Python in this order: `GTDYNAMICS_PYTHON`, then the repository's `.venv/bin/python`, then `python3`.
@@ -64,14 +65,14 @@ Backend options:
 
 | Action | How |
 | --- | --- |
-| Load a robot | **Model** dropdown. Browser mode includes the UR10e and UR5. Native mode lists every `*.urdf` under `models/urdfs`. Both use a fixed base. |
-| Pick what to move | **End-effector frame** dropdown. It shows how many joints move each frame. Browser mode preserves fixed tool frames such as `tool0`. Native mode also offers frames such as the `*_toe` frames on the A1. |
+| Load a robot | **Model** dropdown. Browser mode includes the UR10e, UR5, and G1. Native mode lists every `*.urdf` under `models/urdfs`. Both use a fixed base. |
+| Pick what to move | Double-click a movable link or its skeleton point, or use the **End-effector frame** dropdown. The dropdown shows how many joints move each frame and includes tool frames such as `tool0`, G1 palms and soles, and A1 toes in native mode. |
 | Pick the solver | **IK scheme** dropdown (see below). Changing it re-solves to the current target. |
 | Move the end-effector | Click and hold the **orange handle**, then drag. It moves in the plane facing the camera. IK runs continuously while you drag, warm-started from the previous solution. |
 | Change the end-effector pose | **Double-click the handle.** A rotation gizmo appears and the pose panel is highlighted: drag the rings to rotate, press <kbd>W</kbd> for the axis-arrow move gizmo and <kbd>E</kbd> for rotate, and <kbd>Esc</kbd> (or double-click again) when done. You can also type an exact target (x, y, z in meters; roll, pitch, yaw in degrees, URDF convention `R = Rz(yaw)·Ry(pitch)·Rx(roll)`) and press Enter or **Solve to target**. |
 | Position only vs. full pose | **Constrain orientation**. Off: only the end-effector position is solved for. On: the full 6-DoF pose is. It defaults to on for chains with 6 or more joints. |
 | Accuracy and effort | **Diagnostics and solver settings** opens the results section with **Pos tol**, **Rot tol** and **Max iters** (blank uses the scheme's default). |
-| Set joints directly | The **Joints** sliders run forward kinematics, and the target snaps to the new end-effector pose. **Home** sets all joints to zero, or to mid-range when zero is outside a joint's limits. Joints at a limit are shown in red. |
+| Set joints directly | The **Joints** sliders run forward kinematics, and the target snaps to the new end-effector pose. **Home** returns G1 to its starting stance and sets other models to zero, or to mid-range when zero is outside a joint’s limits. Joints at a limit are shown in red. |
 | Camera | Drag the background to orbit, right-drag to pan, scroll to zoom. **Fit view** frames the robot. |
 
 The viewport shows:
@@ -95,7 +96,7 @@ The pose panel always shows the current end-effector position, roll/pitch/yaw an
 | **Cyclic coordinate descent (CCD)** | Solves for one joint at a time, tip to base, rotating each joint toward the target. It is robust for position goals and weaker for orientation. |
 
 Browser mode offers damped least squares and uses MuJoCo for forward kinematics.
-It starts from a bent configuration for dragging. **Home** resets to the URDF zero configuration.
+The UR arms start from a bent configuration for dragging. G1 starts with slightly bent knees so its soles can move vertically.
 The native joint-space schemes use GTDynamics for forward kinematics.
 
 ## Why a target can't be solved
@@ -122,6 +123,7 @@ Browser mode reports reach, insufficient degrees of freedom, stalled solves, ite
 
 ## Native model notes
 
+- G1’s pelvis is fixed at the world origin in both modes. Its 29 joints and tool frames come from the pinned G1 used by the walking demos. The explorer renders the same compiled geometry from the solver’s link poses.
 - Every model is test-parsed in a separate process before it is loaded, because some URDFs crash GTDynamics' native parser (for example, `test/four_bar_linkage.urdf`).
   Models that GTDynamics can't load still render in the viewport, with the parser's error in the status panel.
   They are marked *(not loadable)* in the dropdown.
@@ -157,7 +159,7 @@ To run only these, from `apps/`:
 npm test --workspace urdf
 ```
 
-The browser test checks both bundled models, pose solves, and forward kinematics on the static build at `/` and under a project prefix. It rejects backend requests on those pages.
+The browser test checks the three bundled models, pose solves, and forward kinematics on the static build at `/` and under a project prefix. It rejects backend requests on those pages.
 When `gtdynamics` imports, it also exercises the native factor graph.
 Build the app first, from `apps/`:
 

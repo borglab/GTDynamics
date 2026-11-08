@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const app = fileURLToPath(new URL('../', import.meta.url));
 const venvPython = fileURLToPath(new URL('../../../.venv/bin/python', import.meta.url));
+const urdfRoot = fileURLToPath(new URL('../../../models/urdfs/', import.meta.url));
 
 /** GTDYNAMICS_PYTHON, else the repository's .venv, else python3. */
 export const python = process.env.GTDYNAMICS_PYTHON || (existsSync(venvPython) ? venvPython : 'python3');
@@ -19,7 +20,7 @@ export function startBackend({ port = process.env.URDF_BACKEND_PORT || 8767 } = 
       + 'Set GTDYNAMICS_PYTHON to use another interpreter.');
     return null;
   }
-  return spawn(python, ['scripts/server.py', '--host', '127.0.0.1', '--port', String(port)],
+  return spawn(python, ['scripts/server.py', '--host', '127.0.0.1', '--port', String(port), '--urdf-root', urdfRoot],
     { cwd: app, stdio: 'inherit' });
 }
 

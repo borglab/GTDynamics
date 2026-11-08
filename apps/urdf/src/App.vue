@@ -6,6 +6,7 @@ import MathTypeset from '../../shared/paper/MathTypeset.vue';
 import PaperGraph from '../../shared/paper/PaperGraph.vue';
 import ur10eLicense from '../../../models/urdfs/ur10e/LICENSE?url';
 import ur5License from '../../../models/urdfs/ur5/LICENSE?url';
+import g1License from '../../contact-labels/public/MODEL_LICENSE.txt?url';
 import { createExplorer } from './explorer.js';
 import equations from './ik.math.html?math';
 
@@ -43,8 +44,8 @@ onBeforeUnmount(() => explorer?.dispose());
     <section id="demo" aria-label="Interactive inverse kinematics">
       <div id="viewport">
         <div id="help">
-          <b>Drag</b> the orange target to move it · <b>double-click</b> to edit its pose
-          (<kbd>W</kbd> move, <kbd>E</kbd> rotate, <kbd>Esc</kbd> done) · drag the background to orbit
+          <b>Drag</b> the orange target to move it · <b>double-click the target</b> to edit its pose
+          (<kbd>W</kbd> move, <kbd>E</kbd> rotate, <kbd>Esc</kbd> done) · <b>double-click a link</b> to select it · drag the background to orbit
         </div>
         <div id="view-tools">
           <label class="check"><input type="checkbox" id="show-skeleton" checked> Skeleton</label>
@@ -113,7 +114,7 @@ onBeforeUnmount(() => explorer?.dispose());
         <section>
           <h3>Solver settings</h3>
           <p id="scheme-desc"></p>
-          <p v-if="mode === 'browser'">The browser includes the UR10e and UR5. <a href="https://github.com/borglab/GTDynamics/tree/master/apps/urdf#running">Run the app locally</a> to use the native factor graph and the full model catalogue.</p>
+          <p v-if="mode === 'browser'">The browser includes the UR10e, UR5, and Unitree G1. <a href="https://github.com/borglab/GTDynamics/tree/master/apps/urdf#running">Run the app locally</a> to use the native factor graph and the full model catalogue.</p>
           <div class="grid3">
             <label>Pos tol (mm) <input type="number" id="pos-tol" value="1" min="0.001" step="0.1"></label>
             <label>Rot tol (°) <input type="number" id="rot-tol" value="0.5" min="0.001" step="0.1"></label>
@@ -127,6 +128,7 @@ onBeforeUnmount(() => explorer?.dispose());
       <template #discussion>
         <p>The UR10e model and meshes come from Universal Robots’ ROS 2 Description 4.4.0 (81f7c9fe). <a :href="ur10eLicense" download="UR10e-LICENSE">UR10e model license</a>.</p>
         <p>The UR5 model is based on ROS-Industrial’s <code>ur_description</code> package. The bundled visual meshes match the <a href="https://github.com/ros-industrial/universal_robot/tree/06d8b9e2f5f86aa54f9f2845f11edbc84e2f951e/ur_description">ROS Kinetic revision</a>. <a :href="ur5License" download="UR5-LICENSE">UR5 model license</a>.</p>
+        <p>The Unitree G1 uses the same Menagerie/MJLab model as the walking demos. The pelvis defines the fixed world frame for IK. The selectable palm and sole frames move through the arms, waist, and legs. <a :href="g1License" download="G1-LICENSE.txt">G1 model license and provenance</a>.</p>
       </template>
     </AppPaper>
   </main>

@@ -1,11 +1,15 @@
-/** Assets and worker transport for the two models available on the static site. */
+/** Model assets and worker transport for the static site. */
+import { g1Path } from './g1-visual.js';
+
 const assetRoot = '../../../models/urdfs/';
 const assets = import.meta.glob([
   '../../../models/urdfs/{ur10e,ur5}/*.urdf',
   '../../../models/urdfs/{ur10e,ur5}/visual/*.dae',
+  '../../../models/urdfs/g1/g1.urdf',
 ], { eager: true, query: '?url&no-inline', import: 'default' });
 
-const models = ['ur10e/ur10e.urdf', 'ur5/ur5.urdf'].map(path => ({ path, status: 'ok' }));
+const models = ['ur10e/ur10e.urdf', 'ur5/ur5.urdf', g1Path]
+  .filter(path => assets[assetRoot + path]).map(path => ({ path, status: 'ok' }));
 const schemes = [{
   id: 'dls',
   label: 'Damped least squares',

@@ -38,6 +38,7 @@ PREFERRED_EE_NAMES = (
     "hand",
     "tool",
     "end_effector",
+    "right_palm",
 )
 
 MOVABLE_TYPES = ("revolute", "continuous", "prismatic")
@@ -358,7 +359,7 @@ class RobotModel:
         return frames[eff.link].compose(eff.linkTee)
 
     def skeleton(self, frames: dict[str, gtsam.Pose3]) -> list[dict]:
-        """Link origins and their parents, for drawing a stick figure."""
+        """World link frames and parents for rendering the robot and skeleton."""
         return [
             {
                 "link": name,
@@ -368,6 +369,7 @@ class RobotModel:
                     else None
                 ),
                 "position": list(map(float, frames[name].translation())),
+                "quat_xyzw": quaternion_xyzw(frames[name].rotation()),
             }
             for name in sorted(frames)
         ]
@@ -401,12 +403,18 @@ class RobotModel:
         }
 
 
+def quaternion_xyzw(rotation: gtsam.Rot3) -> list[float]:
+    """Return the rotation as the browser's x, y, z, w quaternion."""
+    quat = rotation.toQuaternion()
+    return [quat.x(), quat.y(), quat.z(), quat.w()]
+
+
 def pose_to_json(pose: gtsam.Pose3) -> dict:
-    quat = pose.rotation().toQuaternion()
+    rotation = pose.rotation()
     return {
         "position": list(map(float, pose.translation())),
-        "quat_xyzw": [quat.x(), quat.y(), quat.z(), quat.w()],
-        "rpy_deg": list(map(float, np.degrees(pose.rotation().rpy()))),
+        "quat_xyzw": quaternion_xyzw(rotation),
+        "rpy_deg": list(map(float, np.degrees(rotation.rpy()))),
     }
 
 

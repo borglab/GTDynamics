@@ -5,7 +5,7 @@ tab. [registry.json](registry.json) supplies the tab labels, overview links, and
 the list of apps to build. Each app keeps its own Vue/Vite project and can also
 be opened directly.
 
-- [URDF IK](urdf/README.md): move the UR10e or UR5 tool with live browser IK. [Local mode](#python-backed-apps) adds the GTDynamics factor graph and full model catalogue.
+- [URDF IK](urdf/README.md): move a UR10e or UR5 tool or a Unitree G1 palm or sole with live browser IK. [Local mode](#python-backed-apps) adds the GTDynamics factor graph and full model catalogue.
 - [Contact Labels](contact-labels/README.md): inspect privileged stationarity targets derived from SSIO reference-world sole motion.
 - [Contact Initialization](contact-initialization/README.md): inspect native pose-contact initialization and independently selectable priors on SSIO and additional G1 recordings.
 - [Contact vs IK](contact-vs-ik/README.md): compare initialization and smoothing on three ten-second G1 walking snippets.
@@ -133,8 +133,8 @@ python -c "import gtdynamics"
 GTDYNAMICS_PYTHON=/absolute/path/to/python npm run dev
 ```
 
-If that interpreter cannot import `gtdynamics`, the app uses the same UR10e and
-UR5 browser solver as the static build. To run the app on its own, see
+If that interpreter cannot import `gtdynamics`, the app uses the same browser solver
+as the static build for the UR10e, UR5, and G1. To run the app on its own, see
 [the URDF IK README](urdf/README.md#running).
 
 ## Live motion planning

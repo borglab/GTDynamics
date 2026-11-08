@@ -17,6 +17,9 @@ required. Simulation options are explicitly copied to the exported scene.
 Generated XML, assets, binary cache, contact-frame metadata and a fingerprinted
 provenance manifest live in `models/mujoco/.cache/g1-mjlab`. The model link and
 browser assets link point there. The BSD model license accompanies the assets.
+The bootstrap also generates `models/urdfs/g1/g1.urdf` for the IK explorer.
+It fixes the pelvis at the world origin and retains the canonical 29 hinges,
+palm sites, and material sole frames.
 One sole frame per foot is derived independently from its foot site and capsule
 lower envelope. It uses body axes (+X forward, +Y left, +Z up).
 

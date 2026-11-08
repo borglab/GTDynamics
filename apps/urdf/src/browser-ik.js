@@ -1,7 +1,6 @@
 import { MathUtils, Quaternion, Vector3 } from 'three';
 import { homeConfiguration, rpyDegFromQuaternion } from './pose.js';
 
-const defaultTool = 'tool0';
 const initialBend = {
   shoulder_lift_joint: -0.65, elbow_joint: 1.2, wrist_1_joint: -0.55, wrist_2_joint: -0.5,
 };
@@ -17,7 +16,7 @@ function rotationError(target, current) {
   return vector.multiplyScalar((delta.w < 0 ? -angle : angle) / length);
 }
 
-/** Kinematics for the two bundled fixed-base, revolute UR arms. */
+/** Kinematics for the bundled fixed-base models with bounded hinges. */
 export class BrowserRobot {
   static load(mujoco, name, urdf) {
     const path = '/browser-ik.urdf';
@@ -71,10 +70,12 @@ export class BrowserRobot {
   }
 
   describe() {
-    // Both arms are singular at the zero pose. Start bent for interactive dragging.
-    const initial = { ...homeConfiguration(this.joints), ...initialBend };
+    const defaultTool = this.links.some(link => link.name === 'tool0') ? 'tool0' : 'right_palm';
+    const initial = homeConfiguration(this.joints);
+    // The UR arms start bent to avoid their fully extended singularity.
+    if (defaultTool === 'tool0') Object.assign(initial, initialBend);
     return {
-      base: 'base_link',
+      base: this.links[1].name,
       joints: this.joints.map(({ name, type, lower, upper }) => ({ name, type, lower, upper })),
       end_effectors: this.links.filter(link => link.dof).map(({ name, dof }) => ({ name, link: name, dof })),
       default_ee: defaultTool,
@@ -106,6 +107,7 @@ export class BrowserRobot {
 
   configuration(angles, pose) {
     const positions = this.data.xpos;
+    const rotations = this.data.xquat;
     return {
       q: Object.fromEntries(this.joints.map(({ name }, index) => [name, angles[index]])),
       ee_pose: {
@@ -113,11 +115,15 @@ export class BrowserRobot {
         quat_xyzw: pose.rotation.toArray(),
         rpy_deg: rpyDegFromQuaternion(pose.rotation),
       },
-      skeleton: this.links.map(({ id, name }) => ({
-        link: name,
-        parent: id ? this.links[this.model.body_parentid[id]].name : null,
-        position: Array.from(positions.subarray(3 * id, 3 * id + 3)),
-      })),
+      skeleton: this.links.map(({ id, name }) => {
+        const [w, x, y, z] = rotations.subarray(4 * id, 4 * id + 4);
+        return {
+          link: name,
+          parent: id ? this.links[this.model.body_parentid[id]].name : null,
+          position: Array.from(positions.subarray(3 * id, 3 * id + 3)),
+          quat_xyzw: [x, y, z, w],
+        };
+      }),
       at_limits: this.joints.filter(({ lower, upper }, i) =>
         Math.min(angles[i] - lower, upper - angles[i]) < 1e-6).map(({ name }) => name),
     };
