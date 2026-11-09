@@ -501,3 +501,12 @@ blocking faces. `numALSolveCalls`, `numPenaltySolveCalls`, `numFeasibleTrials`, 
 
 The hierarchical CMC retractor and CM-only retractors are not converted to
 reduced solves by this change. Nonlinear finite recovery remains future work.
+
+### Shared retraction infrastructure
+
+`IERetractor` and `IERetractorCreator` extend the common
+[`CMRetractor` contracts](../constrained/CMRetractor.h).
+The common layer prepares against `CMPoint`, returns ambient values, binds metric
+keys, and isolates mutable workspaces. Blocking rows, boundary moves, and IE
+solver settings remain in `cmcopt`. See the
+[ownership and interface guide](../constrained/README.md#shared-retraction-policies-and-workspaces).

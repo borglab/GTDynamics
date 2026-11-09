@@ -96,18 +96,10 @@ TangentSpaceMetric::shared_ptr IECMPoint::projectionMetric(
 
 IERetractor::shared_ptr IECMPoint::retractor(
     const VectorValues* metricSigmas) const {
-  if (!retractionPreparation_)
-    throw std::logic_error("Native point owns its chart retraction");
-
-  auto workspace = retractionPreparation_->clone();
-  if (metricSigmas) {
-    // Copy only this point's entries from a possibly trajectory-wide metric.
-    VectorValues local;
-    for (Key key : values_.keys())
-      if (metricSigmas->exists(key)) local.insert(key, metricSigmas->at(key));
-    workspace->setMetricSigmas(local);
-  }
-
+  auto workspace = std::dynamic_pointer_cast<IERetractor>(
+      retractionWorkspace(metricSigmas));
+  if (!workspace)
+    throw std::logic_error("Retraction policy has no IE boundary operations");
   return workspace;
 }
 

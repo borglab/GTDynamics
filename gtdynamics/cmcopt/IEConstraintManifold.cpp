@@ -334,7 +334,7 @@ IEConstraintManifold::IEConstraintManifold(
   if (!params_.retractorCreator)
     params_.retractorCreator = std::make_shared<BarrierRetractorCreator>();
   params_.retractorCreator =
-      params_.retractorCreator->cloneFor(KeySet(prototype.keys()));
+      params_.retractorCreator->cloneForKeys(KeySet(prototype.keys()));
   params_.equalityBasisCreator = params_.equalityBasisCreator->clone();
 
   // Factor definitions stay local; point bindings supply ambient identities.
@@ -422,8 +422,12 @@ IECMPoint IEConstraintManifold::point(const Bindings& bindings, const Values& va
   std::tie(result.equalities_, result.inequalities_) = boundConstraints(bindings);
   result.active_indices_ = identifyActive(result, active);
   result.tangentSpace_ = linearizeAt(result);
-  if (params_.retractorCreator)
-    result.retractionPreparation_ = params_.retractorCreator->create(result);
+  if (params_.retractorCreator) {
+    result.retractionPreparation_ = params_.retractorCreator->prepare(result);
+    if (inequalityCount(result) &&
+        !std::dynamic_pointer_cast<const IERetractor>(result.retractionPreparation_))
+      throw std::invalid_argument("Inequalities require an IE retraction policy");
+  }
   return result;
 }
 
@@ -467,7 +471,7 @@ IEConstraintManifold::shared_ptr IEConstraintManifold::condition(const Values& f
   KeySet freeSlots;
   for (const auto& [key, slot] : result->slots_) freeSlots.insert(key);
   result->params_.retractorCreator =
-      result->params_.retractorCreator->cloneFor(freeSlots);
+      result->params_.retractorCreator->cloneForKeys(freeSlots);
   result->prepareEqualities();
   return result;
 }
@@ -593,8 +597,8 @@ IECMPoint IEConstraintManifold::retract(const IECMPoint& point, const Vector& de
                            IERetractionInfo* info,
                            const VectorValues* metricSigmas) const {
   validatePointType(point);
-  return point.retractor(metricSigmas)
-      ->retract(&point, point.toAmbient(delta), blocking, info);
+  return retractAmbient(point, point.toAmbient(delta), blocking, info,
+                        metricSigmas);
 }
 
 Vector IEConstraintManifold::localCoordinates(const IECMPoint& origin,
@@ -641,7 +645,7 @@ double IEConstraintManifold::inequalityViolation(const IECMPoint& point) const {
 
 bool IEConstraintManifold::usesVaryingMetric() const {
   return params_.retractorCreator &&
-         params_.retractorCreator->params()->useVaryingSigma;
+         params_.retractorCreator->commonParams().useVaryingSigma;
 }
 
 IECMPoint IEConstraintManifold::retractAmbient(const IECMPoint& point,
@@ -650,14 +654,25 @@ IECMPoint IEConstraintManifold::retractAmbient(const IECMPoint& point,
                                   IERetractionInfo* info,
                                   const VectorValues* metricSigmas) const {
   validatePointType(point);
-  return point.retractor(metricSigmas)->retract(&point, delta, blocking, info);
+  auto workspace = point.retractionWorkspace(metricSigmas);
+  if (auto ieWorkspace = std::dynamic_pointer_cast<IERetractor>(workspace))
+    return ieWorkspace->retract(&point, delta, blocking, info);
+  if (inequalityCount(point) || (blocking && !blocking->empty()))
+    throw std::invalid_argument("Inequalities require an IE retraction policy");
+  return this->point(point.bindings(), workspace->retractValues(point, delta, info));
 }
 
 IECMPoint IEConstraintManifold::moveToBoundary(const IECMPoint& point, const IndexSet& active,
                                   IERetractionInfo* info,
                                   const VectorValues* metricSigmas) const {
   validatePointType(point);
-  return point.retractor(metricSigmas)->moveToBoundary(&point, active, info);
+  auto workspace = point.retractionWorkspace(metricSigmas);
+  if (auto ieWorkspace = std::dynamic_pointer_cast<IERetractor>(workspace))
+    return ieWorkspace->moveToBoundary(&point, active, info);
+  if (inequalityCount(point) || !active.empty())
+    throw std::invalid_argument("Inequalities require an IE retraction policy");
+  return this->point(point.bindings(), workspace->retractValues(
+      point, point.values().zeroVectors(), info));
 }
 
 void IEConstraintManifold::validatePointType(const CMPoint& point) const {

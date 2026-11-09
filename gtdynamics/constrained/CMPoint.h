@@ -14,7 +14,7 @@
 #include <gtdynamics/constrained/ConstraintManifold.h>
 
 namespace gtdynamics {
-class IERetractor;
+class CMRetractor;
 class IEConstraintManifold;
 class EConstraintManifold;
 
@@ -37,6 +37,9 @@ class CMPoint {
   const gtsam::Value& recover(
       gtsam::Key key,
       gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H = {}) const;
+  /// Clone independent mutable work and scope an optional trial metric.
+  std::shared_ptr<CMRetractor> retractionWorkspace(
+      const gtsam::VectorValues* metricSigmas = nullptr) const;
   bool equals(const CMPoint& other, double tolerance = 1e-8) const;
   void print(const std::string& prefix = "") const;
 
@@ -52,6 +55,6 @@ class CMPoint {
   Bindings bindings_;
   gtsam::Values values_;
   std::shared_ptr<const CMTangentSpace> tangentSpace_;
-  std::shared_ptr<const IERetractor> retractionPreparation_;
+  std::shared_ptr<const CMRetractor> retractionPreparation_;
 };
 }  // namespace gtdynamics

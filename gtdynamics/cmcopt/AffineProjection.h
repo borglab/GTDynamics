@@ -13,6 +13,7 @@
 
 #pragma once
 #include <gtdynamics/constrained/TangentSpaceMetric.h>
+#include <gtdynamics/constrained/CMRetractor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ConstrainedOptProblem.h>
 #include <optional>
@@ -20,7 +21,6 @@
 namespace gtdynamics {
 class IECMPoint;
 struct IERetractorParams;
-struct IERetractionInfo;
 
 /** A shared projection problem on an exact affine equality manifold.
  * Point geometry owns the basis and metric cache. This short-lived object owns
@@ -52,7 +52,7 @@ public:
     IndexSet active;
   };
   std::optional<Result> feasibleProjection(const IndexSet &blocking,
-                                           IERetractionInfo *info) const;
+                                           CMRetractionInfo *info) const;
   std::optional<IndexSet> feasibleResult(const Values &values,
                                          const IndexSet &blocking) const;
   IndexSet validateResult(const Values &values, const IndexSet &blocking) const;

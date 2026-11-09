@@ -2,6 +2,9 @@
 
 Authors: Yetong Zhang and Frank Dellaert.
 
+[Open the illustrated architecture guide](doc/architecture.html) for an offline,
+interactive overview of the common constrained layer, CM-Opt, and CMC-Opt.
+
 The runtime types and point values have matching specialization hierarchies:
 
 ```text
@@ -20,7 +23,7 @@ problems can therefore use CMC, while equality-only optimizer entry points take
 
 | Directory | Code |
 | --- | --- |
-| `constrained` | `ConstraintManifold`, `CMPoint`, `CMTangentSpace`, shared basis/metric/Jacobian operations, tangent-cone geometry, and `CMCSubstituteFactor` |
+| `constrained` | `ConstraintManifold`, `CMPoint`, `CMTangentSpace`, shared retraction policies/workspaces, basis/metric/Jacobian operations, tangent-cone geometry, and `CMCSubstituteFactor` |
 | `constrained/internal` | Read-only basis views, independent-component scheduling, and the shared compiled-chart implementation |
 | `cmopt` | `EConstraintManifold`, `ECMPoint`, equality retractors, and equality optimizer backends |
 | `cmopt/internal` | The compiled equality-only adapter |
@@ -115,6 +118,33 @@ does not permit `values.at<IECMPoint>(key)` when that key stores an `ECMPoint`.
 G1's temporal ordering reads the slice from ambient bindings. Component-point
 keys have no time encoding. Raw QP captures therefore use the new point keys;
 recovery into ambient coordinates is unchanged.
+
+## Shared retraction policies and workspaces
+
+`constrained/CMRetractor.h` contains the common `CMRetractor` and
+`CMRetractorCreator` contracts. Policies prepare against `CMPoint` references and
+return ambient `gtsam::Values`; their interface has no blocking indices or
+boundary operations. Runtime types capture this common creator interface, and
+`CMPoint::retractionWorkspace` clones independent mutable work and scopes any
+trial-dependent metric to the point's ambient keys.
+
+`CMRetractorParams` owns the shared metric settings and prior-weight operations.
+The common layer also supplies metric binding/snapshots, fixed-factor isolation,
+`RetractionFailure`, and `CMRetractionInfo` solver-work counters. Concrete policies
+must deep-copy mutable settings and solver state when cloning a workspace.
+
+`cmcopt/IERetractor` and `IERetractorCreator` extend these contracts with typed IE
+point operations. Blocking indices and `moveToBoundary` remain in this extension,
+as do the IE projection/penalty settings in `IERetractorParams`. The existing
+`IERetractionInfo` spelling refers to the common diagnostic structure. Typed IE
+binding dispatch preserves policy-specific coordinate/prior-key binding.
+
+The existing equality `Retractor` and `RetractorCreator` specialize the IE
+extension and retain their equality-only kernels and settings in `cmopt`.
+Equality-only policies can also implement the common contract directly. A point
+with inequalities requires an IE policy, so a generic equality policy cannot
+silently discard boundary handling. Compiled chart implementations retain their
+native retraction path.
 
 ## Conditioning and retraction
 

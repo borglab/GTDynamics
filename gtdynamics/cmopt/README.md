@@ -318,3 +318,10 @@ Read the core implementation in this order:
 
 For inequality boundaries and corners, see the separate CMC-Opt documentation in
 [`../cmcopt/README.md`](../cmcopt/README.md).
+
+The retraction lifecycle is shared through
+[`CMRetractor` and `CMRetractorCreator`](../constrained/CMRetractor.h).
+The equality `Retractor`/`RetractorCreator` classes retain their IE-compatible
+point wrappers and equality kernels; metric binding and workspace isolation live
+in `constrained`. See the
+[shared retraction contracts](../constrained/README.md#shared-retraction-policies-and-workspaces).

@@ -42,7 +42,7 @@ class IEConstraintManifold : public ConstraintManifold,
     TangentSpaceBasisCreator::shared_ptr equalityBasisCreator =
         std::make_shared<OrthonormalBasisCreator>();
     /// Feasibility retraction policy, frozen when the runtime type is built.
-    IERetractorCreator::shared_ptr retractorCreator;
+    CMRetractorCreator::shared_ptr retractorCreator;
     /// Explicit certification of constant affine equalities in Euclidean slots.
     bool affineEqualities = false;
   };

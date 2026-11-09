@@ -403,8 +403,10 @@ class RetractionParams {
   bool applyBaseRetraction;
   bool recompute;
 };
+#include <gtdynamics/constrained/CMRetractor.h>
+virtual class CMRetractorCreator {};
 #include <gtdynamics/cmcopt/IERetractor.h>
-virtual class IERetractorCreator {};
+virtual class IERetractorCreator : gtdynamics::CMRetractorCreator {};
 virtual class RetractorCreator : gtdynamics::IERetractorCreator {};
 #include <gtdynamics/cmopt/BasisRetractor.h>
 virtual class BasisRetractorCreator : gtdynamics::RetractorCreator {
@@ -425,7 +427,7 @@ virtual class IEConstraintManifold : gtdynamics::ConstraintManifold {
 class EConstraintManifoldParams {
   EConstraintManifoldParams();
   gtdynamics::TangentSpaceBasisCreator* equalityBasisCreator;
-  gtdynamics::IERetractorCreator* retractorCreator;
+  gtdynamics::CMRetractorCreator* retractorCreator;
   bool affineEqualities;
 };
 virtual class EConstraintManifold : gtdynamics::IEConstraintManifold {

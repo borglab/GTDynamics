@@ -10,6 +10,7 @@
  */
 
 #include <gtdynamics/constrained/CMPoint.h>
+#include <gtdynamics/constrained/CMRetractor.h>
 
 #include <iostream>
 
@@ -41,6 +42,23 @@ VectorValues CMPoint::toAmbient(const Vector& delta) const {
 
 Vector CMPoint::toCoordinates(const VectorValues& delta) const {
   return dim() ? eBasis()->computeXi(delta) : Vector(0);
+}
+
+std::shared_ptr<CMRetractor> CMPoint::retractionWorkspace(
+    const VectorValues* metricSigmas) const {
+  if (!retractionPreparation_)
+    throw std::logic_error("Native point owns its chart retraction");
+
+  auto workspace = retractionPreparation_->cloneWorkspace();
+  if (metricSigmas) {
+    // Copy only this point's entries from a possibly trajectory-wide metric.
+    VectorValues local;
+    for (Key key : values_.keys())
+      if (metricSigmas->exists(key)) local.insert(key, metricSigmas->at(key));
+    workspace->setMetricSigmas(local);
+  }
+
+  return workspace;
 }
 
 bool CMPoint::equals(const CMPoint& other, double tolerance) const {

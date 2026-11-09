@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gtdynamics/factors/ConstVarFactor.h>
-#include <gtdynamics/factors/GeneralPriorFactor.h>
+#include <gtdynamics/constrained/CMRetractor.h>
 #include <gtdynamics/constrained/MultiJacobian.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/PenaltyOptimizer.h>
@@ -31,22 +31,13 @@ using namespace gtsam;
 
 class IECMPoint;
 
-struct IERetractorParams {
+struct IERetractorParams : CMRetractorParams {
   using shared_ptr = std::shared_ptr<IERetractorParams>;
-  LevenbergMarquardtParams lmParams = LevenbergMarquardtParams();
-  double priorSigma = 1.0;
-  bool useVaryingSigma = false;
-  bool scaleVaryingSigma = false;
-  std::shared_ptr<VectorValues> metricSigmas = NULL;
   /// Opt into affine reduction in BarrierRetractor; nonlinear points stay
   /// ambient.
   bool useReducedCoordinates = false;
   /// Coordinate preconditioning only; false retains the original basis metric.
   bool whitenAffineCoordinates = true;
-  bool initValuesAsX = true; //
-  bool checkFeasible = true;
-  double feasibleThreshold = 1e-3;
-  bool ensureFeasible = false;
   PenaltyOptimizerParams::shared_ptr penaltyParams =
       std::make_shared<PenaltyOptimizerParams>();
 
@@ -57,17 +48,7 @@ struct IERetractorParams {
                              const KeySet *scope = nullptr) {
     if (!source) throw std::invalid_argument("Missing retraction settings");
     auto result = std::make_shared<IERetractorParams>(*source);
-    if (source->metricSigmas) {
-      if (!scope)
-        result->metricSigmas =
-            std::make_shared<VectorValues>(*source->metricSigmas);
-      else {
-        result->metricSigmas = std::make_shared<VectorValues>();
-        for (Key key : *scope)
-          if (source->metricSigmas->exists(key))
-            result->metricSigmas->insert(key, source->metricSigmas->at(key));
-      }
-    }
+    result->snapshotMetric(*source, scope);
     if (source->penaltyParams)
       result->penaltyParams =
           std::make_shared<PenaltyOptimizerParams>(*source->penaltyParams);
@@ -76,17 +57,19 @@ struct IERetractorParams {
 
   /** Constructor using the same sigma. */
   IERetractorParams(const LevenbergMarquardtParams &_lmParams,
-                    const double &_priorSigma)
-      : lmParams(_lmParams), priorSigma(_priorSigma),
-        useVaryingSigma(false), metricSigmas(NULL) {
+                    const double &_priorSigma) {
+    lmParams = _lmParams;
+    priorSigma = _priorSigma;
     penaltyParams->lmParams = lmParams;
   }
 
   /** Constructor using varying sigmas. */
   IERetractorParams(const LevenbergMarquardtParams &_lmParams,
-                    const std::shared_ptr<VectorValues> &_metric_sigmas)
-      : lmParams(_lmParams), priorSigma(0.0), useVaryingSigma(true),
-        metricSigmas(_metric_sigmas) {
+                    const std::shared_ptr<VectorValues> &_metric_sigmas) {
+    lmParams = _lmParams;
+    priorSigma = 0.0;
+    useVaryingSigma = true;
+    metricSigmas = _metric_sigmas;
     penaltyParams->lmParams = lmParams;
   }
 
@@ -95,44 +78,14 @@ struct IERetractorParams {
     return std::make_shared<IERetractorParams>(
         _lmParam, std::make_shared<VectorValues>());
   }
-
-  /** Effective diagonal weights, shared by ambient and reduced projection.
-   * Missing varying-sigma keys are omitted; repeated keys accumulate weight.
-   */
-  VectorValues priorPrecisions(const Values &values, const KeyVector &keys) const;
-
-  /// Add the quadratic prior term that pulls the retraction solution toward
-  /// the trial point x + delta.
-  template <typename CONTAINER>
-  void addPriors(const Values &values, const CONTAINER &keys,
-                 NonlinearFactorGraph &graph) const {
-    const auto precisions = priorPrecisions(values, KeyVector(keys.begin(), keys.end()));
-    for (const auto &[key, weights] : precisions)
-      graph.emplace_shared<GeneralPriorFactor>(
-          key, values.at(key), noiseModel::Diagonal::Precisions(weights));
-  }
 };
 
-/** A numerically unsuccessful feasibility projection. LM may reject this trial
- * and retry with stronger damping. Invalid inputs and programming errors use
- * their usual exception types and must still propagate to the caller.
- */
-class RetractionFailure : public std::runtime_error {
- public:
-  using std::runtime_error::runtime_error;
-};
-
-struct IERetractionInfo {
-  size_t numLMIterations = 0;
-  size_t numALSolveCalls = 0;
-  size_t numPenaltySolveCalls = 0;
-  size_t numFeasibleTrials = 0;
-  size_t numFeasibleProjections = 0;
-};
+// Retain the typed IE API while sharing solver-work diagnostics.
+using IERetractionInfo = CMRetractionInfo;
 
 /// Base class for the feasibility-restoring map R_x(delta) used after each
 /// cone-constrained step.
-class IERetractor {
+class IERetractor : public CMRetractor {
 
 protected:
   IERetractorParams::shared_ptr params_;
@@ -150,33 +103,16 @@ public:
       : params_(IERetractorParams::snapshot(other.params_)) {}
 
   virtual ~IERetractor() {}
-  /// Detach the mutable fixed-variable factors in a copied workspace.
-  static void detachFixedFactors(
-      NonlinearFactorGraph &graph,
-      std::vector<std::shared_ptr<ConstVarFactor>> &factors) {
-    std::map<const ConstVarFactor *, std::shared_ptr<ConstVarFactor>> copies;
-    for (auto &factor : factors) {
-      auto copy = std::make_shared<ConstVarFactor>(*factor);
-      copies.emplace(factor.get(), copy);
-      factor = copy;
-    }
-    for (auto &factor : graph) {
-      const auto fixed = dynamic_cast<const ConstVarFactor *>(factor.get());
-      if (fixed && copies.count(fixed)) factor = copies.at(fixed);
-    }
-  }
   /// Clone a prototype into one retraction workspace.
   virtual shared_ptr clone() const = 0;
   /// Bind local policy keys and metric entries to one point's ambient keys.
   virtual shared_ptr bind(const IECMPoint &point) const;
-  /// Restrict a prepared policy snapshot to the component's ambient variables.
-  void scopeMetric(const KeySet &keys) {
-    params_ = IERetractorParams::snapshot(params_, &keys);
-  }
-  /// Trial-local metric update; only isolated workspaces receive it.
-  void setMetricSigmas(const VectorValues &sigmas) {
-    params_->metricSigmas = std::make_shared<VectorValues>(sigmas);
-  }
+  /// Common point operations delegate to the typed IE policy.
+  CMRetractor::shared_ptr cloneWorkspace() const override { return clone(); }
+  CMRetractor::shared_ptr bindPoint(const CMPoint &point) const override;
+  Values retractValues(const CMPoint &point, const VectorValues &delta,
+                       CMRetractionInfo *info = nullptr) const override;
+  const CMRetractorParams &commonParams() const override { return *params_; }
 
   /// Retract the ambient variables back to h(x)=0, g(x)<=0, optionally with
   /// selected blocking inequalities promoted to equalities.
@@ -191,6 +127,9 @@ public:
       IERetractionInfo *retract_info = nullptr) const;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
+
+protected:
+  CMRetractorParams &mutableCommonParams() override { return *params_; }
 };
 
 /* ************************************************************************* */
@@ -198,7 +137,7 @@ public:
 /* ************************************************************************* */
 
 /** Base class of retractor creator. */
-class IERetractorCreator {
+class IERetractorCreator : public CMRetractorCreator {
 protected:
   IERetractorParams::shared_ptr params_;
 
@@ -224,6 +163,15 @@ public:
 
   virtual IERetractor::shared_ptr
   create(const IECMPoint &point) const = 0;
+
+  CMRetractorCreator::shared_ptr clonePolicy() const override {
+    return clone();
+  }
+  CMRetractorCreator::shared_ptr cloneForKeys(const KeySet &keys) const override {
+    return cloneFor(keys);
+  }
+  CMRetractor::shared_ptr prepare(const CMPoint &point) const override;
+  const CMRetractorParams &commonParams() const override { return *params_; }
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
