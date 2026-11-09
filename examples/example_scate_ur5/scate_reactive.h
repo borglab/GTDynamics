@@ -50,6 +50,9 @@
  * Kept from scate_online.h: obstacle factors use the estimates as constants
  * (the collision cost cannot move an obstacle), no feedback law (re-planning
  * each step does that job), and an optional weak control-effort prior.
+ *
+ * Optional: a base-disturbance cost (base_wrench.h) on the intervals still
+ * ahead, removed once an interval is executed like the effort prior.
  */
 
 #pragma once
@@ -67,6 +70,7 @@
 #include <string>
 #include <vector>
 
+#include "base_wrench.h"
 #include "scate_online.h"
 
 namespace scate {
@@ -164,6 +168,21 @@ struct ReactiveConfig {
   std::vector<double> tau_fractions = evenlySpacedFractions(3);
   bool self_collision = true;  ///< add self-collision factors
   int max_iterations = 100;    ///< Levenberg-Marquardt iteration cap
+  /**
+   * Base-disturbance cost (base_wrench.h): if set, the motion-induced wrench
+   * on the base is pushed toward zero at base_wrench_fractions of every
+   * interval still ahead. Null turns it off.
+   */
+  std::shared_ptr<const BaseWrenchModel> base_wrench;
+  /**
+   * Sigmas of the base-wrench cost. 3 N m / 3 N removed about 85% of the
+   * UR10e's base torque while dodging two moving obstacles, with no loss of
+   * clearance (scate_ur10e_base_wrench); 0.3 and below gave up clearance.
+   */
+  double sigma_base_torque = 3.0;  ///< N m
+  double sigma_base_force = 3.0;   ///< N
+  /// Where in each interval the base wrench is penalized, as fractions of dt in [0, 1).
+  std::vector<double> base_wrench_fractions = evenlySpacedFractions(4);
 };
 
 /**
@@ -192,12 +211,18 @@ class ReactivePlanner {
         throw std::invalid_argument("ReactivePlanner: tau fractions must be in [0, 1)");
       }
     }
+    for (double fraction : config_.base_wrench_fractions) {
+      if (fraction < 0.0 || fraction >= 1.0) {
+        throw std::invalid_argument("ReactivePlanner: base wrench fractions must be in [0, 1)");
+      }
+    }
     for (double radius : config_.obstacle_radii) {
       if (!(radius > 0.0)) throw std::invalid_argument("ReactivePlanner: radii must be > 0");
     }
     addPlanFactors(spec_,
                    effortNoise(numJoints(), config_.effort_sigmas, config_.sigma_effort),
                    &factors_);
+    addBaseWrenchFactors();
   }
 
   /// Number of intervals N (the last state index).
@@ -288,6 +313,23 @@ class ReactivePlanner {
   /// Number of joints.
   int numJoints() const { return static_cast<int>(spec_.q_start.size()); }
 
+  /// Base-wrench factors on every interval, if the cost is on.
+  void addBaseWrenchFactors() {
+    if (!config_.base_wrench) return;
+    if (config_.base_wrench->dof() != static_cast<size_t>(numJoints())) {
+      throw std::invalid_argument("ReactivePlanner: base wrench model dof does not match");
+    }
+    const auto noise = baseWrenchNoise(config_.sigma_base_torque, config_.sigma_base_force);
+    for (int i = 0; i < numIntervals(); ++i) {
+      for (double fraction : config_.base_wrench_fractions) {
+        factors_.add("base_wrench", i,
+                     gtsam::NonlinearFactor::shared_ptr(new BaseWrenchFactor(
+                         QKey(i), VKey(i), UKey(i), config_.base_wrench,
+                         fraction * spec_.dt, noise)));
+      }
+    }
+  }
+
   /**
    * u_i has been executed: it is history now, so drop its limit and effort
    * cost, tie it to the commanded value (which the warm start still holds)
@@ -296,6 +338,7 @@ class ReactivePlanner {
   void recordExecutedControl(int i) {
     factors_.remove("control_limit", i);
     factors_.remove("effort", i);
+    factors_.remove("base_wrench", i);  // a cost on the past would bias the estimate
     factors_.remove("dynamics", i);
     GraphSpec executed = spec_;
     executed.sigma_dynamics = config_.sigma_executed_dynamics;

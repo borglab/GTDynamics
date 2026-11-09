@@ -6,7 +6,8 @@ project(example_scate_ur10e C CXX)
 # robot file and collision spheres live here; the planner, online loop and
 # scenario are the header-only SCATE code in example_scate_ur5.
 set(SCATE_UR5_DIR ${CMAKE_SOURCE_DIR}/examples/example_scate_ur5)
-foreach(program scate_ur10e_init scate_ur10e_online scate_ur10e_reactive)
+foreach(program scate_ur10e_init scate_ur10e_online scate_ur10e_reactive
+                scate_ur10e_base_wrench)
   add_executable(${program} ${program}.cpp)
   target_link_libraries(${program} PUBLIC gtdynamics)
   target_include_directories(${program} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${SCATE_UR5_DIR})

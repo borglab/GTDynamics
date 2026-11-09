@@ -24,12 +24,15 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "base_wrench.h"
 #include "scate_init.h"
 #include "scate_reactive.h"
 #include "scate_replay.h"
@@ -65,6 +68,7 @@ struct ReactiveScenario {
   int checks_per_interval = 6;                ///< collision checks per interval
   Vector effort_sigmas = shoulderFirstEffortSigmas();  ///< per joint, rad/s^2
   bool use_encoders = false;  ///< also read joint encoders (default: markers only)
+  bool minimize_base_wrench = false;  ///< add the base-disturbance cost (base_wrench.h)
 };
 
 /// Planner settings of the reactive scenario.
@@ -112,7 +116,74 @@ inline std::vector<MovingObstacle> placeCrossingObstacles(const ReactiveScenario
 }
 
 // ============================================================
-// 2. Reporting
+// 2. Base disturbance of an executed run
+// ============================================================
+
+/**
+ * The motion-induced wrench on the base over an executed run: what the
+ * attitude control would have to cancel. Norms of the 3D torque (N m) and
+ * force (N); the impulses are the time integrals of those norms (N m s, N s),
+ * a proxy for attitude-control effort.
+ */
+struct BaseWrenchStats {
+  double rms_torque = 0.0, peak_torque = 0.0, torque_impulse = 0.0;
+  double rms_force = 0.0, peak_force = 0.0, force_impulse = 0.0;
+};
+
+/// Base wrench statistics of the executed motion, sampled `samples` times per interval.
+inline BaseWrenchStats baseWrenchStats(const BaseWrenchModel& model,
+                                       const ClosedLoopResult& result, double dt,
+                                       int samples = 20) {
+  BaseWrenchStats stats;
+  double torque_squares = 0.0, force_squares = 0.0, duration = 0.0;
+  for (size_t i = 0; i < result.u.size(); ++i) {
+    const Vector& q = result.q[i];
+    const Vector& v = result.v[i];
+    const Vector& u = result.u[i];
+    for (int s = 0; s < samples; ++s) {
+      const double tau = (s + 0.5) / samples * dt;  // midpoint rule
+      const gtsam::Vector6 wrench =
+          model.wrench(q + tau * v + 0.5 * tau * tau * u, v + tau * u, u);
+      const double torque = wrench.head<3>().norm(), force = wrench.tail<3>().norm();
+      const double step = dt / samples;
+      torque_squares += torque * torque * step;
+      force_squares += force * force * step;
+      stats.torque_impulse += torque * step;
+      stats.force_impulse += force * step;
+      stats.peak_torque = std::max(stats.peak_torque, torque);
+      stats.peak_force = std::max(stats.peak_force, force);
+      duration += step;
+    }
+  }
+  if (duration > 0.0) {
+    stats.rms_torque = std::sqrt(torque_squares / duration);
+    stats.rms_force = std::sqrt(force_squares / duration);
+  }
+  return stats;
+}
+
+
+/// Append a run's executed base wrench, 10 samples per interval, to a CSV stream.
+inline void writeBaseWrenchSeries(std::ofstream* out, const BaseWrenchModel& model,
+                                  const ClosedLoopResult& result, double dt, double sigma) {
+  const int samples = 10;
+  for (size_t i = 0; i < result.u.size(); ++i) {
+    for (int s = 0; s < samples; ++s) {
+      const double tau = s * dt / samples;
+      const Vector& q = result.q[i];
+      const Vector& v = result.v[i];
+      const Vector& u = result.u[i];
+      const gtsam::Vector6 wrench =
+          model.wrench(q + tau * v + 0.5 * tau * tau * u, v + tau * u, u);
+      *out << i * dt + tau << "," << sigma;
+      for (int c = 0; c < 6; ++c) *out << "," << wrench(c);
+      *out << "\n";
+    }
+  }
+}
+
+// ============================================================
+// 3. Reporting
 // ============================================================
 
 /// Per-step table: obstacles seen, next-interval clearance, solve time.
@@ -184,7 +255,7 @@ inline void writeReactiveReplay(const std::string& path, const ReactiveScenario&
 }
 
 // ============================================================
-// 3. Setup and run
+// 4. Setup and run
 // ============================================================
 
 /**
@@ -214,10 +285,17 @@ inline int runReactiveExample(const std::string& robot_file, unsigned seed,
   collision_params.dt = spec.dt;
   const auto model = makeCollisionModel(robot, spec, sphere_model, collision_params);
   std::cout << "Markers: " << model->numMarkers() << "\n";
-  const ReactiveConfig config = reactiveConfig(scenario);
+  ReactiveConfig config = reactiveConfig(scenario);
+  const auto base_wrench = std::make_shared<const BaseWrenchModel>(robot);
+  if (scenario.minimize_base_wrench) {
+    config.base_wrench = base_wrench;
+    std::cout << "Base-disturbance cost on: sigma " << config.sigma_base_torque << " N m, "
+              << config.sigma_base_force << " N\n";
+  }
 
-  // Offline plan with no obstacle known; the obstacles cross it.
-  ReactivePlanner probe(spec, config, model, problem.values);
+  // Offline plan with no obstacle known; the obstacles cross it. The plan is
+  // made without the base-wrench cost, so the scenario is the same either way.
+  ReactivePlanner probe(spec, reactiveConfig(scenario), model, problem.values);
   const StepInfo offline = probe.planOffline();
   std::cout << "\n--- Offline plan (no obstacle known) ---\n";
   std::cout << "[diag] offline: " << offline.num_factors << " factors, graph error "
@@ -250,11 +328,95 @@ inline int runReactiveExample(const std::string& robot_file, unsigned seed,
 
   printReactiveStepTable(reactive);
   printReactiveEvaluation(reactive, frozen, blind, collision_params.obstacle_epsilon);
+  const BaseWrenchStats base = baseWrenchStats(*base_wrench, reactive, spec.dt);
+  std::cout << "[diag] base disturbance (reactive run): torque rms " << base.rms_torque
+            << " N m, peak " << base.peak_torque << " N m, integral " << base.torque_impulse
+            << " N m s; force rms " << base.rms_force << " N, peak " << base.peak_force << " N\n";
   writeReactiveReplay("reactive_replay.json", scenario, robot_file, seed, spec, *model, obstacles,
                       reactive, frozen, blind);
   std::cout << "Wrote reactive_trajectory.csv, reactive_frozen.csv, reactive_blind.csv and "
                "reactive_replay.json\n";
   return reactive.collided() ? 1 : 0;
+}
+
+// ============================================================
+// 5. Base-disturbance study
+// ============================================================
+
+/// One row of the base-disturbance study: a cost weight and the runs' averages.
+struct BaseWrenchStudyRow {
+  double sigma = 0.0;  ///< N m and N; 0 = cost off
+  BaseWrenchStats mean;               ///< averaged over seeds
+  double worst_clearance = 1e9;       ///< m, over seeds
+  double worst_goal_error = 0.0;      ///< rad, over seeds
+  double slowest_step_ms = 0.0;       ///< over seeds
+  int collisions = 0;
+};
+
+/**
+ * Reactive SCATE with the base-wrench cost at each sigma (the same value for
+ * torque in N m and force in N; 0 = off), over seeds 0..num_seeds-1, on the
+ * same noise. Obstacles cross the plan as in the scenario (none if it has
+ * no crossings). Returns one row per sigma; seed 0's executed base wrench of
+ * every sigma is written to series_path (time, sigma, torque xyz, force xyz).
+ */
+inline std::vector<BaseWrenchStudyRow> runBaseWrenchStudy(
+    const std::string& robot_file, int num_seeds, const ReactiveScenario& scenario,
+    const SphereModel& sphere_model, SphereCollisionParams collision_params,
+    const std::vector<double>& sigmas, const std::string& series_path) {
+  const gtdynamics::Robot robot = loadRobot(robot_file);
+  const gtdynamics::Kinematics kinematics = makeKinematics();
+  const InitialProblem problem =
+      initializeProblem(kinematics, robot, startJoints(), scenario.goal_joints);
+  const GraphSpec spec = makeGraphSpec(robot, problem);
+  collision_params.dt = spec.dt;
+  const auto model = std::make_shared<SphereCollisionModel>(robot, sphere_model, collision_params);
+  const auto base_wrench = std::make_shared<const BaseWrenchModel>(robot);
+
+  // Obstacles cross the plan made without the base-wrench cost.
+  const ReactiveConfig plain = reactiveConfig(scenario);
+  ReactivePlanner probe(spec, plain, model, problem.values);
+  probe.planOffline();
+  const std::vector<MovingObstacle> obstacles =
+      placeCrossingObstacles(scenario, *model, probe.values(), spec);
+
+  std::ofstream series(series_path);
+  series << "t,sigma,torque_x,torque_y,torque_z,force_x,force_y,force_z\n";
+  std::vector<BaseWrenchStudyRow> rows;
+  for (double sigma : sigmas) {
+    BaseWrenchStudyRow row;
+    row.sigma = sigma;
+    for (int seed = 0; seed < num_seeds; ++seed) {
+      ReactiveConfig config = plain;
+      if (sigma > 0.0) {
+        config.base_wrench = base_wrench;
+        config.sigma_base_torque = sigma;
+        config.sigma_base_force = sigma;
+      }
+      ReactivePlanner planner(spec, config, model, problem.values);
+      ViconSimulationConfig simulation;
+      simulation.obstacles = obstacles;
+      simulation.use_encoders = scenario.use_encoders;
+      simulation.seed = static_cast<unsigned>(seed);
+      const ClosedLoopResult result = runReactiveClosedLoop(planner, *model, simulation);
+      const BaseWrenchStats stats = baseWrenchStats(*base_wrench, result, spec.dt);
+      row.mean.rms_torque += stats.rms_torque / num_seeds;
+      row.mean.peak_torque += stats.peak_torque / num_seeds;
+      row.mean.torque_impulse += stats.torque_impulse / num_seeds;
+      row.mean.rms_force += stats.rms_force / num_seeds;
+      row.mean.peak_force += stats.peak_force / num_seeds;
+      row.mean.force_impulse += stats.force_impulse / num_seeds;
+      if (!obstacles.empty()) {
+        row.worst_clearance = std::min(row.worst_clearance, result.min_obstacle_clearance);
+      }
+      row.worst_goal_error = std::max(row.worst_goal_error, result.goal_error);
+      row.slowest_step_ms = std::max(row.slowest_step_ms, result.max_solve_ms);
+      row.collisions += result.collided() ? 1 : 0;
+      if (seed == 0) writeBaseWrenchSeries(&series, *base_wrench, result, spec.dt, sigma);
+    }
+    rows.push_back(row);
+  }
+  return rows;
 }
 
 }  // namespace scate

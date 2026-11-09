@@ -11,6 +11,8 @@ settings), with the UR10e's collision spheres and a larger obstacle SDF grid.
 | `scate_ur10e_init.cpp` | Offline plan (`runOfflineExample` in `scate_scenario.h`) |
 | `scate_ur10e_online.cpp` | Closed loop and blind control (`runOnlineExample` in `scate_scenario.h`) |
 | `scate_ur10e_reactive.cpp` | Reactive SCATE with motion capture and two moving obstacles (`runReactiveExample` in `scate_reactive_scenario.h`) |
+| `scate_ur10e_base_wrench.cpp` | The base-disturbance cost off and at several sigmas, with and without obstacles |
+| `ur10e_scenarios.h` | The two moving obstacles shared by both programs |
 
 Everything else (graph, online planner, simulation, replay writer, the two
 program bodies) is the header-only code in `example_scate_ur5`, which this
@@ -18,6 +20,28 @@ example adds to its include path. The UR10e URDF uses the ROS 2 description's
 link frames (arm links along -x, the wrist_3 frame at the tool flange), but the
 same joint-angle convention as the UR5, so the same joint vectors give the same
 posture on a larger arm (reach about 1.3 m instead of 0.85 m).
+
+## Minimizing the disturbance on the base
+
+In orbit the arm sits on a spacecraft whose attitude control holds the base
+still, and every wrench the arm puts on its mount is a disturbance to cancel.
+With no gravity that wrench is the motion-induced part of the inverse
+dynamics, which `base_wrench.h` computes (Newton-Euler, gravity off) and
+`BaseWrenchFactor` pushes toward zero on the intervals still ahead. The
+weight of the arm, which only exists on Earth, is left out.
+
+```bash
+./scate_ur10e_reactive ../../../models/urdfs/ur10e/ur10e.urdf 0 base   # reactive run with the cost
+make scate_ur10e_base_wrench.run    # the study below, 3 seeds (pass a count to the program for more)
+```
+
+Over seeds 0-9 with the two moving obstacles, the default sigma (3 N m, 3 N)
+cut the base torque from 1.06 to 0.18 N m RMS, the peak from 2.9 to 0.43 N m
+and its time integral from 16.0 to 3.0 N m s, with no collisions and slightly
+more clearance (worst 3.3 cm instead of 3.0 cm). Smaller sigmas reduce the
+wrench a little more but give up clearance (0.3: worst 0.8 cm; 0.1: 5 of 10
+runs collide). On the sweep alone the cost removes about 12-20%, since that
+motion is already gentle.
 
 ## Running
 

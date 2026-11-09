@@ -17,6 +17,7 @@ as encoder readings and obstacle measurements arrive (the paper's Algorithm 1).
 | `scate_scenario.h` | The bodies of `scate_init` and `scate_online`, shared with the UR10e |
 | `scate_reactive.h` | Reactive SCATE with motion-capture sensing and moving obstacles: `MarkerMeasurementFactor`, `ReactivePlanner`, closed loop |
 | `scate_reactive_scenario.h` | The body of `scate_ur10e_reactive`: obstacles crossing the plan, reactive vs frozen vs blind |
+| `base_wrench.h` | Motion-induced wrench on the base (gravity-free Newton-Euler) and `BaseWrenchFactor`, the base-disturbance cost |
 | `scate_replay.h` | Writes a run to `replay.json` |
 
 ## Running
@@ -43,7 +44,8 @@ The same scenario runs on the UR10e in
 reuses every header here except `ur5_collision.h`.
 
 The tests are in `tests/`: `testScateReactive` (reactive SCATE on a toy
-robot), `testTrajectoryInit`, `testScateGraph`,
+robot), `testBaseWrench` (base wrench against GTDynamics' inverse dynamics
+and momentum conservation), `testTrajectoryInit`, `testScateGraph`,
 `testScateInit`, `testUr5Collision` and `testScateOnline`
 (`make -j6 testScateOnline.run`). The dynamics factor has its own test,
 `testDoubleIntegratorFactor`.

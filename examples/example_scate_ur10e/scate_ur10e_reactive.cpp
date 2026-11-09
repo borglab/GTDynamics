@@ -18,45 +18,34 @@
  * every second. Frozen (obstacles seen at the start only) and blind runs on
  * the same noise are the negative controls.
  *
- * Usage:  ./scate_ur10e_reactive [/path/to/ur10e.urdf] [seed] [encoders]
- * Without a path it loads the UR10e model that ships with GTDynamics. With
- * "encoders" as the third argument the joint encoders are read as well as
- * the markers (by default the arm's state comes from the markers alone).
+ * Usage:  ./scate_ur10e_reactive [/path/to/ur10e.urdf] [seed] [encoders] [base]
+ * Without a path it loads the UR10e model that ships with GTDynamics. Options
+ * after the seed, in any order: "encoders" reads the joint encoders as well
+ * as the markers (by default the arm's state comes from the markers alone);
+ * "base" adds the base-disturbance cost (base_wrench.h).
  */
 
 #include <cstdlib>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include "scate_reactive_scenario.h"
 #include "ur10e_collision.h"
-
-/// The two crossing obstacles of the UR10e scenario.
-scate::ReactiveScenario ur10eReactiveScenario() {
-  scate::ReactiveScenario scenario;
-  scenario.program = "scate_ur10e_reactive";
-  scenario.robot_name = "UR10e";
-  scate::ObstacleCrossing tool_crossing;  // toward the base, across the tool path
-  tool_crossing.state = 12;
-  tool_crossing.direction = "inward";
-  tool_crossing.speed = 0.03;
-  scate::ObstacleCrossing forearm_crossing;  // down onto the middle of the forearm
-  forearm_crossing.state = 7;
-  forearm_crossing.sphere = 8;
-  forearm_crossing.offset = gtsam::Vector3(0, 0, 0.0);
-  forearm_crossing.direction = "down";
-  forearm_crossing.speed = 0.02;
-  scenario.crossings = {tool_crossing, forearm_crossing};
-  return scenario;
-}
+#include "ur10e_scenarios.h"
 
 int main(int argc, char** argv) {
   try {
     // Robot file: the first argument, else the UR10e model that ships with GTDynamics.
     const std::string path = argc >= 2 ? std::string(argv[1]) : scate::ur10eUrdfPath();
     const unsigned seed = argc >= 3 ? static_cast<unsigned>(std::atoi(argv[2])) : 0u;
-    scate::ReactiveScenario scenario = ur10eReactiveScenario();
-    scenario.use_encoders = argc >= 4 && std::string(argv[3]) == "encoders";
+    scate::ReactiveScenario scenario = scate::ur10eReactiveScenario();
+    for (int i = 3; i < argc; ++i) {
+      const std::string option = argv[i];
+      if (option == "encoders") scenario.use_encoders = true;
+      else if (option == "base") scenario.minimize_base_wrench = true;
+      else throw std::invalid_argument("unknown option '" + option + "'");
+    }
     return scate::runReactiveExample(path, seed, scenario,
                                      scate::ur10eSphereModel(), scate::ur10eCollisionParams());
   } catch (const std::exception& e) {
