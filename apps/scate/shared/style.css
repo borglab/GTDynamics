@@ -145,3 +145,16 @@ dl.read dd { margin: 0; font-family: var(--font-data); font-size: 13px; text-ali
   .scate-app .read { grid-template-columns: 1fr; gap: 1px; }
   .scate-app .read dd { text-align: left; }
 }
+
+/* Per-run toggles and running plots of a comparison replay. */
+.scate-app .demo-readouts .panel.wide { grid-column: 1 / -1; }
+.run-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.run-table th, .run-table td { padding: 3px 4px; text-align: right; font-variant-numeric: tabular-nums; }
+.run-table td { font-family: var(--font-data); }
+.run-table thead th { font-weight: 500; color: var(--muted); font-size: 11.5px; border-bottom: 1px solid var(--grid); }
+.run-table th:first-child { text-align: left; }
+.run-table .runname { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+.run-table .swatch { width: 14px; height: 4px; }
+.run-table .gap.warn { color: var(--serious); } .run-table .gap.bad { color: var(--critical); font-weight: 600; }
+.running-plots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 380px) { .running-plots { grid-template-columns: 1fr; } }

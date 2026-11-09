@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.9...3.29)
 project(example_scate_ur10e C CXX)
 
-# SCATE on the UR10e: the offline plan (scate_ur10e_init) and the closed loop
-# with an obstacle discovered online (scate_ur10e_online). Only the UR10e's
+# SCATE on the UR10e: the offline plan (scate_ur10e_init), the closed loop
+# with an obstacle discovered online (scate_ur10e_online), reactive SCATE with
+# VICON sensing and moving obstacles (scate_ur10e_reactive), and the study of
+# the base-disturbance cost (scate_ur10e_base_wrench). Only the UR10e's
 # robot file and collision spheres live here; the planner, online loop and
 # scenario are the header-only SCATE code in example_scate_ur5.
 set(SCATE_UR5_DIR ${CMAKE_SOURCE_DIR}/examples/example_scate_ur5)
@@ -45,4 +47,14 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -E copy replay.json ${SCATE_APPS_DIR}/ur10e/public/replay.json
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Copying replay.json to apps/scate/ur10e/public"
+  VERBATIM)
+
+# Copy the base-disturbance comparison (cost off, sigma 3, 0.3, 0.1) written by
+# scate_ur10e_base_wrench into the SCATE UR10e Base app as its recording.
+add_custom_target(
+  scate_ur10e_base_wrench.export
+  COMMAND ${CMAKE_COMMAND} -E copy base_wrench_replay.json
+          ${SCATE_APPS_DIR}/ur10e-reactive/public/replay.json
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Copying base_wrench_replay.json to apps/scate/ur10e-reactive/public"
   VERBATIM)

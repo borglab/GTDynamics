@@ -43,6 +43,16 @@ wrench a little more but give up clearance (0.3: worst 0.8 cm; 0.1: 5 of 10
 runs collide). On the sweep alone the cost removes about 12-20%, since that
 motion is already gentle.
 
+The study also writes `base_wrench_replay.json`: seed 0 with the cost off and
+at sigma 3, 0.3 and 0.1, with the base wrench in every frame. It is the
+recording of the SCATE UR10e Base app (`apps/scate/ur10e-reactive`), where
+the runs can be toggled and compared:
+
+```bash
+make scate_ur10e_base_wrench.run      # writes base_wrench_replay.json
+make scate_ur10e_base_wrench.export   # copies it to apps/scate/ur10e-reactive/public/replay.json
+```
+
 ## Running
 
 From the GTDynamics build folder:

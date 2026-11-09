@@ -22,7 +22,9 @@
 #include <gtsam/base/TestableAssertions.h>
 
 #include <cmath>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <random>
 
 #include "base_wrench.h"
@@ -213,7 +215,8 @@ TEST(ReactivePlannerBaseWrench, costCoversOnlyTheIntervalsAhead) {
 TEST(ReactivePlannerBaseWrench, reducesTheBaseDisturbanceWhileDodging) {
   const std::vector<scate::BaseWrenchStudyRow> rows =
       runBaseWrenchStudy(ur10eUrdfPath(), 1, ur10eReactiveScenario(), ur10eSphereModel(),
-                         ur10eCollisionParams(), {0.0, 3.0}, "/tmp/testBaseWrench_series.csv");
+                         ur10eCollisionParams(), {0.0, 3.0}, "/tmp/testBaseWrench_series.csv",
+                         "/tmp/testBaseWrench_replay.json", {0.0, 3.0});
   const auto& off = rows[0];
   const auto& on = rows[1];
   std::cout << "  [diag] base torque rms " << off.mean.rms_torque << " -> " << on.mean.rms_torque
@@ -222,6 +225,24 @@ TEST(ReactivePlannerBaseWrench, reducesTheBaseDisturbanceWhileDodging) {
   EXPECT(on.mean.torque_impulse < 0.5 * off.mean.torque_impulse);
   EXPECT_LONGS_EQUAL(0, on.collisions);
   EXPECT(on.worst_goal_error < 0.1);
+
+  // The comparison replay: the default sigma is the primary run, then the
+  // cost-off run, and every frame carries the six base wrench components.
+  std::ifstream file("/tmp/testBaseWrench_replay.json");
+  const std::string replay((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  const size_t online = replay.find("\"name\":\"online\"");
+  const size_t cost_off = replay.find("\"name\":\"cost_off\"");
+  EXPECT(online != std::string::npos && cost_off != std::string::npos && online < cost_off);
+  EXPECT(replay.find("\"base\":[") != std::string::npos);
+}
+
+// Replay names and labels of the base-wrench sigmas.
+TEST(BaseWrenchReplay, runNames) {
+  EXPECT(scate::baseWrenchRunName(0.0) == "cost_off");
+  EXPECT(scate::baseWrenchRunName(3.0) == "online");
+  EXPECT(scate::baseWrenchRunName(0.3) == "sigma_0.3");
+  EXPECT(scate::baseWrenchRunLabel(0.0) == "Base cost off");
+  EXPECT(scate::baseWrenchRunLabel(3.0).find("(default)") != std::string::npos);
 }
 
 int main() {

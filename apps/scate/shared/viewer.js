@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RobotViewport } from '../../shared/RobotViewport.js';
 import { onThemeChange } from '../../shared/theme.js';
 
@@ -7,6 +8,31 @@ export const UR_MESH_FOR_LINK = {
   base_link: "base", shoulder_link: "shoulder", upper_arm_link: "upperarm", forearm_link: "forearm",
   wrist_1_link: "wrist1", wrist_2_link: "wrist2", wrist_3_link: "wrist3",
 };
+
+/** Colors of the extra runs of a comparison replay, in order of appearance. */
+const COMPARISON_COLORS = ['#2a9d8f', '#8e44ad', '#b5651d', '#5d6d7e'];
+
+/**
+ * CSS color of each run of a replay, by run name: the online run uses
+ * --online, the blind run and a run with the base-disturbance cost off use
+ * --blind, and every other run takes the next comparison color.
+ * @param runs the replay's runs (only their names are used)
+ */
+export function runColors(runs) {
+  const colors = {};
+  let next = 0;
+  for (const run of runs) {
+    if (run.name === 'online') colors[run.name] = 'var(--online)';
+    else if (run.name === 'blind' || run.name === 'cost_off') colors[run.name] = 'var(--blind)';
+    else colors[run.name] = COMPARISON_COLORS[next++ % COMPARISON_COLORS.length];
+  }
+  return colors;
+}
+
+/** True if a replay compares runs other than one online and one blind run. */
+export function isComparison(runs) {
+  return runs.some(run => run.name !== 'online' && run.name !== 'blind');
+}
 
 /**
  * Replay saved world-frame link poses; no browser FK or native optimization.
@@ -27,6 +53,8 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   // ---------- theme ----------
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const col = (name) => new THREE.Color(css(name) || "#888888");
+  // A color given as "var(--name)" or as a literal.
+  const resolve = (color) => color.startsWith("var(") ? css(color.slice(4, -1)) || "#888888" : color;
 
   // ---------- binary STL ----------
   function parseSTL(buf) {
@@ -95,35 +123,88 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   const M = {};
   function makeMaterials() {
     M.robot = new THREE.MeshStandardMaterial({ color: col("--robot"), roughness: 0.65, metalness: 0.1 });
-    M.robotGhost = new THREE.MeshStandardMaterial({ color: col("--blind"), roughness: 0.7, transparent: true, opacity: 0.28, depthWrite: false });
     M.obstacle = new THREE.MeshStandardMaterial({ color: col("--obstacle"), roughness: 0.5 });
     M.shell = new THREE.MeshBasicMaterial({ color: col("--critical"), wireframe: true, transparent: true, opacity: 0.22 });
     M.est = new THREE.MeshBasicMaterial({ color: col("--online"), transparent: true, opacity: 0.22, depthWrite: false });
     M.estDot = new THREE.MeshBasicMaterial({ color: col("--online") });
     M.range = new THREE.MeshBasicMaterial({ color: col("--online"), wireframe: true, transparent: true, opacity: 0.12 });
-    M.sphOk = new THREE.MeshStandardMaterial({ color: col("--online"), transparent: true, opacity: 0.18, depthWrite: false });
-    M.sphOkBlind = new THREE.MeshStandardMaterial({ color: col("--blind"), transparent: true, opacity: 0.18, depthWrite: false });
     M.sphWarn = new THREE.MeshStandardMaterial({ color: col("--serious"), transparent: true, opacity: 0.55, depthWrite: false });
     M.sphBad = new THREE.MeshStandardMaterial({ color: col("--critical"), transparent: true, opacity: 0.7, depthWrite: false });
-    M.lineOnline = new THREE.LineBasicMaterial({ color: col("--online") });
-    M.lineBlind = new THREE.LineBasicMaterial({ color: col("--blind") });
-    M.lineOnlineFaint = new THREE.LineBasicMaterial({ color: col("--online"), transparent: true, opacity: 0.25 });
-    M.lineBlindFaint = new THREE.LineBasicMaterial({ color: col("--blind"), transparent: true, opacity: 0.25 });
     M.planOnline = new THREE.LineDashedMaterial({ color: col("--online"), dashSize: 0.015, gapSize: 0.01 });
     M.planOff = new THREE.LineDashedMaterial({ color: col("--muted"), dashSize: 0.02, gapSize: 0.012 });
+  }
+
+  // Materials in a run's own color: ghost arm, clear spheres, trails.
+  function makeRunMaterials(color) {
+    const c = new THREE.Color(resolve(color));
+    return {
+      color,
+      ghost: new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, transparent: true, opacity: 0.28, depthWrite: false }),
+      sphOk: new THREE.MeshStandardMaterial({ color: c, transparent: true, opacity: 0.18, depthWrite: false }),
+      line: new THREE.LineBasicMaterial({ color: c }),
+      lineFaint: new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.25 }),
+    };
+  }
+  function recolorRunMaterials() {
+    for (const mats of Object.values(runMats)) {
+      const c = new THREE.Color(resolve(mats.color));
+      for (const key of ["ghost", "sphOk", "line", "lineFaint"]) mats[key].color.copy(c);
+    }
+  }
+  function disposeRunMaterials() {
+    for (const mats of Object.values(runMats)) {
+      for (const key of ["ghost", "sphOk", "line", "lineFaint"]) mats[key].dispose();
+    }
+    runMats = {};
   }
 
   // ---------- data ----------
   let D = null;        // replay
   let R = {};          // runs by name
-  let meshGeo = {};    // STL geometry by mesh name
+  let runMats = {};    // materials by run name
+  let comparison = false;        // more runs than online and blind: shown by setRunVisible
+  const hiddenRuns = new Set();  // runs hidden in a comparison
+  let meshGeo = {};    // by mesh name: a geometry (collision STL) or {parts: [{geometry, color}]}
+  const partMaterials = new Map();  // visual-mesh materials by color
   let T = 0, Tend = 1; // time
   let playing = false, speed = 2;
   let objs = null;     // scene objects for the loaded replay
 
-  // The arm's collision STLs (GTDynamics models/urdfs/<robot>/collision), base64 in one file.
+  // The arm's meshes, base64 in one file (pack_meshes.py): collision STLs as
+  // strings, or colored visual meshes as {parts: [{color, positions, indices}]}.
   // A standalone copy written by plot_scate.py embeds the meshes and the run
   // as window.SCATE_MESHES / window.SCATE_REPLAY; the hosted page fetches them.
+  function decodeBase64(b64) {
+    const bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  // One colored part of a visual mesh; normals are rebuilt with a 30 degree
+  // crease angle, so flat faces stay crisp and round surfaces smooth.
+  function visualPart(part) {
+    const positions = new Float32Array(decodeBase64(part.positions).buffer);
+    const indexBytes = decodeBase64(part.indices).buffer;
+    const indices = part.index_bytes === 2 ? new Uint16Array(indexBytes) : new Uint32Array(indexBytes);
+    const indexed = new THREE.BufferGeometry();
+    indexed.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    indexed.setIndex(new THREE.BufferAttribute(indices, 1));
+    const geometry = toCreasedNormals(indexed, Math.PI / 6);
+    indexed.dispose();
+    geometry.userData.sharedMujoco = true;
+    return { geometry, color: part.color };
+  }
+
+  function partMaterial(color) {
+    const key = color.join(",");
+    if (!partMaterials.has(key)) {
+      partMaterials.set(key, new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color[0], color[1], color[2]), roughness: 0.55, metalness: 0.15,
+      }));
+    }
+    return partMaterials.get(key);
+  }
+
   async function loadMeshes() {
     try {
       let pack = window.SCATE_MESHES;
@@ -133,11 +214,13 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
         pack = await r.json();
       }
       if (disposed) return;
-      for (const [name, b64] of Object.entries(pack.meshes || {})) {
-        const bin = atob(b64), bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        meshGeo[name] = parseSTL(bytes.buffer);
-        meshGeo[name].userData.sharedMujoco = true;
+      for (const [name, entry] of Object.entries(pack.meshes || {})) {
+        if (typeof entry === "string") {
+          meshGeo[name] = parseSTL(decodeBase64(entry).buffer);
+          meshGeo[name].userData.sharedMujoco = true;
+        } else {
+          meshGeo[name] = { parts: entry.parts.map(visualPart) };
+        }
       }
     } catch (e) { if (!disposed) throw e; }
   }
@@ -150,6 +233,10 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     }
     D = d; R = {};
     for (const r of d.runs) R[r.name] = r;
+    comparison = isComparison(d.runs);
+    hiddenRuns.clear();
+    disposeRunMaterials();
+    for (const [name, color] of Object.entries(runColors(d.runs))) runMats[name] = makeRunMaterials(color);
     Tend = (d.num_poses - 1) * d.dt;
     const demo = /^SANDBOX/i.test(d.source || "");
     const tag = $("srcTag");
@@ -159,14 +246,19 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     $("nmOnline").textContent = R.online ? R.online.label : "Online";
     $("nmBlind").textContent = R.blind ? R.blind.label : "Blind";
     $("blindRow").hidden = $("blindRead").hidden = !R.blind;
+    // A comparison overlays several arms: their collision spheres start hidden.
+    $("lySph").checked = !comparison;
     $("note").textContent =
       "Clearance is the gap between the closest collision sphere and the true obstacle surface. Click or drag on the chart to scrub.";
     buildObjects();
     frameCamera();
-    // Open at the most telling instant: where the blind run comes closest.
-    const ref = R.blind || R.online;
+    // Open at the most telling instant: where the blind run comes closest,
+    // or in a comparison where any run comes closest.
+    const refs = comparison ? d.runs : [R.blind || R.online];
     let best = 0, bestC = Infinity;
-    ref.frames.forEach((f) => { if (f.clear !== null && f.clear < bestC) { bestC = f.clear; best = f.t; } });
+    for (const ref of refs) {
+      ref.frames.forEach((f) => { if (f.clear !== null && f.clear < bestC) { bestC = f.clear; best = f.t; } });
+    }
     setTime(best);
     drawChart();
     onReplay?.(D);
@@ -202,18 +294,27 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     return l;
   }
 
-  function buildArm(mat, sphMat, run) {
-    const arm = { links: [], spheres: [], group: new THREE.Group(), sph: new THREE.Group(), sphMat };
+  // One run's arm; applyVisibility gives it the solid or its ghost material.
+  function buildArm(run) {
+    const mats = runMats[run.name];
+    const arm = { links: [], spheres: [], group: new THREE.Group(), sph: new THREE.Group(), sphMat: mats.sphOk, mats };
     for (const name of D.links) {
       const holder = new THREE.Group();
       const geo = meshGeo[meshForLink[name]];
-      if (geo) holder.add(new THREE.Mesh(geo, mat));
+      if (geo && geo.parts) {
+        // Visual meshes: a solid arm takes the robot's own colors.
+        for (const part of geo.parts) {
+          const mesh = new THREE.Mesh(part.geometry, mats.ghost);
+          mesh.userData.partColor = part.color;
+          holder.add(mesh);
+        }
+      } else if (geo) holder.add(new THREE.Mesh(geo, mats.ghost));
       arm.group.add(holder);
       arm.links.push(holder);
     }
     const unit = new THREE.SphereGeometry(1, 20, 14);
     D.sphere_radii.forEach((r) => {
-      const s = new THREE.Mesh(unit, sphMat);
+      const s = new THREE.Mesh(unit, mats.sphOk);
       s.scale.setScalar(r);
       arm.sph.add(s);
       arm.spheres.push(s);
@@ -221,12 +322,11 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     world.add(arm.group, arm.sph);
     const tool = D.tool_sphere;
     if (tool >= 0) {
-      arm.trailFull = lineFrom(run.frames.map((f) => f.spheres[tool]),
-        run.name === "online" ? M.lineOnlineFaint : M.lineBlindFaint);
+      arm.trailFull = lineFrom(run.frames.map((f) => f.spheres[tool]), mats.lineFaint);
       const pts = new Float32Array(run.frames.length * 3);
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.BufferAttribute(pts, 3));
-      arm.trail = new THREE.Line(g, run.name === "online" ? M.lineOnline : M.lineBlind);
+      arm.trail = new THREE.Line(g, mats.line);
       world.add(arm.trailFull, arm.trail);
     }
     return arm;
@@ -263,8 +363,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     world.add(range);
     objs.range = range;
 
-    if (R.online) objs.arms.online = buildArm(M.robot, M.sphOk, R.online);
-    if (R.blind) objs.arms.blind = buildArm(R.online ? M.robotGhost : M.robot, M.sphOkBlind, R.blind);
+    for (const run of D.runs) objs.arms[run.name] = buildArm(run);
 
     const off = (R.online || R.blind).steps[0];
     objs.offline = off && off.plan_tool.length > 1 ? lineFrom(off.plan_tool, M.planOff, true) : null;
@@ -350,10 +449,9 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   function setTime(t) {
     if (!D) return;
     T = Math.max(0, Math.min(Tend, t));
-    const which = root.querySelector('input[name="runs"]:checked').value;
-    let on = null, bl = null;
-    if (R.online && objs.arms.online) on = poseArm(objs.arms.online, R.online, T);
-    if (R.blind && objs.arms.blind) bl = poseArm(objs.arms.blind, R.blind, T);
+    const posed = {};
+    for (const run of D.runs) posed[run.name] = poseArm(objs.arms[run.name], run, T);
+    const on = posed.online || null, bl = posed.blind || null;
 
     if (on) { $("rOnClear").textContent = fmtCm(on.clear); $("rOnSelf").textContent = fmtCm(on.self); chip($("chipOnline"), on.clear); }
     if (bl) { $("rBlClear").textContent = fmtCm(bl.clear); chip($("chipBlind"), bl.clear); }
@@ -438,22 +536,31 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     onTime?.(T);
   }
 
+  // Whether a run is shown: the Runs radio for online and blind, or the
+  // per-run toggles (setRunVisible) of a comparison.
+  function runVisible(name) {
+    if (!R[name]) return false;
+    if (comparison) return !hiddenRuns.has(name);
+    const which = root.querySelector('input[name="runs"]:checked').value;
+    return name === "online" ? which !== "blind" : which !== "online";
+  }
+
   function applyVisibility() {
     if (!objs) return;
-    const which = root.querySelector('input[name="runs"]:checked').value;
-    const showOn = which !== "blind", showBl = which !== "online";
     const mesh = $("lyMesh").checked, sph = $("lySph").checked, trail = $("lyTrail").checked;
+    // One solid arm: the online run if shown, else the first shown run; the others are ghosts.
+    const solid = runVisible("online") ? "online" : D.runs.map((r) => r.name).find(runVisible);
     for (const [name, arm] of Object.entries(objs.arms)) {
-      const vis = name === "online" ? showOn : showBl;
+      const vis = runVisible(name);
       arm.group.visible = vis && mesh;
       arm.sph.visible = vis && sph;
       if (arm.trail) { arm.trail.visible = vis && trail; arm.trailFull.visible = vis && trail; }
-      if (name === "blind") {
-        const ghost = showOn && R.online;
-        arm.links.forEach((h) => h.children.forEach((m) => { m.material = ghost ? M.robotGhost : M.robot; }));
-      }
+      arm.links.forEach((h) => h.children.forEach((m) => {
+        if (name !== solid) m.material = arm.mats.ghost;
+        else m.material = m.userData.partColor ? partMaterial(m.userData.partColor) : M.robot;
+      }));
     }
-    const onVis = showOn && !!R.online;
+    const onVis = runVisible("online");
     if (objs.plan) objs.plan.visible = onVis && $("lyPlan").checked;
     if (objs.offline) objs.offline.visible = $("lyOff").checked;
     const known = objs.est.userData.known;
@@ -469,6 +576,8 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   // ---------- clearance chart ----------
   const SVGNS = "http://www.w3.org/2000/svg";
   let chartScale = null;
+  // The chart always shows online and blind; a comparison shows its visible runs.
+  const chartRuns = () => D.runs.filter((r) => !comparison || runVisible(r.name));
   function el(tag, attrs, parent) {
     const e = document.createElementNS(SVGNS, tag);
     for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -487,7 +596,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     const W = svg.clientWidth || 800, H = svg.clientHeight || 170;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
     const m = { l: 44, r: 12, t: 10, b: 24 };
-    const runs = Object.values(R);
+    const runs = chartRuns();
     let lo = 0, hi = D.obstacle_standoff;
     runs.forEach((r) => r.frames.forEach((f) => { if (f.clear !== null) { lo = Math.min(lo, f.clear); hi = Math.max(hi, f.clear); } }));
     lo *= 100; hi *= 100;
@@ -521,11 +630,22 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     }
     for (const r of runs) {
       const d = r.frames.filter((f) => f.clear !== null).map((f, i) => (i ? "L" : "M") + x(f.t).toFixed(1) + " " + y(100 * f.clear).toFixed(1)).join("");
-      el("path", { d, fill: "none", stroke: css(r.name === "online" ? "--online" : "--blind"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
-      // direct label at the end of each line
+      el("path", { d, fill: "none", stroke: resolve(runMats[r.name].color), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      // A comparison names its runs in the legend; online and blind are labeled at their ends.
+      if (comparison) continue;
       const last = r.frames[r.frames.length - 1];
       const lab = el("text", { x: x(last.t) - 4, y: y(100 * last.clear) + (r.name === "online" ? -6 : 14), "text-anchor": "end", "font-size": 11, fill: ink2 }, svg);
       lab.textContent = r.name === "online" ? "online" : "blind";
+    }
+    if (comparison) {
+      let lx = W - m.r;
+      for (const r of [...runs].reverse()) {
+        const label = el("text", { x: lx, y: m.t + 10, "text-anchor": "end", "font-size": 11, fill: ink2 }, svg);
+        label.textContent = r.label;
+        lx -= label.getComputedTextLength?.() || 7 * r.label.length;
+        el("rect", { x: lx - 14, y: m.t + 2, width: 10, height: 10, rx: 2, fill: resolve(runMats[r.name].color) }, svg);
+        lx -= 26;
+      }
     }
     el("line", { id: "playhead", x1: x(T), x2: x(T), y1: m.t, y2: H - m.b, stroke: css("--ink"), "stroke-width": 1.5 }, svg);
   }
@@ -546,7 +666,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     const heading = document.createElement('strong');
     heading.textContent = `t = ${t.toFixed(2)} s`;
     tip.append(heading);
-    for (const run of Object.values(R)) {
+    for (const run of chartRuns()) {
       const { a, b, s } = frameAt(run, t);
       const row = document.createElement('div');
       row.textContent = `${run.label}: ${fmtCm(lerp(a.clear, b.clear, s))}`;
@@ -579,11 +699,11 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   }
 
   function applyTheme() {
-    const colors = { robot: '--robot', robotGhost: '--blind', obstacle: '--obstacle', shell: '--critical',
-      est: '--online', estDot: '--online', range: '--online', sphOk: '--online', sphOkBlind: '--blind',
-      sphWarn: '--serious', sphBad: '--critical', lineOnline: '--online', lineBlind: '--blind',
-      lineOnlineFaint: '--online', lineBlindFaint: '--blind', planOnline: '--online', planOff: '--muted' };
+    const colors = { robot: '--robot', obstacle: '--obstacle', shell: '--critical',
+      est: '--online', estDot: '--online', range: '--online',
+      sphWarn: '--serious', sphBad: '--critical', planOnline: '--online', planOff: '--muted' };
     for (const [name, variable] of Object.entries(colors)) M[name].color.copy(col(variable));
+    recolorRunMaterials();
     if (D) { setTime(T); drawChart(); }
   }
 
@@ -645,10 +765,20 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   })();
   return {
     selectTime(time) { if (D) { setPlaying(false); setTime(time); } },
+    /** Show or hide one run of a comparison replay (arm, spheres, trail and chart line). */
+    setRunVisible(name, visible) {
+      if (visible) hiddenRuns.delete(name); else hiddenRuns.add(name);
+      if (D) { setTime(T); drawChart(); }
+    },
     dispose() {
       disposed = true; loading.abort(); events.abort(); stopTheme(); chartObserver.disconnect();
       clearWorld(); scene.remove(world); viewport.dispose();
-      Object.values(meshGeo).forEach(geometry => geometry.dispose());
+      Object.values(meshGeo).forEach(geometry => {
+        if (geometry.parts) geometry.parts.forEach(part => part.geometry.dispose());
+        else geometry.dispose();
+      });
+      partMaterials.forEach(material => material.dispose());
+      disposeRunMaterials();
       Object.values(M).forEach(material => material.dispose());
     },
   };

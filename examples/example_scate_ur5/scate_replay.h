@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -63,6 +64,12 @@ struct ReplayScenario {
    * per-frame "obstacle_centers" and per-step "obstacle_estimates".
    */
   std::vector<MovingObstacle> moving_obstacles;
+  /**
+   * Optional: the wrench on the base, [torque; force] (N m, N), from joint
+   * angles, velocities and accelerations (base_wrench.h). If set, every
+   * frame gets a "base" field.
+   */
+  std::function<gtsam::Vector6(const Vector&, const Vector&, const Vector&)> base_wrench;
   double obstacle_standoff = 0.0;  ///< epsilon of the obstacle factors
   double self_standoff = 0.0;      ///< epsilon of the self-collision pairs
   int substeps = 10;               ///< frames per interval
@@ -221,12 +228,15 @@ inline void writeLinkPoses(JsonWriter& json, const CollisionModel& model, const 
 /// One frame of the executed motion: time, state, clearances and geometry.
 inline void writeFrame(JsonWriter& json, const CollisionModel& model,
                        const ReplayScenario& scenario, double t, const Vector& q,
-                       const Vector& v) {
+                       const Vector& v, const Vector& acceleration) {
   auto& out = json.stream;
   out << '{';
   json.writeKey("t"); json.writeNumber(t); out << ',';
   json.writeKey("q"); json.writeVector(q); out << ',';
   json.writeKey("v"); json.writeVector(v); out << ',';
+  if (scenario.base_wrench) {
+    json.writeKey("base"); json.writeVector(scenario.base_wrench(q, v, acceleration)); out << ',';
+  }
   json.writeKey("clear"); json.writeNumber(frameClearance(model, scenario, t, q)); out << ',';
   if (!scenario.moving_obstacles.empty()) {
     json.writeKey("obstacle_centers");
@@ -268,11 +278,13 @@ inline void writeExecutedFrames(JsonWriter& json, const CollisionModel& model,
       const Vector v = result.v[k] + tau * result.u[k];
       if (!first) out << ',';
       first = false;
-      writeFrame(json, model, scenario, k * dt + tau, q, v);
+      writeFrame(json, model, scenario, k * dt + tau, q, v, result.u[k]);
     }
   }
   out << ',';
-  writeFrame(json, model, scenario, last * dt, result.q[last], result.v[last]);
+  // At the final state the arm has stopped accelerating.
+  writeFrame(json, model, scenario, last * dt, result.q[last], result.v[last],
+             Vector::Zero(result.q[last].size()));
   out << "],";
 }
 

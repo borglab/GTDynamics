@@ -26,6 +26,8 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <sstream>
+#include <utility>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -231,10 +233,14 @@ inline void printReactiveEvaluation(const ClosedLoopResult& reactive,
                     : " (WARNING: a negative control does not collide)\n");
 }
 
-/// Reactive, frozen and blind runs into a replay file (its static "obstacle" field holds obstacle 0).
+/**
+ * Reactive, frozen and blind runs into a replay file (its static "obstacle"
+ * field holds obstacle 0), with the base wrench in every frame.
+ */
 inline void writeReactiveReplay(const std::string& path, const ReactiveScenario& scenario,
                                 const std::string& robot_file, unsigned seed,
                                 const GraphSpec& spec, const SphereCollisionModel& model,
+                                const std::shared_ptr<const BaseWrenchModel>& base_wrench,
                                 const std::vector<MovingObstacle>& obstacles,
                                 const ClosedLoopResult& reactive, const ClosedLoopResult& frozen,
                                 const ClosedLoopResult& blind) {
@@ -246,6 +252,9 @@ inline void writeReactiveReplay(const std::string& path, const ReactiveScenario&
   replay.moving_obstacles = obstacles;
   replay.obstacle_standoff = model.params().obstacle_epsilon;
   replay.self_standoff = model.params().self_epsilon;
+  replay.base_wrench = [base_wrench](const Vector& q, const Vector& v, const Vector& a) {
+    return base_wrench->wrench(q, v, a);
+  };
   OnlineConfig planner_radius;  // only its obstacle_radius is written
   planner_radius.obstacle_radius = obstacles.front().radius;
   writeReplayJson(path, replay, spec, planner_radius, model,
@@ -332,8 +341,8 @@ inline int runReactiveExample(const std::string& robot_file, unsigned seed,
   std::cout << "[diag] base disturbance (reactive run): torque rms " << base.rms_torque
             << " N m, peak " << base.peak_torque << " N m, integral " << base.torque_impulse
             << " N m s; force rms " << base.rms_force << " N, peak " << base.peak_force << " N\n";
-  writeReactiveReplay("reactive_replay.json", scenario, robot_file, seed, spec, *model, obstacles,
-                      reactive, frozen, blind);
+  writeReactiveReplay("reactive_replay.json", scenario, robot_file, seed, spec, *model,
+                      base_wrench, obstacles, reactive, frozen, blind);
   std::cout << "Wrote reactive_trajectory.csv, reactive_frozen.csv, reactive_blind.csv and "
                "reactive_replay.json\n";
   return reactive.collided() ? 1 : 0;
@@ -354,16 +363,50 @@ struct BaseWrenchStudyRow {
 };
 
 /**
+ * Seed 0 of several base-wrench sigmas as one replay: each run is named by
+ * baseWrenchRunName, frames carry the base wrench, and the primary
+ * ("online", the default sigma) run comes first.
+ */
+inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenario& scenario,
+                                  const std::string& robot_file, const GraphSpec& spec,
+                                  const SphereCollisionModel& model,
+                                  const std::shared_ptr<const BaseWrenchModel>& base_wrench,
+                                  const std::vector<MovingObstacle>& obstacles,
+                                  std::vector<std::pair<double, ClosedLoopResult>> runs);
+
+/// Replay run name of a base-wrench sigma: the default is the primary ("online") run.
+inline std::string baseWrenchRunName(double sigma) {
+  if (sigma <= 0.0) return "cost_off";
+  if (sigma == ReactiveConfig().sigma_base_torque) return "online";
+  std::ostringstream name;
+  name << "sigma_" << sigma;
+  return name.str();
+}
+
+/// Replay label of a base-wrench sigma.
+inline std::string baseWrenchRunLabel(double sigma) {
+  if (sigma <= 0.0) return "Base cost off";
+  std::ostringstream label;
+  label << "\xCF\x83 = " << sigma;  // sigma
+  if (sigma == ReactiveConfig().sigma_base_torque) label << " (default)";
+  return label.str();
+}
+
+/**
  * Reactive SCATE with the base-wrench cost at each sigma (the same value for
  * torque in N m and force in N; 0 = off), over seeds 0..num_seeds-1, on the
  * same noise. Obstacles cross the plan as in the scenario (none if it has
  * no crossings). Returns one row per sigma; seed 0's executed base wrench of
  * every sigma is written to series_path (time, sigma, torque xyz, force xyz).
+ * If replay_path is not empty, seed 0 of each of replay_sigmas is written
+ * there as one replay, one run per sigma (the default sigma is the primary
+ * "online" run); every replay sigma must also be in sigmas.
  */
 inline std::vector<BaseWrenchStudyRow> runBaseWrenchStudy(
     const std::string& robot_file, int num_seeds, const ReactiveScenario& scenario,
     const SphereModel& sphere_model, SphereCollisionParams collision_params,
-    const std::vector<double>& sigmas, const std::string& series_path) {
+    const std::vector<double>& sigmas, const std::string& series_path,
+    const std::string& replay_path = "", const std::vector<double>& replay_sigmas = {}) {
   const gtdynamics::Robot robot = loadRobot(robot_file);
   const gtdynamics::Kinematics kinematics = makeKinematics();
   const InitialProblem problem =
@@ -383,6 +426,7 @@ inline std::vector<BaseWrenchStudyRow> runBaseWrenchStudy(
   std::ofstream series(series_path);
   series << "t,sigma,torque_x,torque_y,torque_z,force_x,force_y,force_z\n";
   std::vector<BaseWrenchStudyRow> rows;
+  std::vector<std::pair<double, ClosedLoopResult>> replay_runs;  // seed 0
   for (double sigma : sigmas) {
     BaseWrenchStudyRow row;
     row.sigma = sigma;
@@ -412,11 +456,54 @@ inline std::vector<BaseWrenchStudyRow> runBaseWrenchStudy(
       row.worst_goal_error = std::max(row.worst_goal_error, result.goal_error);
       row.slowest_step_ms = std::max(row.slowest_step_ms, result.max_solve_ms);
       row.collisions += result.collided() ? 1 : 0;
-      if (seed == 0) writeBaseWrenchSeries(&series, *base_wrench, result, spec.dt, sigma);
+      if (seed == 0) {
+        writeBaseWrenchSeries(&series, *base_wrench, result, spec.dt, sigma);
+        if (std::find(replay_sigmas.begin(), replay_sigmas.end(), sigma) != replay_sigmas.end()) {
+          replay_runs.emplace_back(sigma, result);
+        }
+      }
     }
     rows.push_back(row);
   }
+  if (!replay_path.empty()) {
+    writeBaseWrenchReplay(replay_path, scenario, robot_file, spec, *model, base_wrench, obstacles,
+                          replay_runs);
+  }
   return rows;
+}
+
+inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenario& scenario,
+                                  const std::string& robot_file, const GraphSpec& spec,
+                                  const SphereCollisionModel& model,
+                                  const std::shared_ptr<const BaseWrenchModel>& base_wrench,
+                                  const std::vector<MovingObstacle>& obstacles,
+                                  std::vector<std::pair<double, ClosedLoopResult>> runs) {
+  if (runs.empty()) throw std::invalid_argument("writeBaseWrenchReplay: no runs");
+  // The primary run first, then the others in the order given.
+  std::stable_partition(runs.begin(), runs.end(), [](const auto& run) {
+    return baseWrenchRunName(run.first) == "online";
+  });
+  ReplayScenario replay;
+  replay.source = "scate_ur10e_base_wrench (GTDynamics " + scenario.robot_name +
+                  "), base-disturbance cost comparison, robot " + robot_file + ", seed 0";
+  if (!obstacles.empty()) {
+    replay.obstacle_center = obstacles.front().start;
+    replay.obstacle_radius = obstacles.front().radius;
+    replay.moving_obstacles = obstacles;
+  }
+  replay.obstacle_standoff = model.params().obstacle_epsilon;
+  replay.self_standoff = model.params().self_epsilon;
+  replay.base_wrench = [base_wrench](const Vector& q, const Vector& v, const Vector& a) {
+    return base_wrench->wrench(q, v, a);
+  };
+  OnlineConfig planner_radius;  // only its obstacle_radius is written
+  if (!obstacles.empty()) planner_radius.obstacle_radius = obstacles.front().radius;
+  std::vector<ReplayRun> replay_runs;
+  for (const auto& run : runs) {
+    replay_runs.push_back({baseWrenchRunName(run.first), baseWrenchRunLabel(run.first),
+                           &run.second, 0.0});
+  }
+  writeReplayJson(path, replay, spec, planner_radius, model, replay_runs);
 }
 
 }  // namespace scate

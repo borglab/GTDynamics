@@ -11,9 +11,10 @@ obstacle, hits it.
 
 The recording is `public/replay.json`, written by the C++ example
 [`examples/example_scate_ur10e`](../../../examples/example_scate_ur10e/README.md).
-The arm meshes in `public/meshes.json` are the UR10e collision STLs in
-`models/urdfs/ur10e`, moved into the link frames the replay records by
-`../shared/scripts/pack_meshes.py`. The page, viewer and plot script are
+The arm meshes in `public/meshes.json` are the UR10e visual COLLADA meshes
+in `models/urdfs/ur10e` (the real shape and colors; the planner's collision
+spheres are drawn on top), moved into the link frames the replay records by
+`../shared/scripts/pack_meshes.py --visual`. The page, viewer and plot script are
 shared with the UR5 app (`apps/scate/shared`).
 
 ## Running
@@ -46,8 +47,10 @@ names in the replay change, repack the meshes, from `apps/scate`:
 
 ```bash
 python3 shared/scripts/pack_meshes.py ../../models/urdfs/ur10e/ur10e.urdf \
-    ur10e/public/replay.json ur10e/public/meshes.json
+    ur10e/public/replay.json ur10e/public/meshes.json --visual
 ```
+
+Without `--visual` it packs the simplified collision STLs instead.
 
 Browser checks from `apps/` (after `npm run build`):
 

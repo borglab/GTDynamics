@@ -15,7 +15,9 @@
  * two scenarios: the sweep alone, and the sweep with the two moving
  * obstacles of scate_ur10e_reactive. Prints a table per scenario and writes
  * seed 0's executed base wrench to base_wrench_sweep.csv and
- * base_wrench_obstacles.csv.
+ * base_wrench_obstacles.csv, and seed 0 with the cost off and at sigma 3,
+ * 0.3 and 0.1 (with obstacles) to base_wrench_replay.json for the SCATE
+ * UR10e reactive app.
  *
  * Usage:  ./scate_ur10e_base_wrench [/path/to/ur10e.urdf] [number of seeds]
  */
@@ -71,9 +73,11 @@ int main(int argc, char** argv) {
                scate::runBaseWrenchStudy(path, seeds, scate::ur10eReactiveScenario(),
                                          scate::ur10eSphereModel(),
                                          scate::ur10eCollisionParams(), sigmas,
-                                         "base_wrench_obstacles.csv"),
+                                         "base_wrench_obstacles.csv", "base_wrench_replay.json",
+                                         {0.0, 3.0, 0.3, 0.1}),
                true);
-    std::cout << "\nWrote base_wrench_sweep.csv and base_wrench_obstacles.csv\n";
+    std::cout << "\nWrote base_wrench_sweep.csv, base_wrench_obstacles.csv and "
+                 "base_wrench_replay.json (seed 0: cost off, sigma 3, 0.3, 0.1)\n";
     return 0;
   } catch (const std::exception& e) {
     std::cerr << "scate_ur10e_base_wrench failed: " << e.what() << "\n";

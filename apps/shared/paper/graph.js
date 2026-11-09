@@ -47,6 +47,25 @@ export function paperGraph(kind, indices) {
     return { nodes, factors, height: 450, caption: 'q and v are six-dimensional joint states; u is a six-dimensional acceleration control; ℓ is one world-frame obstacle centre. All factors are soft. Mq/Lq, Mv/Lv, Lu/E and O/S group separate factors with matching scopes. Ml exists only after a detection; O/S applies only to future intervals, and Lu/E is removed after execution. O uses a fixed estimated centre and has no edge to ℓ. Endpoint priors are omitted.' };
   }
 
+  if (kind === 'scate-reactive') {
+    indices.forEach((k, i) => {
+      node(`l${i}`, `ℓ${k}`, x(i) + 60, 40, k);
+      node(`q${i}`, `q${k}`, x(i), 140, k);
+      node(`v${i}`, `v${k}`, x(i), 255, k);
+      factor('Mℓ', 'VICON obstacle position measurement, or a prior from the latest one for a future step', [`l${i}`], x(i) + 130, 40);
+      factor('Mm/Lq', 'VICON marker measurement through forward kinematics, and the joint-limit factor', [`q${i}`], x(i) - 70, 95);
+      factor('Lv', 'Velocity-limit factor', [`v${i}`], x(i) - 70, 290);
+      if (i + 1 < indices.length) {
+        node(`u${i}`, `u${k}`, x(i) + 135, 380, k);
+        factor('Lu/E', 'Acceleration-limit and effort unary factors on a future control', [`u${i}`], x(i) + 205, 420);
+        factor('D', 'Double integrator on two states and one acceleration control', [`q${i}`, `v${i}`, `q${i + 1}`, `v${i + 1}`, `u${i}`], x(i) + 135, 250);
+        factor('O/S', 'GP obstacle and self-collision factors on a future interval', [`q${i}`, `v${i}`, `q${i + 1}`, `v${i + 1}`], x(i) + 135, 175);
+        factor('B', 'Base-disturbance factor: gravity-free reaction wrench of the arm at evenly spaced times in the interval', [`q${i}`, `v${i}`, `u${i}`], x(i) + 60, 330);
+      }
+    });
+    return { nodes, factors, height: 460, caption: 'q and v are six-dimensional joint states, u a six-dimensional acceleration control, and ℓₖ an obstacle centre at step k (one per obstacle; one is drawn). All factors are soft. Mm/Lq and Lu/E group separate factors with matching scopes. Past steps carry VICON measurements; for future steps, Mℓ is a prior at the latest measured position. O/S uses those latest estimates as fixed centres and has no edge to ℓ. B, Lu/E and the collision factors are removed for executed intervals, which instead get the executed control and exact dynamics. Endpoint priors are omitted.' };
+  }
+
   if (kind === 'labels') {
     indices.forEach((k, i) => {
       node(`l${i}`, `L${k}`, x(i), 100, k);

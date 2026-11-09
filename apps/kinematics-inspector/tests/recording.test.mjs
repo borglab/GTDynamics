@@ -12,7 +12,7 @@ for(const prior of ['none','upright','height','upright-height'])for(const imu of
 test('estimation tabs precede Motion Planning and the SCATE apps',()=>{
  const apps=JSON.parse(readFileSync(new URL('../../registry.json',import.meta.url)));
  const k=apps.findIndex(app=>app.id==='kinematics-inspector');
- assert.deepEqual(apps.slice(k-1).map(app=>app.id),['contact-vs-ik','kinematics-inspector','interpolation','dynamics','kinodynamics','motion-planning','scate/ur5','scate/ur10e']);
+ assert.deepEqual(apps.slice(k-1).map(app=>app.id),['contact-vs-ik','kinematics-inspector','interpolation','dynamics','kinodynamics','motion-planning','scate/ur5','scate/ur10e','scate/ur10e-reactive']);
 });
 test('comparison includes every configuration and ranks actual saved errors',()=>{
  const summary=JSON.parse(readFileSync(new URL('../public/comparison.json',import.meta.url)));

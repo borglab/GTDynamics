@@ -16,6 +16,7 @@ be opened directly.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run.
 - [SCATE UR10e](scate/ur10e/README.md): the same SCATE scenario on a UR10e.
+- [SCATE UR10e Base](scate/ur10e-reactive/README.md): reactive SCATE with moving obstacles, comparing base-disturbance costs.
 
 Each app starts with a short technical abstract and its interactive demo, then
 continues with motivation, a factor graph formulation and factor definitions,
