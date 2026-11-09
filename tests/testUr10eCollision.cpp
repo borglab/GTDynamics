@@ -23,6 +23,7 @@
 #include <iostream>
 
 #include "scate_online.h"
+#include "scate_reactive.h"
 #include "scate_scenario.h"
 #include "ur10e_collision.h"
 
@@ -168,6 +169,25 @@ TEST(Ur10eSphereObstacleSDF, matchesExactDistance) {
   EXPECT(worst < 2e-3);
 }
 
+// Several obstacles: the field is the distance to the nearest one.
+TEST(Ur10eSphereObstacleSDF, unionOfSpheresIsTheNearest) {
+  const SdfGrid grid = ur10eSdfGrid();
+  const std::vector<SphereObstacle> obstacles = {{Point3(0.9, -0.4, 0.8), 0.08},
+                                                 {Point3(-0.3, 0.6, 0.5), 0.12}};
+  const auto sdf = makeSpheresObstacleSDF(obstacles, grid);
+  double worst = 0.0;
+  // At least 0.2 m from the centers, where trilinear interpolation of the
+  // cone-shaped field is accurate to a millimeter.
+  for (const Point3& point : {Point3(1.15, -0.4, 0.8), Point3(-0.3, 0.85, 0.5),
+                              Point3(0.3, 0.1, 0.65), Point3(-1.2, 1.2, 1.4)}) {
+    const double exact = std::min((point - obstacles[0].center).norm() - obstacles[0].radius,
+                                  (point - obstacles[1].center).norm() - obstacles[1].radius);
+    worst = std::max(worst, std::fabs(sdf->getSignedDistance(point) - exact));
+  }
+  EXPECT(worst < 2e-3);
+  THROWS_EXCEPTION(makeSpheresObstacleSDF({}, grid));
+}
+
 // Our wiring of the sensor Jacobian (queryPoses) into the measurement factor.
 TEST(Ur10eCollisionModel, measurementFactorJacobians) {
   auto model = std::make_shared<Ur10eCollisionModel>(ur10e());
@@ -210,6 +230,44 @@ TEST(Ur10eCollisionModel, selfCollisionFactorBuilds) {
   EXPECT(noise_factor.dim() == 23);
   // Home is 8.0 cm from its closest pair, beyond the 2 cm standoff: no cost.
   EXPECT(noise_factor.unwhitenedError(x).norm() < 1e-12);
+}
+
+// Motion-capture markers (scate_reactive.h), against the numpy FK.
+TEST(Ur10eCollisionModel, markersMatchReferenceFK) {
+  const Ur10eCollisionModel model(ur10e());
+  EXPECT_LONGS_EQUAL(8, model.numMarkers());
+  const Vector markers = model.markerPositions(otherJoints());
+  EXPECT_LONGS_EQUAL(24, markers.size());
+  EXPECT(near(Point3(markers.segment<3>(0)), Point3(0.000590, 0.272338, 0.306921), 1e-5, "m0"));
+  EXPECT(near(Point3(markers.segment<3>(9)), Point3(0.708986, 0.264326, 0.719015), 1e-5, "m3"));
+  EXPECT(near(Point3(markers.segment<3>(12)), Point3(0.782532, 0.424357, 0.542854), 1e-5, "m4"));
+  EXPECT(near(Point3(markers.segment<3>(21)), Point3(0.781717, 0.522672, 0.524732), 1e-5, "m7"));
+}
+
+TEST(Ur10eCollisionModel, markerFactorJacobian) {
+  auto model = std::make_shared<Ur10eCollisionModel>(ur10e());
+  gtsam::Values x;
+  x.insert(QKey(3), otherJoints());
+  const Vector measured = model->markerPositions(sweepGoalJoints());
+  const MarkerMeasurementFactor factor(QKey(3), measured, model,
+                                       gtsam::noiseModel::Isotropic::Sigma(24, 1e-3));
+  const double error = maxJacobianError(factor, x);
+  std::cout << "  [diag] UR10e marker factor Jacobian error " << error << "\n";
+  EXPECT(error < 1e-6);
+}
+
+// Every joint angle is observable from one reading, to under 0.01 rad with
+// 1 mm marker noise, along the scenario's motion.
+TEST(Ur10eCollisionModel, everyJointIsObservableFromTheMarkers) {
+  const Ur10eCollisionModel model(ur10e());
+  for (const Vector& q : {startJoints(), sweepGoalJoints(), otherJoints()}) {
+    gtsam::Matrix H;
+    model.markerPositions(q, &H);
+    const gtsam::Matrix covariance = (H.transpose() * H).inverse() * 1e-6;
+    const double worst = covariance.diagonal().cwiseSqrt().maxCoeff();
+    std::cout << "  [diag] worst joint std from markers " << worst << " rad\n";
+    EXPECT(worst < 0.01);
+  }
 }
 
 TEST(SphereCollisionModel, rejectsIndicesOfMissingSpheres) {

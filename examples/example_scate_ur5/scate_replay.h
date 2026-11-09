@@ -30,9 +30,11 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Quaternion.h>
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -55,6 +57,12 @@ struct ReplayScenario {
   std::string source;  ///< free text: robot file, seed, build
   gtsam::Point3 obstacle_center = gtsam::Point3::Zero();  ///< ground truth
   double obstacle_radius = 0.0;    ///< ground truth
+  /**
+   * Moving obstacles (scate_reactive.h). If not empty, frames are scored
+   * against these at their own time, and the replay also gets "obstacles",
+   * per-frame "obstacle_centers" and per-step "obstacle_estimates".
+   */
+  std::vector<MovingObstacle> moving_obstacles;
   double obstacle_standoff = 0.0;  ///< epsilon of the obstacle factors
   double self_standoff = 0.0;      ///< epsilon of the self-collision pairs
   int substeps = 10;               ///< frames per interval
@@ -138,6 +146,33 @@ inline void writeHeader(JsonWriter& json, const ReplayScenario& scenario,
   json.writeKey("center"); json.writePoint(scenario.obstacle_center); out << ',';
   json.writeKey("radius"); json.writeNumber(scenario.obstacle_radius);
   out << "},";
+  if (!scenario.moving_obstacles.empty()) {
+    json.writeKey("obstacles");
+    out << '[';
+    for (size_t j = 0; j < scenario.moving_obstacles.size(); ++j) {
+      const MovingObstacle& obstacle = scenario.moving_obstacles[j];
+      if (j) out << ',';
+      out << '{';
+      json.writeKey("start"); json.writePoint(obstacle.start); out << ',';
+      json.writeKey("velocity"); json.writeVector(obstacle.velocity); out << ',';
+      json.writeKey("radius"); json.writeNumber(obstacle.radius);
+      out << '}';
+    }
+    out << "],";
+  }
+}
+
+/// Smallest gap to the obstacle(s) at time t: the static one, or every moving one.
+inline double frameClearance(const CollisionModel& model, const ReplayScenario& scenario,
+                             double t, const Vector& q) {
+  if (scenario.moving_obstacles.empty()) {
+    return model.obstacleClearance(q, scenario.obstacle_center, scenario.obstacle_radius);
+  }
+  double best = std::numeric_limits<double>::infinity();
+  for (const MovingObstacle& obstacle : scenario.moving_obstacles) {
+    best = std::min(best, model.obstacleClearance(q, obstacle.center(t), obstacle.radius));
+  }
+  return best;
 }
 
 /// Sphere radii, tool sphere, self-collision pairs and link names.
@@ -192,9 +227,16 @@ inline void writeFrame(JsonWriter& json, const CollisionModel& model,
   json.writeKey("t"); json.writeNumber(t); out << ',';
   json.writeKey("q"); json.writeVector(q); out << ',';
   json.writeKey("v"); json.writeVector(v); out << ',';
-  json.writeKey("clear");
-  json.writeNumber(model.obstacleClearance(q, scenario.obstacle_center, scenario.obstacle_radius));
-  out << ',';
+  json.writeKey("clear"); json.writeNumber(frameClearance(model, scenario, t, q)); out << ',';
+  if (!scenario.moving_obstacles.empty()) {
+    json.writeKey("obstacle_centers");
+    out << '[';
+    for (size_t j = 0; j < scenario.moving_obstacles.size(); ++j) {
+      if (j) out << ',';
+      json.writePoint(scenario.moving_obstacles[j].center(t));
+    }
+    out << "],";
+  }
   json.writeKey("self"); json.writeNumber(model.selfClearance(q)); out << ',';
   json.writeKey("spheres");
   out << '[';
@@ -323,6 +365,16 @@ inline void writeStep(JsonWriter& json, const CollisionModel& model,
   json.writeKey("k"); out << step.k << ',';
   json.writeKey("detected"); out << (step.detected ? "true" : "false") << ',';
   writeObstacleEstimate(json, step);
+  if (!step.obstacle_estimates.empty()) {
+    json.writeKey("obstacle_estimates");
+    out << '[';
+    for (size_t j = 0; j < step.obstacle_estimates.size(); ++j) {
+      if (j) out << ',';
+      if (step.obstacle_estimates[j]) json.writePoint(*step.obstacle_estimates[j]);
+      else out << "null";
+    }
+    out << "],";
+  }
   json.writeKey("solves"); out << step.solves << ',';
   json.writeKey("solve_ms"); json.writeNumber(step.solve_ms); out << ',';
   json.writeKey("graph_error"); json.writeNumber(step.graph_error); out << ',';

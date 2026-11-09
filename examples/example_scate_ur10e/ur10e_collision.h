@@ -84,9 +84,33 @@ inline std::vector<std::pair<size_t, size_t>> ur10eSelfCollisionPairs() {
           {3, 14}, {8, 14}, {9, 12}, {9, 13}, {9, 14}, {10, 13}, {10, 14}};
 }
 
-/// Spheres, self-collision pairs, sensor and tool of the UR10e.
+/**
+ * Motion-capture (VICON-style) markers on the UR10e, for scate_reactive.h:
+ * two on the surface of the upper arm, two on the forearm, and four on
+ * 10 cm posts (one on each of wrist 1 and 2, two on a tree on the tool
+ * flange). Each sits off its own link's joint axis (the link z axis), so
+ * every joint angle moves at least one marker and q is observable from the
+ * markers alone. The wrist angles are the least observed: with 1 mm marker
+ * noise one reading pins them to about 0.006-0.009 rad (about 0.02 rad for
+ * wrist 3 with markers 4.5 cm from its axis instead of 10 cm).
+ */
+inline std::vector<Marker> ur10eMarkers() {
+  return {
+      {"upper_arm_link", {-0.15, 0.0, 0.26}},     //  0
+      {"upper_arm_link", {-0.46, 0.075, 0.176}},  //  1
+      {"forearm_link", {-0.15, 0.0, 0.11}},       //  2
+      {"forearm_link", {-0.42, 0.065, 0.043}},    //  3
+      {"wrist_1_link", {0.10, 0.0, 0.0}},         //  4: post
+      {"wrist_2_link", {0.10, 0.0, 0.0}},         //  5: post
+      {"wrist_3_link", {0.10, 0.0, 0.02}},        //  6: flange tree
+      {"wrist_3_link", {0.0, 0.10, 0.02}},        //  7: flange tree
+  };
+}
+
+/// Spheres, self-collision pairs, sensor, tool and markers of the UR10e.
 inline SphereModel ur10eSphereModel() {
-  return {ur10eSpheres(), ur10eSelfCollisionPairs(), kUr10eSensorSphere, kUr10eToolSphere};
+  return {ur10eSpheres(), ur10eSelfCollisionPairs(), kUr10eSensorSphere, kUr10eToolSphere,
+          ur10eMarkers()};
 }
 
 /**

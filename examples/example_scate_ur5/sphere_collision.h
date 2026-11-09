@@ -66,6 +66,12 @@ struct CollisionSphere {
   double radius;                 ///< m
 };
 
+/// A motion-capture marker, its position given in the URDF link frame.
+struct Marker {
+  std::string link;                ///< URDF link name
+  gtsam::Point3 position_in_link;  ///< m, in the URDF link frame
+};
+
 /// The robot-specific geometry of a SphereCollisionModel.
 struct SphereModel {
   std::vector<CollisionSphere> spheres;  ///< collision spheres
@@ -73,6 +79,7 @@ struct SphereModel {
   std::vector<std::pair<size_t, size_t>> self_collision_pairs;
   size_t sensor_sphere = 0;  ///< sphere whose link's CoM frame is the sensor frame
   size_t tool_sphere = 0;    ///< sphere drawn and reported as the tool
+  std::vector<Marker> markers;  ///< motion-capture markers (may be empty)
 };
 
 // ============================================================
@@ -90,9 +97,13 @@ struct SdfGrid {
   size_t num_x = 67, num_y = 67, num_z = 51;  ///< grid points per axis
 };
 
-/// Exact signed distance to a sphere, sampled on the grid (positive outside).
-inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSphereObstacleSDF(
-    const gtsam::Point3& center, double radius, const SdfGrid& grid) {
+/**
+ * Exact signed distance to the union of spheres (the smallest distance to
+ * any of them), sampled on the grid (positive outside all of them).
+ */
+inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSpheresObstacleSDF(
+    const std::vector<SphereObstacle>& obstacles, const SdfGrid& grid) {
+  if (obstacles.empty()) throw std::invalid_argument("makeSpheresObstacleSDF: no obstacles");
   // Flat layout of the fast constructor: x fastest, then y (rows), then z.
   gtsam::Vector values(grid.num_x * grid.num_y * grid.num_z);
   for (size_t z = 0; z < grid.num_z; ++z) {
@@ -101,12 +112,43 @@ inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSphereObstacle
         const gtsam::Point3 point =
             grid.origin + gtsam::Point3(col * grid.cell_size, row * grid.cell_size,
                                         z * grid.cell_size);
-        values((z * grid.num_y + row) * grid.num_x + col) = (point - center).norm() - radius;
+        double distance = std::numeric_limits<double>::infinity();
+        for (const SphereObstacle& obstacle : obstacles) {
+          distance = std::min(distance, (point - obstacle.center).norm() - obstacle.radius);
+        }
+        values((z * grid.num_y + row) * grid.num_x + col) = distance;
       }
     }
   }
   return std::make_shared<const gtdynamics::SignedDistanceField>(
       grid.origin, grid.cell_size, grid.num_y, grid.num_x, grid.num_z, values);
+}
+
+/// Exact signed distance to one sphere, sampled on the grid (positive outside).
+inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSphereObstacleSDF(
+    const gtsam::Point3& center, double radius, const SdfGrid& grid) {
+  return makeSpheresObstacleSDF({SphereObstacle{center, radius}}, grid);
+}
+
+/**
+ * A point given in a URDF link frame, as a GTDynamics query point (which is
+ * expressed in the link's CoM frame): link frame -> base frame at rest -> CoM.
+ * @param what names the point in the error message if the link is missing
+ */
+inline gtdynamics::PointOnLink pointOnLink(const gtdynamics::Robot& robot,
+                                           const std::string& link_name,
+                                           const gtsam::Point3& point_in_link,
+                                           const std::string& what) {
+  gtdynamics::LinkSharedPtr link;
+  try {
+    link = robot.link(link_name);
+  } catch (const std::exception& e) {
+    throw std::runtime_error("SphereCollisionModel: " + what + " is on link '" + link_name +
+                             "', which this robot does not have (" + e.what() + ")");
+  }
+  const gtsam::Point3 point_in_com =
+      link->bMcom().transformTo(link->bMlink().transformFrom(point_in_link));
+  return gtdynamics::PointOnLink(link, point_in_com);
 }
 
 // ============================================================
@@ -167,6 +209,17 @@ class SphereCollisionModel : public CollisionModel {
 
     frames_ = std::make_shared<const gtdynamics::RobotQueryPoints>(
         robot, base, joints, linkFrameQueryPoints(robot, base, joints), wTbase);
+
+    if (!model_.markers.empty()) {
+      gtdynamics::PointOnLinks marker_points;
+      for (size_t m = 0; m < model_.markers.size(); ++m) {
+        marker_points.push_back(pointOnLink(robot, model_.markers[m].link,
+                                            model_.markers[m].position_in_link,
+                                            "marker " + std::to_string(m)));
+      }
+      markers_ = std::make_shared<const gtdynamics::RobotQueryPoints>(robot, base, joints,
+                                                                      marker_points, wTbase);
+    }
   }
 
   /// Number of joints.
@@ -188,6 +241,29 @@ class SphereCollisionModel : public CollisionModel {
   /// Rebuild the obstacle SDF for a sphere at center with this radius.
   void setObstacle(const gtsam::Point3& center, double radius) override {
     sdf_ = makeSphereObstacleSDF(center, radius, params_.grid);
+  }
+
+  /// Rebuild the obstacle SDF for the union of these spheres.
+  void setObstacles(const std::vector<SphereObstacle>& obstacles) override {
+    sdf_ = makeSpheresObstacleSDF(obstacles, params_.grid);
+  }
+
+  /// Number of motion-capture markers.
+  size_t numMarkers() const override { return model_.markers.size(); }
+
+  /// Stacked world positions of the markers, with their 3M x dof Jacobian.
+  Vector markerPositions(const Vector& q, gtsam::Matrix* H = nullptr) const override {
+    if (!markers_) throw std::logic_error("SphereCollisionModel: this model has no markers");
+    std::vector<gtsam::Point3> points;
+    std::vector<gtsam::Matrix> jacobians;
+    markers_->queryPoints(q, &points, H ? &jacobians : nullptr);
+    Vector stacked(3 * points.size());
+    if (H) *H = gtsam::Matrix(3 * points.size(), dof_);
+    for (size_t m = 0; m < points.size(); ++m) {
+      stacked.segment<3>(3 * m) = points[m];
+      if (H) H->middleRows(3 * m, 3) = jacobians[m];
+    }
+    return stacked;
   }
 
   /// ObstacleSDFFactorGP on interval i at time tau; needs setObstacle first.
@@ -296,7 +372,7 @@ class SphereCollisionModel : public CollisionModel {
   SphereCollisionParams params_;
   SphereModel model_;
   size_t dof_ = 0;
-  std::shared_ptr<const gtdynamics::RobotQueryPoints> points_, sensor_, frames_;
+  std::shared_ptr<const gtdynamics::RobotQueryPoints> points_, sensor_, frames_, markers_;
   std::vector<std::string> link_names_;
   std::vector<gtsam::Pose3> comTlink_;
   gtsam::Vector radii_;
@@ -328,17 +404,8 @@ class SphereCollisionModel : public CollisionModel {
     gtdynamics::PointOnLinks points;
     radii_ = gtsam::Vector(spheres.size());
     for (size_t i = 0; i < spheres.size(); ++i) {
-      gtdynamics::LinkSharedPtr link;
-      try {
-        link = robot.link(spheres[i].link);
-      } catch (const std::exception& e) {
-        throw std::runtime_error("SphereCollisionModel: sphere " + std::to_string(i) +
-                                 " is on link '" + spheres[i].link +
-                                 "', which this robot does not have (" + e.what() + ")");
-      }
-      const gtsam::Point3 center_in_com = link->bMcom().transformTo(
-          link->bMlink().transformFrom(spheres[i].center_in_link));
-      points.emplace_back(link, center_in_com);
+      points.push_back(pointOnLink(robot, spheres[i].link, spheres[i].center_in_link,
+                                   "sphere " + std::to_string(i)));
       radii_(i) = spheres[i].radius;
     }
     return points;

@@ -66,9 +66,10 @@ inline std::vector<std::pair<size_t, size_t>> ur5SelfCollisionPairs() {
           {8, 13}, {8, 14}, {9, 13}, {9, 14}, {10, 14}, {11, 14}};
 }
 
-/// Spheres, self-collision pairs, sensor and tool of the UR5.
+/// Spheres, self-collision pairs, sensor and tool of the UR5 (no motion-capture markers).
 inline SphereModel ur5SphereModel() {
-  return {ur5Spheres(), ur5SelfCollisionPairs(), kUr5SensorSphere, kUr5ToolSphere};
+  return {ur5Spheres(), ur5SelfCollisionPairs(), kUr5SensorSphere, kUr5ToolSphere,
+          /*markers=*/{}};
 }
 
 /// Factor settings of the UR5 collision model (default grid: the UR5 workspace).

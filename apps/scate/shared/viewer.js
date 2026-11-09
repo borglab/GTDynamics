@@ -179,9 +179,20 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     for (const r of Object.values(R)) {
       for (let i = 0; i < r.frames.length; i += 5) r.frames[i].spheres.forEach((c) => box.expandByPoint(v3(c)));
     }
-    box.expandByPoint(v3(D.obstacle.center));
+    for (const o of obstacleList()) {
+      box.expandByPoint(v3(obstacleCenter(o, 0)));
+      box.expandByPoint(v3(obstacleCenter(o, Tend)));
+    }
     if (box.isEmpty()) return;
     viewport.cameraController.fit(box, { direction: new THREE.Vector3(.75, -.95, .6), padding: 1.05, minDistance: .1 });
+  }
+
+  // Obstacles: the moving ones of a reactive replay, or the one static obstacle.
+  function obstacleList() {
+    return D.obstacles || [{ start: D.obstacle.center, velocity: [0, 0, 0], radius: D.obstacle.radius }];
+  }
+  function obstacleCenter(o, t) {
+    return [o.start[0] + t * o.velocity[0], o.start[1] + t * o.velocity[1], o.start[2] + t * o.velocity[2]];
   }
 
   function lineFrom(points, mat, dashed) {
@@ -231,13 +242,17 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   function buildObjects() {
     clearWorld();
     objs = { arms: {} };
-    const o = D.obstacle;
-    const obs = new THREE.Mesh(new THREE.SphereGeometry(o.radius, 40, 28), M.obstacle);
-    obs.position.copy(v3(o.center));
-    const shell = new THREE.Mesh(new THREE.SphereGeometry(o.radius + D.obstacle_standoff, 28, 18), M.shell);
-    shell.position.copy(obs.position);
-    world.add(obs, shell);
-    objs.shell = shell;
+    objs.obstacles = obstacleList().map((o) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(o.radius, 40, 28), M.obstacle);
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(o.radius + D.obstacle_standoff, 28, 18), M.shell);
+      const estimate = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 8), M.estDot);
+      world.add(mesh, shell, estimate);
+      // A moving obstacle's whole path, so its motion is visible in a still frame.
+      const moving = Math.hypot(...o.velocity) > 0;
+      const path = moving ? lineFrom([obstacleCenter(o, 0), obstacleCenter(o, Tend)], M.planOff, true) : null;
+      if (path) world.add(path);
+      return { spec: o, mesh, shell, estimate, path };
+    });
 
     const est = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), M.est);
     const estDot = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 8), M.estDot);
@@ -273,11 +288,13 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     return run.steps[Math.max(0, k)];
   }
 
-  function sphereStates(centers) {
-    const O = D.obstacle.center, Rr = D.obstacle.radius, rad = D.sphere_radii;
+  function sphereStates(centers, t) {
+    const rad = D.sphere_radii;
+    const obstacles = obstacleList().map((o) => [obstacleCenter(o, t), o.radius]);
     const st = rad.map((r, i) => {
       const c = centers[i];
-      const gap = Math.hypot(c[0] - O[0], c[1] - O[1], c[2] - O[2]) - Rr - r;
+      let gap = Infinity;
+      for (const [O, Rr] of obstacles) gap = Math.min(gap, Math.hypot(c[0] - O[0], c[1] - O[1], c[2] - O[2]) - Rr - r);
       return gap < 0 ? 2 : gap < D.obstacle_standoff ? 1 : 0;
     });
     for (const [a, b] of D.pairs || []) {
@@ -303,7 +320,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
       const d = b.spheres[k];
       return [lerp(c[0], d[0], s), lerp(c[1], d[1], s), lerp(c[2], d[2], s)];
     });
-    const st = sphereStates(centers);
+    const st = sphereStates(centers, t);
     arm.spheres.forEach((m, k) => {
       m.position.set(centers[k][0], centers[k][1], centers[k][2]);
       m.material = st[k] === 2 ? M.sphBad : st[k] === 1 ? M.sphWarn : arm.sphMat;
@@ -341,14 +358,41 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     if (on) { $("rOnClear").textContent = fmtCm(on.clear); $("rOnSelf").textContent = fmtCm(on.self); chip($("chipOnline"), on.clear); }
     if (bl) { $("rBlClear").textContent = fmtCm(bl.clear); chip($("chipBlind"), bl.clear); }
 
+    for (const o of objs.obstacles) {
+      const c = v3(obstacleCenter(o.spec, T));
+      o.mesh.position.copy(c);
+      o.shell.position.copy(c);
+    }
+
     // Estimate, current plan, sensor range: the online run.
     const run = R.online;
     if (run) {
       const st = stepAt(run, T);
+      // Several obstacles: a dot at each latest estimate the plan avoids.
+      const estimates = st.obstacle_estimates || [];
+      objs.obstacles.forEach((o, j) => {
+        const e = estimates[j];
+        o.estimate.userData.known = !!e;
+        if (e) o.estimate.position.copy(v3(e));
+      });
       $("rK").textContent = String(st.k);
       $("rMs").textContent = st.solve_ms.toFixed(1) + " ms" + (st.solves > 1 ? " (2 solves)" : "");
       const seenK = run.summary.first_detection;
-      if (st.l) {
+      if (st.obstacle_estimates) {
+        // Moving obstacles: error of each estimate against the truth at the step's time.
+        const seen = st.obstacle_estimates.filter((e) => e).length;
+        let worst = 0;
+        obstacleList().forEach((o, j) => {
+          const e = st.obstacle_estimates[j];
+          if (!e) return;
+          const O = obstacleCenter(o, st.k * D.dt);
+          worst = Math.max(worst, Math.hypot(e[0] - O[0], e[1] - O[1], e[2] - O[2]));
+        });
+        $("rSeen").textContent = seenK < 0 ? "never seen" : `${seen} of ${st.obstacle_estimates.length} tracked`;
+        $("rErr").textContent = seen ? fmtCm(worst) : "–";
+        $("rSig").textContent = "–";
+        objs.est.userData.known = false;
+      } else if (st.l) {
         const O = D.obstacle.center;
         const e = Math.hypot(st.l[0] - O[0], st.l[1] - O[1], st.l[2] - O[2]);
         $("rSeen").textContent = "seen at step " + seenK;
@@ -415,7 +459,11 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     const known = objs.est.userData.known;
     objs.est.visible = objs.estDot.visible = onVis && known && $("lyEst").checked;
     objs.range.visible = onVis && $("lyRange").checked && R.online && R.online.sensor_range > 0;
-    objs.shell.visible = $("lyStand").checked;
+    for (const o of objs.obstacles) {
+      o.shell.visible = $("lyStand").checked;
+      o.estimate.visible = onVis && o.estimate.userData.known && $("lyEst").checked && !!D.obstacles;
+      if (o.path) o.path.visible = $("lyOff").checked;
+    }
   }
 
   // ---------- clearance chart ----------

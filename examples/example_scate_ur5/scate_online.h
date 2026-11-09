@@ -110,6 +110,22 @@ inline Vector interpolatePosition(const Vector& q1, const Vector& v1, const Vect
 // 2. What the planner needs from the robot
 // ============================================================
 
+/// A spherical obstacle.
+struct SphereObstacle {
+  gtsam::Point3 center = gtsam::Point3::Zero();  ///< world frame (m)
+  double radius = 0.0;                           ///< m
+};
+
+/// A spherical obstacle moving at constant velocity (ground truth, scate_reactive.h).
+struct MovingObstacle {
+  gtsam::Point3 start = gtsam::Point3::Zero();       ///< center at t = 0 (m)
+  gtsam::Vector3 velocity = gtsam::Vector3::Zero();  ///< m/s
+  double radius = 0.08;                              ///< m
+
+  /// Center at time t (s).
+  gtsam::Point3 center(double t) const { return start + t * velocity; }
+};
+
 /**
  * Collision geometry and sensor of a robot. One instance is shared by the
  * planner (which calls setObstacle when its estimate changes) and the
@@ -133,6 +149,17 @@ class CollisionModel {
   virtual void setObstacle(const gtsam::Point3& center, double radius) = 0;
 
   /**
+   * Install several spherical obstacles; obstacleFactor then keeps the robot
+   * clear of all of them. The default supports exactly one.
+   */
+  virtual void setObstacles(const std::vector<SphereObstacle>& obstacles) {
+    if (obstacles.size() != 1) {
+      throw std::logic_error("CollisionModel: this model supports exactly one obstacle");
+    }
+    setObstacle(obstacles[0].center, obstacles[0].radius);
+  }
+
+  /**
    * Obstacle factor on the interval between states i and i+1, at time tau
    * (0 <= tau <= dt) after state i. Keys: QKey(i), VKey(i), QKey(i+1), VKey(i+1).
    */
@@ -154,6 +181,20 @@ class CollisionModel {
   /// Smallest gap over the self-collision pairs (negative = penetration).
   virtual double selfClearance(const Vector& /*q*/) const {
     return std::numeric_limits<double>::infinity();
+  }
+
+  // ---- Motion-capture markers (scate_reactive.h). Optional.
+
+  /// Number of motion-capture markers on the robot.
+  virtual size_t numMarkers() const { return 0; }
+
+  /**
+   * World positions of the markers at joint angles q, stacked (x, y, z of
+   * marker 0, then marker 1, ...). If H is non-null it is set to the
+   * 3 numMarkers() x dof Jacobian.
+   */
+  virtual Vector markerPositions(const Vector& /*q*/, gtsam::Matrix* /*H*/ = nullptr) const {
+    throw std::logic_error("CollisionModel: this model has no markers");
   }
 
   // ---- Drawing hooks, used by scate_replay.h. Optional: a model without
@@ -244,6 +285,123 @@ inline std::vector<double> evenlySpacedFractions(int count) {
   return fractions;
 }
 
+/**
+ * Factors held by name, so they can be removed and replaced between solves.
+ * Each factor belongs to a group ("dynamics", "obstacle", ...) and an index
+ * (the state, control or interval it acts on).
+ */
+class FactorRegistry {
+ public:
+  /// Add a factor under a unique name; null factors are ignored.
+  void add(const std::string& group, int index,
+           const gtsam::NonlinearFactor::shared_ptr& factor) {
+    if (!factor) return;
+    factors_[group + "/" + std::to_string(index) + "/" + std::to_string(next_id_++)] =
+        Entry{group, index, factor};
+  }
+
+  /// Remove every factor of a group at one index.
+  void remove(const std::string& group, int index) {
+    eraseIf([&](const Entry& entry) { return entry.group == group && entry.index == index; });
+  }
+
+  /// Remove every factor of a group.
+  void removeGroup(const std::string& group) {
+    eraseIf([&](const Entry& entry) { return entry.group == group; });
+  }
+
+  /// The current graph, assembled from the named factors (ordered by name).
+  gtsam::NonlinearFactorGraph graph() const {
+    gtsam::NonlinearFactorGraph graph;
+    for (const auto& name_and_entry : factors_) graph.add(name_and_entry.second.factor);
+    return graph;
+  }
+
+  /// Number of factors in a group, optionally only those with index below `below`.
+  size_t count(const std::string& group, int below = std::numeric_limits<int>::max()) const {
+    size_t total = 0;
+    for (const auto& name_and_entry : factors_) {
+      const Entry& entry = name_and_entry.second;
+      if (entry.group == group && entry.index < below) ++total;
+    }
+    return total;
+  }
+
+  /// Whether the registry holds a factor of this group at this index.
+  bool has(const std::string& group, int index) const {
+    for (const auto& name_and_entry : factors_) {
+      const Entry& entry = name_and_entry.second;
+      if (entry.group == group && entry.index == index) return true;
+    }
+    return false;
+  }
+
+ private:
+  /// A named factor and the group and index it belongs to.
+  struct Entry {
+    std::string group;
+    int index;  ///< state, control or interval index the factor belongs to
+    gtsam::NonlinearFactor::shared_ptr factor;
+  };
+
+  std::map<std::string, Entry> factors_;
+  int next_id_ = 0;  ///< keeps names unique within a group and index
+
+  /// Erase every entry for which predicate(entry) is true.
+  template <typename Predicate>
+  void eraseIf(Predicate predicate) {
+    for (auto it = factors_.begin(); it != factors_.end();) {
+      it = predicate(it->second) ? factors_.erase(it) : std::next(it);
+    }
+  }
+};
+
+/**
+ * Noise model of the control-effort prior: per-joint sigmas if given, else
+ * isotropic sigma_effort, else null (no effort prior, as in the paper).
+ */
+inline gtsam::SharedNoiseModel effortNoise(int num_joints, const Vector& effort_sigmas,
+                                           double sigma_effort) {
+  if (effort_sigmas.size() != 0) return gtsam::noiseModel::Diagonal::Sigmas(effort_sigmas);
+  if (sigma_effort > 0.0) return isotropicNoise(num_joints, sigma_effort);
+  return nullptr;
+}
+
+/**
+ * The factors of buildScateGraph (start/goal priors on q and v, dynamics,
+ * control, joint and velocity limits), by name, plus the control-effort
+ * priors if effort_noise is not null. The insertion order (and so the factor
+ * names and graph order) is that of the original OnlinePlanner.
+ */
+inline void addPlanFactors(const GraphSpec& spec, const gtsam::SharedNoiseModel& effort_noise,
+                           FactorRegistry* factors) {
+  const int n = static_cast<int>(spec.q_start.size());
+  const int last = spec.num_poses - 1;
+  const Vector zero = Vector::Zero(n);
+  using FactorPtr = gtsam::NonlinearFactor::shared_ptr;
+  const auto endpoint_noise = isotropicNoise(n, spec.sigma_endpoint);
+  factors->add("prior_q", 0,
+               FactorPtr(new gtsam::PriorFactor<Vector>(QKey(0), spec.q_start, endpoint_noise)));
+  factors->add("prior_v", 0,
+               FactorPtr(new gtsam::PriorFactor<Vector>(VKey(0), zero, endpoint_noise)));
+  factors->add("goal_q", last,
+               FactorPtr(new gtsam::PriorFactor<Vector>(QKey(last), spec.q_goal, endpoint_noise)));
+  factors->add("goal_v", last,
+               FactorPtr(new gtsam::PriorFactor<Vector>(VKey(last), zero, endpoint_noise)));
+  for (int i = 0; i < last; ++i) {
+    factors->add("dynamics", i, dynamicsFactor(spec, i));
+    factors->add("control_limit", i, controlLimitFactor(spec, i));
+    if (effort_noise) {
+      factors->add("effort", i,
+                   FactorPtr(new gtsam::PriorFactor<Vector>(UKey(i), zero, effort_noise)));
+    }
+  }
+  for (int i = 0; i <= last; ++i) {
+    factors->add("joint_limit", i, jointLimitFactor(spec, i));
+    factors->add("velocity_limit", i, velocityLimitFactor(spec, i));
+  }
+}
+
 /// Settings of the online planner.
 struct OnlineConfig {
   // State measurements (paper eq. 11): encoder priors on q_k and v_k.
@@ -297,6 +455,12 @@ struct StepInfo {
    * (the goal prior holds q_N there).
    */
   std::optional<double> goal_clearance;
+  /**
+   * Several obstacles (scate_reactive.h): the estimate each obstacle factor
+   * was built from after this step, per obstacle (empty if never seen).
+   * Empty for the single-obstacle OnlinePlanner, which uses l_estimate.
+   */
+  std::vector<std::optional<gtsam::Point3>> obstacle_estimates;
 };
 
 /**
@@ -403,11 +567,7 @@ class OnlinePlanner {
   }
 
   /// The current graph, assembled from the named factors.
-  gtsam::NonlinearFactorGraph graph() const {
-    gtsam::NonlinearFactorGraph graph;
-    for (const auto& name_and_entry : factors_) graph.add(name_and_entry.second.factor);
-    return graph;
-  }
+  gtsam::NonlinearFactorGraph graph() const { return factors_.graph(); }
 
   /**
    * Number of factors in a group ("dynamics", "obstacle", "measurement_l",
@@ -415,118 +575,42 @@ class OnlinePlanner {
    */
   size_t count(const std::string& group,
                int below = std::numeric_limits<int>::max()) const {
-    size_t total = 0;
-    for (const auto& name_and_entry : factors_) {
-      const Entry& entry = name_and_entry.second;
-      if (entry.group == group && entry.index < below) ++total;
-    }
-    return total;
+    return factors_.count(group, below);
   }
 
   /// Whether the graph holds a factor of this group at this index.
-  bool has(const std::string& group, int index) const {
-    for (const auto& name_and_entry : factors_) {
-      const Entry& entry = name_and_entry.second;
-      if (entry.group == group && entry.index == index) return true;
-    }
-    return false;
-  }
+  bool has(const std::string& group, int index) const { return factors_.has(group, index); }
 
  private:
-  /// A named factor and the group and index it belongs to.
-  struct Entry {
-    std::string group;
-    int index;  ///< state, control or interval index the factor belongs to
-    gtsam::NonlinearFactor::shared_ptr factor;
-  };
-
   GraphSpec spec_;
   OnlineConfig config_;
   std::shared_ptr<CollisionModel> model_;
   gtsam::Values values_;
-  std::map<std::string, Entry> factors_;
+  FactorRegistry factors_;
   int k_ = 0;
   bool planned_ = false;
-  int next_id_ = 0;  ///< keeps names unique within a group and index
   gtsam::Point3 l_planned_ = gtsam::Point3::Zero();
 
-  /// Add a factor under a unique name; null factors are ignored.
+  /// Add a factor to the registry; null factors are ignored.
   void add(const std::string& group, int index,
            const gtsam::NonlinearFactor::shared_ptr& factor) {
-    if (!factor) return;
-    factors_[group + "/" + std::to_string(index) + "/" + std::to_string(next_id_++)] =
-        Entry{group, index, factor};
+    factors_.add(group, index, factor);
   }
 
   /// Remove every factor of a group at one index.
-  void remove(const std::string& group, int index) {
-    for (auto it = factors_.begin(); it != factors_.end();) {
-      if (it->second.group == group && it->second.index == index) {
-        it = factors_.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
+  void remove(const std::string& group, int index) { factors_.remove(group, index); }
 
   /// Remove every factor of a group.
-  void removeGroup(const std::string& group) {
-    for (auto it = factors_.begin(); it != factors_.end();) {
-      if (it->second.group == group) {
-        it = factors_.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
+  void removeGroup(const std::string& group) { factors_.removeGroup(group); }
 
   /// Number of joints.
   int numJoints() const { return static_cast<int>(spec_.q_start.size()); }
 
-  /**
-   * The factors of buildScateGraph (start/goal priors, dynamics, control and
-   * joint limits), by name, plus the optional control-effort priors.
-   */
+  /// Start/goal priors, dynamics, limits and the optional effort priors.
   void addBaseFactors() {
-    addEndpointPriors();
-    const Vector zero = Vector::Zero(numJoints());
-    const gtsam::SharedNoiseModel effort_noise = effortNoise();
-    for (int i = 0; i < numIntervals(); ++i) {
-      add("dynamics", i, dynamicsFactor(spec_, i));
-      add("control_limit", i, controlLimitFactor(spec_, i));
-      if (effort_noise) {
-        add("effort", i,
-            gtsam::NonlinearFactor::shared_ptr(
-                new gtsam::PriorFactor<Vector>(UKey(i), zero, effort_noise)));
-      }
-    }
-    for (int i = 0; i <= numIntervals(); ++i) {
-      add("joint_limit", i, jointLimitFactor(spec_, i));
-      add("velocity_limit", i, velocityLimitFactor(spec_, i));
-    }
-  }
-
-  /// Noise model of the effort prior: per-joint, isotropic, or null (off).
-  gtsam::SharedNoiseModel effortNoise() const {
-    if (config_.effort_sigmas.size() != 0) {
-      return gtsam::noiseModel::Diagonal::Sigmas(config_.effort_sigmas);
-    }
-    if (config_.sigma_effort > 0.0) return isotropicNoise(numJoints(), config_.sigma_effort);
-    return nullptr;
-  }
-
-
-  /// Start and goal priors on q and v (the arm at rest at both ends).
-  void addEndpointPriors() {
-    const int n = numJoints();
-    const int last = numIntervals();
-    const Vector zero = Vector::Zero(n);
-    const auto noise = isotropicNoise(n, spec_.sigma_endpoint);
-    using FactorPtr = gtsam::NonlinearFactor::shared_ptr;
-    add("prior_q", 0, FactorPtr(new gtsam::PriorFactor<Vector>(QKey(0), spec_.q_start, noise)));
-    add("prior_v", 0, FactorPtr(new gtsam::PriorFactor<Vector>(VKey(0), zero, noise)));
-    add("goal_q", last, FactorPtr(new gtsam::PriorFactor<Vector>(QKey(last), spec_.q_goal, noise)));
-    add("goal_v", last, FactorPtr(new gtsam::PriorFactor<Vector>(VKey(last), zero, noise)));
+    addPlanFactors(spec_,
+                   effortNoise(numJoints(), config_.effort_sigmas, config_.sigma_effort),
+                   &factors_);
   }
 
   /// Encoder priors on q_k and v_k (paper eq. 11); also the new warm start.
@@ -660,6 +744,13 @@ struct ClosedLoopResult {
   double goal_error = 0.0;   ///< max |q_N - q_goal|
   double final_speed = 0.0;  ///< max |v_N|
   double max_solve_ms = 0.0; ///< slowest planner step
+  /**
+   * Moving obstacles (scate_reactive.h): true centers at each state time,
+   * obstacle_centers[k][j] for obstacle j at t = k dt, and each obstacle's
+   * smallest clearance over the run. Empty for a static obstacle.
+   */
+  std::vector<std::vector<gtsam::Point3>> obstacle_centers;
+  std::vector<double> min_clearance_per_obstacle;  ///< m, one per obstacle
   /// Whether the robot hit the obstacle or itself.
   bool collided() const { return min_obstacle_clearance < 0.0 || min_self_clearance < 0.0; }
 };

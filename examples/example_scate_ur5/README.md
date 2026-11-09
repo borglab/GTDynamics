@@ -15,6 +15,8 @@ as encoder readings and obstacle measurements arrive (the paper's Algorithm 1).
 | `sphere_collision.h` | `SphereCollisionModel`: any arm's collision spheres with `ObstacleSDFFactorGP` and `SelfCollisionSphereFactorGP` |
 | `ur5_collision.h` | The UR5's spheres and self-collision pairs (`Ur5CollisionModel`) |
 | `scate_scenario.h` | The bodies of `scate_init` and `scate_online`, shared with the UR10e |
+| `scate_reactive.h` | Reactive SCATE with motion-capture sensing and moving obstacles: `MarkerMeasurementFactor`, `ReactivePlanner`, closed loop |
+| `scate_reactive_scenario.h` | The body of `scate_ur10e_reactive`: obstacles crossing the plan, reactive vs frozen vs blind |
 | `scate_replay.h` | Writes a run to `replay.json` |
 
 ## Running
@@ -40,7 +42,8 @@ The same scenario runs on the UR10e in
 [`examples/example_scate_ur10e`](../example_scate_ur10e/README.md), which
 reuses every header here except `ur5_collision.h`.
 
-The tests are in `tests/`: `testTrajectoryInit`, `testScateGraph`,
+The tests are in `tests/`: `testScateReactive` (reactive SCATE on a toy
+robot), `testTrajectoryInit`, `testScateGraph`,
 `testScateInit`, `testUr5Collision` and `testScateOnline`
 (`make -j6 testScateOnline.run`). The dynamics factor has its own test,
 `testDoubleIntegratorFactor`.
