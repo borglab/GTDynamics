@@ -1,4 +1,5 @@
-import { scatePaper } from '../../scate/ur5/src/paper.js';
+import { scatePaper as scateUr5Paper } from '../../scate/ur5/src/paper.js';
+import { scatePaper as scateUr10ePaper } from '../../scate/ur10e/src/paper.js';
 import { urdfPaper } from '../../urdf/src/paper.js';
 // Presentation only: numerical settings and results remain in the recordings.
 const contact = {
@@ -48,7 +49,8 @@ const gauge = {
 
 export const papers = {
   urdf: urdfPaper,
-  'scate/ur5': scatePaper,
+  'scate/ur5': { ...scateUr5Paper, next: 'scate/ur10e', nextTitle: 'SCATE UR10e' },
+  'scate/ur10e': scateUr10ePaper,
   'contact-labels': {
     abstract: 'This app infers left, right, and double support from G1 foot motion using a discrete factor graph. Max-product combines displacement and joint-velocity evidence with walking priors; the resulting phases supply the contact schedule for initialization. For the default 24–44 s clip with velocity aiding and walking constraints, recorded max-product inference took 0.113 s.',
     motivation: 'A velocity threshold alone can produce isolated labels or contradictory support assignments. Contact timing matters because it determines which observations share a stationary foothold. Combining local measurements with temporal and cross-foot assumptions makes that timing explicit and inspectable.',

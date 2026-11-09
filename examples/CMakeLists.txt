@@ -17,6 +17,7 @@ set(EXAMPLE_SUBDIRS
     example_spider_walking
     example_constraint_manifold
     example_scate_ur5
+    example_scate_ur10e
     # example_talos_walking # In progress
   )
 

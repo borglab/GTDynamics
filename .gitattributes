@@ -10,3 +10,5 @@ apps/motion-planning/docs/demo.gif filter=lfs diff=lfs merge=lfs -text
 apps/kinodynamics/docs/*.png filter=lfs diff=lfs merge=lfs -text
 apps/scate/ur5/public/*.json filter=lfs diff=lfs merge=lfs -text
 apps/scate/ur5/docs/*.png filter=lfs diff=lfs merge=lfs -text
+apps/scate/ur10e/public/*.json filter=lfs diff=lfs merge=lfs -text
+apps/scate/ur10e/docs/*.png filter=lfs diff=lfs merge=lfs -text

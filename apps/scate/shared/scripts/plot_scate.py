@@ -11,7 +11,8 @@
 
 """plot_scate.py - plots and a 3D replay page for a SCATE closed-loop run.
 
-Reads the replay.json written by scate_online (scate_replay.h) and writes:
+Reads the replay.json written by scate_online or scate_ur10e_online
+(scate_replay.h) and writes:
   scate_dashboard.png  clearances, obstacle estimate, tool path, solver stats
   scate_joints.png     joint angles per joint: online, blind, offline plan
   scate_controls.png   executed controls per joint, with the limits
@@ -20,7 +21,9 @@ Reads the replay.json written by scate_online (scate_replay.h) and writes:
                        the same Vue app, bundled with all scripts and styles
                        for offline viewing; requires Node.js 22+ and npm)
 
-Usage:  python3 plot_scate.py [replay.json] [--out DIR] [--no-open] [--no-html] [--show]
+Usage:  python3 plot_scate.py [replay.json] [--app ur5|ur10e] [--out DIR] [--no-open]
+                              [--no-html] [--show]
+--app picks the SCATE app (apps/scate/<app>) whose meshes the 3D page uses.
 PNG plots need numpy and matplotlib; HTML export also needs the npm workspace.
 """
 
@@ -464,7 +467,7 @@ def per_joint(d, runs, out, what):
 
 
 # The standalone artifact is built from the same source as the hosted app.
-APP_DIR = Path(__file__).resolve().parents[1]
+SCATE_APPS_DIR = Path(__file__).resolve().parents[2]
 
 
 def _inline_json(name, obj):
@@ -473,16 +476,17 @@ def _inline_json(name, obj):
     return f"<script>window.{name} = {text};</script>\n"
 
 
-def write_viewer(replay_path, d, out_html):
+def write_viewer(replay_path, d, out_html, app="ur5"):
     """Build and inline the app, styles, meshes, and selected run for offline use."""
+    app_dir = SCATE_APPS_DIR / app
     subprocess.run(
-        ["npm", "run", "build:standalone", "--workspace", "scate/ur5"],
-        cwd=APP_DIR.parents[1],
+        ["npm", "run", "build:standalone", "--workspace", f"scate/{app}"],
+        cwd=SCATE_APPS_DIR.parent,
         check=True,
     )
-    bundle = APP_DIR / "dist-standalone"
+    bundle = app_dir / "dist-standalone"
     page = (bundle / "index.html").read_text()
-    meshes = json.loads((APP_DIR / "public" / "meshes.json").read_text())
+    meshes = json.loads((app_dir / "public" / "meshes.json").read_text())
 
     def script(match):
         source = (bundle / match[1].removeprefix("./")).read_text()
@@ -512,6 +516,9 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     p.add_argument("replay", nargs="?", default="replay.json")
+    p.add_argument(
+        "--app", default="ur5", choices=("ur5", "ur10e"), help="SCATE app of the robot"
+    )
     p.add_argument("--out", default=".", help="output directory")
     p.add_argument("--no-html", action="store_true", help="skip the 3D replay page")
     p.add_argument(
@@ -534,7 +541,9 @@ def main():
 
     html = None
     if not a.no_html:
-        html = write_viewer(a.replay, d, os.path.join(a.out, "scate_replay.html"))
+        html = write_viewer(
+            a.replay, d, os.path.join(a.out, "scate_replay.html"), app=a.app
+        )
         if html:
             print("wrote", html)
     if html and not a.no_open:

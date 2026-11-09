@@ -12,7 +12,9 @@ as encoder readings and obstacle measurements arrive (the paper's Algorithm 1).
 | `build_scate_graph.h` | Offline graph: endpoint priors, `DoubleIntegratorFactor`, `JointLimitFactorVector` hinges |
 | `scate_init.h` | UR5 loading, FK/IK, start and goal, robot limits to `GraphSpec` |
 | `scate_online.h` | `CollisionModel` interface, `ObstacleMeasurementFactor`, `OnlinePlanner`, closed-loop simulation |
-| `ur5_collision.h` | UR5 collision spheres with `ObstacleSDFFactorGP` and `SelfCollisionSphereFactorGP` |
+| `sphere_collision.h` | `SphereCollisionModel`: any arm's collision spheres with `ObstacleSDFFactorGP` and `SelfCollisionSphereFactorGP` |
+| `ur5_collision.h` | The UR5's spheres and self-collision pairs (`Ur5CollisionModel`) |
+| `scate_scenario.h` | The bodies of `scate_init` and `scate_online`, shared with the UR10e |
 | `scate_replay.h` | Writes a run to `replay.json` |
 
 ## Running
@@ -33,6 +35,10 @@ argument; `scate_online` takes a random seed as the second.
 The 3D viewer and the plot script live in the SCATE app,
 [`apps/scate/ur5`](../../apps/scate/ur5/README.md), which replays the
 checked-in run in the GTDynamics apps site.
+
+The same scenario runs on the UR10e in
+[`examples/example_scate_ur10e`](../example_scate_ur10e/README.md), which
+reuses every header here except `ur5_collision.h`.
 
 The tests are in `tests/`: `testTrajectoryInit`, `testScateGraph`,
 `testScateInit`, `testUr5Collision` and `testScateOnline`

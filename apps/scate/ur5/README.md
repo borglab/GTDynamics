@@ -14,6 +14,10 @@ arm meshes in `public/meshes.json` come from the UR5 collision STLs in
 `models/urdfs/ur5`. The viewer can also open any other `replay.json`
 (Open replay.json, or drag and drop).
 
+The page, viewer and plot script are shared with the
+[SCATE UR10e](../ur10e/README.md) app and live in `apps/scate/shared`; this
+folder holds the UR5's recording, meshes and tests.
+
 The page follows the shared app format: abstract, interactive replay, motivation,
 factor graph and equations, recorded results, and discussion. The graph and result
 plots select playback time. The implementation uses the shared `RobotViewport`
@@ -53,7 +57,7 @@ cmake --build . --target scate_online.plot     # PNGs and a standalone page
 Commit the new `public/replay.json` (and `docs/dashboard.png` if it changed,
 from `build/examples/example_scate_ur5/scate_dashboard.png`).
 
-`scripts/plot_scate.py replay.json` writes the dashboard, joint and control
+`../shared/scripts/plot_scate.py replay.json --app ur5` writes the dashboard, joint and control
 plots, and `scate_replay.html`: this viewer as one file with the run built in,
 which opens without a server or network access. It needs numpy, matplotlib,
 Node.js 22+, and the installed npm workspace. The exporter runs

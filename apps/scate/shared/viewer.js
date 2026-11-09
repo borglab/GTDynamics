@@ -1,19 +1,28 @@
 import * as THREE from 'three';
-import { RobotViewport } from '../../../shared/RobotViewport.js';
-import { onThemeChange } from '../../../shared/theme.js';
+import { RobotViewport } from '../../shared/RobotViewport.js';
+import { onThemeChange } from '../../shared/theme.js';
 
-/** Replay saved world-frame link poses; no browser FK or native optimization. */
-export function createReplayViewer(root, { onReplay, onTime } = {}) {
+/** Mesh name (in meshes.json) of each UR link, shared by the UR5 and UR10e. */
+export const UR_MESH_FOR_LINK = {
+  base_link: "base", shoulder_link: "shoulder", upper_arm_link: "upperarm", forearm_link: "forearm",
+  wrist_1_link: "wrist1", wrist_2_link: "wrist2", wrist_3_link: "wrist3",
+};
+
+/**
+ * Replay saved world-frame link poses; no browser FK or native optimization.
+ * @param root page element holding the viewer's controls
+ * @param options.robotName robot name for the canvas label, e.g. "UR5"
+ * @param options.meshForLink mesh name in meshes.json for each link name in the replay
+ * @param options.onReplay called with each loaded replay
+ * @param options.onTime called with the playback time
+ */
+export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_MESH_FOR_LINK, onReplay, onTime } = {}) {
   let disposed = false;
   const loading = new AbortController(), events = new AbortController();
   const listen = (target, type, handler) => target.addEventListener(type, handler, { signal: events.signal });
 
 
   const $ = (id) => root.querySelector(`#${id}`);
-  const MESH_FOR_LINK = {
-    base_link: "base", shoulder_link: "shoulder", upper_arm_link: "upperarm", forearm_link: "forearm",
-    wrist_1_link: "wrist1", wrist_2_link: "wrist2", wrist_3_link: "wrist3",
-  };
 
   // ---------- theme ----------
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -73,7 +82,7 @@ export function createReplayViewer(root, { onReplay, onTime } = {}) {
   const viewport = new RobotViewport(stage, {
     background: '#eef1f3', fov: 40, near: .01, far: 50,
     controls: { minDistance: .1, maxDistance: 10, maxPolarAngle: Math.PI },
-    ariaLabel: 'UR5 replay; drag to orbit, scroll to zoom',
+    ariaLabel: `${robotName} replay; drag to orbit, scroll to zoom`,
   });
   const { scene, camera, controls } = viewport;
   viewport.addStage({ ground: false, grid: {size: 2, divisions: 20, colors: ['#dde2e6', '#e3e7ea']} });
@@ -112,7 +121,7 @@ export function createReplayViewer(root, { onReplay, onTime } = {}) {
   let playing = false, speed = 2;
   let objs = null;     // scene objects for the loaded replay
 
-  // The UR5 collision STLs (GTDynamics models/urdfs/ur5/collision), base64 in one file.
+  // The arm's collision STLs (GTDynamics models/urdfs/<robot>/collision), base64 in one file.
   // A standalone copy written by plot_scate.py embeds the meshes and the run
   // as window.SCATE_MESHES / window.SCATE_REPLAY; the hosted page fetches them.
   async function loadMeshes() {
@@ -186,7 +195,7 @@ export function createReplayViewer(root, { onReplay, onTime } = {}) {
     const arm = { links: [], spheres: [], group: new THREE.Group(), sph: new THREE.Group(), sphMat };
     for (const name of D.links) {
       const holder = new THREE.Group();
-      const geo = meshGeo[MESH_FOR_LINK[name]];
+      const geo = meshGeo[meshForLink[name]];
       if (geo) holder.add(new THREE.Mesh(geo, mat));
       arm.group.add(holder);
       arm.links.push(holder);
