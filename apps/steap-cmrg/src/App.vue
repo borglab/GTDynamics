@@ -36,6 +36,7 @@ function jump(index){scrub(segments.value[Math.min(Math.max(index,0),segments.va
 function tick(now){
   if(!playing.value)return;
   const time=start+(now-origin)/1000*speed.value;
+  start=time;origin=now;
   frame.value=frameAtTime(times.value,time);
   if(time>=times.value.at(-1))pause();else animation=requestAnimationFrame(tick);
 }

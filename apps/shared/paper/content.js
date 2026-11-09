@@ -157,7 +157,7 @@ export const papers = {
       { id: 'limits', name: 'Joint-angle limit costs', description: 'Limit factors penalize angles outside the configured joint range. Collision avoidance, wrench feasibility, and full dynamic trajectory optimization remain extensions to this kinematic example.' },
     ],
     discussion: 'MuJoCo tracks the optimized kinematic trajectory with position control, which introduces execution error. The Franka problem uses its own robot model and endpoint targets. Extending the G1 estimation pipeline toward dynamic motion planning requires contact consistency, actuator limits, and collision constraints in the optimization problem.',
-    next: 'steap-cmrg', nextTitle: 'CAST: A Collaborative Construction Application of STEAP',
+    next: 'scate/ur5', nextTitle: 'SCATE UR5',
   },
   'steap-cmrg': {
     abstract: 'This app shows two gantry-mounted ABB arms building a post-and-lintel frame from 2×4 stock. The setup presented in this visualization is a simplified version of the one in the original paper. GPMP2 plans every maneuver offline from an RRT-Connect seed under joint, floor, wood, cross-arm and learned dress-cable factors. STEAP then executes each plan against simulated disturbances, fusing measurement factors in an ISAM2 Bayes tree and replanning the remaining states. The recording stores nominal, replanned and executed tool paths for every maneuver.',
@@ -175,7 +175,6 @@ export const papers = {
       { id: 'interpolated', name: 'Interpolated collision checks', description: 'ObstacleSDFFactorGP, SelfCollisionSphereFactorGP and NNCableFactorGP repeat the clearance costs at Gaussian-process-interpolated times at five times in every interval, so clearances are also costed between support states.' },
       { id: 'measurement', name: 'STEAP measurement priors', description: 'After state k is commanded, PriorFactorVector(X(k), q measured) is added with diagonal standard deviations of 5 mm on gantry axes and 0.002° on arm joints. Only positions are measured; no velocity prior is added. ISAM2 re-linearizes and updates the unexecuted states.' },
     ],
-    discussion: 'The disturbances are simulated, so the replanned paths show how the method responds rather than how the cell behaves: each disturbance is an AR(1) process added after the command, and replanning cannot remove a disturbance applied after commanding. Spheres approximate the arm, tool and plank geometry, nails are kinematic events, and the wood is not simulated. Motion Planning above optimizes a single arm’s trajectory with kinematic factors; this tab adds environment, cable and multi-robot factors and the measurement update. SCATE UR5 next closes the same loop for an unknown obstacle.',
-    next: 'scate/ur5', nextTitle: 'SCATE UR5',
+    discussion: 'The disturbances are simulated, so the replanned paths show how the method responds rather than how the cell behaves: each disturbance is an AR(1) process added after the command, and replanning cannot remove a disturbance applied after commanding. Spheres approximate the arm, tool and plank geometry, nails are kinematic events, and the wood is not simulated. Motion Planning above optimizes a single arm’s trajectory with kinematic factors; this tab adds environment, cable and multi-robot factors and the measurement update. SCATE UR5 closes the same loop for an unknown obstacle.',
   },
 };
