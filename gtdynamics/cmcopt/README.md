@@ -12,6 +12,14 @@ CMC-Opt extends equality-only CM-Opt to manifolds with inequality boundaries and
 [Component coordinates for the linear step](ComponentCoordinates.md) explains
 the equality reduction, global sparse QP, and nonlinear retraction boundary.
 
+## Runtime types and values
+
+[IEConstraintManifold, CMPoint, and CMTangentSpace](IEConstraintManifold.md) define the public
+ownership boundary. The type owns factor definitions and operations; points own
+ambient identities and numerical state; tangent spaces own point-dependent
+geometry. Tangent increments are ordinary vectors. Automatic discovery remains
+the default; manual sharing and compiled implementations use the same optimizer.
+
 ## Source Note
 
 Equation references below are from Yetong Zhang's June 2024 thesis, *Constraint Manifold Optimization for Robotic Inference and Planning with Constraints*. The CMC-Opt material is primarily Chapter 4; metric-aware and approximate retraction variants are in Chapter 5.
@@ -73,13 +81,13 @@ This is the local component version of the CMC state space in thesis Eq. (4.2), 
 
 Pointers:
 
-- [identifyConnectedComponents](IEOptimizer.cpp#L87)
-- [IEOptimizer::identifyManifolds](IEOptimizer.cpp#L127)
-- [IEConstraintManifold](IEConstraintManifold.h#L25)
+- [identifyConnectedComponent](IEOptimizer.cpp#L81)
+- [IEOptimizer::identifyConnectedComponents](IEOptimizer.cpp#L127)
+- [CMPoint](CMPoint.h#L25)
 
-`IEOptimizer::identifyManifolds` builds one [IEConstraintManifold](IEConstraintManifold.h#L25) per connected component. That object is the central mathematical container for the local manifold-with-boundary.
+`IEOptimizer::identifyConnectedComponents` returns separate `types` and `points` collections. It currently builds one immutable `IEConstraintManifold` definition and one [CMPoint](CMPoint.h#L25) per connected component. Every point references its type and owns its numerical state and bindings; callers must not assume the collections have matching indices or counts. Explicit construction can already share one type across many points.
 
-## 3) IEConstraintManifold: Equality Basis + Active Set + Cone
+## 3) CMPoint: Equality Basis + Active Set + Cone
 
 The core CMC-Opt state for one component is:
 
@@ -96,15 +104,15 @@ where:
 
 Pointers:
 
-- [IEConstraintManifold](IEConstraintManifold.h#L25)
-- [IEConstraintManifold::activeIndices](IEConstraintManifold.h#L98)
-- [IEConstraintManifold::identifyActiveConstraints](IEConstraintManifold.cpp#L181)
-- [IEConstraintManifold::constructLinearization](IEConstraintManifold.cpp)
+- [CMPoint](CMPoint.h#L25)
+- [CMPoint::activeIndices](CMPoint.h#L98)
+- [IEConstraintManifold::identifyActive](IEConstraintManifold.cpp)
+- [IEConstraintManifold::linearize](IEConstraintManifold.cpp)
 - [TangentCone](TangentCone.h#L25)
 
 Implementation detail:
 
-- The equality tangent basis is still inherited from the CM-Opt machinery via `e_basis_`.
+- The type owns symbolic equality preparation and its certified constant affine basis. A point’s `CMTangentSpace` references a bound read-only view; nonlinear numerical bases are rebuilt per point. Basis algorithms remain shared with CM-Opt.
 - The new CMC-Opt contribution is the `active_indices_` set plus the `TangentCone` built from linearized active inequalities.
 - Thesis references: active/inactive inequality sets are Eqs. (4.3)-(4.4), and the tangent cone parameterized by the equality basis is Eqs. (4.14)-(4.16).
 
@@ -123,9 +131,9 @@ In code, active inequalities are either:
 
 Pointers:
 
-- [IEConstraintManifold::identifyActiveConstraints](IEConstraintManifold.cpp#L181)
-- [IEConstraintManifold constructor](IEConstraintManifold.h#L55)
-- [IEConstraintManifold::createWithNewValues](IEConstraintManifold.h#L87)
+- [IEConstraintManifold::identifyActive](IEConstraintManifold.cpp)
+- [IEConstraintManifold::point](IEConstraintManifold.cpp)
+- [Type-owned equality preparation](IEConstraintManifold.md#conditioning-and-retraction)
 
 That is the mechanism by which a trial step can enter a new boundary mode, keep an old mode, or rebuild the mode after retraction.
 
@@ -143,9 +151,9 @@ where $B_x$ is the equality tangent basis and $Dg_{\mathcal{A}}(x)$ is the Jacob
 
 Pointers:
 
-- [IEConstraintManifold::constructLinearization](IEConstraintManifold.cpp)
+- [IEConstraintManifold::linearize](IEConstraintManifold.cpp)
 
-The manifold constructs one [immutable local linearization](IEManifoldLinearization.h) per state. Cone projection and global LM QP assembly share its active inequality derivatives.
+The manifold constructs one [immutable local linearization](CMTangentSpace.h) per state. Cone projection and global LM QP assembly share its active inequality derivatives.
 
 Thesis reference: Eqs. (4.14)-(4.16) define the tangent cone as `v = B theta` with `K theta >= 0`, where `K = Dg_A(x) B`.
 
@@ -161,10 +169,10 @@ $$
 Pointers:
 
 - [TangentCone::project](TangentCone.cpp#L23)
-- [IEConstraintManifold::projectTangentCone](IEConstraintManifold.cpp#L79)
+- [CMPoint::projectTangentCone](CMPoint.cpp#L79)
 - [IEOptimizer::projectTangentCone](IEOptimizer.cpp#L185)
 
-`TangentCone::project` solves the convex IQP. `IEManifoldLinearization::project` maps the cone-local blocking set back to original inequality indices for `IEConstraintManifold::projectTangentCone`. `IEOptimizer::projectTangentCone` applies that componentwise across the whole problem.
+`TangentCone::project` solves the convex IQP. `CMTangentSpace::project` maps the cone-local blocking set back to original inequality indices for `CMPoint::projectTangentCone`. `IEOptimizer::projectTangentCone` applies that componentwise across the whole problem.
 
 Thesis reference: Eq. (4.31) projects a descent direction into the cone for one CMC. Eq. (4.42) applies the same projection componentwise across multiple CMCs. The code generalizes this projection to any trial vector, not only a gradient vector.
 
@@ -176,7 +184,7 @@ Mathematically, these are the active inequalities whose directional derivative w
 
 Pointers:
 
-- [IEConstraintManifold::blockingIndices](IEConstraintManifold.cpp#L121)
+- [CMPoint::blockingIndices](CMPoint.cpp#L121)
 - [IELMTrial::LinearUpdate](IELMOptimizerState.cpp)
 
 For LM, blocking sets come from the global QP solution, not a preliminary
@@ -277,18 +285,20 @@ inequalities directly, including nonlinear constraints involving multiple keys.
 It does not require an `InequalityModel`, construct a QCQP, or approximate
 nonlinear pose or trajectory equalities by a globally affine manifold.
 
-The component owns the recovery basis and projection geometry. For a known
-constant affine equality graph, set `IEConstraintManifold::Params::affineEqualities`
-to `true`: successor states share the numeric equality basis, avoiding repeated
-linearization and elimination. The default remains `false`, so nonlinear
-manifolds rebuild their numeric basis at each state. This option is a caller
+The type owns symbolic equality preparation and, for a certified constant affine
+equality graph, its local numerical basis. Set
+`IEConstraintManifold::Params::affineEqualities` to `true` to initialize that basis
+once per type and reuse it across independently constructed points and bindings.
+The default remains `false`, so nonlinear points rebuild their numerical basis
+from the type's prepared structure. This option is a caller
 contract about fixed affine equations in Euclidean variables; it is not inferred
 from one Jacobian and does not freeze active inequality faces.
 
-`IEConstraintManifold::projectionMetric()` caches a `TangentSpaceMetric` containing
-recovery maps and Cholesky whitening of `B' W B`. Affine successor states share
-this immutable geometry. Changes to effective prior weights or selected keys
-invalidate the cache; independent components do not share it. The metric follows
+`CMPoint::projectionMetric()` caches a `TangentSpaceMetric` containing
+recovery maps and Cholesky whitening of `B' W B` within one point's geometry.
+Each new point has a fresh metric cache; repeated queries on that point reuse
+matching weights. Changes to effective prior weights or selected keys invalidate
+the cache without changing the type's equality geometry. The metric follows
 the existing prior sigma conventions, including optional varying sigmas and
 partial priors. Only the target and common trial-length normalization change
 per retraction. Equality factors must remain unchanged during an affine solve.
@@ -345,8 +355,8 @@ Pointers:
 - [IEOptimizer::identifyChangeIndices](IEOptimizer.h#L115)
 - [IEOptimizer::identifyApproachingIndices](IEOptimizer.cpp#L284)
 - [IELMOptimizer::checkModeChange](IELMOptimizer.cpp#L133)
-- [IEConstraintManifold::moveToBoundary](IEConstraintManifold.cpp#L146)
-- [IEManifoldValues::moveToBoundaries](IEConstraintManifoldUtils.cpp#L25)
+- [CMPoint::moveToBoundary](CMPoint.cpp#L146)
+- [movePointsToBoundaries](CMPoints.cpp)
 - [BarrierRetractor::moveToBoundary](BarrierRetractor.cpp)
 
 This is where CMC-Opt moves from a purely smooth local method to a boundary-mode method.
@@ -365,7 +375,7 @@ The full LM loop is:
 
 Pointers:
 
-- [IELMOptimizer::optimizeManifolds](IELMOptimizer.cpp#L31)
+- [IELMOptimizer::optimize](IELMOptimizer.cpp#L31)
 - [IELMOptimizer::iterate](IELMOptimizer.cpp#L73)
 - [IELMOptimizer::checkModeChange](IELMOptimizer.cpp#L133)
 - [IELMState::fromLastIteration](IELMOptimizerState.cpp#L36)
@@ -391,7 +401,7 @@ Pointers:
 - [IEGDTrial](IEGDOptimizer.h#L83)
 - [IEGDOptimizer](IEGDOptimizer.h#L124)
 - [IEGDState::computeDescentDirection](IEGDOptimizer.cpp#L51)
-- [IEGDTrial::computeNewManifolds](IEGDOptimizer.cpp#L93)
+- [IEGDTrial::computeNewPoints](IEGDOptimizer.cpp)
 - [IEGDOptimizer::iterate](IEGDOptimizer.cpp#L175)
 - [IEGDOptimizer::checkModeChange](IEGDOptimizer.cpp#L287)
 
@@ -414,7 +424,7 @@ Thesis reference: metric retractions are written generically in Eq. (5.12), with
 If you want to trace the math in code order, read these files in this order:
 
 1. [IEOptimizer.h](IEOptimizer.h#L31) and [IEOptimizer.cpp](IEOptimizer.cpp#L85)
-2. [IEConstraintManifold.h](IEConstraintManifold.h#L25) and [IEConstraintManifold.cpp](IEConstraintManifold.cpp#L181)
+2. [CMPoint.h](CMPoint.h#L25) and [CMPoint.cpp](CMPoint.cpp)
 3. [TangentCone.h](TangentCone.h#L25) and [TangentCone.cpp](TangentCone.cpp#L23)
 4. [IELMOptimizerState.h](IELMOptimizerState.h#L35) and [IELMOptimizerState.cpp](IELMOptimizerState.cpp#L493)
 5. [IERetractor.h](IERetractor.h) and [IERetractor.cpp](IERetractor.cpp)
@@ -428,9 +438,10 @@ CMC-Opt reuses the equality-manifold machinery from CM-Opt and adds active sets,
 
 ## Shared affine projection for AL and Barrier retraction
 
-`IEConstraintManifold` owns the equality basis. With
-`IEConstraintManifold::Params::affineEqualities = true`, successive states reuse
-that numeric basis and its projection-metric cache. This is an explicit contract
+`CMTangentSpace` holds a read-only equality basis view. With
+`IEConstraintManifold::Params::affineEqualities = true`, the type owns a numerical
+basis shared across independent points. Projection-metric caches remain local to
+each point. This is an explicit contract
 for affine equalities in Euclidean variables; nonlinear manifolds continue to
 rebuild their bases.
 

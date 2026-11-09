@@ -13,7 +13,7 @@
 
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/constrained/LinearConstraint.h>
@@ -32,7 +32,7 @@ namespace affine_projection {
 
 constexpr Key kX = 1, kY = 2;
 
-IEConstraintManifold manifold(
+CMPoint makePoint(
     const Values &values, const NonlinearEqualityConstraints &equalities = {},
     const NonlinearInequalityConstraints &inequalities = {},
     const IERetractorParams::shared_ptr &metric =
@@ -45,9 +45,9 @@ IEConstraintManifold manifold(
   params->equalityBasisCreator = basis;
   params->retractorCreator = std::make_shared<UniversalIERetractorCreator>(
       std::make_shared<ReducedALRetractor>(metric, settings));
-  return IEConstraintManifold(
-      params, std::make_shared<NonlinearEqualityConstraints>(equalities),
-      std::make_shared<NonlinearInequalityConstraints>(inequalities), values);
+  const auto type = std::make_shared<IEConstraintManifold>(
+      equalities, inequalities, values, *params);
+  return type->point(values);
 }
 
 NonlinearInequalityConstraint::shared_ptr bound(
@@ -66,7 +66,7 @@ Values scalarVector(double value) {
 TEST(ReducedALRetractor, ZeroStepIdentity) {
   NonlinearInequalityConstraints inequalities;
   inequalities.push_back(bound(0, QuadraticConstraint::Sense::GreaterEqual));
-  const auto start = manifold(scalarVector(1.25), {}, inequalities);
+  const auto start = makePoint(scalarVector(1.25), {}, inequalities);
   const auto result = start.retract(start.values().zeroVectors());
   EXPECT(assert_equal(start.values(), result.values(), 1e-12));
   EXPECT(result.activeIndices().empty());
@@ -76,7 +76,7 @@ TEST(ReducedALRetractor, ZeroStepIdentity) {
 TEST(ReducedALRetractor, FeasibleTrialSkipsAL) {
   NonlinearInequalityConstraints inequalities;
   inequalities.push_back(bound(2, QuadraticConstraint::Sense::LessEqual));
-  const auto start = manifold(scalarVector(0), {}, inequalities);
+  const auto start = makePoint(scalarVector(0), {}, inequalities);
   VectorValues delta;
   delta.insert(kX, Vector1(1));
   IERetractionInfo info;
@@ -84,9 +84,11 @@ TEST(ReducedALRetractor, FeasibleTrialSkipsAL) {
   EXPECT_DOUBLES_EQUAL(1, result.values().at<Vector>(kX)(0), 0);
   EXPECT_LONGS_EQUAL(1, info.numFeasibleTrials);
   EXPECT_LONGS_EQUAL(0, info.numALSolveCalls);
-  EXPECT(start.eBasis() == result.eBasis());
+  EXPECT(assert_equal(start.toAmbient(Vector::Ones(start.dim())),
+                        result.toAmbient(Vector::Ones(result.dim()))));
   IERetractorParams metric;
-  EXPECT(start.projectionMetric(metric) == result.projectionMetric(metric));
+  EXPECT(assert_equal(start.projectionMetric(metric)->costJacobian(),
+                      result.projectionMetric(metric)->costJacobian()));
 
   // A feasible interior point cannot satisfy a request to land on the face.
   IERetractionInfo forced;
@@ -113,7 +115,7 @@ TEST(ReducedALRetractor, AffineMetricReuseAndInvalidation) {
   auto weights = IERetractorParams::createVaryingSigmas(LevenbergMarquardtParams());
   weights->metricSigmas->insert(kX, Vector1(1));
   weights->metricSigmas->insert(kY, Vector1(2));
-  const auto start = manifold(values, equalities, {}, weights);
+  const auto start = makePoint(values, equalities, {}, weights);
   auto first = start.projectionMetric(*weights);
   EXPECT(first == start.projectionMetric(*weights));
   VectorValues delta;
@@ -125,13 +127,14 @@ TEST(ReducedALRetractor, AffineMetricReuseAndInvalidation) {
   EXPECT_LONGS_EQUAL(1, info.numFeasibleProjections);
   EXPECT_DOUBLES_EQUAL(1, projected.values().at<Vector>(kX)(0), 1e-12);
   EXPECT_DOUBLES_EQUAL(2, projected.values().at<Vector>(kY)(0), 1e-12);
-  EXPECT(first == projected.projectionMetric(*weights));
+  EXPECT(assert_equal(first->costJacobian(),
+                      projected.projectionMetric(*weights)->costJacobian()));
 
   weights->metricSigmas->at(kY)(0) = 1;
   auto changed = start.projectionMetric(*weights);
   EXPECT(first != changed);
   EXPECT_DOUBLES_EQUAL(0.4,
-      start.retract(delta).values().at<Vector>(kX)(0), 1e-12);
+      start.retract(delta, {}, nullptr, weights->metricSigmas.get()).values().at<Vector>(kX)(0), 1e-12);
   // A returned immutable metric remains valid after another metric replaces it.
   EXPECT_DOUBLES_EQUAL(1, first->recover(first->project(delta)).at(kX)(0), 1e-12);
   auto partial = start.projectionMetric(*weights, KeyVector{kX});
@@ -143,7 +146,7 @@ TEST(ReducedALRetractor, AffineMetricReuseAndInvalidation) {
   EXPECT(scaled != partial);
   EXPECT_DOUBLES_EQUAL(2, scaled->recover(scaled->project(delta)).at(kX)(0), 1e-12);
   // Independent components must not share caches merely because keys match.
-  const auto independent = manifold(values, equalities, {}, weights);
+  const auto independent = makePoint(values, equalities, {}, weights);
   EXPECT(independent.projectionMetric(*weights) != start.projectionMetric(*weights));
 }
 
@@ -170,11 +173,12 @@ TEST(ReducedALRetractor, NonlinearManifoldRebuildsBasisAndMetric) {
   Values a, b;
   a.insert(kX, Vector(Vector2(1, 0)));
   b.insert(kX, Vector(Vector2(0, 1)));
-  IEConstraintManifold start(params, equalities,
-      std::make_shared<NonlinearInequalityConstraints>(), a);
+  const auto startType = std::make_shared<IEConstraintManifold>(
+      *equalities, NonlinearInequalityConstraints{}, a, *params);
+  CMPoint start = startType->point(a);
   IERetractorParams metric;
   auto first = start.projectionMetric(metric);
-  const auto next = start.createWithNewValues(b);
+  const auto next = start.manifold()->point(start.bindings(), b);
   EXPECT(start.eBasis() != next.eBasis());
   EXPECT(first != next.projectionMetric(metric));
   EXPECT_DOUBLES_EQUAL(0, start.eBasis()->recoverJacobian(kX)(0, 0), 1e-12);
@@ -189,7 +193,7 @@ TEST(ReducedALRetractor, BoundSignsAndNewActiveConstraint) {
     inequalities.push_back(
         bound(sign, lower ? QuadraticConstraint::Sense::GreaterEqual
                           : QuadraticConstraint::Sense::LessEqual));
-    const auto start = manifold(scalarVector(0), {}, inequalities);
+    const auto start = makePoint(scalarVector(0), {}, inequalities);
     EXPECT(start.activeIndices().empty());
     VectorValues delta;
     delta.insert(kX, Vector1(2 * sign));
@@ -209,7 +213,7 @@ TEST(ReducedALRetractor, RejectsFeasibleButUnconvergedSolve) {
   inequalities.push_back(bound(1, QuadraticConstraint::Sense::LessEqual));
   ReducedALRetractor::Settings settings;
   settings.al.lmParams.maxIterations = 0;
-  const auto start = manifold(
+  const auto start = makePoint(
       scalarVector(0), {}, inequalities, std::make_shared<IERetractorParams>(),
       std::make_shared<OrthonormalBasisCreator>(), settings);
   VectorValues delta;
@@ -223,7 +227,7 @@ TEST(ReducedALRetractor, RejectsZeroOuterIterationBudget) {
   inequalities.push_back(bound(1, QuadraticConstraint::Sense::LessEqual));
   ReducedALRetractor::Settings settings;
   settings.al.maxIterations = 0;
-  const auto start = manifold(
+  const auto start = makePoint(
       scalarVector(0), {}, inequalities, std::make_shared<IERetractorParams>(),
       std::make_shared<OrthonormalBasisCreator>(), settings);
   VectorValues delta;
@@ -235,7 +239,7 @@ TEST(ReducedALRetractor, RejectsZeroOuterIterationBudget) {
 TEST(ReducedALRetractor, LargeTrialProjection) {
   NonlinearInequalityConstraints inequalities;
   inequalities.push_back(bound(0, QuadraticConstraint::Sense::LessEqual));
-  const auto start = manifold(scalarVector(0), {}, inequalities);
+  const auto start = makePoint(scalarVector(0), {}, inequalities);
   for (double trial : {1000.0, 3000.0, 1e6}) {
     VectorValues delta;
     delta.insert(kX, Vector1(trial));
@@ -249,7 +253,7 @@ TEST(ReducedALRetractor, LargeTrialProjection) {
 TEST(ReducedALRetractor, BlockingFaceAndMoveToBoundary) {
   NonlinearInequalityConstraints inequalities;
   inequalities.push_back(bound(0, QuadraticConstraint::Sense::GreaterEqual));
-  const auto start = manifold(scalarVector(1), {}, inequalities);
+  const auto start = makePoint(scalarVector(1), {}, inequalities);
   IndexSet blocking;
   blocking.insert(0);
   VectorValues delta;
@@ -276,7 +280,7 @@ TEST(ReducedALRetractor, WeightedAffineEliminationProjection) {
   metric->metricSigmas->insert(kY, Vector1(2));
   auto basis = std::make_shared<EliminationBasisCreator>(
       [](const KeyVector &) { return KeyVector{kX}; });
-  const auto start = manifold(values, equalities, {}, metric, basis);
+  const auto start = makePoint(values, equalities, {}, metric, basis);
   EXPECT_LONGS_EQUAL(1, start.eBasis()->dim());
   VectorValues delta;
   delta.insert(kX, Vector1(2));
@@ -290,7 +294,7 @@ TEST(ReducedALRetractor, WeightedAffineEliminationProjection) {
   NonlinearInequalityConstraints inequalities;
   inequalities.push_back(bound(0.5, QuadraticConstraint::Sense::LessEqual));
   const auto constrained =
-      manifold(values, equalities, inequalities, metric, basis);
+      makePoint(values, equalities, inequalities, metric, basis);
   const auto onFace = constrained.retract(delta);
   EXPECT_DOUBLES_EQUAL(0.5, onFace.values().at<Vector>(kX)(0), 2e-8);
   EXPECT_DOUBLES_EQUAL(2, onFace.values().at<Vector>(kY)(0), 4e-8);
@@ -307,7 +311,7 @@ TEST(ReducedALRetractor, RejectsInfeasibleAffineAnchor) {
                            JacobianFactor(kX, Matrix::Constant(1, 1, -2), kY,
                                           Matrix::Identity(1, 1), Vector1(1)))
                            .createEqualityFactor());
-  const auto start = manifold(values, equalities);
+  const auto start = makePoint(values, equalities);
   CHECK_EXCEPTION(start.retract(values.zeroVectors()), std::invalid_argument);
 }
 
@@ -315,7 +319,7 @@ TEST(ReducedALRetractor, RejectsInfeasibleAffineAnchor) {
 TEST(ReducedALRetractor, RejectsNonEuclideanValues) {
   Values values;
   values.insert(kX, Pose3());
-  const auto start = manifold(values);
+  const auto start = makePoint(values);
   CHECK_EXCEPTION(start.retract(values.zeroVectors()), std::invalid_argument);
 }
 
@@ -324,7 +328,7 @@ TEST(ReducedALRetractor, RejectsInvalidBlockingIndex) {
   NonlinearInequalityConstraints inequalities;
   inequalities.push_back(bound(0, QuadraticConstraint::Sense::GreaterEqual));
   const auto values = scalarVector(1);
-  const auto start = manifold(values, {}, inequalities);
+  const auto start = makePoint(values, {}, inequalities);
   IndexSet invalid;
   invalid.insert(1);
   CHECK_EXCEPTION(start.retract(values.zeroVectors(), invalid),
@@ -336,7 +340,7 @@ TEST(ReducedALRetractor, EuclideanValueTypes) {
   Values values;
   values.insert(kX, 2.0);
   values.insert(kY, Vector3(1, 2, 3));
-  const auto start = manifold(values);
+  const auto start = makePoint(values);
   VectorValues delta;
   delta.insert(kX, Vector1(0.5));
   delta.insert(kY, Vector3(-1, 2, -3));
@@ -413,7 +417,7 @@ NonlinearEqualityConstraint::shared_ptr Cone::createEqualityConstraint() const {
   return std::make_shared<ConeBoundary>(*this);
 }
 
-IEConstraintManifold manifold(const Vector2 &force, double mu = 1) {
+CMPoint makePoint(const Vector2 &force, double mu = 1) {
   Values values;
   values.insert(kForce, Vector(force));
   NonlinearInequalityConstraints inequalities;
@@ -422,12 +426,12 @@ IEConstraintManifold manifold(const Vector2 &force, double mu = 1) {
                           QuadraticConstraint::Sense::GreaterEqual)
           .createInequalityFactor());
   inequalities.emplace_shared<Cone>(mu);
-  return affine_projection::manifold(values, {}, inequalities);
+  return affine_projection::makePoint(values, {}, inequalities);
 }
 
 // The anisotropic cone projection has a known answer away from its apex.
 TEST(ReducedALRetractor, EllipticAnalyticalProjection) {
-  const auto start = manifold(Vector2(1, 0), 0.5);
+  const auto start = makePoint(Vector2(1, 0), 0.5);
   VectorValues delta;
   delta.insert(kForce, Vector2(0, 2));
   const auto result = start.retract(delta);
@@ -448,7 +452,7 @@ TEST(ReducedALRetractor, ThreeDimensionalEllipticProjection) {
                           QuadraticConstraint::Sense::GreaterEqual)
           .createInequalityFactor());
   inequalities.emplace_shared<Cone>(Vector2(0.5, 0.25));
-  const auto start = affine_projection::manifold(values, {}, inequalities);
+  const auto start = affine_projection::makePoint(values, {}, inequalities);
   // At f=(2,.6,.4), grad(norm(t/mu)-n)=(-1,1.2,3.2).
   // Target=f+0.5*grad therefore has this exact metric projection.
   VectorValues delta;
@@ -463,7 +467,7 @@ TEST(ReducedALRetractor, ThreeDimensionalEllipticProjection) {
 
 // A negative normal target must project to the apex, not a negative sheet.
 TEST(ReducedALRetractor, ConeRejectsNegativeNormalSheet) {
-  const auto start = manifold(Vector2(1, 0));
+  const auto start = makePoint(Vector2(1, 0));
   for (double targetNormal : {-1.0, -1e-4}) {
     VectorValues delta;
     delta.insert(kForce, Vector2(targetNormal - 1, 0));
@@ -477,7 +481,7 @@ TEST(ReducedALRetractor, ConeRejectsNegativeNormalSheet) {
 // A polar-cone target projects to the nonsmooth apex. The original Jacobian
 // convention may still prevent AL convergence: failure must be explicit.
 TEST(ReducedALRetractor, ApexHasExplicitAlConvergenceFailure) {
-  const auto start = manifold(Vector2(1, 0));
+  const auto start = makePoint(Vector2(1, 0));
   VectorValues delta;
   delta.insert(kForce, Vector2(-2, 0.5));
   bool failed = false;
@@ -493,7 +497,7 @@ TEST(ReducedALRetractor, ApexHasExplicitAlConvergenceFailure) {
 
 // A zero trial at the nonsmooth apex must preserve the feasible anchor.
 TEST(ReducedALRetractor, ZeroForceZeroStepIdentity) {
-  const auto start = manifold(Vector2::Zero());
+  const auto start = makePoint(Vector2::Zero());
   const auto result = start.retract(start.values().zeroVectors());
   EXPECT(assert_equal(start.values(), result.values(), 1e-12));
   EXPECT(result.activeIndices().exists(0));

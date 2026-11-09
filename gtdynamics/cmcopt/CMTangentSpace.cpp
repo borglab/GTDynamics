@@ -4,18 +4,19 @@
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 /**
- * @file IEManifoldLinearization.cpp
+ * @file CMTangentSpace.cpp
  * @brief Share component geometry between cone projection and LM face checks.
- * @author GTDynamics contributors
+ * @author Yetong Zhang
+ * @author Frank Dellaert
  */
-#include <gtdynamics/cmcopt/IEManifoldLinearization.h>
+
+#include <gtdynamics/cmcopt/CMTangentSpace.h>
 
 #include <stdexcept>
 
 namespace gtdynamics {
-IEManifoldLinearization::IEManifoldLinearization(
-    const LinearIConstraintMap& tangentConstraints,
-    const LinearIConstraintMap& ambientConstraints) {
+CMTangentSpace::CMTangentSpace(const LinearIConstraintMap& tangentConstraints,
+                               const LinearIConstraintMap& ambientConstraints) {
   LinearInequalityConstraints coneConstraints;
   for (const auto& [index, constraint] : tangentConstraints) {
     const auto factor = constraint->createL2Factor();
@@ -24,6 +25,8 @@ IEManifoldLinearization::IEManifoldLinearization(
       throw std::invalid_argument(
           "CMC tangent inequalities must be unary, homogeneous, and "
           "soft-scaled");
+
+    // Raw rows serve directional checks; whitened rows serve QP assembly.
     const auto whitened = factor->whiten();
     Block block{factor->getA(factor->begin()), whitened.getA(whitened.begin()),
                 factor->get_model(), nullptr};
@@ -39,16 +42,33 @@ IEManifoldLinearization::IEManifoldLinearization(
     blocks_.emplace(index, std::move(block));
     indices_.insert(index);
   }
+
   cone_ = std::make_shared<TangentCone>(coneConstraints);
 }
 
-const Matrix& IEManifoldLinearization::rows(size_t index, bool whitened) const {
+CMTangentSpace::CMTangentSpace(const std::shared_ptr<const TangentSpaceBasis>& basis,
+                               const LinearIConstraintMap& tangent,
+                               const LinearIConstraintMap& ambient)
+    : CMTangentSpace(tangent, ambient) {
+  basis_ = basis;
+}
+
+TangentSpaceMetric::shared_ptr CMTangentSpace::projectionMetric(
+    const Values& values, const VectorValues& precisions, bool whiten) const {
+  std::lock_guard<std::mutex> lock(metricCache_->mutex);
+  if (!metricCache_->metric ||
+      !metricCache_->metric->matches(precisions, whiten))
+    metricCache_->metric = std::make_shared<TangentSpaceMetric>(
+        *basis_, values, precisions, whiten);
+  return metricCache_->metric;
+}
+
+const Matrix& CMTangentSpace::rows(size_t index, bool whitened) const {
   const auto& block = blocks_.at(index);
   return whitened ? block.whitened : block.raw;
 }
 
-IndexSet IEManifoldLinearization::violated(const Vector& delta,
-                                           double tolerance) const {
+IndexSet CMTangentSpace::violated(const Vector& delta, double tolerance) const {
   IndexSet result;
   for (const auto& [index, block] : blocks_)
     if (block.raw.rows() && (block.raw * delta).maxCoeff() > tolerance)
@@ -56,25 +76,24 @@ IndexSet IEManifoldLinearization::violated(const Vector& delta,
   return result;
 }
 
-bool IEManifoldLinearization::active(const Vector& delta,
-                                     const IndexSet& indices,
-                                     double tolerance) const {
+bool CMTangentSpace::active(const Vector& delta, const IndexSet& indices,
+                            double tolerance) const {
   for (size_t index : indices)
     if ((rows(index, true) * delta).norm() > tolerance) return false;
   return true;
 }
 
-std::pair<IndexSet, Vector> IEManifoldLinearization::project(
-    const Vector& delta) const {
+std::pair<IndexSet, Vector> CMTangentSpace::project(const Vector& delta) const {
   auto result = cone_->project(delta);
+
+  // Convert cone-local indices back to the original nonlinear block indices.
   const std::vector<size_t> original(indices_.begin(), indices_.end());
   IndexSet indices;
   for (size_t index : result.first) indices.insert(original.at(index));
   return {indices, std::move(result.second)};
 }
 
-IndexSet IEManifoldLinearization::blockingIndices(
-    const VectorValues& direction) const {
+IndexSet CMTangentSpace::blockingIndices(const VectorValues& direction) const {
   IndexSet indices;
   for (const auto& [index, block] : blocks_) {
     if (!block.ambient)
@@ -85,6 +104,8 @@ IndexSet IEManifoldLinearization::blockingIndices(
         derivative += block.ambient->getA(it) * direction.at(*it);
     if ((derivative.array() > 1e-5).any()) indices.insert(index);
   }
+
   return indices;
 }
+
 }  // namespace gtdynamics

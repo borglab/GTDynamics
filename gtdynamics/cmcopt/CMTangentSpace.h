@@ -4,13 +4,18 @@
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 /**
- * @file IEManifoldLinearization.h
+ * @file CMTangentSpace.h
  * @brief Immutable active-constraint geometry for one IE manifold state.
- * @author GTDynamics contributors
+ * @author Yetong Zhang
+ * @author Frank Dellaert
  */
+
 #pragma once
 
 #include <gtdynamics/cmcopt/TangentCone.h>
+#include <gtdynamics/cmopt/TangentSpaceMetric.h>
+
+#include <mutex>
 
 namespace gtdynamics {
 /** Active inequalities in one component's equality-tangent coordinates.
@@ -20,15 +25,28 @@ namespace gtdynamics {
  * metric used for QP assembly and face checks. Geometry belongs to a
  * single state and is shared read-only across LM trials and manifold copies.
  */
-class IEManifoldLinearization {
+class CMTangentSpace {
  public:
   /** Copy homogeneous unary tangent factors and optional ambient factors.
    * Input keys are replaced by the local projection key. Nonlocal, nonfinite,
    * nonzero-RHS, or hard-noise tangent factors throw invalid_argument.
    */
-  explicit IEManifoldLinearization(
-      const LinearIConstraintMap& tangentConstraints,
-      const LinearIConstraintMap& ambientConstraints = {});
+  explicit CMTangentSpace(const LinearIConstraintMap& tangentConstraints,
+                          const LinearIConstraintMap& ambientConstraints = {});
+
+  /// Complete point geometry with a read-only equality basis and fresh metrics.
+  CMTangentSpace(const std::shared_ptr<const TangentSpaceBasis>& basis,
+                 const LinearIConstraintMap& tangentConstraints,
+                 const LinearIConstraintMap& ambientConstraints);
+
+  /// Numerical equality basis at this point.
+  const std::shared_ptr<const TangentSpaceBasis>& basis() const {
+    return basis_;
+  }
+
+  /// Point-local projection metric; different effective weights never alias.
+  TangentSpaceMetric::shared_ptr projectionMetric(
+      const Values& values, const VectorValues& precisions, bool whiten) const;
 
   /// Original nonlinear indices of the cached active blocks.
   const IndexSet& indices() const { return indices_; }
@@ -51,6 +69,12 @@ class IEManifoldLinearization {
   IndexSet blockingIndices(const VectorValues& direction) const;
 
  private:
+  struct MetricCache {
+    std::mutex mutex;
+    TangentSpaceMetric::shared_ptr metric;
+  };
+  std::shared_ptr<const TangentSpaceBasis> basis_;
+  std::shared_ptr<MetricCache> metricCache_ = std::make_shared<MetricCache>();
   struct Block {
     Matrix raw;
     Matrix whitened;
@@ -61,4 +85,5 @@ class IEManifoldLinearization {
   IndexSet indices_;
   TangentCone::shared_ptr cone_;
 };
+
 }  // namespace gtdynamics

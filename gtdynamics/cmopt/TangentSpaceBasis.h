@@ -208,6 +208,11 @@ class OrthonormalBasis : public TangentSpaceBasis {
                    const Attributes::shared_ptr &attributes, const Matrix &mat)
       : TangentSpaceBasis(params), attributes_(attributes), basis_(mat) {}
 
+  /// Prepare layout and constraint structure without evaluating numerical values.
+  OrthonormalBasis(const NonlinearEqualityConstraints::shared_ptr &constraints,
+                   const std::map<Key, size_t> &dimensions,
+                   const TangentSpaceBasisParams::shared_ptr &params);
+
   /**
    * Constructor from another basis, reusing structural attributes.
    * @param values Current values.
@@ -445,11 +450,17 @@ class EliminationBasis : public TangentSpaceBasis {
                    const TangentSpaceBasisParams::shared_ptr &params,
                    std::optional<const KeyVector> basis_keys = {});
 
+  /// Prepare independent coordinates and ordering without numerical values.
+  EliminationBasis(const NonlinearEqualityConstraints::shared_ptr &constraints,
+                   const std::map<Key, size_t> &dimensions,
+                   const TangentSpaceBasisParams::shared_ptr &params,
+                   std::optional<const KeyVector> basisKeys = {});
+
   /**
    * Recreate a basis at new values while reusing structural attributes.
    *
    * This is the path used by `createWithNewValues`, which is in turn called
-   * when `ConstraintManifold` or `IEConstraintManifold` creates a new manifold
+   * when `ConstraintManifold` or `CMPoint` creates a new manifold
    * state after retraction or between nonlinear iterations. It avoids
    * recomputing basis-key offsets and the symbolic ordering. If
    * `alwaysConstructBasis` is true, it still recomputes the numeric recovery
@@ -617,6 +628,23 @@ class TangentSpaceBasisCreator {
   TangentSpaceBasisCreator(TangentSpaceBasisParams::shared_ptr params) : params_(params) {}
 
   virtual ~TangentSpaceBasisCreator() {}
+  /// Copy construction snapshots numeric basis settings for runtime types.
+  TangentSpaceBasisCreator(const TangentSpaceBasisCreator &other)
+      : params_(std::make_shared<TangentSpaceBasisParams>(*other.params_)) {}
+  /// Capture a policy without retaining caller-mutable settings.
+  virtual shared_ptr clone() const {
+    throw std::invalid_argument(
+        "A CMC basis policy must support immutable snapshots");
+  }
+
+  /** Prepare immutable structure from slot metadata, with no linearization.
+   * Legacy create() retains its existing eager/lazy numerical behavior.
+   */
+  virtual std::shared_ptr<const TangentSpaceBasis> prepare(
+      const NonlinearEqualityConstraints::shared_ptr constraints,
+      const std::map<Key, size_t> &dimensions) const {
+    throw std::invalid_argument("CMC basis policy lacks structural preparation");
+  }
 
   /**
    * Create a basis object for a component.
@@ -636,6 +664,12 @@ class TangentSpaceBasisCreator {
  */
 class OrthonormalBasisCreator : public TangentSpaceBasisCreator {
  public:
+  /// Immutable snapshot for runtime manifold definitions.
+  TangentSpaceBasisCreator::shared_ptr clone() const override {
+    return std::make_shared<OrthonormalBasisCreator>(*this);
+  }
+
+ public:
   OrthonormalBasisCreator(TangentSpaceBasisParams::shared_ptr params =
                               std::make_shared<TangentSpaceBasisParams>())
       : TangentSpaceBasisCreator(params) {}
@@ -647,6 +681,15 @@ class OrthonormalBasisCreator : public TangentSpaceBasisCreator {
   }
 
   virtual ~OrthonormalBasisCreator() {}
+
+  std::shared_ptr<const TangentSpaceBasis> prepare(
+      const NonlinearEqualityConstraints::shared_ptr constraints,
+      const std::map<Key, size_t> &dimensions) const override {
+    return std::make_shared<OrthonormalBasis>(
+        constraints, dimensions,
+        std::make_shared<TangentSpaceBasisParams>(*params_));
+  }
+
 
   TangentSpaceBasis::shared_ptr create(
       const NonlinearEqualityConstraints::shared_ptr constraints,
@@ -668,6 +711,12 @@ class OrthonormalBasisCreator : public TangentSpaceBasisCreator {
  * @see README.md#tangent-basis
  */
 class EliminationBasisCreator : public TangentSpaceBasisCreator {
+ public:
+  /// Immutable snapshot for runtime manifold definitions.
+  TangentSpaceBasisCreator::shared_ptr clone() const override {
+    return std::make_shared<EliminationBasisCreator>(*this);
+  }
+
  protected:
   BasisKeyFunction basisKeyFunction;
 
@@ -695,14 +744,34 @@ class EliminationBasisCreator : public TangentSpaceBasisCreator {
   EliminationBasisCreator(BasisKeyFunction basisKeyFunction,
                           TangentSpaceBasisParams::shared_ptr params =
                               std::make_shared<TangentSpaceBasisParams>(true))
-      : TangentSpaceBasisCreator(params), basisKeyFunction(basisKeyFunction) {}
+      : TangentSpaceBasisCreator(params){ if(basisKeyFunction) {
+      const auto snapshot =
+          std::make_shared<const BasisKeyFunction>(std::move(basisKeyFunction));
+      this->basisKeyFunction = [snapshot](const KeyVector &keys) {
+        return (*snapshot)(keys);
+      };
+    }
+  }
 
   virtual ~EliminationBasisCreator() {}
+
+  std::shared_ptr<const TangentSpaceBasis> prepare(
+      const NonlinearEqualityConstraints::shared_ptr constraints,
+      const std::map<Key, size_t> &dimensions) const override {
+    KeyVector keys;
+    for (const auto &[key, dimension] : dimensions) keys.push_back(key);
+    auto settings = std::make_shared<TangentSpaceBasisParams>(*params_);
+    if (settings->useBasisKeys)
+      return std::make_shared<EliminationBasis>(
+          constraints, dimensions, settings, basisKeyFunction(keys));
+    return std::make_shared<EliminationBasis>(constraints, dimensions, settings);
+  }
+
 
   /**
    * Create basis for one constraint-connected component.
    *
-   * This is executed when a `ConstraintManifold` or `IEConstraintManifold`
+   * This is executed when a `ConstraintManifold` or `CMPoint`
    * creates the tangent basis for a component. It is not called on every
    * tangent lift, but it may be called again when a new manifold object is
    * created for updated values or active constraints. The returned basis

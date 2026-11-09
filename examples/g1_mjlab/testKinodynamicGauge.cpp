@@ -8,6 +8,7 @@
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/constrained/LinearConstraint.h>
 #include <gtsam/navigation/AttitudeFactor.h>
+
 #include <gtsam/slam/BetweenFactor.h>
 
 #include "KinodynamicGauge.h"
@@ -99,12 +100,14 @@ TEST(KinodynamicOrdering, RetireLandmarkBeforeSharedBias) {
   auto params = std::make_shared<IEConstraintManifold::Params>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
-  const auto manifolds =
-      IEOptimizer::identifyManifolds(equalities, {}, initial, params);
-  const Ordering expected{JointAngleKey(0, 5), JointAngleKey(0, 6), landmark,
-                          JointAngleKey(0, 7), bias};
+  const auto [types, points] =
+      IEOptimizer::identifyConnectedComponents(equalities, {}, initial, params);
+  const auto ownership = IEOptimizer::varToManifoldKeyMap(points);
+  const Ordering expected{ownership.at(JointAngleKey(0, 5)),
+                          ownership.at(JointAngleKey(0, 6)), landmark,
+                          ownership.at(JointAngleKey(0, 7)), bias};
   EXPECT(expected ==
-         g1_example::chronologicalOrdering(cost, manifolds, free, 5));
+         g1_example::chronologicalOrdering(cost, points, free, 5));
 }
 
 int main() {

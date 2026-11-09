@@ -21,19 +21,19 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-IEConstraintManifold
-CPBarrierRetractor::retract(const IEConstraintManifold *manifold,
+CMPoint
+CPBarrierRetractor::retract(const CMPoint *point,
                             const VectorValues &delta,
                             const std::optional<IndexSet> &blocking_indices,
                             IERetractionInfo *retract_info) const {
   const NonlinearInequalityConstraints &i_constraints =
-      *manifold->iConstraints();
-  const NonlinearEqualityConstraints &e_constraints = *manifold->eConstraints();
+      *point->iConstraints();
+  const NonlinearEqualityConstraints &e_constraints = *point->eConstraints();
 
   NonlinearFactorGraph graph;
 
   // optimize penalty
-  Values new_values = manifold->values().retract(delta);
+  Values new_values = point->values().retract(delta);
   auto prior_noise = noiseModel::Unit::Create(1);
   double mu = 1e2;
   for (const Key &key : new_values.keys()) {
@@ -57,7 +57,7 @@ CPBarrierRetractor::retract(const IEConstraintManifold *manifold,
   LevenbergMarquardtParams params;
   // params.setVerbosityLM("SUMMARY");
   // params.setlambdaUpperBound(1e10);
-  LevenbergMarquardtOptimizer optimizer(graph, manifold->values(), params);
+  LevenbergMarquardtOptimizer optimizer(graph, point->values(), params);
   Values opt_values = optimizer.optimize();
 
   // collect active indices
@@ -84,7 +84,7 @@ CPBarrierRetractor::retract(const IEConstraintManifold *manifold,
   LevenbergMarquardtOptimizer optimizer1(graph1, opt_values, params);
   Values result = optimizer1.optimize();
 
-  return manifold->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 } // namespace gtdynamics

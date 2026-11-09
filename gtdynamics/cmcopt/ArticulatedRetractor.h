@@ -28,6 +28,14 @@ namespace gtdynamics {
  * Each instance owns its mutable fixed-variable factors and metric parameters.
  */
 class ArticulatedRetractor : public IERetractor {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    auto copy = std::make_shared<ArticulatedRetractor>(*this);
+    detachFixedFactors(copy->adGraph_, copy->fixedFactors_);
+    return copy;
+  }
+
   std::shared_ptr<const Robot> robot_;
   LinkSharedPtr root_;
   size_t slice_;
@@ -38,16 +46,25 @@ class ArticulatedRetractor : public IERetractor {
   ReducedALRetractor::Settings settings_;
 
  public:
-  ArticulatedRetractor(const IEConstraintManifold& manifold,
+  ArticulatedRetractor(const CMPoint& point,
                        const std::shared_ptr<const Robot>& robot,
                        const std::string& rootName, const KeySet& independentAD,
                        const IERetractorParams::shared_ptr& params,
                        const ReducedALRetractor::Settings& settings = {});
 
-  IEConstraintManifold retract(const IEConstraintManifold* manifold,
+  CMPoint retract(const CMPoint* point,
                                const VectorValues& delta,
                                const std::optional<IndexSet>& blocking = {},
                                IERetractionInfo* info = nullptr) const override;
+
+ private:
+  friend class ArticulatedRetractorCreator;
+  ArticulatedRetractor(const CMPoint& point,
+                       const std::shared_ptr<const Robot>& robot,
+                       const LinkSharedPtr& root, const KeySet& independentAD,
+                       const IERetractorParams::shared_ptr& params,
+                       const ReducedALRetractor::Settings& settings);
+
 };
 
 /** Create a separate projection cache for each constraint component.
@@ -55,6 +72,14 @@ class ArticulatedRetractor : public IERetractor {
  * metric. Components copy it at construction, including the sigma map.
  */
 class ArticulatedRetractorCreator : public IERetractorCreator {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractorCreator::shared_ptr clone() const override {
+    auto copy = std::make_shared<ArticulatedRetractorCreator>(*this);
+    copy->projectionParams_ = IERetractorParams::snapshot(projectionParams_);
+    return copy;
+  }
+
   std::shared_ptr<const Robot> robot_;
   std::string rootName_;
   KeySet independentAD_;
@@ -62,12 +87,18 @@ class ArticulatedRetractorCreator : public IERetractorCreator {
   ReducedALRetractor::Settings settings_;
 
  public:
+  /// Freeze only this component's metric and independent-key selection.
+  IERetractorCreator::shared_ptr cloneFor(const KeySet& keys) const override;
   ArticulatedRetractorCreator(
       const std::shared_ptr<const Robot>& robot, const std::string& rootName,
       const KeySet& independentAD, const IERetractorParams::shared_ptr& params,
       const ReducedALRetractor::Settings& settings = {});
   virtual ~ArticulatedRetractorCreator() = default;
   IERetractor::shared_ptr create(
-      const IEConstraintManifold& manifold) const override;
+      const CMPoint& point) const override;
+
+ private:
+  LinkSharedPtr root_;
+
 };
 }  // namespace gtdynamics

@@ -1,8 +1,10 @@
 # Equality coordinates and the global tangent-cone QP
 
-CMC separates component geometry, the global linear step, and nonlinear
-retraction. This solver replacement is based on PR 472; component/value APIs
-and retraction algorithms remain unchanged.
+CMC separates [runtime types and points](IEConstraintManifold.md), numerical tangent
+geometry, the global linear step, and nonlinear retraction. A `IEConstraintManifold`
+defines constraint factors and operations; a `CMPoint` contains numerical state
+and ambient bindings; its `CMTangentSpace` owns B and active inequality rows.
+This type/value refactor builds on PR 476 and preserves the QP algorithms.
 
 ## Equality reduction
 

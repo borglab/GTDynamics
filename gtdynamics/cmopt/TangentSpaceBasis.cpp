@@ -72,22 +72,28 @@ Matrix OrthonormalBasis::computeConstraintJacobian(const Values &values) const {
 OrthonormalBasis::OrthonormalBasis(
     const NonlinearEqualityConstraints::shared_ptr &constraints,
     const Values &values, const TangentSpaceBasisParams::shared_ptr &params)
+    : OrthonormalBasis(constraints, values.dims(), params) {
+  if (params_->alwaysConstructBasis) construct(values);
+}
+
+OrthonormalBasis::OrthonormalBasis(
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const std::map<Key, size_t> &dimensions,
+    const TangentSpaceBasisParams::shared_ptr &params)
     : TangentSpaceBasis(params), attributes_(std::make_shared<Attributes>()) {
   // set attributes
   attributes_->total_constraint_dim = constraints->dim();
-  attributes_->total_var_dim = values.dim();
+  attributes_->total_var_dim = 0;
+  for (const auto &[key, dimension] : dimensions)
+    attributes_->total_var_dim += dimension;
   attributes_->total_basis_dim =
       attributes_->total_var_dim - attributes_->total_constraint_dim;
   attributes_->merit_graph = constraints->penaltyGraph();
   size_t position = 0;
-  for (const Key &key : values.keys()) {
-    size_t var_dim = values.at(key).dim();
+  for (const auto &[key, var_dim] : dimensions) {
     attributes_->var_dim[key] = var_dim;
     attributes_->var_location[key] = position;
     position += var_dim;
-  }
-  if (params_->alwaysConstructBasis) {
-    construct(values);
   }
 }
 
@@ -438,13 +444,25 @@ EliminationBasis::EliminationBasis(
     const NonlinearEqualityConstraints::shared_ptr &constraints,
     const Values &values, const TangentSpaceBasisParams::shared_ptr &params,
     std::optional<const KeyVector> basis_keys)
+    : EliminationBasis(constraints, values.dims(), params, basis_keys) {
+  if (params_->alwaysConstructBasis) construct(values);
+}
+
+EliminationBasis::EliminationBasis(
+    const NonlinearEqualityConstraints::shared_ptr &constraints,
+    const std::map<Key, size_t> &dimensions,
+    const TangentSpaceBasisParams::shared_ptr &params,
+    std::optional<const KeyVector> basis_keys)
     : TangentSpaceBasis(params), attributes_(std::make_shared<Attributes>()) {
   // Structural setup happens once for this basis object. It records the
   // component dimension, per-variable dimensions, and the constraint merit
   // graph used later for numeric construction. This part is not repeated by
   // computeTangentVector during retraction.
-  attributes_->total_basis_dim = values.dim() - constraints->dim();
-  attributes_->var_dim = values.dims();
+  attributes_->total_basis_dim = 0;
+  for (const auto &[key, dimension] : dimensions)
+    attributes_->total_basis_dim += dimension;
+  attributes_->total_basis_dim -= constraints->dim();
+  attributes_->var_dim = dimensions;
   attributes_->merit_graph = constraints->penaltyGraph();
 
   if (basis_keys) {
@@ -456,7 +474,7 @@ EliminationBasis::EliminationBasis(
     size_t location = 0;
     for (const Key &key : *basis_keys) {
       attributes_->basis_location.insert({key, location});
-      location += values.at(key).dim();
+      location += dimensions.at(key);
     }
     if (attributes_->total_basis_dim != location) {
       throw std::runtime_error(
@@ -484,13 +502,6 @@ EliminationBasis::EliminationBasis(
     attributes_->ordering.pop_back();
   }
 
-  // If requested, pay the expensive numeric construction immediately. If this
-  // flag is false, ConstraintManifold::makeSureBasisConstructed will call
-  // construct lazily on first recover-with-Jacobian, localCoordinates, or
-  // retract use.
-  if (params_->alwaysConstructBasis) {
-    construct(values);
-  }
 }
 
 /* ************************************************************************* */

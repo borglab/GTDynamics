@@ -17,12 +17,10 @@ GTDynamics is a library that allows the user to express the full kinodynamics co
 * [gtwrap](https://github.com/borglab/wrap)
 * [sdformat15](https://github.com/osrf/sdformat)
 
-The CMC QP integration currently requires the APIs in
-[GTSAM PR 2918](https://github.com/borglab/gtsam/pull/2918), including its
-prerequisites. Build GTSAM at `c940b44158d8bfa7394da233dd63aa225bc8fed2`
-from `codex/qp-dual-formulation`, then configure GTDynamics with
-`-DGTSAM_DIR=/path/to/gtsam/build`. CI pins this same tested revision; the
-current GTSAM `develop` branch does not yet provide the required APIs.
+Build GTSAM from its [develop branch](https://github.com/borglab/gtsam/tree/develop),
+which includes the QP APIs required by CMC. CI builds against `develop` as well.
+For a local GTSAM build, configure GTDynamics with
+`-DGTSAM_DIR=/path/to/gtsam/build`.
 
 ## Installing SDFormat
 

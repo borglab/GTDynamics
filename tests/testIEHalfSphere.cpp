@@ -61,7 +61,7 @@ TEST(HalfSphereRetractor, retract) {
   IEHalfSphere half_sphere(r);
   auto retractor = std::make_shared<HalfSphereRetractor>(half_sphere);
 
-  // Create manifold.
+  // Create point.
   auto e_constraints = std::make_shared<NonlinearEqualityConstraints>(
       half_sphere.eConstraints(0));
   auto i_constraints = std::make_shared<NonlinearInequalityConstraints>(
@@ -72,22 +72,24 @@ TEST(HalfSphereRetractor, retract) {
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
   Values values1;
   values1.insert(PointKey(0), Point3(3, 0, 0));
-  IEConstraintManifold manifold1(params, e_constraints, i_constraints, values1);
+  const auto point1Type = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values1, *params);
+  CMPoint point1 = point1Type->point(values1);
 
   // retract
   VectorValues delta1;
   delta1.insert(PointKey(0), Vector3(0, 3, 0));
-  auto new_manifold = retractor->retract(&manifold1, delta1);
+  auto newPoint = retractor->retract(&point1, delta1);
 
   // check new manifold
   Values expected_values1;
   expected_values1.insert(PointKey(0), Point3(3 / sqrt(2), 3 / sqrt(2), 0));
-  EXPECT(assert_equal(expected_values1, new_manifold.values()));
+  EXPECT(assert_equal(expected_values1, newPoint.values()));
 
   IndexSet expected_active_indices;
   expected_active_indices.insert(0);
   EXPECT(assert_container_equality(expected_active_indices,
-                                   new_manifold.activeIndices()));
+                                   newPoint.activeIndices()));
 }
 
 TEST(HalfSphere, Dome) {
@@ -107,7 +109,9 @@ TEST(HalfSphere, Dome) {
       std::make_shared<UniversalIERetractorCreator>(retractor);
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
-  IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *e_constraints, *i_constraints, values, *params);
+  CMPoint point = pointType->point(values);
 
   {
     VectorValues delta;
@@ -116,15 +120,15 @@ TEST(HalfSphere, Dome) {
     // check projected direction
     IndexSet tight_indices;
     VectorValues proj_delta;
-    std::tie(tight_indices, proj_delta) = manifold.projectTangentCone(delta);
+    std::tie(tight_indices, proj_delta) = point.projectTangentCone(delta);
     EXPECT(tight_indices.size() == 0);
     EXPECT(assert_equal(delta, proj_delta));
 
     // check retraction
     Values expected_values;
     expected_values.insert(point_key, Point3(1 / sqrt(2), 1 / sqrt(2), 0));
-    auto new_manifold = manifold.retract(delta, tight_indices);
-    EXPECT(assert_equal(expected_values, new_manifold.values()));
+    auto newPoint = point.retract(delta, tight_indices);
+    EXPECT(assert_equal(expected_values, newPoint.values()));
   }
 
   {
@@ -134,7 +138,7 @@ TEST(HalfSphere, Dome) {
     // check projected direction
     IndexSet tight_indices;
     VectorValues proj_delta;
-    std::tie(tight_indices, proj_delta) = manifold.projectTangentCone(delta);
+    std::tie(tight_indices, proj_delta) = point.projectTangentCone(delta);
     // At (1,0,0), the solid dome requires dx<=0. Remove the outward
     // radial component while retaining motion along the boundary.
     EXPECT(tight_indices.size() == 1);
@@ -146,13 +150,13 @@ TEST(HalfSphere, Dome) {
     // check retraction
     Values expected_values;
     expected_values.insert(point_key, Point3(1 / sqrt(2), 1 / sqrt(2), 0));
-    auto new_manifold = manifold.retract(proj_delta, tight_indices);
-    EXPECT(assert_equal(expected_values, new_manifold.values()));
+    auto newPoint = point.retract(proj_delta, tight_indices);
+    EXPECT(assert_equal(expected_values, newPoint.values()));
   }
   {
     VectorValues inward;
     inward.insert(point_key, Vector3(-1, 1, 0));
-    auto [active, projected] = manifold.projectTangentCone(inward);
+    auto [active, projected] = point.projectTangentCone(inward);
     EXPECT(active.empty());
     EXPECT(assert_equal(inward, projected));
   }

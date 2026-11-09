@@ -481,18 +481,19 @@ py::dict solve(
                                                     independentKeys, projection,
                                                     projectionSettings);
   auto start = Clock::now();
-  auto manifolds = IEOptimizer::identifyManifolds(equalities, inequalities,
-                                                  seed, manifoldParams);
-  const auto componentKeys = manifolds.keys();
+  auto components = IEOptimizer::identifyConnectedComponents(
+      equalities, inequalities, seed, manifoldParams);
+  auto& points = components.points;
+  const auto componentKeys = pointKeys(points);
   gtdynamics::internal::forIndependentComponents(
       componentKeys.size(), setting<size_t>(settings, "retractionThreads"),
       [&](size_t i) {
-        auto& manifold = manifolds.at(componentKeys[i]);
-        manifold = manifold.retract(manifold.values().zeroVectors());
+        auto& point = points.at(componentKeys[i]);
+        point = point.retract(point.values().zeroVectors());
       });
-  for (const auto& [key, manifold] : manifolds)
-    reducedDimension += manifold.eBasis()->dim();
-  Values initial = manifolds.baseValues();
+  for (const auto& [key, point] : points)
+    reducedDimension += point.eBasis()->dim();
+  Values initial = ambientValues(points);
   const Values unconstrained =
       IEOptimizer::identifyUnconstrainedValues(equalities, inequalities, seed);
   initial.insert(unconstrained);
@@ -521,8 +522,7 @@ py::dict solve(
       setting<bool>(settings, "diagonalDamping"));
   std::vector<std::string> orderingKeys;
   if (setting<bool>(settings, "qpUseTemporalOrdering")) {
-    params.lmParams.ordering = g1_example::chronologicalOrdering(
-        cost, manifolds, unconstrained, slices.front().k);
+    params.lmParams.ordering = g1_example::chronologicalOrdering(cost, points, unconstrained, slices.front().k);
     for (Key key : *params.lmParams.ordering)
       orderingKeys.push_back(std::to_string(key));
   }
@@ -544,7 +544,7 @@ py::dict solve(
   };
   IELMOptimizer optimizer(params, manifoldParams);
   const Values values =
-      optimizer.optimizeManifolds(cost, manifolds, unconstrained);
+      optimizer.optimize(cost, points, unconstrained);
   result["values"] = values;
   result["optimizationSeconds"] = elapsed(optimizeStart);
   result["objectiveFinal"] = cost.error(values);

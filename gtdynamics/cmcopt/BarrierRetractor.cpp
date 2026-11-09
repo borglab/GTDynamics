@@ -15,13 +15,23 @@
 #include <cmath>
 #include <gtdynamics/cmcopt/AffineProjection.h>
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
+
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
+IERetractor::shared_ptr BarrierRetractor::bind(const CMPoint &point) const {
+  auto result = IERetractor::bind(point);
+  if (use_basis_keys_) {
+    auto &bound = dynamic_cast<BarrierRetractor &>(*result).basis_keys_;
+    for (Key &slot : bound) slot = point.bindings().at(slot);
+  }
+  return result;
+}
+
 using namespace gtsam;
 
 namespace {
@@ -65,12 +75,12 @@ RunPenaltyOptimization(const NonlinearFactorGraph &cost,
 
 } // namespace
 
-IEConstraintManifold
-BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
+CMPoint
+BarrierRetractor::moveToBoundary(const CMPoint *point,
                                  const IndexSet &blocking_indices,
                                  IERetractionInfo *retract_info) const {
-  if (params_->useReducedCoordinates && manifold->hasAffineEqualities())
-    return retractReduced(*manifold, manifold->values().zeroVectors(),
+  if (params_->useReducedCoordinates && point->hasAffineEqualities())
+    return retractReduced(*point, point->values().zeroVectors(),
                           blocking_indices, retract_info);
 
   // Turning blocking inequalities into equalities picks the boundary face that
@@ -78,23 +88,23 @@ BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
   NonlinearEqualityConstraints blocking_constraints;
   for (const auto &blocking_idx : blocking_indices) {
     blocking_constraints.push_back(
-        manifold->iConstraints()->at(blocking_idx)->createEqualityConstraint());
+        point->iConstraints()->at(blocking_idx)->createEqualityConstraint());
   }
   NonlinearFactorGraph cost = blocking_constraints.penaltyGraph(1.0);
 
-  Values opt_values = RunPenaltyOptimization(cost, *manifold->eConstraints(),
-                                             *manifold->iConstraints(),
-                                             manifold->values(), params_);
+  Values opt_values = RunPenaltyOptimization(cost, *point->eConstraints(),
+                                             *point->iConstraints(),
+                                             point->values(), params_);
 
   NonlinearFactorGraph merit_graph = cost;
-  merit_graph.add(manifold->eConstraints()->penaltyGraph(1.0));
-  merit_graph.add(manifold->iConstraints()->penaltyGraph(1.0));
+  merit_graph.add(point->eConstraints()->penaltyGraph(1.0));
+  merit_graph.add(point->iConstraints()->penaltyGraph(1.0));
   LevenbergMarquardtOptimizer optimizer_np(merit_graph, opt_values,
                                            params_->lmParams);
   Values result = optimizer_np.optimize();
 
   if (params_->checkFeasible) {
-    size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
+    size_t k = DynamicsSymbol(point->values().keys().front()).time();
     std::string k_string = "(" + std::to_string(k) + ")";
     if (!CheckFeasible(merit_graph, result,
                        "penalty move to boundary" + k_string,
@@ -102,31 +112,31 @@ BarrierRetractor::moveToBoundary(const IEConstraintManifold *manifold,
     }
   }
 
-  return manifold->createWithNewValues(result, blocking_indices);
+  return point->manifold()->point(point->bindings(), result, blocking_indices);
 }
 
 /* ************************************************************************* */
-IEConstraintManifold
-BarrierRetractor::retract(const IEConstraintManifold *manifold,
+CMPoint
+BarrierRetractor::retract(const CMPoint *point,
                           const VectorValues &delta,
                           const std::optional<IndexSet> &blocking_indices,
                           IERetractionInfo *retract_info) const {
-  if (params_->useReducedCoordinates && manifold->hasAffineEqualities())
-    return retractReduced(*manifold, delta,
+  if (params_->useReducedCoordinates && point->hasAffineEqualities())
+    return retractReduced(*point, delta,
                           blocking_indices.value_or(IndexSet{}), retract_info);
 
   // The prior graph is the quadratic stay-close term centered at x + delta.
   // This implements the metric-projection objective in thesis Eq. (4.26), and
   // blocking indices below turn it into the on-corner form in Eq. (4.46).
-  Values new_values = manifold->values().retract(delta);
+  Values new_values = point->values().retract(delta);
   KeyVector prior_keys = use_basis_keys_ ? basis_keys_ : new_values.keys();
   NonlinearFactorGraph prior_graph;
   params_->addPriors(new_values, prior_keys, prior_graph);
 
   // Promote blocked inequalities to equalities so the retraction stays on the
   // same active face instead of immediately stepping off it.
-  NonlinearInequalityConstraints i_constraints = *manifold->iConstraints();
-  NonlinearEqualityConstraints e_constraints = *manifold->eConstraints();
+  NonlinearInequalityConstraints i_constraints = *point->iConstraints();
+  NonlinearEqualityConstraints e_constraints = *point->eConstraints();
   if (blocking_indices) {
     for (const auto &idx : *blocking_indices) {
       const auto &constraint = i_constraints.at(idx);
@@ -137,7 +147,7 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
   // First solve the soft penalty subproblem, then recover the hard active set
   // from the resulting feasible-or-nearly-feasible point.
   const Values &init_values =
-      params_->initValuesAsX ? manifold->values() : new_values;
+      params_->initValuesAsX ? point->values() : new_values;
   Values opt_values = RunPenaltyOptimization(
       prior_graph, e_constraints, i_constraints, init_values, params_);
 
@@ -157,7 +167,7 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
 
   // Drop the stay-close priors and clean up on the final active manifold so the
   // returned point is strictly feasible in the chosen mode.
-  NonlinearEqualityConstraints active_constraints = *manifold->eConstraints();
+  NonlinearEqualityConstraints active_constraints = *point->eConstraints();
   for (const auto &constraint_idx : active_indices) {
     active_constraints.push_back(
         i_constraints.at(constraint_idx)->createEqualityConstraint());
@@ -170,12 +180,12 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
 
   // check and ensure feasible
   if (params_->checkFeasible) {
-    size_t k = DynamicsSymbol(manifold->values().keys().front()).time();
+    size_t k = DynamicsSymbol(point->values().keys().front()).time();
     std::string k_string = "(" + std::to_string(k) + ")";
     if (!CheckFeasible(graph_np, result, "penalty retraction" + k_string,
                        params_->feasibleThreshold)) {
       if (params_->ensureFeasible) {
-        return retract(manifold, 0.7 * delta, blocking_indices, retract_info);
+        return retract(point, 0.7 * delta, blocking_indices, retract_info);
       }
     }
   }
@@ -187,26 +197,26 @@ BarrierRetractor::retract(const IEConstraintManifold *manifold,
     // TODO
   }
 
-  return manifold->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 /* ************************************************************************* */
-IEConstraintManifold BarrierRetractor::retractReduced(
-    const IEConstraintManifold &manifold, const VectorValues &delta,
+CMPoint BarrierRetractor::retractReduced(
+    const CMPoint &point, const VectorValues &delta,
     const IndexSet &blocking, IERetractionInfo *info) const {
   const auto priorKeys =
       use_basis_keys_ ? std::optional<KeyVector>(basis_keys_) : std::nullopt;
   // Keep the original projection objective and original whitened constraint
   // residuals: extra normalization would change finite penalty iterates.
-  AffineProjection projection(manifold, delta, *params_, priorKeys, blocking,
+  AffineProjection projection(point, delta, *params_, priorKeys, blocking,
                               params_->feasibleThreshold,
                               std::max(1e-7, params_->feasibleThreshold),
                               false);
   if (const auto result = projection.feasibleProjection(blocking, info))
-    return manifold.createWithNewValues(result->values, result->active);
+    return point.manifold()->point(point.bindings(), result->values, result->active);
   if (!projection.dim()) {
     const Values result = projection.recover(Vector());
-    return manifold.createWithNewValues(
+    return point.manifold()->point(point.bindings(),
         result, projection.validateResult(result, blocking));
   }
   if (!params_->penaltyParams)
@@ -230,8 +240,8 @@ IEConstraintManifold BarrierRetractor::retractReduced(
   // Match BarrierRetractor's active-face cleanup. Equality elimination stays
   // exact throughout; the cleanup only adjusts reduced inequality coordinates.
   IndexSet active = blocking;
-  for (size_t i = 0; i < manifold.iConstraints()->size(); ++i)
-    if (manifold.iConstraints()->at(i)->active(ambient))
+  for (size_t i = 0; i < point.iConstraints()->size(); ++i)
+    if (point.iConstraints()->at(i)->active(ambient))
       active.insert(i);
   const auto cleanupProblem = projection.buildProblem(active);
   NonlinearFactorGraph cleanup =
@@ -248,7 +258,7 @@ IEConstraintManifold BarrierRetractor::retractReduced(
       projection.recover(cleaned.at<Vector>(AffineProjection::kReduced));
   // Unlike legacy ambient cleanup, this opt-in path never silently accepts
   // infeasible results or loses a required blocking face.
-  return manifold.createWithNewValues(
+  return point.manifold()->point(point.bindings(),
       result, projection.validateResult(result, active));
 }
 

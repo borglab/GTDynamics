@@ -218,7 +218,6 @@ TEST(ManifoldOptimization, SO2) {
   // params.setVerbosityLM("SUMMARY");
   LevenbergMarquardtOptimizer optimizer(graph, init_values, params);
   auto result = optimizer.optimize();
-  // result.print();
 
   Rot2 expected_rot = Rot2::fromCosSin(-1, 0.0);
   EXPECT(assert_equal(expected_rot, result.at<Rot2>(rot_key), 1e-4));
@@ -240,7 +239,6 @@ TEST(NonlinearManifoldOptimizer, SO2) {
   ManifoldOptimizerParameters mopt_params;
   NonlinearManifoldOptimizer optimizer(mopt_params, nopt_params);
   auto result = optimizer.optimize(*costs, *constraints, init_values);
-  // result.print();
 
   EXPECT(assert_equal(-1.0, result.atDouble(x1_key), 1e-5));
   EXPECT(assert_equal(0.0, result.atDouble(x2_key), 1e-5));
@@ -263,7 +261,6 @@ TEST(NonlinearManifoldOptimizer_infeasible, SO2) {
   mopt_params.constraintManifoldParams->retractorCreator->params()->lmParams.setMaxIterations(4);
   NonlinearManifoldOptimizer optimizer(mopt_params, nopt_params);
   auto result = optimizer.optimize(*costs, *constraints, init_values);
-  // result.print();
 
   // TODO: check why this does not converge as good as Type2.
   EXPECT(assert_equal(-1.0, result.atDouble(x1_key), 1e-3));

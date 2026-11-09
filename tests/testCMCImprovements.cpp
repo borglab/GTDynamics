@@ -19,6 +19,8 @@
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/nonlinear/PriorFactor.h>
+
+#include <atomic>
 using namespace gtsam;
 using namespace gtdynamics;
 
@@ -40,16 +42,23 @@ TEST(CMCImprovements, ScaledConeProjection) {
 namespace projection_retry {
 class LimitedRetractor : public IERetractor {
  public:
-  mutable size_t rejected = 0;
-  IEConstraintManifold retract(
-      const IEConstraintManifold* manifold, const VectorValues& delta,
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<LimitedRetractor>(*this);
+  }
+
+ public:
+  std::shared_ptr<std::atomic<size_t>> rejected =
+      std::make_shared<std::atomic<size_t>>(0);
+  CMPoint retract(
+      const CMPoint* point, const VectorValues& delta,
       const std::optional<IndexSet>& blocking = {},
       IERetractionInfo* info = nullptr) const override {
     if (delta.at(1).norm() > .2) {
-      ++rejected;
+      ++*rejected;
       throw RetractionFailure("Synthetic projection convergence failure");
     }
-    return manifold->createWithNewValues(manifold->values().retract(delta));
+    return point->manifold()->point(point->bindings(), point->values().retract(delta));
   }
 };
 // Failed projections reject the trial and increase damping. Bounded details
@@ -77,7 +86,7 @@ TEST(CMCImprovements, RejectProjectionAndRetry) {
   };
   const IELMOptimizer optimizer(params, manifoldParams);
   const auto result = optimizer.optimize(cost, {}, inequalities, values);
-  EXPECT(retractor->rejected > 0);
+  EXPECT(retractor->rejected->load() > 0);
   EXPECT(result.at<double>(1) > .1);
   EXPECT(result.at<double>(1) <= 1.);
   EXPECT(inequalities.violationNorm(result) < 1e-10);
@@ -90,22 +99,29 @@ TEST(CMCImprovements, RejectProjectionAndRetry) {
 namespace history_retention {
 class PositiveRetractor : public IERetractor {
  public:
-  mutable size_t boundaryMoves = 0;
-  IEConstraintManifold retract(const IEConstraintManifold* m,
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<PositiveRetractor>(*this);
+  }
+
+ public:
+  std::shared_ptr<std::atomic<size_t>> boundaryMoves =
+      std::make_shared<std::atomic<size_t>>(0);
+  CMPoint retract(const CMPoint* point,
                                const VectorValues& d,
                                const std::optional<IndexSet>& blocking = {},
                                IERetractionInfo* = nullptr) const override {
-    Values v = m->values().retract(d);
+    Values v = point->values().retract(d);
     v.update(Key(1), blocking && !blocking->empty()
                          ? 0.
                          : std::max(0., v.at<double>(1)));
-    return m->createWithNewValues(v);
+    return point->manifold()->point(point->bindings(), v);
   }
-  IEConstraintManifold moveToBoundary(
-      const IEConstraintManifold* m, const IndexSet& blocking,
+  CMPoint moveToBoundary(
+      const CMPoint* point, const IndexSet& blocking,
       IERetractionInfo* info = nullptr) const override {
-    ++boundaryMoves;
-    return retract(m, m->values().zeroVectors(), blocking, info);
+    ++*boundaryMoves;
+    return retract(point, point->values().zeroVectors(), blocking, info);
   }
 };
 double logarithm(const double& x, OptionalJacobian<1, 1> H) {
@@ -147,10 +163,10 @@ TEST(IELMOptimizer, HistoryDoesNotChangeBoundaryDecisions) {
     optimizer.optimize(graph, {}, constraints, initial);
     if (window == 0) {
       reference = states;
-      referenceMoves = retractor->boundaryMoves;
+      referenceMoves = retractor->boundaryMoves->load();
     }
     EXPECT(referenceMoves > 0);
-    EXPECT_LONGS_EQUAL(referenceMoves, retractor->boundaryMoves);
+    EXPECT_LONGS_EQUAL(referenceMoves, retractor->boundaryMoves->load());
     EXPECT_LONGS_EQUAL(reference.size(), states.size());
     for (size_t i = 0; i < std::min(reference.size(), states.size()); ++i)
       EXPECT(assert_equal(reference[i], states[i], 1e-12));

@@ -12,7 +12,7 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/scenarios/CartPoleWithLimitsRetractor.h>
 #include <gtdynamics/scenarios/IECartPoleWithLimits.h>
@@ -22,11 +22,11 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-IEConstraintManifold CartPoleWithLimitsRetractor::retract(
-    const IEConstraintManifold *manifold, const VectorValues &delta,
+CMPoint CartPoleWithLimitsRetractor::retract(
+    const CMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
     IERetractionInfo *retract_info) const {
-  Values new_values = manifold->values().retract(delta);
+  Values new_values = point->values().retract(delta);
 
   // delta.print("==============================delta============================\n",
   // GTDKeyFormatter);
@@ -73,7 +73,7 @@ IEConstraintManifold CartPoleWithLimitsRetractor::retract(
   // result.print("==============================result============================\n",
   // GTDKeyFormatter);
 
-  return manifold->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 } // namespace gtdynamics

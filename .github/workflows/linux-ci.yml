@@ -17,8 +17,6 @@ jobs:
       CMAKE_BUILD_TYPE: ${{ matrix.build_type }}
       PYTHON_VERSION: ${{ matrix.python_version }} 
       GTSAM_INSTALL_DIR: ${{ github.workspace }}/gtsam_install 
-      # Required QP APIs from borglab/gtsam#2918; match the tested dependency.
-      GTSAM_REVISION: c940b44158d8bfa7394da233dd63aa225bc8fed2
 
     strategy:
       fail-fast: false
@@ -88,9 +86,8 @@ jobs:
         shell: bash 
         run: |
           set -e
-          git clone https://github.com/borglab/gtsam.git /tmp/gtsam_source 
+          git clone --branch develop https://github.com/borglab/gtsam.git /tmp/gtsam_source
           cd /tmp/gtsam_source
-          git checkout --detach "$GTSAM_REVISION"
           mkdir build && cd $_
           if [ "${{ matrix.build_type }}" = "Release" ]; then
             if [ "${{ matrix.compiler }}" = "gcc" ]; then

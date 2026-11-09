@@ -7,7 +7,7 @@
 
 /**
  * @file IERetractor.h
- * @brief Retractor for IEConstraintManifold.
+ * @brief Retractor for CMPoint.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
@@ -29,7 +29,7 @@
 namespace gtdynamics {
 using namespace gtsam;
 
-class IEConstraintManifold;
+class CMPoint;
 
 struct IERetractorParams {
   using shared_ptr = std::shared_ptr<IERetractorParams>;
@@ -38,7 +38,8 @@ struct IERetractorParams {
   bool useVaryingSigma = false;
   bool scaleVaryingSigma = false;
   std::shared_ptr<VectorValues> metricSigmas = NULL;
-  /// Opt into affine reduction in BarrierRetractor; nonlinear manifolds stay ambient.
+  /// Opt into affine reduction in BarrierRetractor; nonlinear points stay
+  /// ambient.
   bool useReducedCoordinates = false;
   /// Coordinate preconditioning only; false retains the original basis metric.
   bool whitenAffineCoordinates = true;
@@ -50,6 +51,28 @@ struct IERetractorParams {
       std::make_shared<PenaltyOptimizerParams>();
 
   IERetractorParams() = default;
+
+  /// Deep snapshot of mutable metric and penalty settings.
+  static shared_ptr snapshot(const shared_ptr &source,
+                             const KeySet *scope = nullptr) {
+    if (!source) throw std::invalid_argument("Missing retraction settings");
+    auto result = std::make_shared<IERetractorParams>(*source);
+    if (source->metricSigmas) {
+      if (!scope)
+        result->metricSigmas =
+            std::make_shared<VectorValues>(*source->metricSigmas);
+      else {
+        result->metricSigmas = std::make_shared<VectorValues>();
+        for (Key key : *scope)
+          if (source->metricSigmas->exists(key))
+            result->metricSigmas->insert(key, source->metricSigmas->at(key));
+      }
+    }
+    if (source->penaltyParams)
+      result->penaltyParams =
+          std::make_shared<PenaltyOptimizerParams>(*source->penaltyParams);
+    return result;
+  }
 
   /** Constructor using the same sigma. */
   IERetractorParams(const LevenbergMarquardtParams &_lmParams,
@@ -120,20 +143,51 @@ public:
   /// Default constructor.
   IERetractor(const IERetractorParams::shared_ptr &params =
                   std::make_shared<IERetractorParams>())
-      : params_(params) {}
+      : params_(IERetractorParams::snapshot(params)) {}
+
+  /// Copies create isolated mutable settings, never shared projection state.
+  IERetractor(const IERetractor &other)
+      : params_(IERetractorParams::snapshot(other.params_)) {}
 
   virtual ~IERetractor() {}
+  /// Detach the mutable fixed-variable factors in a copied workspace.
+  static void detachFixedFactors(
+      NonlinearFactorGraph &graph,
+      std::vector<std::shared_ptr<ConstVarFactor>> &factors) {
+    std::map<const ConstVarFactor *, std::shared_ptr<ConstVarFactor>> copies;
+    for (auto &factor : factors) {
+      auto copy = std::make_shared<ConstVarFactor>(*factor);
+      copies.emplace(factor.get(), copy);
+      factor = copy;
+    }
+    for (auto &factor : graph) {
+      const auto fixed = dynamic_cast<const ConstVarFactor *>(factor.get());
+      if (fixed && copies.count(fixed)) factor = copies.at(fixed);
+    }
+  }
+  /// Clone a prototype into one retraction workspace.
+  virtual shared_ptr clone() const = 0;
+  /// Bind local policy keys and metric entries to one point's ambient keys.
+  virtual shared_ptr bind(const CMPoint &point) const;
+  /// Restrict a prepared policy snapshot to the component's ambient variables.
+  void scopeMetric(const KeySet &keys) {
+    params_ = IERetractorParams::snapshot(params_, &keys);
+  }
+  /// Trial-local metric update; only isolated workspaces receive it.
+  void setMetricSigmas(const VectorValues &sigmas) {
+    params_->metricSigmas = std::make_shared<VectorValues>(sigmas);
+  }
 
   /// Retract the ambient variables back to h(x)=0, g(x)<=0, optionally with
   /// selected blocking inequalities promoted to equalities.
-  virtual IEConstraintManifold retract(
-      const IEConstraintManifold *manifold, const VectorValues &delta,
+  virtual CMPoint retract(
+      const CMPoint *point, const VectorValues &delta,
       const std::optional<IndexSet> &blocking_indices = {},
       IERetractionInfo *retract_info = nullptr) const = 0;
 
   /// Zero-step retraction that lands directly on the requested boundary face.
-  virtual IEConstraintManifold moveToBoundary(
-      const IEConstraintManifold *manifold, const IndexSet &blocking_indices,
+  virtual CMPoint moveToBoundary(
+      const CMPoint *point, const IndexSet &blocking_indices,
       IERetractionInfo *retract_info = nullptr) const;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
@@ -153,15 +207,27 @@ public:
 
   IERetractorCreator(const IERetractorParams::shared_ptr &params =
                          std::make_shared<IERetractorParams>())
-      : params_(params) {}
+      : params_(IERetractorParams::snapshot(params)) {}
+
+  /// Snapshot the policy configuration before a runtime type captures it.
+  virtual shared_ptr clone() const = 0;
+  /// Capture only component-local metric entries from a trajectory policy.
+  virtual shared_ptr cloneFor(const KeySet &keys) const {
+    auto result = clone();
+    result->params_ = IERetractorParams::snapshot(params_, &keys);
+    return result;
+  }
+  /// Deep-copy the common creator settings.
+  IERetractorCreator(const IERetractorCreator &other)
+      : params_(IERetractorParams::snapshot(other.params_)) {}
 
   virtual IERetractor::shared_ptr
-  create(const IEConstraintManifold &manifold) const = 0;
+  create(const CMPoint &point) const = 0;
 
   const IERetractorParams::shared_ptr &params() const { return params_; }
 };
 
-/** Creates the same retractor for all manifolds */
+/** Creates the same retractor for all points */
 class UniversalIERetractorCreator : public IERetractorCreator {
 protected:
   IERetractor::shared_ptr retractor_;
@@ -170,12 +236,21 @@ public:
   UniversalIERetractorCreator(const IERetractor::shared_ptr &retractor)
       : IERetractorCreator(retractor->params()), retractor_(retractor) {}
 
+  UniversalIERetractorCreator(const UniversalIERetractorCreator &other)
+      : IERetractorCreator(other), retractor_(other.retractor_->clone()) {}
   virtual ~UniversalIERetractorCreator() {}
+  shared_ptr clone() const override {
+    return std::make_shared<UniversalIERetractorCreator>(*this);
+  }
+  shared_ptr cloneFor(const KeySet &keys) const override {
+    auto result = std::make_shared<UniversalIERetractorCreator>(*this);
+    result->params_ = IERetractorParams::snapshot(params_, &keys);
+    result->retractor_->scopeMetric(keys);
+    return result;
+  }
 
   IERetractor::shared_ptr
-  create(const IEConstraintManifold &manifold) const override {
-    return retractor_;
-  }
+  create(const CMPoint &point) const override;
 };
 
 } // namespace gtdynamics

@@ -13,7 +13,7 @@
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/AffineProjection.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/constrained/LinearConstraint.h>
@@ -24,7 +24,7 @@ using namespace gtdynamics;
 
 namespace {
 constexpr Key kX = 1, kY = 2;
-IEConstraintManifold line(const IERetractor::shared_ptr &retractor,
+CMPoint line(const IERetractor::shared_ptr &retractor,
                           bool affine = true) {
   Values anchor;
   anchor.insert(kX, Vector(Vector1(0)));
@@ -47,7 +47,9 @@ IEConstraintManifold line(const IERetractor::shared_ptr &retractor,
       [](const KeyVector &) { return KeyVector{kX}; });
   params->retractorCreator =
       std::make_shared<UniversalIERetractorCreator>(retractor);
-  return IEConstraintManifold(params, equalities, inequalities, anchor);
+  const auto type = std::make_shared<IEConstraintManifold>(
+      *equalities, *inequalities, anchor, *params);
+  return type->point(anchor);
 }
 IERetractorParams::shared_ptr weights() {
   auto p = IERetractorParams::createVaryingSigmas();
@@ -68,8 +70,8 @@ VectorValues trial(double x, double y) {
 
 TEST(AffineProjection, SharedPriorSemantics) {
   auto p = weights();
-  const auto m = line(std::make_shared<BarrierRetractor>(p));
-  const Values target = m.values().retract(trial(2, 4));
+  const auto point = line(std::make_shared<BarrierRetractor>(p));
+  const Values target = point.values().retract(trial(2, 4));
   // Compare with the existing helpers, including repeated and missing keys.
   for (bool varying : {false, true})
     for (bool scaled : {false, true}) {
@@ -86,10 +88,10 @@ TEST(AffineProjection, SharedPriorSemantics) {
         else
           AddGeneralPriors(target, keys, *p->metricSigmas, old);
         p->addPriors(target, keys, shared);
-        EXPECT_DOUBLES_EQUAL(old.error(m.values()), shared.error(m.values()),
+        EXPECT_DOUBLES_EQUAL(old.error(point.values()), shared.error(point.values()),
                              1e-12);
-        EXPECT(assert_equal(old.linearize(m.values())->hessian().first,
-                            shared.linearize(m.values())->hessian().first,
+        EXPECT(assert_equal(old.linearize(point.values())->hessian().first,
+                            shared.linearize(point.values())->hessian().first,
                             1e-12));
       }
     }
@@ -100,28 +102,28 @@ TEST(AffineProjection, SharedPriorSemantics) {
 
 TEST(AffineProjection, ObjectiveAndOriginalConstraintEquivalence) {
   auto p = weights();
-  const auto m = line(std::make_shared<BarrierRetractor>(p));
+  const auto point = line(std::make_shared<BarrierRetractor>(p));
   const auto delta =
       trial(4, 1); // deliberately not tangent: cost has a constant offset
   for (bool whiten : {false, true}) {
     p->whitenAffineCoordinates = whiten;
-    AffineProjection projection(m, delta, *p, {}, {}, 1e-8, 1e-7, false);
+    AffineProjection projection(point, delta, *p, {}, {}, 1e-8, 1e-7, false);
     const auto problem = projection.buildProblem({});
     NonlinearFactorGraph ambient;
-    p->addPriors(m.values().retract(delta), m.values().keys(), ambient);
+    p->addPriors(point.values().retract(delta), point.values().keys(), ambient);
     Values zero;
     zero.insert(AffineProjection::kReduced, Vector(Vector1(0)));
     for (double v : {-0.8, 0.3, 2.0}) {
       Values values;
       values.insert(AffineProjection::kReduced, Vector(Vector1(v)));
       const Values recovered = projection.recover(Vector1(v));
-      EXPECT_DOUBLES_EQUAL(0, m.eConstraints()->violationNorm(recovered),
+      EXPECT_DOUBLES_EQUAL(0, point.eConstraints()->violationNorm(recovered),
                            1e-12);
       EXPECT_DOUBLES_EQUAL(
           ambient.error(recovered) -
               ambient.error(projection.recover(Vector1(0))),
           problem.costs().error(values) - problem.costs().error(zero), 1e-11);
-      EXPECT(assert_equal(m.iConstraints()->at(0)->whitenedExpr(recovered),
+      EXPECT(assert_equal(point.iConstraints()->at(0)->whitenedExpr(recovered),
                           problem.iConstraints().at(0)->whitenedExpr(values),
                           1e-12));
       EXPECT(gtsam::internal::testFactorJacobians(
@@ -139,14 +141,14 @@ TEST(AffineProjection, ObjectiveAndOriginalConstraintEquivalence) {
                                2e-5;
       EXPECT(assert_equal(numerical, jacobians[0], 1e-7));
     }
-    const auto metric = m.projectionMetric(*p);
-    EXPECT(metric == m.projectionMetric(*p));
+    const auto metric = point.projectionMetric(*p);
+    EXPECT(metric == point.projectionMetric(*p));
     p->whitenAffineCoordinates = !whiten;
-    EXPECT(metric != m.projectionMetric(*p));
+    EXPECT(metric != point.projectionMetric(*p));
     // A coordinate change preserves the ambient projection.
     EXPECT(assert_equal(
         metric->recover(metric->project(delta)),
-        m.projectionMetric(*p)->recover(m.projectionMetric(*p)->project(delta)),
+        point.projectionMetric(*p)->recover(point.projectionMetric(*p)->project(delta)),
         1e-12));
   }
 }
@@ -161,21 +163,22 @@ TEST(AffineProjection, ThreeSolversAndBlockingFaces) {
           backend == 2 ? std::static_pointer_cast<IERetractor>(
                              std::make_shared<ReducedALRetractor>(p))
                        : std::make_shared<BarrierRetractor>(p);
-      const auto m = line(retractor);
+      const auto point = line(retractor);
       IERetractionInfo info;
-      const auto result = m.retract(trial(3, 6), {}, &info);
+      const auto result = point.retract(trial(3, 6), {}, &info);
       EXPECT_DOUBLES_EQUAL(1, result.values().at<Vector>(kX)(0), 1e-7);
       EXPECT_DOUBLES_EQUAL(3, result.values().at<Vector>(kY)(0), 1e-7);
       EXPECT(result.activeIndices().exists(0));
-      EXPECT(result.eBasis() == m.eBasis());
+      EXPECT(assert_equal(point.toAmbient(Vector::Ones(point.dim())),
+                        result.toAmbient(Vector::Ones(result.dim()))));
       if (backend == 1)
         EXPECT_LONGS_EQUAL(1, info.numPenaltySolveCalls);
       // A feasible interior trial must still land on a requested boundary face.
       IndexSet blocking;
       blocking.insert(0);
-      const auto forced = m.retract(trial(.25, .5), blocking);
+      const auto forced = point.retract(trial(.25, .5), blocking);
       EXPECT_DOUBLES_EQUAL(3, forced.values().at<Vector>(kY)(0), 1e-7);
-      const auto boundary = retractor->moveToBoundary(&m, blocking);
+      const auto boundary = retractor->moveToBoundary(&point, blocking);
       EXPECT_DOUBLES_EQUAL(3, boundary.values().at<Vector>(kY)(0), 1e-7);
     }
 }
@@ -184,12 +187,12 @@ TEST(AffineProjection, ReducedPenaltyShortcutsAndFallback) {
   auto p = weights();
   p->useReducedCoordinates = true;
   auto retractor = std::make_shared<BarrierRetractor>(p);
-  const auto m = line(retractor);
+  const auto point = line(retractor);
   IERetractionInfo trialInfo, projectionInfo;
-  m.retract(trial(.1, .2), {}, &trialInfo);
+  point.retract(trial(.1, .2), {}, &trialInfo);
   EXPECT_LONGS_EQUAL(1, trialInfo.numFeasibleTrials);
   EXPECT_LONGS_EQUAL(0, trialInfo.numPenaltySolveCalls);
-  m.retract(trial(.2, 0), {}, &projectionInfo);
+  point.retract(trial(.2, 0), {}, &projectionInfo);
   EXPECT_LONGS_EQUAL(1, projectionInfo.numFeasibleProjections);
   EXPECT_LONGS_EQUAL(0, projectionInfo.numPenaltySolveCalls);
   // An un-certified component must keep the existing ambient path.
@@ -234,16 +237,16 @@ TEST(AffineProjection, NonlinearEqualityKeepsAmbientRecovery) {
       NonlinearEqualityConstraints::FromCostGraph(factors));
   Values values;
   values.insert(kX, Vector(Vector2(1, 0)));
-  IEConstraintManifold m(params, equalities,
-                         std::make_shared<NonlinearInequalityConstraints>(),
-                         values);
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      *equalities, NonlinearInequalityConstraints{}, values, *params);
+  CMPoint point = pointType->point(values);
   VectorValues delta;
   delta.insert(kX, Vector2(0, .2));
   IERetractionInfo info;
-  const auto result = m.retract(delta, {}, &info);
+  const auto result = point.retract(delta, {}, &info);
   EXPECT_DOUBLES_EQUAL(1, result.values().at<Vector>(kX).norm(), 1e-7);
   EXPECT_LONGS_EQUAL(0, info.numPenaltySolveCalls);
-  EXPECT(m.eBasis() != result.eBasis());
+  EXPECT(point.eBasis() != result.eBasis());
 }
 
 int main() {

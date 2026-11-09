@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/CMPoint.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptProblem.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
@@ -712,6 +712,12 @@ public:
 
 /** Hierarchical retractor creator for single phase. */
 class Vision60HierarchicalRetractorCreator : public IERetractorCreator {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractorCreator::shared_ptr clone() const override {
+    return std::make_shared<Vision60HierarchicalRetractorCreator>(*this);
+  }
+
 protected:
   const IEVision60Robot &robot_;
   bool use_basis_keys_;
@@ -726,11 +732,17 @@ public:
   virtual ~Vision60HierarchicalRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const IEConstraintManifold &manifold) const override;
+  create(const CMPoint &point) const override;
 };
 
 /** Barrier retractor creator for single phase. */
 class Vision60BarrierRetractorCreator : public IERetractorCreator {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractorCreator::shared_ptr clone() const override {
+    return std::make_shared<Vision60BarrierRetractorCreator>(*this);
+  }
+
 protected:
   const IEVision60Robot &robot_;
   bool use_basis_keys_;
@@ -745,12 +757,19 @@ public:
   virtual ~Vision60BarrierRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const IEConstraintManifold &manifold) const override;
+  create(const CMPoint &point) const override;
 };
 
 /** Hierarchical retractor creator for multiple phases. */
 class Vision60MultiPhaseHierarchicalRetractorCreator
     : public IERetractorCreator {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractorCreator::shared_ptr clone() const override {
+    return std::make_shared<Vision60MultiPhaseHierarchicalRetractorCreator>(
+        *this);
+  }
+
 protected:
   IEVision60RobotMultiPhase::shared_ptr vision60_multi_phase_;
   bool use_basis_keys_;
@@ -765,11 +784,17 @@ public:
   virtual ~Vision60MultiPhaseHierarchicalRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const IEConstraintManifold &manifold) const override;
+  create(const CMPoint &point) const override;
 };
 
 /** Barrier retractor creator for multiple phases. */
 class Vision60MultiPhaseBarrierRetractorCreator : public IERetractorCreator {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractorCreator::shared_ptr clone() const override {
+    return std::make_shared<Vision60MultiPhaseBarrierRetractorCreator>(*this);
+  }
+
 protected:
   IEVision60RobotMultiPhase::shared_ptr vision60_multi_phase_;
   bool use_basis_keys_;
@@ -784,11 +809,17 @@ public:
   virtual ~Vision60MultiPhaseBarrierRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const IEConstraintManifold &manifold) const override;
+  create(const CMPoint &point) const override;
 };
 
 /** Tangent space creator for multiple phases. */
 class Vision60MultiPhaseTangentSpaceBasisCreator : public TangentSpaceBasisCreator {
+ public:
+  /// Snapshot basis configuration while retaining the immutable robot.
+  TangentSpaceBasisCreator::shared_ptr clone() const override {
+    return std::make_shared<Vision60MultiPhaseTangentSpaceBasisCreator>(*this);
+  }
+
 protected:
   IEVision60RobotMultiPhase::shared_ptr vision60_multi_phase_;
 
