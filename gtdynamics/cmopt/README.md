@@ -40,7 +40,7 @@ In code, this transformation happens in three stages:
 - Shared [component discovery](../cmcopt/IEOptimizer.cpp) groups the equality graph.
 - [ManifoldOptimizer](ManifoldOptimizer.cpp) constructs immutable
   `EConstraintManifold` definitions and concrete `ECMPoint` values.
-- [CMCSubstituteFactor](../constrained/CMCSubstituteFactor.h) transforms costs using
+- [CMCostFactor](../constrained/CMCostFactor.h) transforms costs using
   the equality point category and the same recovery/Jacobian implementation as CMC.
 
 Useful cross-reference:
@@ -58,7 +58,7 @@ Useful cross-reference:
 
 For transformed-factor construction, start with
 [`ManifoldOptimizer::manifoldGraph`](ManifoldOptimizer.cpp) and
-[`CMCSubstituteFactor`](../constrained/CMCSubstituteFactor.cpp).
+[`CMCostFactor`](../constrained/CMCostFactor.cpp).
 
 <a id="ccc-transformation"></a>
 ## 1) CCC Identification and Problem Transformation (Paper Sec. III-A)
@@ -85,7 +85,7 @@ Code mapping:
 - Ambient-key ownership and transformed costs:
   [`ManifoldOptimizer::manifoldGraph`](ManifoldOptimizer.cpp).
 - Shared recovery and chain rule:
-  [`CMCSubstituteFactor`](../constrained/CMCSubstituteFactor.h).
+  [`CMCostFactor`](../constrained/CMCostFactor.h).
 
 Implementation detail:
 - A CCC whose manifold dimension is positive becomes a free manifold-valued
@@ -229,13 +229,20 @@ J_f(\theta_c)=
 \sum_{k \in I_c^C \cap I_i^f} J_{r_k}(\theta_c)\,J_f(x_k).
 \]
 
-The shared [`CMCSubstituteFactor`](../constrained/CMCSubstituteFactor.cpp) classifies
-point-owned, fixed, and ordinary free keys, recovers ambient values through the
-concrete point, and accumulates recovery Jacobians into the original factor's
-Jacobian blocks. Equality-only factors select `PointType::Equality`, matching
+The shared [`CMCostFactor`](../constrained/CMCostFactor.cpp) compiles ordered
+connections from original cost argument indices to point-local slots. The point
+owns immutable slot bindings; the original cost retains its argument keys and
+embedded expressions. Evaluation recovers only connected slots through
+`CMPoint::recoverSlot` and sums the original Jacobian blocks times their current
+recovery Jacobians. No per-factor ambient-key lookup map or point-wide scan is
+needed. Zero-dimensional point arguments are captured as fixed ambient values;
+ordinary free arguments pass through directly. Equality-only factors select
+`PointType::Equality`, matching
 `ECMPoint` values in `gtsam::Values`; general CMC factors select the IE category.
 GTSAM extraction must use the exact stored concrete type despite public point
-inheritance. Original factor expressions and noise models remain intact.
+inheritance. Original noise models remain intact, with whitening applied once.
+`pointCostGraph` builds connections from all points, including fixed points,
+and rejects incompatible slot bindings during evaluation.
 
 The thesis derives this chain rule through recovery functions in
 Eqs. (3.29)-(3.32).
@@ -312,8 +319,8 @@ Read the core implementation in this order:
    [`IEConstraintManifold.cpp`](../cmcopt/IEConstraintManifold.cpp)
 3. [`TangentSpaceBasis.h`](../constrained/TangentSpaceBasis.h), [`TangentSpaceBasis.cpp`](../constrained/TangentSpaceBasis.cpp), and [`MultiJacobian.cpp`](../constrained/MultiJacobian.cpp)
 4. [`Retractor.h`](Retractor.h) and [`Retractor.cpp`](Retractor.cpp)
-5. [`CMCSubstituteFactor.h`](../constrained/CMCSubstituteFactor.h) and
-   [`CMCSubstituteFactor.cpp`](../constrained/CMCSubstituteFactor.cpp)
+5. [`CMCostFactor.h`](../constrained/CMCostFactor.h) and
+   [`CMCostFactor.cpp`](../constrained/CMCostFactor.cpp)
 6. [`NonlinearManifoldOptimizer.h`](NonlinearManifoldOptimizer.h), [`NonlinearManifoldOptimizer.cpp`](NonlinearManifoldOptimizer.cpp), and optionally [`LMManifoldOptimizer.cpp`](LMManifoldOptimizer.cpp)
 
 For inequality boundaries and corners, see the separate CMC-Opt documentation in

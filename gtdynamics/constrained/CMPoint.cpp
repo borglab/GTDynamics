@@ -20,8 +20,16 @@ using namespace gtsam;
 CMPoint& CMPoint::operator=(const CMPoint& other) {
   if (this == &other) return *this;
   validateAssignment(other);
-  manifold_ = other.manifold_;
-  bindings_ = other.bindings_;
+  if (manifold_ &&
+      (manifold_ != other.manifold_ || bindings_ != other.bindings_))
+    throw std::invalid_argument(
+        "CMPoint assignment requires the same type and bindings");
+
+  // Default values may initialize once; existing points keep their identity.
+  if (!manifold_) {
+    bindings_ = other.bindings_;
+    manifold_ = other.manifold_;
+  }
   values_ = other.values_;
   tangentSpace_ = other.tangentSpace_;
   retractionPreparation_ = other.retractionPreparation_;
@@ -74,6 +82,13 @@ void CMPoint::print(const std::string& prefix) const {
 const Value& CMPoint::recover(
     Key key, OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H) const {
   return manifold_->recover(*this, key, H);
+}
+
+const Value& CMPoint::recoverSlot(
+    Key slot, OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H) const {
+  if (!manifold_)
+    throw std::invalid_argument("Cannot recover a slot from an unbound CMPoint");
+  return recover(bindings_.at(slot), H);
 }
 
 }  // namespace gtdynamics

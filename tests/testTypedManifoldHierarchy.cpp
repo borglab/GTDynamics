@@ -177,13 +177,96 @@ TEST(TypedManifoldHierarchy, EqualityAssignmentThroughBaseIsChecked) {
   base = widened;
   EXPECT(equality.equals(next));
   IECMPoint ordinary = next;
-  ordinary = general;
-  EXPECT(ordinary.manifold().get() == generalType.get());
+  CHECK_EXCEPTION(ordinary = general, std::invalid_argument);
+  EXPECT(ordinary.equals(next));
   ECMPoint empty;
-  equality = empty;
-  EXPECT(!equality.manifold());
+  CHECK_EXCEPTION(equality = empty, std::invalid_argument);
+  EXPECT(equality.equals(next));
+  IECMPoint& emptyBase = empty;
+  CHECK_EXCEPTION(emptyBase = general, std::invalid_argument);
+  EXPECT(!empty.manifold());
+  empty = before;
+  EXPECT(empty.equals(before));
   equality = before;
   EXPECT(equality.equals(before));
+}
+
+TEST(TypedManifoldHierarchy, ImmutableBindingsAndSlotRecovery) {
+  const auto equalityType = std::make_shared<EConstraintManifold>(
+      lineEqualities(), lineValues(0, 1, 0), affineSettings());
+  const auto otherEqualityType = std::make_shared<EConstraintManifold>(
+      lineEqualities(), lineValues(0, 1, 0), affineSettings());
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(
+      LinearConstraint::GreaterEqual(
+          JacobianFactor(0, Matrix1::Identity(), Vector1::Zero()))
+          .createInequalityFactor());
+  const auto generalType = std::make_shared<IEConstraintManifold>(
+      lineEqualities(), inequalities, lineValues(0, 1, 0), affineSettings());
+  const auto otherGeneralType = std::make_shared<IEConstraintManifold>(
+      lineEqualities(), inequalities, lineValues(0, 1, 0), affineSettings());
+
+  // Both concrete categories update numbers without replacing their bindings.
+  const auto check = [&](const auto& type, const auto& otherType) {
+    const auto initial = type->point({{0, 10}, {1, 11}}, lineValues(10, 11, 1));
+    const auto next = type->point(initial.bindings(), lineValues(10, 11, 2));
+    const auto rebound = type->point({{0, 20}, {1, 21}}, lineValues(20, 21, 3));
+    const auto unrelated =
+        otherType->point(initial.bindings(), initial.values());
+    using Point = std::decay_t<decltype(initial)>;
+    Point point;
+    CHECK_EXCEPTION(point.recoverSlot(0), std::invalid_argument);
+    point = initial;
+    const auto* bindings = &point.bindings();
+    CHECK_EXCEPTION(point = rebound, std::invalid_argument);
+    EXPECT(point.equals(initial));
+    CHECK_EXCEPTION(point = unrelated, std::invalid_argument);
+    EXPECT(point.equals(initial));
+    Point unbound;
+    CHECK_EXCEPTION(point = unbound, std::invalid_argument);
+    EXPECT(point.equals(initial));
+    point = next;
+    EXPECT(point.equals(next));
+    EXPECT(bindings == &point.bindings());
+
+    Matrix H;
+    EXPECT(&point.recoverSlot(1, H) == &point.values().at(11));
+    EXPECT(assert_equal(Matrix(Matrix1::Constant(2)), H));
+    CHECK_EXCEPTION(point.recoverSlot(11), std::out_of_range);
+
+    // Changing active boundaries refreshes point geometry with the same layout.
+    const auto boundary = type->point(initial.bindings(), lineValues(10, 11, 0));
+    point = boundary;
+    EXPECT(point.activeIndices() == boundary.activeIndices());
+    EXPECT(point.tangentSpace() == boundary.tangentSpace());
+    EXPECT(point.bindings() == initial.bindings());
+    const auto moved = next.retract(Vector(Vector1(.25)));
+    EXPECT(moved.bindings() == initial.bindings());
+    EXPECT(moved.manifold() == type);
+    const auto onBoundary = next.moveToBoundary({});
+    EXPECT(onBoundary.bindings() == initial.bindings());
+
+    // GenericValue assignment uses the same checked point update.
+    GenericValue<Point> wrapped(initial), wrongBindings(rebound), replacement(next);
+    Value& value = wrapped;
+    CHECK_EXCEPTION(value = wrongBindings, std::invalid_argument);
+    EXPECT(wrapped.value().equals(initial));
+    value = replacement;
+    EXPECT(wrapped.value().equals(next));
+
+    // GTSAM replaces stored values, and compatible updates retain chart identity.
+    Values stored;
+    stored.insert(100, initial);
+    stored.update(100, next);
+    EXPECT(stored.at<Point>(100).equals(next));
+    VectorValues increment;
+    increment.insert(100, Vector(Vector1(.25)));
+    const auto retracted = stored.retract(increment);
+    EXPECT(retracted.at<Point>(100).equals(moved));
+    EXPECT(stored.at<Point>(100).equals(next));
+  };
+  check(equalityType, otherEqualityType);
+  check(generalType, otherGeneralType);
 }
 
 TEST(TypedManifoldHierarchy, ExplicitEqualityView) {
@@ -210,8 +293,12 @@ TEST(TypedManifoldHierarchy, CompiledInequalityViewRequiresExplicitChart) {
   const auto native =
       std::make_shared<gtdynamics::internal::CompiledIEConstraintManifold<
           double, BoundedLineRecovery>>(0., BoundedLineRecovery());
-  const auto point = native->point(lineValues(0, 1, 1));
+  const auto point =
+      native->point({{0, 10}, {1, 11}}, lineValues(10, 11, 1));
   EXPECT_LONGS_EQUAL(1, native->inequalityCount(point));
+  Matrix H;
+  EXPECT(&point.recoverSlot(1, H) == &point.values().at(11));
+  EXPECT(assert_equal(Matrix(Matrix1::Constant(2)), H));
   CHECK_EXCEPTION(point.equalityView(), std::invalid_argument);
 }
 
@@ -266,6 +353,9 @@ TEST(TypedManifoldHierarchy, CompiledEqualityChartUsesEveryOptimizer) {
     const auto point = type->point({{0, 10}, {1, 11}}, initial);
     const ECMPoints points{{100, point}};
     EXPECT_DOUBLES_EQUAL(2., point.eBasis()->recoverJacobian(11)(0, 0), 1e-10);
+    Matrix H;
+    EXPECT(&point.recoverSlot(1, H) == &point.values().at(11));
+    EXPECT(assert_equal(Matrix(Matrix1::Constant(2)), H));
     const auto check = [&](const Values& result) {
       EXPECT_DOUBLES_EQUAL(2., result.at<Vector>(10)(0), 1e-5);
       EXPECT_DOUBLES_EQUAL(4., result.at<Vector>(11)(0), 1e-5);

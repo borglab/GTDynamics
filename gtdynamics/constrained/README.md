@@ -23,7 +23,7 @@ problems can therefore use CMC, while equality-only optimizer entry points take
 
 | Directory | Code |
 | --- | --- |
-| `constrained` | `ConstraintManifold`, `CMPoint`, `CMTangentSpace`, shared retraction policies/workspaces, basis/metric/Jacobian operations, tangent-cone geometry, and `CMCSubstituteFactor` |
+| `constrained` | `ConstraintManifold`, `CMPoint`, `CMTangentSpace`, shared retraction policies/workspaces, basis/metric/Jacobian operations, tangent-cone geometry, and `CMCostFactor` |
 | `constrained/internal` | Read-only basis views, independent-component scheduling, and the shared compiled-chart implementation |
 | `cmopt` | `EConstraintManifold`, `ECMPoint`, equality retractors, and equality optimizer backends |
 | `cmopt/internal` | The compiled equality-only adapter |
@@ -73,8 +73,11 @@ not retained. Use `EConstraintManifold(equalities, prototype, settings)`
 when the absence of inequalities is part of the public contract. General IE
 definitions may also have an empty inequality collection. Bindings must be
 complete and one-to-one, and a point must contain exactly the expected ambient
-values with matching types and dimensions. A point retains its type and bindings
-when retracted. Chart comparisons require the same type identity and bindings;
+values with matching types and dimensions. Bindings are immutable after a point
+is initialized. Assignment can update numerical state only when the type identity
+and bindings agree; different bindings require a new point from the type factory.
+A point retains its type and bindings when retracted. Chart comparisons require
+the same type identity and bindings;
 points from differently conditioned spaces cannot be compared accidentally.
 
 Types are constructed with `std::make_shared` and held through
@@ -108,10 +111,26 @@ Discovery allocates component-point keys independently of ambient keys, using
 building the transformed graph. Unconstrained variables keep their existing
 keys. Ambient-to-point ownership and slot bindings are explicit.
 
-CMC substitution factors recover ambient values and Jacobians directly from
-`IECMPoint`, including zero-dimensional points. GTSAM Values hold these points
+`CMCostFactor` connects original cost argument indices to point-local slots.
+The original cost owns its ordered ambient keys, and the points own their
+immutable slot-to-ambient bindings. The graph builder derives a temporary
+ambient-key-to-point/slot index from those bindings, compiles each factor's
+ordered connections, and discards the index. The wrapper stores neither a
+binding map nor an ambient-key-to-argument-index map.
+
+During evaluation, `CMPoint::recoverSlot` resolves each connected slot through
+the current point and returns its ambient value and optional recovery Jacobian.
+Each point Jacobian sums the original argument Jacobians times their recovery
+Jacobians. Only connected slots are visited; numerical geometry is never cached
+in the cost wrapper. Connected bindings are checked against the original cost's
+argument keys, so replacing a value with an incompatibly bound point fails.
+Zero-dimensional point arguments are captured as fixed ambient values, and
+ordinary free variables retain their keys. Both optimizer families use
+`pointCostGraph`; `testCMCostFactor` covers this shared implementation.
+
+GTSAM Values hold `IECMPoint` values
 through their dynamic-dimensional manifold traits. Equality optimization stores `ECMPoint`
-values instead, using the same substitution implementation with its equality
+values instead, using the same cost-factor implementation with its equality
 point category. GTSAM values require the exact concrete value type; inheritance
 does not permit `values.at<IECMPoint>(key)` when that key stores an `ECMPoint`.
 
@@ -274,7 +293,11 @@ base-class conversion never removes constraints. Python `point.values()` returns
 an independent snapshot so mutation cannot invalidate a point's cached geometry.
 Runtime definitions cannot be assigned through base references. Assigning through
 an IE point reference to a concrete `ECMPoint` checks the equality-only type
-guarantee before changing its state.
+guarantee before changing its state. Assignment to any initialized point also
+checks its immutable bindings and runtime type identity before changing state.
+Only an uninitialized default value can receive its first type and bindings by
+assignment. Retraction and widening preserve bindings; conditioning and equality
+views create separate points.
 
 Requested initial feasibility projection runs before the first numerical basis
 construction through shared discovery. Optional final projection and approximate

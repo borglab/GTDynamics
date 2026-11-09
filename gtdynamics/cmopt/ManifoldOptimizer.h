@@ -124,14 +124,12 @@ class ManifoldOptimizer : public ConstrainedOptimizer {
   /**
    * Create equivalent cost graph on manifold variables.
    * @param graph Original factor graph.
-   * @param var2man_keymap Mapping from base variable key to manifold key.
-   * @param fixedPoints Values of fully constrained points.
+   * @param points All equality points, including fully constrained points.
    * @return Transformed manifold graph.
    */
   static NonlinearFactorGraph manifoldGraph(
       const NonlinearFactorGraph &graph,
-      const std::map<Key, Key> &var2man_keymap,
-      const ECMPoints &fixedPoints = ECMPoints());
+      const ECMPoints &points);
 
   /** Create values for the manifold optimization problem by (1) create
    * constraint manifolds for constraint-connected components; (2) identify if

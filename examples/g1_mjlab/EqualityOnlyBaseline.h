@@ -35,7 +35,7 @@ inline gtdynamics::ManifoldOptimizationProblem manifoldLmProblem(
   ManifoldOptimizationProblem problem;
   problem.values = unconstrained;
   problem.unconstrainedKeys = gtsam::KeySet(unconstrained.keys());
-  std::map<gtsam::Key, gtsam::Key> ownership;
+  ECMPoints allPoints;
   for (const auto& [key, point] : points) {
     if (point.manifold()->inequalityCount(point) != 0)
       throw std::invalid_argument("Manifold LM comparison requires equality-only points");
@@ -47,6 +47,7 @@ inline gtdynamics::ManifoldOptimizationProblem manifoldLmProblem(
     const auto type = std::make_shared<EConstraintManifold>(
         *point.eConstraints(), point.values(), *params);
     const auto value = type->point(point.values());
+    allPoints.emplace(key, value);
     problem.types.push_back(type);
     if (value.dim()) {
       problem.values.insert(key, value);
@@ -54,10 +55,9 @@ inline gtdynamics::ManifoldOptimizationProblem manifoldLmProblem(
     } else {
       problem.fixedPoints.emplace(key, value);
     }
-    for (gtsam::Key ambient : point.values().keys()) ownership[ambient] = key;
   }
   problem.graph =
-      ManifoldOptimizer::manifoldGraph(cost, ownership, problem.fixedPoints);
+      ManifoldOptimizer::manifoldGraph(cost, allPoints);
   return problem;
 }
 

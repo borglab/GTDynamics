@@ -47,7 +47,7 @@ IECMPoint IECMPoint::retract(const VectorValues& delta,
 
 Vector IECMPoint::localCoordinates(const IECMPoint& other) const {
   if (!manifold_ || manifold_ != other.manifold_ ||
-      bindings_ != other.bindings_)
+      bindings() != other.bindings())
     throw std::invalid_argument(
         "IECMPoint local coordinates require the same type and bindings");
   return manifold()->localCoordinates(*this, other);

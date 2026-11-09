@@ -12,7 +12,7 @@
  */
 
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
-#include <gtdynamics/constrained/CMCSubstituteFactor.h>
+#include <gtdynamics/constrained/CMCostFactor.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <gtdynamics/utils/GraphUtils.h>
@@ -84,14 +84,13 @@ ManifoldOptimizerParameters::ManifoldOptimizerParameters()
 
 /* ************************************************************************* */
 NonlinearFactorGraph ManifoldOptimizer::manifoldGraph(
-    const NonlinearFactorGraph& graph, const std::map<Key, Key>& var2man_keymap,
-    const ECMPoints& fixedPoints) {
-  Values fixedValues;
-  for (const auto& entry : fixedPoints) {
-    fixedValues.insert(entry.first, entry.second);
+    const NonlinearFactorGraph& graph, const ECMPoints& points) {
+  Values allPoints;
+  for (const auto& entry : points) {
+    allPoints.insert(entry.first, entry.second);
   }
-  return pointSubstitutionGraph(graph, var2man_keymap, fixedValues,
-                                CMCSubstituteFactor::PointType::Equality);
+  return pointCostGraph(graph, allPoints,
+                       CMCostFactor::PointType::Equality);
 }
 
 /* ************************************************************************* */
@@ -171,9 +170,7 @@ void ManifoldOptimizer::constructManifoldOptimizationGraph(
     ManifoldOptimizationProblem& mopt_problem) {
   ECMPoints allPoints = mopt_problem.points();
   allPoints.insert(mopt_problem.fixedPoints.begin(), mopt_problem.fixedPoints.end());
-  const auto ownership = IEOptimizer::varToManifoldKeyMap(widenPoints(allPoints));
-  mopt_problem.graph = manifoldGraph(equalityConstrainedProblem.costs_, ownership,
-                                    mopt_problem.fixedPoints);
+  mopt_problem.graph = manifoldGraph(equalityConstrainedProblem.costs_, allPoints);
 }
 
 /* ************************************************************************* */
@@ -242,8 +239,7 @@ ManifoldOptimizationProblem ManifoldOptimizer::initializeManifoldOptimizationPro
       problem.manifoldKeys.insert(entry.first);
     }
   }
-  const auto ownership = IEOptimizer::varToManifoldKeyMap(widenPoints(points));
-  problem.graph = manifoldGraph(costs, ownership, problem.fixedPoints);
+  problem.graph = manifoldGraph(costs, points);
   return problem;
 }
 

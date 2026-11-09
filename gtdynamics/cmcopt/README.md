@@ -445,9 +445,15 @@ If you want to trace the math in code order, read these files in this order:
 
 CMC and the equality-only optimizers now share runtime definitions, point
 values, discovery, recovery, basis preparation, retraction interfaces, and
-`CMCSubstituteFactor`. The old equality-only value representation has been
+`CMCostFactor`. The old equality-only value representation has been
 removed. GTSAM LM/Gauss–Newton/Dogleg wrappers and both hand-written LM loops
 remain available; this migration does not merge their optimization algorithms.
+The shared cost wrapper records original-argument-to-local-slot connections;
+points own immutable ambient bindings, and costs retain their original ordered
+keys and expressions. `recoverSlot` supplies current values and recovery
+Jacobians without scanning every variable in a point. Connected bindings are
+checked when evaluating the wrapper, including after replacement in
+`gtsam::Values`.
 For equality-only construction and retraction choices, see
 [../cmopt/README.md](../cmopt/README.md).
 

@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/constrained/CMCSubstituteFactor.h>
+#include <gtdynamics/constrained/CMCostFactor.h>
 #include <utils/DynamicsSymbol.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
@@ -26,8 +26,8 @@ std::map<Key, Key>
 IEOptimizer::varToManifoldKeyMap(const IECMPoints &points) {
   std::map<Key, Key> ambientToPoint;
   for (const auto &it : points) {
-    for (const Key &variable_key : it.second.values().keys()) {
-      ambientToPoint.emplace(variable_key, it.first);
+    for (const auto &binding : it.second.bindings()) {
+      ambientToPoint.emplace(binding.second, it.first);
     }
   }
   return ambientToPoint;
@@ -35,19 +35,19 @@ IEOptimizer::varToManifoldKeyMap(const IECMPoints &points) {
 
 NonlinearFactorGraph IEOptimizer::pointGraph(const NonlinearFactorGraph &graph,
                                              const IECMPoints &points) {
-  Values fixedPoints;
+  Values allPoints;
   for (const auto& [key, point] : points)
-    if (!point.dim()) fixedPoints.insert(key, point);
-  return pointSubstitutionGraph(graph, varToManifoldKeyMap(points), fixedPoints,
-                                CMCSubstituteFactor::PointType::Inequality);
+    allPoints.insert(key, point);
+  return pointCostGraph(graph, allPoints,
+                       CMCostFactor::PointType::Inequality);
 }
 void IEOptimizer::validatePoints(const IECMPoints &points,
                                  const Values &unconstrained) {
   KeySet ambient(unconstrained.keys());
   for (const auto &[key, point] : points) {
     if (!point.manifold()) throw std::invalid_argument("Empty IECMPoint");
-    for (Key slot : point.values().keys())
-      if (!ambient.insert(slot).second)
+    for (const auto &binding : point.bindings())
+      if (!ambient.insert(binding.second).second)
         throw std::invalid_argument("Overlapping IECMPoint ambient ownership");
   }
   for (const auto &[key, point] : points)

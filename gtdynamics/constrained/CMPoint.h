@@ -25,6 +25,7 @@ class CMPoint {
   virtual ~CMPoint() = default;
   const gtsam::Values& values() const { return values_; }
   const ConstraintManifold::shared_ptr& manifold() const { return manifold_; }
+  /// Bindings are fixed when the type factory initializes the point.
   const Bindings& bindings() const { return bindings_; }
   size_t dim() const { return manifold_ ? manifold_->dim() : 0; }
   bool hasAffineEqualities() const { return manifold_->affineEqualities(); }
@@ -36,6 +37,10 @@ class CMPoint {
   gtsam::Vector toCoordinates(const gtsam::VectorValues& delta) const;
   const gtsam::Value& recover(
       gtsam::Key key,
+      gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H = {}) const;
+  /// Recover a type-local slot using this point's immutable ambient binding.
+  const gtsam::Value& recoverSlot(
+      gtsam::Key slot,
       gtsam::OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H = {}) const;
   /// Clone independent mutable work and scope an optional trial metric.
   std::shared_ptr<CMRetractor> retractionWorkspace(
@@ -52,9 +57,11 @@ class CMPoint {
   friend class IEConstraintManifold;
   friend class EConstraintManifold;
   ConstraintManifold::shared_ptr manifold_;
-  Bindings bindings_;
   gtsam::Values values_;
   std::shared_ptr<const CMTangentSpace> tangentSpace_;
   std::shared_ptr<const CMRetractor> retractionPreparation_;
+
+ private:
+  Bindings bindings_;
 };
 }  // namespace gtdynamics
