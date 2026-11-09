@@ -59,5 +59,12 @@
     "title": "SCATE UR5",
     "description": "Replay SCATE on a UR5: an obstacle discovered online is avoided by re-solving after every step, beside a blind run that hits it. Inspect the replanned paths, the obstacle estimate, and clearances.",
     "tag": "Online planning"
+  },
+  {
+    "id": "steap-cmrg",
+    "title": "CAST: A Collaborative Construction Application of STEAP",
+    "tab": "CAST",
+    "description": "Two gantry-mounted arms build a post-and-lintel frame from 2×4 stock. GPMP2 plans each maneuver offline with learned dress-cable factors, and STEAP replans against simulated disturbances.",
+    "tag": "Multi-robot assembly planning"
   }
 ]

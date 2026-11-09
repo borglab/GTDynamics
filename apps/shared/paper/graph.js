@@ -116,6 +116,23 @@ export function paperGraph(kind, indices) {
     return { nodes, factors, height: 565, caption: 'Z groups free link COM poses, joint angles, body twists, joint rates and world root velocity; a groups link/joint accelerations; W groups internal reaction wrenches and actuator torques; λ groups both sole wrenches. C groups the current stance landmarks; b is one shared IMU bias. K, N and H are hard constraints; J, F, S, A, R, I, T, Δτ, Δλ and Pb are soft factors. T and R group separate native factors; each IMU factor still has two poses and two velocities inside the Z groups. This motif shows continuing double stance; contact observations and wrench-rate edges end at lift-off. The translation/yaw gauge costs and initial-velocity prior are omitted.' };
   }
 
+  if (kind === 'steap') {
+    indices.forEach((k, i) => {
+      node(`x${i}`, `X${k}`, x(i), 100, k);
+      node(`v${i}`, `V${k}`, x(i), 255, k);
+      factor('L', 'Joint-angle limits on X and velocity limits on V', [`x${i}`, `v${i}`], x(i) - 55, 175);
+      factor('O', 'Floor and placed-wood signed-distance costs, including the carried plank', [`x${i}`], x(i) + 55, 30);
+      factor('S', 'Cross-arm and bridge self-collision spheres', [`x${i}`], x(i) + 95, 100);
+      factor('C', 'Learned dress-cable clearance', [`x${i}`], x(i) + 75, 175);
+      factor('M', 'STEAP measurement prior added after state k is commanded', [`x${i}`], x(i) - 80, 30);
+      if (i) {
+        factor('G', 'Gaussian-process linear prior', [`x${i - 1}`, `v${i - 1}`, `x${i}`, `v${i}`], x(i) - 135, 175);
+        factor('I', 'Interpolated obstacle, self-collision and cable costs between supports', [`x${i - 1}`, `v${i - 1}`, `x${i}`, `v${i}`], x(i) - 135, 330);
+      }
+    });
+    return { nodes, factors, height: 370, caption: 'X groups the 18 gantry and joint values of both robots; V their velocities. G is the Gaussian-process prior, L limits, O wood and floor clearance, S self-collision, C the learned cable, and I the same costs at interpolated times. M is the measurement prior, added only to states that have been executed. The endpoint priors, the pinned straight-motion degrees of freedom, and the carried-plank factors that exist only while gripping are omitted.' };
+  }
+
   if (kind === 'planning') {
     indices.forEach((k, i) => {
       node(`q${i}`, `q${k}`, x(i), 80, k);

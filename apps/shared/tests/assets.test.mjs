@@ -40,6 +40,9 @@ test('every published, checked-in app asset has a replay or attribution consumer
   for(const name of ['recording.json.gz','states.bin.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt'])add(interpolation+name);
   for(const name of ['recording.json','architecture.html'])add(`apps/motion-planning/public/${name}`);
   for(const name of ['recording.json.gz','model.json.gz','MODEL_LICENSE.txt','SSIO_ATTRIBUTION.txt']){add(`apps/dynamics/public/${name}`);add(`apps/kinodynamics/public/${name}`);}
+  const steap='apps/steap-cmrg/public/';
+  for(const name of ['model.json.gz','presets.json','MODEL_NOTICE.txt'])add(steap+name);
+  for(const preset of json(`${steap}presets.json`))add(steap+preset.file);
   for(const name of ['replay.json','meshes.json'])add(`apps/scate/ur5/public/${name}`);
   const published=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z','apps'],{cwd:root,encoding:'utf8'})
     .split('\0').filter(path=>/^apps\/(?:[^/]+\/)+public\//.test(path)&&existsSync(resolve(root,path)));

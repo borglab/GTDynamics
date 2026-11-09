@@ -15,6 +15,7 @@ be opened directly.
 - [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
 - [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run.
+- [CAST: A Collaborative Construction Application of STEAP](steap-cmrg/README.md): two gantry-mounted arms build a post-and-lintel frame; GPMP2 plans offline and STEAP replans against simulated disturbances.
 
 Each app starts with a short technical abstract and its interactive demo, then
 continues with motivation, a factor graph formulation and factor definitions,
@@ -192,8 +193,9 @@ The workflow follows GitHub's [custom Pages workflow](https://docs.github.com/en
 2. Add the directory to `workspaces` in `apps/package.json` and run `npm install`
    from `apps` to update the shared lockfile.
 3. Add an entry to `registry.json` with `id` (the folder name), `title`,
-   `description`, and `tag`. This adds its tab and overview link and includes it
-   in the development launcher and Pages build.
+   `description`, and `tag`, plus an optional short `tab` label for a long
+   title. This adds its tab and overview link and includes it in the
+   development launcher and Pages build.
 4. If it needs downloaded assets, add its bootstrap to the `models` script.
    Native/server functionality needs an explicit static mode for Pages.
    An app whose computation runs in Python sets `"backend": "python"` in its
