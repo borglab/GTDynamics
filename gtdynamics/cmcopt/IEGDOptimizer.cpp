@@ -273,7 +273,9 @@ Values IEGDOptimizer::optimize(
   // Iterative loop
   IEGDState prev_state;
   do {
-    prev_state = state;
+    // Copy-construct points before moving the snapshot: map copy assignment
+    // may recycle nodes across components with different immutable bindings.
+    prev_state = IEGDState(state);
     IEGDIterationDetails iter_details = iterate(graph, state);
     state = IEGDState::fromLastIteration(iter_details, graph, params_);
     details_->push_back(iter_details);

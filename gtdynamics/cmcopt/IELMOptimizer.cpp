@@ -70,7 +70,9 @@ Values IELMOptimizer::optimize(
 
   IELMState prev_state;
   do {
-    prev_state = state;
+    // Copy-construct points before moving the snapshot: map copy assignment
+    // may recycle nodes across components with different immutable bindings.
+    prev_state = IELMState(state);
     IELMIterationDetails iter_details = iterate(graph, state);
     for (const auto& trial : iter_details.trials) {
       timings_.linearSolveSeconds += trial.linearUpdate.linearSolveSeconds;
