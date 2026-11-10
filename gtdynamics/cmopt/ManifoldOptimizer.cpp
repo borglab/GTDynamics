@@ -157,11 +157,13 @@ void ManifoldOptimizer::constructManifoldValues(
 void ManifoldOptimizer::constructUnconstrainedValues(
     const EConsOptProblem& equalityConstrainedProblem,
     ManifoldOptimizationProblem& mopt_problem) {
-  auto unconstrained = IEOptimizer::identifyUnconstrainedValues(
-      equalityConstrainedProblem.e_constraints_, NonlinearInequalityConstraints(),
-      equalityConstrainedProblem.values_);
-  mopt_problem.unconstrainedKeys = unconstrained.keySet();
-  mopt_problem.values.insert(unconstrained);
+  auto& keys = mopt_problem.unconstrainedKeys;
+  keys = equalityConstrainedProblem.costs_.keys();
+  for (Key key : equalityConstrainedProblem.e_constraints_.keys()) {
+    keys.erase(key);
+  }
+  mopt_problem.values.insert(
+      SubValues(equalityConstrainedProblem.values_, keys));
 }
 
 /* ************************************************************************* */

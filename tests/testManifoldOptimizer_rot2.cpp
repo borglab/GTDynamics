@@ -372,6 +372,30 @@ TEST(ManifoldOptimizer, TypedNonlinearSolverMatrix) {
   check(custom.optimize(*costs, *constraints, initial));
 }
 
+// Diagonal damping only needs increments for variables in the problem.
+TEST(ManifoldOptimizer, DiagonalDampingIgnoresUnusedInitialValues) {
+  using namespace so2_scenario;
+  const auto costs = get_graph(1.0, 0.0);
+  const auto constraints = get_constraints();
+  const Key freeKey = Symbol('u', 0);
+  const Key unusedKey = Symbol('u', 1);
+  costs->addPrior<double>(freeKey, 3.0, noiseModel::Unit::Create(1));
+  Values initial;
+  initial.insert(x1_key, 0.6);
+  initial.insert(x2_key, 0.8);
+  initial.insert(freeKey, -2.0);
+  initial.insert(unusedKey, 42.0);
+
+  LevenbergMarquardtParams params;
+  params.setDiagonalDamping(true);
+  const LMManifoldOptimizer optimizer(ManifoldOptimizerParameters{}, params);
+  const auto result = optimizer.optimize(*costs, *constraints, initial);
+  EXPECT_DOUBLES_EQUAL(1.0, result.atDouble(x1_key), 1e-5);
+  EXPECT_DOUBLES_EQUAL(0.0, result.atDouble(x2_key), 1e-5);
+  EXPECT_DOUBLES_EQUAL(3.0, result.atDouble(freeKey), 1e-5);
+  EXPECT(!result.exists(unusedKey));
+}
+
 /** Fixed components never appear as zero-width Gaussian variables. */
 TEST(ManifoldOptimizer, FixedAndFreePoints) {
   const Key fixedKey = Symbol('x', 0);

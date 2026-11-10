@@ -14,6 +14,7 @@
 #include <gtdynamics/cmopt/EConstraintManifold.h>
 #include <gtdynamics/cmopt/BasisRetractor.h>
 #include <gtdynamics/cmopt/DynamicsRetractor.h>
+#include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
 #include <gtdynamics/cmopt/ProjectionRetractor.h>
 #include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <gtdynamics/utils/values.h>
@@ -265,6 +266,33 @@ TEST(EqualityPointRetractor, ProjectionUsesPreparedBoundCoordinateKeys) {
   EXPECT(fixedPoint.eBasis()->basisKeys() ==
          std::optional<KeyVector>(KeyVector()));
   EXPECT_LONGS_EQUAL(0, fixedPoint.retract(Vector()).dim());
+}
+
+// Optimizer initialization restores feasibility before preparing basis keys.
+TEST(EqualityPointRetractor, BasisKeyProjectionThroughOptimizer) {
+  NonlinearEqualityConstraints constraints;
+  constraints.emplace_shared<ZeroCostConstraint>(
+      std::make_shared<Parabola>(1, 2));
+  Values initial;
+  initial.insert(1, 1.0);
+  initial.insert(2, 0.5);
+  NonlinearFactorGraph costs;
+  costs.addPrior<double>(1, 1.3, noiseModel::Unit::Create(1));
+
+  auto retraction = preciseParams();
+  retraction->useBasisKeys = true;
+  ManifoldOptimizerParameters params;
+  params.constraintManifoldParams->equalityBasisCreator =
+      std::make_shared<EliminationBasisCreator>(selectX());
+  params.constraintManifoldParams->retractorCreator =
+      std::make_shared<ProjectionRetractorCreator>(retraction);
+
+  const NonlinearManifoldOptimizer optimizer(params,
+                                             LevenbergMarquardtParams());
+  const auto result = optimizer.optimize(costs, constraints, initial);
+  EXPECT_DOUBLES_EQUAL(1.3, result.atDouble(1), 1e-5);
+  EXPECT_DOUBLES_EQUAL(1.69, result.atDouble(2), 1e-5);
+  EXPECT(constraints.violationNorm(result) < 1e-7);
 }
 
 TEST(EqualityPointRetractor, DynamicsOrdersOnlyEachBoundInnerGraph) {

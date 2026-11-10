@@ -79,9 +79,12 @@ public:
 
   IERetractor::shared_ptr create(const IECMPoint &point) const override;
 
+  /// Create an ambient projector for feasibility before a chart is available.
   Retractor::shared_ptr create(const NonlinearEqualityConstraints::shared_ptr
                                    constraints) const override {
-    return std::make_shared<ProjectionRetractor>(constraints, equalityParams_);
+    auto params = std::make_shared<RetractionParams>(*equalityParams_);
+    params->useBasisKeys = false;
+    return std::make_shared<ProjectionRetractor>(constraints, params);
   }
 };
 
