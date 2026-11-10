@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/cablerobot/factors/WinchFactor.h>
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 #include <gtdynamics/universal_robot/Link.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 

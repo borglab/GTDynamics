@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
@@ -50,9 +50,9 @@ struct LMIterationDetails;
  */
 struct LMState {
  public:
-  EManifoldValues manifolds;
+  ECMPoints points;
   Values unconstrainedValues;
-  EManifoldValues constManifolds;
+  ECMPoints constPoints;
   double error = 0;
   double lambda = 0;
   double lambdaFactor = 0;
@@ -87,15 +87,15 @@ struct LMState {
   /**
    * Evaluate base graph error from manifold and unconstrained values.
    * @param graph Base cost graph.
-   * @param _manifolds Current manifold values.
+   * @param _points Current manifold values.
    * @param _unconstrained_values Current unconstrained values.
-   * @param _const_manifolds Fixed manifold values.
+   * @param _const_points Fixed manifold values.
    * @return Total nonlinear graph error.
    */
   static double evaluateGraphError(const NonlinearFactorGraph &graph,
-                                   const EManifoldValues &_manifolds,
+                                   const ECMPoints &_points,
                                    const Values &_unconstrained_values,
-                                   const EManifoldValues &_const_manifolds);
+                                   const ECMPoints &_const_points);
 
   /// Reconstruct base variable values from state partitions.
   Values baseValues() const;
@@ -215,7 +215,7 @@ struct LMTrial {
    * @see README.md#solvers
    */
   struct NonlinearUpdate {
-    EManifoldValues newManifolds;
+    ECMPoints newPoints;
     Values newUnconstrainedValues;
     double newError;
     double costChange;

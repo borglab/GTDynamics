@@ -13,12 +13,13 @@
 
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
-#include <gtdynamics/cmcopt/IndependentComponents.h>
+#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/cmcopt/ProxQpSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
 #include <algorithm>
+#include <chrono>
 #include <iomanip>
 
 using std::cout, std::setw, std::setprecision, std::endl;
@@ -26,13 +27,28 @@ using std::cout, std::setw, std::setprecision, std::endl;
 namespace gtdynamics {
 using namespace gtsam;
 
+namespace {
+// Record elapsed time even when a solve rejects a trial or throws.
+class ElapsedTime {
+  double& seconds_;
+  std::chrono::steady_clock::time_point start_ = std::chrono::steady_clock::now();
+
+ public:
+  explicit ElapsedTime(double& seconds) : seconds_(seconds) {}
+  ~ElapsedTime() {
+    seconds_ = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - start_).count();
+  }
+};
+}  // namespace
+
 
 /* ************************************************************************* */
 /* <============================ IELMState ================================> */
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-IELMState::IELMState(const CMPoints &componentPoints,
+IELMState::IELMState(const IECMPoints &componentPoints,
                      const Values &unconstrainedValues,
                      const NonlinearFactorGraph &graph,
                      const NonlinearFactorGraph &pointGraph,
@@ -85,7 +101,7 @@ IELMState::fromLastIteration(const IELMIterationDetails &iter_details,
 }
 
 /* ************************************************************************* */
-Values IELMState::allValues(const CMPoints &points,
+Values IELMState::allValues(const IECMPoints &points,
                             const Values &unconstrainedValues) {
   Values values;
   for (const auto &[key, point] : points) values.insert(key, point);
@@ -96,6 +112,10 @@ Values IELMState::allValues(const CMPoints &points,
 /* ************************************************************************* */
 void IELMState::construct(const NonlinearFactorGraph &graph,
                           const NonlinearFactorGraph &pointGraph) {
+  ElapsedTime timing(linearizationSeconds);
+  equalityOnly = std::all_of(points.begin(), points.end(), [](const auto& item) {
+    return item.second.manifold()->inequalityCount(item.second) == 0;
+  });
   // linearize costs
   baseLinear = graph.linearize(baseValues());
   linearPointGraph = pointGraph.linearize(values);
@@ -125,8 +145,11 @@ void IELMState::construct(const NonlinearFactorGraph &graph,
   }
   // Combine matching scopes without forming normal equations. Sparse QP
   // elimination can then retain rank-deficient costs in square-root form.
-  for (const auto &[scope, factors] : costScopes)
-    tangentQp.addCost(JacobianFactor(factors, Ordering(scope)));
+  for (const auto &[scope, factors] : costScopes) {
+    const auto factor = std::make_shared<JacobianFactor>(factors, Ordering(scope));
+    reducedObjective.push_back(factor);
+    if (!equalityOnly) tangentQp.addCost(*factor);
+  }
   gradient = linearPointGraph->gradientAtZero();
   for (const auto &[key, dimension] : dimensions)
     if (!dimension) gradient.insert(key, Vector(0));
@@ -150,7 +173,7 @@ void IELMState::construct(const NonlinearFactorGraph &graph,
 
 /* ************************************************************************* */
 double IELMState::evaluateGraphError(const NonlinearFactorGraph &graph,
-                                     const CMPoints &componentPoints,
+                                     const IECMPoints &componentPoints,
                                      const Values &_unconstrained_values) {
   Values all_values = ambientValues(componentPoints);
   all_values.insert(_unconstrained_values);
@@ -217,6 +240,7 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
 
   // Compute nonlinear update and nonlinear cost change
   try {
+    ElapsedTime timing(retractionSeconds);
     nonlinearUpdate =
         NonlinearUpdate(state, linearUpdate, graph, params.retractionThreads);
   } catch (const RetractionFailure &failure) {
@@ -257,7 +281,10 @@ IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
 
   forcedIndicesMap = approach_indices_map;
   linearUpdate = LinearUpdate::zero(state);
-  nonlinearUpdate = NonlinearUpdate(state, forcedIndicesMap, graph);
+  {
+    ElapsedTime timing(retractionSeconds);
+    nonlinearUpdate = NonlinearUpdate(state, forcedIndicesMap, graph);
+  }
   stepIsSuccessful = true;
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -309,9 +336,9 @@ void IELMTrial::setDecreasedNextLambda(
 
 /* ************************************************************************* */
 std::map<std::pair<Key, size_t>, size_t>
-IdentifyConstraintType(const CMPoints &statePoints,
+IdentifyConstraintType(const IECMPoints &statePoints,
                        const IndexSetMap blockingIndicesMap,
-                       const CMPoints &newPoints) {
+                       const IECMPoints &newPoints) {
   std::map<std::pair<Key, size_t>, size_t> constraint_type_map;
 
   for (const auto &[key, newPoint] : newPoints) {
@@ -375,9 +402,9 @@ std::string ColoredStr(const std::string &str, const size_t constraint_type,
 }
 
 /* ************************************************************************* */
-std::string ConstraintInfoStr(const CMPoints &statePoints,
+std::string ConstraintInfoStr(const IECMPoints &statePoints,
                               const IndexSetMap blockingIndicesMap,
-                              const CMPoints &newPoints,
+                              const IECMPoints &newPoints,
                               const KeyFormatter &key_formatter,
                               bool stepIsSuccessful,
                               bool group_as_categories) {
@@ -462,7 +489,7 @@ double VectorMax(const std::vector<double> &vec) {
 }
 
 /* ************************************************************************* */
-std::string ConstraintInfoStr(const CMPoints &points,
+std::string ConstraintInfoStr(const IECMPoints &points,
                               const IndexSetMap &indices_map,
                               const KeyFormatter &key_formatter) {
   std::string str = "";
@@ -537,7 +564,64 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const NonlinearFactorGraph &graph,
                                       const IELMState &state,
                                       const IELMParams &params)
-    : lambda(_lambda){ if(params.qpBackend == IELMParams::QpBackend::ProxQP) {
+    : lambda(_lambda) {
+  const bool gaussian = params.linearSolver == IELMParams::LinearSolver::Gaussian ||
+      (params.linearSolver == IELMParams::LinearSolver::Automatic && state.equalityOnly);
+  if (gaussian && !state.equalityOnly)
+    throw std::invalid_argument("Gaussian CMC solves require empty inequalities");
+
+  // Validate a complete reduced ordering before either backend sees it.
+  auto lmParams = params.lmParams;
+  if (lmParams.ordering) {
+    Ordering ordering;
+    KeySet seen;
+    const auto dimensions = state.values.dims();
+    for (Key key : *lmParams.ordering) {
+      const auto found = dimensions.find(key);
+      if (found == dimensions.end() || !seen.insert(key).second)
+        throw std::invalid_argument("Invalid reduced ordering key");
+      if (found->second) ordering.push_back(key);
+    }
+    const size_t count = std::count_if(dimensions.begin(), dimensions.end(),
+        [](const auto& item) { return item.second != 0; });
+    if (ordering.size() != count)
+      throw std::invalid_argument("Incomplete reduced ordering");
+    lmParams.ordering = ordering;
+  }
+
+  ElapsedTime timing(linearSolveSeconds);
+  if (gaussian) {
+    delta = state.values.zeroVectors();
+    try {
+      if (std::any_of(delta.begin(), delta.end(),
+                      [](const auto& item) { return item.second.size() != 0; })) {
+        const auto diagonal =
+            SqrtHessianDiagonal(*state.linearPointGraph, lmParams);
+        const auto damped = buildDampedSystem(
+            state.reducedObjective, diagonal, state, lmParams);
+        ++gaussianSolves;
+        const auto solution = SolveLinear(damped, lmParams);
+        for (auto& [key, value] : delta) {
+          if (value.size()) value = solution.at(key);
+          if (!value.allFinite()) {
+            failureReason = "Gaussian solve returned a nonfinite increment";
+            return;
+          }
+        }
+      }
+    } catch (const IndeterminateSystemException& error) {
+      failureReason = error.what();
+      return;
+    } catch (const std::runtime_error& error) {
+      failureReason = error.what();
+      return;
+    }
+    solveSuccessful = true;
+    recordSolution(state, {});
+    return;
+  }
+
+  if(params.qpBackend == IELMParams::QpBackend::ProxQP) {
 #ifndef GTDYNAMICS_WITH_PROXQP
     throw std::invalid_argument(
         "ProxQP backend requires a build with GTDYNAMICS_WITH_PROXQP=ON");
@@ -551,6 +635,9 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
   const auto sqrtHessianDiagonal =
       SqrtHessianDiagonal(linear, params.lmParams);
   QpProblem problem = state.tangentQp;
+  // Equality-only states do not pack a QP unless explicitly requested.
+  if (state.equalityOnly)
+    for (const auto& factor : state.reducedObjective) problem.addCost(factor);
   // Only damping changes across trials; the undamped QP belongs to the state.
   for (const auto &factor :
        buildDampedSystem({}, sqrtHessianDiagonal, state, params.lmParams))
@@ -571,17 +658,9 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         params.qpUseProjectedGradientInitialization
             ? gtsam::ActiveSetSolverParams::QpInitialization::ProjectedGradient
             : gtsam::ActiveSetSolverParams::QpInitialization::TightConstraints;
-    if (params.lmParams.ordering) {
-      Ordering ordering;
-      for (Key key : *params.lmParams.ordering) {
-        // Fixed components have no QP variables. Keep other entries so GTSAM
-        // can reject missing, repeated or unknown keys in the requested order.
-        if (delta.exists(key) && delta.at(key).size() == 0) continue;
-        ordering.push_back(key);
-      }
-      qpParams->setOrdering(ordering);
-    }
+    if (lmParams.ordering) qpParams->setOrdering(*lmParams.ordering);
     try {
+      ++qpSolves;
       Values solution;
       std::vector<bool> activeRows;
 #ifdef GTDYNAMICS_WITH_PROXQP
@@ -658,7 +737,7 @@ void IELMTrial::LinearUpdate::recordSolution(
   tangentVector = computeTangentVector(state, delta, state.unconstrainedKeys);
   if (!checkSolutionValid(state, delta, blockingIndices)) {
     solveSuccessful = false;
-    failureReason = "Sparse QP failed directional feasibility checks";
+    failureReason = "Reduced step failed directional feasibility checks";
     return;
   }
   const auto &linear = *state.linearPointGraph;
@@ -786,7 +865,7 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(const IELMState &state,
       break;
     }
   const KeyVector keys = pointKeys(state.points);
-  std::vector<std::optional<CMPoint>> projected(keys.size());
+  std::vector<std::optional<IECMPoint>> projected(keys.size());
   std::vector<IERetractionInfo> information(keys.size());
   internal::forIndependentComponents(
       keys.size(), retractionThreads, [&](size_t i) {
@@ -861,8 +940,8 @@ IELMTrial::NonlinearUpdate::NonlinearUpdate(
 /* ************************************************************************* */
 std::pair<VectorValues, double>
 IELMTrial::NonlinearUpdate::evaluateRetractionDeviation(
-    const CMPoint &point,
-    const CMPoint &newPoint,
+    const IECMPoint &point,
+    const IECMPoint &newPoint,
     const VectorValues &tangentVector) {
   VectorValues retract_delta =
       point.values().localCoordinates(newPoint.values());

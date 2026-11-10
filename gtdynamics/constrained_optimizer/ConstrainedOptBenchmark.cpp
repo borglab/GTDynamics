@@ -18,7 +18,7 @@
 #include <gtdynamics/cmopt/BasisRetractor.h>
 #include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <gtdynamics/cmopt/Retractor.h>
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 #include <gtdynamics/config.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 
@@ -454,7 +454,7 @@ void ConstrainedOptBenchmark::run(std::ostream& latexOs) {
 
         auto moptParams = moptFactory_(method);
         auto* retractLm =
-            &moptParams.constraintManifoldParams->retractorCreator->params()->lmParams;
+            &std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()->lmParams;
         if (options_.verboseRetractor) {
           retractLm->setVerbosityLM("SUMMARY");
         }
@@ -512,7 +512,7 @@ ManifoldOptimizerParameters ConstrainedOptBenchmark::DefaultMoptParams() {
       std::make_shared<UnconstrainedOptimizationRetractorCreator>(retractorParams);
   auto basisParams = std::make_shared<TangentSpaceBasisParams>();
   basisParams->alwaysConstructBasis = false;
-  moptParams.constraintManifoldParams->basisCreator =
+  moptParams.constraintManifoldParams->equalityBasisCreator =
       std::make_shared<OrthonormalBasisCreator>(basisParams);
   return moptParams;
 }
@@ -527,7 +527,7 @@ ManifoldOptimizerParameters ConstrainedOptBenchmark::DefaultMoptParamsSV(
   auto basisParams = std::make_shared<TangentSpaceBasisParams>();
   basisParams->useBasisKeys = true;
   basisParams->alwaysConstructBasis = false;
-  moptParams.constraintManifoldParams->basisCreator =
+  moptParams.constraintManifoldParams->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(basisKeyFunction, basisParams);
   return moptParams;
 }

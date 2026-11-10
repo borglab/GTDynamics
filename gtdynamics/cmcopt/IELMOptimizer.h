@@ -28,13 +28,18 @@ using namespace gtsam;
 
 
 struct IELMParams {
+  /// Choose the reduced linear solve; Gaussian requires no inequalities.
+  enum class LinearSolver { Automatic, Gaussian, QP };
+  LinearSolver linearSolver = LinearSolver::Automatic;
+
   /// Numerical backend for the global reduced QP.
   enum class QpBackend { Gtsam, ProxQP };
 
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
-  /** LM settings. ordering, when set, supplies the complete reduced-key QP
+  /** LM settings. ordering, when set, supplies the complete reduced-key
    * ordering; zero-dimensional components are removed before forwarding it.
+   * linearSolverType controls Gaussian solves; QP backends own their algebra.
    */
   LevenbergMarquardtParams lmParams;
   /** Global QP backend. ProxQP requires GTDYNAMICS_WITH_PROXQP and full solves
@@ -80,7 +85,22 @@ class IELMOptimizer : public IEOptimizer {
   const IELMParams ielm_params_;
   std::shared_ptr<IELMOptimizationDetails> details_;
 
+ public:
+  using IEOptimizer::optimize;
+
+  /// Wall times cover all attempts, including rejected LM trials.
+  struct Timings {
+    double linearizationSeconds = 0;
+    double linearSolveSeconds = 0;
+    double retractionSeconds = 0;
+    size_t gaussianSolves = 0;
+    size_t qpSolves = 0;
+  };
+  const Timings& timings() const { return timings_; }
+
  private:
+  mutable Timings timings_;
+
   // Only scalar boundary residuals and active sets are needed across a mode.
   // Keeping them separate makes diagnostic retention algorithm-independent.
   mutable std::optional<IndexSetMap> mode_;
@@ -108,11 +128,10 @@ class IELMOptimizer : public IEOptimizer {
   const IELMParams &ielmParams() const { return ielm_params_; }
 
   // Keep the ambient-values overload visible.
-  using IEOptimizer::optimize;
 
   /** Perform optimization on points. */
   Values optimize(const NonlinearFactorGraph &graph,
-                           const CMPoints &points,
+                           const IECMPoints &points,
                            const Values &unconstrainedValues) const override;
 
   /** Convergence check including

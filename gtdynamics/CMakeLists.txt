@@ -1,5 +1,5 @@
 # All subdirectories that contain source code relevant to this library.
-set(SOURCE_SUBDIRS universal_robot utils factors constraints optimizer constrained_optimizer kinematics mechanics statics dynamics cmopt cmcopt scenarios gpmp2)
+set(SOURCE_SUBDIRS universal_robot utils factors constraints optimizer constrained_optimizer kinematics mechanics statics dynamics constrained cmopt cmcopt scenarios gpmp2)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -67,6 +67,21 @@ file(GLOB cmc_internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/cmcopt/internal/*.h"
 list(APPEND headers ${cmc_internal_headers})
 install(FILES ${cmc_internal_headers}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cmcopt/internal)
+
+file(GLOB constrained_internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/constrained/internal/*.h")
+list(APPEND headers ${constrained_internal_headers})
+install(FILES ${constrained_internal_headers}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/constrained/internal)
+
+file(GLOB cm_internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/cmopt/internal/*.h")
+list(APPEND headers ${cm_internal_headers})
+install(FILES ${cm_internal_headers}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/cmopt/internal)
+
+file(GLOB dynamics_internal_headers "${CMAKE_CURRENT_SOURCE_DIR}/dynamics/internal/*.h")
+list(APPEND headers ${dynamics_internal_headers})
+install(FILES ${dynamics_internal_headers}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/dynamics/internal)
 
 ## Generate and install config file
 configure_file(config.h.in config.h)

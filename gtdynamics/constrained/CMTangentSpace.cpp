@@ -10,7 +10,7 @@
  * @author Frank Dellaert
  */
 
-#include <gtdynamics/cmcopt/CMTangentSpace.h>
+#include <gtdynamics/constrained/CMTangentSpace.h>
 
 #include <stdexcept>
 

@@ -18,7 +18,7 @@
 #include <gtdynamics/scenarios/DomeRetractor.h>
 #include <gtdynamics/scenarios/HalfSphereRetractor.h>
 #include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>

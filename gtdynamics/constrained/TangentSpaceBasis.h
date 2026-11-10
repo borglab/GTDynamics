@@ -20,7 +20,7 @@
 
 #include <SuiteSparseQR.hpp>
 #endif
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/constrained/MultiJacobian.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/inference/Key.h>
@@ -137,6 +137,12 @@ class TangentSpaceBasis {
    */
   virtual Vector localCoordinates(const Values &values,
                                   const Values &values_other) const = 0;
+
+  /// Independent variable keys when coordinates are selected ambient variables.
+  virtual std::optional<KeyVector> basisKeys() const {
+    if (!dim()) return KeyVector();
+    return {};
+  }
 
   /// Dimension of the basis.
   virtual size_t dim() const = 0;
@@ -389,7 +395,7 @@ class OrthonormalBasis : public TangentSpaceBasis {
  *   elimination ordering.
  * - If `params->alwaysConstructBasis` is true, the constructor also calls
  *   `construct(values)`. Otherwise construction is lazy and happens when a
- *   caller such as `ConstraintManifold::retract`, `recover` with Jacobians, or
+ *   caller such as `ECMPoint::retract`, `recover` with Jacobians, or
  *   `localCoordinates` first needs the basis.
  * - `createWithNewValues` is used whenever a manifold is rebuilt at new values,
  *   including after retractions and across nonlinear optimization iterations.
@@ -460,7 +466,7 @@ class EliminationBasis : public TangentSpaceBasis {
    * Recreate a basis at new values while reusing structural attributes.
    *
    * This is the path used by `createWithNewValues`, which is in turn called
-   * when `ConstraintManifold` or `CMPoint` creates a new manifold
+   * when `ECMPoint` or `IECMPoint` creates a new manifold
    * state after retraction or between nonlinear iterations. It avoids
    * recomputing basis-key offsets and the symbolic ordering. If
    * `alwaysConstructBasis` is true, it still recomputes the numeric recovery
@@ -485,6 +491,11 @@ class EliminationBasis : public TangentSpaceBasis {
   EliminationBasis(const TangentSpaceBasisParams::shared_ptr &params,
                    const Attributes::shared_ptr &attributes)
       : TangentSpaceBasis(params), attributes_(attributes) {}
+
+  /// Selected coordinates remain available through immutable basis views.
+  std::optional<KeyVector> basisKeys() const override {
+    return attributes_->basis_keys;
+  }
 
   /**
    * Create a basis at new values with the same structural attributes.
@@ -532,7 +543,7 @@ class EliminationBasis : public TangentSpaceBasis {
    * paths. It is a per-call operation, often executed many times per nonlinear
    * iteration/trial. It assumes the numeric basis has already been constructed;
    * callers that need lazy construction should call through
-   * `ConstraintManifold::makeSureBasisConstructed`.
+   * the runtime type constructs numerical geometry for a point.
    *
    * Cost is proportional to the selected basis dimension plus the stored
    * recovery Jacobian nonzeros. It does not linearize factors or eliminate.
@@ -557,7 +568,7 @@ class EliminationBasis : public TangentSpaceBasis {
   /**
    * Return the recover Jacobian for a variable.
    *
-   * `ConstraintManifold::recover(key, H)` and transformed-factor
+   * `ECMPoint::recover(key, H)` and transformed-factor
    * linearization call this when derivatives with respect to manifold
    * coordinates are needed. It allocates a dense
    * `var_dim(key) x total_basis_dim` matrix and fills the blocks stored for
@@ -701,7 +712,7 @@ class OrthonormalBasisCreator : public TangentSpaceBasisCreator {
 /**
  * Factory for `EliminationBasis`.
  *
- * This is the normal construction path used by `ConstraintManifold` params. At
+ * This is the normal construction path used by runtime manifold params. At
  * manifold construction time, `create` receives the keys in one
  * constraint-connected component, applies `basisKeyFunction`, and creates an
  * `EliminationBasis` with those independent coordinates. The factory itself is
@@ -771,7 +782,7 @@ class EliminationBasisCreator : public TangentSpaceBasisCreator {
   /**
    * Create basis for one constraint-connected component.
    *
-   * This is executed when a `ConstraintManifold` or `CMPoint`
+   * This is executed when a `ECMPoint` or `IECMPoint`
    * creates the tangent basis for a component. It is not called on every
    * tangent lift, but it may be called again when a new manifold object is
    * created for updated values or active constraints. The returned basis

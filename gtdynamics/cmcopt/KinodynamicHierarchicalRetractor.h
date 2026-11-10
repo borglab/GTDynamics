@@ -50,11 +50,11 @@ protected:
 
 public:
   KinodynamicHierarchicalRetractor(
-      const CMPoint &point, const Params::shared_ptr &params,
+      const IECMPoint &point, const Params::shared_ptr &params,
       const std::optional<KeyVector> &basis_keys = {});
 
-  CMPoint
-  retract(const CMPoint *point, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 };

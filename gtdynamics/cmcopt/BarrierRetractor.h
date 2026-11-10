@@ -23,7 +23,7 @@ namespace gtdynamics {
 class BarrierRetractor : public IERetractor {
  public:
   /// Bind policy-specific local coordinate/prior keys to this point.
-  IERetractor::shared_ptr bind(const CMPoint &point) const override;
+  IERetractor::shared_ptr bind(const IECMPoint &point) const override;
   /// Isolated copy used by runtime manifold types.
   IERetractor::shared_ptr clone() const override {
     return std::make_shared<BarrierRetractor>(*this);
@@ -31,7 +31,7 @@ class BarrierRetractor : public IERetractor {
 
 protected:
   /** Penalty solve and active-face cleanup in exact affine coordinates. */
-  CMPoint retractReduced(const CMPoint &point,
+  IECMPoint retractReduced(const IECMPoint &point,
                                       const VectorValues &delta,
                                       const IndexSet &blocking,
                                       IERetractionInfo *info) const;
@@ -51,15 +51,15 @@ public:
     }
   }
 
-  CMPoint
-  retract(const CMPoint *point, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 
   /// Solve the special case delta = 0 while forcing the requested inequalities
   /// to become active.
-  CMPoint
-  moveToBoundary(const CMPoint *point,
+  IECMPoint
+  moveToBoundary(const IECMPoint *point,
                  const IndexSet &blocking_indices,
                  IERetractionInfo *retract_info = nullptr) const override;
 };

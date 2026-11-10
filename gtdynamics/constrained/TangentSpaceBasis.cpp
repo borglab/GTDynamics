@@ -17,7 +17,7 @@
 
 #include <SuiteSparseQR.hpp>
 #endif
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 #include <gtdynamics/utils/values.h>
 #include <gtsam/linear/GaussianBayesNet.h>
 #include <gtsam/linear/GaussianFactorGraph.h>

@@ -17,7 +17,6 @@
 #include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>
@@ -28,7 +27,7 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;

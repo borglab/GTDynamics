@@ -12,7 +12,7 @@
  */
 
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/constrained/LinearConstraint.h>
@@ -29,7 +29,7 @@ using namespace gtdynamics;
 namespace {
 constexpr Key kX = 1, kY = 2;
 
-CMPoint makePoint(
+IECMPoint makePoint(
     const Values &values, const NonlinearEqualityConstraints &equalities = {},
     const NonlinearInequalityConstraints &inequalities = {},
     const IERetractorParams::shared_ptr &metric =

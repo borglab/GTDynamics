@@ -11,7 +11,7 @@
  */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
-#include <gtdynamics/cmcopt/TangentCone.h>
+#include <gtdynamics/constrained/TangentCone.h>
 #include <gtdynamics/dynamics/WorldVelocityFactor.h>
 #include <gtdynamics/universal_robot/RevoluteJoint.h>
 #include <gtdynamics/utils/PoseContactConstraintSpec.h>
@@ -50,8 +50,8 @@ class LimitedRetractor : public IERetractor {
  public:
   std::shared_ptr<std::atomic<size_t>> rejected =
       std::make_shared<std::atomic<size_t>>(0);
-  CMPoint retract(
-      const CMPoint* point, const VectorValues& delta,
+  IECMPoint retract(
+      const IECMPoint* point, const VectorValues& delta,
       const std::optional<IndexSet>& blocking = {},
       IERetractionInfo* info = nullptr) const override {
     if (delta.at(1).norm() > .2) {
@@ -107,7 +107,7 @@ class PositiveRetractor : public IERetractor {
  public:
   std::shared_ptr<std::atomic<size_t>> boundaryMoves =
       std::make_shared<std::atomic<size_t>>(0);
-  CMPoint retract(const CMPoint* point,
+  IECMPoint retract(const IECMPoint* point,
                                const VectorValues& d,
                                const std::optional<IndexSet>& blocking = {},
                                IERetractionInfo* = nullptr) const override {
@@ -117,8 +117,8 @@ class PositiveRetractor : public IERetractor {
                          : std::max(0., v.at<double>(1)));
     return point->manifold()->point(point->bindings(), v);
   }
-  CMPoint moveToBoundary(
-      const CMPoint* point, const IndexSet& blocking,
+  IECMPoint moveToBoundary(
+      const IECMPoint* point, const IndexSet& blocking,
       IERetractionInfo* info = nullptr) const override {
     ++*boundaryMoves;
     return retract(point, point->values().zeroVectors(), blocking, info);

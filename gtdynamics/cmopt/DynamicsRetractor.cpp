@@ -13,6 +13,7 @@
  */
 
 #include <gtdynamics/cmopt/DynamicsRetractor.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
@@ -104,7 +105,7 @@ DynamicsRetractor::DynamicsRetractor(
   qv_keys.merge(v_keys);
 
   /// classify basis keys
-  if (params_->useBasisKeys) {
+  if (equalityParams_->useBasisKeys) {
     if (!basis_keys) {
       throw std::runtime_error("basis keys not provided for retractor.");
     }
@@ -143,24 +144,76 @@ DynamicsRetractor::DynamicsRetractor(
   std::tie(graph_ad, const_var_factors_ad_) = ConstVarGraph(graph_ad, qv_keys);
 
   // Set the graphs for optimizers
-  optimizer_np_q_.setGraph(graph_q);
-  optimizer_np_v_.setGraph(graph_v);
-  optimizer_np_ad_.setGraph(graph_ad);
+  setOptimizerGraph(optimizer_np_q_, graph_q);
+  setOptimizerGraph(optimizer_np_v_, graph_v);
+  setOptimizerGraph(optimizer_np_ad_, graph_ad);
 
   // Set the graphs for optimizers
   AddLinearPriors(graph_q, basis_q_keys_);
   AddLinearPriors(graph_v, basis_v_keys_);
   AddLinearPriors(graph_ad, basis_ad_keys_);
-  optimizer_wp_q_.setGraph(graph_q);
-  optimizer_wp_v_.setGraph(graph_v);
-  optimizer_wp_ad_.setGraph(graph_ad);
+  setOptimizerGraph(optimizer_wp_q_, graph_q);
+  setOptimizerGraph(optimizer_wp_v_, graph_v);
+  setOptimizerGraph(optimizer_wp_ad_, graph_ad);
+}
+
+DynamicsRetractor::DynamicsRetractor(const DynamicsRetractor &other)
+    : Retractor(other), merit_graph_(other.merit_graph_),
+      optimizer_wp_q_(equalityParams_->lmParams),
+      optimizer_wp_v_(equalityParams_->lmParams),
+      optimizer_wp_ad_(equalityParams_->lmParams),
+      optimizer_np_q_(equalityParams_->lmParams),
+      optimizer_np_v_(equalityParams_->lmParams),
+      optimizer_np_ad_(equalityParams_->lmParams),
+      basis_q_keys_(other.basis_q_keys_), basis_v_keys_(other.basis_v_keys_),
+      basis_ad_keys_(other.basis_ad_keys_),
+      const_var_factors_v_(other.const_var_factors_v_),
+      const_var_factors_ad_(other.const_var_factors_ad_) {
+  // The with/without-prior graphs share each call's detached fixed factors.
+  auto detachPair = [this](
+      const MutableLMOptimizer &sourceWith,
+      const MutableLMOptimizer &sourceWithout, MutableLMOptimizer &with,
+      MutableLMOptimizer &without,
+      std::vector<std::shared_ptr<ConstVarFactor>> &fixed) {
+    NonlinearFactorGraph graph = sourceWith.graph();
+    const size_t split = graph.size();
+    graph.push_back(sourceWithout.graph());
+    detachFixedFactors(graph, fixed);
+    NonlinearFactorGraph withGraph, withoutGraph;
+    for (size_t i = 0; i < split; ++i) withGraph.push_back(graph[i]);
+    for (size_t i = split; i < graph.size(); ++i)
+      withoutGraph.push_back(graph[i]);
+    setOptimizerGraph(with, withGraph);
+    setOptimizerGraph(without, withoutGraph);
+  };
+  setOptimizerGraph(optimizer_wp_q_, other.optimizer_wp_q_.graph());
+  setOptimizerGraph(optimizer_np_q_, other.optimizer_np_q_.graph());
+  detachPair(other.optimizer_wp_v_, other.optimizer_np_v_, optimizer_wp_v_,
+             optimizer_np_v_, const_var_factors_v_);
+  detachPair(other.optimizer_wp_ad_, other.optimizer_np_ad_, optimizer_wp_ad_,
+             optimizer_np_ad_, const_var_factors_ad_);
+}
+
+IERetractor::shared_ptr DynamicsRetractorCreator::create(
+    const IECMPoint &point) const {
+  validatePointType(point);
+  auto constraints =
+      std::make_shared<NonlinearEqualityConstraints>(*point.eConstraints());
+  if (!equalityParams_->useBasisKeys)
+    return std::make_shared<DynamicsRetractor>(constraints, boundParams(point));
+
+  KeyVector slots;
+  for (const auto &[slot, key] : point.bindings()) slots.push_back(slot);
+  KeyVector keys = basisKeyFunction(slots);
+  for (Key &key : keys) key = point.bindings().at(key);
+  return std::make_shared<DynamicsRetractor>(constraints, boundParams(point), keys);
 }
 
 /* ************************************************************************* */
 void DynamicsRetractor::updatePriors(const Values &values, const KeySet &keys,
                                      NonlinearFactorGraph &graph) {
   graph.erase(graph.begin() + graph.size() - keys.size(), graph.end());
-  AddGeneralPriors(values, keys, params_->sigma, graph);
+  AddGeneralPriors(values, keys, equalityParams_->sigma, graph);
 }
 
 /* ************************************************************************* */
@@ -206,15 +259,15 @@ Values DynamicsRetractor::retractConstraints(const Values &values) {
   // KeySet all_basis_keys = basis_q_keys_;
   // all_basis_keys.merge(basis_v_keys_);
   // all_basis_keys.merge(basis_ad_keys_);
-  // AddGeneralPriors(values, all_basis_keys, params_->sigma, graph_wp_all);
+  // AddGeneralPriors(values, all_basis_keys, equalityParams_->sigma, graph_wp_all);
 
-  // LevenbergMarquardtParams lmParams = params_->lmParams;
+  // LevenbergMarquardtParams lmParams = equalityParams_->lmParams;
   // lmParams.setMaxIterations(10);
   // LevenbergMarquardtOptimizer optimizer_wp_all(graph_wp_all, known_values,
-  // params_->lmParams); auto result = optimizer_wp_all.optimize();
+  // equalityParams_->lmParams); auto result = optimizer_wp_all.optimize();
 
   // LevenbergMarquardtOptimizer optimizer_np_all(cc_->merit_graph_, result,
-  // params_->lmParams); result = optimizer_np_all.optimize();
+  // equalityParams_->lmParams); result = optimizer_np_all.optimize();
   // checkFeasible(cc_->merit_graph_, result);
 
   return known_values;

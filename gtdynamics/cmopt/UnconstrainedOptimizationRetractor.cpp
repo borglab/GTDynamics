@@ -41,8 +41,15 @@ using namespace gtsam;
 UnconstrainedOptimizationRetractor::UnconstrainedOptimizationRetractor(
     const NonlinearEqualityConstraints::shared_ptr &constraints,
     const RetractionParams::shared_ptr &params)
-    : Retractor(params),
-      optimizer_(constraints->penaltyGraph(), params->lmParams) {}
+    : Retractor(params), optimizer_(params->lmParams) {
+  setOptimizerGraph(optimizer_, constraints->penaltyGraph());
+}
+
+UnconstrainedOptimizationRetractor::UnconstrainedOptimizationRetractor(
+    const UnconstrainedOptimizationRetractor &other)
+    : Retractor(other), optimizer_(equalityParams_->lmParams) {
+  setOptimizerGraph(optimizer_, other.optimizer_.graph());
+}
 
 /* ************************************************************************* */
 Values

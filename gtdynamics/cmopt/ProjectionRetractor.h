@@ -29,6 +29,11 @@ protected:
   KeyVector basis_keys_;
 
 public:
+  using Retractor::retract;
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<ProjectionRetractor>(*this);
+  }
+
   /**
    * Constructor.
    * @param constraints Equality constraints for the component.
@@ -39,6 +44,9 @@ public:
       const NonlinearEqualityConstraints::shared_ptr &constraints,
       const RetractionParams::shared_ptr &params,
       std::optional<const KeyVector> basis_keys = {});
+
+  /// A workspace copy owns independent mutable projection state.
+  ProjectionRetractor(const ProjectionRetractor &other);
 
   /**
    * Retract with projection-style retraction.
@@ -64,9 +72,19 @@ public:
 
   virtual ~ProjectionRetractorCreator() {}
 
+  using RetractorCreator::create;
+  IERetractorCreator::shared_ptr clone() const override {
+    return std::make_shared<ProjectionRetractorCreator>(*this);
+  }
+
+  IERetractor::shared_ptr create(const IECMPoint &point) const override;
+
+  /// Create an ambient projector for feasibility before a chart is available.
   Retractor::shared_ptr create(const NonlinearEqualityConstraints::shared_ptr
                                    constraints) const override {
-    return std::make_shared<ProjectionRetractor>(constraints, params_);
+    auto params = std::make_shared<RetractionParams>(*equalityParams_);
+    params->useBasisKeys = false;
+    return std::make_shared<ProjectionRetractor>(constraints, params);
   }
 };
 

@@ -1,10 +1,12 @@
 # Equality coordinates and the global tangent-cone QP
 
-CMC separates [runtime types and points](IEConstraintManifold.md), numerical tangent
-geometry, the global linear step, and nonlinear retraction. A `IEConstraintManifold`
-defines constraint factors and operations; a `CMPoint` contains numerical state
+CMC separates [runtime types and points](../constrained/README.md), numerical tangent
+geometry, the global linear step, and nonlinear retraction. An `IEConstraintManifold`
+defines constraint factors and operations; an `IECMPoint` contains numerical state
 and ambient bindings; its `CMTangentSpace` owns B and active inequality rows.
-This type/value refactor builds on PR 476 and preserves the QP algorithms.
+Equality-only `EConstraintManifold` / `ECMPoint` specialize these contracts
+without inequality rows. The common `ConstraintManifold` / `CMPoint` bases
+provide chart and recovery operations. The QP algorithms are unchanged.
 
 ## Equality reduction
 

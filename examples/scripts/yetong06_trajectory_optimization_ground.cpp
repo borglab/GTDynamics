@@ -39,8 +39,8 @@
 
 #include "CmcBenchmark.h"
 #include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/ConstraintManifold.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/cmopt/ECMPoint.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 #include "gtdynamics/factors/ContactPointFactor.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 #include "gtdynamics/utils/GraphUtils.h"
@@ -149,7 +149,6 @@ void TrajectoryOptimization() {
   iecm_params->retractorCreator =
       std::make_shared<Vision60HierarchicalRetractorCreator>(
           vision60, retractor_params, true);
-  iecm_params->equalityBasisBuildFromScratch = false;
 
   IELMParams ie_params;
   ie_params.lmParams.setMaxIterations(10);

@@ -13,68 +13,44 @@
  */
 
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 
 #include <stdexcept>
 
 namespace gtdynamics {
 using namespace gtsam;
 
-VectorValues IERetractorParams::priorPrecisions(
-    const Values &values, const KeyVector &keys) const {
-  if (useVaryingSigma && !metricSigmas)
-    throw std::invalid_argument("Missing projection metric sigmas");
-  double scale = 1.0;
-  if (useVaryingSigma && scaleVaryingSigma) {
-    // Match AddGeneralPriors' nominal-sigma convention.
-    double minimum = 1e10;
-    for (Key key : keys)
-      if (metricSigmas->exists(key)) {
-        const auto &sigma = metricSigmas->at(key);
-        if (!sigma.size() || sigma.size() != values.at(key).dim() ||
-            !sigma.allFinite() || (sigma.array() <= 0).any())
-          throw std::invalid_argument("Invalid projection metric sigmas");
-        minimum = std::min(minimum, sigma.minCoeff());
-      }
-    scale = priorSigma / minimum;
-  }
-  VectorValues precisions;
-  for (Key key : keys) {
-    if (useVaryingSigma && !metricSigmas->exists(key)) continue;
-    const size_t dim = values.at(key).dim();
-    const Vector sigma = useVaryingSigma
-        ? Vector(scale * metricSigmas->at(key))
-        : Vector::Constant(dim, priorSigma);
-    if (sigma.size() != dim || !sigma.allFinite() || (sigma.array() <= 0).any())
-      throw std::invalid_argument("Invalid projection metric sigmas");
-    const Vector weights = sigma.array().square().inverse();
-    if (!weights.allFinite() || (weights.array() <= 0).any())
-      throw std::invalid_argument("Invalid projection metric precision");
-    // Repeated prior keys have the same semantics as repeated prior factors.
-    if (precisions.exists(key)) precisions.at(key) += weights;
-    else precisions.insert(key, weights);
-  }
-  return precisions;
+IERetractor::shared_ptr IERetractor::bind(const IECMPoint &point) const {
+  return std::static_pointer_cast<IERetractor>(CMRetractor::bindPoint(point));
 }
 
-IERetractor::shared_ptr IERetractor::bind(const CMPoint &point) const {
-  auto result = clone();
-  if (params_->metricSigmas) {
-    auto bound = std::make_shared<VectorValues>();
-    for (const auto &[slot, key] : point.bindings())
-      if (params_->metricSigmas->exists(slot))
-        bound->insert(key, params_->metricSigmas->at(slot));
-    result->params_->metricSigmas = bound;
-  }
-  return result;
+CMRetractor::shared_ptr IERetractor::bindPoint(const CMPoint &point) const {
+  const auto *iePoint = dynamic_cast<const IECMPoint *>(&point);
+  if (!iePoint) throw std::invalid_argument("IE retraction requires an IECMPoint");
+  return bind(*iePoint);
 }
+
+Values IERetractor::retractValues(const CMPoint &point,
+                                 const VectorValues &delta,
+                                 CMRetractionInfo *info) const {
+  const auto *iePoint = dynamic_cast<const IECMPoint *>(&point);
+  if (!iePoint) throw std::invalid_argument("IE retraction requires an IECMPoint");
+  return retract(iePoint, delta, {}, info).values();
+}
+
+CMRetractor::shared_ptr IERetractorCreator::prepare(const CMPoint &point) const {
+  const auto *iePoint = dynamic_cast<const IECMPoint *>(&point);
+  if (!iePoint) throw std::invalid_argument("IE retraction requires an IECMPoint");
+  return create(*iePoint);
+}
+
 IERetractor::shared_ptr UniversalIERetractorCreator::create(
-    const CMPoint &point) const {
+    const IECMPoint &point) const {
   return retractor_->bind(point);
 }
 
-CMPoint
-IERetractor::moveToBoundary(const CMPoint *point,
+IECMPoint
+IERetractor::moveToBoundary(const IECMPoint *point,
                             const IndexSet &blocking_indices,
                             IERetractionInfo *retract_info) const {
   VectorValues delta = point->values().zeroVectors();

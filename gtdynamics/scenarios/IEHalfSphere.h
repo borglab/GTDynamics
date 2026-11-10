@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
 #include <gtdynamics/utils/utils.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>

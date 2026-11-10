@@ -10,7 +10,7 @@
  */
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtsam/base/TestableAssertions.h>
 
 /* ************************************************************************* */
@@ -29,7 +29,7 @@ double square(const double& x, OptionalJacobian<1, 1> H) {
 }
 
 /** Leave two inactive blocks before the nonlinear active block. */
-CMPoint makePoint() {
+IECMPoint makePoint() {
   auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
   inequalities->push_back(ScalarExpressionInequalityConstraint::LeqZero(
       Double_(Key(7)) - Double_(10.), 1.));

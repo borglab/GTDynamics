@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/cmopt/LMManifoldOptimizerState.h>
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptimizer.h>
@@ -88,6 +88,10 @@ class LMManifoldOptimizer : public ManifoldOptimizer {
       const gtsam::NonlinearFactorGraph &graph,
       const NonlinearEqualityConstraints &constraints,
       const gtsam::Values &initial_values) const override;
+
+  /// Optimize explicitly constructed equality points and ordinary free values.
+  Values optimize(const NonlinearFactorGraph& graph, const ECMPoints& points,
+                  const Values& unconstrainedValues = Values()) const;
 
   /**
    * Optimize an already transformed manifold optimization problem.

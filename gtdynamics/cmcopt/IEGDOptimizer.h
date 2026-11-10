@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -44,7 +44,7 @@ struct GradientDescentParams {
 
 struct IEGDState {
 public:
-  CMPoints points;
+  IECMPoints points;
   /// Ambient variables outside the constraint components.
   Values unconstrainedValues;
   double error = 0;
@@ -59,7 +59,7 @@ public:
   IEGDState() {}
 
   /// Constructor.
-  IEGDState(const CMPoints &componentPoints,
+  IEGDState(const IECMPoints &componentPoints,
             const NonlinearFactorGraph &graph, size_t _iterations = 0, const Values &freeValues = {})
       : points(componentPoints),
        unconstrainedValues(freeValues),
@@ -88,7 +88,7 @@ public:
 
 /** Trial for GD inner iteration with certain lambda setting. */
 struct IEGDTrial {
-  CMPoints newPoints;
+  IECMPoints newPoints;
   /// Trial values of ambient variables outside the points.
   Values newUnconstrainedValues;
   IndexSetMap forcedIndicesMap;
@@ -137,6 +137,8 @@ protected:
   std::shared_ptr<IEGDOptimizationDetails> details_;
 
 public:
+  using IEOptimizer::optimize;
+
   /** Constructor */
   IEGDOptimizer(const GradientDescentParams &params = GradientDescentParams(),
                 const IEConstraintManifold::Params::shared_ptr &iecm_params =
@@ -146,18 +148,17 @@ public:
 
   const IEGDOptimizationDetails &details() const { return *details_; }
 
-  // CMPoints lineSearch(const NonlinearFactorGraph &graph,
-  //                             const CMPoints &points,
+  // IECMPoints lineSearch(const NonlinearFactorGraph &graph,
+  //                             const IECMPoints &points,
   //                             const VectorValues &proj_dir,
   //                             const VectorValues &descentDirection,
   //                             VectorValues &delta) const;
 
   // Keep the ambient-values overload visible.
-  using IEOptimizer::optimize;
 
   virtual Values
   optimize(const NonlinearFactorGraph &graph,
-                    const CMPoints &points,
+                    const IECMPoints &points,
                     const Values &unconstrainedValues) const override;
 
   /** Perform one iterate, may need to make several trials. */

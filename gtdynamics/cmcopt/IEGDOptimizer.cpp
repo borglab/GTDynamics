@@ -100,7 +100,7 @@ void IEGDTrial::computeDelta(const IEGDState &state) {
 void IEGDTrial::computeNewPoints(const IEGDState &state) {
   newUnconstrainedValues = state.unconstrainedValues.retract(
       SubValues(delta, state.unconstrainedValues.keys()));
-  newPoints = CMPoints();
+  newPoints = IECMPoints();
   for (const auto &[key, point] : state.points) {
     auto pointTangent = SubValues(tangentVector, point.values().keys());
     if (state.blockingIndicesMap.find(key) !=
@@ -144,8 +144,8 @@ void IEGDTrial::print(const IEGDState &state) const {
 }
 
 // /* *************************************************************************
-// */ CMPoints IEGDOptimizer::lineSearch(
-//     const NonlinearFactorGraph &graph, const CMPoints &points,
+// */ IECMPoints IEGDOptimizer::lineSearch(
+//     const NonlinearFactorGraph &graph, const IECMPoints &points,
 //     const VectorValues &proj_dir, const VectorValues
 //     &descentDirection, VectorValues &delta) const {
 //   double alpha = 0.2;
@@ -160,7 +160,7 @@ void IEGDTrial::print(const IEGDState &state) const {
 //     delta = t * proj_dir;
 //     // delta.print("delta");
 
-//     CMPoints newPoints = retractPoints(points, delta);
+//     IECMPoints newPoints = retractPoints(points, delta);
 //     Values new_values = CollectManifoldValues(newPoints);
 //     double new_eval = graph.error(new_values);
 
@@ -251,7 +251,7 @@ void IEGDOptimizer::tryLambda(const NonlinearFactorGraph &graph,
 
 /* ************************************************************************* */
 Values IEGDOptimizer::optimize(
-    const NonlinearFactorGraph &graph, const CMPoints &points,
+    const NonlinearFactorGraph &graph, const IECMPoints &points,
     const Values &unconstrainedValues) const {
   validatePoints(points, unconstrainedValues);
   details_->clear();
@@ -273,7 +273,9 @@ Values IEGDOptimizer::optimize(
   // Iterative loop
   IEGDState prev_state;
   do {
-    prev_state = state;
+    // Copy-construct points before moving the snapshot: map copy assignment
+    // may recycle nodes across components with different immutable bindings.
+    prev_state = IEGDState(state);
     IEGDIterationDetails iter_details = iterate(graph, state);
     state = IEGDState::fromLastIteration(iter_details, graph, params_);
     details_->push_back(iter_details);

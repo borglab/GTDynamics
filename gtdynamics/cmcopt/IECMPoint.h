@@ -4,7 +4,7 @@
  * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 /**
- * @file CMPoint.h
+ * @file IECMPoint.h
  * @brief Values of runtime constraint-manifold types.
  * @author Yetong Zhang
  * @author Frank Dellaert
@@ -12,78 +12,52 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/CMTangentSpace.h>
+#include <gtdynamics/constrained/CMPoint.h>
 #include <gtdynamics/cmcopt/IEConstraintManifold.h>
-#include <gtdynamics/cmopt/TangentSpaceMetric.h>
+#include <gtdynamics/constrained/TangentSpaceMetric.h>
 #include <gtsam/base/Manifold.h>
 
 namespace gtdynamics {
+class ECMPoint;
 /** An immutable point with ambient identities and ordinary vector tangents.
  * Copies share read-only geometry. Successors preserve the runtime type and
  * bindings, and rebuild nonlinear geometry. Retraction work is never shared.
  */
-class CMPoint {
+class IECMPoint : public CMPoint {
  public:
   enum { dimension = Eigen::Dynamic };
-  using shared_ptr = std::shared_ptr<CMPoint>;
+  using shared_ptr = std::shared_ptr<IECMPoint>;
   using Bindings = IEConstraintManifold::Bindings;
 
   /// Empty value for GTSAM concept/default construction, not an optimizable
   /// point.
-  CMPoint() = default;
+  IECMPoint() = default;
 
-  /// Ambient numerical state is authoritative.
-  const Values& values() const { return values_; }
   /// Runtime type identity, including immutable conditioning.
-  const IEConstraintManifold::shared_ptr& manifold() const { return manifold_; }
-  /// Local-slot to ambient-key assignment.
-  const Bindings& bindings() const { return bindings_; }
-  /// Current tight constraint blocks, never stored on the shared type.
-  const IndexSet& activeIndices() const { return active_indices_; }
-  /// Geometry at this point, shared read-only across trials.
-  const std::shared_ptr<const CMTangentSpace>& tangentSpace() const {
-    return tangentSpace_;
+  IEConstraintManifold::shared_ptr manifold() const {
+    return std::static_pointer_cast<const IEConstraintManifold>(manifold_);
   }
+  const IndexSet& activeIndices() const { return active_indices_; }
 
-  /// Equality basis in ambient-key coordinates.
-  const std::shared_ptr<const TangentSpaceBasis>& eBasis() const;
-
-  /// Captured affine contract.
-  bool hasAffineEqualities() const { return manifold_->affineEqualities(); }
-  /// Intrinsic equality dimension, independent of the active boundary.
-  size_t dim() const { return manifold_ ? manifold_->dim() : 0; }
-  /// Map reduced increments to ambient tangents.
-  VectorValues toAmbient(const Vector& delta) const;
-
-  /// Map ambient tangents to reduced increments.
-  Vector toCoordinates(const VectorValues& delta) const;
+  /// Explicitly relax inequalities into a distinct equality-only type.
+  ECMPoint equalityView() const;
 
   /// GTSAM chart operation. At corners, admissibility remains CMC's concern.
-  CMPoint retract(const Vector& delta) const;
+  IECMPoint retract(const Vector& delta) const;
 
   /// Retraction with explicit boundary and trial-metric context.
-  CMPoint retract(const Vector& delta, const std::optional<IndexSet>& blocking,
+  IECMPoint retract(const Vector& delta, const std::optional<IndexSet>& blocking,
                   IERetractionInfo* info = nullptr,
                   const VectorValues* metricSigmas = nullptr) const;
 
   /// Ambient-update entry point for existing feasibility algorithms.
-  CMPoint retract(const VectorValues& delta,
+  IECMPoint retract(const VectorValues& delta,
                   const std::optional<IndexSet>& blocking = {},
                   IERetractionInfo* info = nullptr,
                   const VectorValues* metricSigmas = nullptr) const;
 
   /// Chart coordinates require the same type identity and bindings.
-  Vector localCoordinates(const CMPoint& other) const;
-
-  /// Numerical equality includes type identity and ambient bindings.
-  bool equals(const CMPoint& other, double tolerance = 1e-8) const;
-
-  /// Print this point and its ambient numerical state.
-  void print(const std::string& prefix = "") const;
-
-  /// Recover an ambient value, optionally with its reduced recovery Jacobian.
-  const Value& recover(
-      Key key, OptionalJacobian<Eigen::Dynamic, Eigen::Dynamic> H = {}) const;
+  Vector localCoordinates(const IECMPoint& other) const;
 
   /// Compute cone-feasible reduced direction and original block indices.
   std::pair<IndexSet, Vector> projectTangentCone(const Vector& delta) const;
@@ -96,7 +70,7 @@ class CMPoint {
   IndexSet blockingIndices(const VectorValues& direction) const;
 
   /// Move to a selected boundary using the type's chosen policy.
-  CMPoint moveToBoundary(const IndexSet& active,
+  IECMPoint moveToBoundary(const IndexSet& active,
                          IERetractionInfo* info = nullptr,
                          const VectorValues* metricSigmas = nullptr) const;
 
@@ -131,29 +105,23 @@ class CMPoint {
 
  private:
   friend class IEConstraintManifold;
-  IEConstraintManifold::shared_ptr manifold_;
-  Bindings bindings_;
-  Values values_;
   IndexSet active_indices_;
   NonlinearEqualityConstraints::shared_ptr equalities_;
   NonlinearInequalityConstraints::shared_ptr inequalities_;
-  std::shared_ptr<const CMTangentSpace> tangentSpace_;
-  // Frozen preparation only; every invocation clones/detaches mutable work.
-  std::shared_ptr<const IERetractor> retractionPreparation_;
 };
 
 /// Component-point keys are independent of ambient keys.
-using CMPoints = std::map<Key, CMPoint>;
+using IECMPoints = std::map<Key, IECMPoint>;
 /// Gather the authoritative ambient values of disjoint points.
-Values ambientValues(const CMPoints& points);
+Values ambientValues(const IECMPoints& points);
 /// Component-point keys in deterministic order.
-KeyVector pointKeys(const CMPoints& points);
+KeyVector pointKeys(const IECMPoints& points);
 /// Move selected points to their boundaries without changing the originals.
-CMPoints movePointsToBoundaries(const CMPoints& points,
+IECMPoints movePointsToBoundaries(const IECMPoints& points,
                                 const IndexSetMap& indices,
                                 const VectorValues* metricSigmas = nullptr);
 }  // namespace gtdynamics
 namespace gtsam {
 template <>
-struct traits<gtdynamics::CMPoint> : internal::Manifold<gtdynamics::CMPoint> {};
+struct traits<gtdynamics::IECMPoint> : internal::Manifold<gtdynamics::IECMPoint> {};
 }  // namespace gtsam

@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptProblem.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
@@ -732,7 +732,7 @@ public:
   virtual ~Vision60HierarchicalRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const CMPoint &point) const override;
+  create(const IECMPoint &point) const override;
 };
 
 /** Barrier retractor creator for single phase. */
@@ -757,7 +757,7 @@ public:
   virtual ~Vision60BarrierRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const CMPoint &point) const override;
+  create(const IECMPoint &point) const override;
 };
 
 /** Hierarchical retractor creator for multiple phases. */
@@ -784,7 +784,7 @@ public:
   virtual ~Vision60MultiPhaseHierarchicalRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const CMPoint &point) const override;
+  create(const IECMPoint &point) const override;
 };
 
 /** Barrier retractor creator for multiple phases. */
@@ -809,7 +809,7 @@ public:
   virtual ~Vision60MultiPhaseBarrierRetractorCreator() {}
 
   IERetractor::shared_ptr
-  create(const CMPoint &point) const override;
+  create(const IECMPoint &point) const override;
 };
 
 /** Tangent space creator for multiple phases. */

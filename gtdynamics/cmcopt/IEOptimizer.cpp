@@ -11,7 +11,7 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/cmcopt/CMCSubstituteFactor.h>
+#include <gtdynamics/constrained/CMCostFactor.h>
 #include <utils/DynamicsSymbol.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
@@ -23,47 +23,32 @@ using namespace gtsam;
 
 /* ************************************************************************* */
 std::map<Key, Key>
-IEOptimizer::varToManifoldKeyMap(const CMPoints &points) {
+IEOptimizer::varToManifoldKeyMap(const IECMPoints &points) {
   std::map<Key, Key> ambientToPoint;
   for (const auto &it : points) {
-    for (const Key &variable_key : it.second.values().keys()) {
-      ambientToPoint.emplace(variable_key, it.first);
+    for (const auto &binding : it.second.bindings()) {
+      ambientToPoint.emplace(binding.second, it.first);
     }
   }
   return ambientToPoint;
 }
 
 NonlinearFactorGraph IEOptimizer::pointGraph(const NonlinearFactorGraph &graph,
-                                             const CMPoints &points) {
-  NonlinearFactorGraph result;
-  const auto ownership = varToManifoldKeyMap(points);
-  for (const auto &factor : graph) {
-    if (!factor) continue;
-    std::map<Key, Key> local;
-    for (Key key : factor->keys()) {
-      auto found = ownership.find(key);
-      if (found != ownership.end()) local.emplace(*found);
-    }
-    if (local.empty()) {
-      result.push_back(factor);
-      continue;
-    }
-    auto noise = std::dynamic_pointer_cast<NoiseModelFactor>(factor);
-    if (!noise)
-      throw std::invalid_argument(
-          "CMC requires noise-model substituted cost factors");
-    result.emplace_shared<CMCSubstituteFactor>(noise, local);
-  }
-  return result;
+                                             const IECMPoints &points) {
+  Values allPoints;
+  for (const auto& [key, point] : points)
+    allPoints.insert(key, point);
+  return pointCostGraph(graph, allPoints,
+                       CMCostFactor::PointType::Inequality);
 }
-void IEOptimizer::validatePoints(const CMPoints &points,
+void IEOptimizer::validatePoints(const IECMPoints &points,
                                  const Values &unconstrained) {
   KeySet ambient(unconstrained.keys());
   for (const auto &[key, point] : points) {
-    if (!point.manifold()) throw std::invalid_argument("Empty CMPoint");
-    for (Key slot : point.values().keys())
-      if (!ambient.insert(slot).second)
-        throw std::invalid_argument("Overlapping CMPoint ambient ownership");
+    if (!point.manifold()) throw std::invalid_argument("Empty IECMPoint");
+    for (const auto &binding : point.bindings())
+      if (!ambient.insert(binding.second).second)
+        throw std::invalid_argument("Overlapping IECMPoint ambient ownership");
   }
   for (const auto &[key, point] : points)
     if (ambient.count(key))
@@ -126,7 +111,8 @@ IEOptimizer::Components IEOptimizer::identifyConnectedComponents(
     const NonlinearEqualityConstraints &e_constraints,
     const NonlinearInequalityConstraints &i_constraints,
     const Values &values,
-    const IEConstraintManifold::Params::shared_ptr &iecm_params) {
+    const IEConstraintManifold::Params::shared_ptr &iecm_params,
+    const TypeFactory& typeFactory, const ValueInitializer& initialize) {
   if (!iecm_params) throw std::invalid_argument("Missing CMC type parameters");
   VariableIndex e_var_index(e_constraints);
   VariableIndex i_var_index(i_constraints);
@@ -150,8 +136,11 @@ IEOptimizer::Components IEOptimizer::identifyConnectedComponents(
     Values componentValues;
     for (const Key &key : component_info.keys)
       componentValues.insert(key, values.at(key));
-    const auto type = std::make_shared<IEConstraintManifold>(
-        equalities, inequalities, componentValues, *iecm_params);
+    if (initialize) componentValues = initialize(equalities, componentValues);
+    const auto type = typeFactory
+        ? typeFactory(equalities, inequalities, componentValues, iecm_params)
+        : std::make_shared<IEConstraintManifold>(equalities, inequalities,
+                                                componentValues, *iecm_params);
 
     // Point keys are independent of both ambient keys and the type collection.
     size_t index = result.points.size();
@@ -182,7 +171,7 @@ Values IEOptimizer::identifyUnconstrainedValues(
 
 /* ************************************************************************* */
 VectorValues
-IEOptimizer::computeTangentVector(const CMPoints &points,
+IEOptimizer::computeTangentVector(const IECMPoints &points,
                                   const VectorValues &delta) {
   VectorValues tangentVector;
   for (const auto &it : points) {
@@ -196,7 +185,7 @@ IEOptimizer::computeTangentVector(const CMPoints &points,
 
 /* ************************************************************************* */
 std::pair<IndexSetMap, VectorValues>
-IEOptimizer::projectTangentCone(const CMPoints &points,
+IEOptimizer::projectTangentCone(const IECMPoints &points,
                                 const VectorValues &v) {
   VectorValues proj_v;
   IndexSetMap active_indices_all;
@@ -215,10 +204,10 @@ IEOptimizer::projectTangentCone(const CMPoints &points,
 }
 
 /* ************************************************************************* */
-CMPoints
-IEOptimizer::retractPoints(const CMPoints &points,
+IECMPoints
+IEOptimizer::retractPoints(const IECMPoints &points,
                               const VectorValues &delta) {
-  CMPoints newPoints;
+  IECMPoints newPoints;
   for (const auto &it : points) {
     const Key &key = it.first;
     const Vector &xi = delta.at(key);
@@ -228,8 +217,8 @@ IEOptimizer::retractPoints(const CMPoints &points,
 }
 
 /* ************************************************************************* */
-bool IEOptimizer::isSameMode(const CMPoints &points1,
-                             const CMPoints &points2) {
+bool IEOptimizer::isSameMode(const IECMPoints &points1,
+                             const IECMPoints &points2) {
   for (const auto &it : points1) {
     const IndexSet &indices1 = it.second.activeIndices();
     const IndexSet &indices2 = points2.at(it.first).activeIndices();
@@ -245,8 +234,8 @@ bool IEOptimizer::isSameMode(const CMPoints &points1,
 
 /* ************************************************************************* */
 IndexSetMap
-IEOptimizer::identifyChangeIndices(const CMPoints &points,
-                                   const CMPoints &newPoints) {
+IEOptimizer::identifyChangeIndices(const IECMPoints &points,
+                                   const IECMPoints &newPoints) {
   IndexSetMap change_indices_map;
   for (const auto &it : points) {
     const Key &key = it.first;
@@ -267,16 +256,16 @@ IEOptimizer::identifyChangeIndices(const CMPoints &points,
 
 /* ************************************************************************* */
 IndexSetMap
-IEOptimizer::identifyApproachingIndices(const CMPoints &points,
-                                        const CMPoints &newPoints,
+IEOptimizer::identifyApproachingIndices(const IECMPoints &points,
+                                        const IECMPoints &newPoints,
                                         const IndexSetMap &change_indices_map,
                                         const double& approach_rate_threshold) {
   IndexSetMap approach_indices_map;
   for (const auto &it : change_indices_map) {
     const Key &key = it.first;
     const IndexSet &change_indices = it.second;
-    const CMPoint &point = points.at(key);
-    const CMPoint &newPoint = newPoints.at(key);
+    const IECMPoint &point = points.at(key);
+    const IECMPoint &newPoint = newPoints.at(key);
 
     double max_approach_rate = -1;
     size_t max_approach_idx;
@@ -321,7 +310,7 @@ std::string IEOptimizer::indicesString(const IndexSetMap &indices_map,
 }
 
 /* ************************************************************************* */
-std::string IEOptimizer::indicesString(const CMPoints &points,
+std::string IEOptimizer::indicesString(const IECMPoints &points,
                                     const KeyFormatter &keyFormatter) {
   std::string str;
   for (const auto &it : points) {

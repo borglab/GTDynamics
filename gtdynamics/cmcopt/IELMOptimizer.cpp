@@ -29,9 +29,14 @@ using namespace gtsam;
 
 /* ************************************************************************* */
 Values IELMOptimizer::optimize(
-    const NonlinearFactorGraph &graph, const CMPoints &points,
+    const NonlinearFactorGraph &graph, const IECMPoints &points,
     const Values &unconstrainedValues) const {
   validatePoints(points, unconstrainedValues);
+  if (ielm_params_.linearSolver == IELMParams::LinearSolver::Gaussian)
+    for (const auto& [key, point] : points)
+      if (point.manifold()->inequalityCount(point))
+        throw std::invalid_argument("Gaussian CMC solves require empty inequalities");
+  timings_ = {};
   details_->clear();
   mode_.reset();
   modeStartResiduals_.clear();
@@ -39,7 +44,7 @@ Values IELMOptimizer::optimize(
 
   const LevenbergMarquardtParams &lmParams = ielm_params_.lmParams;
 
-  // Construct the cost graph on CMPoint values.
+  // Construct the cost graph on IECMPoint values.
   std::map<Key, Key> ambientToPoint = varToManifoldKeyMap(points);
   NonlinearFactorGraph pointGraph =
       IEOptimizer::pointGraph(graph, points);
@@ -47,6 +52,7 @@ Values IELMOptimizer::optimize(
   // Construct initial state
   IELMState state(points, unconstrainedValues, graph, pointGraph,
                   lmParams.lambdaInitial, lmParams.lambdaFactor, 0);
+  timings_.linearizationSeconds += state.linearizationSeconds;
 
   if (ielm_params_.iterationCallback) ielm_params_.iterationCallback(state);
 
@@ -64,10 +70,19 @@ Values IELMOptimizer::optimize(
 
   IELMState prev_state;
   do {
-    prev_state = state;
+    // Copy-construct points before moving the snapshot: map copy assignment
+    // may recycle nodes across components with different immutable bindings.
+    prev_state = IELMState(state);
     IELMIterationDetails iter_details = iterate(graph, state);
+    for (const auto& trial : iter_details.trials) {
+      timings_.linearSolveSeconds += trial.linearUpdate.linearSolveSeconds;
+      timings_.retractionSeconds += trial.retractionSeconds;
+      timings_.gaussianSolves += trial.linearUpdate.gaussianSolves;
+      timings_.qpSolves += trial.linearUpdate.qpSolves;
+    }
     state = IELMState::fromLastIteration(iter_details, graph, pointGraph,
                                          lmParams);
+    timings_.linearizationSeconds += state.linearizationSeconds;
     rememberMode(iter_details);
     details_->push_back(iter_details);
     if (ielm_params_.historyWindow &&
@@ -146,7 +161,7 @@ IELMIterationDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
 
 /* ************************************************************************* */
 namespace {
-IndexSetMap activeModes(const CMPoints &points) {
+IndexSetMap activeModes(const IECMPoints &points) {
   IndexSetMap result;
   for (const auto &[key, point] : points)
     result.emplace(key, point.activeIndices());

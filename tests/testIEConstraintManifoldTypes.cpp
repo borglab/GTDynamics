@@ -14,7 +14,8 @@
 #include <gtdynamics/cmcopt/IEGDOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/internal/CompiledIEConstraintManifold.h>
-#include <gtdynamics/cmcopt/internal/LegacyCMAdapter.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
+#include <gtdynamics/constrained/internal/ReadOnlyBasis.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/expressions.h>
@@ -117,7 +118,7 @@ NonlinearFactorGraph coupledCost() {
   return graph;
 }
 
-CMPoints twoPoints(const IEConstraintManifold::shared_ptr& type) {
+IECMPoints twoPoints(const IEConstraintManifold::shared_ptr& type) {
   return {
       {Symbol('c', 0), type->point({{0, 10}, {1, 11}}, lineValues(10, 11, 0))},
       {Symbol('c', 1), type->point({{0, 20}, {1, 21}}, lineValues(20, 21, 0))}};
@@ -187,7 +188,7 @@ TEST(IEConstraintManifold, SharedDefinitionAndIndependentPoints) {
 }
 
 // GTSAM Values and traits consume ordinary vectors and preserve type identity.
-TEST(CMPoint, GtsamValueAndChartOperations) {
+TEST(IECMPoint, GtsamValueAndChartOperations) {
   const auto type = lineType();
   const auto point = type->point(lineValues(0, 1, 1));
   Values values;
@@ -195,11 +196,11 @@ TEST(CMPoint, GtsamValueAndChartOperations) {
   VectorValues delta;
   delta.insert(Symbol('c', 0), Vector1(.25));
   const auto retracted = values.retract(delta);
-  const auto& next = retracted.at<CMPoint>(Symbol('c', 0));
+  const auto& next = retracted.at<IECMPoint>(Symbol('c', 0));
   EXPECT(assert_equal(Vector1(.25), point.localCoordinates(next), 1e-9));
-  EXPECT_LONGS_EQUAL(1, traits<CMPoint>::GetDimension(point));
-  EXPECT(traits<CMPoint>::Equals(
-      point, traits<CMPoint>::Retract(point, Vector(Vector1::Zero()))));
+  EXPECT_LONGS_EQUAL(1, traits<IECMPoint>::GetDimension(point));
+  EXPECT(traits<IECMPoint>::Equals(
+      point, traits<IECMPoint>::Retract(point, Vector(Vector1::Zero()))));
   const auto otherType = lineType()->point(lineValues(0, 1, 1));
   EXPECT(!point.equals(otherType));
   EXPECT(invalid([&] { type->linearize(otherType); }));
@@ -209,7 +210,7 @@ TEST(CMPoint, GtsamValueAndChartOperations) {
 
 // Binding validates missing, repeated, extra, and incompatible ambient
 // variables.
-TEST(CMPoint, RejectInvalidBindings) {
+TEST(IECMPoint, RejectInvalidBindings) {
   const auto type = lineType();
   const auto values = lineValues(10, 11, 1);
   EXPECT(invalid([&] { type->point({{0, 10}}, values); }));
@@ -322,7 +323,7 @@ TEST(IEConstraintManifold, GradientDescentUsesPointsAndFreeVariables) {
   IEGDOptimizer gd(params);
   for (bool native : {false, true}) {
     const auto type = native ? compiledType() : lineType();
-    const CMPoints points{{Symbol('c', 0), type->point({{0, 10}, {1, 11}},
+    const IECMPoints points{{Symbol('c', 0), type->point({{0, 10}, {1, 11}},
                                                        lineValues(10, 11, 0))}};
     const auto result = gd.optimize(costs, points, free);
     const auto lm = IELMOptimizer().optimize(costs, points, free);
@@ -483,7 +484,7 @@ TEST(IEConstraintManifold, WeightsAndDampingDoNotChangeEqualities) {
     NonlinearFactorGraph costs;
     costs.emplace_shared<PriorFactor<Vector>>(
         10, Vector(Vector1(4)), noiseModel::Isotropic::Sigma(1, sigma));
-    const CMPoints points{{Symbol('c', 0), point}};
+    const IECMPoints points{{Symbol('c', 0), point}};
     const auto graph = IEOptimizer::pointGraph(costs, points);
     IELMState state(points, {}, costs, graph, .1, 10.);
     for (double damping : {.1, 1.}) {
@@ -502,13 +503,13 @@ TEST(IEConstraintManifold, WeightsAndDampingDoNotChangeEqualities) {
   EXPECT_LONGS_EQUAL(1, counts->numerical.load());
 }
 
-TEST(IEConstraintManifold, LegacyViewCannotModifySharedAffineBasis) {
+TEST(IEConstraintManifold, ReadOnlyViewCannotModifySharedAffineBasis) {
   const auto type = lineType();
   const auto a = type->point(lineValues(0, 1, 1));
-  auto view = equalityPoint(a);
+  ReadOnlyBasis view(a.eBasis());
   bool rejected = false;
   try {
-    view.basis()->construct(lineValues(0, 1, 2));
+    view.construct(lineValues(0, 1, 2));
   } catch (const std::logic_error&) {
     rejected = true;
   }
@@ -516,8 +517,10 @@ TEST(IEConstraintManifold, LegacyViewCannotModifySharedAffineBasis) {
   const auto b = type->point(lineValues(0, 1, 2));
   EXPECT(assert_equal(a.eBasis()->recoverJacobian(1),
                       b.eBasis()->recoverJacobian(1)));
-  const auto boundary = equalityPoint(a, IndexSet{0});
-  EXPECT_LONGS_EQUAL(0, boundary.dim());
+  NonlinearEqualityConstraints extra;
+  extra.push_back(a.iConstraints()->at(0)->createEqualityConstraint());
+  const auto boundary = a.eBasis()->createWithAdditionalConstraints(extra, a.values());
+  EXPECT_LONGS_EQUAL(0, boundary->dim());
   EXPECT_LONGS_EQUAL(1, a.dim());
 }
 
@@ -675,7 +678,7 @@ TEST(IEConstraintManifold,
   metricA.insert(11, Vector1(2));
   metricB.insert(20, Vector1(3));
   metricB.insert(21, Vector1(.2));
-  auto evaluate = [](const CMPoint& p, const VectorValues& metric,
+  auto evaluate = [](const IECMPoint& p, const VectorValues& metric,
                      double step) {
     VectorValues delta;
     const Key x = p.bindings().at(0), y = p.bindings().at(1);
@@ -711,11 +714,11 @@ TEST(IEConstraintManifold, PointKeysHaveIndependentIdentity) {
   const auto& points = components.points;
   EXPECT_LONGS_EQUAL(Symbol('c', 2), points.begin()->first);
   EXPECT(invalid([&] {
-    IEOptimizer::validatePoints(CMPoints{{x, points.begin()->second}}, {});
+    IEOptimizer::validatePoints(IECMPoints{{x, points.begin()->second}}, {});
   }));
   EXPECT(invalid([&] {
     IEOptimizer::validatePoints(
-        CMPoints{{Symbol('c', 3), points.begin()->second},
+        IECMPoints{{Symbol('c', 3), points.begin()->second},
                  {Symbol('c', 4), points.begin()->second}},
         {});
   }));
@@ -762,7 +765,7 @@ class FixedMetricCreator final : public IERetractorCreator {
     return std::make_shared<FixedMetricCreator>(*this);
   }
 
-  IERetractor::shared_ptr create(const CMPoint& point) const override {
+  IERetractor::shared_ptr create(const IECMPoint& point) const override {
     auto projection = IERetractorParams::createVaryingSigmas();
     projection->metricSigmas->insert(point.bindings().at(0), Vector1(1));
     projection->metricSigmas->insert(point.bindings().at(1), Vector1(2));
@@ -784,7 +787,7 @@ TEST(IEConstraintManifold, MixedRetractionPoliciesKeepTheirOwnMetrics) {
       equalities, inequalities, lineValues(0, 1, 0), fixedParams);
   const auto varying = std::make_shared<IEConstraintManifold>(
       equalities, inequalities, lineValues(0, 1, 0), varyingParams);
-  const CMPoints points{
+  const IECMPoints points{
       {Symbol('c', 0), fixed->point({{0, 10}, {1, 11}}, lineValues(10, 11, 0))},
       {Symbol('c', 1),
        varying->point({{0, 20}, {1, 21}}, lineValues(20, 21, 0))}};

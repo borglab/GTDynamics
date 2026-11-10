@@ -15,7 +15,7 @@
 #include <cmath>
 #include <gtdynamics/cmcopt/AffineProjection.h>
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
 #include <gtdynamics/utils/GraphUtils.h>
@@ -23,7 +23,7 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
-IERetractor::shared_ptr BarrierRetractor::bind(const CMPoint &point) const {
+IERetractor::shared_ptr BarrierRetractor::bind(const IECMPoint &point) const {
   auto result = IERetractor::bind(point);
   if (use_basis_keys_) {
     auto &bound = dynamic_cast<BarrierRetractor &>(*result).basis_keys_;
@@ -75,8 +75,8 @@ RunPenaltyOptimization(const NonlinearFactorGraph &cost,
 
 } // namespace
 
-CMPoint
-BarrierRetractor::moveToBoundary(const CMPoint *point,
+IECMPoint
+BarrierRetractor::moveToBoundary(const IECMPoint *point,
                                  const IndexSet &blocking_indices,
                                  IERetractionInfo *retract_info) const {
   if (params_->useReducedCoordinates && point->hasAffineEqualities())
@@ -116,8 +116,8 @@ BarrierRetractor::moveToBoundary(const CMPoint *point,
 }
 
 /* ************************************************************************* */
-CMPoint
-BarrierRetractor::retract(const CMPoint *point,
+IECMPoint
+BarrierRetractor::retract(const IECMPoint *point,
                           const VectorValues &delta,
                           const std::optional<IndexSet> &blocking_indices,
                           IERetractionInfo *retract_info) const {
@@ -201,8 +201,8 @@ BarrierRetractor::retract(const CMPoint *point,
 }
 
 /* ************************************************************************* */
-CMPoint BarrierRetractor::retractReduced(
-    const CMPoint &point, const VectorValues &delta,
+IECMPoint BarrierRetractor::retractReduced(
+    const IECMPoint &point, const VectorValues &delta,
     const IndexSet &blocking, IERetractionInfo *info) const {
   const auto priorKeys =
       use_basis_keys_ ? std::optional<KeyVector>(basis_keys_) : std::nullopt;

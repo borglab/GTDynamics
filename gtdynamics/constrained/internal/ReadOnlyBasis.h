@@ -11,7 +11,7 @@
  */
 #pragma once
 
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 
 namespace gtdynamics::internal {
 
@@ -59,6 +59,9 @@ class ReadOnlyBasis : public TangentSpaceBasis {
   }
   Vector localCoordinates(const Values& a, const Values& b) const override {
     return source_->localCoordinates(a, b);
+  }
+  std::optional<KeyVector> basisKeys() const override {
+    return source_->basisKeys();
   }
   size_t dim() const override { return source_->dim(); }
 

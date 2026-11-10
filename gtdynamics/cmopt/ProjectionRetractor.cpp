@@ -13,6 +13,7 @@
  */
 
 #include <gtdynamics/cmopt/ProjectionRetractor.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/AugmentedLagrangianOptimizer.h>
@@ -44,8 +45,29 @@ ProjectionRetractor::ProjectionRetractor(
     std::optional<const KeyVector> basis_keys)
     : Retractor(params), merit_graph_(constraints->penaltyGraph()) {
   if (params->useBasisKeys) {
+    if (!basis_keys)
+      throw std::invalid_argument("Basis-key projection requires coordinate keys");
     basis_keys_ = *basis_keys;
   }
+}
+
+ProjectionRetractor::ProjectionRetractor(const ProjectionRetractor &other)
+    : Retractor(other), merit_graph_(other.merit_graph_),
+      basis_keys_(other.basis_keys_) {}
+
+IERetractor::shared_ptr ProjectionRetractorCreator::create(
+    const IECMPoint &point) const {
+  validatePointType(point);
+  const auto settings = boundParams(point);
+  auto constraints =
+      std::make_shared<NonlinearEqualityConstraints>(*point.eConstraints());
+  if (!settings->useBasisKeys)
+    return std::make_shared<ProjectionRetractor>(constraints, settings);
+  const auto keys = point.eBasis()->basisKeys();
+  if (!keys)
+    throw std::invalid_argument(
+        "Basis-key projection requires a coordinate-key equality basis");
+  return std::make_shared<ProjectionRetractor>(constraints, settings, *keys);
 }
 
 /* ************************************************************************* */
@@ -60,25 +82,25 @@ Values ProjectionRetractor::retract(const Values &values,
   // optimize with priors
   NonlinearFactorGraph graph = merit_graph_;
   Values values_retract_base = retractBaseVariables(values, delta);
-  if (params_->useBasisKeys) {
-    AddGeneralPriors(values_retract_base, basis_keys_, params_->sigma, graph);
+  if (equalityParams_->useBasisKeys) {
+    AddGeneralPriors(values_retract_base, basis_keys_, equalityParams_->sigma, graph);
   } else {
-    AddGeneralPriors(values_retract_base, params_->sigma, graph);
+    AddGeneralPriors(values_retract_base, equalityParams_->sigma, graph);
   }
   // const Values &init_values =
-  //     params_->applyBaseRetraction ? values_retract_base : values;
+  //     equalityParams_->applyBaseRetraction ? values_retract_base : values;
   const Values &init_values = values_retract_base;
-  gtsam::LevenbergMarquardtOptimizer optimizer_with_priors(graph, init_values,
-                                                           params_->lmParams);
+  gtsam::LevenbergMarquardtOptimizer optimizer_with_priors(
+      graph, init_values, equalityParams_->lmParamsFor(graph.keys()));
   const Values &result = optimizer_with_priors.optimize();
-  if (params_->useBasisKeys &&
-      optimizer_with_priors.error() < params_->feasibleThreshold) {
+  if (equalityParams_->useBasisKeys &&
+      optimizer_with_priors.error() < equalityParams_->feasibleThreshold) {
     return result;
   }
 
   // optimize without priors
   gtsam::LevenbergMarquardtOptimizer optimizer_without_priors(
-      merit_graph_, result, params_->lmParams);
+      merit_graph_, result, equalityParams_->lmParamsFor(merit_graph_.keys()));
   const Values &final_result = optimizer_without_priors.optimize();
   checkFeasible(merit_graph_, final_result);
   return final_result;

@@ -13,6 +13,10 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
+#include <gtdynamics/cmopt/LMManifoldOptimizer.h>
+#include <gtdynamics/cmopt/Retractor.h>
+#include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
+#include <gtsam/inference/Symbol.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/base/numericalDerivative.h>
@@ -189,7 +193,7 @@ TEST(ManifoldOptimizationProblem, SO2) {
   auto mopt_problem =
       optimizer.initializeManifoldOptimizationProblem(*costs, *constraints, init_values);
 
-  EXPECT_LONGS_EQUAL(1, mopt_problem.components.size());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.types.size());
   EXPECT_LONGS_EQUAL(0, mopt_problem.unconstrainedKeys.size());
   EXPECT_LONGS_EQUAL(1, mopt_problem.manifoldKeys.size());
   EXPECT_LONGS_EQUAL(1, mopt_problem.values.size());
@@ -258,7 +262,9 @@ TEST(NonlinearManifoldOptimizer_infeasible, SO2) {
   nopt_params.minModelFidelity = 0.5;
   // nopt_params.setVerbosityLM("SUMMARY");
   ManifoldOptimizerParameters mopt_params;
-  mopt_params.constraintManifoldParams->retractorCreator->params()->lmParams.setMaxIterations(4);
+  std::dynamic_pointer_cast<RetractorCreator>(
+      mopt_params.constraintManifoldParams->retractorCreator)
+      ->params()->lmParams.setMaxIterations(4);
   NonlinearManifoldOptimizer optimizer(mopt_params, nopt_params);
   auto result = optimizer.optimize(*costs, *constraints, init_values);
 
@@ -327,6 +333,151 @@ TEST(ManifoldOptimizer, GaussNewtonEquality) {
     EXPECT_DOUBLES_EQUAL(expected_x, type1_x, tol);
     EXPECT_DOUBLES_EQUAL(expected_y, type1_y, tol);
   }
+}
+
+/** Every retained equality optimizer uses the same typed nonlinear points. */
+TEST(ManifoldOptimizer, TypedNonlinearSolverMatrix) {
+  using namespace so2_scenario;
+  const auto costs = get_graph(1.0, 0.0);
+  const auto constraints = get_constraints();
+  Values initial;
+  initial.insert(x1_key, 0.6);
+  initial.insert(x2_key, 0.8);
+  const Key freeKey = Symbol('u', 0);
+  initial.insert(freeKey, -2.0);
+  costs->addPrior<double>(freeKey, 3.0, noiseModel::Unit::Create(1));
+
+  ManifoldOptimizerParameters parameters;
+  const auto check = [&](const Values& result) {
+    EXPECT_DOUBLES_EQUAL(1.0, result.atDouble(x1_key), 1e-5);
+    EXPECT_DOUBLES_EQUAL(0.0, result.atDouble(x2_key), 1e-5);
+    EXPECT_DOUBLES_EQUAL(3.0, result.atDouble(freeKey), 1e-5);
+    EXPECT(constraints->violationNorm(result) < 1e-5);
+  };
+  const std::vector<NonlinearManifoldOptimizer::NonlinearOptimizerParamsVariant>
+      solvers{LevenbergMarquardtParams(), GaussNewtonParams(), DoglegParams()};
+  for (const auto& solver : solvers) {
+    NonlinearManifoldOptimizer optimizer(parameters, solver);
+    const auto problem = optimizer.initializeManifoldOptimizationProblem(
+        *costs, *constraints, initial);
+    EXPECT_LONGS_EQUAL(1, problem.points().size());
+    EXPECT_LONGS_EQUAL(1, problem.unconstrainedValues().size());
+    const auto point = problem.points().begin()->second;
+    EXPECT(dynamic_cast<const EConstraintManifold*>(point.manifold().get()));
+    check(optimizer.optimizeManifoldProblem(problem));
+    check(optimizer.optimize(*costs, problem.points(),
+                             problem.unconstrainedValues()));
+  }
+  LMManifoldOptimizer custom(parameters);
+  check(custom.optimize(*costs, *constraints, initial));
+}
+
+// Diagonal damping only needs increments for variables in the problem.
+TEST(ManifoldOptimizer, DiagonalDampingIgnoresUnusedInitialValues) {
+  using namespace so2_scenario;
+  const auto costs = get_graph(1.0, 0.0);
+  const auto constraints = get_constraints();
+  const Key freeKey = Symbol('u', 0);
+  const Key unusedKey = Symbol('u', 1);
+  costs->addPrior<double>(freeKey, 3.0, noiseModel::Unit::Create(1));
+  Values initial;
+  initial.insert(x1_key, 0.6);
+  initial.insert(x2_key, 0.8);
+  initial.insert(freeKey, -2.0);
+  initial.insert(unusedKey, 42.0);
+
+  LevenbergMarquardtParams params;
+  params.setDiagonalDamping(true);
+  const LMManifoldOptimizer optimizer(ManifoldOptimizerParameters{}, params);
+  const auto result = optimizer.optimize(*costs, *constraints, initial);
+  EXPECT_DOUBLES_EQUAL(1.0, result.atDouble(x1_key), 1e-5);
+  EXPECT_DOUBLES_EQUAL(0.0, result.atDouble(x2_key), 1e-5);
+  EXPECT_DOUBLES_EQUAL(3.0, result.atDouble(freeKey), 1e-5);
+  EXPECT(!result.exists(unusedKey));
+}
+
+/** Fixed components never appear as zero-width Gaussian variables. */
+TEST(ManifoldOptimizer, FixedAndFreePoints) {
+  const Key fixedKey = Symbol('x', 0);
+  const Key freeKey = Symbol('u', 0);
+  NonlinearEqualityConstraints constraints;
+  constraints.emplace_shared<ExpressionEqualityConstraint<double>>(
+      Double_(fixedKey), 4.0, Vector1(1.0));
+  Values initial;
+  initial.insert(fixedKey, 4.0);
+  initial.insert(freeKey, -2.0);
+  NonlinearFactorGraph costs;
+  costs.addPrior<double>(fixedKey, 7.0, noiseModel::Unit::Create(1));
+  costs.addPrior<double>(freeKey, 3.0, noiseModel::Unit::Create(1));
+  ManifoldOptimizerParameters parameters;
+  const std::vector<NonlinearManifoldOptimizer::NonlinearOptimizerParamsVariant>
+      solvers{LevenbergMarquardtParams(), GaussNewtonParams(), DoglegParams()};
+  for (const auto& solver : solvers) {
+    NonlinearManifoldOptimizer optimizer(parameters, solver);
+    const auto problem = optimizer.initializeManifoldOptimizationProblem(
+        costs, constraints, initial);
+    EXPECT_LONGS_EQUAL(1, problem.fixedPoints.size());
+    EXPECT_LONGS_EQUAL(0, problem.points().size());
+    EXPECT_LONGS_EQUAL(1, problem.graph.size());
+    const auto result = optimizer.optimizeManifoldProblem(problem);
+    EXPECT_DOUBLES_EQUAL(4.0, result.atDouble(fixedKey), 1e-10);
+    EXPECT_DOUBLES_EQUAL(3.0, result.atDouble(freeKey), 1e-5);
+  }
+  LMManifoldOptimizer custom(parameters);
+  const auto result = custom.optimize(costs, constraints, initial);
+  EXPECT_DOUBLES_EQUAL(4.0, result.atDouble(fixedKey), 1e-10);
+  EXPECT_DOUBLES_EQUAL(3.0, result.atDouble(freeKey), 1e-5);
+
+  // Entirely fixed problems also recover their ambient state without a solve.
+  Values fixedInitial;
+  fixedInitial.insert(fixedKey, 4.0);
+  NonlinearFactorGraph fixedCosts;
+  fixedCosts.addPrior<double>(fixedKey, 7.0, noiseModel::Unit::Create(1));
+  NonlinearManifoldOptimizer wrapped(parameters, LevenbergMarquardtParams());
+  EXPECT(assert_equal(fixedInitial,
+                      wrapped.optimize(fixedCosts, constraints, fixedInitial)));
+  EXPECT(assert_equal(fixedInitial,
+                      custom.optimize(fixedCosts, constraints, fixedInitial)));
+}
+
+/** Optional final projection applies to both custom LM return paths. */
+TEST(ManifoldOptimizer, CustomLMFinalProjection) {
+  using namespace so2_scenario;
+  const auto constraints = get_constraints();
+  ManifoldOptimizerParameters parameters;
+  parameters.retractInitialValues = false;
+  auto retraction = std::make_shared<RetractionParams>();
+  retraction->lmParams.setMaxIterations(0);
+  parameters.constraintManifoldParams->retractorCreator =
+      std::make_shared<UnconstrainedOptimizationRetractorCreator>(retraction);
+
+  // At zero objective error, final projection still restores an infeasible seed.
+  Values infeasible;
+  infeasible.insert(x1_key, .3);
+  infeasible.insert(x2_key, .4);
+  const auto matchingCost = get_graph(.3, .4);
+  EXPECT(assert_equal(infeasible, LMManifoldOptimizer(parameters).optimize(
+                                     *matchingCost, *constraints, infeasible)));
+  parameters.retractFinalValues = true;
+  const auto projected = LMManifoldOptimizer(parameters).optimize(
+      *matchingCost, *constraints, infeasible);
+  EXPECT(constraints->violationNorm(projected) < 1e-5);
+
+  // A bounded outer solve with zero inner retraction budget also projects.
+  Values initial;
+  initial.insert(x1_key, .6);
+  initial.insert(x2_key, .8);
+  const auto cost = get_graph(1., 0.);
+  LevenbergMarquardtParams outer;
+  outer.setMaxIterations(1);
+  parameters.retractFinalValues = false;
+  const auto approximate = LMManifoldOptimizer(parameters, outer).optimize(
+      *cost, *constraints, initial);
+  EXPECT(constraints->violationNorm(approximate) > 1.);
+  parameters.retractFinalValues = true;
+  const auto final = LMManifoldOptimizer(parameters, outer).optimize(
+      *cost, *constraints, initial);
+  EXPECT(constraints->violationNorm(final) < 1e-5);
 }
 
 int main() {

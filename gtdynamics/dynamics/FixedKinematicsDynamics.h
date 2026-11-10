@@ -46,6 +46,9 @@ struct Contact {
         frictionCoefficient(frictionCoefficient) {}
 };
 
+/// Select the reduced linear-step solver; Automatic retains the constrained path.
+enum class LinearSolver { Automatic, Gaussian, GtsamQP, ProxQP };
+
 /** Parameters for dynamics with fixed configurations and velocities.
  * Link twist derivatives and joint accelerations remain optimization variables.
  * Gaussian priors align independent root/joint accelerations with derivatives
@@ -57,6 +60,12 @@ struct Contact {
  * length to convert moments into force-equivalent residuals.
  */
 struct Options {
+  /// Explicit relaxation for equality-only solver comparisons; bounds remain diagnostics.
+  bool equalityOnly = false;
+  /// Automatic retains QP for inequalities and selects Gaussian without them.
+  LinearSolver linearSolver = LinearSolver::Automatic;
+  /// Independent component retraction workers; one preserves existing behavior.
+  size_t retractionThreads = 1;
   /// Maximum outer CMC iterations.
   size_t maxIterations = 50;
   /// Gravity acceleration in world axes, m/s^2.
@@ -128,6 +137,22 @@ struct Diagnostics {
   double valueAssemblySeconds = 0.0;
   /// Physical constraint checks, root residuals and applicable prior errors.
   double validationSeconds = 0.0;
+  /// Freeze q/v before creating affine types; acceleration priors stay free.
+  double conditioningSeconds = 0.0;
+  size_t conditionedVariableDimension = 0;
+  bool affineEqualities = false;
+  bool equalityOnly = false;
+  size_t originalInequalityDimension = 0;
+  double originalInequalityL2 = 0.0;
+  /// Outer LM phases, distinct from the Gaussian anchor timings above.
+  double optimizerLinearizationSeconds = 0.0;
+  double optimizerLinearSolveSeconds = 0.0;
+  double retractionSeconds = 0.0;
+  /// Initial numerical basis constructions, including zero-dimensional types.
+  size_t equalityPreparations = 0;
+  size_t affineBasisConstructions = 0;
+  size_t gaussianSolves = 0;
+  size_t qpSolves = 0;
   double manifoldSeconds = 0.0;
   double optimizationSeconds = 0.0;
   size_t iterations = 0;

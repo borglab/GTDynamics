@@ -12,15 +12,15 @@
  */
 
 #pragma once
-#include <gtdynamics/cmopt/TangentSpaceMetric.h>
+#include <gtdynamics/constrained/TangentSpaceMetric.h>
+#include <gtdynamics/constrained/CMRetractor.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ConstrainedOptProblem.h>
 #include <optional>
 
 namespace gtdynamics {
-class CMPoint;
+class IECMPoint;
 struct IERetractorParams;
-struct IERetractionInfo;
 
 /** A shared projection problem on an exact affine equality manifold.
  * Point geometry owns the basis and metric cache. This short-lived object owns
@@ -35,7 +35,7 @@ public:
    * normalization to preserve their original cost-versus-penalty weighting.
    * Whitening is independently controlled by params.whitenAffineCoordinates.
    */
-  AffineProjection(const CMPoint &point,
+  AffineProjection(const IECMPoint &point,
                    const VectorValues &delta, const IERetractorParams &params,
                    const std::optional<KeyVector> &priorKeys,
                    const IndexSet &blocking, double feasibilityTolerance,
@@ -52,13 +52,13 @@ public:
     IndexSet active;
   };
   std::optional<Result> feasibleProjection(const IndexSet &blocking,
-                                           IERetractionInfo *info) const;
+                                           CMRetractionInfo *info) const;
   std::optional<IndexSet> feasibleResult(const Values &values,
                                          const IndexSet &blocking) const;
   IndexSet validateResult(const Values &values, const IndexSet &blocking) const;
 
 private:
-  const CMPoint &point_;
+  const IECMPoint &point_;
   TangentSpaceMetric::shared_ptr metric_;
   Values trial_;
   Vector target_;

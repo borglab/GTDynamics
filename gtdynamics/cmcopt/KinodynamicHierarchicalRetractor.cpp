@@ -14,7 +14,7 @@
 
 #include <cmath>
 #include <gtdynamics/cmcopt/AffineProjection.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/KinodynamicHierarchicalRetractor.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
 #include <gtdynamics/utils/DynamicsSymbol.h>
@@ -26,7 +26,7 @@ namespace gtdynamics {
 using namespace gtsam;
 
 KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
-    const CMPoint &point, const Params::shared_ptr &params,
+    const IECMPoint &point, const Params::shared_ptr &params,
     const std::optional<KeyVector> &basis_keys)
     : IERetractor(params), graph_q_(), graph_v_(), graph_ad_() {
 
@@ -85,8 +85,8 @@ KinodynamicHierarchicalRetractor::KinodynamicHierarchicalRetractor(
 }
 
 /* ************************************************************************* */
-CMPoint KinodynamicHierarchicalRetractor::retract(
-    const CMPoint *point, const VectorValues &delta,
+IECMPoint KinodynamicHierarchicalRetractor::retract(
+    const IECMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
     IERetractionInfo *retract_info) const {
 

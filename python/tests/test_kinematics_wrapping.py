@@ -13,6 +13,80 @@ import numpy as np
 
 
 class KinematicsWrappingTests(unittest.TestCase):
+    def test_runtime_equality_type_and_point_hierarchy(self):
+        key = gtsam.symbol("x", 0)
+        values = gtsam.Values()
+        values.insert(key, 1.0)
+        manifold = gtd.EConstraintManifold(gtd.NonlinearEqualityConstraints(), values)
+        self.assertIsInstance(manifold, gtd.IEConstraintManifold)
+        self.assertIsInstance(manifold, gtd.ConstraintManifold)
+        point = manifold.point(values)
+        self.assertIsInstance(point, gtd.ECMPoint)
+        self.assertIsInstance(point, gtd.IECMPoint)
+        self.assertIsInstance(point, gtd.CMPoint)
+        moved = point.retract(np.array([0.25]))
+        self.assertIsInstance(moved, gtd.ECMPoint)
+        self.assertAlmostEqual(moved.values().atDouble(key), 1.25)
+        self.assertAlmostEqual(point.values().atDouble(key), 1.0)
+        np.testing.assert_allclose(point.localCoordinates(moved), [0.25])
+        self.assertTrue(point.equals(point.retract(np.zeros(1))))
+        conditioned = manifold.condition(values)
+        self.assertIsInstance(conditioned, gtd.EConstraintManifold)
+        self.assertEqual(conditioned.dim(), 0)
+        self.assertEqual(conditioned.point(gtsam.Values()).dim(), 0)
+
+    def test_point_values_are_an_independent_python_snapshot(self):
+        key = gtsam.symbol("x", 0)
+        values = gtsam.Values()
+        values.insert(key, 1.0)
+        manifold = gtd.EConstraintManifold(gtd.NonlinearEqualityConstraints(), values)
+        point = manifold.point(values)
+        moved = point.retract(np.array([0.25]))
+
+        # Mutating the Python snapshot must not invalidate the point's geometry.
+        snapshot = point.values()
+        snapshot.update(key, 10.0)
+        self.assertAlmostEqual(snapshot.atDouble(key), 10.0)
+        self.assertAlmostEqual(point.values().atDouble(key), 1.0)
+        np.testing.assert_allclose(point.localCoordinates(moved), [0.25])
+        self.assertTrue(moved.equals(point.retract(np.array([0.25]))))
+
+    def test_concrete_point_values_interoperate_with_gtsam(self):
+        ambient_key = gtsam.symbol("x", 0)
+        values = gtsam.Values()
+        values.insert(ambient_key, 1.0)
+        manifold = gtd.EConstraintManifold(gtd.NonlinearEqualityConstraints(), values)
+        equality_point = manifold.point(values)
+        general_point = gtd.IEConstraintManifold.point(manifold, values)
+        self.assertIsInstance(general_point, gtd.IECMPoint)
+        self.assertNotIsInstance(general_point, gtd.ECMPoint)
+
+        equality_key, general_key = gtsam.symbol("c", 0), gtsam.symbol("c", 1)
+        points = gtsam.Values()
+        points.insert(equality_key, equality_point)
+        points.insert(general_key, general_point)
+        self.assertIsInstance(points.atECMPoint(equality_key), gtd.ECMPoint)
+        self.assertIsInstance(points.atIECMPoint(general_key), gtd.IECMPoint)
+        # Value extraction uses the exact concrete GTSAM value type.
+        with self.assertRaises(RuntimeError):
+            points.atIECMPoint(equality_key)
+        with self.assertRaises(RuntimeError):
+            points.atECMPoint(general_key)
+
+        delta = gtsam.VectorValues()
+        delta.insert(equality_key, np.array([0.25]))
+        delta.insert(general_key, np.array([0.5]))
+        moved = points.retract(delta)
+        self.assertAlmostEqual(
+            moved.atECMPoint(equality_key).values().atDouble(ambient_key), 1.25
+        )
+        self.assertAlmostEqual(
+            moved.atIECMPoint(general_key).values().atDouble(ambient_key), 1.5
+        )
+        self.assertAlmostEqual(
+            points.atECMPoint(equality_key).values().atDouble(ambient_key), 1.0
+        )
+
     def test_galilean_imu_factors(self):
         spec = gtd.FootContactConstraintSpec(gtd.PointOnLinks([]))
         trajectory = gtd.Trajectory(
@@ -408,7 +482,7 @@ class KinematicsWrappingTests(unittest.TestCase):
 
         parameters = gtd.ManifoldOptimizerParameters()
         basis_params = gtd.TangentSpaceBasisParams(True, True)
-        parameters.constraintManifoldParams.basisCreator = gtd.EliminationBasisCreator(
+        parameters.constraintManifoldParams.equalityBasisCreator = gtd.EliminationBasisCreator(
             basis, basis_params
         )
         retraction = gtd.RetractionParams()
@@ -421,7 +495,7 @@ class KinematicsWrappingTests(unittest.TestCase):
             parameters, gtsam.LevenbergMarquardtParams()
         )
         problem = cm.initializeManifoldOptimizationProblem(costs, equalities, initial)
-        self.assertEqual(len(problem.components), 4)
+        self.assertEqual(len(problem.types), 4)
         self.assertEqual(problem.values.dim(), 28)
         optimizer = cm.constructNonlinearOptimizer(problem)
         solution = cm.baseValues(problem, optimizer.optimize())

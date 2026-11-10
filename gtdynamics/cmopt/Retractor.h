@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include <gtdynamics/cmopt/MultiJacobian.h>
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/cmcopt/IERetractor.h>
+#include <gtdynamics/constrained/MultiJacobian.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
 #include <gtdynamics/utils/values.h>
@@ -62,6 +63,18 @@ struct RetractionParams {
 
   // Constructor
   RetractionParams() = default;
+
+  /// Keep explicit ordering within one component or inner solve graph.
+  LevenbergMarquardtParams lmParamsFor(const KeySet &keys) const {
+    auto result = lmParams;
+    if (result.ordering) {
+      gtsam::Ordering ordering;
+      for (Key key : *result.ordering)
+        if (keys.count(key)) ordering.push_back(key);
+      result.ordering = ordering;
+    }
+    return result;
+  }
 };
 
 /**
@@ -75,9 +88,9 @@ struct RetractionParams {
  *
  * @see README.md#retraction
  */
-class Retractor {
+class Retractor : public IERetractor {
  protected:
-  RetractionParams::shared_ptr params_;
+  RetractionParams::shared_ptr equalityParams_;
 
  public:
   using shared_ptr = std::shared_ptr<Retractor>;
@@ -85,9 +98,26 @@ class Retractor {
   /// Default constructor.
   Retractor(const RetractionParams::shared_ptr &params =
                 std::make_shared<RetractionParams>())
-      : params_(params) {}
+      : IERetractor(),
+        equalityParams_(std::make_shared<RetractionParams>(*params)) {}
+
+  /// Copies retain policy settings while concrete copies detach solver work.
+  Retractor(const Retractor &other)
+      : IERetractor(other),
+        equalityParams_(
+            std::make_shared<RetractionParams>(*other.equalityParams_)) {}
 
   virtual ~Retractor() {}
+
+  /// Keep equality tolerance semantics separate from corner projection settings.
+  const RetractionParams::shared_ptr &equalityParams() const {
+    return equalityParams_;
+  }
+
+  /// Shared point wrapper around the existing ambient retraction kernels.
+  IECMPoint retract(const IECMPoint *point, const VectorValues &delta,
+                    const std::optional<IndexSet> &blocking_indices = {},
+                    IERetractionInfo *retract_info = nullptr) const override;
 
   /**
    * Retract base variables in ambient space before enforcing constraints.
@@ -132,6 +162,10 @@ class Retractor {
   virtual Values retractConstraints(const Values &values) = 0;
 
  protected:
+  /// Each inner graph uses the applicable part of the chosen ordering.
+  void setOptimizerGraph(MutableLMOptimizer &optimizer,
+                         const NonlinearFactorGraph &graph) const;
+
   /**
    * Optionally report infeasibility.
    * @param graph Constraint graph used for feasibility check.
@@ -146,15 +180,38 @@ class Retractor {
  *
  * @see README.md#retraction
  */
-class RetractorCreator {
+class RetractorCreator : public IERetractorCreator {
  protected:
-  RetractionParams::shared_ptr params_;
+  RetractionParams::shared_ptr equalityParams_;
+
+  /// Validate the equality-only policy contract once when preparing a point.
+  static void validatePointType(const IECMPoint &point);
+
+  /// Map local policy keys without changing the frozen type configuration.
+  RetractionParams::shared_ptr boundParams(const IECMPoint &point) const;
+  void scopeOrdering(const KeySet &keys) {
+    equalityParams_->lmParams = equalityParams_->lmParamsFor(keys);
+  }
 
  public:
   using shared_ptr = std::shared_ptr<RetractorCreator>;
-  RetractorCreator(RetractionParams::shared_ptr params) : params_(params) {}
+  RetractorCreator(RetractionParams::shared_ptr params)
+      : IERetractorCreator(), equalityParams_(params) {}
 
-  RetractionParams::shared_ptr params() { return params_; }
+  RetractorCreator(const RetractorCreator &other)
+      : IERetractorCreator(other),
+        equalityParams_(
+            std::make_shared<RetractionParams>(*other.equalityParams_)) {}
+
+  RetractionParams::shared_ptr params() { return equalityParams_; }
+  const RetractionParams::shared_ptr &equalityParams() const {
+    return equalityParams_;
+  }
+
+  IERetractorCreator::shared_ptr cloneFor(const KeySet &keys) const override;
+
+  /// Prepare from bound views; no generic rekeying of embedded expressions.
+  IERetractor::shared_ptr create(const IECMPoint &point) const override;
 
   virtual ~RetractorCreator() {}
 

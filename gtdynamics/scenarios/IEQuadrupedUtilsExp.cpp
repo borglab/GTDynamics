@@ -140,7 +140,7 @@ void ExportActiveConstraints(
 }
 
 /* ************************************************************************* */
-std::vector<std::string> ActiveNames(const CMPoints &points) {
+std::vector<std::string> ActiveNames(const IECMPoints &points) {
   std::vector<std::string> active_names;
   for (const auto &[key, point] : points) {
     for (const auto &constraint_idx : point.activeIndices()) {

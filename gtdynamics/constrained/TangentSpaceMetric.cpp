@@ -12,7 +12,7 @@
  */
 
 #include <Eigen/Cholesky>
-#include <gtdynamics/cmopt/TangentSpaceMetric.h>
+#include <gtdynamics/constrained/TangentSpaceMetric.h>
 #include <stdexcept>
 
 namespace gtdynamics {

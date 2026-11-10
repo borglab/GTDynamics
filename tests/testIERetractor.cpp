@@ -24,7 +24,7 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtdynamics/scenarios/IECartPoleWithFriction.h>
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
 
 using namespace gtsam;
@@ -54,7 +54,7 @@ TEST(IECartPoleWithFrictionCone, BarrierRetractor) {
 
   const auto pointType = std::make_shared<IEConstraintManifold>(
       *e_constraints, *i_constraints, values, *params);
-  CMPoint point = pointType->point(values);
+  IECMPoint point = pointType->point(values);
 
   VectorValues delta;
   double new_a = 20.0;

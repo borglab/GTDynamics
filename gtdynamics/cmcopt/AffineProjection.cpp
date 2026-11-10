@@ -15,7 +15,7 @@
 #include <cmath>
 #include <gtdynamics/cmcopt/AffineProjection.h>
 
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtsam/nonlinear/PriorFactor.h>
 #include <limits>
 #include <stdexcept>
@@ -171,7 +171,7 @@ private:
 };
 } // namespace
 
-AffineProjection::AffineProjection(const CMPoint &point,
+AffineProjection::AffineProjection(const IECMPoint &point,
                                    const VectorValues &delta,
                                    const IERetractorParams &params,
                                    const std::optional<KeyVector> &priorKeys,

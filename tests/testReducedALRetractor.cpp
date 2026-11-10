@@ -13,7 +13,7 @@
 
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/ReducedALRetractor.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/constrained/LinearConstraint.h>
@@ -32,7 +32,7 @@ namespace affine_projection {
 
 constexpr Key kX = 1, kY = 2;
 
-CMPoint makePoint(
+IECMPoint makePoint(
     const Values &values, const NonlinearEqualityConstraints &equalities = {},
     const NonlinearInequalityConstraints &inequalities = {},
     const IERetractorParams::shared_ptr &metric =
@@ -175,7 +175,7 @@ TEST(ReducedALRetractor, NonlinearManifoldRebuildsBasisAndMetric) {
   b.insert(kX, Vector(Vector2(0, 1)));
   const auto startType = std::make_shared<IEConstraintManifold>(
       *equalities, NonlinearInequalityConstraints{}, a, *params);
-  CMPoint start = startType->point(a);
+  IECMPoint start = startType->point(a);
   IERetractorParams metric;
   auto first = start.projectionMetric(metric);
   const auto next = start.manifold()->point(start.bindings(), b);
@@ -417,7 +417,7 @@ NonlinearEqualityConstraint::shared_ptr Cone::createEqualityConstraint() const {
   return std::make_shared<ConeBoundary>(*this);
 }
 
-CMPoint makePoint(const Vector2 &force, double mu = 1) {
+IECMPoint makePoint(const Vector2 &force, double mu = 1) {
   Values values;
   values.insert(kForce, Vector(force));
   NonlinearInequalityConstraints inequalities;

@@ -26,7 +26,7 @@ namespace g1_example {
  */
 inline gtsam::Ordering chronologicalOrdering(
     const gtsam::NonlinearFactorGraph& cost,
-    const gtdynamics::CMPoints& points,
+    const gtdynamics::IECMPoints& points,
     const gtsam::Values& unconstrained, size_t firstSlice) {
   const auto ownership =
       gtdynamics::IEOptimizer::varToManifoldKeyMap(points);

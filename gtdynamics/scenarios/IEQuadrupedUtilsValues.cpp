@@ -4,7 +4,7 @@
 #include <gtdynamics/scenarios/IEQuadrupedUtils.h>
 #include <gtdynamics/factors/CollocationFactors.h>
 #include <gtdynamics/factors/GeneralPriorFactor.h>
-#include <gtdynamics/cmcopt/CMPoint.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/utils/GraphUtils.h>
 
 namespace gtdynamics {

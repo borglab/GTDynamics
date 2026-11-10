@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/constrained/MultiJacobian.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
 #include <gtdynamics/factors/ContactPointFactor.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>

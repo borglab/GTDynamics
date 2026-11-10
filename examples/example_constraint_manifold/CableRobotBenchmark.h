@@ -27,7 +27,7 @@ inline ManifoldOptimizerParameters cableRobotManifoldParams() {
   auto params = ConstrainedOptBenchmark::DefaultMoptParams();
   auto basisParams = std::make_shared<TangentSpaceBasisParams>();
   basisParams->alwaysConstructBasis = true;
-  params.constraintManifoldParams->basisCreator =
+  params.constraintManifoldParams->equalityBasisCreator =
       std::make_shared<OrthonormalBasisCreator>(basisParams);
   return params;
 }

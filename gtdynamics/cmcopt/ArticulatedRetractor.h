@@ -46,20 +46,20 @@ class ArticulatedRetractor : public IERetractor {
   ReducedALRetractor::Settings settings_;
 
  public:
-  ArticulatedRetractor(const CMPoint& point,
+  ArticulatedRetractor(const IECMPoint& point,
                        const std::shared_ptr<const Robot>& robot,
                        const std::string& rootName, const KeySet& independentAD,
                        const IERetractorParams::shared_ptr& params,
                        const ReducedALRetractor::Settings& settings = {});
 
-  CMPoint retract(const CMPoint* point,
+  IECMPoint retract(const IECMPoint* point,
                                const VectorValues& delta,
                                const std::optional<IndexSet>& blocking = {},
                                IERetractionInfo* info = nullptr) const override;
 
  private:
   friend class ArticulatedRetractorCreator;
-  ArticulatedRetractor(const CMPoint& point,
+  ArticulatedRetractor(const IECMPoint& point,
                        const std::shared_ptr<const Robot>& robot,
                        const LinkSharedPtr& root, const KeySet& independentAD,
                        const IERetractorParams::shared_ptr& params,
@@ -95,7 +95,7 @@ class ArticulatedRetractorCreator : public IERetractorCreator {
       const ReducedALRetractor::Settings& settings = {});
   virtual ~ArticulatedRetractorCreator() = default;
   IERetractor::shared_ptr create(
-      const CMPoint& point) const override;
+      const IECMPoint& point) const override;
 
  private:
   LinkSharedPtr root_;

@@ -13,7 +13,7 @@
  */
 
 #include <gtdynamics/cmcopt/RobustQp.h>
-#include <gtdynamics/cmcopt/TangentCone.h>
+#include <gtdynamics/constrained/TangentCone.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
 #include <algorithm>
