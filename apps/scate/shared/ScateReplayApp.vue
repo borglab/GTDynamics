@@ -121,19 +121,12 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
     </header>
     <section id="demo" aria-label="Interactive SCATE replay">
   <div class="main">
+    <div class="stage-column">
     <div class="stage" id="stage">
-
-      <span class="clock" id="clock">t = 0.00 s</span>
-      <span class="hint">Drag to orbit · scroll to zoom · right-drag to pan</span>
-      <div class="drop" id="drop" hidden>Drop replay.json to load it</div>
-      <div class="err" id="err" hidden></div>
-    </div>
-
-    <aside class="demo-readouts">
-      <section v-if="comparison && !editing" class="panel wide" aria-labelledby="h-runs" data-run-toggles>
-        <h2 id="h-runs">Runs at this instant</h2>
+      <section v-if="comparison && !editing" class="run-overlay" aria-labelledby="h-runs" data-run-toggles>
+        <h2 id="h-runs" class="visually-hidden">Runs at this instant</h2>
         <table class="run-table">
-          <thead><tr><th scope="col">Show</th><th scope="col">Clearance</th><th v-if="hasBase" scope="col">Base ‖τ‖</th></tr></thead>
+          <thead><tr><th scope="col">Run</th><th scope="col">Clearance</th><th v-if="hasBase" scope="col">Base ‖τ‖</th></tr></thead>
           <tbody>
             <tr v-for="run in runs" :key="run.name" class="run-toggle" :data-run="run.name">
               <th scope="row"><label class="runname">
@@ -146,6 +139,29 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
           </tbody>
         </table>
       </section>
+      <span class="clock" id="clock">t = 0.00 s</span>
+      <span class="hint">Drag to orbit · scroll to zoom · right-drag to pan</span>
+      <div class="drop" id="drop" hidden>Drop replay.json to load it</div>
+      <div class="err" id="err" hidden></div>
+    </div>
+    <section class="transport attached" aria-label="Playback">
+      <div class="controls">
+        <button id="play" type="button" aria-label="Play">▶ Play</button>
+        <button id="restart" type="button">Restart</button>
+        <select id="speed" aria-label="Playback speed">
+          <option value="0.5">0.5×</option>
+          <option value="1">1×</option>
+          <option value="2" selected>2×</option>
+          <option value="4">4×</option>
+        </select>
+        <input id="scrub" type="range" min="0" max="1000" step="1" value="0" aria-label="Time">
+        <span class="time" id="timeTxt">0.00 / 0.00 s</span>
+      </div>
+    </section>
+    </div>
+
+    <aside class="demo-readouts">
+      <LivePanel v-if="live" :viewer="viewerRef" :default-robot="robot.toLowerCase()" @editing="editing = $event" @solved="liveSolved = true" />
 
       <section v-if="hasBase && replay && !editing" class="panel wide" aria-labelledby="h-running" data-running-plots>
         <h2 id="h-running">So far</h2>
@@ -154,8 +170,6 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
           <RunningPlot title="Obstacle clearance" unit="cm" :times="times" :series="clearanceSeries" :time="time" :references="clearanceReferences" :max="15" :digits="0" @select="selectTime" />
         </div>
       </section>
-
-      <LivePanel v-if="live" :viewer="viewerRef" :default-robot="robot.toLowerCase()" @editing="editing = $event" @solved="liveSolved = true" />
 
       <section v-show="!comparison" class="panel" aria-labelledby="h-state">
         <h2 id="h-state">At this instant</h2>
@@ -209,20 +223,6 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
     </aside>
   </div>
 
-  <section class="transport" aria-label="Playback">
-    <div class="controls">
-      <button id="play" type="button" aria-label="Play">▶ Play</button>
-      <button id="restart" type="button">Restart</button>
-      <select id="speed" aria-label="Playback speed">
-        <option value="0.5">0.5×</option>
-        <option value="1">1×</option>
-        <option value="2" selected>2×</option>
-        <option value="4">4×</option>
-      </select>
-      <input id="scrub" type="range" min="0" max="1000" step="1" value="0" aria-label="Time">
-      <span class="time" id="timeTxt">0.00 / 0.00 s</span>
-    </div>
-  </section>
 
     </section>
     <AppPaper :app="app" :frame="frame" :samples="replay?.num_poses || 1" @select="selectTime($event * replay.dt)">
