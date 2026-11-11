@@ -76,6 +76,9 @@ def solve_walk(
     qp_use_feasible_step: bool = True,
     qp_use_projected_gradient_initialization: bool = False,
     qp_use_temporal_ordering: bool = False,
+    qp_max_iterations: int = 1000,
+    admm_rho: float = 1.0,
+    admm_projection_threads: int = 1,
 ) -> KinodynamicSolution:
     """Initialize and jointly optimize G1 poses, motion, and forces at support knots.
 
@@ -142,6 +145,9 @@ def solve_walk(
         qp_use_feasible_step=qp_use_feasible_step,
         qp_use_projected_gradient_initialization=qp_use_projected_gradient_initialization,
         qp_use_temporal_ordering=qp_use_temporal_ordering,
+        qp_max_iterations=qp_max_iterations,
+        admm_rho=admm_rho,
+        admm_projection_threads=admm_projection_threads,
     )
     metadata.update(solver_metadata)
     metadata["measurementPreparationSeconds"] = (
@@ -377,10 +383,13 @@ def argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--qp-backend",
-        choices=("gtsam", "proxqp"),
+        choices=("gtsam", "proxqp", "admm"),
         default="gtsam",
-        help="QP backend (default: gtsam); proxqp requires --qp-step full",
+        help="QP backend (default: gtsam); proxqp/admm require --qp-step full",
     )
+    parser.add_argument("--qp-max-iterations", type=int, default=1000)
+    parser.add_argument("--admm-rho", type=float, default=1.0)
+    parser.add_argument("--admm-projection-threads", type=int, default=1)
     parser.add_argument(
         "--qp-step",
         choices=("feasible", "full"),
@@ -421,6 +430,9 @@ def main() -> None:
         qp_use_feasible_step=args.qp_step == "feasible",
         qp_use_projected_gradient_initialization=args.projected_gradient_initialization,
         qp_use_temporal_ordering=args.qp_ordering == "temporal",
+        qp_max_iterations=args.qp_max_iterations,
+        admm_rho=args.admm_rho,
+        admm_projection_threads=args.admm_projection_threads,
     )
     args.output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output / "kinodynamics.npz", **solution_arrays(solution))
