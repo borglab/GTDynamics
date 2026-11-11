@@ -1,5 +1,10 @@
 # CMC example validation and timing
 
+For a same-QP experiment comparing variable-splitting ADMM (point-local cone
+projections with a reused global factorization) against ProxQP, see
+[PointSplitADMM.md](PointSplitADMM.md). The new comparison is opt-in and does
+not replace the historical baseline/candidate study below.
+
 These drivers execute the repository's original optimization problems against
 separate baseline and candidate builds. They save complete numerical outputs,
 process failures, and timing samples. The native script mode exits before plots
