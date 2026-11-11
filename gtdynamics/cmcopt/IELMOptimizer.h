@@ -33,7 +33,7 @@ struct IELMParams {
   LinearSolver linearSolver = LinearSolver::Automatic;
 
   /// Numerical backend for the global reduced QP.
-  enum class QpBackend { Gtsam, ProxQP };
+  enum class QpBackend { Gtsam, ProxQP, PointSplitADMM };
 
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
@@ -46,8 +46,20 @@ struct IELMParams {
    * with projected-gradient initialization disabled. GTSAM remains the default.
    */
   QpBackend qpBackend = QpBackend::Gtsam;
+  /** Experimental fixed-rho point-splitting ADMM backend. Every reduced key
+   * has an independent cone projection, with optional parallel execution.
+   * The global sparse H + rho*I factorization is reused between iterations.
+   * Unlike qpUseFeasibleStep, this backend requires an original-factor KKT
+   * certificate before returning a direction for nonlinear retraction.
+   */
+  double admmRho = 1.0;
+  double admmAbsoluteTolerance = 1e-9;
+  double admmRelativeTolerance = 1e-9;
+  size_t admmProjectionSweeps = 2000;
+  size_t admmProjectionThreads = 1;
   /** Backend QP iteration limit; exhaustion rejects the LM trial. For ProxQP
    * this bounds outer iterations; qpIterations reports total inner iterations.
+   * For PointSplitADMM it bounds global ADMM iterations.
    */
   size_t qpMaxIterations = 1000;
   /** Seed primal working sets with GTSAM's componentwise projected gradient.
