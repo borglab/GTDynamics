@@ -614,6 +614,42 @@ TEST(IELMQp, ProxQpFailureHandling) {
 }
 #endif
 
+// Exercise the new backend through CMC's actual LM assembly, row mapping and
+// nonlinear retraction rather than only through the standalone QP adapter.
+TEST(IELMQp, PointSplitAdmmPartialBlockAndRetraction) {
+  Values initial;
+  initial.insert(7, Vector(Vector2::Zero()));
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<Vector>>(7, Vector(Vector2(2., -2.)),
+                                            noiseModel::Unit::Create(2));
+  NonlinearInequalityConstraints inequalities;
+  inequalities.push_back(
+      bound(7, Matrix2::Identity(), Vector2::Ones(), Vector2::Ones()));
+  inequalities.push_back(
+      bound(7, -Matrix2::Identity(), Vector2::Zero(), Vector2(2., 3.)));
+  const auto state = makeState(graph, inequalities, initial);
+  IELMParams params;
+  params.linearSolver = IELMParams::LinearSolver::QP;
+  params.qpBackend = IELMParams::QpBackend::PointSplitADMM;
+  params.qpMaxIterations = 5000;
+  params.admmProjectionThreads = 2;
+  const IELMTrial::LinearUpdate update(0.2, graph, state, params);
+  EXPECT(update.solveSuccessful);
+  if (!update.solveSuccessful) return;
+  EXPECT(assert_equal(Vector2(2. / 1.2, 0.), update.tangentVector.at(7), 1e-7));
+  EXPECT(update.blockingIndicesMap.empty());
+  const IELMTrial::NonlinearUpdate retracted(state, update, graph);
+  EXPECT(retracted.newPoints.at(reducedKey(state, 7))
+             .evaluateInequalityViolation() <= 1e-3);
+  params.qpMaxIterations = 1;
+  const IELMTrial::LinearUpdate exhausted(0.2, graph, state, params);
+  EXPECT(!exhausted.solveSuccessful);
+  EXPECT(!exhausted.failureReason.empty());
+  params.qpUseFeasibleStep = true;
+  CHECK_EXCEPTION(IELMTrial::LinearUpdate(0.2, graph, state, params),
+                  std::invalid_argument);
+}
+
 }  // namespace tangent_qp
 
 int main() {
