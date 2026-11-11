@@ -296,9 +296,11 @@ PointSplitAdmmResult solvePointSplitAdmm(
       }
     }
     result.stationarityResidual = gradient.lpNorm<Eigen::Infinity>();
+    Values checkedValues;
+    for (Key key : ordering) checkedValues.insert(key, delta.at(key));
     valid &= gradient.allFinite() &&
              result.stationarityResidual <= kktTolerance &&
-             std::isfinite(problem.costs().error(delta));
+             std::isfinite(problem.costs().error(checkedValues));
     if (!valid) continue;
     for (Key key : ordering)
       result.values.insert(key, delta.at(key));
