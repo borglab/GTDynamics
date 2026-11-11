@@ -15,6 +15,7 @@
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/cmcopt/ProxQpSolver.h>
+#include <gtdynamics/cmcopt/PointSplitAdmmSolver.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
@@ -621,16 +622,18 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
     return;
   }
 
-  if(params.qpBackend == IELMParams::QpBackend::ProxQP) {
+  if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
 #ifndef GTDYNAMICS_WITH_PROXQP
     throw std::invalid_argument(
         "ProxQP backend requires a build with GTDYNAMICS_WITH_PROXQP=ON");
 #endif
-    if (params.qpUseFeasibleStep || params.qpUseProjectedGradientInitialization)
-      throw std::invalid_argument(
-          "ProxQP requires full QP solves and no projected-gradient "
-          "initialization");
   }
+  if (params.qpBackend != IELMParams::QpBackend::Gtsam &&
+      (params.qpUseFeasibleStep ||
+       params.qpUseProjectedGradientInitialization))
+    throw std::invalid_argument(
+        "ProxQP and PointSplitADMM require full QP solves and no "
+        "projected-gradient initialization");
   const auto &linear = *state.linearPointGraph;
   const auto sqrtHessianDiagonal =
       SqrtHessianDiagonal(linear, params.lmParams);
@@ -663,8 +666,26 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       ++qpSolves;
       Values solution;
       std::vector<bool> activeRows;
+      if (params.qpBackend == IELMParams::QpBackend::PointSplitADMM) {
+        internal::PointSplitAdmmParams admm;
+        admm.rho = params.admmRho;
+        admm.absoluteTolerance = params.admmAbsoluteTolerance;
+        admm.relativeTolerance = params.admmRelativeTolerance;
+        admm.maxProjectionSweeps = params.admmProjectionSweeps;
+        admm.projectionThreads = params.admmProjectionThreads;
+        const auto result = internal::solvePointSplitAdmm(
+            problem, initial, qpParams->ordering, params.qpMaxIterations,
+            admm);
+        qpIterations = result.iterations;
+        if (!result.converged) {
+          failureReason = result.message;
+          return;
+        }
+        solution = result.values;
+        activeRows = result.activeRows;
+      }
 #ifdef GTDYNAMICS_WITH_PROXQP
-      if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
+      else if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
         const auto result = internal::solveProxQp(
             problem, initial, qpParams->ordering, params.qpMaxIterations);
         qpIterations = result.iterations;
@@ -674,9 +695,9 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         }
         solution = result.values;
         activeRows = result.activeRows;
-      } else
+      }
 #endif
-      {
+      else {
         const ActiveSetSolver solver(problem, qpParams);
         if (params.qpUseFeasibleStep) {
           const auto result = solver.computeFeasibleStep(initial);
