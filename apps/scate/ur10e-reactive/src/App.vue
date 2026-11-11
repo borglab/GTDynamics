@@ -4,5 +4,5 @@ import ScateReplayApp from '../../shared/ScateReplayApp.vue';
 </script>
 
 <template>
-  <ScateReplayApp app="scate/ur10e-reactive" robot="UR10e" title="SCATE UR10e: base disturbance" />
+  <ScateReplayApp app="scate/ur10e-reactive" robot="UR10e" title="SCATE UR10e: base disturbance" live />
 </template>

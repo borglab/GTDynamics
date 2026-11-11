@@ -165,6 +165,8 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   let comparison = false;        // more runs than online and blind: shown by setRunVisible
   const hiddenRuns = new Set();  // runs hidden in a comparison
   let meshGeo = {};    // by mesh name: a geometry (collision STL) or {parts: [{geometry, color}]}
+  const meshPacks = {};  // meshGeo of each robot, by key ("ur10e"): meshes.json, or meshes-<key>.json for others
+  const defaultRobot = robotName.toLowerCase();
   const partMaterials = new Map();  // visual-mesh materials by color
   let T = 0, Tend = 1; // time
   let playing = false, speed = 2;
@@ -205,29 +207,40 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     return partMaterials.get(key);
   }
 
+  // The meshes of a robot (by key), fetched once: meshes.json for this page's
+  // robot, meshes-<key>.json for another one the live simulation can solve.
+  async function loadMeshPack(key = defaultRobot) {
+    if (meshPacks[key]) return meshPacks[key];
+    let pack = key === defaultRobot ? window.SCATE_MESHES : null;
+    if (!pack) {
+      const file = key === defaultRobot ? "meshes.json" : `meshes-${key}.json`;
+      const r = await fetch(new URL(file, document.baseURI), { signal: loading.signal });
+      if (!r.ok) throw new Error(`Meshes ${file}: HTTP ${r.status}`);
+      pack = await r.json();
+    }
+    const geometries = {};
+    for (const [name, entry] of Object.entries(pack.meshes || {})) {
+      if (typeof entry === "string") {
+        geometries[name] = parseSTL(decodeBase64(entry).buffer);
+        geometries[name].userData.sharedMujoco = true;
+      } else {
+        geometries[name] = { parts: entry.parts.map(visualPart) };
+      }
+    }
+    meshPacks[key] = geometries;
+    return geometries;
+  }
+
   async function loadMeshes() {
     try {
-      let pack = window.SCATE_MESHES;
-      if (!pack) {
-        const r = await fetch(new URL("meshes.json", document.baseURI), { signal: loading.signal });
-        if (!r.ok) throw new Error(`Meshes: HTTP ${r.status}`);
-        pack = await r.json();
-      }
-      if (disposed) return;
-      for (const [name, entry] of Object.entries(pack.meshes || {})) {
-        if (typeof entry === "string") {
-          meshGeo[name] = parseSTL(decodeBase64(entry).buffer);
-          meshGeo[name].userData.sharedMujoco = true;
-        } else {
-          meshGeo[name] = { parts: entry.parts.map(visualPart) };
-        }
-      }
+      const geometries = await loadMeshPack();
+      if (!disposed) meshGeo = geometries;
     } catch (e) { if (!disposed) throw e; }
   }
 
   function showError(msg) { const e = $("err"); e.textContent = msg; e.hidden = !msg; }
 
-  function setReplay(d, imported = false) {
+  function setReplay(d, imported = false, tagText = "") {
     if (!d || d.format !== "scate-replay" || !Array.isArray(d.runs) || !d.runs.length) {
       throw new Error("This file is not a SCATE replay (expected the replay.json written by scate_online).");
     }
@@ -240,7 +253,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     Tend = (d.num_poses - 1) * d.dt;
     const demo = /^SANDBOX/i.test(d.source || "");
     const tag = $("srcTag");
-    tag.textContent = demo ? "Demo data" : imported ? "Loaded replay" : "Bundled replay";
+    tag.textContent = tagText || (demo ? "Demo data" : imported ? "Loaded replay" : "Bundled replay");
     tag.className = "tag" + (demo ? " demo" : "");
     tag.title = d.source || "";
     $("nmOnline").textContent = R.online ? R.online.label : "Online";
@@ -765,6 +778,31 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
   })();
   return {
     selectTime(time) { if (D) { setPlaying(false); setTime(time); } },
+    /**
+     * Show a replay produced on the page (a live solve), with the meshes of
+     * its robot ("robot" field, else this page's robot).
+     * @param tagText label of the source tag, e.g. "Live solve"
+     */
+    async loadReplay(data, tagText = "") {
+      const geometries = await loadMeshPack((data.robot || robotName).toLowerCase());
+      if (disposed) return;
+      meshGeo = geometries;
+      showError(""); setPlaying(false);
+      setReplay(data, true, tagText);
+    },
+    /** Hide the replay (and pause it) while the page edits a live setup in the same scene. */
+    setEditing(editing) {
+      if (editing) setPlaying(false);
+      world.visible = !editing;
+      viewport.render();
+    },
+    /** The scene and helpers the live-setup editor draws into (editor.js). */
+    editorContext() {
+      return {
+        scene, camera, controls, viewport, domElement: viewport.renderer.domElement,
+        meshForLink, partMaterial, meshes: key => loadMeshPack(key), render: () => viewport.render(),
+      };
+    },
     /** Show or hide one run of a comparison replay (arm, spheres, trail and chart line). */
     setRunVisible(name, visible) {
       if (visible) hiddenRuns.delete(name); else hiddenRuns.add(name);
@@ -773,10 +811,10 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     dispose() {
       disposed = true; loading.abort(); events.abort(); stopTheme(); chartObserver.disconnect();
       clearWorld(); scene.remove(world); viewport.dispose();
-      Object.values(meshGeo).forEach(geometry => {
+      Object.values(meshPacks).forEach(pack => Object.values(pack).forEach(geometry => {
         if (geometry.parts) geometry.parts.forEach(part => part.geometry.dispose());
         else geometry.dispose();
-      });
+      }));
       partMaterials.forEach(material => material.dispose());
       disposeRunMaterials();
       Object.values(M).forEach(material => material.dispose());

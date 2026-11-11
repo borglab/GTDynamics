@@ -101,3 +101,20 @@ numpy FK, IK for the scenario goals, the offline graph) and `testUr10eCollision`
 (spheres, sensor, link frames, markers, SDF grid, factor Jacobians):
 `make -j6 testUr10eScateInit.run testUr10eCollision.run`. The planner itself is
 tested robot-independently in `testScateOnline` and `testScateGraph`.
+
+## Live solver for the app
+
+`scate_live` (`live_scenario.h`) is the native side of the SCATE UR10e Base
+app's live simulation, for the UR10e or the UR5 (with `ur5Markers()`):
+
+```bash
+./scate_live describe ur10e robot.json     # link frames, screw axes, spheres, default experiment
+./scate_live solve request.txt replay.json # one reactive run per sigma, as one replay
+```
+
+A request is plain text: `robot ur10e`, `q_start ...`, `q_goal ...`, one
+`obstacle x y z vx vy vz radius` per obstacle, `sigmas 0 3 0.3 0.1` and
+`seed 0`. The goal is used as given (no IK). `scate_live.describe` rewrites
+the app's `public/robots/*.json`; `testScateLive` checks the request reader,
+that the screw axes reproduce the link frames, the UR5 markers, and a solve.
+

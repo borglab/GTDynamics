@@ -66,6 +66,27 @@ inline std::vector<std::pair<size_t, size_t>> ur5SelfCollisionPairs() {
           {8, 13}, {8, 14}, {9, 13}, {9, 14}, {10, 14}, {11, 14}};
 }
 
+/**
+ * Motion-capture (VICON-style) markers on the UR5, for reactive SCATE
+ * (scate_reactive.h), like ur10eMarkers(): two on the surface of the upper
+ * arm, two on the forearm, and four on 10 cm posts (wrist 1, wrist 2 and a
+ * two-marker tree on the flange). Each sits off its link's joint axis, so
+ * every joint angle moves at least one marker. Not part of ur5SphereModel(),
+ * whose online SCATE examples have no motion capture.
+ */
+inline std::vector<Marker> ur5Markers() {
+  return {
+      {"upper_arm_link", {0.065, 0.0, 0.15}},  //  0
+      {"upper_arm_link", {0.0, 0.065, 0.35}},  //  1
+      {"forearm_link", {0.05, 0.0, 0.10}},     //  2
+      {"forearm_link", {0.0, 0.05, 0.30}},     //  3
+      {"wrist_1_link", {0.10, 0.0, 0.0}},      //  4: post
+      {"wrist_2_link", {0.10, 0.0, 0.0}},      //  5: post
+      {"wrist_3_link", {0.10, 0.09, 0.0}},     //  6: flange tree
+      {"wrist_3_link", {0.0, 0.09, 0.10}},     //  7: flange tree
+  };
+}
+
 /// Spheres, self-collision pairs, sensor and tool of the UR5 (no motion-capture markers).
 inline SphereModel ur5SphereModel() {
   return {ur5Spheres(), ur5SelfCollisionPairs(), kUr5SensorSphere, kUr5ToolSphere,
