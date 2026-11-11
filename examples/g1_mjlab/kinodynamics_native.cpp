@@ -526,9 +526,25 @@ py::dict solve(
   const auto qpBackend = setting<std::string>(settings, "qpBackend");
   if (qpBackend == "proxqp")
     params.qpBackend = IELMParams::QpBackend::ProxQP;
+  else if (qpBackend == "admm")
+    params.qpBackend = IELMParams::QpBackend::PointSplitADMM;
   else if (qpBackend != "gtsam")
     throw std::invalid_argument("Unknown QP backend: " + qpBackend);
   params.qpMaxIterations = setting<size_t>(settings, "qpMaxIterations");
+  if (settings.contains("admmRho"))
+    params.admmRho = setting<double>(settings, "admmRho");
+  if (settings.contains("admmProjectionThreads"))
+    params.admmProjectionThreads =
+        setting<size_t>(settings, "admmProjectionThreads");
+  if (settings.contains("admmProjectionSweeps"))
+    params.admmProjectionSweeps =
+        setting<size_t>(settings, "admmProjectionSweeps");
+  if (settings.contains("admmAbsoluteTolerance"))
+    params.admmAbsoluteTolerance =
+        setting<double>(settings, "admmAbsoluteTolerance");
+  if (settings.contains("admmRelativeTolerance"))
+    params.admmRelativeTolerance =
+        setting<double>(settings, "admmRelativeTolerance");
   params.qpUseProjectedGradientInitialization =
       setting<bool>(settings, "qpUseProjectedGradientInitialization");
   params.qpUseFeasibleStep = setting<bool>(settings, "qpUseFeasibleStep");
