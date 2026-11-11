@@ -24,6 +24,11 @@ def solver_settings() -> dict[str, Any]:
         "maxIterations": 5,
         "qpMaxIterations": 1000,
         "qpBackend": "gtsam",
+        "admmRho": 1.0,
+        "admmProjectionThreads": 1,
+        "admmProjectionSweeps": 2000,
+        "admmAbsoluteTolerance": 1e-9,
+        "admmRelativeTolerance": 1e-9,
         "linearSolver": "automatic",
         "equalityOnly": False,
         "qpUseProjectedGradientInitialization": False,
@@ -75,6 +80,9 @@ def configure_solve(
     qp_use_feasible_step: bool = True,
     qp_use_projected_gradient_initialization: bool = False,
     qp_use_temporal_ordering: bool = False,
+    qp_max_iterations: int = 1000,
+    admm_rho: float = 1.0,
+    admm_projection_threads: int = 1,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return native options and report metadata for the selected root gauge.
 
@@ -86,15 +94,15 @@ def configure_solve(
         raise ValueError(f"Unknown linear solver: {linear_solver}")
     if linear_solver == "gaussian" and not equality_only:
         raise ValueError("Gaussian solves require equality_only=True")
-    if qp_backend not in ("gtsam", "proxqp"):
+    if qp_backend not in ("gtsam", "proxqp", "admm"):
         raise ValueError(f"Unknown QP backend: {qp_backend}")
     uses_qp = linear_solver == "qp" or (
         linear_solver == "automatic" and not equality_only
     )
-    if uses_qp and qp_backend == "proxqp" and (
+    if uses_qp and qp_backend in ("proxqp", "admm") and (
         qp_use_feasible_step or qp_use_projected_gradient_initialization
     ):
-        raise ValueError("ProxQP requires --qp-step full and projected gradients off")
+        raise ValueError("ProxQP and ADMM require --qp-step full and projected gradients off")
     options = solver_settings()
     options.update(
         initialization=initialization,
@@ -102,6 +110,9 @@ def configure_solve(
         maxIterations=max_iterations,
         retractionThreads=retraction_threads,
         qpBackend=qp_backend,
+        qpMaxIterations=qp_max_iterations,
+        admmRho=admm_rho,
+        admmProjectionThreads=admm_projection_threads,
         linearSolver=linear_solver,
         equalityOnly=equality_only,
         qpUseFeasibleStep=qp_use_feasible_step,
