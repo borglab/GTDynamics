@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   config.projectionThreads = threads;
 
   std::cout << "points,variables,rows,backend,repeat,seconds,iterations,"
-               "converged,objective,primal,dual,stationarity\n";
+               "converged,objective,primal,dual,stationarity,factorization,projections\n";
   auto run = [&](const std::string& name, int repeat) {
     const auto start = std::chrono::steady_clock::now();
     if (name == "admm") {
@@ -77,7 +77,9 @@ int main(int argc, char** argv) {
                 << result.iterations << "," << result.converged << ","
                 << objective << "," << result.primalResidual << ","
                 << result.dualResidual << ","
-                << result.stationarityResidual << "\n";
+                << result.stationarityResidual << ","
+                << result.factorizationSeconds << ","
+                << result.projectionSeconds << "\n";
       if (!result.converged) std::cerr << result.message << "\n";
       return result.converged;
     }
@@ -91,12 +93,14 @@ int main(int argc, char** argv) {
     std::cout << points << "," << 3 * points << "," << 3 * points
               << ",proxqp," << repeat << "," << elapsed << ","
               << result.iterations << "," << result.converged << ","
-              << objective << ",,,\n";
+              << objective << ",,,,,\n";
     if (!result.converged) std::cerr << result.message << "\n";
     return result.converged;
   };
   // Warm up both backends, then alternate execution order to reduce bias.
-  bool ok = run("admm", -1) && run("proxqp", -1);
+  const bool warmAdmm = run("admm", -1);
+  const bool warmProx = run("proxqp", -1);
+  bool ok = warmAdmm && warmProx;
   for (int i = 0; i < repeats; ++i) {
     if (i % 2) {
       ok = run("proxqp", i) && ok;
