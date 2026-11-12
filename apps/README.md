@@ -14,9 +14,7 @@ be opened directly.
 - [Dynamics](dynamics/README.md): CMC-Opt inference of sole-frame contact wrenches and all 29 G1 joint torques on the SSIO 78–98 s clip.
 - [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
-- [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run.
-- [SCATE UR10e](scate/ur10e/README.md): the same SCATE scenario on a UR10e.
-- [SCATE UR10e Base](scate/ur10e-reactive/README.md): reactive SCATE with moving obstacles, comparing base-disturbance costs.
+- [SCATE](scate/ur10e-reactive/README.md): compare base costs in the reactive experiment or use **Experiment** to replay online obstacle avoidance against a blind run on a [UR5](scate/ur5/README.md) or [UR10e](scate/ur10e/README.md).
 
 Each app starts with a short technical abstract and its interactive demo, then
 continues with motivation, a factor graph formulation and factor definitions,

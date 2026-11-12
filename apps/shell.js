@@ -18,7 +18,7 @@ const panel = document.querySelector('#app-panel');
 const appList = document.querySelector('#app-list');
 let selected;
 
-for (const [index, app] of apps.entries()) {
+for (const [index, app] of apps.filter(app => !app.parentTab).entries()) {
   const tab = document.createElement('a');
   tab.className = 'tab';
   tab.id = `tab-${app.id}`;
@@ -54,9 +54,10 @@ for (const [index, app] of apps.entries()) {
 function selectTab() {
   const id = location.hash.slice(1);
   const app = apps.find(app => app.id === id);
-  const active = app?.id || 'overview';
-  if (selected === active) return;
-  selected = active;
+  const active = app?.parentTab || app?.id || 'overview';
+  const route = app?.id || 'overview';
+  if (selected === route) return;
+  selected = route;
   for (const tab of tabs.children) {
     const isSelected = tab.id === `tab-${active}`;
     tab.setAttribute('aria-selected', String(isSelected));
@@ -67,7 +68,7 @@ function selectTab() {
   panel.replaceChildren();
   document.title = `${app?.title || 'Overview'} · GTDynamics`;
   if (app) {
-    panel.setAttribute('aria-labelledby', `tab-${app.id}`);
+    panel.setAttribute('aria-labelledby', `tab-${active}`);
     const frame = document.createElement('iframe');
     frame.title = `${app.title} · GTDynamics`;
     // Resolve from the document rather than the bundle's hashed assets/ directory.

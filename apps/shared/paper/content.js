@@ -50,8 +50,8 @@ const gauge = {
 
 export const papers = {
   urdf: urdfPaper,
-  'scate/ur5': { ...scateUr5Paper, next: 'scate/ur10e', nextTitle: 'SCATE UR10e' },
-  'scate/ur10e': { ...scateUr10ePaper, next: 'scate/ur10e-reactive', nextTitle: 'SCATE UR10e: base disturbance' },
+  'scate/ur5': scateUr5Paper,
+  'scate/ur10e': scateUr10ePaper,
   'scate/ur10e-reactive': scateUr10eReactivePaper,
   'contact-labels': {
     abstract: 'This app infers left, right, and double support from G1 foot motion using a discrete factor graph. Max-product combines displacement and joint-velocity evidence with walking priors; the resulting phases supply the contact schedule for initialization. For the default 24–44 s clip with velocity aiding and walking constraints, recorded max-product inference took 0.113 s.',
@@ -161,6 +161,6 @@ export const papers = {
       { id: 'limits', name: 'Joint-angle limit costs', description: 'Limit factors penalize angles outside the configured joint range. Collision avoidance, wrench feasibility, and full dynamic trajectory optimization remain extensions to this kinematic example.' },
     ],
     discussion: 'MuJoCo tracks the optimized kinematic trajectory with position control, which introduces execution error. The Franka problem uses its own robot model and endpoint targets. Extending the G1 estimation pipeline toward dynamic motion planning requires contact consistency, actuator limits, and collision constraints in the optimization problem.',
-    next: 'scate/ur5', nextTitle: 'SCATE UR5',
+    next: 'scate/ur10e-reactive', nextTitle: 'SCATE',
   },
 };

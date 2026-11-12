@@ -24,6 +24,23 @@ const props = defineProps({
 });
 
 const root = ref(null), replay = shallowRef(null), time = ref(0), joint = ref(0);
+const experiments = [
+  { id: 'scate/ur10e-reactive', label: 'Reactive · Base cost' },
+  { id: 'scate/ur5', label: 'Online vs blind · UR5' },
+  { id: 'scate/ur10e', label: 'Online vs blind · UR10e' },
+];
+const showExperimentSelector = import.meta.env.MODE !== 'standalone';
+
+function selectExperiment(event) {
+  const id = event.target.value;
+  if (id === props.app) return;
+  if (window.frameElement?.closest('#app-panel')) {
+    window.parent.location.hash = id;
+  } else {
+    window.location.assign(`../../${id}/`);
+  }
+}
+
 let viewer, download;
 const viewerRef = shallowRef(null);  // for the live panel
 const editing = ref(false);           // the live panel is editing a setup in the scene
@@ -114,7 +131,13 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
   <main ref="root" class="scate-app" :data-frame="frame">
     <header class="page-header">
       <div><h1>{{ heading }}</h1><AppAbstract :app="app" /></div>
-      <div class="source"><span class="tag">{{ liveSolved ? 'Live native solve' : 'Recorded native solve' }}</span>
+      <div class="source">
+        <label v-if="showExperimentSelector" class="experiment-select">Experiment
+          <select :value="app" @change="selectExperiment">
+            <option v-for="experiment in experiments" :key="experiment.id" :value="experiment.id">{{ experiment.label }}</option>
+          </select>
+        </label>
+        <span class="tag">{{ liveSolved ? 'Live native solve' : 'Recorded native solve' }}</span>
         <span class="tag" id="srcTag">Loading</span>
         <label class="filebtn" for="file">Open replay.json<input id="file" type="file" accept=".json,application/json"></label>
       </div>

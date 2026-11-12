@@ -4,7 +4,9 @@ import { mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { preview } from 'vite';
-import apps from '../registry.json' with { type: 'json' };
+import registry from '../registry.json' with { type: 'json' };
+
+const apps = registry.filter(app => !app.parentTab);
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -18,7 +20,7 @@ const ready = {
   dynamics: '.dynamics-scene[data-ready="true"]',
   kinodynamics: '.kinodynamics-scene[data-ready="true"]',
   'motion-planning': '.robot-canvas canvas',
-  'scate/ur5': '#stage[data-ready="true"] canvas',
+  'scate/ur10e-reactive': '#stage[data-ready="true"] canvas',
 };
 const controls = {
   urdf: '#panel',
@@ -30,7 +32,7 @@ const controls = {
   dynamics: '.display-options',
   kinodynamics: '.display-options',
   'motion-planning': '.playback-controls',
-  'scate/ur5': '.transport',
+  'scate/ur10e-reactive': '.transport',
 };
 async function fitsWidth(frame) {
   // Plotly resizes asynchronously after the viewport and its containers change.
@@ -119,7 +121,7 @@ try {
           await frame.getByRole('button', { name: /^Go to knot / }).last().click();
           assert.notEqual(await frame.locator('main').getAttribute('data-frame'), before);
         } else {
-          if (app.id === 'scate/ur5') await frame.getByRole('slider', {name: 'Time', exact: true}).fill('0');
+          if (app.id === 'scate/ur10e-reactive') await frame.getByRole('slider', {name: 'Time', exact: true}).fill('0');
           await frame.getByRole('button', { name: /^Show slice 1 in demo/ }).first().click();
           if (app.id !== 'motion-planning') assert.equal(await frame.locator('main').getAttribute('data-frame'), '1');
         }

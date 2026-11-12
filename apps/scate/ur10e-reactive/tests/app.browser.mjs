@@ -48,6 +48,16 @@ try {
         for(let attempt=0;attempt<40;attempt++){if(node.scrollWidth<=innerWidth+1)return true;await new Promise(r=>setTimeout(r,50));}
         return false;
       }),'Fits mobile');
+      // Both older deep links and the experiment selector keep the same hub tab selected.
+      assert.equal(await page.getByRole('tab', {name: /^SCATE/}).count(), 1);
+      for (const [id, heading] of [['ur5', 'SCATE UR5'], ['ur10e', 'SCATE UR10e'],
+        ['ur10e-reactive', 'SCATE UR10e: base disturbance']]) {
+        await frame.getByLabel('Experiment', {exact: true}).selectOption(`scate/${id}`);
+        await frame.getByRole('heading', {name: heading, exact: true}).waitFor();
+        await frame.locator('#stage[data-ready="true"]').waitFor();
+        assert.equal(await page.getByRole('tab', {name: 'SCATE', selected: true}).count(), 1);
+        assert.equal(new URL(page.url()).hash, `#scate/${id}`);
+      }
       assert.deepEqual(errors,[]);assert.deepEqual(external,[],'No CDN dependencies');
       console.log(`PASS ${base}: run toggles, running plots, comparison chart and results, fit`);
     } finally {await context.close();server.httpServer.closeAllConnections();await new Promise(r=>server.httpServer.close(r));}

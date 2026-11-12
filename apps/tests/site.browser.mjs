@@ -37,7 +37,7 @@ try {
       console.log(`Checking ${base}: overview and navigation`);
       assert.equal(await page.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected'), 'true');
       assert.equal(await page.locator('iframe').count(), 0, 'Overview does not load a simulation');
-      assert.equal(await page.locator('.app-link').count(), apps.length);
+      assert.equal(await page.locator('.app-link').count(), apps.filter(app => !app.parentTab).length);
       if (process.env.SCREENSHOT_DIR && base === '/') {
         await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
         await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/overview.png`, fullPage: true });
@@ -49,7 +49,7 @@ try {
       await page.getByRole('tab', { name: apps[0].title, selected: true }).waitFor();
       assert.equal(apps[0].id, 'urdf');
       assert.equal(await page.getByRole('tab').nth(1).innerText(), 'URDF IK');
-      assert.equal(await page.getByRole('tab').last().innerText(), 'SCATE UR5');
+      assert.equal(await page.getByRole('tab').last().innerText(), 'SCATE');
       await page.getByRole('tab', { name: 'Motion Planning' }).click();
       assert.equal(await page.getByRole('tab', { name: 'Motion Snippets' }).count(), 0);
       console.log(`Checking ${base}: Motion Planning assets and recorded solve`);
