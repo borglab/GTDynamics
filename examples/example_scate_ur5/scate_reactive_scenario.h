@@ -245,6 +245,7 @@ inline void writeReactiveReplay(const std::string& path, const ReactiveScenario&
                                 const ClosedLoopResult& reactive, const ClosedLoopResult& frozen,
                                 const ClosedLoopResult& blind) {
   ReplayScenario replay;
+  replay.robot_name = scenario.robot_name;
   replay.source = scenario.program + " (GTDynamics " + scenario.robot_name + "), robot " +
                   robot_file + ", seed " + std::to_string(seed);
   replay.obstacle_center = obstacles.front().start;
@@ -365,14 +366,16 @@ struct BaseWrenchStudyRow {
 /**
  * Seed 0 of several base-wrench sigmas as one replay: each run is named by
  * baseWrenchRunName, frames carry the base wrench, and the primary
- * ("online", the default sigma) run comes first.
+ * ("online", the default sigma) run comes first. program names the writer
+ * in the replay's source line.
  */
 inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenario& scenario,
                                   const std::string& robot_file, const GraphSpec& spec,
                                   const SphereCollisionModel& model,
                                   const std::shared_ptr<const BaseWrenchModel>& base_wrench,
                                   const std::vector<MovingObstacle>& obstacles,
-                                  std::vector<std::pair<double, ClosedLoopResult>> runs);
+                                  std::vector<std::pair<double, ClosedLoopResult>> runs,
+                                  const std::string& program = "scate_ur10e_base_wrench");
 
 /// Replay run name of a base-wrench sigma: the default is the primary ("online") run.
 inline std::string baseWrenchRunName(double sigma) {
@@ -477,15 +480,17 @@ inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenari
                                   const SphereCollisionModel& model,
                                   const std::shared_ptr<const BaseWrenchModel>& base_wrench,
                                   const std::vector<MovingObstacle>& obstacles,
-                                  std::vector<std::pair<double, ClosedLoopResult>> runs) {
+                                  std::vector<std::pair<double, ClosedLoopResult>> runs,
+                                  const std::string& program) {
   if (runs.empty()) throw std::invalid_argument("writeBaseWrenchReplay: no runs");
   // The primary run first, then the others in the order given.
   std::stable_partition(runs.begin(), runs.end(), [](const auto& run) {
     return baseWrenchRunName(run.first) == "online";
   });
   ReplayScenario replay;
-  replay.source = "scate_ur10e_base_wrench (GTDynamics " + scenario.robot_name +
+  replay.source = program + " (GTDynamics " + scenario.robot_name +
                   "), base-disturbance cost comparison, robot " + robot_file + ", seed 0";
+  replay.robot_name = scenario.robot_name;
   if (!obstacles.empty()) {
     replay.obstacle_center = obstacles.front().start;
     replay.obstacle_radius = obstacles.front().radius;

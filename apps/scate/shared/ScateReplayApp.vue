@@ -5,6 +5,7 @@ import AppAbstract from '../../shared/paper/AppAbstract.vue';
 import AppPaper from '../../shared/paper/AppPaper.vue';
 import MathTypeset from '../../shared/paper/MathTypeset.vue';
 import SignalPlot from '../../shared/dynamics/SignalPlot.vue';
+import LivePanel from './LivePanel.vue';
 import RunningPlot from './RunningPlot.vue';
 import equations from './scate.math.html?math';
 import { createReplayViewer, isComparison, runColors, UR_MESH_FOR_LINK } from './viewer.js';
@@ -18,10 +19,18 @@ const props = defineProps({
   title: { type: String, default: '' },
   /** Mesh name in meshes.json for each link name in the replay. */
   meshForLink: { type: Object, default: () => UR_MESH_FOR_LINK },
+  /** Offer the live simulation (LivePanel.vue): drag a setup and solve it on the dev server. */
+  live: { type: Boolean, default: false },
 });
 
 const root = ref(null), replay = shallowRef(null), time = ref(0), joint = ref(0);
 let viewer, download;
+const viewerRef = shallowRef(null);  // for the live panel
+const editing = ref(false);           // the live panel is editing a setup in the scene
+const liveSolved = ref(false);        // the replay shown was solved on the page
+// The robot of the replay shown: a live solve may switch it.
+const shownRobot = computed(() => replay.value?.robot || props.robot);
+const heading = computed(() => props.title ? props.title.replace(props.robot, shownRobot.value) : `SCATE ${shownRobot.value}`);
 const downloadUrl = ref('');
 const frame = computed(() => replay.value ? Math.min(replay.value.num_poses - 1, Math.floor(time.value / replay.value.dt)) : 0);
 const runs = computed(() => replay.value?.runs || []);
@@ -96,6 +105,7 @@ onMounted(() => {
     robotName: props.robot, meshForLink: props.meshForLink,
     onReplay: receiveReplay, onTime: t => {time.value = t;},
   });
+  viewerRef.value = viewer;
 });
 onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(download); });
 </script>
@@ -103,27 +113,20 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
 <template>
   <main ref="root" class="scate-app" :data-frame="frame">
     <header class="page-header">
-      <div><h1>{{ title || `SCATE ${robot}` }}</h1><AppAbstract :app="app" /></div>
-      <div class="source"><span class="tag">Recorded native solve</span>
+      <div><h1>{{ heading }}</h1><AppAbstract :app="app" /></div>
+      <div class="source"><span class="tag">{{ liveSolved ? 'Live native solve' : 'Recorded native solve' }}</span>
         <span class="tag" id="srcTag">Loading</span>
         <label class="filebtn" for="file">Open replay.json<input id="file" type="file" accept=".json,application/json"></label>
       </div>
     </header>
     <section id="demo" aria-label="Interactive SCATE replay">
   <div class="main">
+    <div class="stage-column">
     <div class="stage" id="stage">
-
-      <span class="clock" id="clock">t = 0.00 s</span>
-      <span class="hint">Drag to orbit · scroll to zoom · right-drag to pan</span>
-      <div class="drop" id="drop" hidden>Drop replay.json to load it</div>
-      <div class="err" id="err" hidden></div>
-    </div>
-
-    <aside class="demo-readouts">
-      <section v-if="comparison" class="panel wide" aria-labelledby="h-runs" data-run-toggles>
-        <h2 id="h-runs">Runs at this instant</h2>
+      <section v-if="comparison && !editing" class="run-overlay" aria-labelledby="h-runs" data-run-toggles>
+        <h2 id="h-runs" class="visually-hidden">Runs at this instant</h2>
         <table class="run-table">
-          <thead><tr><th scope="col">Show</th><th scope="col">Clearance</th><th v-if="hasBase" scope="col">Base ‖τ‖</th></tr></thead>
+          <thead><tr><th scope="col">Run</th><th scope="col">Clearance</th><th v-if="hasBase" scope="col">Base ‖τ‖</th></tr></thead>
           <tbody>
             <tr v-for="run in runs" :key="run.name" class="run-toggle" :data-run="run.name">
               <th scope="row"><label class="runname">
@@ -136,8 +139,31 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
           </tbody>
         </table>
       </section>
+      <span class="clock" id="clock">t = 0.00 s</span>
+      <span class="hint">Drag to orbit · scroll to zoom · right-drag to pan</span>
+      <div class="drop" id="drop" hidden>Drop replay.json to load it</div>
+      <div class="err" id="err" hidden></div>
+    </div>
+    <section class="transport attached" aria-label="Playback">
+      <div class="controls">
+        <button id="play" type="button" aria-label="Play">▶ Play</button>
+        <button id="restart" type="button">Restart</button>
+        <select id="speed" aria-label="Playback speed">
+          <option value="0.5">0.5×</option>
+          <option value="1">1×</option>
+          <option value="2" selected>2×</option>
+          <option value="4">4×</option>
+        </select>
+        <input id="scrub" type="range" min="0" max="1000" step="1" value="0" aria-label="Time">
+        <span class="time" id="timeTxt">0.00 / 0.00 s</span>
+      </div>
+    </section>
+    </div>
 
-      <section v-if="hasBase && replay" class="panel wide" aria-labelledby="h-running" data-running-plots>
+    <aside class="demo-readouts">
+      <LivePanel v-if="live" :viewer="viewerRef" :default-robot="robot.toLowerCase()" @editing="editing = $event" @solved="liveSolved = true" />
+
+      <section v-if="hasBase && replay && !editing" class="panel wide" aria-labelledby="h-running" data-running-plots>
         <h2 id="h-running">So far</h2>
         <div class="running-plots">
           <RunningPlot title="Base torque ‖τ‖" unit="N·m" :times="times" :series="baseSeries(torque)" :time="time" :digits="1" @select="selectTime" />
@@ -175,7 +201,7 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
         </dl>
       </section>
 
-      <section class="panel" aria-labelledby="h-view">
+      <section v-show="!editing" class="panel" aria-labelledby="h-view">
         <h2 id="h-view">Show</h2>
         <div v-show="!comparison" class="seg" role="radiogroup" aria-label="Runs">
           <label><input type="radio" name="runs" value="both" id="runsBoth" checked>Both</label>
@@ -197,20 +223,6 @@ onBeforeUnmount(() => { viewer?.dispose(); if (download) URL.revokeObjectURL(dow
     </aside>
   </div>
 
-  <section class="transport" aria-label="Playback">
-    <div class="controls">
-      <button id="play" type="button" aria-label="Play">▶ Play</button>
-      <button id="restart" type="button">Restart</button>
-      <select id="speed" aria-label="Playback speed">
-        <option value="0.5">0.5×</option>
-        <option value="1">1×</option>
-        <option value="2" selected>2×</option>
-        <option value="4">4×</option>
-      </select>
-      <input id="scrub" type="range" min="0" max="1000" step="1" value="0" aria-label="Time">
-      <span class="time" id="timeTxt">0.00 / 0.00 s</span>
-    </div>
-  </section>
 
     </section>
     <AppPaper :app="app" :frame="frame" :samples="replay?.num_poses || 1" @select="selectTime($event * replay.dt)">

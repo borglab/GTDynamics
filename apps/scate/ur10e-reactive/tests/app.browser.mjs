@@ -22,7 +22,7 @@ try {
       // One toggle per run; the online/blind radio and panel are hidden.
       const toggles=frame.locator('[data-run-toggles] .run-toggle');
       assert.deepEqual(await toggles.evaluateAll(nodes=>nodes.map(n=>n.dataset.run)),['online','cost_off','sigma_0.3','sigma_0.1']);
-      assert.equal(await frame.locator('.seg').isVisible(),false);
+      assert.equal(await frame.getByRole('radiogroup',{name:'Runs',exact:true}).isVisible(),false);
       // Running plots draw every shown run, then one fewer when a run is hidden.
       const plots=frame.locator('[data-running-plots] .running-plot');
       assert.equal(await plots.count(),2);

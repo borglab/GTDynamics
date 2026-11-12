@@ -58,3 +58,19 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Copying base_wrench_replay.json to apps/scate/ur10e-reactive/public"
   VERBATIM)
+
+# The live simulation's native solver (live_scenario.h). The SCATE UR10e Base
+# app's dev server runs `scate_live solve`; scate_live.describe writes the robot
+# descriptions (link frames, screw axes, spheres, default experiment) that the
+# app uses to drag the arms.
+add_executable(scate_live scate_live.cpp)
+target_link_libraries(scate_live PUBLIC gtdynamics)
+target_include_directories(scate_live PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${SCATE_UR5_DIR})
+add_custom_target(
+  scate_live.describe
+  COMMAND ./scate_live describe ur10e ${SCATE_APPS_DIR}/ur10e-reactive/public/robots/ur10e.json
+  COMMAND ./scate_live describe ur5 ${SCATE_APPS_DIR}/ur10e-reactive/public/robots/ur5.json
+  DEPENDS scate_live
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Writing the live app's robot descriptions to apps/scate/ur10e-reactive/public/robots"
+  VERBATIM)

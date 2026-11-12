@@ -56,6 +56,7 @@ struct ReplayRun {
 /// Scenario numbers that are not in GraphSpec/OnlineConfig.
 struct ReplayScenario {
   std::string source;  ///< free text: robot file, seed, build
+  std::string robot_name;  ///< e.g. "UR10e"; written as "robot" if not empty
   gtsam::Point3 obstacle_center = gtsam::Point3::Zero();  ///< ground truth
   double obstacle_radius = 0.0;    ///< ground truth
   /**
@@ -138,6 +139,9 @@ inline void writeHeader(JsonWriter& json, const ReplayScenario& scenario,
   json.writeKey("format"); json.writeString("scate-replay"); out << ',';
   json.writeKey("version"); out << 1 << ',';
   json.writeKey("source"); json.writeString(scenario.source); out << ',';
+  if (!scenario.robot_name.empty()) {
+    json.writeKey("robot"); json.writeString(scenario.robot_name); out << ',';
+  }
   json.writeKey("dt"); json.writeNumber(spec.dt); out << ',';
   json.writeKey("num_poses"); out << spec.num_poses << ',';
   json.writeKey("q_start"); json.writeVector(spec.q_start); out << ',';

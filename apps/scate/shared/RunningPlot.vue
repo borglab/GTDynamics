@@ -26,8 +26,8 @@ const props = defineProps({
 });
 const emit = defineEmits(['select']);
 
-const width = 220, height = 150;
-const margin = { left: 30, right: 6, top: 8, bottom: 20 };
+const width = 300, height = 118;
+const margin = { left: 30, right: 6, top: 8, bottom: 18 };
 const svg = ref(null);
 const clipId = `running-plot-${Math.random().toString(36).slice(2)}`;
 const tEnd = computed(() => props.times.at(-1) || 1);
@@ -135,7 +135,7 @@ const label = v => (Math.abs(v) < 1e-9 ? 0 : v).toFixed(props.digits);
 .running-plot .unit { font-weight: 400; color: var(--muted); }
 .running-plot svg { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; }
 .grid line { stroke: var(--grid); stroke-width: 1; }
-.grid text, .reference text { font-size: 10px; fill: var(--muted); font-family: "IBM Plex Mono", monospace; }
+.grid text, .reference text { font-size: 9px; fill: var(--muted); font-family: "IBM Plex Mono", monospace; }
 .reference line { stroke-width: 1; }
 .cursor { stroke: var(--ink); stroke-width: 1; opacity: .6; }
 </style>
