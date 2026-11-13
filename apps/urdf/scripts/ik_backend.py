@@ -42,6 +42,7 @@ PREFERRED_EE_NAMES = (
 )
 
 MOVABLE_TYPES = ("revolute", "continuous", "prismatic")
+PANDA_JOINTS = tuple(f"joint{i}" for i in range(1, 8))
 
 
 class ModelError(RuntimeError):
@@ -274,6 +275,45 @@ class RobotModel:
 
         self.end_effectors = self._find_end_effectors(urdf_links, urdf_joints)
         self.default_ee = self._pick_default_ee()
+        self.panda_ikfast = self._detect_panda_ikfast()
+
+    def _detect_panda_ikfast(self) -> bool:
+        """Recognize IKFast's seven-joint geometry, independently of file name."""
+        if not hasattr(gtd, "PandaIKFast") or self.base != "link0":
+            return False
+        if "link7" not in self.end_effectors:
+            return False
+        chain = self.movable_chain("link7")
+        if tuple(j.name for j in chain) != PANDA_JOINTS or any(
+            j.type != "revolute"
+            or not (math.isfinite(j.lower) and math.isfinite(j.upper))
+            for j in chain
+        ):
+            return False
+        # Compare several configurations, including an independent perturbation
+        # of each joint, so a renamed or geometrically modified URDF is safe.
+        seed = np.array([0.2, -0.4, 0.3, -1.6, 0.5, 1.2, -0.2])
+        for x in [seed, *(seed + 0.2 * row for row in np.eye(7))]:
+            q = self.default_configuration()
+            q.update(zip(PANDA_JOINTS, x))
+            frames = self.link_frames(q)
+            actual = frames[self.base].between(self.ee_pose(frames, "link7"))
+            if not actual.equals(gtd.PandaIKFast.forward(x), 1e-6):
+                return False
+        return True
+
+    def scheme_ids(self, ee: str, orientation: bool = True) -> list[str]:
+        """Return solvers supported by this model, frame and goal type."""
+        return [
+            name
+            for name in SCHEMES
+            if name != "panda_ikfast"
+            or (
+                self.panda_ikfast
+                and orientation
+                and self.end_effectors[ee].link == "link7"
+            )
+        ]
 
     def _find_end_effectors(self, urdf_links, urdf_joints):
         """GTD links plus URDF frames rigidly attached to them (e.g. tool0)."""
@@ -395,6 +435,7 @@ class RobotModel:
                     "name": e.name,
                     "link": e.link,
                     "dof": len(self.movable_chain(e.name)),
+                    "schemes": self.scheme_ids(e.name),
                 }
                 for e in self.end_effectors.values()
             ],
@@ -450,6 +491,7 @@ class SolverOutput:
     # For solvers that optimize link poses too: the end-effector pose in the
     # solver's own variables, which may disagree with FK of its joint angles.
     solver_ee_pose: Optional[gtsam.Pose3] = None
+    failure_reason: Optional[str] = None
 
 
 class IkProblem:
@@ -758,12 +800,70 @@ def solve_gtd(p: IkProblem, max_iters: int) -> SolverOutput:
     )
 
 
+def solve_panda_ikfast(p: IkProblem, max_iters: int) -> SolverOutput:
+    """Solve a tool pose analytically, sampling joint7 only when necessary.
+
+    IKFast targets link7 in link0 coordinates. Try the current joint7 first,
+    then a bounded grid ordered by distance from it. At the first successful
+    sample, select the limit-valid branch closest to the current joint angles.
+    Max iters bounds the number of free-joint samples, not optimizer iterations.
+    """
+    max_iters = max(1, max_iters)
+    frames, initial_pose = p.fk(p.x0)
+    if p.converged(initial_pose):
+        return SolverOutput(p.to_q(p.x0), None, max_iters)
+    target = (
+        frames[p.model.base]
+        .inverse()
+        .compose(p.req.target.compose(p.eff.linkTee.inverse()))
+    )
+    samples = [p.x0[-1]]
+    samples.extend(
+        sorted(
+            np.linspace(p.lower[-1], p.upper[-1], max(0, max_iters - 1)),
+            key=lambda theta: abs(theta - p.x0[-1]),
+        )
+    )
+    for theta7 in samples:
+        candidates = []
+        for solution in gtd.PandaIKFast.inverse(target, float(theta7)):
+            x = np.asarray(solution, dtype=float)
+            if not np.all(np.isfinite(x)):
+                continue
+            # IKFast angles are periodic; joint6 may validly exceed pi. Choose
+            # the equivalent angles closest to the seed inside each interval.
+            lo = np.ceil((p.lower - x - 1e-9) / (2 * math.pi))
+            hi = np.floor((p.upper - x + 1e-9) / (2 * math.pi))
+            if np.any(lo > hi):
+                continue
+            turns = np.clip(np.rint((p.x0 - x) / (2 * math.pi)), lo, hi)
+            x = p.clamp(x + 2 * math.pi * turns)
+            _, pose = p.fk(x)
+            if p.converged(pose):
+                candidates.append(x)
+        if candidates:
+            best = min(candidates, key=lambda x: np.linalg.norm(x - p.x0))
+            return SolverOutput(p.to_q(best), None, max_iters)
+    return SolverOutput(
+        p.to_q(p.x0),
+        None,
+        max_iters,
+        failure_reason=(
+            f"Panda IKFast found no joint-limit-valid solution in {len(samples)} "
+            "joint7 samples. Singular solutions are omitted; this finite search "
+            "does not prove the pose unreachable. Try a different joint7 seed, "
+            "increase Max iters, or choose another solver."
+        ),
+    )
+
+
 @dataclass
 class Scheme:
     label: str
     description: str
     solve: Callable[[IkProblem, int], SolverOutput]
     default_iters: int
+    requires_orientation: bool = False
 
 
 SCHEMES = {
@@ -811,6 +911,19 @@ SCHEMES = {
         300,
     ),
 }
+
+if hasattr(gtd, "PandaIKFast"):
+    SCHEMES["panda_ikfast"] = Scheme(
+        "Panda IKFast (analytical)",
+        "Analytical full-pose IK for the detected Panda arm and its fixed tool "
+        "frames. Tries the current joint7 first, then samples its limits if "
+        "needed. Selects the nearest joint-limit-valid branch at the first "
+        "successful sample. Max iters limits free-joint samples (default 33); "
+        "singular solutions are omitted.",
+        solve_panda_ikfast,
+        33,
+        requires_orientation=True,
+    )
 
 
 # ----------------------------------------------------------------- diagnostics
@@ -876,6 +989,10 @@ def diagnose(
             )
         if at_limit:
             warnings.append("Joints at their limits: " + ", ".join(at_limit))
+        return reasons, warnings, at_limit
+
+    if out.failure_reason:
+        reasons.append(out.failure_reason)
         return reasons, warnings, at_limit
 
     if dof == 0:
@@ -990,6 +1107,11 @@ def solve(model: RobotModel, scheme_id: str, req: IkRequest) -> dict:
     if scheme_id not in SCHEMES:
         raise ModelError(f"Unknown IK scheme '{scheme_id}'.")
     scheme = SCHEMES[scheme_id]
+    if scheme_id not in model.scheme_ids(req.ee, req.orientation):
+        raise ModelError(
+            f"{scheme.label} requires a compatible Panda arm, a frame rigidly "
+            "attached to link7, and Constrain orientation enabled."
+        )
     max_iters = req.max_iters or scheme.default_iters
     p = IkProblem(model, req)
 

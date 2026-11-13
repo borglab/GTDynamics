@@ -3,12 +3,22 @@ import test from 'node:test';
 import { Quaternion, Vector3 } from 'three';
 import { api, latestOnly } from '../src/api.js';
 import {
-  endEffectorLabel, homeConfiguration, quaternionFromRpyDeg, rpyDegFromQuaternion,
+  availableSchemes, endEffectorLabel, homeConfiguration, quaternionFromRpyDeg, rpyDegFromQuaternion,
   sliderRange, solveSummary,
 } from '../src/pose.js';
 
 const close = (actual, expected, tol = 1e-9) =>
   actual.forEach((v, i) => assert(Math.abs(v - expected[i]) < tol, `${actual} vs ${expected}`));
+
+test('Panda IKFast is offered only for supported frames and pose goals', () => {
+  const schemes = [{ id: 'dls' }, { id: 'panda_ikfast', requires_orientation: true }];
+  const hand = { schemes: ['dls', 'panda_ikfast'] };
+  assert.deepEqual(availableSchemes(schemes, hand, true), schemes);
+  for (const frame of [undefined, { schemes: ['dls'] }]) {
+    assert.deepEqual(availableSchemes(schemes, frame, true), [schemes[0]]);
+  }
+  assert.deepEqual(availableSchemes(schemes, hand, false), [schemes[0]]);
+});
 
 test('URDF rpy follows R = Rz(yaw) Ry(pitch) Rx(roll) and round-trips', () => {
   const rpy = [10, -20, 30];

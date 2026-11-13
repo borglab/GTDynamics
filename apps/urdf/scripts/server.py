@@ -179,6 +179,7 @@ def make_handler(store: ModelStore, files: FileIndex):
                             "label": s.label,
                             "description": s.description,
                             "default_iters": s.default_iters,
+                            "requires_orientation": s.requires_orientation,
                         }
                         for key, s in ik.SCHEMES.items()
                     ]

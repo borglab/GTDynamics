@@ -12,7 +12,7 @@ import { api, latestOnly } from './api.js';
 import { createBrowserBackend } from './browser-backend.js';
 import { g1Path, loadG1Visual } from './g1-visual.js';
 import {
-  POSE_FIELDS, endEffectorLabel, homeConfiguration, quaternionFromRpyDeg,
+  POSE_FIELDS, availableSchemes, endEffectorLabel, homeConfiguration, quaternionFromRpyDeg,
   rpyDegFromQuaternion, sliderRange, solveSummary,
 } from './pose.js';
 import { RobotViewport, disposeObject3D } from '../../shared/RobotViewport.js';
@@ -43,6 +43,7 @@ export function createExplorer(hooks = {}) {
   const lifetime = new AbortController();
   let modelLoad;
   let browserBackend;
+  let schemes = [];
   const request = (path, body, signal = lifetime.signal) =>
     browserBackend ? browserBackend.request(path, body, signal) :
       api(path, body, (url, init) => fetch(url, { ...init, signal }));
@@ -608,6 +609,7 @@ export function createExplorer(hooks = {}) {
     state.modelPath = modelPath;
     try { localStorage.setItem('urdf-ik-model', modelPath); } catch { /* optional */ }
     clearRobot();
+    updateSchemes();
     $('ee').disabled = true;
     $('ee').replaceChildren();
     $('joints').replaceChildren();
@@ -709,7 +711,31 @@ export function createExplorer(hooks = {}) {
 
   function setOrientation(checked) {
     $('orientation').checked = checked;
+    updateSchemes();
+  }
+
+  function describeScheme() {
+    const scheme = schemes.find(s => s.id === $('scheme').value);
+    if (!scheme) return;
+    $('scheme-desc').textContent = scheme.description;
+    $('max-iters').placeholder = `auto (${scheme.default_iters})`;
     updateMethod();
+  }
+
+  function updateSchemes() {
+    const previous = $('scheme').value;
+    const ee = state.info?.end_effectors.find(e => e.name === state.ee);
+    const available = availableSchemes(schemes, ee, $('orientation').checked);
+    $('scheme').replaceChildren(...available.map(s => {
+      const option = document.createElement('option');
+      option.value = s.id;
+      option.textContent = s.label;
+      return option;
+    }));
+    const selected = available.find(s => s.id === previous) ??
+      (previous ? available.find(s => s.id === 'dls') : null) ?? available[0];
+    if (selected) $('scheme').value = selected.id;
+    describeScheme();
   }
 
   async function changeEndEffector(name) {
@@ -756,7 +782,6 @@ export function createExplorer(hooks = {}) {
 
   async function init() {
     buildPoseTable();
-    let schemes;
     if (hooks.backend) {
       try {
         schemes = await request('api/schemes');
@@ -771,22 +796,10 @@ export function createExplorer(hooks = {}) {
     }
     if (lifetime.signal.aborted) return;
     hooks.onMode?.(browserBackend ? 'browser' : 'native');
-    $('scheme').replaceChildren(...schemes.map((s) => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = s.label;
-      return opt;
-    }));
-    const describeScheme = () => {
-      const s = schemes.find((x) => x.id === $('scheme').value);
-      $('scheme-desc').textContent = s.description;
-      $('max-iters').placeholder = `auto (${s.default_iters})`;
-      updateMethod();
-    };
-    describeScheme();
+    updateSchemes();
 
     $('scheme').addEventListener('change', () => { describeScheme(); requestIK(state.generation); });
-    $('orientation').addEventListener('change', () => { updateMethod(); requestIK(state.generation); });
+    $('orientation').addEventListener('change', () => { updateSchemes(); requestIK(state.generation); });
     for (const id of ['pos-tol', 'rot-tol', 'max-iters']) {
       $(id).addEventListener('change', () => requestIK(state.generation));
     }

@@ -1,3 +1,10 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
  * @file  PandaIKFast.h
  * @brief Wrapper for the generated IKFast source files for the panda robot.
@@ -18,9 +25,10 @@
 
 namespace gtdynamics {
 
-// Wrapper of IKFast functions for panda robot.
+/// Analytical kinematics from Panda link0 to link7, before the hand offset.
 class PandaIKFast {
  public:
+  /// Construct the stateless IKFast interface.
   PandaIKFast();
 
   // The robot's number of joints, for the panda it's 7
@@ -29,20 +37,22 @@ class PandaIKFast {
   /**
    * @brief Forward Kinematics on Panda robot using IKFast.
    *
-   * @param joint_values -- gtsam::Vector7 of joint angles' values
-   * @return gtsam::Pose3 -- Resulting 3D Pose with the guven joint angles
+   * @param jointValues Seven joint angles in radians, ordered joint1 to joint7.
+   * @return Pose of link7 expressed in link0, with translation in metres.
    */
-  static gtsam::Pose3 forward(const gtsam::Vector7& joint_values);
+  static gtsam::Pose3 forward(const gtsam::Vector7& jointValues);
 
   /**
    * @brief Inverse Kinematics on Panda robot using IKFast. Singularity
    * solutions are not returned.
    *
-   * @param bTe -- the desired end-effector pose wrt the base frame
+   * @param bTe Desired link7 pose expressed in link0, in metres.
    * @param theta7 -- the value for the 7th joint angle, working as the
    * parameter of the 1D solution
    * @return std::vector<gtsam::Vector7> -- std vector containing the different
-   * solutions for joint angles' values
+   * solutions for joint angles in radians. Joint limits are not enforced;
+   * callers must filter the solutions. An empty vector means no solution for
+   * the specified theta7, not necessarily that the pose is unreachable.
    */
   static std::vector<gtsam::Vector7> inverse(const gtsam::Pose3& bTe,
                                              double theta7);

@@ -1,5 +1,12 @@
+/* ----------------------------------------------------------------------------
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415
+ * All Rights Reserved
+ * See LICENSE for the license information
+ * -------------------------------------------------------------------------- */
+
 /**
- * @file  PandaIKFast.h
+ * @file  PandaIKFast.cpp
  * @brief Wrapper for the generated IKFast source files for the panda robot.
  * @author Frank Dellaert
  * @author Antoni Jubes
@@ -35,10 +42,10 @@ using gtsam::Vector7;
 
 PandaIKFast::PandaIKFast() {}
 
-Pose3 PandaIKFast::forward(const Vector7& joint_values) {
+Pose3 PandaIKFast::forward(const Vector7& jointValues) {
   // Arrays where solution for orientation and position will be stored
   panda_internal::IkReal orientation[9], position[3];
-  panda_internal::ComputeFk(joint_values.data(), position, orientation);
+  panda_internal::ComputeFk(jointValues.data(), position, orientation);
 
   // Transform array solutions to gtsam types.
   // default eigen matrix storage is column major (used in Map), while the
@@ -63,7 +70,8 @@ std::vector<Vector7> PandaIKFast::inverse(const Pose3& bTe, double theta7) {
                                            &theta7, solutions);
 
   if (!success) {
-    //fprintf(stderr, "Error: (inverse PandaIKFast) failed to get ik solution\n");
+    // fprintf(stderr, "Error: (inverse PandaIKFast) failed to get ik
+    // solution\n");
     return std::vector<Vector7>();
   }
 

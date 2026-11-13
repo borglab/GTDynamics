@@ -1,6 +1,13 @@
 /** Pose, joint and solve-status helpers for the URDF IK app (no DOM, no scene). */
 import { Euler, MathUtils, Quaternion } from 'three';
 
+/** Filter model-specific solvers while retaining compatibility with browser IK. */
+export function availableSchemes(schemes, endEffector, orientation) {
+  return schemes.filter(scheme =>
+    (endEffector?.schemes ? endEffector.schemes.includes(scheme.id) : !scheme.requires_orientation) &&
+    (!scheme.requires_orientation || orientation));
+}
+
 export const POSE_FIELDS = [
   ['x', 'm'], ['y', 'm'], ['z', 'm'], ['roll', '°'], ['pitch', '°'], ['yaw', '°'],
 ];

@@ -94,6 +94,15 @@ The pose panel always shows the current end-effector position, roll/pitch/yaw an
 | **Jacobian pseudo-inverse** | Newton–Raphson with the undamped Moore–Penrose pseudo-inverse. It converges fast near a solution, but can jump around near singularities. |
 | **Jacobian transpose** | Gradient descent (`Δq = α Jᵀe` with the optimal step length). Each step is cheap, but convergence is slow, especially for orientation. |
 | **Cyclic coordinate descent (CCD)** | Solves for one joint at a time, tip to base, rotating each joint toward the target. It is robust for position goals and weaker for orientation. |
+| **Panda IKFast (analytical)** | Appears in native mode when the Python bindings include `PandaIKFast` and the loaded arm matches its seven-joint geometry. Solves full poses for `link7` and rigidly attached tool frames such as `link8` and `hand`, accounting for their fixed offsets. It tries the current seventh-joint angle first, then samples that joint's limits if necessary. At the first successful sample it chooses the joint-limit-valid branch closest to the current configuration. |
+
+Panda IKFast requires **Constrain orientation**. Selecting an unsupported frame,
+another robot, or a position-only goal removes it from the menu and switches to
+damped least squares. **Max iters** bounds the number of free-joint samples
+(default 33); the timing includes sampling, branch filtering, and forward-kinematics
+validation. IKFast omits singular solutions, and a finite sampling failure does
+not establish that the target is unreachable. Building with
+`GTDYNAMICS_BUILD_PANDA_ROBOT=ON` exposes the existing native solver to Python.
 
 Browser mode offers damped least squares and uses MuJoCo for forward kinematics.
 The UR arms start from a bent configuration for dragging. G1 starts with slightly bent knees so its soles can move vertically.
