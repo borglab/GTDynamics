@@ -1,258 +1,187 @@
 /* ----------------------------------------------------------------------------
- * GTDynamics Copyright 2020, Georgia Tech Research Corporation,
- * Atlanta, Georgia 30332-0415
- * All Rights Reserved
- * See LICENSE for the license information
+ * GTDynamics Copyright 2026, Georgia Tech Research Corporation,
+ * Atlanta, Georgia 30332-0415. All Rights Reserved.
+ * See LICENSE for the license information.
  * -------------------------------------------------------------------------- */
 
 /**
- * @file  IEConstraintManifold.h
- * @brief Manifold with boundary/corners formulated by equality and inequality
- * constraints
+ * @file IEConstraintManifold.h
+ * @brief Immutable runtime definitions of constraint manifolds with corners.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
 
 #pragma once
 
-#include <gtdynamics/cmcopt/IEManifoldLinearization.h>
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/cmcopt/TangentCone.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
-#include <gtdynamics/cmopt/TangentSpaceMetric.h>
+#include <gtdynamics/constrained/ConstraintManifold.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
+#include <gtsam/constrained/NonlinearInequalityConstraint.h>
 
+#include <typeindex>
 #include <mutex>
 
 namespace gtdynamics {
-using namespace gtsam;
 
+class IECMPoint;
+class CMTangentSpace;
 
-class IEConstraintManifold {
-public:
-  typedef std::shared_ptr<IEConstraintManifold> shared_ptr;
+/** A runtime type, independent of any trajectory keys or numerical point.
+ * Factor keys name local slots. Bindings on IECMPoint assign ambient identities.
+ * Constraint factors and captured configuration must remain immutable.
+ */
+class IEConstraintManifold : public ConstraintManifold,
+    public std::enable_shared_from_this<IEConstraintManifold> {
+ public:
+  using shared_ptr = std::shared_ptr<const IEConstraintManifold>;
+  using Bindings = std::map<Key, Key>;
 
+  /** Construction choices, copied when the definition is created. */
   struct Params {
     using shared_ptr = std::shared_ptr<Params>;
-    ConstraintManifold::Params::shared_ptr equalityManifoldParams =
-        std::make_shared<ConstraintManifold::Params>();
-    // IERetractType ie_retract_type = IERetractType::Barrier;
-    IERetractorCreator::shared_ptr retractorCreator;
-    TangentSpaceBasisCreator::shared_ptr equalityBasisCreator;
-    bool equalityBasisBuildFromScratch = true;
-    /** Caller certifies constant affine equalities in Euclidean variables.
-     * Reuse their numeric basis across states of this component. This does not
-     * freeze inequality Jacobians or bases augmented with active faces.
-     * Default false preserves relinearization for nonlinear manifolds.
-     */
+    TangentSpaceBasisCreator::shared_ptr equalityBasisCreator =
+        std::make_shared<OrthonormalBasisCreator>();
+    /// Feasibility retraction policy, frozen when the runtime type is built.
+    CMRetractorCreator::shared_ptr retractorCreator;
+    /// Explicit certification of constant affine equalities in Euclidean slots.
     bool affineEqualities = false;
-    /** Default constructor. */
-    Params() = default;
   };
 
-protected:
-  Params::shared_ptr params_;
-  NonlinearEqualityConstraints::shared_ptr e_constraints_;
-  NonlinearInequalityConstraints::shared_ptr i_constraints_;
-  Values values_;    // values of variables in CCC
-  IndexSet active_indices_; // indices of active i_constraints
-  size_t embedding_dim_;
-  size_t e_constraints_dim_;
-  size_t dim_;
-  // Capture the contract at construction; later Params edits cannot freeze a
-  // previously nonlinear basis or change the meaning of an existing state.
-  bool affine_equalities_;
-  TangentSpaceBasis::shared_ptr e_basis_;
-  struct MetricCache {
-    std::mutex mutex;
-    TangentSpaceMetric::shared_ptr metric;
+  /** Construct a factor-defined type. prototype supplies slot types/dimensions;
+   * its numerical coordinates are not retained. Empty inequalities are valid.
+   */
+  IEConstraintManifold(const NonlinearEqualityConstraints& equalities,
+            const NonlinearInequalityConstraints& inequalities,
+            const Values& prototype, const Params& params);
+
+  /// Construct with default basis and retraction policies.
+  IEConstraintManifold(const NonlinearEqualityConstraints& equalities,
+            const NonlinearInequalityConstraints& inequalities,
+            const Values& prototype);
+  IEConstraintManifold(const IEConstraintManifold&) = default;
+  // Runtime definitions are immutable, including through a base reference.
+  IEConstraintManifold& operator=(const IEConstraintManifold&) = delete;
+  virtual ~IEConstraintManifold() = default;
+
+  /// Construct a point with complete one-to-one bindings and ambient values.
+  IECMPoint point(const Bindings& bindings, const Values& values,
+                const std::optional<IndexSet>& active = {}) const;
+
+  /// Construct a point whose ambient keys coincide with the local slots.
+  IECMPoint point(const Values& values,
+                const std::optional<IndexSet>& active = {}) const;
+
+  /// Fix local slots immutably, producing a distinct member of the type family.
+  shared_ptr condition(const Values& fixed) const;
+
+  /// Compute geometry at a point; no point-dependent data is stored in the
+  /// type.
+  std::shared_ptr<const CMTangentSpace> linearize(const IECMPoint& point) const;
+
+  /// Apply this type's retraction, with isolated mutable projection work.
+  virtual IECMPoint retract(const IECMPoint& point, const Vector& delta,
+                          const std::optional<IndexSet>& blocking = {},
+                          IERetractionInfo* info = nullptr,
+                          const VectorValues* metricSigmas = nullptr) const;
+
+  /// Ambient-update path retained by feasibility projection policies.
+  virtual IECMPoint retractAmbient(
+      const IECMPoint& point, const VectorValues& delta,
+      const std::optional<IndexSet>& blocking = {},
+      IERetractionInfo* info = nullptr,
+      const VectorValues* metricSigmas = nullptr) const;
+
+  /// Explicit boundary move, distinct from the ordinary GTSAM chart operation.
+  virtual IECMPoint moveToBoundary(
+      const IECMPoint& point, const IndexSet& active,
+      IERetractionInfo* info = nullptr,
+      const VectorValues* metricSigmas = nullptr) const;
+
+  /// Local chart coordinates; IECMPoint checks type and binding compatibility.
+  virtual Vector localCoordinates(const IECMPoint& origin,
+                                  const IECMPoint& other) const;
+
+  /// Nonlinear constraint operations also supported by compiled definitions.
+  virtual IndexSet identifyActive(
+      const IECMPoint& point, const std::optional<IndexSet>& supplied = {}) const;
+
+  /// Number of nonlinear inequality blocks, independent of factor storage.
+  virtual size_t inequalityCount(const IECMPoint& point) const;
+
+  /// Raw complete inequality expression, independent of its active status.
+  virtual Vector inequalityResidual(const IECMPoint& point, size_t index) const;
+
+  /// Whitened equality violation of a point.
+  virtual double equalityViolation(const IECMPoint& point) const;
+
+  /// Whitened inequality violation of a point.
+  virtual double inequalityViolation(const IECMPoint& point) const;
+
+  /// Dimension of the equality chart, unchanged by boundary activation.
+  size_t dim() const override { return dimension_; }
+  /// Local variable identities and dimensions.
+  std::map<Key, size_t> dimensions() const override;
+
+  /// Captured affine contract.
+  bool affineEqualities() const override { return params_.affineEqualities; }
+  /// Whether the projection metric is supplied by the current LM trial.
+  bool usesVaryingMetric() const;
+
+  ConstraintManifold::shared_ptr conditionBase(const Values& fixed) const override {
+    return condition(fixed);
+  }
+  std::shared_ptr<const CMTangentSpace> linearize(const CMPoint& point) const override;
+  Values retractValues(const CMPoint& point, const Vector& delta) const override;
+  /// Explicitly forget inequalities by constructing a distinct equality type.
+  std::shared_ptr<const class EConstraintManifold> equalityView() const;
+
+ protected:
+  /// Equality-only CM historically treats saturated layouts as fixed charts.
+  enum class EqualityLayout { Ordinary, EqualityOnly };
+  IEConstraintManifold(const NonlinearEqualityConstraints& equalities,
+      const NonlinearInequalityConstraints& inequalities,
+      const Values& prototype, const Params& params, EqualityLayout layout);
+
+  /// Reject direct kernel calls with points owned by a different runtime type.
+  void validatePointType(const CMPoint& point) const;
+  virtual std::shared_ptr<IEConstraintManifold> cloneDefinition() const;
+
+  /// Build active geometry using this type's prepared local equality structure.
+  virtual std::shared_ptr<const CMTangentSpace> linearizeAt(
+      const IECMPoint& point) const;
+
+  /// Slot metadata; no sample numerical state is retained.
+  struct Slot {
+    std::type_index type;
+    size_t dimension;
   };
-  std::shared_ptr<MetricCache> metric_cache_;
-  std::shared_ptr<const IEManifoldLinearization> linearization_;
-  IERetractor::shared_ptr retractor_;
+  Params params_;
+  std::map<Key, Slot> slots_;
+  std::shared_ptr<const NonlinearEqualityConstraints> equalities_;
+  std::shared_ptr<const NonlinearInequalityConstraints> inequalities_;
+  Values fixed_;
+  size_t dimension_ = 0;
+  bool equalityOnlyLayout_ = false;
 
-public:
-  /// Bundle one constraint-connected component as the feasible set from thesis
-  /// Eq. (4.34), M_IE = {x | h(x)=0, g(x)<=0}, plus its active set.
- IEConstraintManifold(
-     const Params::shared_ptr &params,
-     const NonlinearEqualityConstraints::shared_ptr &e_constraints,
-     const NonlinearInequalityConstraints::shared_ptr &i_constraints,
-     const Values &values, const std::optional<IndexSet> &active_indices = {})
-     : params_(params),
-       e_constraints_(e_constraints),
-       i_constraints_(i_constraints),
-       values_(values),
-       active_indices_(
-           identifyActiveConstraints(*i_constraints, values, active_indices)),
-       embedding_dim_(values.dim()),
-       e_constraints_dim_(e_constraints_->dim()),
-       dim_(embedding_dim_ - e_constraints_dim_),
-       affine_equalities_(params->affineEqualities),
-       e_basis_(params->equalityBasisCreator->create(e_constraints_, values_)),
-       metric_cache_(std::make_shared<MetricCache>()),
-       linearization_(constructLinearization(*i_constraints, values,
-                                             active_indices_, e_basis_)),
-       retractor_(params->retractorCreator->create(*this)) {}
+  /// Minimal constructor for native implementations with no factor storage.
+  IEConstraintManifold(const Values& prototype, size_t dimension);
 
- /** constructor from other manifold but update the values. */
- IEConstraintManifold(const IEConstraintManifold &other, const Values &values,
-                      const std::optional<IndexSet> &active_indices = {})
-     : params_(other.params_),
-       e_constraints_(other.e_constraints_),
-       i_constraints_(other.i_constraints_),
-       values_(values),
-       active_indices_(
-           identifyActiveConstraints(*i_constraints_, values, active_indices)),
-       embedding_dim_(other.embedding_dim_),
-       e_constraints_dim_(other.e_constraints_dim_),
-       dim_(other.dim_),
-       affine_equalities_(other.affine_equalities_),
-       e_basis_(affine_equalities_
-                    ? other.e_basis_
-                    : other.e_basis_->createWithNewValues(values_)),
-       metric_cache_(affine_equalities_ ? other.metric_cache_
-                                        : std::make_shared<MetricCache>()),
-       linearization_(constructLinearization(*i_constraints_, values_,
-                                             active_indices_, e_basis_)),
-       retractor_(other.retractor_) {}
-
- IEConstraintManifold createWithNewValues(
-     const Values &values,
-     const std::optional<IndexSet> &active_indices = {}) const {
-   return IEConstraintManifold(*this, values, active_indices);
- }
-
-  virtual ~IEConstraintManifold() {}
-
-  const Values &values() const { return values_; }
-
-  /// Active set A(x): tight inequality indices, as in thesis Eq. (4.3).
-  const IndexSet &activeIndices() const { return active_indices_; }
-
-  const TangentSpaceBasis::shared_ptr eBasis() const { return e_basis_; }
-
-  /// Immutable affine contract captured at construction, shared by all retractors.
-  bool hasAffineEqualities() const { return affine_equalities_; }
-
-  /** Reusable projection geometry for this basis and the requested metric.
-   * Affine successor states share it; nonlinear updates get a fresh cache.
-   * Effective precisions are compared by value, including selected prior keys.
-   */
-  TangentSpaceMetric::shared_ptr projectionMetric(
-      const IERetractorParams &params,
-      const std::optional<KeyVector> &priorKeys = {}) const;
-
-  /** Immutable active-constraint geometry for this state. Ordinary copies share
-   * it; createWithNewValues rebuilds it even when the equality basis is affine,
-   * because inequality derivatives and active membership may have changed.
-   */
-  const std::shared_ptr<const IEManifoldLinearization> &linearization() const {
-    return linearization_;
-  }
-
-  /// Map equality-manifold coordinates to the original variable tangents.
-  VectorValues toAmbient(const Vector &delta) const {
-    return dim_ ? e_basis_->computeTangentVector(delta) : values_.zeroVectors();
-  }
-
-  /// Map original variable tangents to equality-manifold coordinates.
-  Vector toCoordinates(const VectorValues &tangent) const {
-    return dim_ ? e_basis_->computeXi(tangent) : Vector(0);
-  }
-
-  /// Raw expression of one inequality block, including inactive constraints.
-  Vector inequalityResidual(size_t index) const {
-    return i_constraints_->at(index)->unwhitenedExpr(values_);
-  }
-
-  const IERetractor::shared_ptr &retractor() const { return retractor_; }
-
-  const NonlinearInequalityConstraints::shared_ptr &iConstraints() const {
-    return i_constraints_;
-  }
-
-  const NonlinearEqualityConstraints::shared_ptr &eConstraints() const {
-    return e_constraints_;
-  }
-
-  const size_t &dim() const { return dim_; }
-
-  /// Project xi onto the cone as in thesis Eq. (4.31)/(4.42), using the
-  /// active linearized inequalities in manifold coordinates.
-  virtual std::pair<IndexSet, Vector>
-  projectTangentCone(const Vector &xi) const;
-
-  /// Same projection as above, but starting from ambient tangent vectors.
-  virtual std::pair<IndexSet, VectorValues>
-  projectTangentCone(const VectorValues &tangentVector) const;
-
-  /// Retract using the on-corner rule from thesis Eq. (4.46) when blocking
-  /// inequalities are supplied.
-  virtual IEConstraintManifold
-  retract(const Vector &xi,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractionInfo *retract_info = nullptr) const;
-
-  /// Retract an ambient tangent update back to a feasible IE manifold point.
-  virtual IEConstraintManifold
-  retract(const VectorValues &delta,
-          const std::optional<IndexSet> &blocking_indices = {},
-          IERetractionInfo *retract_info = nullptr) const;
-
-  /// Return active inequalities that block the step, matching thesis Eq. (4.45).
-  IndexSet blockingIndices(const VectorValues &tangentVector) const;
-
-  /// Force a mode change by moving directly onto the requested boundary set.
-  IEConstraintManifold
-  moveToBoundary(const IndexSet &active_indices,
-                 IERetractionInfo *retract_info = nullptr) const;
-
-  /// Construct an e-constraint manifold that only includes equalily
-  /// constraints.
-  ConstraintManifold eConstraintManifold() const;
-
-  /// Construct an equality-constraint-manifold by treating tight constraints as
-  /// equality constraints. Used for EQP-based methods.,
-  ConstraintManifold eConstraintManifold(const IndexSet &active_indices) const;
-
-  double evaluateInequalityViolation() const {
-    return i_constraints_->violationNorm(values_);
-  }
-
-  double evaluateEqualityViolation() const {
-    return e_constraints_->violationNorm(values_);
-  }
-
-protected:
-  /// Identify A(x), either from explicit mode information or from which
-  /// inequalities are tight at the current values.
-  static IndexSet identifyActiveConstraints(
-      const NonlinearInequalityConstraints &i_constraints,
-      const Values &values, const std::optional<IndexSet> &active_indices = {});
-
-  /// Construct the tangent cone in thesis Eqs. (4.14)-(4.16) by forming the
-  /// active Jacobian Dg_A(x) and projecting it through the equality basis B_x.
-  static std::shared_ptr<const IEManifoldLinearization> constructLinearization(
-      const NonlinearInequalityConstraints &i_constraints, const Values &values,
-      const IndexSet &active_indices,
-      const TangentSpaceBasis::shared_ptr &t_basis);
+ private:
+  friend class IECMPoint;
+  friend class EConstraintManifold;
+  struct EqualityPreparation {
+    std::shared_ptr<const TangentSpaceBasis> structure;
+    std::once_flag affineOnce;
+    std::shared_ptr<const TangentSpaceBasis> affineBasis;
+  };
+  std::shared_ptr<EqualityPreparation> equalityPreparation_;
+  void prepareEqualities();
+  std::shared_ptr<const TangentSpaceBasis> localEqualityBasis(
+      const IECMPoint& point) const;
+  void validate(const Bindings& bindings, const Values& values) const;
+  std::pair<NonlinearEqualityConstraints::shared_ptr,
+            NonlinearInequalityConstraints::shared_ptr>
+  boundConstraints(const Bindings& bindings) const;
 };
 
-class IEManifoldValues : public std::map<Key, IEConstraintManifold> {
-public:
-  using base = std::map<Key, IEConstraintManifold>;
-  using base::base;
-
-  Values baseValues() const;
-
-  KeyVector keys() const;
-
-  IEManifoldValues
-  moveToBoundaries(const IndexSetMap &approach_indices_map) const;
-
-  // VectorValues computeTangentVector(const VectorValues &delta) const;
-
-  // EManifoldValues retract(const VectorValues &delta) const;
-};
-
-} // namespace gtdynamics
+}  // namespace gtdynamics

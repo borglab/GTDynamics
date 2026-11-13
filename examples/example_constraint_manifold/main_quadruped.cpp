@@ -11,6 +11,7 @@
  * @author Alejandro Escontrela
  */
 
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtdynamics/config.h>
 #include <gtdynamics/factors/MinTorqueFactor.h>
 #include <gtdynamics/universal_robot/Robot.h>
@@ -34,8 +35,8 @@
 #include <utility>
 
 #include "QuadrupedUtils.h"
-#include "gtdynamics/cmopt/ConstraintManifold.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/cmopt/ECMPoint.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 #include "gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h"
 #include "gtdynamics/constrained_optimizer/ConstrainedOptimizer.h"
 #include "gtdynamics/factors/ContactPointFactor.h"
@@ -130,15 +131,15 @@ void TrajectoryOptimization(
   runner.setMoptFactory([&](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParamsSV(
         vision60.getBasisKeyFunction());
-    moptParams.constraintManifoldParams->retractorCreator->params()->useBasisKeys = true;
-    moptParams.constraintManifoldParams->retractorCreator->params()->sigma = 1.0;
-    moptParams.constraintManifoldParams->retractorCreator->params()->applyBaseRetraction =
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()->useBasisKeys = true;
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()->sigma = 1.0;
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()->applyBaseRetraction =
         true;
-    moptParams.constraintManifoldParams->retractorCreator->params()->checkFeasible = true;
-    moptParams.constraintManifoldParams->retractorCreator->params()
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()->checkFeasible = true;
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()
         ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
-    moptParams.constraintManifoldParams->retractorCreator->params()
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()
         ->lmParams.setlambdaUpperBound(1e2);
     return moptParams;
   });

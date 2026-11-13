@@ -22,6 +22,12 @@ class IEHalfSphere;
 
 /** Manually defined retractor for the dome manifold. */
 class DomeRetractor : public IERetractor {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<DomeRetractor>(*this);
+  }
+
   /// Sphere radius.
   double r_;
 
@@ -30,14 +36,14 @@ public:
   DomeRetractor(const IEHalfSphere &half_sphere);
 
   /** Retract a tangent update and clamp to the dome boundary if needed. */
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 
   /** Move the current point onto active dome boundary constraints. */
-  IEConstraintManifold
-  moveToBoundary(const IEConstraintManifold *manifold,
+  IECMPoint
+  moveToBoundary(const IECMPoint *point,
                  const IndexSet &blocking_indices,
                  IERetractionInfo *retract_info = nullptr) const override;
 };

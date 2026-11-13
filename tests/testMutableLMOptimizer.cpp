@@ -13,7 +13,6 @@
 
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
 #include <gtdynamics/optimizer/MutableLMOptimizer.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Testable.h>

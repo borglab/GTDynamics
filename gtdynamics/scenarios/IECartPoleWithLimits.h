@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gtdynamics/cmcopt/IERetractor.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/Robot.h>
 #include <gtdynamics/universal_robot/sdf.h>

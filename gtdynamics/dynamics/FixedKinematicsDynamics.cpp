@@ -15,6 +15,9 @@
 #include <gtdynamics/dynamics/ContactWrenchFactor.h>
 #include <gtdynamics/dynamics/Dynamics.h>
 #include <gtdynamics/dynamics/FixedKinematicsDynamics.h>
+#include <gtdynamics/cmopt/EConstraintManifold.h>
+#include <gtdynamics/dynamics/internal/FixedDynamicsBenchmark.h>
+#include <gtdynamics/dynamics/internal/AffineBasisCounter.h>
 #include <gtdynamics/dynamics/TwistAccelFactor.h>
 #include <gtdynamics/dynamics/WrenchFactor.h>
 #include <gtdynamics/factors/ConstVarFactor.h>
@@ -29,6 +32,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <limits>
@@ -49,20 +53,28 @@ double seconds(Clock::time_point start) {
 // collecting lightweight diagnostics across initialization and all LM trials.
 class CountedReducedALRetractor : public ReducedALRetractor {
  public:
-  mutable size_t alSolves = 0, feasibleTrials = 0, feasibleProjections = 0;
+  // Caller-owned diagnostic sink. Projection work and metric settings remain
+  // private to each clone; only these atomic event totals are shared.
+  struct Statistics {
+    std::atomic<size_t> alSolves { 0}, feasibleTrials { 0}, feasibleProjections{0};
+  };
+  std::shared_ptr<Statistics> statistics = std::make_shared<Statistics>();
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<CountedReducedALRetractor>(*this);
+  }
   explicit CountedReducedALRetractor(
       const IERetractorParams::shared_ptr& params)
       : ReducedALRetractor(params) {}
-  IEConstraintManifold retract(const IEConstraintManifold* manifold,
+  IECMPoint retract(const IECMPoint* point,
                                const VectorValues& delta,
                                const std::optional<IndexSet>& blockingIndices,
                                IERetractionInfo* info) const override {
     IERetractionInfo local;
     auto result =
-        ReducedALRetractor::retract(manifold, delta, blockingIndices, &local);
-    alSolves += local.numALSolveCalls;
-    feasibleTrials += local.numFeasibleTrials;
-    feasibleProjections += local.numFeasibleProjections;
+        ReducedALRetractor::retract(point, delta, blockingIndices, &local);
+    statistics->alSolves += local.numALSolveCalls;
+    statistics->feasibleTrials += local.numFeasibleTrials;
+    statistics->feasibleProjections += local.numFeasibleProjections;
     if (info) *info = local;
     return result;
   }
@@ -110,7 +122,7 @@ struct Problem {
   NonlinearFactorGraph balance, acceleration;
   NonlinearFactorGraph rootBalance;
   NonlinearEqualityConstraints equalities;
-  NonlinearInequalityConstraints inequalities;
+  NonlinearInequalityConstraints inequalities, originalInequalities;
   KeySet independentKeys;
   fixed_dynamics::Result result;
 
@@ -334,10 +346,20 @@ struct Problem {
     // Substitute configurations and velocities only. Native acceleration
     // kinematics and Newton-Euler balance stay affine in the free
     // accelerations, reaction wrenches, sole wrenches, and motor torques.
+    const auto conditioningStart = Clock::now();
+    // ConstVarGraph captures an owning fixed-value snapshot. No later LM trial
+    // updates these factors; changing q/v constructs a different problem/type.
+    result.conditionedVariableDimension = prescribed.dim();
     exact = ConstVarGraph(exact, prescribed);
     rootBalance = ConstVarGraph(rootBalance, prescribed);
     balance = ConstVarGraph(balance, prescribed);
     equalities = NonlinearEqualityConstraints::FromCostGraph(exact);
+    result.conditioningSeconds = seconds(conditioningStart);
+    result.affineEqualities = true;
+    result.equalityOnly = options.equalityOnly;
+    originalInequalities = inequalities;
+    result.originalInequalityDimension = inequalities.dim();
+    if (options.equalityOnly) inequalities = NonlinearInequalityConstraints();
     result.softDynamics = options.softDynamics;
     result.variableDimension = zero.dim();
     result.equalityDimension = equalities.dim();
@@ -350,6 +372,8 @@ struct Problem {
     result.accelerationError = acceleration.error(result.values);
     result.equalityL2 = equalities.violationNorm(result.values);
     result.inequalityL2 = inequalities.violationNorm(result.values);
+    result.originalInequalityL2 = result.equalityOnly
+        ? originalInequalities.violationNorm(result.values) : result.inequalityL2;
     result.feasible = result.equalityL2 < 1e-5 && result.inequalityL2 < 1e-5;
     for (const auto& factor : rootBalance) {
       const auto native = std::dynamic_pointer_cast<NoiseModelFactor>(factor);
@@ -445,14 +469,47 @@ struct Objective {
 };
 }  // namespace
 
+std::shared_ptr<const internal::FixedDynamicsBenchmark>
+internal::prepareFixedDynamicsBenchmark(
+    const Robot& robot, const Trajectory& trajectory,
+    const std::vector<Slice>& slices, const std::vector<double>& times,
+    const Values& fixedValues, const Values& accelerationPriors,
+    const std::vector<fixed_dynamics::Contact>& contacts,
+    const Vector& armature, const fixed_dynamics::Options& options) {
+  if (!options.equalityOnly || options.softDynamics)
+    throw std::invalid_argument("CM baseline requires equality-only dynamics");
+  auto start = Clock::now();
+  Problem problem(robot, trajectory, slices, times, fixedValues,
+                  accelerationPriors, contacts, armature, options);
+  const Objective objective(problem, trajectory, slices, times, contacts, options);
+  auto output = std::make_shared<FixedDynamicsBenchmark>();
+  output->diagnostics = problem.result;
+  output->diagnostics.assemblySeconds = seconds(start);
+  start = Clock::now();
+  output->initial = equalityAnchor(problem.acceleration, problem.equalities,
+      problem.zero, problem.contactSeed, output->diagnostics);
+  output->diagnostics.initializationSeconds = seconds(start);
+  output->cost = objective.cost;
+  output->equalities = problem.equalities;
+  output->originalInequalities = problem.originalInequalities;
+  output->independentKeys = problem.independentKeys;
+  output->rootBalance = problem.rootBalance;
+  output->effort = objective.effort;
+  output->wrench = objective.wrench;
+  output->torqueSmooth = objective.torqueSmooth;
+  output->wrenchSmooth = objective.wrenchSmooth;
+  output->acceleration = problem.acceleration;
+  return output;
+}
+
 fixed_dynamics::Result fixedKinematicsDynamicsSeed(
     const Robot& robot, const Trajectory& trajectory,
     const std::vector<Slice>& slices, const std::vector<double>& times,
     const gtsam::Values& fixedValues, const gtsam::Values& accelerationPriors,
     const std::vector<fixed_dynamics::Contact>& contacts,
     const gtsam::Vector& armature, const fixed_dynamics::Options& options) {
-  if (options.softDynamics)
-    throw std::invalid_argument("Linear dynamics seed requires exact dynamics");
+  if (options.softDynamics || options.equalityOnly)
+    throw std::invalid_argument("Linear dynamics seed requires exact constrained dynamics");
   auto started = Clock::now();
   Problem problem(robot, trajectory, slices, times, fixedValues,
                   accelerationPriors, contacts, armature, options);
@@ -482,6 +539,11 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
     const std::vector<fixed_dynamics::Contact>& contacts,
     const gtsam::Vector& armature, const fixed_dynamics::Options& options) {
   using namespace gtsam;
+  if (!options.retractionThreads)
+    throw std::invalid_argument("Fixed dynamics requires retraction workers");
+  if (options.linearSolver == fixed_dynamics::LinearSolver::Gaussian &&
+      !options.equalityOnly)
+    throw std::invalid_argument("Gaussian dynamics requires equalityOnly");
   auto start = Clock::now();
   Problem problem(robot, trajectory, slices, times, fixedValues,
                   accelerationPriors, contacts, armature, options);
@@ -509,6 +571,10 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
               if (independent.exists(key)) selected.push_back(key);
             return selected;
           });
+  const auto basisCounts = std::make_shared<internal::AffineBasisCounts>();
+  manifoldParams->equalityBasisCreator =
+      std::make_shared<internal::CountedAffineBasisCreator>(
+          manifoldParams->equalityBasisCreator, basisCounts);
   auto metric = std::make_shared<IERetractorParams>();
   metric->ensureFeasible = true;
   metric->feasibleThreshold = 1e-7;
@@ -517,28 +583,35 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
       std::make_shared<UniversalIERetractorCreator>(retractor);
 
   start = Clock::now();
-  auto manifolds = IEOptimizer::identifyManifolds(
-      problem.equalities, problem.inequalities, initial, manifoldParams);
-  for (auto& [key, manifold] : manifolds) {
+  IEOptimizer::TypeFactory makeType;
+  if (options.equalityOnly)
+    makeType = [](const NonlinearEqualityConstraints& equalities,
+                  const NonlinearInequalityConstraints&, const Values& values,
+                  const IEConstraintManifold::Params::shared_ptr& params) {
+      return std::make_shared<EConstraintManifold>(equalities, values, *params);
+    };
+  auto [types, points] = IEOptimizer::identifyConnectedComponents(
+      problem.equalities, problem.inequalities, initial, manifoldParams, makeType);
+  for (auto& [key, point] : points) {
     try {
       IERetractionInfo info;
       // Project the equality-feasible anchor onto each actual wrench cone.
       // Acceleration coordinates remain free even in single stance. Projection
       // can adjust them while preserving exact articulated acceleration and
       // force/moment balance.
-      manifold = manifold.retract(manifold.values().zeroVectors(), {}, &info);
-      problem.result.reducedDimension += manifold.eBasis()->dim();
+      point = point.retract(point.values().zeroVectors(), {}, &info);
+      problem.result.reducedDimension += point.eBasis()->dim();
     } catch (const std::exception& error) {
       std::ostringstream message;
       message << "Fixed dynamics cone projection failed at source slice "
-              << DynamicsSymbol(manifold.values().keys().front()).time()
+              << DynamicsSymbol(point.values().keys().front()).time()
               << " (softDynamics=" << options.softDynamics
               << "): " << error.what();
       for (size_t i = 0; i < problem.result.contactKeys.size(); ++i) {
         const Key contactKey = problem.result.contactKeys[i];
-        if (!manifold.values().exists(contactKey)) continue;
+        if (!point.values().exists(contactKey)) continue;
         const auto& contact = contacts[i % contacts.size()];
-        const Vector6 soleWrench = manifold.values().at<Vector6>(contactKey);
+        const Vector6 soleWrench = point.values().at<Vector6>(contactKey);
         const Vector faces =
             RectangularContactWrench(contact.halfLength, contact.halfWidth,
                                      contact.frictionCoefficient)
@@ -551,7 +624,7 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
       throw std::runtime_error(message.str());
     }
   }
-  initial = manifolds.baseValues();
+  initial = ambientValues(points);
   problem.result.manifoldSeconds = seconds(start);
   problem.result.objectiveInitial = objective.cost.error(initial);
 
@@ -561,10 +634,10 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
   // blocks are not valid Gaussian variables. This is exact substitution, not
   // a soft approximation or a separate per-slice optimization.
   Values determined;
-  for (auto it = manifolds.begin(); it != manifolds.end();) {
+  for (auto it = points.begin(); it != points.end();) {
     if (it->second.eBasis()->dim() == 0) {
       determined.insert(it->second.values());
-      it = manifolds.erase(it);
+      it = points.erase(it);
     } else {
       ++it;
     }
@@ -576,6 +649,18 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
 
   IELMParams params;
   params.qpMaxIterations = 1000;
+  params.retractionThreads = options.retractionThreads;
+  switch (options.linearSolver) {
+    case fixed_dynamics::LinearSolver::Automatic: break;
+    case fixed_dynamics::LinearSolver::Gaussian:
+      params.linearSolver = IELMParams::LinearSolver::Gaussian; break;
+    case fixed_dynamics::LinearSolver::GtsamQP:
+      params.linearSolver = IELMParams::LinearSolver::QP; break;
+    case fixed_dynamics::LinearSolver::ProxQP:
+      params.linearSolver = IELMParams::LinearSolver::QP;
+      params.qpBackend = IELMParams::QpBackend::ProxQP; break;
+    default: throw std::invalid_argument("Unknown fixed dynamics linear solver");
+  }
   params.lmParams.maxIterations = options.maxIterations;
   params.lmParams.absoluteErrorTol = 1e-8;
   params.lmParams.relativeErrorTol = 1e-8;
@@ -583,15 +668,21 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
   start = Clock::now();
   auto& result = problem.result;
   // Skip a zero-column LM system if every component is uniquely determined.
-  auto values = result.reducedDimension ? optimizer.optimizeManifolds(
-                                              variableCost, manifolds, Values())
+  auto values = result.reducedDimension ? optimizer.optimize(
+                                              variableCost, points, Values())
                                         : Values();
   result.values.swap(values);
   result.values.insert(determined);
   result.optimizationSeconds = seconds(start);
-  result.numALSolves = retractor->alSolves;
-  result.numFeasibleTrials = retractor->feasibleTrials;
-  result.numFeasibleProjections = retractor->feasibleProjections;
+  const auto& timings = optimizer.timings();
+  result.optimizerLinearizationSeconds = timings.linearizationSeconds;
+  result.optimizerLinearSolveSeconds = timings.linearSolveSeconds;
+  result.retractionSeconds = timings.retractionSeconds;
+  result.gaussianSolves = timings.gaussianSolves;
+  result.qpSolves = timings.qpSolves;
+  result.numALSolves = retractor->statistics->alSolves.load();
+  result.numFeasibleTrials = retractor->statistics->feasibleTrials.load();
+  result.numFeasibleProjections = retractor->statistics->feasibleProjections.load();
   result.iterations = optimizer.details().empty()
                           ? 0
                           : optimizer.details().back().state.iterations;
@@ -606,10 +697,12 @@ fixed_dynamics::Result solveFixedKinematicsDynamics(
   if (!optimizer.details().empty()) {
     const auto& finalState = optimizer.details().back().state;
     const auto projected = IEOptimizer::projectTangentCone(
-        finalState.manifolds, -1.0 * finalState.gradient);
+        finalState.points, -1.0 * finalState.gradient);
     result.projectedGradientNorm = projected.second.norm();
   }
   result.stationary = result.feasible && result.projectedGradientNorm <= 1e-5;
+  result.equalityPreparations = basisCounts->preparations.load();
+  result.affineBasisConstructions = basisCounts->numerical.load();
   return std::move(problem.result);
 }
 }  // namespace gtdynamics

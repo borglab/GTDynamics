@@ -77,6 +77,10 @@ class NonlinearManifoldOptimizer : public ManifoldOptimizer {
                           const NonlinearEqualityConstraints& constraints,
                           const Values& initial_values) const override;
 
+  /// Optimize explicitly constructed equality points and ordinary free values.
+  Values optimize(const NonlinearFactorGraph& graph, const ECMPoints& points,
+                  const Values& unconstrainedValues = Values()) const;
+
   /**
    * Optimize an already transformed manifold optimization problem.
    * @param mopt_problem Transformed manifold optimization problem.

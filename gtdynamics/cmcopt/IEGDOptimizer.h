@@ -7,15 +7,14 @@
 
 /**
  * @file  IEGradientDescentOptimizer.h
- * @brief First order optimization on manifolds with boundaries/corners.
+ * @brief First order optimization on points with boundaries/corners.
  * @author: Yetong Zhang
  */
 
 #pragma once
 
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
-#include <gtdynamics/cmopt/ManifoldOptimizer.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/NonlinearOptimizerParams.h>
@@ -45,9 +44,10 @@ struct GradientDescentParams {
 
 struct IEGDState {
 public:
-  IEManifoldValues manifolds;
+  IECMPoints points;
+  /// Ambient variables outside the constraint components.
+  Values unconstrainedValues;
   double error = 0;
-  Values equalityManifolds;
   VectorValues gradient;
   VectorValues descentDirection;
   VectorValues projectedDescentDirection;
@@ -59,11 +59,11 @@ public:
   IEGDState() {}
 
   /// Constructor.
-  IEGDState(const IEManifoldValues &_manifolds,
-            const NonlinearFactorGraph &graph, size_t _iterations = 0)
-      : manifolds(_manifolds),
-        error(graph.error(manifolds.baseValues())),
-        equalityManifolds(IEOptimizer::equalityManifolds(_manifolds)),
+  IEGDState(const IECMPoints &componentPoints,
+            const NonlinearFactorGraph &graph, size_t _iterations = 0, const Values &freeValues = {})
+      : points(componentPoints),
+       unconstrainedValues(freeValues),
+        error(graph.error(baseValues())),
         iterations(_iterations) {
     computeDescentDirection(graph);
   }
@@ -77,11 +77,20 @@ public:
   void computeDescentDirection(const NonlinearFactorGraph &graph);
 
   Values baseValues() const;
+  /// GTSAM values hold points directly, including their selected type
+  /// operations.
+  Values pointValues() const {
+    Values result = unconstrainedValues;
+    for (const auto &[key, point] : points) result.insert(key, point);
+    return result;
+  }
 };
 
 /** Trial for GD inner iteration with certain lambda setting. */
 struct IEGDTrial {
-  IEManifoldValues newManifolds;
+  IECMPoints newPoints;
+  /// Trial values of ambient variables outside the points.
+  Values newUnconstrainedValues;
   IndexSetMap forcedIndicesMap;
   VectorValues delta;
   VectorValues tangentVector;
@@ -101,9 +110,9 @@ struct IEGDTrial {
   /// Compute the linear update delta and tangent vector.
   void computeDelta(const IEGDState &state);
 
-  /** Compute the new manifolds using the linear update delta and blocking
+  /** Compute the new points using the linear update delta and blocking
    * indices. */
-  void computeNewManifolds(const IEGDState &state);
+  void computeNewPoints(const IEGDState &state);
 
   void computeNewError(const NonlinearFactorGraph &graph,
                        const IEGDState &state);
@@ -128,6 +137,8 @@ protected:
   std::shared_ptr<IEGDOptimizationDetails> details_;
 
 public:
+  using IEOptimizer::optimize;
+
   /** Constructor */
   IEGDOptimizer(const GradientDescentParams &params = GradientDescentParams(),
                 const IEConstraintManifold::Params::shared_ptr &iecm_params =
@@ -137,15 +148,17 @@ public:
 
   const IEGDOptimizationDetails &details() const { return *details_; }
 
-  // IEManifoldValues lineSearch(const NonlinearFactorGraph &graph,
-  //                             const IEManifoldValues &manifolds,
+  // IECMPoints lineSearch(const NonlinearFactorGraph &graph,
+  //                             const IECMPoints &points,
   //                             const VectorValues &proj_dir,
   //                             const VectorValues &descentDirection,
   //                             VectorValues &delta) const;
 
+  // Keep the ambient-values overload visible.
+
   virtual Values
-  optimizeManifolds(const NonlinearFactorGraph &graph,
-                    const IEManifoldValues &manifolds,
+  optimize(const NonlinearFactorGraph &graph,
+                    const IECMPoints &points,
                     const Values &unconstrainedValues) const override;
 
   /** Perform one iterate, may need to make several trials. */

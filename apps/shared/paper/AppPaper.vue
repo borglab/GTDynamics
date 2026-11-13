@@ -42,7 +42,7 @@ const paper = computed(() => papers[props.app]);
       <p>{{ paper.discussion }}</p>
       <slot name="discussion" />
       <p v-if="paper.next" class="next-app">
-        <a :href="`../#${paper.next}`" target="_top">Next: {{ paper.nextTitle }} →</a>
+        <a :href="`${'../'.repeat(app.split('/').length)}#${paper.next}`" target="_top">Next: {{ paper.nextTitle }} →</a>
       </p>
     </section>
   </article>

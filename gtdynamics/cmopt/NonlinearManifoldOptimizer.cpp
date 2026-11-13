@@ -11,9 +11,8 @@
  * @author: Yetong Zhang
  */
 
-#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
-#include <gtdynamics/factors/SubstituteFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
@@ -29,6 +28,9 @@ Values NonlinearManifoldOptimizer::optimize(const NonlinearFactorGraph& costs,
 /* ************************************************************************* */
 Values NonlinearManifoldOptimizer::optimizeManifoldProblem(
     const ManifoldOptimizationProblem& mopt_problem) const {
+  if (mopt_problem.values.empty()) {
+    return baseValues(mopt_problem, mopt_problem.values);
+  }
   auto nonlinear_optimizer = constructNonlinearOptimizer(mopt_problem);
   auto nopt_values = nonlinear_optimizer->optimize();
   // if (intermediate_result) {
@@ -60,6 +62,15 @@ NonlinearManifoldOptimizer::constructNonlinearOptimizer(
     return std::make_shared<gtsam::LevenbergMarquardtOptimizer>(
         mopt_problem.graph, mopt_problem.values);
   }
+}
+
+/* ************************************************************************* */
+Values NonlinearManifoldOptimizer::optimize(
+    const NonlinearFactorGraph& graph, const ECMPoints& points,
+    const Values& unconstrainedValues) const {
+  auto problem = initializeManifoldOptimizationProblem(
+      graph, points, unconstrainedValues);
+  return optimizeManifoldProblem(problem);
 }
 
 }  // namespace gtdynamics

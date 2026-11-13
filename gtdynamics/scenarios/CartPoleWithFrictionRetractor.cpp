@@ -41,11 +41,11 @@ void UpdateBoundary(const double &a, const double &b, const size_t &index,
 }
 
 /* ************************************************************************* */
-IEConstraintManifold CartPoleWithFrictionRetractor::retract(
-    const IEConstraintManifold *manifold, const VectorValues &delta,
+IECMPoint CartPoleWithFrictionRetractor::retract(
+    const IECMPoint *point, const VectorValues &delta,
     const std::optional<IndexSet> &blocking_indices,
     IERetractionInfo *retract_info) const {
-  Values new_values = manifold->values().retract(delta);
+  Values new_values = point->values().retract(delta);
   int k = Symbol(new_values.keys().front()).index();
   double q = new_values.atDouble(QKey(k));
   double v = new_values.atDouble(VKey(k));
@@ -69,7 +69,7 @@ IEConstraintManifold CartPoleWithFrictionRetractor::retract(
   UpdateBoundary(a2, b2, 1, ub, lb, is_ub, is_lb, ub_index, lb_index);
 
   if (is_ub && is_lb && (lb >= ub)) {
-    return retract1(manifold, delta);
+    return retract1(point, delta);
   }
 
   IndexSet active_indices;
@@ -107,21 +107,21 @@ IEConstraintManifold CartPoleWithFrictionRetractor::retract(
     active_indices.insert(blocking_indices->begin(), blocking_indices->end());
   }
   new_values = cp_.computeValues(k, q, v, a);
-  return manifold->createWithNewValues(new_values, active_indices);
+  return point->manifold()->point(point->bindings(), new_values, active_indices);
 }
 
 /* ************************************************************************* */
-IEConstraintManifold
-CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
+IECMPoint
+CartPoleWithFrictionRetractor::retract1(const IECMPoint *point,
                                         const VectorValues &delta) const {
   const NonlinearInequalityConstraints &i_constraints =
-      *manifold->iConstraints();
-  const NonlinearEqualityConstraints &e_constraints = *manifold->eConstraints();
+      *point->iConstraints();
+  const NonlinearEqualityConstraints &e_constraints = *point->eConstraints();
 
   NonlinearFactorGraph graph;
 
   // optimize penalty
-  Values new_values = manifold->values().retract(delta);
+  Values new_values = point->values().retract(delta);
   // std::cout << "new_values\n";
   // PrintValues(new_values, 0);
 
@@ -147,7 +147,7 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
   LevenbergMarquardtParams params;
   // params.setVerbosityLM("SUMMARY");
   // params.setlambdaUpperBound(1e10);
-  LevenbergMarquardtOptimizer optimizer(graph, manifold->values(), params);
+  LevenbergMarquardtOptimizer optimizer(graph, point->values(), params);
   Values opt_values = optimizer.optimize();
   // std::cout << "opt_values\n";
   // PrintValues(opt_values, 0);
@@ -199,7 +199,7 @@ CartPoleWithFrictionRetractor::retract1(const IEConstraintManifold *manifold,
   // std::cout << "result\n";
   // PrintValues(result, 0);
 
-  return manifold->createWithNewValues(result, active_indices);
+  return point->manifold()->point(point->bindings(), result, active_indices);
 }
 
 } // namespace gtdynamics

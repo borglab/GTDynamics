@@ -6,17 +6,16 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * @file testIEConstraintManifold.cpp
- * @brief Regression tests for IEConstraintManifold.
+ * @file testIECMPoint.cpp
+ * @brief Regression tests for IECMPoint.
  * @author Yetong Zhang
  * @author Frank Dellaert
  */
 
-
-
 #include <gtdynamics/cmcopt/BarrierRetractor.h>
 #include "gtdynamics/cmcopt/IERetractor.h"
 #include <CppUnitLite/TestHarness.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/scenarios/IEHalfSphere.h>
 #include <gtsam/constrained/NonlinearEqualityConstraint.h>
 #include <gtsam/constrained/NonlinearInequalityConstraint.h>
@@ -28,7 +27,7 @@
 #include <gtsam/nonlinear/factorTesting.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 
 using namespace gtdynamics;
 using namespace gtsam;
@@ -42,7 +41,7 @@ bool container_equal(const Container &c1, const Container &c2) {
 }
 
 // Verify projection, retraction, and tangent geometry on a half sphere.
-TEST(IEConstraintManifold, HalfSphere) {
+TEST(IECMPoint, HalfSphere) {
   Key point_key = Symbol('p', 0);
 
   Expression<Point3> point_expr(point_key);
@@ -57,7 +56,6 @@ TEST(IEConstraintManifold, HalfSphere) {
       ScalarExpressionInequalityConstraint::GeqZero(z_expr, 1.0));
 
   auto params = std::make_shared<IEConstraintManifold::Params>();
-  params->equalityManifoldParams = std::make_shared<ConstraintManifold::Params>();
   params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
   params->equalityBasisCreator = std::make_shared<OrthonormalBasisCreator>();
 
@@ -66,14 +64,15 @@ TEST(IEConstraintManifold, HalfSphere) {
     values.insert(point_key, Point3(0.6, 0.8, 0));
 
     // Test constructor.
-    IEConstraintManifold manifold(params, e_constraints, i_constraints, values);
+    const auto pointType = std::make_shared<IEConstraintManifold>(
+        *e_constraints, *i_constraints, values, *params);
+    IECMPoint point = pointType->point(values);
 
     // Test active constraints.
-    auto active_indices = manifold.activeIndices();
+    auto active_indices = point.activeIndices();
     EXPECT(active_indices.size() == 1);
 
     // Test project tangent cone.
-    // manifold.eBasis()->print();
     Vector2 xi1(1, 1);
     Vector2 xi2(1, 0);
     Vector2 xi3(1, -1);
@@ -81,28 +80,28 @@ TEST(IEConstraintManifold, HalfSphere) {
     IndexSet blocking_indices;
     Vector projected_xi;
     VectorValues projected_tv;
-    std::tie(blocking_indices, projected_xi) = manifold.projectTangentCone(xi1);
+    std::tie(blocking_indices, projected_xi) = point.projectTangentCone(xi1);
     Vector2 expected_proj_xi1(1, 1);
     EXPECT(assert_equal(expected_proj_xi1, projected_xi));
     EXPECT(blocking_indices.size() == 0);
     VectorValues tv1;
     tv1.insert(point_key, Vector3(1, -0.75, 1));
-    std::tie(blocking_indices, projected_tv) = manifold.projectTangentCone(tv1);
+    std::tie(blocking_indices, projected_tv) = point.projectTangentCone(tv1);
     VectorValues expected_proj_tv1;
     expected_proj_tv1.insert(point_key, Vector3(1, -0.75, 1));
     EXPECT(assert_equal(expected_proj_tv1, projected_tv));
 
-    std::tie(blocking_indices, projected_xi) = manifold.projectTangentCone(xi2);
+    std::tie(blocking_indices, projected_xi) = point.projectTangentCone(xi2);
     Vector2 expected_proj_xi2(1, 0);
     EXPECT(assert_equal(expected_proj_xi2, projected_xi));
 
-    std::tie(blocking_indices, projected_xi) = manifold.projectTangentCone(xi3);
+    std::tie(blocking_indices, projected_xi) = point.projectTangentCone(xi3);
     Vector2 expected_proj_xi3(1, 0);
     EXPECT(assert_equal(expected_proj_xi3, projected_xi));
     EXPECT(blocking_indices.size() == 1);
     VectorValues tv3;
     tv3.insert(point_key, Vector3(1, -0.75, -1));
-    std::tie(blocking_indices, projected_tv) = manifold.projectTangentCone(tv3);
+    std::tie(blocking_indices, projected_tv) = point.projectTangentCone(tv3);
     VectorValues expected_proj_tv3;
     expected_proj_tv3.insert(point_key, Vector3(1, -0.75, 0));
     EXPECT(assert_equal(expected_proj_tv3, projected_tv));
@@ -112,31 +111,34 @@ TEST(IEConstraintManifold, HalfSphere) {
     delta1.insert(point_key, Vector3(8, -6, 1));
     delta2.insert(point_key, Vector3(8, -6, 0));
     delta3.insert(point_key, Vector3(8, -6, -1));
-    EXPECT(manifold.blockingIndices(delta1).size() == 0);
-    EXPECT(manifold.blockingIndices(delta2).size() == 0);
-    EXPECT(manifold.blockingIndices(delta3).size() == 1);
+    EXPECT(point.blockingIndices(delta1).size() == 0);
+    EXPECT(point.blockingIndices(delta2).size() == 0);
+    EXPECT(point.blockingIndices(delta3).size() == 1);
 
-    // Test construct emanifold
-    auto e_manifold = manifold.eConstraintManifold();
+    // Check the internal equality-only compatibility view.
+    auto e_manifold = point.equalityView();
     EXPECT(e_manifold.dim() == 2);
     IndexSet a_indices;
     a_indices.insert(0);
-    auto e_manifold1 = manifold.eConstraintManifold(a_indices);
+    auto face = *point.eConstraints();
+    face.push_back(point.iConstraints()->at(0)->createEqualityConstraint());
+    auto faceType = std::make_shared<EConstraintManifold>(face, point.values());
+    auto e_manifold1 = faceType->point(point.values());
     EXPECT(e_manifold1.dim() == 1);
 
     // The cached tangent rows evaluate the same directional derivative.
     VectorValues tangentVector;
     tangentVector.insert(point_key, Vector3(8, -6, 2));
-    Vector xi = manifold.toCoordinates(tangentVector);
-    for (size_t index : manifold.linearization()->indices())
+    Vector xi = point.toCoordinates(tangentVector);
+    for (size_t index : point.tangentSpace()->indices())
       EXPECT(assert_equal(
           Vector1(-2.0),
-          Vector(manifold.linearization()->rows(index, true) * xi)));
+          Vector(point.tangentSpace()->rows(index, true) * xi)));
   }
 }
 
 // A newly reached boundary remains active after penalty retraction.
-TEST(IEConstraintManifold, PenaltyRetractionRetainsNewBoundary) {
+TEST(IECMPoint, PenaltyRetractionRetainsNewBoundary) {
   const Key key = 7;
   auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
   inequalities->push_back(ScalarExpressionInequalityConstraint::GeqZero(
@@ -150,13 +152,13 @@ TEST(IEConstraintManifold, PenaltyRetractionRetainsNewBoundary) {
       std::make_shared<BarrierRetractorCreator>(retractionParams);
   Values values;
   values.insert(key, 1.0);
-  const IEConstraintManifold manifold(
-      params, std::make_shared<NonlinearEqualityConstraints>(), inequalities,
-      values);
-  EXPECT(manifold.activeIndices().empty());
+  const auto pointType = std::make_shared<IEConstraintManifold>(
+      NonlinearEqualityConstraints{}, *inequalities, values, *params);
+  const IECMPoint point = pointType->point(values);
+  EXPECT(point.activeIndices().empty());
   VectorValues step;
   step.insert(key, Vector1(-2.0));
-  const auto boundary = manifold.retract(step);
+  const auto boundary = point.retract(step);
   EXPECT_DOUBLES_EQUAL(0.0, boundary.values().at<double>(key), 1e-8);
   // A feasible boundary point still needs its face in the next tangent QP.
   EXPECT(boundary.activeIndices().exists(0));
@@ -164,15 +166,15 @@ TEST(IEConstraintManifold, PenaltyRetractionRetainsNewBoundary) {
   EXPECT(blocking.exists(0));
   EXPECT_DOUBLES_EQUAL(0.0, projected.at(key)(0), 1e-8);
   step.at(key) = Vector1(-0.5);
-  const auto interior = manifold.retract(step);
+  const auto interior = point.retract(step);
   EXPECT_DOUBLES_EQUAL(0.5, interior.values().at<double>(key), 1e-8);
   EXPECT(interior.activeIndices().empty());
 }
 
 // Constraint sigma must be applied once, and must not change the feasible side.
-TEST(IEConstraintManifold, ScaledInequalityLinearization) {
+TEST(IECMPoint, ScaledInequalityLinearization) {
   const Key key = 7;
-  const Key manifoldKey = 9;
+  const Key pointKey = 9;
   for (const double sigma : {0.01, 3.0}) {
     for (const bool lowerBound : {false, true}) {
       auto inequalities = std::make_shared<NonlinearInequalityConstraints>();
@@ -185,26 +187,26 @@ TEST(IEConstraintManifold, ScaledInequalityLinearization) {
       params->retractorCreator = std::make_shared<BarrierRetractorCreator>();
       Values values;
       values.insert(key, 0.0);
-      const IEConstraintManifold manifold(
-          params, std::make_shared<NonlinearEqualityConstraints>(), inequalities,
-          values);
+      const auto pointType = std::make_shared<IEConstraintManifold>(
+          NonlinearEqualityConstraints{}, *inequalities, values, *params);
+      const IECMPoint point = pointType->point(values);
       VectorValues outward, inward;
       outward.insert(key, Vector1(lowerBound ? -2.0 : 2.0));
       inward.insert(key, -outward.at(key));
       VectorValues coordinates;
-      coordinates.insert(manifoldKey, manifold.eBasis()->computeXi(outward));
-      const auto &local = *manifold.linearization();
+      coordinates.insert(pointKey, point.eBasis()->computeXi(outward));
+      const auto &local = *point.tangentSpace();
       EXPECT_DOUBLES_EQUAL(
-          2.0 / sigma, (local.rows(0, true) * coordinates.at(manifoldKey))(0),
+          2.0 / sigma, (local.rows(0, true) * coordinates.at(pointKey))(0),
           1e-8);
-      EXPECT(local.violated(manifold.toCoordinates(outward)).exists(0));
-      EXPECT(local.violated(manifold.toCoordinates(inward)).empty());
-      EXPECT(manifold.blockingIndices(outward).exists(0));
-      EXPECT(manifold.blockingIndices(inward).empty());
-      const auto [blocking, projected] = manifold.projectTangentCone(outward);
+      EXPECT(local.violated(point.toCoordinates(outward)).exists(0));
+      EXPECT(local.violated(point.toCoordinates(inward)).empty());
+      EXPECT(point.blockingIndices(outward).exists(0));
+      EXPECT(point.blockingIndices(inward).empty());
+      const auto [blocking, projected] = point.projectTangentCone(outward);
       EXPECT(blocking.exists(0));
       EXPECT_DOUBLES_EQUAL(0.0, projected.at(key)(0), 1e-8);
-      const auto [released, unchanged] = manifold.projectTangentCone(inward);
+      const auto [released, unchanged] = point.projectTangentCone(inward);
       EXPECT(released.empty());
       EXPECT(assert_equal(inward, unchanged, 1e-8));
     }

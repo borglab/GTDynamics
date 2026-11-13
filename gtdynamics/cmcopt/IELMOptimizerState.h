@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmcopt/IEConstraintManifold.h>
+#include <gtdynamics/cmcopt/IECMPoint.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
@@ -36,7 +36,7 @@ struct IELMParams;
 /** State corresponding to each LM iteration. */
 struct IELMState {
 public:
-  IEManifoldValues manifolds;
+  IECMPoints points;
   Values values;
   KeySet unconstrainedKeys;
   double error = 0;
@@ -46,8 +46,13 @@ public:
   size_t totalInnerIterations = 0;
   VectorValues gradient;
   GaussianFactorGraph::shared_ptr baseLinear;
-  GaussianFactorGraph::shared_ptr linearManifoldGraph;
-  /// Undamped objective and homogeneous active inequalities in B coordinates.
+  GaussianFactorGraph::shared_ptr linearPointGraph;
+  /// Common compacted objective, independent of the selected linear solver.
+  GaussianFactorGraph reducedObjective;
+  bool equalityOnly = true;
+  double linearizationSeconds = 0;
+  /// Constrained states pack the undamped objective and active rows here.
+  /// Equality-only states leave it empty until a QP trial is requested.
   QpProblem tangentQp;
   /// Contiguous QP rows belonging to one original nonlinear constraint block.
   struct QpConstraintBlock {
@@ -61,16 +66,16 @@ public:
   IELMState() {}
 
   /// Constructor.
-  IELMState(const IEManifoldValues &_manifolds,
+  IELMState(const IECMPoints &componentPoints,
             const Values &_unconstrained_values,
             const NonlinearFactorGraph &graph,
-            const NonlinearFactorGraph &manifold_graph, const double &_lambda,
+            const NonlinearFactorGraph &pointGraph, const double &_lambda,
             const double &_lambdaFactor, size_t _iterations = 0);
 
   /// Initialize the new state from the result of previous iteration.
   static IELMState fromLastIteration(const IELMIterationDetails &iter_details,
                                      const NonlinearFactorGraph &graph,
-                                     const NonlinearFactorGraph &manifold_graph,
+                                     const NonlinearFactorGraph &pointGraph,
                                      const LevenbergMarquardtParams &params);
 
   /// Values of unconstrained variables.
@@ -80,7 +85,7 @@ public:
   Values baseValues() const;
 
   static double evaluateGraphError(const NonlinearFactorGraph &graph,
-                                   const IEManifoldValues &_manifolds,
+                                   const IECMPoints &componentPoints,
                                    const Values &_unconstrained_values);
 
   /// Compute the hessian diagonal of the linearized graph. It is used to
@@ -88,11 +93,11 @@ public:
   VectorValues computeMetricSigmas(const NonlinearFactorGraph &graph) const;
 
 protected:
-  static Values allValues(const IEManifoldValues &manifolds,
+  static Values allValues(const IECMPoints &points,
                           const Values &unconstrainedValues);
 
   void construct(const NonlinearFactorGraph &graph,
-                 const NonlinearFactorGraph &manifold_graph);
+                 const NonlinearFactorGraph &pointGraph);
 };
 
 /** Trial for LM inner iteration with certain lambda setting. */
@@ -108,6 +113,8 @@ struct IELMTrial {
   IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
             const IndexSetMap &forcedIndicesMap);
 
+  double retractionSeconds = 0;
+
   struct LinearUpdate {
     double lambda = 0;
     IndexSetMap blockingIndicesMap;
@@ -120,13 +127,16 @@ struct IELMTrial {
     std::string failureReason;
     /// Main GTSAM working-face solves; excludes initialization projections.
     size_t qpIterations = 0;
+    double linearSolveSeconds = 0;
+    size_t gaussianSolves = 0;
+    size_t qpSolves = 0;
 
     /** Default constructor. */
     LinearUpdate() {}
 
     /** Compute a damped LM step and its blocking inequality constraints.
-     * Solve the global tangent-cone QP with GTSAM's sparse active-set solver.
-     * Optionally request feasible descent instead of QP convergence.
+     * Equality-only problems can use a direct damped Gaussian solve.
+     * QP trials use the selected backend and may request feasible descent.
      * Equality constraints have already been eliminated by B.
      * Lift the result to ambient tangent coordinates and record the predicted
      * reduction in the undamped cost model.
@@ -174,7 +184,7 @@ struct IELMTrial {
   };
 
   struct NonlinearUpdate {
-    IEManifoldValues newManifolds;
+    IECMPoints newPoints;
     Values newUnconstrainedValues;
     double newError = std::numeric_limits<double>::infinity();
     double costChange = -std::numeric_limits<double>::infinity();
@@ -186,7 +196,7 @@ struct IELMTrial {
     /** Default constructor. */
     NonlinearUpdate() {}
 
-    /** Compute the new manifolds using the linear update delta and blocking
+    /** Compute the new points using the linear update delta and blocking
      * indices. */
     NonlinearUpdate(const IELMState &state, const LinearUpdate &linearUpdate,
                     const NonlinearFactorGraph &graph,
@@ -199,8 +209,8 @@ struct IELMTrial {
                       const double &oldError);
 
     static std::pair<VectorValues, double> evaluateRetractionDeviation(
-        const IEConstraintManifold &manifold,
-        const IEConstraintManifold &new_manifold,
+        const IECMPoint &point,
+        const IECMPoint &newPoint,
         const VectorValues &tangentVector);
   };
 

@@ -108,6 +108,86 @@ TEST(FixedKinematicsDynamics, StaticSupportTrajectory) {
   }
 }
 
+// Omitting inequalities is explicit, while affine geometry is constructed once
+// per conditioned type across every LM trial and every point replacement.
+TEST(FixedKinematicsDynamics, EqualityOnlySolversAndAffineReuse) {
+  Fixture fixture;
+  for (size_t k = 0; k < 3; ++k) {
+    Vector6 mean = Vector6::Zero();
+    mean(5) = -20.;
+    fixture.priors.update(TwistAccelKey(0, k), Vector(mean));
+  }
+  const Values before = fixture.fixed;
+  auto options = fixture.tightPriors();
+  options.equalityOnly = true;
+  std::optional<fixed_dynamics::Result> reference;
+  std::vector<fixed_dynamics::LinearSolver> solvers{
+      fixed_dynamics::LinearSolver::Automatic,
+      fixed_dynamics::LinearSolver::Gaussian,
+      fixed_dynamics::LinearSolver::GtsamQP};
+#ifdef GTDYNAMICS_WITH_PROXQP
+  solvers.push_back(fixed_dynamics::LinearSolver::ProxQP);
+#endif
+  for (const auto solver : solvers) {
+    options.linearSolver = solver;
+    const auto result = solveFixedKinematicsDynamics(
+        fixture.robot, fixture.trajectory, {Slice(0), Slice(1), Slice(2)},
+        {0., .08, .3}, fixture.fixed, fixture.priors, fixture.contacts(),
+        Vector(), options);
+    EXPECT(result.equalityOnly && result.affineEqualities && result.feasible);
+    EXPECT_LONGS_EQUAL(0, result.inequalityDimension);
+    EXPECT(result.originalInequalityDimension > 0);
+    EXPECT(result.originalInequalityL2 > 1.);
+    EXPECT(result.conditionedVariableDimension > 0);
+    EXPECT(result.conditioningSeconds > 0.);
+    EXPECT(result.equalityPreparations > 0);
+    EXPECT_LONGS_EQUAL(result.equalityPreparations, result.affineBasisConstructions);
+    EXPECT(result.equalityL2 < 1e-8);
+    EXPECT(result.stationary);
+    EXPECT(assert_equal(before, fixture.fixed));
+    if (reference) {
+      EXPECT(assert_equal(reference->values, result.values, 1e-5));
+      EXPECT_DOUBLES_EQUAL(reference->objectiveFinal, result.objectiveFinal, 1e-7);
+    }
+    reference = result;
+  }
+  options.linearSolver = fixed_dynamics::LinearSolver::Gaussian;
+  options.retractionThreads = 3;
+  const auto parallel = solveFixedKinematicsDynamics(
+      fixture.robot, fixture.trajectory, {Slice(0), Slice(1), Slice(2)},
+      {0., .08, .3}, fixture.fixed, fixture.priors, fixture.contacts(), Vector(), options);
+  EXPECT(assert_equal(reference->values, parallel.values, 1e-5));
+  EXPECT_LONGS_EQUAL(parallel.equalityPreparations, parallel.affineBasisConstructions);
+  options.equalityOnly = false;
+  CHECK_EXCEPTION(solveFixedKinematicsDynamics(
+      fixture.robot, fixture.trajectory, {Slice(0), Slice(1), Slice(2)},
+      {0., .08, .3}, fixture.fixed, fixture.priors, fixture.contacts(), Vector(), options),
+      std::invalid_argument);
+}
+
+// A new q/v snapshot has a new affine offset; it cannot modify an earlier solve.
+TEST(FixedKinematicsDynamics, IndependentKinematicConditioning) {
+  Fixture fixture;
+  auto options = fixture.tightPriors();
+  options.equalityOnly = true;
+  const auto original = solveFixedKinematicsDynamics(
+      fixture.robot, fixture.trajectory, {Slice(0), Slice(1), Slice(2)},
+      {0., .08, .3}, fixture.fixed, fixture.priors, fixture.contacts(), Vector(), options);
+  Values tilted = fixture.fixed;
+  for (size_t k = 0; k < 3; ++k)
+    for (const auto& link : fixture.robot.links())
+      tilted.update(PoseKey(link->id(), k), Pose3(Rot3::Ry(.2), Point3(0, 0, .5)));
+  const auto conditioned = solveFixedKinematicsDynamics(
+      fixture.robot, fixture.trajectory, {Slice(0), Slice(1), Slice(2)},
+      {0., .08, .3}, tilted, fixture.priors, fixture.contacts(), Vector(), options);
+  EXPECT(conditioned.equalityL2 < 1e-8);
+  EXPECT(!original.values.equals(conditioned.values, 1e-3));
+  const auto repeated = solveFixedKinematicsDynamics(
+      fixture.robot, fixture.trajectory, {Slice(0), Slice(1), Slice(2)},
+      {0., .08, .3}, fixture.fixed, fixture.priors, fixture.contacts(), Vector(), options);
+  EXPECT(assert_equal(original.values, repeated.values, 1e-10));
+}
+
 // A single QR seed respects changing support, exact mechanics and cone faces.
 // It rejects unsupported soft dynamics instead of silently relaxing mechanics.
 TEST(FixedKinematicsDynamics, LinearSeedAndConstraintChecks) {

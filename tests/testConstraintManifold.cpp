@@ -17,7 +17,7 @@
 #include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
@@ -73,37 +73,41 @@ TEST_UNSAFE(ConstraintManifold, connected_poses) {
 
   for (const auto& basisCreator : basis_creators) {
     for (const auto& retractorCreator : retractor_creators) {
-      auto params = std::make_shared<ConstraintManifold::Params>();
-      params->basisCreator = basisCreator;
+      auto params = std::make_shared<EConstraintManifold::Params>();
+      params->equalityBasisCreator = basisCreator;
       params->retractorCreator = retractorCreator;
-      ConstraintManifold manifold(constraints, cm_base_values, params, true);
+      auto type = std::make_shared<EConstraintManifold>(
+          *constraints, cm_base_values, *params);
+      auto point = type->point(cm_base_values);
 
       // Check recover
       Values values;
       Matrix H_recover_x2, H_recover_x3;
       EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 0, 1)),
-                          manifold.recover<Pose3>(x2_key, H_recover_x2)));
+                          point.recover(x2_key, H_recover_x2).cast<Pose3>()));
       EXPECT(assert_equal(Pose3(Rot3(), Point3(0, 1, 1)),
-                          manifold.recover<Pose3>(x3_key, H_recover_x3)));
+                          point.recover(x3_key, H_recover_x3).cast<Pose3>()));
 
       // Check recover jacobian
-      std::function<Pose3(const ConstraintManifold&)> x2_recover_func =
-          std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
-                    x2_key, nullptr);
-      EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
-                              x2_recover_func, manifold),
+      std::function<Pose3(const ECMPoint&)> x2_recover_func =
+          [=](const ECMPoint& value) {
+            return value.recover(x2_key).cast<Pose3>();
+          };
+      EXPECT(assert_equal(numericalDerivative11<Pose3, ECMPoint, 6>(
+                              x2_recover_func, point),
                           H_recover_x2));
 
-      std::function<Pose3(const ConstraintManifold&)> x3_recover_func =
-          std::bind(&ConstraintManifold::recover<Pose3>, std::placeholders::_1,
-                    x3_key, nullptr);
-      EXPECT(assert_equal(numericalDerivative11<Pose3, ConstraintManifold, 6>(
-                              x3_recover_func, manifold),
+      std::function<Pose3(const ECMPoint&)> x3_recover_func =
+          [=](const ECMPoint& value) {
+            return value.recover(x3_key).cast<Pose3>();
+          };
+      EXPECT(assert_equal(numericalDerivative11<Pose3, ECMPoint, 6>(
+                              x3_recover_func, point),
                           H_recover_x3));
 
       // check retract
       Vector xi = (Vector(6) << 0, 0, 0, 0, 0, 1).finished();
-      auto new_cm = manifold.retract(xi);
+      auto new_point = point.retract(xi);
     }
   }
 }
@@ -353,11 +357,11 @@ TEST(ConstraintManifold, connected_poses_many_components_manifold_keys_stable) {
   }
   EXPECT(success);
   if (success) {
-    EXPECT(moptProblem.components.size() == (kNumSteps + 1));
+    EXPECT(moptProblem.types.size() == (kNumSteps + 1));
     EXPECT(moptProblem.manifoldKeys.size() == (kNumSteps + 1));
-    for (size_t k = 0; k <= kNumSteps; ++k) {
-      EXPECT(moptProblem.manifoldKeys.find(A(k)) !=
-             moptProblem.manifoldKeys.end());
+    for (const auto& point : moptProblem.points()) {
+      EXPECT(initValues.keySet().count(point.first) == 0);
+      EXPECT_LONGS_EQUAL(2, point.second.values().size());
     }
   }
 }
@@ -408,9 +412,16 @@ TEST(ConstraintManifold, sv_mode_fully_constrained_component_no_throw) {
   }
   EXPECT(success);
   if (success) {
-    EXPECT(moptProblem.components.size() == 1);
+    EXPECT(moptProblem.types.size() == 1);
     EXPECT(moptProblem.manifoldKeys.size() == 0);
-    EXPECT(moptProblem.fixedManifolds.size() == 1);
+    EXPECT(moptProblem.fixedPoints.size() == 1);
+    const auto& fixedPoint = moptProblem.fixedPoints.begin()->second;
+    EXPECT_LONGS_EQUAL(18, fixedPoint.eConstraints()->dim());
+    EXPECT_LONGS_EQUAL(0, fixedPoint.eBasis()->dim());
+    EXPECT_LONGS_EQUAL(0, fixedPoint.eBasis()->recoverJacobian(x1Key).cols());
+    const auto result = optimizer.optimizeManifoldProblem(moptProblem);
+    EXPECT(assert_equal(fixedPoint.values(), result));
+    EXPECT(assert_equal(initValues, result));
   }
 }
 
@@ -462,26 +473,28 @@ TEST(ConstraintManifold_retract, cart_pole_dynamics) {
   // constraint manifold
   auto constraints = std::make_shared<NonlinearEqualityConstraints>(
       gtsam::NonlinearEqualityConstraints::FromCostGraph(constraints_graph));
-  auto constraintManifoldParams = std::make_shared<ConstraintManifold::Params>();
+  auto constraintManifoldParams = std::make_shared<EConstraintManifold::Params>();
   constraintManifoldParams->retractorCreator =
       std::make_shared<BasisRetractorCreator>(basisKeyFunction);
-  constraintManifoldParams->basisCreator =
+  constraintManifoldParams->equalityBasisCreator =
       std::make_shared<EliminationBasisCreator>(basisKeyFunction);
-  auto cm = ConstraintManifold(constraints, init_values, constraintManifoldParams, true);
+  auto type = std::make_shared<EConstraintManifold>(
+      *constraints, init_values, *constraintManifoldParams);
+  auto point = type->point(init_values);
 
   // retract
   Vector xi = (Vector(6) << 1, 0, 0, 0, 0, 0).finished();
-  auto new_cm = cm.retract(xi);
+  auto new_point = point.retract(xi);
   // Check basis variables shall get the exact update.
-  EXPECT(assert_equal(1., new_cm.recover<double>(JointAngleKey(j0_id, 0))));
-  EXPECT(assert_equal(0., new_cm.recover<double>(JointAngleKey(j1_id, 0))));
-  EXPECT(assert_equal(0., new_cm.recover<double>(JointVelKey(j0_id, 0))));
-  EXPECT(assert_equal(0., new_cm.recover<double>(JointVelKey(j1_id, 0))));
-  EXPECT(assert_equal(0., new_cm.recover<double>(JointAccelKey(j0_id, 0))));
-  EXPECT(assert_equal(0., new_cm.recover<double>(JointAccelKey(j1_id, 0))));
+  EXPECT(assert_equal(1., new_point.recover(JointAngleKey(j0_id, 0)).cast<double>()));
+  EXPECT(assert_equal(0., new_point.recover(JointAngleKey(j1_id, 0)).cast<double>()));
+  EXPECT(assert_equal(0., new_point.recover(JointVelKey(j0_id, 0)).cast<double>()));
+  EXPECT(assert_equal(0., new_point.recover(JointVelKey(j1_id, 0)).cast<double>()));
+  EXPECT(assert_equal(0., new_point.recover(JointAccelKey(j0_id, 0)).cast<double>()));
+  EXPECT(assert_equal(0., new_point.recover(JointAccelKey(j1_id, 0)).cast<double>()));
 
   // Check that all constraints shall be satisfied after retraction.
-  EXPECT(assert_equal(0., constraints->violationNorm(new_cm.values())));
+  EXPECT(assert_equal(0., constraints->violationNorm(new_point.values())));
 }
 
 namespace {
@@ -566,9 +579,9 @@ TEST(ConstraintManifold, lynch_park_four_bar_loop_closure_cmopt) {
 
   const auto mopt_problem = optimizer.initializeManifoldOptimizationProblem(
       problem.costs(), problem.constraints(), problem.initValues());
-  EXPECT_LONGS_EQUAL(1, mopt_problem.components.size());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.types.size());
   EXPECT_LONGS_EQUAL(1, mopt_problem.manifoldKeys.size());
-  EXPECT_LONGS_EQUAL(1, mopt_problem.manifolds().begin()->second.dim());
+  EXPECT_LONGS_EQUAL(1, mopt_problem.points().begin()->second.dim());
 
   const Values result =
       optimizer.optimize(problem.costs(), problem.constraints(), init_values);

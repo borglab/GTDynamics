@@ -89,3 +89,7 @@ if(GTDYNAMICS_BUILD_CABLE_ROBOT)
     COMMAND $<TARGET_FILE:${CABLE_KINODYNAMICS}>
     DEPENDS ${CABLE_KINODYNAMICS})
 endif()
+
+# Runtime manifold type sharing; all other examples retain automatic discovery.
+add_executable(example_shared_ieconstraint_manifold main_shared_ieconstraint_manifold.cpp)
+target_link_libraries(example_shared_ieconstraint_manifold PRIVATE gtdynamics)

@@ -15,8 +15,8 @@
 #include <CppUnitLite/Test.h>
 #include <CppUnitLite/TestHarness.h>
 #include <gtdynamics/dynamics/DynamicsGraph.h>
-#include <gtdynamics/cmopt/ConstraintManifold.h>
-#include <gtdynamics/cmopt/TangentSpaceBasis.h>
+#include <gtdynamics/cmopt/ECMPoint.h>
+#include <gtdynamics/constrained/TangentSpaceBasis.h>
 #include <gtdynamics/universal_robot/RobotModels.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
@@ -147,7 +147,6 @@ TEST(TangentSpaceBasis, linear_system) {
   values.insertDouble(x4_key, 0.0);
   KeyVector basis_keys{x1_key, x2_key};
   auto basis_params = std::make_shared<TangentSpaceBasisParams>();
-  // auto basis_m = std::make_shared<MatrixBasis>(basis_params, cc, values);
   auto basis_e =
       std::make_shared<EliminationBasis>(constraints, values, basis_params, basis_keys);
   auto basis_m = std::make_shared<OrthonormalBasis>(constraints, values, basis_params);

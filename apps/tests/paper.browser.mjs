@@ -21,6 +21,7 @@ const ready = {
   kinodynamics: '.kinodynamics-scene[data-ready="true"]',
   'motion-planning': '.robot-canvas canvas',
   'scate/ur10e-reactive': '#stage[data-ready="true"] canvas',
+  'steap-cmrg': '.steap-scene canvas',
 };
 const controls = {
   urdf: '#panel',
@@ -95,9 +96,11 @@ try {
             await page.setViewportSize(size);
             await frame.locator('#demo').evaluate(() => window.scrollTo(0, 0));
             const box = await page.locator('iframe').boundingBox();
-            const bottom = Math.max(...await frame.locator(controls[app.id]).evaluateAll(
-              nodes => nodes.map(node => node.getBoundingClientRect().bottom)));
-            assert(bottom <= box.height, `${app.id}: controls end at ${bottom.toFixed(0)}, iframe ${box.height.toFixed(0)} (${size.width}×${size.height})`);
+            if (controls[app.id]) {
+              const bottom = Math.max(...await frame.locator(controls[app.id]).evaluateAll(
+                nodes => nodes.map(node => node.getBoundingClientRect().bottom)));
+              assert(bottom <= box.height, `${app.id}: controls end at ${bottom.toFixed(0)}, iframe ${box.height.toFixed(0)} (${size.width}×${size.height})`);
+            }
             assert(await fitsWidth(frame), `${app.id}: no horizontal overflow`);
           }
           if (process.env.SCREENSHOT_DIR) {
@@ -119,6 +122,10 @@ try {
         } else if (nativePaper) {
           const before = await frame.locator('main').getAttribute('data-frame');
           await frame.getByRole('button', { name: /^Go to knot / }).last().click();
+          assert.notEqual(await frame.locator('main').getAttribute('data-frame'), before);
+        } else if (app.id === 'steap-cmrg') {
+          const before = await frame.locator('main').getAttribute('data-frame');
+          await frame.getByRole('button', { name: 'Next ▶', exact: true }).click();
           assert.notEqual(await frame.locator('main').getAttribute('data-frame'), before);
         } else {
           if (app.id === 'scate/ur10e-reactive') await frame.getByRole('slider', {name: 'Time', exact: true}).fill('0');

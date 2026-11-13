@@ -244,7 +244,6 @@ IECM_PARAMS_LIST ConstructExpIECMParams(const EXP_SETTING_LIST &exp_settings,
   IECM_PARAMS_LIST iecm_params_list;
   for (const auto &[basis_type, retractor_type, metric_type] : exp_settings) {
     auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-    iecm_params->equalityBasisBuildFromScratch = false;
 
     /// Tspace Basis
     if (basis_type == "Orthonormal") {

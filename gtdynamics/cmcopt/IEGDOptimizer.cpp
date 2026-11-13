@@ -24,18 +24,19 @@ using namespace gtsam;
 IEGDState IEGDState::fromLastIteration(const IEGDIterationDetails &iter_details,
                                        const NonlinearFactorGraph &graph,
                                        const GradientDescentParams &params) {
-  double lambda;
   const auto &last_trial = iter_details.trials.back();
   const auto &prev_state = iter_details.state;
   IEGDState state;
   if (last_trial.stepIsSuccessful) {
-    state = IEGDState(last_trial.newManifolds, graph);
+    state = IEGDState(last_trial.newPoints, graph, 0,
+                      last_trial.newUnconstrainedValues);
   } else {
     // pick the trials with smallest error
-    state = IEGDState(iter_details.state.manifolds, graph);
+    state = IEGDState(iter_details.state.points, graph, 0,
+                      iter_details.state.unconstrainedValues);
     for (const auto &trial : iter_details.trials) {
       if (trial.newError < state.error) {
-        state = IEGDState(trial.newManifolds, graph);
+        state = IEGDState(trial.newPoints, graph, 0, trial.newUnconstrainedValues);
       }
     }
   }
@@ -49,23 +50,28 @@ IEGDState IEGDState::fromLastIteration(const IEGDIterationDetails &iter_details,
 
 /* ************************************************************************* */
 void IEGDState::computeDescentDirection(const NonlinearFactorGraph &graph) {
-  std::map<Key, Key> keymap_var2manifold =
-      IEOptimizer::varToManifoldKeyMap(manifolds);
-  NonlinearFactorGraph manifold_graph =
-      ManifoldOptimizer::manifoldGraph(graph, keymap_var2manifold);
+  NonlinearFactorGraph pointGraph =
+      IEOptimizer::pointGraph(graph, points);
 
-  auto linear_graph = manifold_graph.linearize(equalityManifolds);
+  auto linear_graph = pointGraph.linearize(pointValues());
 
   gradient = linear_graph->gradientAtZero();
+  for (const auto &[key, point] : points)
+    if (!gradient.exists(key)) gradient.insert(key, Vector::Zero(point.dim()));
+  for (Key key : unconstrainedValues.keys())
+    if (!gradient.exists(key))
+      gradient.insert(key, Vector::Zero(unconstrainedValues.at(key).dim()));
   descentDirection = -1 * gradient;
   std::tie(blockingIndicesMap, projectedDescentDirection) =
-      IEOptimizer::projectTangentCone(manifolds, descentDirection);
+      IEOptimizer::projectTangentCone(points, descentDirection);
+  for (Key key : unconstrainedValues.keys())
+    projectedDescentDirection.insert(key, descentDirection.at(key));
 }
 
 /* ************************************************************************* */
 Values IEGDState::baseValues() const {
-  Values base_values = manifolds.baseValues();
-  // base_values.insert(unconstrainedValues());
+  Values base_values = ambientValues(points);
+  base_values.insert(unconstrainedValues);
   return base_values;
 }
 
@@ -85,21 +91,24 @@ void IEGDTrial::setNextLambda(double &new_mu, const GradientDescentParams &param
 /* ************************************************************************* */
 void IEGDTrial::computeDelta(const IEGDState &state) {
   delta = lambda * state.projectedDescentDirection;
-  tangentVector = IEOptimizer::computeTangentVector(state.manifolds, delta);
+  tangentVector = IEOptimizer::computeTangentVector(state.points, delta);
+  tangentVector.insert(SubValues(delta, state.unconstrainedValues.keys()));
   linearCostChange = state.descentDirection.dot(delta);
 }
 
 /* ************************************************************************* */
-void IEGDTrial::computeNewManifolds(const IEGDState &state) {
-  newManifolds = IEManifoldValues();
-  for (const auto &[key, manifold] : state.manifolds) {
-    auto manifold_tv = SubValues(tangentVector, manifold.values().keys());
+void IEGDTrial::computeNewPoints(const IEGDState &state) {
+  newUnconstrainedValues = state.unconstrainedValues.retract(
+      SubValues(delta, state.unconstrainedValues.keys()));
+  newPoints = IECMPoints();
+  for (const auto &[key, point] : state.points) {
+    auto pointTangent = SubValues(tangentVector, point.values().keys());
     if (state.blockingIndicesMap.find(key) !=
         state.blockingIndicesMap.end()) {
       const auto &blocking_indices = state.blockingIndicesMap.at(key);
-      newManifolds.emplace(key, manifold.retract(manifold_tv, blocking_indices));
+      newPoints.emplace(key, point.retract(pointTangent, blocking_indices));
     } else {
-      newManifolds.emplace(key, manifold.retract(manifold_tv));
+      newPoints.emplace(key, point.retract(pointTangent));
     }
   }
 }
@@ -107,7 +116,9 @@ void IEGDTrial::computeNewManifolds(const IEGDState &state) {
 /* ************************************************************************* */
 void IEGDTrial::computeNewError(const NonlinearFactorGraph &graph,
                                 const IEGDState &state) {
-  newError = graph.error(newManifolds.baseValues());
+  Values values = ambientValues(newPoints);
+  values.insert(newUnconstrainedValues);
+  newError = graph.error(values);
   nonlinearCostChange = state.error - newError;
   modelFidelity = nonlinearCostChange / linearCostChange;
 }
@@ -133,15 +144,15 @@ void IEGDTrial::print(const IEGDState &state) const {
 }
 
 // /* *************************************************************************
-// */ IEManifoldValues IEGDOptimizer::lineSearch(
-//     const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
+// */ IECMPoints IEGDOptimizer::lineSearch(
+//     const NonlinearFactorGraph &graph, const IECMPoints &points,
 //     const VectorValues &proj_dir, const VectorValues
 //     &descentDirection, VectorValues &delta) const {
 //   double alpha = 0.2;
 //   double beta = 0.5;
 //   double t = 1;
 
-//   Values values = CollectManifoldValues(manifolds);
+//   Values values = CollectManifoldValues(points);
 //   double eval = graph.error(values);
 
 //   while (true) {
@@ -149,8 +160,8 @@ void IEGDTrial::print(const IEGDState &state) const {
 //     delta = t * proj_dir;
 //     // delta.print("delta");
 
-//     IEManifoldValues newManifolds = retractManifolds(manifolds, delta);
-//     Values new_values = CollectManifoldValues(newManifolds);
+//     IECMPoints newPoints = retractPoints(points, delta);
+//     Values new_values = CollectManifoldValues(newPoints);
 //     double new_eval = graph.error(new_values);
 
 //     double nonlinear_error_decrease = eval - new_eval;
@@ -159,16 +170,16 @@ void IEGDTrial::print(const IEGDState &state) const {
 //     std::cout << "t: " << t << "\tnonlinear: " << nonlinear_error_decrease
 //               << "\tlinear: " << linear_error_decrease << std::endl;
 //     if (linear_error_decrease < 1e-10) {
-//       return manifolds;
+//       return points;
 //     }
 
 //     if (nonlinear_error_decrease > linear_error_decrease * alpha) {
-//       return newManifolds;
+//       return newPoints;
 //     }
 //     t *= beta;
 //   }
 //   std::cout << "bad\n";
-//   return manifolds;
+//   return points;
 // }
 
 /* ************************************************************************* */
@@ -224,7 +235,7 @@ void IEGDOptimizer::tryLambda(const NonlinearFactorGraph &graph,
                               const IEGDState &state, IEGDTrial &trial) const {
   // Perform the trial.
   trial.computeDelta(state);
-  trial.computeNewManifolds(state);
+  trial.computeNewPoints(state);
   trial.computeNewError(graph, state);
 
   // Check if successful.
@@ -239,18 +250,13 @@ void IEGDOptimizer::tryLambda(const NonlinearFactorGraph &graph,
 }
 
 /* ************************************************************************* */
-Values IEGDOptimizer::optimizeManifolds(
-    const NonlinearFactorGraph &graph, const IEManifoldValues &manifolds,
+Values IEGDOptimizer::optimize(
+    const NonlinearFactorGraph &graph, const IECMPoints &points,
     const Values &unconstrainedValues) const {
-  // construct equivalent factors on e-manifolds
-  // std::cout << "in optimize\n";
-  std::map<Key, Key> keymap_var2manifold = varToManifoldKeyMap(manifolds);
-  NonlinearFactorGraph manifold_graph =
-      ManifoldOptimizer::manifoldGraph(graph, keymap_var2manifold);
-  // std::cout << "graph done\n";
-
-  // Construct initial state
-  IEGDState state(manifolds, graph, 0);
+  validatePoints(points, unconstrainedValues);
+  details_->clear();
+  // Discovery and explicit construction use the same point/free-variable state.
+  IEGDState state(points, graph, 0, unconstrainedValues);
   state.lambda = params_.initialLambda;
 
   if (params_.verbose) {
@@ -261,13 +267,15 @@ Values IEGDOptimizer::optimizeManifolds(
   // check if we're already close enough
   if (state.error <= params_.errorTol) {
     details_->emplace_back(state);
-    return state.manifolds.baseValues();
+    return state.baseValues();
   }
 
   // Iterative loop
   IEGDState prev_state;
   do {
-    prev_state = state;
+    // Copy-construct points before moving the snapshot: map copy assignment
+    // may recycle nodes across components with different immutable bindings.
+    prev_state = IEGDState(state);
     IEGDIterationDetails iter_details = iterate(graph, state);
     state = IEGDState::fromLastIteration(iter_details, graph, params_);
     details_->push_back(iter_details);
@@ -275,7 +283,7 @@ Values IEGDOptimizer::optimizeManifolds(
            !checkConvergence(prev_state, state) &&
            checkMuWithinLimits(state.lambda) && std::isfinite(state.error));
   details_->emplace_back(state);
-  return state.manifolds.baseValues();
+  return state.baseValues();
 }
 
 /* ************************************************************************* */
@@ -294,8 +302,8 @@ bool IEGDOptimizer::checkModeChange(
   // Find the first state in the sequence of states that have the same mode.
   int n = details_->size();
   int first_i = n - 1;
-  while (first_i >= 0 && isSameMode(current_iter_details.state.manifolds,
-                                    details_->at(first_i).state.manifolds)) {
+  while (first_i >= 0 && isSameMode(current_iter_details.state.points,
+                                    details_->at(first_i).state.points)) {
     first_i--;
   }
   first_i++;
@@ -334,8 +342,8 @@ bool IEGDOptimizer::checkModeChange(
   }
 
   IndexSetMap change_indices_map = identifyChangeIndices(
-      current_iter_details.state.manifolds,
-      details_->at(iter_idx).trials.at(trial_idx).newManifolds);
+      current_iter_details.state.points,
+      details_->at(iter_idx).trials.at(trial_idx).newPoints);
 
   // Condition2(2): most recent failed trial results in other mode
   if (change_indices_map.size() == 0) {
@@ -343,7 +351,7 @@ bool IEGDOptimizer::checkModeChange(
   }
 
   auto approach_indices_map = identifyApproachingIndices(
-      init_iter_dertails.state.manifolds, current_iter_details.state.manifolds,
+      init_iter_dertails.state.points, current_iter_details.state.points,
       change_indices_map, params_.boundaryApproachRateThreshold);
 
   // Condition3: approaching boundary with decent rate
@@ -355,9 +363,12 @@ bool IEGDOptimizer::checkModeChange(
   IEGDTrial trial;
   trial.lambda = current_iter_details.state.lambda;
   trial.forcedIndicesMap = approach_indices_map;
-  trial.newManifolds = current_iter_details.state.manifolds.moveToBoundaries(
+  trial.newPoints = movePointsToBoundaries(current_iter_details.state.points,
       approach_indices_map);
-  trial.newError = graph.error(trial.newManifolds.baseValues());
+  trial.newUnconstrainedValues = current_iter_details.state.unconstrainedValues;
+  Values values = ambientValues(trial.newPoints);
+  values.insert(trial.newUnconstrainedValues);
+  trial.newError = graph.error(values);
   trial.stepIsSuccessful = true;
   current_iter_details.trials.emplace_back(trial);
   return true;
@@ -370,7 +381,7 @@ bool IEGDOptimizer::checkConvergence(const IEGDState &prev_state,
     return true;
 
   // check if mode changes
-  if (!isSameMode(prev_state.manifolds, state.manifolds)) {
+  if (!isSameMode(prev_state.points, state.points)) {
     return false;
   }
 

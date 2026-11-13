@@ -182,7 +182,7 @@ def solve_cm(
         ]
 
     parameters = gtd.ManifoldOptimizerParameters()
-    parameters.constraintManifoldParams.basisCreator = gtd.EliminationBasisCreator(
+    parameters.constraintManifoldParams.equalityBasisCreator = gtd.EliminationBasisCreator(
         basis_keys
     )
     retraction = gtd.RetractionParams()
@@ -240,7 +240,7 @@ def solve_cm(
         observer = None
     return solution, {
         "iterations": optimizer.iterations(),
-        "components": len(problem.components),
+        "components": len(problem.types),
         "ambient_dimension": initial.dim(),
         "reduced_dimension": problem.values.dim(),
     }

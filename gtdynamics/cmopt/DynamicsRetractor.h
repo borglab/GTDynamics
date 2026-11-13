@@ -36,6 +36,11 @@ protected:
       const_var_factors_ad_;
 
 public:
+  using Retractor::retract;
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<DynamicsRetractor>(*this);
+  }
+
   /**
    * Constructor.
    * @param constraints Equality constraints for the component.
@@ -45,6 +50,9 @@ public:
   DynamicsRetractor(const NonlinearEqualityConstraints::shared_ptr &constraints,
                     const RetractionParams::shared_ptr &params,
                     std::optional<const KeyVector> basis_keys = {});
+
+  /// A workspace copy owns independent mutable projection state.
+  DynamicsRetractor(const DynamicsRetractor &other);
 
   /// Retraction operation.
   Values retractConstraints(const Values &values) override;
@@ -95,14 +103,43 @@ public:
 
   virtual ~DynamicsRetractorCreator() {}
 
+  using RetractorCreator::create;
+  IERetractorCreator::shared_ptr clone() const override {
+    return std::make_shared<DynamicsRetractorCreator>(*this);
+  }
+
+  /// Conditioning removes fixed slots from the independent-key selection.
+  IERetractorCreator::shared_ptr cloneFor(const KeySet &keys) const override {
+    auto result = std::make_shared<DynamicsRetractorCreator>(*this);
+    result->params_ = IERetractorParams::snapshot(params_, &keys);
+    result->scopeOrdering(keys);
+    if (result->basisKeyFunction) {
+      // Resolve external callbacks once; shared types retain only local slots.
+      const KeyVector scope(keys.begin(), keys.end());
+      KeyVector selected;
+      for (Key key : result->basisKeyFunction(scope))
+        if (keys.count(key)) selected.push_back(key);
+      result->basisKeyFunction = [selected](const KeyVector &available) {
+        const KeySet candidates(available.begin(), available.end());
+        KeyVector retained;
+        for (Key key : selected)
+          if (candidates.count(key)) retained.push_back(key);
+        return retained;
+      };
+    }
+    return result;
+  }
+
+  IERetractor::shared_ptr create(const IECMPoint &point) const override;
+
   Retractor::shared_ptr create(const NonlinearEqualityConstraints::shared_ptr
                                    constraints) const override {
-    if (params_->useBasisKeys) {
+    if (equalityParams_->useBasisKeys) {
       KeyVector basis_keys = basisKeyFunction(constraints->keyVector());
-      return std::make_shared<DynamicsRetractor>(constraints, params_,
+      return std::make_shared<DynamicsRetractor>(constraints, equalityParams_,
                                                  basis_keys);
     } else {
-      return std::make_shared<DynamicsRetractor>(constraints, params_);
+      return std::make_shared<DynamicsRetractor>(constraints, equalityParams_);
     }
   }
 };

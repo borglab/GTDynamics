@@ -19,6 +19,7 @@ const ready = {
   kinodynamics: '.kinodynamics-scene[data-ready="true"] canvas', 'motion-planning': '.robot-canvas canvas',
   'scate/ur5': '#stage[data-ready="true"] canvas',
   'scate/ur10e-reactive': '#stage[data-ready="true"] canvas',
+  'steap-cmrg': '.steap-scene canvas',
   urdf: '.urdf-app[data-mode="browser"] #status-badge:has-text("Ready")',
 };
 try {

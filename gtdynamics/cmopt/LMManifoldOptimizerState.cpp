@@ -27,11 +27,11 @@ namespace gtdynamics {
 LMState::LMState(const NonlinearFactorGraph &graph,
                  const ManifoldOptimizationProblem &problem, const double &_lambda,
                  const double &_lambdaFactor, size_t _iterations)
-    : manifolds(problem.manifolds()),
+    : points(problem.points()),
       unconstrainedValues(problem.unconstrainedValues()),
-      constManifolds(problem.constManifolds()),
-      error(evaluateGraphError(graph, manifolds, unconstrainedValues,
-                               constManifolds)),
+      constPoints(problem.constPoints()),
+      error(evaluateGraphError(graph, points, unconstrainedValues,
+                               constPoints)),
       lambda(_lambda), lambdaFactor(_lambdaFactor), iterations(_iterations) {}
 
 /* ************************************************************************* */
@@ -43,10 +43,10 @@ LMState LMState::fromLastIteration(const LMIterationDetails &iter_details,
   const auto &prev_state = iter_details.state;
   LMState state;
   if (last_trial.stepIsSuccessful) {
-    state.manifolds = last_trial.nonlinearUpdate.newManifolds;
+    state.points = last_trial.nonlinearUpdate.newPoints;
     state.unconstrainedValues =
         last_trial.nonlinearUpdate.newUnconstrainedValues;
-    state.constManifolds = prev_state.constManifolds;
+    state.constPoints = prev_state.constPoints;
     state.error = last_trial.nonlinearUpdate.newError;
     state.lambda = last_trial.linearUpdate.lambda;
     state.lambdaFactor = prev_state.lambdaFactor;
@@ -63,20 +63,20 @@ LMState LMState::fromLastIteration(const LMIterationDetails &iter_details,
 
 /* ************************************************************************* */
 double LMState::evaluateGraphError(const NonlinearFactorGraph &graph,
-                                   const EManifoldValues &_manifolds,
+                                   const ECMPoints &_points,
                                    const Values &_unconstrained_values,
-                                   const EManifoldValues &_const_manifolds) {
-  Values base_values = _manifolds.baseValues();
+                                   const ECMPoints &_const_points) {
+  Values base_values = ambientValues(_points);
   base_values.insert(_unconstrained_values);
-  base_values.insert(_const_manifolds.baseValues());
+  base_values.insert(ambientValues(_const_points));
   return graph.error(base_values);
 }
 
 /* ************************************************************************* */
 Values LMState::baseValues() const {
-  Values base_values = manifolds.baseValues();
+  Values base_values = ambientValues(points);
   base_values.insert(unconstrainedValues);
-  base_values.insert(constManifolds.baseValues());
+  base_values.insert(ambientValues(constPoints));
   return base_values;
 }
 
@@ -185,7 +185,7 @@ LMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
     : lambda(_lambda) {
   // linearize and build damped system
   Values state_values = state.unconstrainedValues;
-  for (const auto &it : state.manifolds) {
+  for (const auto &it : state.points) {
     state_values.insert(it.first, it.second);
   }
   GaussianFactorGraph::shared_ptr linear =
@@ -225,7 +225,10 @@ LMTrial::LinearUpdate::buildDampedSystem(GaussianFactorGraph damped,
   noiseModelCache.resize(0);
   // for each of the variables, add a prior
   damped.reserve(damped.size() + state.unconstrainedValues.size());
-  std::map<Key, size_t> dims = state.manifolds.dims();
+  std::map<Key, size_t> dims;
+  for (const auto& entry : state.points) {
+    dims.emplace(entry.first, entry.second.dim());
+  }
   std::map<Key, size_t> dims_unconstrained = state.unconstrainedValues.dims();
   dims.insert(dims_unconstrained.begin(), dims_unconstrained.end());
   for (const auto &key_dim : dims) {
@@ -272,11 +275,11 @@ VectorValues
 LMTrial::LinearUpdate::computeTangentVector(const VectorValues &delta,
                                             const LMState &state) const {
   VectorValues tangentVector;
-  for (const auto &it : state.manifolds) {
+  for (const auto &it : state.points) {
     const Vector &xi = delta.at(it.first);
-    tangentVector.insert(it.second.basis()->computeTangentVector(xi));
+    tangentVector.insert(it.second.toAmbient(xi));
   }
-  for (const auto &it : state.constManifolds) {
+  for (const auto &it : state.constPoints) {
     tangentVector.insert(it.second.values().zeroVectors());
   }
   for (const Key &key : state.unconstrainedValues.keys()) {
@@ -294,10 +297,13 @@ LMTrial::NonlinearUpdate::NonlinearUpdate(const LMState &state,
                                           const LinearUpdate &linearUpdate,
                                           const NonlinearFactorGraph &graph) {
 
-  // retract for manifolds
+  // retract for points
   VectorValues tangent_vector_manifold =
-      SubValues(linearUpdate.delta, state.manifolds.keys());
-  newManifolds = state.manifolds.retract(tangent_vector_manifold);
+      SubValues(linearUpdate.delta, pointKeys(state.points));
+  for (const auto& entry : state.points) {
+    newPoints.emplace(entry.first,
+                      entry.second.retract(tangent_vector_manifold.at(entry.first)));
+  }
 
   // retract for unconstrained variables
   VectorValues tangent_vector_unconstrained =
@@ -307,7 +313,7 @@ LMTrial::NonlinearUpdate::NonlinearUpdate(const LMState &state,
 
   // compute error
   newError = LMState::evaluateGraphError(
-      graph, newManifolds, newUnconstrainedValues, state.constManifolds);
+      graph, newPoints, newUnconstrainedValues, state.constPoints);
   costChange = state.error - newError;
 }
 

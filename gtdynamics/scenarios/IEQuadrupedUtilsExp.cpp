@@ -37,9 +37,9 @@ void EvaluateAndExportIELMResult(
 
   /// Show active constraints
   std::cout << "active constraints:\n";
-  for (const auto &[key, manifold] : ielm_iters.back().state.manifolds) {
-    for (const auto &i_idx : manifold.activeIndices()) {
-      auto constraint = manifold.iConstraints()->at(i_idx);
+  for (const auto &[key, point] : ielm_iters.back().state.points) {
+    for (const auto &i_idx : point.activeIndices()) {
+      auto constraint = point.iConstraints()->at(i_idx);
       constraint->print();
     }
   }
@@ -140,10 +140,10 @@ void ExportActiveConstraints(
 }
 
 /* ************************************************************************* */
-std::vector<std::string> ActiveNames(const IEManifoldValues &manifolds) {
+std::vector<std::string> ActiveNames(const IECMPoints &points) {
   std::vector<std::string> active_names;
-  for (const auto &[key, manifold] : manifolds) {
-    for (const auto &constraint_idx : manifold.activeIndices()) {
+  for (const auto &[key, point] : points) {
+    for (const auto &constraint_idx : point.activeIndices()) {
       active_names.push_back(std::to_string(constraint_idx));
     }
   }
@@ -198,7 +198,7 @@ void ExportOptimizationProgress(
     iters_state_costs_eval.at("iterations").emplace_back(state.iterations);
 
     // Record state active constraint info
-    auto state_active_names = ActiveNames(state.manifolds);
+    auto state_active_names = ActiveNames(state.points);
     iters_state_active_names.emplace_back(state.iterations, state_active_names);
 
     for (size_t trial_id = 0; trial_id < iter_details.trials.size();
@@ -225,7 +225,7 @@ void ExportOptimizationProgress(
       iters_trials_costs_eval.at("iterations").emplace_back(state.iterations);
 
       // Record trial active constraint info
-      auto trial_active_names = ActiveNames(state.manifolds);
+      auto trial_active_names = ActiveNames(state.points);
       iters_trials_active_names.emplace_back(state.iterations,
                                              trial_active_names);
     }

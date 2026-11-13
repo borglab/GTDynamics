@@ -34,7 +34,7 @@
 #include <string>
 
 #include "CmcBenchmark.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 #include "gtdynamics/utils/DynamicsSymbol.h"
 
 using namespace gtsam;
@@ -87,14 +87,11 @@ int main(int argc, char **argv) {
 
     // Parameters
     auto iecm_params = std::make_shared<IEConstraintManifold::Params>();
-    iecm_params->equalityManifoldParams->basisCreator =
+    iecm_params->equalityBasisCreator =
         std::make_shared<EliminationBasisCreator>(cp.getBasisKeyFunction());
     iecm_params->retractorCreator =
         std::make_shared<UniversalIERetractorCreator>(
             std::make_shared<CartPoleWithLimitsRetractor>(cp));
-    iecm_params->equalityBasisCreator =
-        iecm_params->equalityManifoldParams->basisCreator;
-    iecm_params->equalityBasisBuildFromScratch = false;
 
     // optimize IELM
     IELMParams ie_params;

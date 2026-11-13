@@ -14,7 +14,7 @@ try{
       const page=await context.newPage(),errors=[];page.setDefaultTimeout(60000);
       page.on('pageerror',error=>errors.push(error.message));
       await page.goto(`http://127.0.0.1:${server.httpServer.address().port}${base}`);
-      assert.equal(await page.getByRole('tab').last().innerText(),'SCATE');
+      assert.deepEqual((await page.getByRole('tab').allTextContents()).slice(-2),['SCATE','CAST']);
       assert.equal(await page.locator('iframe').count(),0);
       for(const app of ['Dynamics','Kinodynamics']) {
         await page.getByRole('tab',{name:app,exact:true}).click();

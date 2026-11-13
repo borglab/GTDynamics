@@ -12,10 +12,11 @@
  */
 
 #include <gtdynamics/cmopt/ManifoldOptimizer.h>
-#include <gtdynamics/factors/SubstituteFactor.h>
+#include <gtdynamics/constrained/CMCostFactor.h>
+#include <gtdynamics/cmcopt/IEOptimizer.h>
+#include <gtdynamics/cmopt/UnconstrainedOptimizationRetractor.h>
 #include <gtdynamics/utils/GraphUtils.h>
-
-#include <stack>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 namespace gtdynamics {
 
@@ -25,53 +26,47 @@ Values ManifoldOptimizationProblem::unconstrainedValues() const {
 }
 
 /* ************************************************************************* */
-EManifoldValues ManifoldOptimizationProblem::manifolds() const {
-  EManifoldValues equalityManifolds;
+ECMPoints ManifoldOptimizationProblem::points() const {
+  ECMPoints result;
   for (const Key& key : manifoldKeys) {
-    equalityManifolds.insert({key, values.at<ConstraintManifold>(key)});
+    result.emplace(key, values.at<ECMPoint>(key));
   }
-  return equalityManifolds;
+  return result;
 }
 
 /* ************************************************************************* */
-EManifoldValues ManifoldOptimizationProblem::constManifolds() const {
-  EManifoldValues equalityManifolds;
-  for (const Key& key : fixedManifolds.keys()) {
-    equalityManifolds.insert({key, fixedManifolds.at<ConstraintManifold>(key)});
-  }
-  return equalityManifolds;
+ECMPoints ManifoldOptimizationProblem::constPoints() const {
+  return fixedPoints;
 }
 
 /* ************************************************************************* */
 std::pair<size_t, size_t> ManifoldOptimizationProblem::problemDimension() const {
-  size_t values_dim = values.dim();
   size_t graph_dim = 0;
   for (const auto& factor : graph) {
     graph_dim += factor->dim();
   }
-  return std::make_pair(graph_dim, values_dim);
+  return std::make_pair(graph_dim, values.dim());
 }
 
 /* ************************************************************************* */
 void ManifoldOptimizationProblem::print(const std::string& s,
                                const KeyFormatter& keyFormatter) const {
   std::cout << s;
-  std::cout << "found " << components.size()
-            << " components: " << manifoldKeys.size() << " free, "
-            << fixedManifolds.size() << " fixed\n";
-  for (const Key& cm_key : manifoldKeys) {
-    const auto& cm = values.at(cm_key).cast<ConstraintManifold>();
-    std::cout << "component " << keyFormatter(cm_key) << ":\tdimension "
-              << cm.dim() << "\n";
-    for (const auto& key : cm.values().keys()) {
-      std::cout << "\t" << keyFormatter(key);
+  std::cout << "found " << types.size()
+            << " types: " << manifoldKeys.size() << " free points, "
+            << fixedPoints.size() << " fixed points\n";
+  for (const Key& key : manifoldKeys) {
+    const auto& point = values.at<ECMPoint>(key);
+    std::cout << "component " << keyFormatter(key) << ":\tdimension "
+              << point.dim() << "\n";
+    for (const auto& ambientKey : point.values().keys()) {
+      std::cout << "\t" << keyFormatter(ambientKey);
     }
     std::cout << "\n";
   }
-  std::cout << "fully constrained manifolds:\n";
-  for (const auto& cm_key : fixedManifolds.keys()) {
-    const auto& cm = fixedManifolds.at(cm_key).cast<ConstraintManifold>();
-    for (const auto& key : cm.values().keys()) {
+  std::cout << "fully constrained points:\n";
+  for (const auto& entry : fixedPoints) {
+    for (const auto& key : entry.second.values().keys()) {
       std::cout << "\t" << keyFormatter(key);
     }
     std::cout << "\n";
@@ -81,92 +76,27 @@ void ManifoldOptimizationProblem::print(const std::string& s,
 /* ************************************************************************* */
 ManifoldOptimizerParameters::ManifoldOptimizerParameters()
     : Base(),
-      constraintManifoldParams(std::make_shared<ConstraintManifold::Params>()),
-      retractInitialValues(true) {}
-
-/* ************************************************************************* */
-NonlinearEqualityConstraints::shared_ptr ManifoldOptimizer::identifyConnectedComponent(
-    const NonlinearEqualityConstraints& constraints, const gtsam::Key start_key,
-    gtsam::KeySet& keys, const gtsam::VariableIndex& var_index) {
-  std::set<size_t> constraint_indices;
-
-  std::stack<gtsam::Key> key_stack;
-  key_stack.push(start_key);
-  while (!key_stack.empty()) {
-    gtsam::Key key = key_stack.top();
-    key_stack.pop();
-    // find all constraints connected to key
-    for (const auto& constraint_index : var_index[key]) {
-      constraint_indices.insert(constraint_index);
-      for (const auto& neighbor_key :
-           constraints.at(constraint_index)->keys()) {
-        if (keys.find(neighbor_key) != keys.end()) {
-          keys.erase(neighbor_key);
-          key_stack.push(neighbor_key);
-        }
-      }
-    }
-  }
-
-  auto cc_constraints = std::make_shared<NonlinearEqualityConstraints>();
-  for (const auto& constraint_index : constraint_indices) {
-    cc_constraints->push_back(constraints.at(constraint_index));
-  }
-  return cc_constraints;
-}
-
-/* ************************************************************************* */
-std::vector<NonlinearEqualityConstraints::shared_ptr>
-ManifoldOptimizer::identifyConnectedComponents(
-    const NonlinearEqualityConstraints& constraints) {
-  // Get all the keys in constraints.
-  gtsam::VariableIndex constraint_var_index(constraints);
-  gtsam::KeySet constraint_keys = constraints.keys();
-
-  // Find connected component using DFS algorithm.
-  std::vector<NonlinearEqualityConstraints::shared_ptr> components;
-  while (!constraint_keys.empty()) {
-    Key key = *constraint_keys.begin();
-    constraint_keys.erase(key);
-    components.emplace_back(identifyConnectedComponent(
-        constraints, key, constraint_keys, constraint_var_index));
-  }
-  return components;
+      constraintManifoldParams(std::make_shared<EConstraintManifold::Params>()),
+      retractInitialValues(true) {
+  constraintManifoldParams->retractorCreator =
+      std::make_shared<UnconstrainedOptimizationRetractorCreator>();
 }
 
 /* ************************************************************************* */
 NonlinearFactorGraph ManifoldOptimizer::manifoldGraph(
-    const NonlinearFactorGraph& graph, const std::map<Key, Key>& var2man_keymap,
-    const Values& fc_manifolds) {
-  NonlinearFactorGraph manifold_graph;
-  for (const auto& factor : graph) {
-    std::map<Key, Key> replacement_map;
-    for (const Key& key : factor->keys()) {
-      if (var2man_keymap.find(key) != var2man_keymap.end()) {
-        replacement_map[key] = var2man_keymap.at(key);
-      }
-    }
-    if (replacement_map.size() > 0) {
-      NoiseModelFactor::shared_ptr noise_factor =
-          std::dynamic_pointer_cast<NoiseModelFactor>(factor);
-      auto subs_factor = std::make_shared<SubstituteFactor>(
-          noise_factor, replacement_map, fc_manifolds);
-      if (subs_factor->checkActive()) {
-        manifold_graph.add(subs_factor);
-      }
-    } else {
-      manifold_graph.add(factor);
-    }
+    const NonlinearFactorGraph& graph, const ECMPoints& points) {
+  Values allPoints;
+  for (const auto& entry : points) {
+    allPoints.insert(entry.first, entry.second);
   }
-  return manifold_graph;
+  return pointCostGraph(graph, allPoints,
+                       CMCostFactor::PointType::Equality);
 }
 
 /* ************************************************************************* */
 ManifoldOptimizationProblem ManifoldOptimizer::transformProblem(
     const EConsOptProblem& equalityConstrainedProblem) const {
   ManifoldOptimizationProblem mopt_problem;
-  mopt_problem.components =
-      identifyConnectedComponents(equalityConstrainedProblem.e_constraints_);
   constructManifoldOptimizationValues(equalityConstrainedProblem, mopt_problem);
   constructManifoldOptimizationGraph(equalityConstrainedProblem, mopt_problem);
   return mopt_problem;
@@ -184,25 +114,41 @@ void ManifoldOptimizer::constructManifoldOptimizationValues(
 void ManifoldOptimizer::constructManifoldValues(
     const EConsOptProblem& equalityConstrainedProblem,
     ManifoldOptimizationProblem& mopt_problem) const {
-  for (size_t i = 0; i < mopt_problem.components.size(); i++) {
-    // Find the values of variables in the component.
-    const auto& component = mopt_problem.components.at(i);
-    const KeySet component_keys = component->keys();
-    if (component_keys.empty()) continue;
-    const Key component_key = *component_keys.begin();
-    Values component_values;
-    for (const Key& key : component_keys) {
-      component_values.insert(key, equalityConstrainedProblem.values_.at(key));
+  IEOptimizer::ValueInitializer initialize;
+  if (p_.retractInitialValues) {
+    const auto creator = std::dynamic_pointer_cast<RetractorCreator>(
+        p_.constraintManifoldParams->retractorCreator);
+    if (!creator) {
+      throw std::invalid_argument(
+          "Initial equality projection requires an equality retractor policy");
     }
-    // Construct manifold value
-    auto constraint_manifold = ConstraintManifold(
-        component, component_values, p_.constraintManifoldParams, p_.retractInitialValues);
-    // check if the manifold is fully constrained
-    if (constraint_manifold.dim() > 0) {
-      mopt_problem.values.insert(component_key, constraint_manifold);
-      mopt_problem.manifoldKeys.insert(component_key);
+    initialize = [creator](const NonlinearEqualityConstraints& constraints,
+                           const Values& values) {
+      auto owned = std::make_shared<NonlinearEqualityConstraints>(constraints);
+      return creator->create(owned)->retractConstraints(values);
+    };
+  }
+  // Project before constructing any numerical equality basis.
+  const auto discovered = IEOptimizer::identifyConnectedComponents(
+      equalityConstrainedProblem.e_constraints_, NonlinearInequalityConstraints(),
+      equalityConstrainedProblem.values_, p_.constraintManifoldParams,
+      [](const NonlinearEqualityConstraints& equalities,
+         const NonlinearInequalityConstraints&, const Values& prototype,
+         const IEConstraintManifold::Params::shared_ptr& params) {
+        return std::make_shared<EConstraintManifold>(equalities, prototype,
+                                                     *params);
+      }, initialize);
+  for (const auto& type : discovered.types) {
+    mopt_problem.types.push_back(
+        std::dynamic_pointer_cast<const EConstraintManifold>(type));
+  }
+  for (const auto& entry : discovered.points) {
+    auto point = ECMPoint::fromIEPoint(entry.second);
+    if (point.dim() > 0) {
+      mopt_problem.values.insert(entry.first, point);
+      mopt_problem.manifoldKeys.insert(entry.first);
     } else {
-      mopt_problem.fixedManifolds.insert(component_key, constraint_manifold);
+      mopt_problem.fixedPoints.emplace(entry.first, std::move(point));
     }
   }
 }
@@ -211,83 +157,40 @@ void ManifoldOptimizer::constructManifoldValues(
 void ManifoldOptimizer::constructUnconstrainedValues(
     const EConsOptProblem& equalityConstrainedProblem,
     ManifoldOptimizationProblem& mopt_problem) {
-  // Find out which variables are unconstrained
-  mopt_problem.unconstrainedKeys = equalityConstrainedProblem.costs_.keys();
-  KeySet& unconstrainedKeys = mopt_problem.unconstrainedKeys;
-  for (const auto& component : mopt_problem.components) {
-    for (const Key& key : component->keys()) {
-      if (unconstrainedKeys.find(key) != unconstrainedKeys.end()) {
-        unconstrainedKeys.erase(key);
-      }
-    }
+  auto& keys = mopt_problem.unconstrainedKeys;
+  keys = equalityConstrainedProblem.costs_.keys();
+  for (Key key : equalityConstrainedProblem.e_constraints_.keys()) {
+    keys.erase(key);
   }
-  // Copy the values of unconstrained variables
-  for (const Key& key : unconstrainedKeys) {
-    mopt_problem.values.insert(key, equalityConstrainedProblem.values_.at(key));
-  }
+  mopt_problem.values.insert(
+      SubValues(equalityConstrainedProblem.values_, keys));
 }
 
 /* ************************************************************************* */
 void ManifoldOptimizer::constructManifoldOptimizationGraph(
     const EConsOptProblem& equalityConstrainedProblem,
     ManifoldOptimizationProblem& mopt_problem) {
-  // Construct base key to component map.
-  std::map<Key, Key> key_component_map;
-  for (const Key& cm_key : mopt_problem.manifoldKeys) {
-    const auto& cm = mopt_problem.values.at(cm_key).cast<ConstraintManifold>();
-    for (const Key& base_key : cm.values().keys()) {
-      key_component_map[base_key] = cm_key;
-    }
-  }
-  for (const Key& cm_key : mopt_problem.fixedManifolds.keys()) {
-    const auto& cm =
-        mopt_problem.fixedManifolds.at(cm_key).cast<ConstraintManifold>();
-    for (const Key& base_key : cm.values().keys()) {
-      key_component_map[base_key] = cm_key;
-    }
-  }
-
-  // Turn factors involved with constraint variables into SubstituteFactor.
-  for (const auto& factor : equalityConstrainedProblem.costs_) {
-    std::map<Key, Key> replacement_map;
-    for (const Key& key : factor->keys()) {
-      if (key_component_map.find(key) != key_component_map.end()) {
-        replacement_map[key] = key_component_map.at(key);
-      }
-    }
-    if (replacement_map.size() > 0) {
-      NoiseModelFactor::shared_ptr noise_factor =
-          std::dynamic_pointer_cast<NoiseModelFactor>(factor);
-      auto subs_factor = std::make_shared<SubstituteFactor>(
-          noise_factor, replacement_map, mopt_problem.fixedManifolds);
-      if (subs_factor->checkActive()) {
-        mopt_problem.graph.add(subs_factor);
-      }
-    } else {
-      mopt_problem.graph.add(factor);
-    }
-  }
+  ECMPoints allPoints = mopt_problem.points();
+  allPoints.insert(mopt_problem.fixedPoints.begin(), mopt_problem.fixedPoints.end());
+  mopt_problem.graph = manifoldGraph(equalityConstrainedProblem.costs_, allPoints);
 }
 
 /* ************************************************************************* */
 Values ManifoldOptimizer::baseValues(const ManifoldOptimizationProblem& mopt_problem,
                                      const Values& nopt_values) const {
-  Values base_values;
-  for (const Key& key : mopt_problem.fixedManifolds.keys()) {
-    base_values.insert(mopt_problem.fixedManifolds.at(key)
-                           .cast<ConstraintManifold>()
-                           .values());
-  }
+  Values base_values = ambientValues(mopt_problem.fixedPoints);
   for (const Key& key : mopt_problem.unconstrainedKeys) {
     base_values.insert(key, nopt_values.at(key));
   }
   for (const Key& key : mopt_problem.manifoldKeys) {
+    const auto& point = nopt_values.at<ECMPoint>(key);
     if (p_.retractFinalValues) {
-      base_values.insert(
-          nopt_values.at(key).cast<ConstraintManifold>().feasibleValues());
+      // Final projection retains the previous default penalty-LM convention.
+      gtsam::LevenbergMarquardtOptimizer optimizer(
+          point.eConstraints()->penaltyGraph(), point.values());
+      base_values.insert(optimizer.optimize());
     } else {
-      base_values.insert(
-          nopt_values.at(key).cast<ConstraintManifold>().values());
+      base_values.insert(point.values());
     }
   }
   return base_values;
@@ -302,9 +205,10 @@ VectorValues ManifoldOptimizer::baseTangentVector(
     tangentVector.insert(key, delta.at(key));
   }
   for (const Key& key : mopt_problem.manifoldKeys) {
-    tangentVector.insert(
-        values.at(key).cast<ConstraintManifold>().basis()->computeTangentVector(
-            delta.at(key)));
+    tangentVector.insert(values.at<ECMPoint>(key).toAmbient(delta.at(key)));
+  }
+  for (const auto& entry : mopt_problem.fixedPoints) {
+    tangentVector.insert(entry.second.values().zeroVectors());
   }
   return tangentVector;
 }
@@ -316,6 +220,29 @@ ManifoldOptimizationProblem ManifoldOptimizer::initializeManifoldOptimizationPro
     const gtsam::Values& init_values) const {
   EConsOptProblem equalityConstrainedProblem(costs, constraints, init_values);
   return transformProblem(equalityConstrainedProblem);
+}
+
+/* ************************************************************************* */
+ManifoldOptimizationProblem ManifoldOptimizer::initializeManifoldOptimizationProblem(
+    const NonlinearFactorGraph& costs, const ECMPoints& points,
+    const Values& unconstrainedValues) const {
+  IEOptimizer::validatePoints(widenPoints(points), unconstrainedValues);
+  ManifoldOptimizationProblem problem;
+  problem.values = unconstrainedValues;
+  problem.unconstrainedKeys = unconstrainedValues.keySet();
+  std::set<const EConstraintManifold*> seen;
+  for (const auto& entry : points) {
+    const auto type = entry.second.manifold();
+    if (seen.insert(type.get()).second) problem.types.push_back(type);
+    if (entry.second.dim() == 0) {
+      problem.fixedPoints.emplace(entry.first, entry.second);
+    } else {
+      problem.values.insert(entry.first, entry.second);
+      problem.manifoldKeys.insert(entry.first);
+    }
+  }
+  problem.graph = manifoldGraph(costs, points);
+  return problem;
 }
 
 }  // namespace gtdynamics

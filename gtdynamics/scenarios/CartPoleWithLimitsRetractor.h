@@ -22,6 +22,12 @@ class IECartPoleWithLimits;
 
 /** Retraction rule that clamps cart position and force to their limits. */
 class CartPoleWithLimitsRetractor : public IERetractor {
+ public:
+  /// Isolated copy used by runtime manifold types.
+  IERetractor::shared_ptr clone() const override {
+    return std::make_shared<CartPoleWithLimitsRetractor>(*this);
+  }
+
 protected:
   /// Cart-pole problem parameters.
   const IECartPoleWithLimits &cp_;
@@ -32,8 +38,8 @@ public:
       : IERetractor(), cp_(cp) {}
 
   /** Retract a tangent update and return a feasible constrained manifold. */
-  IEConstraintManifold
-  retract(const IEConstraintManifold *manifold, const VectorValues &delta,
+  IECMPoint
+  retract(const IECMPoint *point, const VectorValues &delta,
           const std::optional<IndexSet> &blocking_indices = {},
           IERetractionInfo *retract_info = nullptr) const override;
 };

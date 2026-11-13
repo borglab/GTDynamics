@@ -12,6 +12,7 @@
  * @author Yetong Zhang
  */
 
+#include <gtdynamics/cmopt/Retractor.h>
 #include <gtsam/base/MatrixConstants.h>
 #include <gtdynamics/cmopt/NonlinearManifoldOptimizer.h>
 #include <gtdynamics/constrained_optimizer/ConstrainedOptBenchmark.h>
@@ -221,14 +222,12 @@ void PrintCMComponentDebug(const EConsOptProblem& problem,
 
   std::map<Key, Key> key_component_map;
   for (const Key& cm_key : mopt_problem.manifoldKeys) {
-    const auto& cm = mopt_problem.values.at(cm_key).cast<ConstraintManifold>();
+    const auto& cm = mopt_problem.values.at(cm_key).cast<ECMPoint>();
     for (const Key& base_key : cm.values().keys()) {
       key_component_map[base_key] = cm_key;
     }
   }
-  for (const Key& cm_key : mopt_problem.fixedManifolds.keys()) {
-    const auto& cm =
-        mopt_problem.fixedManifolds.at(cm_key).cast<ConstraintManifold>();
+  for (const auto& [cm_key, cm] : mopt_problem.fixedPoints) {
     for (const Key& base_key : cm.values().keys()) {
       key_component_map[base_key] = cm_key;
     }
@@ -266,7 +265,7 @@ void kinematic_planning(const ConnectedPosesArgs& args) {
 
   auto moptFactory = [](ConstrainedOptBenchmark::Method) {
     auto moptParams = ConstrainedOptBenchmark::DefaultMoptParams();
-    moptParams.constraintManifoldParams->retractorCreator->params()
+    std::dynamic_pointer_cast<RetractorCreator>(moptParams.constraintManifoldParams->retractorCreator)->params()
         ->lmParams.linearSolverType =
         gtsam::NonlinearOptimizerParams::SEQUENTIAL_CHOLESKY;
     return moptParams;

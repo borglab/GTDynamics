@@ -27,11 +27,6 @@ Key phase_key = PhaseKey(0);
 TEST(frictionConeConstraint, error_jacobian) {
   using namespace vision60_test;
 
-  // auto upper_link = robot.robot.link("fl_upper");
-  // Pose3 pose = robot.nominal_values.at<Pose3>(PoseKey(upper_link->id(), 0));
-  // std::cout << pose.rotation().rpy().transpose() << "\n";
-  // std::cout << pose.translation().transpose() << "\n";
-
   params->mu = 0.8;
   std::string link_name = "fl_lower";
   auto contact_link_id = robot.robot.link(link_name)->id();

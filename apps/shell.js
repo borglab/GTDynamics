@@ -25,7 +25,9 @@ for (const [index, app] of apps.filter(app => !app.parentTab).entries()) {
   tab.href = `#${app.id}`;
   tab.role = 'tab';
   tab.setAttribute('aria-controls', 'app-panel');
-  tab.textContent = app.title;
+  // A long title can carry a short tab label; the full title stays the accessible name.
+  tab.textContent = app.tab || app.title;
+  if (app.tab) tab.setAttribute('aria-label', app.title);
   tabs.append(tab);
 
   const link = document.createElement('a');

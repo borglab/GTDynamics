@@ -14,7 +14,7 @@
 
 #include <gtsam/base/MatrixConstants.h>
 #include <CppUnitLite/TestHarness.h>
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/constrained/MultiJacobian.h>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/TestableAssertions.h>

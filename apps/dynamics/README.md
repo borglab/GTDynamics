@@ -73,6 +73,116 @@ equation and frame consistency. Contact stationarity remains an input-quality
 issue: the labeled stance feet have 0.67 m/s RMS speed in the GP fit. Rigid
 contact would require further pose/velocity consistency constraints.
 
+## Affine equality-only showcase
+
+The conditioning boundary is deliberate: fit the full kinematic GP first,
+then capture an owning q/v snapshot with `ConstVarGraph`, then create runtime
+manifold types with `affineEqualities = true`. Accelerations remain free with
+soft GP-derived priors. Every slice gets its own conditioned coefficients and
+offset; equal graph structure alone does not permit sharing its numerical
+basis. A changed q/v snapshot creates fresh types. LM damping and objective
+weights never change that equality geometry.
+
+`solveFixedKinematicsDynamics` exposes this workflow through
+`fixed_dynamics::Options`. Set `equalityOnly = true` to compare equality-only
+optimization, and choose `LinearSolver::Gaussian`, `GtsamQP`, or optional
+`ProxQP`. `Automatic` uses Gaussian only for equality-only problems; the app's
+normal inequality-constrained solve still uses GTSAM QP. The Python example
+accepts the corresponding `--equality-only --linear-solver gaussian` flags.
+This reuses the existing conditioning implementation; a dedicated generated
+mechanics/conditioning API remains future work.
+
+The [comparison runner](../../examples/g1_mjlab/benchmark_fixed_dynamics.py)
+uses exactly this app's inputs, acceleration priors, objective, and anchor for
+all solvers. Its `manifold-lm` case calls the retained `LMManifoldOptimizer`
+with `EConstraintManifold` definitions and concrete `ECMPoint` values, using
+the production problem builders and original equality retraction algorithm.
+CMC and equality-only LM share geometry and substitution code. Run with
+matching built bindings:
+
+```bash
+taskset -c 8-15 python examples/g1_mjlab/benchmark_fixed_dynamics.py \
+  --kinematics apps/kinematics-inspector/public \
+  --dense-data apps/kinematics-inspector/.cache/openio-contact-source \
+  --model-cache models/mujoco/.cache/g1-mjlab \
+  --output build/affine-dynamics-comparison --include-proxqp
+```
+
+Omit `--include-proxqp` without that optional backend. Choose available CPUs
+for your machine. The runner restricts each fresh process to eight inherited
+CPUs, alternates case order, and saves input, source, binary, and library hashes.
+Use single-thread BLAS/OpenMP and the same TBB-enabled GTSAM/GTDynamics build.
+It writes benchmark artifacts only; it does not export browser recordings.
+
+### Historical baseline at `6aea8ba1`
+
+The table below preserves the pre-migration comparison at commit `6aea8ba1`.
+Its old-CM row used the removed `ConstraintManifold` value class and duplicate
+`SubstituteFactor`. Current `manifold-lm` runs use `ECMPoint`, so they must not
+be labeled as fresh measurements of that old value implementation.
+
+On 2026-11-08, three fresh runs per case used Release Clang 18.1.3, TBB,
+ProxSuite 0.7.3, one retraction worker, CPUs 8–15, and single-thread BLAS/OpenMP.
+GTSAM revision was `c940b44158d8bfa7394da233dd63aa225bc8fed2`, matching the
+[nonlinear comparison](../../gtdynamics/cmopt/EqualityOnlyOptimization.md).
+Another benchmark was confined to CPUs 0–7; no builds/tests ran during timing.
+These are local wall times, with some host variability.
+
+| Solve | Median complete native call (s) | LM iterations | Final objective |
+| --- | ---: | ---: | ---: |
+| CMC equality-only Gaussian | 0.616 | 4 | 13.100276284397 |
+| CMC equality-only GTSAM QP | 0.685 | 4 | 13.100276284397 |
+| Old equality-only CM-Opt | 0.802 | 4 | 13.100276284397 |
+| CMC equality-only ProxQP | 2.678 | 19 | 13.100276284398 |
+| Normal CMC with wrench inequalities | 0.678 | 4 | 13.100276284397 |
+
+The complete native call includes assembly, conditioning, equality-anchor
+construction, manifold preparation, optimization, diagnostics, and cleanup.
+It excludes data loading, GP fitting, fixed-input preparation, and export.
+GP construction/solve takes about another 0.20 s. Old CM's native call includes
+its adapter preparation, so the whole-call comparison does not isolate the LM
+algorithm. New/old LM-stage timers also differ in teardown scope; use the
+complete native-call column above for comparisons.
+
+Gaussian is about 23% faster than the old baseline on this workload. Its
+median linear-step time is 0.061 s versus 0.115 s for GTSAM QP, while retraction
+remains about 0.21 s for both. There are 2,337 independent coordinates and
+23,826 conditioned scalar dimensions. All CMC cases prepare and numerically
+construct exactly 57 equality bases, including ProxQP's longer run. The
+constant affine geometry is reused throughout LM.
+
+Old CM, Gaussian, and GTSAM QP agree to 5.7e-14 N in sole wrenches and
+1.3e-14 Nm in torques. Equality violation L2 stays below 2.2e-12 for all cases;
+root force/moment residual norms stay below 1.5e-13 N/Nm. ProxQP reaches an
+objective within 5.7e-13, with maximum wrench/torque differences of 1.27e-4 N
+and 1.25e-5 Nm. Its existing settings take 35 QP attempts for 19 accepted LM
+iterations, versus four Gaussian/GTSAM attempts. Its longer trajectory and
+rejected trials account for much of the extra time; these measurements do not
+identify the reason for each rejection. No solver tolerances or QP algorithms
+were changed for this comparison.
+
+The relaxed optimum happens to satisfy all 1,938 omitted inequality rows here,
+so it agrees with the constrained reference. This is not guaranteed: regression
+tests deliberately exercise infeasible omitted bounds. The equality-only mode
+must be selected explicitly and always reports the original bounds separately.
+An independent MuJoCo inverse-dynamics validation of the new Gaussian solution
+agrees within 6.4e-13 N in force, 1.7e-12 Nm in moment, and 1.9e-12 Nm in joint
+torques. Independent resultant-wrench and four-corner LP checks agree and find
+all 57 slices feasible. This validation uses a temporary export, leaving the
+checked-in recording intact.
+
+The 17 affected native suites, 12 G1 Python tests, and four ProxQP-disabled
+native suites pass. Raw runs, state differences, and the independent validation
+are in `build/affine-dynamics-isolated/`.
+The earlier overlapping-core preflight campaign is excluded.
+
+Together with the nonlinear equality benchmark, this establishes numerical
+agreement with old CM and useful direct-Gaussian performance for both kinds of
+equality geometry before migration. The current code preserves the equality
+optimizer algorithms on shared `EConstraintManifold` / `ECMPoint` machinery;
+the old value representation has been removed.
+The checked-in browser recording and its historical timings above are unchanged.
+
 ## Regenerate
 
 The computational Python example is

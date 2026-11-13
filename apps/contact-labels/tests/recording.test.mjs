@@ -38,8 +38,8 @@ test("three distinct 20-second SSIO windows, attribution, and registered app", (
   assert(apps.some((a) => a.id === "contact-labels"));
   const kinematics = apps.findIndex((app) => app.title === "Kinematics");
   assert.equal(apps[kinematics + 1].title, "Interpolation");
-  assert.deepEqual(apps.filter(app => !app.parentTab).slice(-3).map(app => app.title), [
-    "Kinodynamics", "Motion Planning", "SCATE",
+  assert.deepEqual(apps.filter(app => !app.parentTab).slice(-4).map(app => app.title), [
+    "Kinodynamics", "Motion Planning", "SCATE", "CAST: A Collaborative Construction Application of STEAP",
   ]);
 });
 for (const r of records) {

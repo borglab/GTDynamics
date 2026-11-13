@@ -4,6 +4,25 @@ The unknowns are poses, velocities, accelerations, forces, torques, landmarks,
 and IMU bias. Soft factors fit the measurements; equalities enforce mechanics;
 inequalities limit contact wrenches and torques.
 
+## Types, points, and tangent geometry
+
+`IEConstraintManifold` defines a component's space through constraint factors and selected
+linearization/retraction policies. `IECMPoint` is a numerical value with bindings
+from local slots to ambient pose, joint, force, and torque keys.
+The type owns symbolic equality preparation and, when certified affine, its
+constant local equality basis. `CMTangentSpace` references a read-only bound
+basis and contains the active-boundary derivatives at that point. Nonlinear
+numerical bases are rebuilt per point, independently of LM weights. A step is an ordinary vector in the equality coordinates.
+
+The G1 example still discovers its components automatically. Their component
+keys are independent of ambient keys; temporal ordering obtains time from each
+point's bindings. Binding-specific factor views and retraction preparation are
+rebuilt on point construction; mutable projection work is detached per call. Different fixed q/v values produce different temporary
+affine dynamics projections, even when the slices share structure.
+
+See the [type/value API](../../gtdynamics/constrained/README.md) and the
+[small manual example](../example_constraint_manifold/main_shared_ieconstraint_manifold.cpp).
+
 ## What the linear step does
 
 At each feasible point, component $i$ supplies an equality basis $B_i$.

@@ -27,7 +27,7 @@
 
 #include "CmcBenchmark.h"
 #include "gtdynamics/cmcopt/IERetractor.h"
-#include "gtdynamics/cmopt/TangentSpaceBasis.h"
+#include "gtdynamics/constrained/TangentSpaceBasis.h"
 
 using namespace gtsam;
 using namespace gtdynamics;
@@ -76,8 +76,8 @@ void SaveState(const IELMState &state, int iter_id,
 void SaveTrial(const IELMTrial &trial, int iter_id, int trial_id,
                const std::string &folder_path) {
   Values new_values;
-  for (const auto &[key, manifold] : trial.nonlinearUpdate.newManifolds) {
-    new_values.insert(manifold.values());
+  for (const auto &[key, point] : trial.nonlinearUpdate.newPoints) {
+    new_values.insert(point.values());
   }
 
   double new_x1 = new_values.atDouble(x1_key);

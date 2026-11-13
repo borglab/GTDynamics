@@ -71,6 +71,8 @@ def solve_walk(
     retraction_threads: int = 8,
     initialization: str = "contact-gp-dynamics",
     qp_backend: str = "gtsam",
+    linear_solver: str = "automatic",
+    equality_only: bool = False,
     qp_use_feasible_step: bool = True,
     qp_use_projected_gradient_initialization: bool = False,
     qp_use_temporal_ordering: bool = False,
@@ -87,6 +89,9 @@ def solve_walk(
         initialization: "fk" uses fixed-pelvis FK and gravity-support forces;
             "contact" fits contact poses with zero motion and forces;
             "contact-gp-dynamics" adds GP interpolation and a linear dynamics seed (default).
+        linear_solver: "automatic", "gaussian", or "qp" reduced linear steps.
+        equality_only: Benchmark a relaxed problem with inequalities omitted from
+            optimization and retraction; original violations remain diagnostics.
         qp_backend: "gtsam" (default) or the optional native "proxqp" backend.
             ProxQP requires full solves with projected gradients disabled.
         qp_use_feasible_step: Request feasible descent from GTSAM instead of convergence.
@@ -132,6 +137,8 @@ def solve_walk(
         max_iterations,
         retraction_threads,
         qp_backend=qp_backend,
+        linear_solver=linear_solver,
+        equality_only=equality_only,
         qp_use_feasible_step=qp_use_feasible_step,
         qp_use_projected_gradient_initialization=qp_use_projected_gradient_initialization,
         qp_use_temporal_ordering=qp_use_temporal_ordering,
@@ -191,6 +198,16 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
                 "inequalityDimension",
                 "feasible",
                 "qpOrderingKeys",
+                "equalityOnly",
+                "originalInequalityDimension",
+                "originalInequalityL2",
+                "linearizationSeconds",
+                "linearSolveSeconds",
+                "retractionSeconds",
+                "gaussianSolves",
+                "qpSolves",
+                "equalityOnlyBaseline",
+                "manifoldLmPreparationSeconds",
             )
         },
         "errorNames": list(result["errorNames"]),
@@ -351,6 +368,14 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-iterations", type=int, default=5)
     parser.add_argument("--retraction-threads", type=int, default=8)
     parser.add_argument(
+        "--linear-solver", choices=("automatic", "gaussian", "qp"),
+        default="automatic", help="Reduced linear solver (default: automatic)",
+    )
+    parser.add_argument(
+        "--equality-only", action="store_true",
+        help="Benchmark relaxation: omit all inequalities, including in retraction",
+    )
+    parser.add_argument(
         "--qp-backend",
         choices=("gtsam", "proxqp"),
         default="gtsam",
@@ -391,6 +416,8 @@ def main() -> None:
         retraction_threads=args.retraction_threads,
         initialization=args.initialization,
         qp_backend=args.qp_backend,
+        linear_solver=args.linear_solver,
+        equality_only=args.equality_only,
         qp_use_feasible_step=args.qp_step == "feasible",
         qp_use_projected_gradient_initialization=args.projected_gradient_initialization,
         qp_use_temporal_ordering=args.qp_ordering == "temporal",

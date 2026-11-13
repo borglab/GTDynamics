@@ -180,6 +180,25 @@ def summarize(solution: DynamicsSolution) -> dict[str, Any]:
         "max_moment_residual_nm": result.maxMomentResidual,
         "feasible": bool(result.feasible),
         "soft_base_balance": bool(result.softDynamics),
+        "affine_equalities": bool(result.affineEqualities),
+        "equality_only": bool(result.equalityOnly),
+        "conditioned_variable_dimension": result.conditionedVariableDimension,
+        "conditioning_seconds": result.conditioningSeconds,
+        "original_inequality_dimension": result.originalInequalityDimension,
+        "original_inequality_l2": result.originalInequalityL2,
+        "assembly_seconds": result.assemblySeconds,
+        "anchor_seconds": result.initializationSeconds,
+        "manifold_seconds": result.manifoldSeconds,
+        "optimization_seconds": result.optimizationSeconds,
+        "optimizer_linearization_seconds": result.optimizerLinearizationSeconds,
+        "optimizer_linear_solve_seconds": result.optimizerLinearSolveSeconds,
+        "retraction_seconds": result.retractionSeconds,
+        "equality_preparations": result.equalityPreparations,
+        "affine_basis_constructions": result.affineBasisConstructions,
+        "gaussian_solves": result.gaussianSolves,
+        "qp_solves": result.qpSolves,
+        "projected_gradient_norm": result.projectedGradientNorm,
+        "stationary": bool(result.stationary),
         "support_rectangles_m": solution.support_rectangles,
     }
 
@@ -199,6 +218,11 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", type=float, default=98.0)
     parser.add_argument("--friction", type=float, default=0.8)
     parser.add_argument("--max-iterations", type=int, default=50)
+    parser.add_argument("--equality-only", action="store_true",
+                        help="Explicit benchmark relaxation: omit wrench/torque bounds")
+    parser.add_argument("--linear-solver", choices=("automatic", "gaussian", "gtsam-qp", "proxqp"),
+                        default="automatic")
+    parser.add_argument("--retraction-threads", type=int, default=1)
     parser.add_argument("--acceleration-step-ms", type=float, default=20.0)
     parser.add_argument(
         "--base-angular-acceleration-sigma-degrees", type=float, default=90.0
@@ -223,6 +247,14 @@ def options_from_arguments(args: argparse.Namespace) -> gtd.fixed_dynamics.Optio
     """Configure native options directly; rotational scales stay in degrees."""
     options = gtd.fixed_dynamics.Options()
     options.maxIterations = args.max_iterations
+    options.equalityOnly = args.equality_only
+    options.retractionThreads = args.retraction_threads
+    options.linearSolver = {
+        "automatic": gtd.fixed_dynamics.LinearSolver.Automatic,
+        "gaussian": gtd.fixed_dynamics.LinearSolver.Gaussian,
+        "gtsam-qp": gtd.fixed_dynamics.LinearSolver.GtsamQP,
+        "proxqp": gtd.fixed_dynamics.LinearSolver.ProxQP,
+    }[args.linear_solver]
     options.baseAngularAccelerationSigmaDegrees = (
         args.base_angular_acceleration_sigma_degrees
     )

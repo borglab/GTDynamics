@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gtdynamics/cmopt/MultiJacobian.h>
+#include <gtdynamics/constrained/MultiJacobian.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam/linear/JacobianFactor.h>

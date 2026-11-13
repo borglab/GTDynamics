@@ -73,5 +73,12 @@
     "title": "SCATE",
     "description": "Compare online obstacle avoidance with blind runs on UR5 and UR10e arms. In the reactive experiment, compare base torque and clearance for four base-cost settings as obstacles move.",
     "tag": "Online and reactive planning"
+  },
+  {
+    "id": "steap-cmrg",
+    "title": "CAST: A Collaborative Construction Application of STEAP",
+    "tab": "CAST",
+    "description": "Two gantry-mounted arms build a post-and-lintel frame from 2×4 stock. GPMP2 plans each maneuver offline with learned dress-cable factors, and STEAP replans against simulated disturbances.",
+    "tag": "Multi-robot assembly planning"
   }
 ]
