@@ -46,6 +46,7 @@ body {
 h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: 0.01em; margin: 0; line-height: 1.1; text-wrap: balance; }
 .sub { color: var(--ink-2); margin: 2px 0 0; font-size: 13px; max-width: 72ch; }
 .source { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); }
+.experiment-select { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .tag { font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--rule); color: var(--ink-2); background: var(--surface); }
 .tag.demo { border-color: var(--serious); color: var(--ink); }
 button, .filebtn, select {
@@ -145,3 +146,29 @@ dl.read dd { margin: 0; font-family: var(--font-data); font-size: 13px; text-ali
   .scate-app .read { grid-template-columns: 1fr; gap: 1px; }
   .scate-app .read dd { text-align: left; }
 }
+
+/* Per-run toggles and running plots of a comparison replay. */
+.scate-app .demo-readouts .panel.wide { grid-column: 1 / -1; }
+.run-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.run-table th, .run-table td { padding: 3px 4px; text-align: right; font-variant-numeric: tabular-nums; }
+.run-table td { font-family: var(--font-data); }
+.run-table thead th { font-weight: 500; color: var(--muted); font-size: 11.5px; border-bottom: 1px solid var(--grid); }
+.run-table th:first-child { text-align: left; }
+.run-table .runname { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+.run-table .swatch { width: 14px; height: 4px; }
+.run-table .gap.warn { color: var(--serious); } .run-table .gap.bad { color: var(--critical); font-weight: 600; }
+.running-plots { display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+/* The playback bar joined to the bottom of the 3D view. */
+.stage-column { display: flex; flex-direction: column; min-width: 0; }
+.stage-column .stage { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.transport.attached { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+
+/* Run toggles over the top-left corner of the 3D view. */
+.run-overlay { position: absolute; left: 8px; top: 8px; z-index: 2; padding: 4px 6px; border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(2px); max-width: calc(100% - 96px); overflow-x: auto; }
+.run-overlay .run-table { width: auto; font-size: 12px; white-space: nowrap; }
+.run-overlay .run-table th, .run-overlay .run-table td { padding: 1px 6px; }
+.run-overlay .run-table thead th { font-size: 10.5px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 560px) { .run-overlay .run-table { font-size: 10.5px; } .run-overlay .run-table th, .run-overlay .run-table td { padding: 0 3px; } }

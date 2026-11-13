@@ -17,11 +17,11 @@ foreach(program scate_init scate_online)
 endforeach()
 
 # Plots and a standalone 3D replay page of the replay.json written by
-# scate_online. The viewer and plot script live in the SCATE app.
-set(SCATE_APP_DIR ${CMAKE_SOURCE_DIR}/apps/scate/ur5)
+# scate_online. The viewer and plot script are shared by the SCATE apps.
+set(SCATE_APPS_DIR ${CMAKE_SOURCE_DIR}/apps/scate)
 add_custom_target(
   scate_online.plot
-  COMMAND python3 ${SCATE_APP_DIR}/scripts/plot_scate.py replay.json
+  COMMAND python3 ${SCATE_APPS_DIR}/shared/scripts/plot_scate.py replay.json --app ur5
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Plotting replay.json from scate_online"
   VERBATIM)
@@ -29,7 +29,7 @@ add_custom_target(
 # Copy this build's replay.json into the app as its hosted recording.
 add_custom_target(
   scate_online.export
-  COMMAND ${CMAKE_COMMAND} -E copy replay.json ${SCATE_APP_DIR}/public/replay.json
+  COMMAND ${CMAKE_COMMAND} -E copy replay.json ${SCATE_APPS_DIR}/ur5/public/replay.json
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Copying replay.json to apps/scate/ur5/public"
   VERBATIM)

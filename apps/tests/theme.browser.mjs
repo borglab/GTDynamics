@@ -18,6 +18,8 @@ const ready = {
   interpolation: '.interpolation-scene canvas', dynamics: '.dynamics-scene[data-ready="true"] canvas',
   kinodynamics: '.kinodynamics-scene[data-ready="true"] canvas', 'motion-planning': '.robot-canvas canvas',
   'scate/ur5': '#stage[data-ready="true"] canvas',
+  'scate/ur10e-reactive': '#stage[data-ready="true"] canvas',
+  'steap-cmrg': '.steap-scene canvas',
   urdf: '.urdf-app[data-mode="browser"] #status-badge:has-text("Ready")',
 };
 try {
@@ -51,7 +53,7 @@ try {
       await direct.locator('html[data-theme="light"]').waitFor();
       await direct.close();
       await page.getByRole('button', {name: 'Dark theme', exact: true}).click();
-      for (const app of apps) {
+      for (const app of apps.filter(app => !app.parentTab)) {
         await page.getByRole('tab', {name: app.title, exact: true}).click();
         const appFrame = page.frameLocator('iframe');
         await appFrame.locator(ready[app.id]).first().waitFor();
@@ -70,7 +72,7 @@ try {
         console.log(`PASS ${base}${app.id}: loads dark, recolors in place`);
       }
       // Select SCATE explicitly: the loop above ends on whichever app is registered last.
-      await page.getByRole('tab', {name: 'SCATE UR5', exact: true}).click();
+      await page.getByRole('tab', {name: 'SCATE', exact: true}).click();
       const scate = page.frameLocator('iframe');
       await scate.locator(ready['scate/ur5']).waitFor();
       await scate.locator('.signal-plot[data-ready="true"]').first().waitFor();

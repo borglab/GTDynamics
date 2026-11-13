@@ -1,4 +1,6 @@
-import { scatePaper } from '../../scate/ur5/src/paper.js';
+import { scatePaper as scateUr5Paper } from '../../scate/ur5/src/paper.js';
+import { scatePaper as scateUr10ePaper } from '../../scate/ur10e/src/paper.js';
+import { scatePaper as scateUr10eReactivePaper } from '../../scate/ur10e-reactive/src/paper.js';
 import { urdfPaper } from '../../urdf/src/paper.js';
 // Presentation only: numerical settings and results remain in the recordings.
 const contact = {
@@ -48,7 +50,9 @@ const gauge = {
 
 export const papers = {
   urdf: urdfPaper,
-  'scate/ur5': scatePaper,
+  'scate/ur5': scateUr5Paper,
+  'scate/ur10e': scateUr10ePaper,
+  'scate/ur10e-reactive': { ...scateUr10eReactivePaper, next: 'steap-cmrg', nextTitle: 'CAST: A Collaborative Construction Application of STEAP' },
   'contact-labels': {
     abstract: 'This app infers left, right, and double support from G1 foot motion using a discrete factor graph. Max-product combines displacement and joint-velocity evidence with walking priors; the resulting phases supply the contact schedule for initialization. For the default 24–44 s clip with velocity aiding and walking constraints, recorded max-product inference took 0.113 s.',
     motivation: 'A velocity threshold alone can produce isolated labels or contradictory support assignments. Contact timing matters because it determines which observations share a stationary foothold. Combining local measurements with temporal and cross-foot assumptions makes that timing explicit and inspectable.',
@@ -157,7 +161,7 @@ export const papers = {
       { id: 'limits', name: 'Joint-angle limit costs', description: 'Limit factors penalize angles outside the configured joint range. Collision avoidance, wrench feasibility, and full dynamic trajectory optimization remain extensions to this kinematic example.' },
     ],
     discussion: 'MuJoCo tracks the optimized kinematic trajectory with position control, which introduces execution error. The Franka problem uses its own robot model and endpoint targets. Extending the G1 estimation pipeline toward dynamic motion planning requires contact consistency, actuator limits, and collision constraints in the optimization problem.',
-    next: 'scate/ur5', nextTitle: 'SCATE UR5',
+    next: 'scate/ur10e-reactive', nextTitle: 'SCATE',
   },
   'steap-cmrg': {
     abstract: 'This app shows two gantry-mounted ABB arms building a post-and-lintel frame from 2×4 stock. The setup presented in this visualization is a simplified version of the one in the original paper. GPMP2 plans every maneuver offline from an RRT-Connect seed under joint, floor, wood, cross-arm and learned dress-cable factors. STEAP then executes each plan against simulated disturbances, fusing measurement factors in an ISAM2 Bayes tree and replanning the remaining states. The recording stores nominal, replanned and executed tool paths for every maneuver.',

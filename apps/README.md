@@ -14,7 +14,7 @@ be opened directly.
 - [Dynamics](dynamics/README.md): CMC-Opt inference of sole-frame contact wrenches and all 29 G1 joint torques on the SSIO 78–98 s clip.
 - [Kinodynamics](kinodynamics/README.md): a coupled 50 Hz solve of motion, accelerations, contact wrenches and joint torques from contact initialization and zero dynamic variables.
 - [Motion Planning](motion-planning/README.md): Franka trajectory optimization and playback.
-- [SCATE UR5](scate/ur5/README.md): replay online obstacle avoidance on a UR5 against a blind run.
+- [SCATE](scate/ur10e-reactive/README.md): compare base costs in the reactive experiment or use **Experiment** to replay online obstacle avoidance against a blind run on a [UR5](scate/ur5/README.md) or [UR10e](scate/ur10e/README.md).
 - [CAST: A Collaborative Construction Application of STEAP](steap-cmrg/README.md): two gantry-mounted arms build a post-and-lintel frame; GPMP2 plans offline and STEAP replans against simulated disturbances.
 
 Each app starts with a short technical abstract and its interactive demo, then

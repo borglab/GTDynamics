@@ -166,7 +166,7 @@ try{
  const page=await browser.newPage({viewport:{width:1460,height:1100}});
  try{
   await page.goto(`http://127.0.0.1:${hub.httpServer.address().port}/`);
-  const tabs=await page.getByRole('tab').allTextContents();assert.deepEqual(tabs.slice(-8).map(tab=>tab.trim()),['Contact vs IK','Kinematics','Interpolation','Dynamics','Kinodynamics','Motion Planning','SCATE UR5','CAST']);
+  const tabs=await page.getByRole('tab').allTextContents();assert.deepEqual(tabs.slice(-8).map(tab=>tab.trim()),['Contact vs IK','Kinematics','Interpolation','Dynamics','Kinodynamics','Motion Planning','SCATE','CAST']);
   await page.getByRole('tab',{name:'Contact vs IK',exact:true}).click();
   await page.frameLocator('iframe').getByRole('heading',{name:'Contact vs IK',exact:true}).waitFor();
   await page.frameLocator('iframe').locator('.method-panel.ik .scene[data-ready="true"]').waitFor({timeout:60000});

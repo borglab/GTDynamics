@@ -11,7 +11,8 @@
 
 """plot_scate.py - plots and a 3D replay page for a SCATE closed-loop run.
 
-Reads the replay.json written by scate_online (scate_replay.h) and writes:
+Reads the replay.json written by scate_online or scate_ur10e_online
+(scate_replay.h) and writes:
   scate_dashboard.png  clearances, obstacle estimate, tool path, solver stats
   scate_joints.png     joint angles per joint: online, blind, offline plan
   scate_controls.png   executed controls per joint, with the limits
@@ -20,7 +21,9 @@ Reads the replay.json written by scate_online (scate_replay.h) and writes:
                        the same Vue app, bundled with all scripts and styles
                        for offline viewing; requires Node.js 22+ and npm)
 
-Usage:  python3 plot_scate.py [replay.json] [--out DIR] [--no-open] [--no-html] [--show]
+Usage:  python3 plot_scate.py [replay.json] [--app ur5|ur10e] [--out DIR] [--no-open]
+                              [--no-html] [--show]
+--app picks the SCATE app (apps/scate/<app>) whose meshes the 3D page uses.
 PNG plots need numpy and matplotlib; HTML export also needs the npm workspace.
 """
 
@@ -51,7 +54,18 @@ AXIS = "#c3c2b7"
 SURFACE = "#fcfcfb"
 CRITICAL = "#d03b3b"
 
-RUN_COLOR = {"online": ONLINE, "blind": BLIND}
+FROZEN = "#b07d16"
+RUN_COLOR = {"online": ONLINE, "blind": BLIND, "frozen": FROZEN}
+
+
+def moving_obstacles(d):
+    """The moving obstacles of a reactive replay, or None for a static obstacle."""
+    return d.get("obstacles")
+
+
+def obstacle_center(o, t):
+    """Center of a moving obstacle at time t."""
+    return np.array(o["start"]) + t * np.array(o["velocity"])
 
 
 def style():
@@ -191,8 +205,31 @@ def plot_self(ax, d, runs):
     ax.legend(loc="lower left")
 
 
+def plot_moving_estimates(ax, d, run):
+    """Error of each obstacle's latest estimate against the truth at the step's time."""
+    for j, o in enumerate(moving_obstacles(d)):
+        ks, err = [], []
+        for s in run["steps"]:
+            e = (s.get("obstacle_estimates") or [None] * (j + 1))[j]
+            if e is None:
+                continue
+            t = s["k"] * d["dt"]
+            ks.append(t)
+            err.append(1000 * np.linalg.norm(np.array(e) - obstacle_center(o, t)))
+        ax.plot(ks, err, "o-", ms=3, lw=1, label=f"obstacle {j}")
+    ax.set_xlim(0, (d["num_poses"] - 1) * d["dt"])
+    ax.set_ylim(bottom=0)
+    ax.set_title("Obstacle estimates (motion capture)")
+    ax.set_xlabel("time (s)")
+    ax.set_ylabel("|estimate - truth| (mm)")
+    ax.legend(loc="upper right")
+
+
 def plot_estimate(ax, d, runs):
     run = runs.get("online")
+    if moving_obstacles(d) and run is not None:
+        plot_moving_estimates(ax, d, run)
+        return
     truth = np.array(d["obstacle"]["center"])
     if run is None or run["summary"]["first_detection"] < 0:
         ax.text(
@@ -247,33 +284,53 @@ def tool_path(run, d):
     return np.array([f["spheres"][tool] for f in run["frames"]])
 
 
+def plot_moving_obstacles(ax, d, runs, axes):
+    """Each obstacle's path, drawn where it is when the online run comes closest."""
+    a, b = axes
+    online = runs.get("online") or next(iter(runs.values()))
+    frames = online["frames"]
+    t_close = frames[int(np.argmin([f["clear"] for f in frames]))]["t"]
+    t_end = (d["num_poses"] - 1) * d["dt"]
+    for j, o in enumerate(moving_obstacles(d)):
+        start, end = obstacle_center(o, 0.0), obstacle_center(o, t_end)
+        at = obstacle_center(o, t_close)
+        ax.annotate("", xy=(end[a], end[b]), xytext=(start[a], start[b]),
+                    arrowprops=dict(arrowstyle="->", color=INK2, lw=1))
+        ax.add_patch(Circle((at[a], at[b]), o["radius"], color=INK2, alpha=0.18, lw=0))
+        ax.annotate(f"obstacle {j}\nat t = {t_close:.1f} s", xy=(at[a], at[b]),
+                    ha="center", va="center", fontsize=7, color=INK)
+
+
 def plot_path(ax, d, runs, axes=(0, 1), title="Tool path, top view (x-y)"):
     a, b = axes
     names = "xyz"
+    if moving_obstacles(d):
+        plot_moving_obstacles(ax, d, runs, axes)
     obstacle = np.array(d["obstacle"]["center"])
     r = d["obstacle"]["radius"]
     tool = d["tool_sphere"]
     tool_r = d["sphere_radii"][tool] if tool >= 0 else 0.0
     # Obstacle, and the band the tool-sphere center must stay out of.
-    ax.add_patch(Circle((obstacle[a], obstacle[b]), r, color=INK2, alpha=0.18, lw=0))
-    ax.add_patch(
-        Circle(
-            (obstacle[a], obstacle[b]),
-            r + tool_r + d["obstacle_standoff"],
-            fill=False,
-            ec=PLAN,
-            ls="--",
-            lw=1,
+    if not moving_obstacles(d):
+        ax.add_patch(Circle((obstacle[a], obstacle[b]), r, color=INK2, alpha=0.18, lw=0))
+        ax.add_patch(
+            Circle(
+                (obstacle[a], obstacle[b]),
+                r + tool_r + d["obstacle_standoff"],
+                fill=False,
+                ec=PLAN,
+                ls="--",
+                lw=1,
+            )
         )
-    )
-    ax.annotate(
-        "obstacle",
-        xy=(obstacle[a], obstacle[b]),
-        ha="center",
-        va="center",
-        fontsize=8,
-        color=INK,
-    )
+        ax.annotate(
+            "obstacle",
+            xy=(obstacle[a], obstacle[b]),
+            ha="center",
+            va="center",
+            fontsize=8,
+            color=INK,
+        )
 
     online = runs.get("online")
     if online is not None:
@@ -301,7 +358,7 @@ def plot_path(ax, d, runs, axes=(0, 1), title="Tool path, top view (x-y)"):
                 )
                 first = False
         est = [s["l"] for s in online["steps"] if s["l"] is not None]
-        if est:
+        if est and not moving_obstacles(d):
             l_final = est[-1]
             ax.plot(
                 l_final[a],
@@ -464,7 +521,7 @@ def per_joint(d, runs, out, what):
 
 
 # The standalone artifact is built from the same source as the hosted app.
-APP_DIR = Path(__file__).resolve().parents[1]
+SCATE_APPS_DIR = Path(__file__).resolve().parents[2]
 
 
 def _inline_json(name, obj):
@@ -473,16 +530,17 @@ def _inline_json(name, obj):
     return f"<script>window.{name} = {text};</script>\n"
 
 
-def write_viewer(replay_path, d, out_html):
+def write_viewer(replay_path, d, out_html, app="ur5"):
     """Build and inline the app, styles, meshes, and selected run for offline use."""
+    app_dir = SCATE_APPS_DIR / app
     subprocess.run(
-        ["npm", "run", "build:standalone", "--workspace", "scate/ur5"],
-        cwd=APP_DIR.parents[1],
+        ["npm", "run", "build:standalone", "--workspace", f"scate/{app}"],
+        cwd=SCATE_APPS_DIR.parent,
         check=True,
     )
-    bundle = APP_DIR / "dist-standalone"
+    bundle = app_dir / "dist-standalone"
     page = (bundle / "index.html").read_text()
-    meshes = json.loads((APP_DIR / "public" / "meshes.json").read_text())
+    meshes = json.loads((app_dir / "public" / "meshes.json").read_text())
 
     def script(match):
         source = (bundle / match[1].removeprefix("./")).read_text()
@@ -512,6 +570,9 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     p.add_argument("replay", nargs="?", default="replay.json")
+    p.add_argument(
+        "--app", default="ur5", choices=("ur5", "ur10e"), help="SCATE app of the robot"
+    )
     p.add_argument("--out", default=".", help="output directory")
     p.add_argument("--no-html", action="store_true", help="skip the 3D replay page")
     p.add_argument(
@@ -534,7 +595,9 @@ def main():
 
     html = None
     if not a.no_html:
-        html = write_viewer(a.replay, d, os.path.join(a.out, "scate_replay.html"))
+        html = write_viewer(
+            a.replay, d, os.path.join(a.out, "scate_replay.html"), app=a.app
+        )
         if html:
             print("wrote", html)
     if html and not a.no_open:

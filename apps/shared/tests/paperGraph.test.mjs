@@ -10,7 +10,7 @@ test('explanatory graph selections stay inside short and endpoint recordings', (
 });
 
 test('every schematic edge has a variable and clickable slices match the demo', () => {
-  for (const kind of ['labels', 'initialization', 'smoothing', 'dynamics', 'kinodynamics', 'planning', 'scate']) {
+  for (const kind of ['labels', 'initialization', 'smoothing', 'dynamics', 'kinodynamics', 'planning', 'scate', 'scate-reactive']) {
     for (const indices of [[0], [0, 1], [17, 18, 19]]) {
       const graph = paperGraph(kind, indices);
       const ids = new Set(graph.nodes.map(node => node.id));
@@ -59,4 +59,13 @@ test('SCATE separates the obstacle observation from fixed-map collision factors'
   assert(factors.filter(f => f.code === 'Ml').every(f => f.keys.length === 2 && f.keys.includes('l')));
   assert(factors.filter(f => f.code === 'D').every(f => f.keys.length === 5));
   assert(factors.filter(f => f.code === 'O/S').every(f => f.keys.length === 4 && !f.keys.includes('l')));
+});
+
+test('reactive SCATE puts the base-disturbance factor on one state and its control', () => {
+  const { factors } = paperGraph('scate-reactive', [4, 5, 6]);
+  const base = factors.filter(f => f.code === 'B');
+  assert.equal(base.length, 2);
+  assert(base.every(f => f.keys.length === 3 && f.keys.some(k => k.startsWith('u'))));
+  assert(factors.filter(f => f.code === 'O/S').every(f => !f.keys.some(k => k.startsWith('l'))));
+  assert(factors.filter(f => f.code === 'Mℓ').every(f => f.keys.length === 1 && f.keys[0].startsWith('l')));
 });

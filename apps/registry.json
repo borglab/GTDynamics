@@ -56,9 +56,23 @@
   },
   {
     "id": "scate/ur5",
+    "parentTab": "scate/ur10e-reactive",
     "title": "SCATE UR5",
     "description": "Replay SCATE on a UR5: an obstacle discovered online is avoided by re-solving after every step, beside a blind run that hits it. Inspect the replanned paths, the obstacle estimate, and clearances.",
     "tag": "Online planning"
+  },
+  {
+    "id": "scate/ur10e",
+    "parentTab": "scate/ur10e-reactive",
+    "title": "SCATE UR10e",
+    "description": "The SCATE UR5 scenario on a UR10e: the same planner, online loop and obstacle placement with the UR10e's geometry and collision spheres. Compare the replanned paths, obstacle estimate, and clearances with the UR5.",
+    "tag": "Online planning"
+  },
+  {
+    "id": "scate/ur10e-reactive",
+    "title": "SCATE",
+    "description": "Compare online obstacle avoidance with blind runs on UR5 and UR10e arms. In the reactive experiment, compare base torque and clearance for four base-cost settings as obstacles move.",
+    "tag": "Online and reactive planning"
   },
   {
     "id": "steap-cmrg",
