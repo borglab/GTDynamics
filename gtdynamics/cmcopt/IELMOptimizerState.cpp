@@ -11,11 +11,11 @@
  * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/AdmmSolver.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
-#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/cmcopt/ProxQpSolver.h>
-#include <gtdynamics/cmcopt/PointSplitAdmmSolver.h>
+#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
@@ -229,7 +229,7 @@ IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
 /* ************************************************************************* */
 IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
                      const double &lambda, const IELMParams &params,
-                     internal::PointSplitAdmmWorkspace *admmWorkspace) {
+                     internal::AdmmWorkspace *admmWorkspace) {
   // std::cout << "========= " << state.iterations << " ======= \n";
   auto start = std::chrono::high_resolution_clock::now();
   stepIsSuccessful = false;
@@ -562,10 +562,11 @@ void printIELMTrial(const IELMState &state, const IELMTrial &trial,
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-IELMTrial::LinearUpdate::LinearUpdate(
-    const double &_lambda, const NonlinearFactorGraph &graph,
-    const IELMState &state, const IELMParams &params,
-    internal::PointSplitAdmmWorkspace *admmWorkspace)
+IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
+                                      const NonlinearFactorGraph &graph,
+                                      const IELMState &state,
+                                      const IELMParams &params,
+                                      internal::AdmmWorkspace *admmWorkspace)
     : lambda(_lambda) {
   const bool gaussian =
       params.linearSolver == IELMParams::LinearSolver::Gaussian ||
@@ -635,7 +636,7 @@ IELMTrial::LinearUpdate::LinearUpdate(
       (params.qpUseFeasibleStep ||
        params.qpUseProjectedGradientInitialization))
     throw std::invalid_argument(
-        "ProxQP and PointSplitADMM require full QP solves and no "
+        "ProxQP and ADMM require full QP solves and no "
         "projected-gradient initialization");
   const auto &linear = *state.linearPointGraph;
   const auto sqrtHessianDiagonal =
@@ -669,16 +670,16 @@ IELMTrial::LinearUpdate::LinearUpdate(
       ++qpSolves;
       Values solution;
       std::vector<bool> activeRows;
-      if (params.qpBackend == IELMParams::QpBackend::PointSplitADMM) {
-        internal::PointSplitAdmmParams admm;
+      if (params.qpBackend == IELMParams::QpBackend::ADMM) {
+        internal::AdmmParams admm;
         admm.rho = params.admmRho;
         admm.useDiagonalMetric = params.admmUseDiagonalMetric;
-        admm.useConstraintSplitting = params.admmConstraintSplitting;
+        admm.splitting = params.admmSplitting;
         admm.absoluteTolerance = params.admmAbsoluteTolerance;
         admm.relativeTolerance = params.admmRelativeTolerance;
         admm.maxProjectionSweeps = params.admmProjectionSweeps;
         admm.projectionThreads = params.admmProjectionThreads;
-        internal::PointSplitAdmmWorkspace localWorkspace;
+        internal::AdmmWorkspace localWorkspace;
         auto &workspace = admmWorkspace ? *admmWorkspace : localWorkspace;
         const auto result = workspace.solve(
             problem, initial, qpParams->ordering, params.qpMaxIterations, admm);

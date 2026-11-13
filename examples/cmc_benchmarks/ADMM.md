@@ -1,15 +1,16 @@
-# Point-splitting ADMM versus ProxQP (experimental)
+# ADMM versus ProxQP (experimental)
 
 See the [technical note](../../doc/cmc-admm-linear-step.pdf)
 ([LaTeX source](../../doc/cmc-admm-linear-step.tex)) for the reduced CMC QP,
 scaled constraint splitting, cached multifrontal solve, and KKT certificate.
 
 This experiment compares **the same** CMC-Opt global B-reduced tangent-cone QP
-with the existing native ProxQP backend and a new **variable-splitting ADMM**
-backend. It does **not** replace the default GTSAM solver or alter nonlinear
+with the existing native ProxQP backend and an **ADMM** backend supporting
+manifold-variable and constraint-output splitting. It does **not** replace
+the default GTSAM solver or alter nonlinear
 retraction. No speedup claim is made without running the benchmarks.
 
-## Mathematical split
+## Manifold-variable split
 
 CMC's QP is
 
@@ -61,7 +62,7 @@ The implementation:
 
 ## Optional diagonal metric
 
-`PointSplitAdmmParams::useDiagonalMetric` (or
+`AdmmParams::useDiagonalMetric` (or
 `IELMParams::admmUseDiagonalMetric`) uses
 \(M=\operatorname{diag}(\max(\operatorname{diag}(H),10^{-12}))\), with H
 including the current LM damping. The default remains the identity metric.
@@ -85,8 +86,10 @@ projection failures remain possible.
 
 ## Constraint-output splitting with scaling
 
-`PointSplitAdmmParams::useConstraintSplitting` selects the constraint-output
-formulation. In the G1 runner, use `--admm-constraint-splitting` together with
+Set `AdmmParams::splitting` (or `IELMParams::admmSplitting`) to
+`AdmmSplitting::ConstraintOutputs` to select the constraint-output
+formulation. The default is `AdmmSplitting::ManifoldVariables`.
+In the G1 runner, use `--admm-splitting constraint-outputs` together with
 `--admm-use-diagonal-metric` to enable scaling. The point split remains the
 default. The option name `admmUseDiagonalMetric` selects the following scaling
 when constraint splitting is enabled, rather than the point-split metric above.
@@ -124,7 +127,7 @@ Build the usual GTDynamics tests and run:
 
 ~~~bash
 cd build
-make -j6 testPointSplitAdmm.run testIELMQp.run
+make -j6 testAdmm.run testIELMQp.run
 ~~~
 
 The tests cover a constrained optimum, a globally coupled two-component QP,

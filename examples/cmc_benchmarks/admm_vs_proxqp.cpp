@@ -10,7 +10,7 @@
  * not CMC's nonlinear projection, and reports failures rather than timings
  * for incorrect/uncertified solutions.
  */
-#include <gtdynamics/cmcopt/PointSplitAdmmSolver.h>
+#include <gtdynamics/cmcopt/AdmmSolver.h>
 #include <gtdynamics/cmcopt/ProxQpSolver.h>
 #include <gtsam/constrained/LinearConstraint.h>
 
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
       problem.addCost(JacobianFactor(
           key - 1, 0.5 * I, key, -0.5 * I, Vector3::Zero()));
   }
-  cmc::PointSplitAdmmParams config;
+  cmc::AdmmParams config;
   config.rho = rho;
   config.projectionThreads = threads;
 
@@ -65,8 +65,8 @@ int main(int argc, char** argv) {
   auto run = [&](const std::string& name, int repeat) {
     const auto start = std::chrono::steady_clock::now();
     if (name == "admm") {
-      const auto result = cmc::solvePointSplitAdmm(problem, prototype,
-                                                   std::nullopt, limit, config);
+      const auto result =
+          cmc::solveAdmm(problem, prototype, std::nullopt, limit, config);
       const double elapsed = std::chrono::duration<double>(
           std::chrono::steady_clock::now() - start).count();
       const double objective = result.converged ?

@@ -26,7 +26,7 @@ def solver_settings() -> dict[str, Any]:
         "qpBackend": "gtsam",
         "admmRho": 1.0,
         "admmUseDiagonalMetric": False,
-        "admmConstraintSplitting": False,
+        "admmSplitting": "manifold-variables",
         "admmProjectionThreads": 1,
         "admmProjectionSweeps": 2000,
         "admmAbsoluteTolerance": 1e-9,
@@ -87,7 +87,7 @@ def configure_solve(
     qp_max_iterations: int = 1000,
     admm_rho: float = 1.0,
     admm_use_diagonal_metric: bool = False,
-    admm_constraint_splitting: bool = False,
+    admm_splitting: str = "manifold-variables",
     admm_projection_threads: int = 1,
     use_link_collocation: bool = True,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -122,6 +122,8 @@ def configure_solve(
         raise ValueError(
             "The first QP backend requires a GTSAM or ProxQP start followed by ADMM"
         )
+    if admm_splitting not in ("manifold-variables", "constraint-outputs"):
+        raise ValueError("Unknown ADMM splitting: " + admm_splitting)
     options = solver_settings()
     options.update(
         initialization=initialization,
@@ -132,7 +134,7 @@ def configure_solve(
         qpMaxIterations=qp_max_iterations,
         admmRho=admm_rho,
         admmUseDiagonalMetric=admm_use_diagonal_metric,
-        admmConstraintSplitting=admm_constraint_splitting,
+        admmSplitting=admm_splitting,
         admmProjectionThreads=admm_projection_threads,
         useLinkCollocation=use_link_collocation,
         linearSolver=linear_solver,

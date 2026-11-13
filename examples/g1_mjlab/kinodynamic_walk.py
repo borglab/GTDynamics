@@ -80,7 +80,7 @@ def solve_walk(
     qp_max_iterations: int = 1000,
     admm_rho: float = 1.0,
     admm_use_diagonal_metric: bool = False,
-    admm_constraint_splitting: bool = False,
+    admm_splitting: str = "manifold-variables",
     admm_projection_threads: int = 1,
     use_link_collocation: bool = True,
 ) -> KinodynamicSolution:
@@ -101,8 +101,9 @@ def solve_walk(
             optimization and retraction; original violations remain diagnostics.
         use_link_collocation: Include root-link pose and twist collocation.
             Joint collocation remains enabled when this is false.
-        qp_backend: "gtsam" (default) or the optional native "proxqp" backend.
-            ProxQP requires full solves with projected gradients disabled.
+        qp_backend: "gtsam" (default), "proxqp", or "admm".
+            ProxQP and ADMM require full solves with projected gradients disabled.
+        admm_splitting: "manifold-variables" (default) or "constraint-outputs".
         first_qp_backend: Optional GTSAM or ProxQP backend for iteration zero
             when subsequent iterations use ADMM.
         qp_use_feasible_step: Request feasible descent from GTSAM instead of convergence.
@@ -157,7 +158,7 @@ def solve_walk(
         qp_max_iterations=qp_max_iterations,
         admm_rho=admm_rho,
         admm_use_diagonal_metric=admm_use_diagonal_metric,
-        admm_constraint_splitting=admm_constraint_splitting,
+        admm_splitting=admm_splitting,
         admm_projection_threads=admm_projection_threads,
         use_link_collocation=use_link_collocation,
     )
@@ -419,9 +420,10 @@ def argument_parser() -> argparse.ArgumentParser:
         help="Scale ADMM using the damped Hessian diagonal; also normalize rows for constraint splitting",
     )
     parser.add_argument(
-        "--admm-constraint-splitting",
-        action="store_true",
-        help="Split inequality outputs and project by scalar clipping",
+        "--admm-splitting",
+        choices=("manifold-variables", "constraint-outputs"),
+        default="manifold-variables",
+        help="ADMM auxiliary variables: manifold coordinates or inequality outputs",
     )
     parser.add_argument("--admm-projection-threads", type=int, default=1)
     parser.add_argument(
@@ -474,7 +476,7 @@ def main() -> None:
         qp_max_iterations=args.qp_max_iterations,
         admm_rho=args.admm_rho,
         admm_use_diagonal_metric=args.admm_use_diagonal_metric,
-        admm_constraint_splitting=args.admm_constraint_splitting,
+        admm_splitting=args.admm_splitting,
         admm_projection_threads=args.admm_projection_threads,
         use_link_collocation=args.link_collocation,
     )

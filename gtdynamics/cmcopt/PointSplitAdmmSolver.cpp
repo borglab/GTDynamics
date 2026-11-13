@@ -6,7 +6,7 @@
 /** @file PointSplitAdmmSolver.cpp
  * @brief Factor-once global step and parallel per-point cone projections.
  */
-#include <gtdynamics/cmcopt/PointSplitAdmmSolver.h>
+#include <gtdynamics/cmcopt/AdmmSolver.h>
 #include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtsam/constrained/LinearConstraint.h>
 #include <gtsam/constrained/QpCost.h>
@@ -78,13 +78,13 @@ struct Row {
 };
 }  // namespace
 
-PointSplitAdmmWorkspace::PointSplitAdmmWorkspace() = default;
-PointSplitAdmmWorkspace::~PointSplitAdmmWorkspace() = default;
+AdmmWorkspace::AdmmWorkspace() = default;
+AdmmWorkspace::~AdmmWorkspace() = default;
 
-PointSplitAdmmResult PointSplitAdmmWorkspace::solve(
+AdmmResult AdmmWorkspace::solve(
     const QpProblem& problem, const Values& prototype,
     const std::optional<Ordering>& requestedOrdering, size_t maxIterations,
-    const PointSplitAdmmParams& params) {
+    const AdmmParams& params) {
   if (!problem.eConstraints().empty())
     throw std::invalid_argument("CMC ADMM: equalities must be eliminated by B");
   if (!std::isfinite(params.rho) || params.rho <= 0. ||
@@ -94,6 +94,9 @@ PointSplitAdmmResult PointSplitAdmmWorkspace::solve(
       params.relativeTolerance < 0. || !params.maxProjectionSweeps ||
       !params.projectionThreads)
     throw std::invalid_argument("CMC ADMM: invalid solver parameters");
+  if (params.splitting != AdmmSplitting::ManifoldVariables &&
+      params.splitting != AdmmSplitting::ConstraintOutputs)
+    throw std::invalid_argument("CMC ADMM: unknown splitting strategy");
 
   const Ordering ordering =
       requestedOrdering.value_or(Ordering(prototype.keys()));
@@ -114,7 +117,7 @@ PointSplitAdmmResult PointSplitAdmmWorkspace::solve(
     dimension += block.size();
   }
 
-  PointSplitAdmmResult result;
+  AdmmResult result;
   if (!maxIterations) {
     result.message = "CMC ADMM: outer iteration limit reached";
     return result;
@@ -124,7 +127,7 @@ PointSplitAdmmResult PointSplitAdmmWorkspace::solve(
     return result;
   }
 
-  if (params.useConstraintSplitting)
+  if (params.splitting == AdmmSplitting::ConstraintOutputs)
     return solveConstraints(problem, prototype, requestedOrdering,
                             maxIterations, params);
 
@@ -361,11 +364,10 @@ PointSplitAdmmResult PointSplitAdmmWorkspace::solve(
   return result;
 }
 
-PointSplitAdmmResult solvePointSplitAdmm(
-    const QpProblem& problem, const Values& prototype,
-    const std::optional<Ordering>& requestedOrdering, size_t maxIterations,
-    const PointSplitAdmmParams& params) {
-  PointSplitAdmmWorkspace workspace;
+AdmmResult solveAdmm(const QpProblem& problem, const Values& prototype,
+                     const std::optional<Ordering>& requestedOrdering,
+                     size_t maxIterations, const AdmmParams& params) {
+  AdmmWorkspace workspace;
   return workspace.solve(problem, prototype, requestedOrdering, maxIterations,
                          params);
 }

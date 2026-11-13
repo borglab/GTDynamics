@@ -248,11 +248,13 @@ Changing from the old default feasible approximation to a converged QP can
 change steps and nonlinear trajectories even though the tangent-cone model is
 unchanged. See [ComponentCoordinates.md](ComponentCoordinates.md).
 
-An experimental point-splitting ADMM backend is available through
-`IELMParams::QpBackend::PointSplitADMM`. It shares this exact reduced QP
-and nonlinear retraction, projects each point's cone independently (optionally
-in parallel), and verifies original-factor KKT residuals before accepting a
-step. See the [paired ADMM versus ProxQP experiment](../../examples/cmc_benchmarks/PointSplitADMM.md)
+An experimental ADMM backend is available through
+`IELMParams::QpBackend::ADMM`. It shares this exact reduced QP
+and nonlinear retraction. `admmSplitting` selects
+`AdmmSplitting::ManifoldVariables` (the default) or
+`AdmmSplitting::ConstraintOutputs`. Both reuse GTSAM multifrontal factors and
+verify original-factor KKT residuals before accepting a step.
+See the [paired ADMM versus ProxQP experiment](../../examples/cmc_benchmarks/ADMM.md)
 for solver assumptions, benchmarking and limitations.
 
 To enable ProxQP, install ProxSuite and configure `GTDYNAMICS_WITH_PROXQP=ON`,

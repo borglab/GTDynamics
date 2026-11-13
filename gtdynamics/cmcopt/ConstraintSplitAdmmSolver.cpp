@@ -7,7 +7,7 @@
  * @brief Scaled constraint-output ADMM with cached GTSAM multifrontal solves.
  * @author GTDynamics contributors
  */
-#include <gtdynamics/cmcopt/PointSplitAdmmSolver.h>
+#include <gtdynamics/cmcopt/AdmmSolver.h>
 #include <gtsam/constrained/LinearConstraint.h>
 #include <gtsam/constrained/QpCost.h>
 #include <gtsam/linear/GaussianBayesTree.h>
@@ -72,12 +72,12 @@ GaussianFactorGraph scaleCosts(const GaussianFactorGraph& original,
 }
 }  // namespace
 
-PointSplitAdmmResult PointSplitAdmmWorkspace::solveConstraints(
+AdmmResult AdmmWorkspace::solveConstraints(
     const QpProblem& problem, const Values& prototype,
     const std::optional<Ordering>& requestedOrdering, size_t maxIterations,
-    const PointSplitAdmmParams& params) {
+    const AdmmParams& params) {
   // Common formulation, parameter and ordering validation precedes this call.
-  PointSplitAdmmResult result;
+  AdmmResult result;
   const auto start = Clock::now();
   GaussianFactorGraph original;
   for (const auto& factor : problem.costs()) {

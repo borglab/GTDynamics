@@ -33,7 +33,7 @@ struct IELMTrial;
 struct IELMIterationDetails;
 struct IELMParams;
 namespace internal {
-class PointSplitAdmmWorkspace;
+class AdmmWorkspace;
 }
 
 /** State corresponding to each LM iteration. */
@@ -112,7 +112,7 @@ struct IELMTrial {
   /// linearization.
   IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
             const double &lambda, const IELMParams &params,
-            internal::PointSplitAdmmWorkspace *admmWorkspace = nullptr);
+            internal::AdmmWorkspace *admmWorkspace = nullptr);
 
   /// Perform a trial by moving to specified boundaries.
   IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
@@ -148,7 +148,7 @@ struct IELMTrial {
      */
     LinearUpdate(const double &_lambda, const NonlinearFactorGraph &graph,
                  const IELMState &state, const IELMParams &params,
-                 internal::PointSplitAdmmWorkspace *admmWorkspace = nullptr);
+                 internal::AdmmWorkspace *admmWorkspace = nullptr);
 
     /// Construct a zero step for a boundary-mode change.
     static LinearUpdate zero(const IELMState &state);

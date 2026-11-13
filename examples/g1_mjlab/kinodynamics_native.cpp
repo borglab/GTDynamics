@@ -536,7 +536,7 @@ py::dict solve(
   if (qpBackend == "proxqp")
     params.qpBackend = IELMParams::QpBackend::ProxQP;
   else if (qpBackend == "admm")
-    params.qpBackend = IELMParams::QpBackend::PointSplitADMM;
+    params.qpBackend = IELMParams::QpBackend::ADMM;
   else if (qpBackend != "gtsam")
     throw std::invalid_argument("Unknown QP backend: " + qpBackend);
   if (settings.contains("firstIterationQpBackend")) {
@@ -550,9 +550,15 @@ py::dict solve(
       throw std::invalid_argument("Unknown first QP backend: " + firstBackend);
   }
   params.qpMaxIterations = setting<size_t>(settings, "qpMaxIterations");
-  if (settings.contains("admmConstraintSplitting"))
-    params.admmConstraintSplitting =
-        setting<bool>(settings, "admmConstraintSplitting");
+  if (settings.contains("admmSplitting")) {
+    const auto splitting = setting<std::string>(settings, "admmSplitting");
+    if (splitting == "manifold-variables")
+      params.admmSplitting = AdmmSplitting::ManifoldVariables;
+    else if (splitting == "constraint-outputs")
+      params.admmSplitting = AdmmSplitting::ConstraintOutputs;
+    else
+      throw std::invalid_argument("Unknown ADMM splitting: " + splitting);
+  }
   if (settings.contains("admmUseDiagonalMetric"))
     params.admmUseDiagonalMetric =
         setting<bool>(settings, "admmUseDiagonalMetric");

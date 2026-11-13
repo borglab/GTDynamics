@@ -288,7 +288,7 @@ rows on 117 CMC blocks: $z$ and $u$ each have dimension 230, while the global
 solve still has dimension 18,549. These counts are specific to that capture.
 
 \subsection{Code and options}
-The constraint-output path shares the historical point-split backend API:
+Both splitting strategies share the ADMM backend API:
 \begin{center}
 \small
 \begin{tabularx}{\linewidth}{@{}p{0.47\linewidth}X@{}}
@@ -297,19 +297,20 @@ File under \code{gtdynamics/cmcopt/} & Responsibility \\
 \midrule
 \code{ConstraintSplitAdmmSolver.cpp} & Scaling, augmented graph, cached solves,
 clipping, multiplier recovery, and KKT certificate. \\
-\code{PointSplitAdmmSolver.h/.cpp} & Shared workspace and validation;
-original component-variable splitting. \\
+\code{AdmmSolver.h} & Shared parameters, result, and workspace. \\
+\code{PointSplitAdmmSolver.cpp} & Validation and manifold-variable splitting. \\
 \code{IELMOptimizer.cpp} & Workspace lifetime across damping trials. \\
 \code{IELMOptimizerState.cpp} & Damped QP assembly, backend dispatch,
 blocking-row mapping, and nonlinear update. \\
 \bottomrule
 \end{tabularx}
 \end{center}
-Select \code{QpBackend::PointSplitADMM} and choose \code{admmRho}.\\
-Enable \code{admmConstraintSplitting} and \code{admmUseDiagonalMetric};
-the latter flag selects $D,E$ scaling here and the $M$-metric in point mode.
+Select \code{QpBackend::ADMM} and choose \code{admmRho}.\\
+Set \code{admmSplitting} to \code{AdmmSplitting::ConstraintOutputs}
+(the default is \code{ManifoldVariables}). Enable \code{admmUseDiagonalMetric}
+for $D,E$ scaling here or the $M$-metric in point mode.
 This opt-in experiment uses fixed $\rho$, cold starts for each QP, and no
-over-relaxation, polishing, or fallback. Tests are in \code{testPointSplitAdmm}
+over-relaxation, polishing, or fallback. Tests are in \code{testAdmm}
 and \code{testIELMQp}. Compare timings only with comparable full QP convergence
 and feasible nonlinear results~\cite{experiment}.
 
@@ -335,8 +336,8 @@ Direction Method of Multipliers}.
 {Diagonal Scaling in Douglas--Rachford Splitting and ADMM}.
 \emph{IEEE Conference on Decision and Control}, pp.\ 5033--5039, 2014.
 \bibitem{experiment} GTDynamics contributors.
-\emph{Point-splitting ADMM versus ProxQP (experimental)}.
-\path{examples/cmc_benchmarks/PointSplitADMM.md}.
+\emph{ADMM versus ProxQP (experimental)}.
+\path{examples/cmc_benchmarks/ADMM.md}.
 \end{thebibliography}
 \endgroup
 \end{document}

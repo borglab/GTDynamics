@@ -1,8 +1,8 @@
 # CMC example validation and timing
 
-For a same-QP experiment comparing variable-splitting ADMM (point-local cone
-projections with a reused global factorization) against ProxQP, see
-[PointSplitADMM.md](PointSplitADMM.md). The new comparison is opt-in and does
+For a same-QP experiment comparing manifold-variable and constraint-output
+ADMM splitting with cached GTSAM factors against ProxQP, see
+[ADMM.md](ADMM.md). The new comparison is opt-in and does
 not replace the historical baseline/candidate study below.
 
 These drivers execute the repository's original optimization problems against

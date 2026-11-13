@@ -17,6 +17,7 @@
  */
 
 #pragma once
+#include <gtdynamics/cmcopt/AdmmSplitting.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
@@ -34,7 +35,7 @@ struct IELMParams {
   LinearSolver linearSolver = LinearSolver::Automatic;
 
   /// Numerical backend for the global reduced QP.
-  enum class QpBackend { Gtsam, ProxQP, PointSplitADMM };
+  enum class QpBackend { Gtsam, ProxQP, ADMM };
 
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
@@ -49,9 +50,9 @@ struct IELMParams {
   QpBackend qpBackend = QpBackend::Gtsam;
   /// Optional QP backend for all damping trials of outer iteration zero.
   std::optional<QpBackend> firstIterationQpBackend;
-  /** Experimental fixed-rho point-splitting ADMM backend. Every reduced key
-   * has an independent cone projection, with optional parallel execution.
-   * The global sparse H + rho*M factorization is reused between iterations.
+  /** Experimental fixed-rho ADMM backend, with manifold-variable or
+   * constraint-output splitting. The global sparse numerical factorization
+   * is reused between iterations.
    * Unlike qpUseFeasibleStep, this backend requires an original-factor KKT
    * certificate before returning a direction for nonlinear retraction.
    */
@@ -59,15 +60,15 @@ struct IELMParams {
   /// Use the Hessian-diagonal metric, or coordinate/row scaling in constraint
   /// mode.
   bool admmUseDiagonalMetric = false;
-  /// Split constraint outputs, with clipping and optional variable/row scaling.
-  bool admmConstraintSplitting = false;
+  /// Select manifold cone projections or constraint-output clipping.
+  AdmmSplitting admmSplitting = AdmmSplitting::ManifoldVariables;
   double admmAbsoluteTolerance = 1e-9;
   double admmRelativeTolerance = 1e-9;
   size_t admmProjectionSweeps = 2000;
   size_t admmProjectionThreads = 1;
   /** Backend QP iteration limit; exhaustion rejects the LM trial. For ProxQP
    * this bounds outer iterations; qpIterations reports total inner iterations.
-   * For PointSplitADMM it bounds global ADMM iterations.
+   * For ADMM it bounds global ADMM iterations.
    */
   size_t qpMaxIterations = 1000;
   /** Seed primal working sets with GTSAM's componentwise projected gradient.

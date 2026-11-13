@@ -19,8 +19,8 @@
  * @date    Feb 26, 2012
  */
 
+#include <gtdynamics/cmcopt/AdmmSolver.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
-#include <gtdynamics/cmcopt/PointSplitAdmmSolver.h>
 
 using namespace std;
 
@@ -114,7 +114,7 @@ IELMIterationDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   // Set lambda for first trial.
   double lambda = state.lambda;
   double lambdaFactor = state.lambdaFactor;
-  internal::PointSplitAdmmWorkspace admmWorkspace;
+  internal::AdmmWorkspace admmWorkspace;
   std::optional<IELMParams> firstIterationParams;
   if (state.iterations == 0 && ielm_params_.firstIterationQpBackend) {
     firstIterationParams = ielm_params_;

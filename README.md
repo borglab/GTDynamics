@@ -81,10 +81,10 @@ sudo make install
 
 ## Optional sparse ProxQP backend
 
-An opt-in [CMC point-splitting ADMM experiment](examples/cmc_benchmarks/PointSplitADMM.md)
-compares the existing ProxQP QP backend with independently parallelizable
-tangent-cone projections. It is experimental and does not change the default
-solver.
+An opt-in [CMC ADMM experiment](examples/cmc_benchmarks/ADMM.md) compares
+manifold-variable and scaled constraint-output splitting with the existing
+ProxQP backend. Both strategies reuse GTSAM multifrontal factors. The default
+solver remains GTSAM.
 
 CMC-Opt can solve its global reduced QP with
 [ProxQP from ProxSuite](https://github.com/Simple-Robotics/proxsuite).
