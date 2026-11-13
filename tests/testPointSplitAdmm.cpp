@@ -11,9 +11,12 @@
 #include <gtdynamics/cmcopt/ProxQpSolver.h>
 #include <gtsam/base/TestableAssertions.h>
 #include <gtsam/constrained/LinearConstraint.h>
+#include <gtsam/linear/HessianFactor.h>
+
+#include <cmath>
 
 using namespace gtsam;
-using namespace gtdynamics;
+namespace cmc = gtdynamics::internal;
 
 TEST(PointSplitAdmm, OnePointActiveFace) {
   QpProblem problem;
@@ -22,8 +25,8 @@ TEST(PointSplitAdmm, OnePointActiveFace) {
       JacobianFactor(7, -Matrix2::Identity(), Vector2::Zero())));
   Values prototype;
   prototype.insert(7, Vector(Vector2::Zero()));
-  const auto result = internal::solvePointSplitAdmm(
-      problem, prototype, std::nullopt, 2000);
+  const auto result =
+      cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 2000);
   EXPECT(result.converged);
   if (!result.converged) return;
   EXPECT(assert_equal(Vector2(2., 0.), result.values.at<Vector>(7), 1e-7));
@@ -48,10 +51,10 @@ TEST(PointSplitAdmm, CoupledPointConesVersusProxQp) {
   Values prototype;
   prototype.insert(1, Vector(Vector1::Zero()));
   prototype.insert(2, Vector(Vector1::Zero()));
-  internal::PointSplitAdmmParams params;
+  cmc::PointSplitAdmmParams params;
   params.projectionThreads = 2;
-  const auto result = internal::solvePointSplitAdmm(
-      problem, prototype, Ordering{2, 1}, 3000, params);
+  const auto result = cmc::solvePointSplitAdmm(problem, prototype,
+                                               Ordering{2, 1}, 3000, params);
   EXPECT(result.converged);
   if (!result.converged) return;
   EXPECT_DOUBLES_EQUAL(0., result.values.at<Vector>(1)(0), 1e-7);
@@ -59,8 +62,7 @@ TEST(PointSplitAdmm, CoupledPointConesVersusProxQp) {
   EXPECT(result.activeRows[0]);
   EXPECT(!result.activeRows[1]);
 #ifdef GTDYNAMICS_WITH_PROXQP
-  const auto prox = internal::solveProxQp(
-      problem, prototype, Ordering{2, 1}, 3000);
+  const auto prox = cmc::solveProxQp(problem, prototype, Ordering{2, 1}, 3000);
   EXPECT(prox.converged);
   if (prox.converged) {
     EXPECT(assert_equal(prox.values, result.values, 1e-7));
@@ -79,8 +81,8 @@ TEST(PointSplitAdmm, DependentAndOpposingRows) {
         JacobianFactor(7, A, Vector2::Zero())));
     Values prototype;
     prototype.insert(7, Vector(Vector1::Zero()));
-    const auto result = internal::solvePointSplitAdmm(
-        problem, prototype, std::nullopt, 5000);
+    const auto result =
+        cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 5000);
     EXPECT(result.converged);
     if (result.converged)
       EXPECT_DOUBLES_EQUAL(opposing ? 0. : 2.,
@@ -102,12 +104,12 @@ TEST(PointSplitAdmm, PointParallelMatchesSerial) {
           key - 1, 0.25 * Matrix2::Identity(), key,
           -0.25 * Matrix2::Identity(), Vector2::Zero()));
   }
-  internal::PointSplitAdmmParams serial;
-  const auto a = internal::solvePointSplitAdmm(
-      problem, prototype, std::nullopt, 5000, serial);
+  cmc::PointSplitAdmmParams serial;
+  const auto a =
+      cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 5000, serial);
   serial.projectionThreads = 4;
-  const auto b = internal::solvePointSplitAdmm(
-      problem, prototype, std::nullopt, 5000, serial);
+  const auto b =
+      cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 5000, serial);
   EXPECT(a.converged);
   EXPECT(b.converged);
   if (a.converged && b.converged)
@@ -119,16 +121,235 @@ TEST(PointSplitAdmm, RejectUnsupportedFormulationsAndFailures) {
   problem.addCost(JacobianFactor(1, Matrix1::Identity(), Vector1(2.)));
   Values prototype;
   prototype.insert(1, Vector(Vector1::Zero()));
-  internal::PointSplitAdmmParams params;
+  cmc::PointSplitAdmmParams params;
   params.rho = 0.;
-  CHECK_EXCEPTION(internal::solvePointSplitAdmm(
-      problem, prototype, std::nullopt, 100, params), std::invalid_argument);
+  CHECK_EXCEPTION(
+      cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 100, params),
+      std::invalid_argument);
   params.rho = 1.;
-  const auto exhausted = internal::solvePointSplitAdmm(
-      problem, prototype, std::nullopt, 0, params);
+  const auto exhausted =
+      cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 0, params);
   EXPECT(!exhausted.converged);
   problem.addConstraint(LinearConstraint::LessEqual(
       JacobianFactor(1, Matrix1::Identity(), Vector1(1.))));
-  CHECK_EXCEPTION(internal::solvePointSplitAdmm(
-      problem, prototype, std::nullopt, 100, params), std::invalid_argument);
+  CHECK_EXCEPTION(
+      cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 100, params),
+      std::invalid_argument);
+}
+
+// Checks that damping retries refresh the numerical factors of a shared tree.
+TEST(PointSplitAdmm, ReuseMultifrontalStructureAcrossDampingTrials) {
+  Values prototype;
+  prototype.insert(1, Vector(Vector1::Zero()));
+  cmc::PointSplitAdmmWorkspace workspace;
+  for (double lambda : {0.25, 3.0, 0.25}) {
+    QpProblem problem;
+    problem.addCost(JacobianFactor(1, Matrix1::Identity(), Vector1(2.)));
+    problem.addCost(JacobianFactor(1, std::sqrt(lambda) * Matrix1::Identity(),
+                                   Vector1::Zero()));
+    problem.addConstraint(LinearConstraint::LessEqual(
+        JacobianFactor(1, -Matrix1::Identity(), Vector1::Zero())));
+    const auto result = workspace.solve(problem, prototype, std::nullopt, 2000);
+    EXPECT(result.converged);
+    if (result.converged)
+      EXPECT_DOUBLES_EQUAL(2. / (1. + lambda), result.values.at<Vector>(1)(0),
+                           1e-7);
+  }
+}
+
+// Checks penalty sensitivity against an analytic, badly scaled unconstrained
+// QP.
+TEST(PointSplitAdmm, LowCurvatureNeedsAppropriatePenalty) {
+  QpProblem problem;
+  Matrix2 jacobian = Matrix2::Zero();
+  jacobian(0, 0) = 0.01;
+  jacobian(1, 1) = 100.;
+  problem.addCost(JacobianFactor(1, jacobian, Vector2(0.01, 200.)));
+  Values prototype;
+  prototype.insert(1, Vector(Vector2::Zero()));
+  auto slow = cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 1000);
+  EXPECT(!slow.converged);
+  EXPECT(std::isnan(slow.stationarityResidual));
+  EXPECT(slow.message.find("not evaluated") != std::string::npos);
+  cmc::PointSplitAdmmParams params;
+  params.rho = 1e-4;
+  params.absoluteTolerance = 1e-12;
+  params.relativeTolerance = 1e-12;
+  const auto solved =
+      cmc::solvePointSplitAdmm(problem, prototype, std::nullopt, 1000, params);
+  EXPECT(solved.converged);
+  if (solved.converged)
+    EXPECT(assert_equal(Vector2(1., 2.), solved.values.at<Vector>(1), 1e-7));
+  EXPECT(solved.iterations < 50);
+}
+
+// Verifies that changed objective right-hand sides do not reuse stale
+// gradients.
+TEST(PointSplitAdmm, ChangedRightHandSideWithSameStructure) {
+  Values prototype;
+  prototype.insert(1, Vector(Vector1::Zero()));
+  cmc::PointSplitAdmmWorkspace workspace;
+  for (double target : {2., -3., 4.}) {
+    QpProblem problem;
+    problem.addCost(JacobianFactor(1, Matrix1::Identity(), Vector1(target)));
+    problem.addConstraint(LinearConstraint::LessEqual(
+        JacobianFactor(1, -Matrix1::Identity(), Vector1::Zero())));
+    const auto result = workspace.solve(problem, prototype, std::nullopt, 1000);
+    EXPECT(result.converged);
+    if (result.converged)
+      EXPECT_DOUBLES_EQUAL(std::max(0., target), result.values.at<Vector>(1)(0),
+                           1e-7);
+  }
+}
+
+// An oblique face requires the same anisotropic metric in both ADMM steps.
+TEST(PointSplitAdmm, DiagonalMetricObliqueFace) {
+  for (double rho : {0.1, 1., 10.}) {
+    QpProblem problem;
+    Matrix2 jacobian = Matrix2::Identity();
+    jacobian(1, 1) = 10.;
+    problem.addCost(JacobianFactor(1, jacobian, Vector2(2., 30.)));
+    Matrix A(1, 2);
+    A << 1., 1.;
+    problem.addConstraint(
+        LinearConstraint::LessEqual(JacobianFactor(1, A, Vector1::Zero())));
+    Values prototype;
+    prototype.insert(1, Vector(Vector2::Zero()));
+    cmc::PointSplitAdmmParams params;
+    params.rho = rho;
+    params.useDiagonalMetric = true;
+    const auto result = cmc::solvePointSplitAdmm(problem, prototype,
+                                                 std::nullopt, 1000, params);
+    EXPECT(result.converged);
+    if (result.converged) {
+      EXPECT(assert_equal(Vector2(-298. / 101., 298. / 101.),
+                          result.values.at<Vector>(1), 1e-7));
+      EXPECT(result.activeRows[0]);
+      EXPECT(result.stationarityResidual <= 1e-7);
+    }
+  }
+}
+
+// Diagonal scaling removes the penalty imbalance across eight curvature orders.
+TEST(PointSplitAdmm, DiagonalMetricLowCurvatureAndDampingReuse) {
+  Values prototype;
+  prototype.insert(1, Vector(Vector2::Zero()));
+  cmc::PointSplitAdmmWorkspace workspace;
+  cmc::PointSplitAdmmParams params;
+  params.useDiagonalMetric = true;
+  params.absoluteTolerance = 1e-12;
+  params.relativeTolerance = 1e-12;
+  Matrix2 jacobian = Matrix2::Zero();
+  jacobian.diagonal() << 0.01, 100.;
+  for (double damping : {0., 3., 0.}) {
+    QpProblem problem;
+    problem.addCost(JacobianFactor(1, jacobian, Vector2(0.01, 200.)));
+    problem.addCost(JacobianFactor(1, std::sqrt(damping) * Matrix2::Identity(),
+                                   Vector2::Zero()));
+    const auto result =
+        workspace.solve(problem, prototype, std::nullopt, 100, params);
+    EXPECT(result.converged);
+    EXPECT(result.iterations < 60);
+    if (result.converged)
+      EXPECT(
+          assert_equal(Vector2(1e-4 / (1e-4 + damping), 2e4 / (1e4 + damping)),
+                       result.values.at<Vector>(1), 1e-7));
+  }
+}
+
+// Scaling must preserve the physical optimum and original constraint row order.
+TEST(PointSplitAdmm, ScaledConstraintSplitObliqueFace) {
+  for (double rowScale : {1., 1000.}) {
+    QpProblem problem;
+    Matrix2 jacobian = Matrix2::Zero();
+    jacobian.diagonal() << 0.01, 100.;
+    problem.addCost(JacobianFactor(1, jacobian, Vector2(0.02, 300.)));
+    problem.addCost(JacobianFactor(2, Matrix1::Identity(), Vector1(-2.)));
+    problem.addConstraint(LinearConstraint::GreaterEqual(
+        JacobianFactor(2, Matrix1::Identity(), Vector1::Zero())));
+    Matrix rows(2, 2);
+    rows << rowScale, rowScale, 0., 0.;
+    problem.addConstraint(
+        LinearConstraint::LessEqual(JacobianFactor(1, rows, Vector2::Zero())));
+    Values prototype;
+    prototype.insert(1, Vector(Vector2::Zero()));
+    prototype.insert(2, Vector(Vector1::Zero()));
+    cmc::PointSplitAdmmParams params;
+    params.useConstraintSplitting = true;
+    params.useDiagonalMetric = true;
+    const auto result = cmc::solvePointSplitAdmm(problem, prototype,
+                                                 Ordering{2, 1}, 2000, params);
+    EXPECT(result.converged);
+    if (!result.converged) continue;
+    const double optimum = (3e4 - 2e-4) / (1e4 + 1e-4);
+    EXPECT(assert_equal(Vector2(-optimum, optimum), result.values.at<Vector>(1),
+                        1e-7));
+    EXPECT_DOUBLES_EQUAL(0., result.values.at<Vector>(2)(0), 1e-7);
+    EXPECT_LONGS_EQUAL(3, result.activeRows.size());
+    EXPECT(result.activeRows[0]);
+    EXPECT(result.activeRows[1]);
+    EXPECT(!result.activeRows[2]);
+    EXPECT(result.stationarityResidual <= 1e-7);
+  }
+}
+
+// Constraint splitting must preserve coupled costs and opposing/duplicate rows.
+TEST(PointSplitAdmm, ConstraintSplitCoupledAndDependentRows) {
+  for (bool scaled : {false, true}) {
+    QpProblem problem;
+    problem.addCost(JacobianFactor(1, Matrix1::Identity(), Vector1(-3.)));
+    problem.addCost(JacobianFactor(2, Matrix1::Identity(), Vector1(2.)));
+    problem.addCost(JacobianFactor(1, Matrix1::Identity(), 2,
+                                   -Matrix1::Identity(), Vector1::Zero()));
+    Matrix rows(3, 1);
+    rows << 1., -1., -2.;
+    problem.addConstraint(
+        LinearConstraint::LessEqual(JacobianFactor(1, rows, Vector3::Zero())));
+    Values prototype;
+    prototype.insert(1, Vector(Vector1::Zero()));
+    prototype.insert(2, Vector(Vector1::Zero()));
+    cmc::PointSplitAdmmParams params;
+    params.useConstraintSplitting = true;
+    params.useDiagonalMetric = scaled;
+    const auto result = cmc::solvePointSplitAdmm(problem, prototype,
+                                                 std::nullopt, 2000, params);
+    EXPECT(result.converged);
+    if (result.converged) {
+      EXPECT_DOUBLES_EQUAL(0., result.values.at<Vector>(1)(0), 1e-7);
+      EXPECT_DOUBLES_EQUAL(1., result.values.at<Vector>(2)(0), 1e-7);
+    }
+  }
+}
+
+// The no-inequality case solves once, including Hessian inputs and damping
+// reuse.
+TEST(PointSplitAdmm, ConstraintSplitUnconstrainedHessianAndReuse) {
+  Values prototype;
+  prototype.insert(1, Vector(Vector2::Zero()));
+  cmc::PointSplitAdmmParams params;
+  params.useConstraintSplitting = true;
+  params.useDiagonalMetric = true;
+  cmc::PointSplitAdmmWorkspace workspace;
+  for (double damping : {0.25, 3., 0.25}) {
+    QpProblem problem;
+    Matrix2 information = Matrix2::Zero();
+    information.diagonal() << 1e-4, 1e4;
+    problem.addCost(
+        HessianFactor(1, information, Vector2(1e-4, 2e4), 40000.0001));
+    problem.addCost(JacobianFactor(1, std::sqrt(damping) * Matrix2::Identity(),
+                                   Vector2::Zero()));
+    const auto result =
+        workspace.solve(problem, prototype, std::nullopt, 10, params);
+    EXPECT(result.converged);
+    EXPECT_LONGS_EQUAL(1, result.iterations);
+    if (result.converged)
+      EXPECT(
+          assert_equal(Vector2(1e-4 / (1e-4 + damping), 2e4 / (1e4 + damping)),
+                       result.values.at<Vector>(1), 1e-7));
+  }
+}
+
+int main() {
+  TestResult result;
+  return TestRegistry::runAllTests(result);
 }

@@ -22,6 +22,7 @@
 #include <gtsam/constrained/ConstrainedOptimizer.h>
 
 #include <functional>
+#include <optional>
 
 namespace gtdynamics {
 using namespace gtsam;
@@ -46,13 +47,20 @@ struct IELMParams {
    * with projected-gradient initialization disabled. GTSAM remains the default.
    */
   QpBackend qpBackend = QpBackend::Gtsam;
+  /// Optional QP backend for all damping trials of outer iteration zero.
+  std::optional<QpBackend> firstIterationQpBackend;
   /** Experimental fixed-rho point-splitting ADMM backend. Every reduced key
    * has an independent cone projection, with optional parallel execution.
-   * The global sparse H + rho*I factorization is reused between iterations.
+   * The global sparse H + rho*M factorization is reused between iterations.
    * Unlike qpUseFeasibleStep, this backend requires an original-factor KKT
    * certificate before returning a direction for nonlinear retraction.
    */
   double admmRho = 1.0;
+  /// Use the Hessian-diagonal metric, or coordinate/row scaling in constraint
+  /// mode.
+  bool admmUseDiagonalMetric = false;
+  /// Split constraint outputs, with clipping and optional variable/row scaling.
+  bool admmConstraintSplitting = false;
   double admmAbsoluteTolerance = 1e-9;
   double admmRelativeTolerance = 1e-9;
   size_t admmProjectionSweeps = 2000;

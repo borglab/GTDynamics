@@ -228,13 +228,14 @@ IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
 
 /* ************************************************************************* */
 IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
-                     const double &lambda, const IELMParams &params) {
+                     const double &lambda, const IELMParams &params,
+                     internal::PointSplitAdmmWorkspace *admmWorkspace) {
   // std::cout << "========= " << state.iterations << " ======= \n";
   auto start = std::chrono::high_resolution_clock::now();
   stepIsSuccessful = false;
 
   // Compute linear update and linear cost change
-  linearUpdate = LinearUpdate(lambda, graph, state, params);
+  linearUpdate = LinearUpdate(lambda, graph, state, params, admmWorkspace);
   if (!linearUpdate.solveSuccessful) {
     return;
   }
@@ -561,13 +562,15 @@ void printIELMTrial(const IELMState &state, const IELMTrial &trial,
 /* ************************************************************************* */
 
 /* ************************************************************************* */
-IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
-                                      const NonlinearFactorGraph &graph,
-                                      const IELMState &state,
-                                      const IELMParams &params)
+IELMTrial::LinearUpdate::LinearUpdate(
+    const double &_lambda, const NonlinearFactorGraph &graph,
+    const IELMState &state, const IELMParams &params,
+    internal::PointSplitAdmmWorkspace *admmWorkspace)
     : lambda(_lambda) {
-  const bool gaussian = params.linearSolver == IELMParams::LinearSolver::Gaussian ||
-      (params.linearSolver == IELMParams::LinearSolver::Automatic && state.equalityOnly);
+  const bool gaussian =
+      params.linearSolver == IELMParams::LinearSolver::Gaussian ||
+      (params.linearSolver == IELMParams::LinearSolver::Automatic &&
+       state.equalityOnly);
   if (gaussian && !state.equalityOnly)
     throw std::invalid_argument("Gaussian CMC solves require empty inequalities");
 
@@ -669,13 +672,16 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       if (params.qpBackend == IELMParams::QpBackend::PointSplitADMM) {
         internal::PointSplitAdmmParams admm;
         admm.rho = params.admmRho;
+        admm.useDiagonalMetric = params.admmUseDiagonalMetric;
+        admm.useConstraintSplitting = params.admmConstraintSplitting;
         admm.absoluteTolerance = params.admmAbsoluteTolerance;
         admm.relativeTolerance = params.admmRelativeTolerance;
         admm.maxProjectionSweeps = params.admmProjectionSweeps;
         admm.projectionThreads = params.admmProjectionThreads;
-        const auto result = internal::solvePointSplitAdmm(
-            problem, initial, qpParams->ordering, params.qpMaxIterations,
-            admm);
+        internal::PointSplitAdmmWorkspace localWorkspace;
+        auto &workspace = admmWorkspace ? *admmWorkspace : localWorkspace;
+        const auto result = workspace.solve(
+            problem, initial, qpParams->ordering, params.qpMaxIterations, admm);
         qpIterations = result.iterations;
         if (!result.converged) {
           failureReason = result.message;

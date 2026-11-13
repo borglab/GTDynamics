@@ -1,5 +1,9 @@
 # Point-splitting ADMM versus ProxQP (experimental)
 
+See the [technical note](../../doc/cmc-admm-linear-step.pdf)
+([LaTeX source](../../doc/cmc-admm-linear-step.tex)) for the reduced CMC QP,
+scaled constraint splitting, cached multifrontal solve, and KKT certificate.
+
 This experiment compares **the same** CMC-Opt global B-reduced tangent-cone QP
 with the existing native ProxQP backend and a new **variable-splitting ADMM**
 backend. It does **not** replace the default GTSAM solver or alter nonlinear
@@ -34,11 +38,13 @@ iteration. The second step uses independently maintained local dual variables
 and Dykstra/coordinate-dual projections, parallelized using the shared
 forIndependentComponents helper (TBB when available, serial otherwise).
 
-For this first benchmark, **the global factorization is Eigen's sparse
-SimplicialLDLT applied to the assembled Hessian**. It does not yet reuse GTSAM's
-multifrontal square-root factors. This is important: it compares an actual
-prototype, not an assumed cached GTSAM implementation. A GTSAM cached-factor
-global step is a separate follow-up optimization.
+GTSAM's `MultifrontalSolver` factors the original Gaussian factors and unary
+\(\sqrt{\rho} I\) factors. The resulting Bayes tree stores the square-root
+factorization. Each ADMM iteration uses a transpose solve and a back solve on
+that tree with its new right-hand side.
+LM damping retries reuse the multifrontal symbolic structure and clique load
+plans at the same linearization. Changing damping changes the Hessian diagonal,
+so each retry refreshes the numerical factorization.
 
 The implementation:
 
@@ -53,13 +59,72 @@ The implementation:
   starts across LM trials and optimized closed-form cone projections are future
   work; they are not part of reported timings.
 
+## Optional diagonal metric
+
+`PointSplitAdmmParams::useDiagonalMetric` (or
+`IELMParams::admmUseDiagonalMetric`) uses
+\(M=\operatorname{diag}(\max(\operatorname{diag}(H),10^{-12}))\), with H
+including the current LM damping. The default remains the identity metric.
+The global system is \(H+\rho M\), its right-hand side is
+\(-g+\rho M(z-u)\), and each CMC block projects in the same M-weighted norm.
+The metric stays fixed within a QP and is recomputed for a new damping trial.
+
+The local dual-coordinate projection uses directions
+\(M_i^{-1}a_j^T\) and denominators \(a_jM_i^{-1}a_j^T\). The primal residual
+remains x-z, while the dual residual becomes \(\rho M(z-z_{old})\).
+Physical constraint rows, objective weights, and the original-factor KKT
+certificate are unchanged. The GTSAM multifrontal numerical factorization is
+still reused for every ADMM iteration, with symbolic reuse across damping
+trials. The 171 manifold blocks in the G1 clip contain 18,297 scalar tangent
+coordinates; 42 other blocks contribute 252 coordinates.
+
+Pass `--admm-use-diagonal-metric` to the G1 runner to enable this experiment.
+The metric does not enable adaptive rho, cross-QP warm starts, or a different
+cone-projection algorithm. Conditioning beyond diagonal scaling and local
+projection failures remain possible.
+
+## Constraint-output splitting with scaling
+
+`PointSplitAdmmParams::useConstraintSplitting` selects the constraint-output
+formulation. In the G1 runner, use `--admm-constraint-splitting` together with
+`--admm-use-diagonal-metric` to enable scaling. The point split remains the
+default. The option name `admmUseDiagonalMetric` selects the following scaling
+when constraint splitting is enabled, rather than the point-split metric above.
+
+Let \(x=D y\), where \(D=\operatorname{diag}(\max(\operatorname{diag}(H),
+10^{-12}))^{-1/2}\). Each inequality row is scaled by the reciprocal norm of
+its row in \(G D\), with a norm floor of \(10^{-12}\). Zero rows retain scale
+one. With the resulting positive diagonal row scaling E, split
+\(E G D y=z\), \(z\le0\). The global system is
+\(D H D+\rho(E G D)^T(E G D)\), followed by scalar clipping and the scaled
+dual update. Scaling is fixed within a QP and recomputed for new damping.
+Original square-root cost factors retain their noise models and receive only
+column scaling; Hessian cost factors retain their local Hessian representation.
+No dense global objective or external linear solver is introduced.
+
+The physical step is \(x=D y\), and original constraint multipliers are
+\(\lambda=\rho E u\). Every 25 iterations (starting at iteration one), and
+at the iteration limit, the original objective gradient, original inequality
+rows and transformed duals are checked for feasibility, stationarity, dual
+feasibility and complementarity at the same \(10^{-7}\) certificate tolerance.
+Unlike the point mode, there is no additional consensus-residual acceptance
+gate. Reported primal residual is scaled consensus violation, while reported
+dual residual is original-unit KKT stationarity from the latest check.
+Accepted active rows retain original QP order for CMC nonlinear retraction.
+
+The damped objective must be positive definite for this formulation; no
+additional regularization is silently added. A QP with no inequality rows
+uses one direct solve. Numerical factors are reused for every RHS update,
+and symbolic analysis is reused across damping retries. This experiment does
+not add adaptive rho, over-relaxation, warm starts across QPs, or polishing.
+
 ## Correctness
 
 Build the usual GTDynamics tests and run:
 
 ~~~bash
-ctest --test-dir build -R testPointSplitAdmm --output-on-failure
-ctest --test-dir build -R testIELMQp --output-on-failure
+cd build
+make -j6 testPointSplitAdmm.run testIELMQp.run
 ~~~
 
 The tests cover a constrained optimum, a globally coupled two-component QP,
@@ -129,6 +194,4 @@ report memory/factorization cost and convergence failures as well as solve time.
 A fixed \(\rho\) can make ADMM converge very slowly on stiff, mixed-scale
 systems. Convergence to KKT accuracy and accurate active-face selection matter
 more than a cheap individual iteration, since retraction consumes those
-faces. Sparse normal equations can also lose accuracy relative to GTSAM's
-square-root QR path. This is deliberately an **opt-in experimental backend**;
-the PR should not change CMC-Opt's production default.
+faces. This is an **opt-in experimental backend**.

@@ -8,11 +8,10 @@
  */
 #include <gtdynamics/cmcopt/PointSplitAdmmSolver.h>
 #include <gtdynamics/constrained/internal/IndependentComponents.h>
-
 #include <gtsam/constrained/LinearConstraint.h>
 #include <gtsam/constrained/QpCost.h>
-
-#include <Eigen/SparseCholesky>
+#include <gtsam/linear/GaussianBayesTree.h>
+#include <gtsam/linear/MultifrontalSolver.h>
 
 #include <algorithm>
 #include <chrono>
@@ -27,28 +26,19 @@
 namespace gtdynamics::internal {
 namespace {
 using namespace gtsam;
-using Sparse = Eigen::SparseMatrix<double, Eigen::ColMajor, int>;
-using Triplet = Eigen::Triplet<double, int>;
 using Clock = std::chrono::steady_clock;
 
 double seconds(Clock::time_point start) {
   return std::chrono::duration<double>(Clock::now() - start).count();
 }
 
-void appendSymmetric(std::vector<Triplet>& entries, int row, int col,
-                     double value) {
-  if (!std::isfinite(value))
-    throw std::invalid_argument("CMC ADMM: nonfinite Hessian coefficient");
-  if (value == 0.) return;
-  entries.emplace_back(row, col, value);
-  if (row != col) entries.emplace_back(col, row, value);
-}
-
 // The dual coordinate updates are Dykstra projection onto an intersection of
-// halfspaces. They do not require independent constraint rows (e.g. at corners).
+// halfspaces. They do not require independent constraint rows (e.g. at
+// corners).
 struct Cone {
   int offset = 0;
   Matrix A;
+  Matrix metricNormals;  // A M^{-1}, for the weighted projection.
   Vector rowNormSquared;
   Vector multipliers;
   std::vector<size_t> originalRows;
@@ -56,7 +46,7 @@ struct Cone {
 
 bool project(Cone& cone, const Vector& trial, Vector& projected,
              size_t maxSweeps, double tolerance) {
-  projected = trial - cone.A.transpose() * cone.multipliers;
+  projected = trial - cone.metricNormals.transpose() * cone.multipliers;
   for (size_t sweep = 0; sweep < maxSweeps; ++sweep) {
     double maxChange = 0.;
     for (int j = 0; j < cone.A.rows(); ++j) {
@@ -67,7 +57,7 @@ bool project(Cone& cone, const Vector& trial, Vector& projected,
       cone.multipliers(j) = next;
       const double change = next - old;
       maxChange = std::max(maxChange, std::abs(change));
-      projected.noalias() -= change * cone.A.row(j).transpose();
+      projected.noalias() -= change * cone.metricNormals.row(j).transpose();
     }
     if (maxChange > tolerance) continue;
     // Coordinate changes alone do not establish primal/dual feasibility.
@@ -88,7 +78,10 @@ struct Row {
 };
 }  // namespace
 
-PointSplitAdmmResult solvePointSplitAdmm(
+PointSplitAdmmWorkspace::PointSplitAdmmWorkspace() = default;
+PointSplitAdmmWorkspace::~PointSplitAdmmWorkspace() = default;
+
+PointSplitAdmmResult PointSplitAdmmWorkspace::solve(
     const QpProblem& problem, const Values& prototype,
     const std::optional<Ordering>& requestedOrdering, size_t maxIterations,
     const PointSplitAdmmParams& params) {
@@ -131,38 +124,9 @@ PointSplitAdmmResult solvePointSplitAdmm(
     return result;
   }
 
-  // Preserve the local Hessian blocks supplied by QpCost. We deliberately
-  // measure a sparse normal-equation backend first; a cached GTSAM square-root
-  // multifrontal solve can later be substituted without changing the split.
-  std::vector<Triplet> entries;
-  Vector linear = Vector::Zero(dimension);
-  for (const auto& factor : problem.costs()) {
-    const auto cost = std::dynamic_pointer_cast<QpCost>(factor);
-    if (!cost) throw std::invalid_argument("CMC ADMM: expected QpCost");
-    const auto& hessian = cost->hessianFactor();
-    size_t i = 0;
-    for (auto rowKey = hessian.begin(); rowKey != hessian.end();
-         ++rowKey, ++i) {
-      const int rowOffset = offsets.at(*rowKey);
-      const int rows = hessian.getDim(rowKey);
-      linear.segment(rowOffset, rows) -= hessian.linearTerm(rowKey);
-      size_t j = i;
-      for (auto colKey = rowKey; colKey != hessian.end(); ++colKey, ++j) {
-        const auto block = hessian.info().aboveDiagonalBlock(i, j);
-        const int colOffset = offsets.at(*colKey);
-        for (int col = 0; col < block.cols(); ++col)
-          for (int row = 0; row < block.rows(); ++row) {
-            if (i == j && row > col) continue;
-            appendSymmetric(entries, rowOffset + row, colOffset + col,
-                            block(row, col));
-          }
-      }
-    }
-  }
-  for (int i = 0; i < dimension; ++i)
-    entries.emplace_back(i, i, params.rho);
-  if (!linear.allFinite())
-    throw std::invalid_argument("CMC ADMM: nonfinite linear term");
+  if (params.useConstraintSplitting)
+    return solveConstraints(problem, prototype, requestedOrdering,
+                            maxIterations, params);
 
   // CMC constructs one-key tangent-cone rows. Group them by reduced key,
   // preserving the exact original row indices for nonlinear retraction.
@@ -184,7 +148,8 @@ PointSplitAdmmResult solvePointSplitAdmm(
         source.sense() == LinearConstraint::Sense::GreaterEqual ? -1. : 1.;
     const Vector rhs = sign * jacobian.getb();
     if (!rhs.allFinite() || rhs.cwiseAbs().maxCoeff() > 1e-12)
-      throw std::invalid_argument("CMC ADMM: tangent inequalities must be homogeneous");
+      throw std::invalid_argument(
+          "CMC ADMM: tangent inequalities must be homogeneous");
     const Matrix A = sign * jacobian.getA(jacobian.begin());
     if (!A.allFinite() || A.cols() != prototype.at<Vector>(key).size())
       throw std::invalid_argument("CMC ADMM: malformed cone rows");
@@ -209,41 +174,120 @@ PointSplitAdmmResult solvePointSplitAdmm(
     cones.push_back(std::move(cone));
   }
 
+  // Add sqrt(rho M) unary factors to the original Gaussian objective.
+  // The factorization stays fixed while the ADMM right-hand side changes.
   const auto factorizationStart = Clock::now();
-  Sparse system(dimension, dimension);
-  system.setFromTriplets(entries.begin(), entries.end());
-  Eigen::SimplicialLDLT<Sparse> solver;
-  solver.compute(system);
-  result.factorizationSeconds = seconds(factorizationStart);
-  if (solver.info() != Eigen::Success) {
-    result.message = "CMC ADMM: sparse factorization failed";
+  GaussianFactorGraph system;
+  for (const auto& factor : problem.costs()) {
+    const auto cost = std::dynamic_pointer_cast<QpCost>(factor);
+    if (!cost) throw std::invalid_argument("CMC ADMM: expected QpCost");
+    system.add(cost->gaussianFactor());
+  }
+  const VectorValues gradientAtZero = system.gradientAtZero();
+  Vector metric =
+      Vector::Constant(dimension, params.useDiagonalMetric ? 1e-12 : 1.);
+  if (params.useDiagonalMetric) {
+    for (const auto& [key, diagonal] : system.hessianDiagonal()) {
+      if (!diagonal.allFinite() || (diagonal.array() < 0.).any())
+        throw std::invalid_argument(
+            "CMC ADMM: invalid Hessian diagonal metric");
+      metric.segment(offsets.at(key), diagonal.size()) =
+          diagonal.cwiseMax(1e-12);
+    }
+  }
+  for (auto& cone : cones) {
+    const Vector inverse =
+        metric.segment(cone.offset, cone.A.cols()).cwiseInverse();
+    cone.metricNormals = cone.A * inverse.asDiagonal();
+    for (int row = 0; row < cone.A.rows(); ++row)
+      cone.rowNormSquared(row) =
+          cone.A.row(row).dot(cone.metricNormals.row(row));
+  }
+  VectorValues rhs;
+  for (Key key : ordering) {
+    const auto dim = prototype.at<Vector>(key).size();
+    if (!dim) continue;
+    rhs.insert(key, Vector(Vector::Zero(dim)));
+    system.emplace_shared<JacobianFactor>(
+        key,
+        Matrix((params.rho * metric.segment(offsets.at(key), dim))
+                   .cwiseSqrt()
+                   .asDiagonal()),
+        Vector::Zero(dim));
+  }
+  for (const auto& [key, gradient] : gradientAtZero) {
+    if (!gradient.allFinite())
+      throw std::invalid_argument("CMC ADMM: nonfinite linear term");
+    if (gradient.size() != prototype.at<Vector>(key).size())
+      throw std::invalid_argument(
+          "CMC ADMM: inconsistent cost block dimension");
+  }
+  GaussianBayesTree factorization;
+  try {
+    if (!solver_) {
+      Ordering eliminationOrdering;
+      if (requestedOrdering) {
+        for (Key key : ordering)
+          if (rhs.exists(key)) eliminationOrdering.push_back(key);
+      } else {
+        eliminationOrdering = Ordering::Colamd(system);
+      }
+      solver_ =
+          std::make_unique<MultifrontalSolver>(system, eliminationOrdering);
+    }
+    // LM damping changes the numerical diagonal, but the symbolic tree and
+    // clique load plans remain valid throughout this linearization.
+    solver_->eliminateInPlace(system);
+    factorization = solver_->computeBayesTree();
+  } catch (const std::runtime_error& error) {
+    solver_.reset();
+    result.factorizationSeconds = seconds(factorizationStart);
+    result.message =
+        std::string("CMC ADMM: multifrontal factorization failed: ") +
+        error.what();
     return result;
   }
+  result.factorizationSeconds = seconds(factorizationStart);
 
   Vector x = Vector::Zero(dimension);
   Vector z = x, u = x;
   const double localTol = std::min(1e-10, params.absoluteTolerance);
   constexpr double kktTolerance = 1e-7;
   for (size_t iteration = 0; iteration < maxIterations; ++iteration) {
-    x = solver.solve(params.rho * (z - u) - linear);
     result.iterations = iteration + 1;
-    if (solver.info() != Eigen::Success || !x.allFinite()) {
-      result.message = "CMC ADMM: global solve failed";
+    for (auto& [key, block] : rhs) {
+      const auto offset = offsets.at(key);
+      block = params.rho * metric.segment(offset, block.size())
+                               .cwiseProduct(z.segment(offset, block.size()) -
+                                             u.segment(offset, block.size()));
+      if (gradientAtZero.exists(key)) block -= gradientAtZero.at(key);
+    }
+    try {
+      // H + rho M = R^T R. Both triangular solves ignore the stored RHS.
+      const auto solution = factorization.backSubstitute(
+          factorization.backSubstituteTranspose(rhs));
+      for (const auto& [key, block] : solution)
+        x.segment(offsets.at(key), block.size()) = block;
+    } catch (const IndeterminateSystemException& error) {
+      result.message =
+          std::string("CMC ADMM: global solve failed: ") + error.what();
       return result;
     }
     const Vector oldZ = z;
     z = x + u;  // Unconstrained keys project onto the whole space.
     std::vector<int> projected(cones.size(), 0);
     const auto projectionStart = Clock::now();
-    forIndependentComponents(cones.size(), params.projectionThreads,
-                             [&](size_t i) {
-      auto& cone = cones[i];
-      const int d = cone.A.cols();
-      Vector answer;
-      projected[i] = project(cone, z.segment(cone.offset, d), answer,
-                             params.maxProjectionSweeps, localTol) ? 1 : 0;
-      if (projected[i]) z.segment(cone.offset, d) = answer;
-    });
+    forIndependentComponents(
+        cones.size(), params.projectionThreads, [&](size_t i) {
+          auto& cone = cones[i];
+          const int d = cone.A.cols();
+          Vector answer;
+          projected[i] = project(cone, z.segment(cone.offset, d), answer,
+                                 params.maxProjectionSweeps, localTol)
+                             ? 1
+                             : 0;
+          if (projected[i]) z.segment(cone.offset, d) = answer;
+        });
     result.projectionSeconds += seconds(projectionStart);
     if (std::any_of(projected.begin(), projected.end(),
                     [](int ok) { return ok == 0; })) {
@@ -252,17 +296,18 @@ PointSplitAdmmResult solvePointSplitAdmm(
     }
     u += x - z;
     result.primalResidual = (x - z).lpNorm<Eigen::Infinity>();
-    result.dualResidual = params.rho *
-                          (z - oldZ).lpNorm<Eigen::Infinity>();
-    const double primalTol = params.absoluteTolerance +
-        params.relativeTolerance *
-            std::max({1., x.lpNorm<Eigen::Infinity>(),
-                      z.lpNorm<Eigen::Infinity>()});
-    const double dualTol = params.absoluteTolerance +
+    result.dualResidual =
+        params.rho * metric.cwiseProduct(z - oldZ).lpNorm<Eigen::Infinity>();
+    const double primalTol =
+        params.absoluteTolerance +
+        params.relativeTolerance * std::max({1., x.lpNorm<Eigen::Infinity>(),
+                                             z.lpNorm<Eigen::Infinity>()});
+    const double dualTol =
+        params.absoluteTolerance +
         params.relativeTolerance * params.rho *
-            std::max(1., u.lpNorm<Eigen::Infinity>());
-    if (result.primalResidual > primalTol ||
-        result.dualResidual > dualTol) continue;
+            std::max(1., metric.cwiseProduct(u).lpNorm<Eigen::Infinity>());
+    if (result.primalResidual > primalTol || result.dualResidual > dualTol)
+      continue;
 
     // ADMM residuals are necessary, not sufficient: certify with the original
     // square-root factors, cone slack, dual feasibility and complementarity.
@@ -275,8 +320,7 @@ PointSplitAdmmResult solvePointSplitAdmm(
     for (const auto& factor : problem.costs()) {
       const auto cost = std::static_pointer_cast<QpCost>(factor);
       for (Key key : cost->keys())
-        gradient.segment(offsets.at(key),
-                         prototype.at<Vector>(key).size()) +=
+        gradient.segment(offsets.at(key), prototype.at<Vector>(key).size()) +=
             cost->gaussianFactor().gradient(key, delta);
     }
     result.activeRows.assign(rowCount, false);
@@ -288,8 +332,7 @@ PointSplitAdmmResult solvePointSplitAdmm(
       gradient.segment(cone.offset, cone.A.cols()).noalias() +=
           cone.A.transpose() * dual;
       for (int j = 0; j < slack.size(); ++j) {
-        valid &= slack(j) <= kktTolerance &&
-                 dual(j) >= -kktTolerance &&
+        valid &= slack(j) <= kktTolerance && dual(j) >= -kktTolerance &&
                  std::abs(slack(j) * dual(j)) <= kktTolerance;
         result.activeRows[cone.originalRows[j]] =
             dual(j) > 0. && std::abs(slack(j)) <= kktTolerance;
@@ -302,17 +345,29 @@ PointSplitAdmmResult solvePointSplitAdmm(
              result.stationarityResidual <= kktTolerance &&
              std::isfinite(problem.costs().error(checkedValues));
     if (!valid) continue;
-    for (Key key : ordering)
-      result.values.insert(key, delta.at(key));
+    for (Key key : ordering) result.values.insert(key, delta.at(key));
     result.converged = true;
     return result;
   }
-  result.message = "CMC ADMM: no KKT-certified solution after " +
-                   std::to_string(result.iterations) + " iterations (primal=" +
-                   std::to_string(result.primalResidual) + ", dual=" +
-                   std::to_string(result.dualResidual) + ", stationarity=" +
-                   std::to_string(result.stationarityResidual) + ")";
+  result.message =
+      "CMC ADMM: no KKT-certified solution after " +
+      std::to_string(result.iterations) +
+      " iterations (primal=" + std::to_string(result.primalResidual) +
+      ", dual=" + std::to_string(result.dualResidual) + ", stationarity=" +
+      (std::isnan(result.stationarityResidual)
+           ? std::string("not evaluated")
+           : std::to_string(result.stationarityResidual)) +
+      ")";
   return result;
+}
+
+PointSplitAdmmResult solvePointSplitAdmm(
+    const QpProblem& problem, const Values& prototype,
+    const std::optional<Ordering>& requestedOrdering, size_t maxIterations,
+    const PointSplitAdmmParams& params) {
+  PointSplitAdmmWorkspace workspace;
+  return workspace.solve(problem, prototype, requestedOrdering, maxIterations,
+                         params);
 }
 
 }  // namespace gtdynamics::internal

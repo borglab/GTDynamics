@@ -24,7 +24,7 @@
 #include <string>
 
 using namespace gtsam;
-using namespace gtdynamics;
+namespace cmc = gtdynamics::internal;
 
 int main(int argc, char** argv) {
 #ifndef GTDYNAMICS_WITH_PROXQP
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
       problem.addCost(JacobianFactor(
           key - 1, 0.5 * I, key, -0.5 * I, Vector3::Zero()));
   }
-  internal::PointSplitAdmmParams config;
+  cmc::PointSplitAdmmParams config;
   config.rho = rho;
   config.projectionThreads = threads;
 
@@ -65,8 +65,8 @@ int main(int argc, char** argv) {
   auto run = [&](const std::string& name, int repeat) {
     const auto start = std::chrono::steady_clock::now();
     if (name == "admm") {
-      const auto result = internal::solvePointSplitAdmm(
-          problem, prototype, std::nullopt, limit, config);
+      const auto result = cmc::solvePointSplitAdmm(problem, prototype,
+                                                   std::nullopt, limit, config);
       const double elapsed = std::chrono::duration<double>(
           std::chrono::steady_clock::now() - start).count();
       const double objective = result.converged ?
@@ -83,8 +83,8 @@ int main(int argc, char** argv) {
       if (!result.converged) std::cerr << result.message << "\n";
       return result.converged;
     }
-    const auto result = internal::solveProxQp(
-        problem, prototype, std::nullopt, limit);
+    const auto result =
+        cmc::solveProxQp(problem, prototype, std::nullopt, limit);
     const double elapsed = std::chrono::duration<double>(
         std::chrono::steady_clock::now() - start).count();
     const double objective = result.converged ?
