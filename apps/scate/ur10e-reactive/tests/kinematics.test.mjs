@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { planeClearance, planeDistance } from '../../shared/environment.js';
 import { armClearance, linkTransforms, matrixPose, poseMatrix, solvePointIK, sphereCenters, transformPoint } from '../../shared/kinematics.js';
 
 const readJson = path => JSON.parse(readFileSync(new URL(path, import.meta.url)));
@@ -55,4 +56,29 @@ test('arm clearance matches the recorded clearance at the start', () => {
   const obstacles = frame.obstacle_centers.map((center, j) => ({ center, radius: replay.obstacles[j].radius }));
   assert(Math.abs(armClearance(robot, frame.q, obstacles).gap - frame.clear) < 1e-4);
   assert.equal(sphereCenters(robot, frame.q).length, robot.spheres.length);
+});
+
+test('plane clearance is the nearest sphere surface to any wall or floor', () => {
+  const robot = robots.ur10e, q = robot.defaults.q_start;
+  const floor = { name: 'floor', normal: [0, -1, 0], offset: -0.975 };
+  const wall = { name: 'wall', normal: [0, 0, 1], offset: -0.05 };
+  assert.deepEqual(planeClearance(robot, q, []), { gap: Infinity, plane: -1 });
+  // Reference: the same minimum over the spheres, written out.
+  const spheres = sphereCenters(robot, q);
+  const expected = Math.min(...spheres.flatMap(s => [floor, wall].map(p => planeDistance(p, s.center) - s.radius)));
+  const { gap, plane } = planeClearance(robot, q, [floor, wall]);
+  assert(Math.abs(gap - expected) < 1e-12);
+  assert.equal(plane, expected === Math.min(...spheres.map(s => planeDistance(floor, s.center) - s.radius)) ? 0 : 1);
+  // Moving the floor up by d lowers the gap to it by exactly d.
+  const raised = { ...floor, offset: floor.offset + 0.1 };
+  const floorGap = planeClearance(robot, q, [floor]).gap;
+  assert(Math.abs(planeClearance(robot, q, [raised]).gap - (floorGap - 0.1)) < 1e-12);
+});
+
+test('the UR10e description carries the MK 111 rig', () => {
+  const rig = robots.ur10e.rig;
+  assert.equal(rig.planes.length, 2);
+  assert.deepEqual(rig.planes.map(p => p.name), ['wall', 'floor']);
+  for (const p of rig.planes) assert(Math.abs(Math.hypot(...p.normal) - 1) < 1e-12);
+  assert.equal(robots.ur5.rig, null);
 });

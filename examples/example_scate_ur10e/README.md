@@ -118,3 +118,22 @@ A request is plain text: `robot ur10e`, `q_start ...`, `q_goal ...`, one
 the app's `public/robots/*.json`; `testScateLive` checks the request reader,
 that the screw axes reproduce the link frames, the UR5 markers, and a solve.
 
+### Walls and floor (MK 111 rig)
+
+`SphereCollisionParams::environment` holds static half-spaces (`HalfSpace` in
+`scate_online.h`: free space is `normal . p >= offset`). They are folded into
+the obstacle SDF, so the obstacle factors keep every sphere `obstacle_epsilon`
+clear of them, and they are present from the initial plan on, before any
+obstacle is seen. `ClosedLoopResult::min_environment_clearance` scores the
+executed motion against them and counts toward `collided()`.
+
+`mk111RigEnvironment()` (`ur10e_collision.h`) is the lab's wall and floor in the
+arm's base frame, from the rig model in UR10e-Trajectory-Validation: the arm is
+mounted on a wall-bolted rail with its base z axis out of the wall, so the wall
+face is the plane z = -0.05 m and the floor is the plane y = +0.975 m.
+
+For the live app, a request may add `plane name nx ny nz offset` lines. The
+UR10e description carries the rig as `"rig"`, and the app's "Include the MK 111
+wall and floor" checkbox sends it. Replays then list the planes under
+`"environment"` and each run's `min_environment_clearance`.
+

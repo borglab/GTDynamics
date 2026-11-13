@@ -21,6 +21,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 #include "scate_online.h"
 #include "scate_reactive.h"
@@ -186,6 +187,85 @@ TEST(Ur10eSphereObstacleSDF, unionOfSpheresIsTheNearest) {
   }
   EXPECT(worst < 2e-3);
   THROWS_EXCEPTION(makeSpheresObstacleSDF({}, grid));
+}
+
+// Walls and floor: the field is the nearest of the spheres and the half-spaces.
+TEST(Ur10eRigEnvironment, sdfIsTheNearestOfSpheresAndPlanes) {
+  const SdfGrid grid = ur10eSdfGrid();
+  const std::vector<HalfSpace> rig = mk111RigEnvironment();
+  const auto planes_only = makeSpheresObstacleSDF({}, grid, rig);
+  const SphereObstacle ball{Point3(0.5, 0.2, 0.6), 0.1};
+  const auto with_ball = makeSpheresObstacleSDF({ball}, grid, rig);
+  auto exact = [&](const Point3& p, bool include_ball) {
+    double d = std::min(rig[0].distance(p), rig[1].distance(p));
+    if (include_ball) d = std::min(d, (p - ball.center).norm() - ball.radius);
+    return d;
+  };
+  double worst = 0.0;
+  // Away from the creases of the min, where trilinear interpolation is exact
+  // for planes and within a millimeter for the sphere.
+  for (const Point3& p : {Point3(0.1, 0.9, 0.7), Point3(-0.7, -0.4, -0.01), Point3(1.2, -1.1, 0.2),
+                          Point3(0.5, 0.2, 0.95), Point3(-1.0, 1.3, 1.0)}) {
+    worst = std::max(worst, std::fabs(planes_only->getSignedDistance(p) - exact(p, false)));
+    worst = std::max(worst, std::fabs(with_ball->getSignedDistance(p) - exact(p, true)));
+  }
+  EXPECT(worst < 2e-3);
+  EXPECT_DOUBLES_EQUAL(-0.05, planes_only->getSignedDistance(Point3(0.3, 0.1, -0.1)), 1e-9);
+  EXPECT_DOUBLES_EQUAL(-0.125, planes_only->getSignedDistance(Point3(0.3, 1.1, 0.9)), 1e-9);
+  // Normals must be unit vectors.
+  SphereCollisionParams bad = ur10eCollisionParams();
+  bad.environment = {{"tilted", gtsam::Vector3(0, 0, 2), 0.0}};
+  THROWS_EXCEPTION(Ur10eCollisionModel(ur10e(), bad));
+}
+
+// A model with the rig: obstacle factors exist before any obstacle is set,
+// clearance is the nearest sphere surface, and the stretched arm over base +y
+// (pan = pi/2, level) is through the floor and penalized.
+TEST(Ur10eRigEnvironment, modelKeepsClearOfWallAndFloor) {
+  const Ur10eCollisionModel free_space(ur10e());
+  EXPECT(!free_space.hasEnvironment());
+  EXPECT(std::isinf(free_space.environmentClearance(homeJoints())));
+  THROWS_EXCEPTION(Ur10eCollisionModel(ur10e()).setObstacles({}));
+
+  SphereCollisionParams params = ur10eCollisionParams();
+  params.environment = mk111RigEnvironment();
+  Ur10eCollisionModel model(ur10e(), params);
+  EXPECT(model.hasEnvironment());
+  Vector stretched(6);
+  stretched << M_PI / 2, -0.3, 0.0, -1.5708, -1.5708, 0.0;
+  for (const Vector& q : {homeJoints(), otherJoints(), stretched}) {
+    const gtsam::Matrix centers = model.sphereCenters(q);
+    const Vector radii = model.sphereRadii();
+    double expected = std::numeric_limits<double>::infinity();
+    for (long i = 0; i < centers.cols(); ++i) {
+      for (const HalfSpace& plane : params.environment) {
+        expected = std::min(expected, plane.distance(Point3(centers.col(i))) - radii(i));
+      }
+    }
+    EXPECT_DOUBLES_EQUAL(expected, model.environmentClearance(q), 1e-12);
+    EXPECT_DOUBLES_EQUAL(expected, model.sphereEnvironmentClearances(q).minCoeff(), 1e-12);
+  }
+  std::cout << "  [diag] rig clearance: home " << 100 * model.environmentClearance(homeJoints())
+            << " cm, stretched over +y " << 100 * model.environmentClearance(stretched) << " cm\n";
+  EXPECT(model.environmentClearance(stretched) < 0.0);
+
+  // No setObstacle needed; the factor is active only where a sphere is inside the standoff.
+  const auto factor = model.obstacleFactor(0, 0.0);
+  auto at = [](const Vector& q) {
+    gtsam::Values values;
+    values.insert(QKey(0), q);
+    values.insert(VKey(0), Vector(Vector::Zero(6)));
+    values.insert(QKey(1), q);
+    values.insert(VKey(1), Vector(Vector::Zero(6)));
+    return values;
+  };
+  EXPECT(factor->error(at(stretched)) > 0.0);
+  if (model.environmentClearance(homeJoints()) > params.obstacle_epsilon) {
+    EXPECT_DOUBLES_EQUAL(0.0, factor->error(at(homeJoints())), 1e-12);
+  }
+  // Adding an obstacle keeps the walls and floor.
+  model.setObstacles({{Point3(-1.0, -1.0, 1.4), 0.05}});
+  EXPECT(model.obstacleFactor(0, 0.0)->error(at(stretched)) > 0.0);
 }
 
 // Our wiring of the sensor Jacobian (queryPoses) into the measurement factor.

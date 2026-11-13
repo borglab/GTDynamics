@@ -9,6 +9,7 @@
  */
 import * as THREE from 'three';
 import { inversePoint, linkTransforms, solvePointIK, sphereCenters, transformPoint } from './kinematics.js';
+import { disposePlanePanels, makePlanePanels } from './planePanels.js';
 
 /** Colors of the shadow arms and obstacle handles. */
 export const EDITOR_COLORS = { start: '#2e9e5b', goal: '#7b5cd6', obstacle: '#d9534f', end: '#f0ad4e' };
@@ -16,13 +17,16 @@ export const EDITOR_COLORS = { start: '#2e9e5b', goal: '#7b5cd6', obstacle: '#d9
 /**
  * @param context viewer.editorContext()
  * @param options.onChange called with the edited setup after every drag step
- * @returns {setRobot, setSetup, setMode, setActivePose, setShowSpheres, dispose}
+ * @returns {setRobot, setSetup, setMode, setActivePose, setShowSpheres, setEnvironment, dispose}
  */
 export function createSetupEditor(context, { onChange } = {}) {
   const { scene, camera, controls, domElement, meshForLink, render } = context;
   const group = new THREE.Group();
   group.visible = false;
   scene.add(group);
+  // Walls and floor, drawn while editing; kept apart from group, which is
+  // rebuilt on every robot or setup change.
+  let environment = null;
 
   let robot = null, geometries = {}, setup = null;
   let mode = 'pose';           // 'pose': drag the arms; 'obstacles': drag the obstacles
@@ -233,6 +237,7 @@ export function createSetupEditor(context, { onChange } = {}) {
     setMode(next) {
       mode = next;
       group.visible = !!next;
+      if (environment) environment.visible = !!next;
       if (!next) { drag = null; controls.enabled = true; domElement.style.cursor = ''; render(); return; }
       update();
     },
@@ -240,6 +245,16 @@ export function createSetupEditor(context, { onChange } = {}) {
     setActivePose(key) { activePose = key; update(); },
     /** Draw the shadow arms' collision spheres (also grabbable). */
     setShowSpheres(show) { showSpheres = show; update(); },
+    /** Draw these walls and floors (environment.js planes; none = remove them) within bounds. */
+    setEnvironment(planes, bounds) {
+      if (environment) { scene.remove(environment); disposePlanePanels(environment); environment = null; }
+      if (planes?.length) {
+        environment = makePlanePanels(planes, bounds ? { bounds } : {});
+        environment.visible = group.visible;
+        scene.add(environment);
+      }
+      render();
+    },
     /** World position of a sphere of an arm, for tests and readouts. */
     toolPoint(key) {
       const tool = robot.spheres[robot.tool_sphere];
@@ -249,6 +264,7 @@ export function createSetupEditor(context, { onChange } = {}) {
       events.abort();
       disposeObjects();
       scene.remove(group);
+      if (environment) { scene.remove(environment); disposePlanePanels(environment); }
       sphereGeometry.dispose();
       lineMaterial.dispose();
       Object.values(materials).forEach(m => m.dispose());

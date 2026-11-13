@@ -46,6 +46,8 @@ struct LiveRobot {
   SphereModel sphere_model;         ///< spheres, pairs and motion-capture markers
   SphereCollisionParams params;     ///< collision factors and SDF grid
   ReactiveScenario scenario;        ///< the default experiment (goal and crossings)
+  std::string rig_name;             ///< the lab rig around this robot, if any
+  std::vector<HalfSpace> rig;       ///< its walls and floor (empty = none)
 };
 
 /// The UR5 version of ur10eReactiveScenario: the same sweep and crossings.
@@ -64,6 +66,8 @@ inline LiveRobot liveRobot(const std::string& key) {
     robot.sphere_model = ur10eSphereModel();
     robot.params = ur10eCollisionParams();
     robot.scenario = ur10eReactiveScenario();
+    robot.rig_name = "MK 111 wall and floor";
+    robot.rig = mk111RigEnvironment();
   } else if (key == "ur5") {
     robot.urdf = ur5UrdfPath();
     robot.sphere_model = ur5SphereModel();
@@ -84,6 +88,7 @@ struct LiveRequest {
   std::vector<MovingObstacle> obstacles;        ///< at least one
   std::vector<double> sigmas{0.0, 3.0, 0.3, 0.1};  ///< one run each
   unsigned seed = 0;                            ///< noise seed shared by every run
+  std::vector<HalfSpace> environment;           ///< walls and floor (empty = free space)
 };
 
 /**
@@ -94,6 +99,8 @@ struct LiveRequest {
  *   obstacle x y z vx vy vz radius     (once per obstacle; m, m/s)
  *   sigmas 0 3 0.3 0.1
  *   seed 0
+ *   plane name nx ny nz offset         (optional, once per wall or floor: free
+ *                                       space is n . p >= offset; n unit length)
  */
 inline LiveRequest parseLiveRequest(std::istream& in) {
   LiveRequest request;
@@ -142,6 +149,23 @@ inline LiveRequest parseLiveRequest(std::istream& in) {
       obstacle.velocity = gtsam::Vector3(values[3], values[4], values[5]);
       obstacle.radius = values[6];
       request.obstacles.push_back(obstacle);
+    } else if (key == "plane") {
+      HalfSpace boundary;
+      if (!(fields >> boundary.name)) {
+        throw std::invalid_argument("line " + std::to_string(line_number) +
+                                    ": plane needs name nx ny nz offset");
+      }
+      const std::vector<double> values = numbers(fields);
+      const gtsam::Vector3 normal =
+          values.size() == 4 ? gtsam::Vector3(values[0], values[1], values[2])
+                             : gtsam::Vector3::Zero();
+      if (values.size() != 4 || std::abs(normal.norm() - 1.0) > 1e-3) {
+        throw std::invalid_argument("line " + std::to_string(line_number) +
+                                    ": plane needs name nx ny nz offset with a unit normal");
+      }
+      boundary.normal = normal.normalized();
+      boundary.offset = values[3];
+      request.environment.push_back(boundary);
     } else if (key == "sigmas") {
       request.sigmas = numbers(fields);
       have_sigmas = true;
@@ -187,7 +211,8 @@ struct LiveSetup {
  * The problem from q_start to exactly q_goal (no IK), with the smooth
  * initial guess of initializeProblem.
  */
-inline LiveSetup makeLiveSetup(const LiveRobot& live, const Vector& q_start, const Vector& q_goal) {
+inline LiveSetup makeLiveSetup(const LiveRobot& live, const Vector& q_start, const Vector& q_goal,
+                               const std::vector<HalfSpace>& environment = {}) {
   LiveSetup setup{loadRobot(live.urdf), {}, {}, nullptr, nullptr};
   const size_t num_joints = setup.robot.joints().size();
   if (q_start.size() != static_cast<long>(num_joints) ||
@@ -208,6 +233,7 @@ inline LiveSetup makeLiveSetup(const LiveRobot& live, const Vector& q_start, con
   setup.initial = problem.values;
   SphereCollisionParams params = live.params;
   params.dt = setup.spec.dt;
+  params.environment = environment;
   setup.model = std::make_shared<SphereCollisionModel>(setup.robot, live.sphere_model, params);
   setup.base_wrench = std::make_shared<const BaseWrenchModel>(setup.robot);
   return setup;
@@ -341,6 +367,21 @@ inline void writeLiveDescription(std::ostream& out, const LiveRobot& live,
   out << "\"workspace\":{\"min\":"; point(out, grid.origin);
   out << ",\"max\":"; point(out, far_corner); out << "},";
   out << "\"obstacle_standoff\":"; number(out, live.params.obstacle_epsilon); out << ',';
+  // The lab rig the app can switch on: its walls and floor, sent back as
+  // "plane" lines (free space is normal . p >= offset).
+  out << "\"rig\":";
+  if (live.rig.empty()) {
+    out << "null,";
+  } else {
+    out << "{\"name\":"; string(out, live.rig_name); out << ",\"planes\":[";
+    for (size_t b = 0; b < live.rig.size(); ++b) {
+      if (b) out << ',';
+      out << "{\"name\":"; string(out, live.rig[b].name);
+      out << ",\"normal\":"; array(out, live.rig[b].normal.data(), 3);
+      out << ",\"offset\":"; number(out, live.rig[b].offset); out << '}';
+    }
+    out << "]},";
+  }
   out << "\"duration\":"; number(out, duration); out << ',';
   out << "\"dt\":"; number(out, setup.spec.dt); out << ',';
   out << "\"defaults\":{\"q_start\":"; vector(out, defaults.q_start);
@@ -365,7 +406,7 @@ inline void writeLiveDescription(std::ostream& out, const LiveRobot& live,
 inline std::vector<std::pair<double, ClosedLoopResult>> runLiveRequest(
     const LiveRequest& request, const std::string& replay_path, std::ostream* progress) {
   const LiveRobot live = liveRobot(request.robot);
-  LiveSetup setup = makeLiveSetup(live, request.q_start, request.q_goal);
+  LiveSetup setup = makeLiveSetup(live, request.q_start, request.q_goal, request.environment);
   for (const MovingObstacle& obstacle : request.obstacles) {
     if (!(obstacle.radius > 0.0)) throw std::invalid_argument("obstacle radius must be > 0");
   }

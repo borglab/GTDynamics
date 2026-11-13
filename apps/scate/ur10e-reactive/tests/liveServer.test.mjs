@@ -24,6 +24,17 @@ test('malformed requests are refused before anything runs', () => {
   ]) assert.throws(() => liveRequestText(bad));
 });
 
+test('walls and floor become plane lines', () => {
+  const planes = [{ name: 'wall', normal: [0, 0, 1], offset: -0.05 }, { name: 'floor', normal: [0, -1, 0], offset: -0.975 }];
+  const text = liveRequestText({ ...request, environment: planes });
+  assert.match(text, /\nplane wall 0 0 1 -0\.05\nplane floor 0 -1 0 -0\.975\nseed 0\n$/);
+  assert.equal(liveRequestText({ ...request, environment: [] }), liveRequestText(request));
+  for (const bad of [
+    [{ ...planes[0], normal: [0, 0, 2] }], [{ ...planes[0], normal: [0, 1] }], [{ ...planes[0], offset: NaN }],
+    [{ ...planes[0], name: 'a wall' }], [{ ...planes[0], name: '' }], 'wall', Array(7).fill(planes[0]),
+  ]) assert.throws(() => liveRequestText({ ...request, environment: bad }));
+});
+
 // A child process stand-in that writes the replay and reports progress like scate_live.
 function fakeSpawn(exitCode = 0) {
   return (binary, [command, requestPath, replayPath]) => {

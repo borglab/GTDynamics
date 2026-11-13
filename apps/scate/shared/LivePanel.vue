@@ -8,6 +8,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { createSetupEditor, EDITOR_COLORS } from './editor.js';
 import { armClearance, clampJoints, linkTransforms, transformPoint } from './kinematics.js';
+import { planeClearance } from './environment.js';
 
 const props = defineProps({
   /** The page's replay viewer (createReplayViewer). */
@@ -34,9 +35,14 @@ const server = ref({ checked: false, available: false, hint: '' });
 const job = ref(null);                  // {state, done, total, label, error, elapsed}
 const error = ref('');
 const descriptions = {};
+const useRig = ref(false);              // keep clear of the robot's lab walls and floor (description.rig)
 let editor = null, polling = null;
 
 const solving = computed(() => job.value?.state === 'running');
+/** The walls and floor sent with the request: the robot's rig when switched on, else none. */
+const rigPlanes = computed(() => (useRig.value && description.value?.rig ? description.value.rig.planes : []));
+function showEnvironment() { editor?.setEnvironment(rigPlanes.value, description.value?.workspace); }
+watch(rigPlanes, showEnvironment);
 const degrees = radians => radians * 180 / Math.PI;
 
 /** The recorded experiment of a robot as an editable setup. */
@@ -62,6 +68,7 @@ async function loadRobot(key) {
       const meshes = await props.viewer.editorContext().meshes(key);
       editor.setRobot(description.value, meshes);
       editor.setSetup(setup.value);
+      showEnvironment();
     }
     revision.value++;
   } catch (err) {
@@ -81,6 +88,7 @@ async function ensureEditor() {
   if (description.value) {
     editor.setRobot(description.value, await props.viewer.editorContext().meshes(robotKey.value));
     editor.setSetup(setup.value);
+    showEnvironment();
   }
 }
 
@@ -176,12 +184,22 @@ const warnings = computed(() => {
   const ends = setup.value.obstacles.map(o => ({ center: o.end, radius: o.radius }));
   if (armClearance(robot, setup.value.q_start, starts).gap < 0) out.push('The start pose touches an obstacle at t = 0.');
   if (armClearance(robot, setup.value.q_goal, ends).gap < 0) out.push('The goal pose touches an obstacle where it ends.');
+  // Walls and floor: the start is fixed, so it must already keep the standoff.
+  const planes = rigPlanes.value, standoff = robot.obstacle_standoff;
+  for (const [key, label] of [['q_start', 'start'], ['q_goal', 'goal']]) {
+    const { gap, plane } = planeClearance(robot, setup.value[key], planes);
+    if (gap < 0) out.push(`The ${label} pose goes through the ${planes[plane].name}.`);
+    else if (gap < standoff) {
+      out.push(`The ${label} pose is ${(100 * gap).toFixed(1)} cm from the ${planes[plane].name}, inside the ${(100 * standoff).toFixed(0)} cm standoff.`);
+    }
+  }
   return out;
 });
 const summary = computed(() => {
   const parts = [edited.value.poses ? 'your start and goal' : 'the experiment’s start and goal',
     edited.value.obstacles ? 'your obstacles' : 'the experiment’s obstacles'];
-  return `Solving uses ${parts.join(' and ')} on the ${description.value?.name || ''}.`;
+  const rig = rigPlanes.value.length ? `, keeping clear of the ${description.value.rig.name}` : '';
+  return `Solving uses ${parts.join(' and ')} on the ${description.value?.name || ''}${rig}.`;
 });
 
 function requestBody() {
@@ -193,6 +211,7 @@ function requestBody() {
     })),
     sigmas: RUNS.map(run => run.sigma).filter(sigma => selectedSigmas.value.includes(sigma)),
     seed: 0,
+    environment: rigPlanes.value.map(p => ({ name: p.name, normal: p.normal, offset: p.offset })),
   };
 }
 
@@ -261,6 +280,9 @@ const progress = computed(() => job.value ? Math.min(1, job.value.done / Math.ma
                @change="chooseRobot(r.key)"><span>{{ r.name }}</span>
       </label>
     </div>
+    <label v-if="description?.rig" class="live-check" data-rig>
+      <input v-model="useRig" type="checkbox" :disabled="solving"> Include the {{ description.rig.name }}
+    </label>
     <div class="live-buttons">
       <button type="button" :aria-pressed="mode === 'pose'" :disabled="!description || solving" @click="setMode('pose')">Set start and goal position</button>
       <button type="button" :aria-pressed="mode === 'obstacles'" :disabled="!description || solving" @click="setMode('obstacles')">Set obstacles</button>

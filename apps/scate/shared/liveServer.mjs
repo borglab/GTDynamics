@@ -15,10 +15,12 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkPlane } from './environment.js';
 
 const ROBOTS = ['ur5', 'ur10e'];
 const MAX_OBSTACLES = 4;
 const MAX_RUNS = 5;
+const MAX_PLANES = 6;
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 /** The scate_live binary: $SCATE_LIVE_BIN, else <repo>/build/examples/example_scate_ur10e/scate_live. */
@@ -38,7 +40,8 @@ function numbers(value, length, what) {
 /**
  * The request text scate_live reads (live_scenario.h parseLiveRequest), from
  * the page's request: {robot, q_start, q_goal, obstacles: [{start, velocity,
- * radius}], sigmas, seed}. Throws with a message on anything malformed.
+ * radius}], sigmas, seed, environment: [{name, normal, offset}] (optional
+ * walls and floor)}. Throws with a message on anything malformed.
  */
 export function liveRequestText(request) {
   if (!request || typeof request !== 'object') throw new Error('The request must be a JSON object');
@@ -62,6 +65,14 @@ export function liveRequestText(request) {
     throw new Error(`sigmas must be 1 to ${MAX_RUNS} numbers >= 0`);
   }
   lines.push(`sigmas ${sigmas.join(' ')}`);
+  const environment = request.environment ?? [];
+  if (!Array.isArray(environment) || environment.length > MAX_PLANES) {
+    throw new Error(`environment must be a list of at most ${MAX_PLANES} planes`);
+  }
+  environment.forEach((plane, index) => {
+    checkPlane(plane, index);
+    lines.push(`plane ${plane.name} ${[...plane.normal, plane.offset].join(' ')}`);
+  });
   const seed = request.seed ?? 0;
   if (!Number.isInteger(seed) || seed < 0) throw new Error('seed must be a whole number >= 0');
   lines.push(`seed ${seed}`);

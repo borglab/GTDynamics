@@ -22,6 +22,7 @@
  */
 
 #include <chrono>
+#include <cmath>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -59,8 +60,11 @@ int solve(const std::string& request_path, const std::string& replay_path) {
       std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
   for (const auto& [sigma, result] : runs) {
     std::cout << scate::baseWrenchRunLabel(sigma) << ": clearance "
-              << 100.0 * result.min_obstacle_clearance << " cm"
-              << (result.collided() ? " (collision)" : "") << ", goal error " << result.goal_error
+              << 100.0 * result.min_obstacle_clearance << " cm";
+    if (std::isfinite(result.min_environment_clearance)) {
+      std::cout << ", wall/floor " << 100.0 * result.min_environment_clearance << " cm";
+    }
+    std::cout << (result.collided() ? " (collision)" : "") << ", goal error " << result.goal_error
               << " rad\n";
   }
   std::cout << "Solved in " << seconds << " s; wrote " << replay_path << "\n";

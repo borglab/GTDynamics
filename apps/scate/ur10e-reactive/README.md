@@ -34,6 +34,13 @@ setup with the native solver (`scate_live`, built with GTDynamics):
 - **Set obstacles**: drag a red sphere to where the obstacle starts and its
   orange marker to where it is at the end of the run (the same place = still).
   Set the radius, add up to four obstacles or remove one.
+- **Include the MK 111 wall and floor** (UR10e only) adds the lab rig's wall
+  and floor to the planner, draws them as grey panels and warns when the start
+  or goal goes through them or sits inside the 5 cm standoff. The scene is the
+  arm's base frame, and on the rig the arm is mounted on a wall: the wall is
+  the horizontal panel just under the base (z = -0.05 m) and the floor is the
+  upright panel at y = +0.975 m. The recorded experiment's goal reaches toward
+  +y and ends 0.3 cm from the floor, so pick a new goal for the rig.
 - **Runs to solve** picks the base-cost weights (each is one closed-loop run
   on the same noise), and **Solve and run** solves and plays the result.
   A UR10e run takes about 1.5 s.
@@ -89,4 +96,5 @@ drags, solves live and needs `scate_live`):
 ```bash
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scate/ur10e-reactive/tests/app.browser.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scate/ur10e-reactive/tests/live.browser.mjs
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scate/ur10e-reactive/tests/rig.browser.mjs
 ```

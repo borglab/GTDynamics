@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RobotViewport } from '../../shared/RobotViewport.js';
 import { onThemeChange } from '../../shared/theme.js';
+import { makePlanePanels } from './planePanels.js';
 
 /** Mesh name (in meshes.json) of each UR link, shared by the UR5 and UR10e. */
 export const UR_MESH_FOR_LINK = {
@@ -349,6 +350,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     const geometries = new Set();
     world.traverse(object => { if (object.geometry && !object.geometry.userData.sharedMujoco) geometries.add(object.geometry); });
     geometries.forEach(geometry => geometry.dispose());
+    world.traverse(object => { if (object.userData.ownMaterial) object.material.dispose(); });
     world.clear();
   }
 
@@ -375,6 +377,9 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     const range = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), M.range);
     world.add(range);
     objs.range = range;
+
+    // Walls and floor the planner kept clear of (replay "environment").
+    if (D.environment?.length) world.add(makePlanePanels(D.environment));
 
     for (const run of D.runs) objs.arms[run.name] = buildArm(run);
 

@@ -253,6 +253,7 @@ inline void writeReactiveReplay(const std::string& path, const ReactiveScenario&
   replay.moving_obstacles = obstacles;
   replay.obstacle_standoff = model.params().obstacle_epsilon;
   replay.self_standoff = model.params().self_epsilon;
+  replay.environment = model.params().environment;
   replay.base_wrench = [base_wrench](const Vector& q, const Vector& v, const Vector& a) {
     return base_wrench->wrench(q, v, a);
   };
@@ -498,6 +499,7 @@ inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenari
   }
   replay.obstacle_standoff = model.params().obstacle_epsilon;
   replay.self_standoff = model.params().self_epsilon;
+  replay.environment = model.params().environment;
   replay.base_wrench = [base_wrench](const Vector& q, const Vector& v, const Vector& a) {
     return base_wrench->wrench(q, v, a);
   };

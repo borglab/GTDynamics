@@ -127,6 +127,28 @@ inline SdfGrid ur10eSdfGrid() {
   return grid;
 }
 
+/**
+ * The wall and floor around the UR10e in the MK 111 lab, in the arm's base
+ * frame (the planner's world frame), from the rig model in
+ * UR10e-Trajectory-Validation (ros2_ws/ur10e.urdf, validation_core.py):
+ *   - the arm stands on a rail carriage bolted to a wall, its base z axis out
+ *     of the wall and turned 180 deg about it relative to the rail frame
+ *     (rail frame: +x along the rail, +y up, +z out of the wall);
+ *   - wall: a 5 cm slab centered 5 cm behind the rail (rail z = -0.05), so its
+ *     face is at rail z = -0.025, i.e. base z = -0.05 (the carriage puts the
+ *     base 2.5 cm in front of the rail, marked TODO in that URDF);
+ *   - floor: a 5 cm slab centered 1 m below the rail (rail y = -1.0), its top
+ *     at rail y = -0.975, i.e. base y = +0.975 (base y is rail -y).
+ * Both are uniform along the rail, so the carriage position does not matter.
+ * The slabs are finite there (the wall reaches 1.5 m above the rail, the
+ * floor 3 m out from the wall); as half-spaces they are slightly
+ * conservative beyond those edges.
+ */
+inline std::vector<HalfSpace> mk111RigEnvironment() {
+  return {{"wall", gtsam::Vector3(0, 0, 1), -0.05},
+          {"floor", gtsam::Vector3(0, -1, 0), -0.975}};
+}
+
 /// Factor settings of the UR10e collision model: the UR5's, on the UR10e grid.
 inline SphereCollisionParams ur10eCollisionParams() {
   SphereCollisionParams params;

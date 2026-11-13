@@ -39,6 +39,7 @@
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
 
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -98,12 +99,16 @@ struct SdfGrid {
 };
 
 /**
- * Exact signed distance to the union of spheres (the smallest distance to
- * any of them), sampled on the grid (positive outside all of them).
+ * Exact signed distance to the union of spheres and the outside of the
+ * environment half-spaces (the smallest distance to any of them), sampled on
+ * the grid: positive in free space. Needs at least one sphere or half-space.
  */
 inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSpheresObstacleSDF(
-    const std::vector<SphereObstacle>& obstacles, const SdfGrid& grid) {
-  if (obstacles.empty()) throw std::invalid_argument("makeSpheresObstacleSDF: no obstacles");
+    const std::vector<SphereObstacle>& obstacles, const SdfGrid& grid,
+    const std::vector<HalfSpace>& environment = {}) {
+  if (obstacles.empty() && environment.empty()) {
+    throw std::invalid_argument("makeSpheresObstacleSDF: no obstacles and no environment");
+  }
   // Flat layout of the fast constructor: x fastest, then y (rows), then z.
   gtsam::Vector values(grid.num_x * grid.num_y * grid.num_z);
   for (size_t z = 0; z < grid.num_z; ++z) {
@@ -116,6 +121,9 @@ inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSpheresObstacl
         for (const SphereObstacle& obstacle : obstacles) {
           distance = std::min(distance, (point - obstacle.center).norm() - obstacle.radius);
         }
+        for (const HalfSpace& boundary : environment) {
+          distance = std::min(distance, boundary.distance(point));
+        }
         values((z * grid.num_y + row) * grid.num_x + col) = distance;
       }
     }
@@ -124,10 +132,22 @@ inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSpheresObstacl
       grid.origin, grid.cell_size, grid.num_y, grid.num_x, grid.num_z, values);
 }
 
-/// Exact signed distance to one sphere, sampled on the grid (positive outside).
+/// Exact signed distance to one sphere (and the environment), sampled on the grid.
 inline std::shared_ptr<const gtdynamics::SignedDistanceField> makeSphereObstacleSDF(
-    const gtsam::Point3& center, double radius, const SdfGrid& grid) {
-  return makeSpheresObstacleSDF({SphereObstacle{center, radius}}, grid);
+    const gtsam::Point3& center, double radius, const SdfGrid& grid,
+    const std::vector<HalfSpace>& environment = {}) {
+  return makeSpheresObstacleSDF({SphereObstacle{center, radius}}, grid, environment);
+}
+
+/// Throws unless every half-space has a unit normal and a finite offset.
+inline void validateEnvironment(const std::vector<HalfSpace>& environment) {
+  for (const HalfSpace& boundary : environment) {
+    if (!std::isfinite(boundary.offset) || !boundary.normal.allFinite() ||
+        std::abs(boundary.normal.norm() - 1.0) > 1e-9) {
+      throw std::invalid_argument("environment boundary '" + boundary.name +
+                                  "' needs a unit normal and a finite offset");
+    }
+  }
 }
 
 /**
@@ -163,6 +183,12 @@ struct SphereCollisionParams {
   double self_sigma = 0.01;        ///< m
   double self_epsilon = 0.02;      ///< m: gap kept between paired spheres
   SdfGrid grid;                    ///< obstacle SDF grid
+  /**
+   * Static boundaries (walls, floor) folded into the obstacle SDF: the
+   * obstacle factors keep every sphere obstacle_epsilon clear of them too.
+   * Empty = free space, as before.
+   */
+  std::vector<HalfSpace> environment;
 };
 
 /// The robot's joints, in the chain order that indexes q (scate_init.h).
@@ -190,6 +216,10 @@ class SphereCollisionModel : public CollisionModel {
                        const SphereCollisionParams& params)
       : params_(params), model_(model) {
     validateModel();
+    validateEnvironment(params_.environment);
+    if (!params_.environment.empty()) {
+      sdf_ = makeSpheresObstacleSDF({}, params_.grid, params_.environment);
+    }
     // RobotQueryPoints takes the joints in the order q indexes them.
     const std::vector<gtdynamics::JointSharedPtr> joints = jointsInChainOrder(robot);
     dof_ = joints.size();
@@ -240,12 +270,46 @@ class SphereCollisionModel : public CollisionModel {
 
   /// Rebuild the obstacle SDF for a sphere at center with this radius.
   void setObstacle(const gtsam::Point3& center, double radius) override {
-    sdf_ = makeSphereObstacleSDF(center, radius, params_.grid);
+    sdf_ = makeSphereObstacleSDF(center, radius, params_.grid, params_.environment);
   }
 
-  /// Rebuild the obstacle SDF for the union of these spheres.
+  /// Rebuild the obstacle SDF for the union of these spheres (none = environment only).
   void setObstacles(const std::vector<SphereObstacle>& obstacles) override {
-    sdf_ = makeSpheresObstacleSDF(obstacles, params_.grid);
+    if (obstacles.empty() && params_.environment.empty()) {
+      throw std::invalid_argument("SphereCollisionModel::setObstacles: no obstacles");
+    }
+    sdf_ = makeSpheresObstacleSDF(obstacles, params_.grid, params_.environment);
+  }
+
+  /// Whether walls or a floor are modeled.
+  bool hasEnvironment() const override { return !params_.environment.empty(); }
+
+  /// Smallest gap between any sphere surface and the environment boundaries.
+  double environmentClearance(const Vector& q) const override {
+    double best = std::numeric_limits<double>::infinity();
+    if (params_.environment.empty()) return best;
+    const gtsam::Matrix world = points_->worldPoints(q);
+    for (long i = 0; i < world.cols(); ++i) {
+      for (const HalfSpace& boundary : params_.environment) {
+        best = std::min(best, boundary.distance(gtsam::Point3(world.col(i))) - radii_(i));
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Gap of each sphere to the environment at q (infinite with none), for
+   * finding spheres that can never meet the standoff (e.g. at the base).
+   */
+  Vector sphereEnvironmentClearances(const Vector& q) const {
+    const gtsam::Matrix world = points_->worldPoints(q);
+    Vector gaps = Vector::Constant(world.cols(), std::numeric_limits<double>::infinity());
+    for (long i = 0; i < world.cols(); ++i) {
+      for (const HalfSpace& boundary : params_.environment) {
+        gaps(i) = std::min(gaps(i), boundary.distance(gtsam::Point3(world.col(i))) - radii_(i));
+      }
+    }
+    return gaps;
   }
 
   /// Number of motion-capture markers.
@@ -266,7 +330,7 @@ class SphereCollisionModel : public CollisionModel {
     return stacked;
   }
 
-  /// ObstacleSDFFactorGP on interval i at time tau; needs setObstacle first.
+  /// ObstacleSDFFactorGP on interval i at time tau; needs setObstacle or an environment.
   gtsam::NonlinearFactor::shared_ptr obstacleFactor(int i, double tau) const override {
     if (!sdf_) {
       throw std::logic_error("SphereCollisionModel: obstacleFactor before setObstacle");

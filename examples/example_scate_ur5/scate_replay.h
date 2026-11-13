@@ -73,6 +73,8 @@ struct ReplayScenario {
   std::function<gtsam::Vector6(const Vector&, const Vector&, const Vector&)> base_wrench;
   double obstacle_standoff = 0.0;  ///< epsilon of the obstacle factors
   double self_standoff = 0.0;      ///< epsilon of the self-collision pairs
+  /// Static boundaries (walls, floor); written as "environment" if not empty.
+  std::vector<HalfSpace> environment;
   int substeps = 10;               ///< frames per interval
   int plan_samples = 4;            ///< planned-path points per interval
 };
@@ -152,6 +154,20 @@ inline void writeHeader(JsonWriter& json, const ReplayScenario& scenario,
   json.writeKey("obstacle_standoff"); json.writeNumber(scenario.obstacle_standoff); out << ',';
   json.writeKey("self_standoff"); json.writeNumber(scenario.self_standoff); out << ',';
   json.writeKey("planner_obstacle_radius"); json.writeNumber(config.obstacle_radius); out << ',';
+  if (!scenario.environment.empty()) {
+    json.writeKey("environment");
+    out << '[';
+    for (size_t b = 0; b < scenario.environment.size(); ++b) {
+      const HalfSpace& boundary = scenario.environment[b];
+      if (b) out << ',';
+      out << '{';
+      json.writeKey("name"); json.writeString(boundary.name); out << ',';
+      json.writeKey("normal"); json.writePoint(gtsam::Point3(boundary.normal)); out << ',';
+      json.writeKey("offset"); json.writeNumber(boundary.offset);
+      out << '}';
+    }
+    out << "],";
+  }
   json.writeKey("obstacle");
   out << '{';
   json.writeKey("center"); json.writePoint(scenario.obstacle_center); out << ',';
@@ -413,6 +429,11 @@ inline void writeSummary(JsonWriter& json, const ClosedLoopResult& result) {
   out << '{';
   json.writeKey("min_obstacle_clearance"); json.writeNumber(result.min_obstacle_clearance); out << ',';
   json.writeKey("min_self_clearance"); json.writeNumber(result.min_self_clearance); out << ',';
+  if (std::isfinite(result.min_environment_clearance)) {
+    json.writeKey("min_environment_clearance");
+    json.writeNumber(result.min_environment_clearance);
+    out << ',';
+  }
   json.writeKey("first_detection"); out << result.first_detection << ',';
   json.writeKey("goal_error"); json.writeNumber(result.goal_error); out << ',';
   json.writeKey("final_speed"); json.writeNumber(result.final_speed); out << ',';

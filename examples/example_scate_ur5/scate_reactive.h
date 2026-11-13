@@ -256,7 +256,8 @@ class ReactivePlanner {
 
   /**
    * Paper Algorithm 1, "Generate Initial Plan": no obstacle has been seen
-   * (the empty obstacle set), so only self-collision factors are added.
+   * (the empty obstacle set), so only self-collision factors are added, plus
+   * the environment (walls, floor) if the model has one.
    */
   StepInfo planOffline() {
     if (planned_) throw std::logic_error("planOffline: call once, before update");
@@ -414,8 +415,10 @@ class ReactivePlanner {
     factors_.removeGroup("obstacle");
     factors_.removeGroup("self_collision");
     const std::vector<SphereObstacle> obstacles = latestObstacles();
-    if (!obstacles.empty()) model_->setObstacles(obstacles);
-    const bool have_obstacles = !obstacles.empty();
+    // Walls and floor are always known, so their factors exist from the
+    // initial plan on, before any obstacle is seen.
+    const bool have_obstacles = !obstacles.empty() || model_->hasEnvironment();
+    if (have_obstacles) model_->setObstacles(obstacles);
     for (int i = k; i < numIntervals(); ++i) {
       for (double fraction : config_.tau_fractions) {
         if (i == k && fraction == 0.0 && k_ >= 0) continue;
@@ -531,6 +534,8 @@ inline double scoreMovingInterval(const CollisionModel& truth,
                             movingObstacleClearance(truth, simulation.obstacles, q_at_t, t0 + t,
                                                     &result->min_clearance_per_obstacle));
     result->min_self_clearance = std::min(result->min_self_clearance, truth.selfClearance(q_at_t));
+    result->min_environment_clearance =
+        std::min(result->min_environment_clearance, truth.environmentClearance(q_at_t));
   }
   return interval_min;
 }

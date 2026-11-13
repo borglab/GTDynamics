@@ -116,6 +116,20 @@ struct SphereObstacle {
   double radius = 0.0;                           ///< m
 };
 
+/**
+ * A static half-space boundary of the workspace, such as a wall or floor:
+ * free space is where normal . p >= offset, so the signed distance of a point
+ * p is normal . p - offset (normal has unit length and points into free space).
+ */
+struct HalfSpace {
+  std::string name;                                   ///< e.g. "wall", "floor"
+  gtsam::Vector3 normal = gtsam::Vector3::UnitZ();    ///< unit, into free space
+  double offset = 0.0;                                ///< m
+
+  /// Signed distance of p (world frame) to the boundary, positive in free space.
+  double distance(const gtsam::Point3& p) const { return normal.dot(p) - offset; }
+};
+
 /// A spherical obstacle moving at constant velocity (ground truth, scate_reactive.h).
 struct MovingObstacle {
   gtsam::Point3 start = gtsam::Point3::Zero();       ///< center at t = 0 (m)
@@ -180,6 +194,17 @@ class CollisionModel {
 
   /// Smallest gap over the self-collision pairs (negative = penetration).
   virtual double selfClearance(const Vector& /*q*/) const {
+    return std::numeric_limits<double>::infinity();
+  }
+
+  /**
+   * Whether the model has static environment boundaries (walls, floor) that
+   * obstacleFactor keeps the robot clear of even with no obstacle known.
+   */
+  virtual bool hasEnvironment() const { return false; }
+
+  /// Smallest gap between the collision spheres and the environment boundaries.
+  virtual double environmentClearance(const Vector& /*q*/) const {
     return std::numeric_limits<double>::infinity();
   }
 
@@ -751,8 +776,13 @@ struct ClosedLoopResult {
    */
   std::vector<std::vector<gtsam::Point3>> obstacle_centers;
   std::vector<double> min_clearance_per_obstacle;  ///< m, one per obstacle
-  /// Whether the robot hit the obstacle or itself.
-  bool collided() const { return min_obstacle_clearance < 0.0 || min_self_clearance < 0.0; }
+  /// Smallest gap to the static environment (walls, floor); infinite if none.
+  double min_environment_clearance = std::numeric_limits<double>::infinity();
+  /// Whether the robot hit an obstacle, itself or the environment.
+  bool collided() const {
+    return min_obstacle_clearance < 0.0 || min_self_clearance < 0.0 ||
+           min_environment_clearance < 0.0;
+  }
 };
 
 /**
