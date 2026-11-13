@@ -1,0 +1,343 @@
+% GTDynamics Copyright 2026, Georgia Tech Research Corporation.
+% See LICENSE for license information.
+% Build from the repository root:
+%   mkdir -p build/doc/cmc-admm
+%   latexmk -pdf -outdir=build/doc/cmc-admm doc/cmc-admm-linear-step.tex
+%   cp build/doc/cmc-admm/cmc-admm-linear-step.pdf doc/
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=0.9in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs,tabularx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true,linkcolor=blue!45!black,urlcolor=blue!45!black,
+  citecolor=blue!45!black]{hyperref}
+\hypersetup{pdftitle={The ADMM Linear Step in CMC-Opt},
+  pdfauthor={GTDynamics contributors}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\pos}[1]{[#1]_{+}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt plus 1pt}
+\setlist{nosep,leftmargin=*}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small GTDynamics technical note}
+\fancyhead[R]{\small CMC-Opt / ADMM}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{14pt}
+\title{\vspace{-1.7em}The ADMM Linear Step in CMC-Opt}
+\author{GTDynamics contributors}
+\date{November 12, 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+\vspace{-1.6em}
+\begin{abstract}
+CMC-Opt reduces equality-constrained robot states to local manifold coordinates
+and solves a global tangent-cone quadratic program at each Levenberg--Marquardt
+trial. This note describes an experimental ADMM backend for that linear step.
+Constraint-output splitting and diagonal scaling turn the inequality update
+into scalar clipping, while GTSAM's multifrontal solver supplies a factorization
+reused across all ADMM iterations of a fixed QP. Acceptance uses an optimality
+certificate in the original QP coordinates; nonlinear retraction remains a
+separate CMC-Opt operation.
+\end{abstract}
+
+\section{From CMC-Opt to a reduced quadratic program}
+CMC-Opt optimizes a factor-graph objective over constraint manifolds with
+inequality boundaries and corners. Its nonlinear problem has the form
+\begin{equation}
+  \min_x \frac12\sum_a\|f_a(x_a)\|_{\Sigma_a}^{2}
+  \quad\text{subject to}\quad h_i(x_i)=0,\quad c_i(x_i)\leq0,
+  \label{eq:nlp}
+\end{equation}
+where $\|v\|_\Sigma^2=v^\top\Sigma^{-1}v$. Constraint-connected variables form
+local components, but objective factors can couple different components and
+times. The detailed geometry and retraction machinery are documented in the
+repository's CMC-Opt math-to-code map and component-coordinate guide
+\cite{cmc,coordinates}.
+
+Equality elimination happens before ADMM sees the problem. At the current
+feasible state, component $i$ provides a basis $B_i$ satisfying
+$\mathrm{D}h_i(x_i)B_i=0$. Write its ambient tangent increment as
+$\delta_i=B_i\xi_i$; unconstrained keys retain their ordinary tangent
+coordinates. With $B$ denoting the assembled local lifting maps, the linear
+step is
+\begin{equation}
+  \min_{\xi\in\R^n} q_\lambda(\xi)
+  =\frac12\|JB\xi+r\|_W^2+\frac\lambda2\|L\xi\|^2
+  =\frac12\xi^\top H\xi+g^\top\xi+c,
+  \qquad G\xi\leq0.
+  \label{eq:qp}
+\end{equation}
+Here $\|v\|_W^2=v^\top Wv$ uses the cost information weights, $L$ is the
+chosen LM damping operator, and $H$ includes the current damping. The QP has
+\emph{no explicit equality constraints}. Each block $G_i$ contains the
+appropriately weighted derivatives of selected boundary inequalities,
+$\mathrm{D}c_{i,\mathcal A_i}(x_i)B_i$, and touches only $\xi_i$.
+
+The homogeneous inequalities encode the current tangent cone, rather than all
+affine linearizations of the original bounds. Slack inequalities are omitted;
+selected near-boundary modes use the same homogeneous construction. Nonlinear
+retraction handles boundaries encountered by a finite step. Thus zero is
+feasible for the QP, but QP feasibility alone does not establish feasibility
+of the final nonlinear state.
+
+\newpage
+\section{Choosing the split and the scaling}
+\subsection{Manifold-variable splitting}
+The initial ADMM formulation duplicates each reduced component variable.
+Define $C_i=\{v:G_i v\leq0\}$ and enforce $\xi_i=z_i\in C_i$.
+For a positive diagonal metric $M$ and scaled dual $u$, its updates are
+\begin{align}
+  (H+\rho M)\xi^{k+1}&=-g+\rho M(z^k-u^k),\label{eq:point}\\
+  z_i^{k+1}&=\mathop{\arg\min}_{v\in C_i}
+       \tfrac12\|v-(\xi_i^{k+1}+u_i^k)\|_{M_i}^2,\nonumber\\
+  u^{k+1}&=u^k+\xi^{k+1}-z^{k+1}.\nonumber
+\end{align}
+The implementation uses local dual-coordinate/Dykstra projections. The
+identity metric is the default; an optional metric uses the floored diagonal
+of $H$. This is already a split by CMC components, not one independent
+optimization problem per scalar coordinate. The globally coupled solve
+remains necessary because objective factors link the components.
+
+\subsection{Constraint-output splitting}
+The newer formulation assigns one auxiliary scalar to each tangent inequality
+row, so the local update becomes an orthant projection. Introduce a positive
+diagonal variable scaling $D$ and row scaling $E$, and define
+\begin{equation}
+  \xi=Dy,\qquad \bar H=DHD,\qquad \bar g=Dg,\qquad \bar G=EGD.
+  \label{eq:scaled}
+\end{equation}
+The implemented scaling, with $\varepsilon=10^{-12}$, is
+\begin{equation}
+  D_{jj}=\frac{1}{\sqrt{\max(H_{jj},\varepsilon)}},\qquad
+  E_{\ell\ell}=\begin{cases}
+    1/\max(\|(GD)_{\ell,:}\|_2,\varepsilon),
+      &\|(GD)_{\ell,:}\|_2>0,\\
+    1,&\text{otherwise}.
+  \end{cases}
+  \label{eq:scales}
+\end{equation}
+Both scalings are fixed within a QP and recomputed when damping changes.
+With scaling disabled, $D=I$ and $E=I$. The diagonal floor defines the
+coordinate transformation; it does not add a regularizer to $H$.
+
+The equivalent split problem is
+\begin{equation}
+  \min_{y,z}\ \tfrac12 y^\top\bar H y+\bar g^\top y
+       +\iota_{\R_-^m}(z)
+  \quad\text{subject to}\quad \bar G y-z=0,
+  \label{eq:split}
+\end{equation}
+where $m$ is the number of selected scalar inequality rows and the indicator
+is zero on the nonpositive orthant and infinite elsewhere. Positive $E$ and
+invertible $D$ preserve the original feasible set and objective under the
+coordinate change. They change the ADMM iteration geometry and hence the
+meaning of a given numerical $\rho$.
+
+Scaling matters because reduced coordinates need not be orthonormal or
+dimensionless. An elimination basis can retain physical joint, acceleration,
+and force coordinates with very different curvature. Diagonal equilibration
+addresses that imbalance, but does not remove all correlations or guarantee
+a well-conditioned system. The broader sensitivity of ADMM to scaling is
+discussed in~\cite{scaling}; the specific rule above is the implemented heuristic.
+
+\newpage
+\section{The ADMM iteration and the cached GTSAM solve}
+Scaled ADMM applies to~\eqref{eq:split} with fixed $\rho>0$ and the scaled
+dual $u$~\cite{admm}. Completing the square in its augmented Lagrangian gives
+\begin{equation}
+  \mathcal L_\rho(y,z,u)=\tfrac12y^\top\bar H y+\bar g^\top y
+   +\iota_{\R_-^m}(z)+\tfrac\rho2\|\bar Gy-z+u\|^2
+   -\tfrac\rho2\|u\|^2.
+\end{equation}
+Each iteration consists of a global linear solve, scalar clipping, and a
+dual update:
+\begin{align}
+  K y^{k+1}&=-\bar g+\rho\bar G^\top(z^k-u^k),
+       &K&=\bar H+\rho\bar G^\top\bar G,\label{eq:global}\\
+  z^{k+1}&=\min(\bar G y^{k+1}+u^k,0),&&\label{eq:clip}\\
+  u^{k+1}&=u^k+\bar G y^{k+1}-z^{k+1}.&&\label{eq:dual}
+\end{align}
+The minimum is componentwise. The current solver initializes $z^0=u^0=0$;
+the first global solve therefore has right-hand side $-\bar g$. A QP with
+no inequality rows reduces to one direct solve. The intended input is a
+positive-definite damped objective; the solver adds no hidden regularization.
+
+\subsection{Retaining the factor graph}
+GTSAM factors the augmented Gaussian graph without assembling a global dense
+Hessian or transferring the system to an external sparse solver. Each original
+reduced Jacobian factor receives the column transformation $A_i\mapsto A_iD_i$,
+with its right-hand side and noise model preserved. Local Hessian-factor
+inputs retain their Hessian representation under the same change of
+coordinates. For each inequality block the graph gains the unary factor
+\begin{equation}
+  \sqrt\rho\,\bar G_i y_i\approx0.
+\end{equation}
+These penalty factors change diagonal variable blocks but introduce no
+new edges between CMC components. Original objective couplings still
+determine the global graph and its elimination fill.
+
+The implementation calls \code{MultifrontalSolver::eliminateInPlace} and
+\code{computeBayesTree} once per QP. Abstractly, the resulting Bayes tree
+represents $K=R^\top R$ in the elimination ordering. For a new right-hand side
+$b^k$ from~\eqref{eq:global}, the update uses
+\begin{equation}
+  R^\top v=b^k,\qquad R y^{k+1}=v.
+\end{equation}
+These operations are \code{backSubstituteTranspose} followed by
+\code{backSubstitute}; the cached numerical factors are unchanged.
+
+\subsection{What can be reused}
+Every ADMM iteration of a fixed QP reuses the numerical factorization because
+$H,G,D,E,\rho$ are fixed. A change only to the objective's linear term or to
+$z-u$ changes the right-hand side, so triangular solves suffice. Changing LM
+damping changes $H$, generally $D$ and $E$, and hence $K$: it requires a
+\emph{new numerical factorization}. The workspace reuses symbolic analysis,
+ordering, and clique storage across structurally compatible damping trials.
+A new nonlinear linearization creates a new workspace. Changing $\rho$
+would also require refreshing the numerical factors.
+
+\newpage
+\section{Certification and return to the nonlinear optimizer}
+ADMM convergence is certified against the original reduced QP, rather than
+only the scaled consensus equation. Transform the candidate and inequality
+multipliers back as
+\begin{equation}
+  \xi=Dy,\qquad \mu=\rho E u.
+  \label{eq:recover}
+\end{equation}
+The multiplier transformation follows by equating the linear constraint terms
+$\mu^\top G\xi=(\rho u)^\top EG\xi$. It is essential when row scaling is
+enabled. The original-coordinate stationarity residual is
+\begin{equation}
+  s=\nabla q_\lambda(\xi)+G^\top\mu
+    =H\xi+g+G^\top\mu.
+  \label{eq:stationarity}
+\end{equation}
+The implementation evaluates the gradient from the original Gaussian factors,
+so the certificate includes the original weights and the current LM damping.
+``Original coordinates'' here means the unscaled, equality-reduced QP, not
+the redundant ambient coordinates eliminated by $B$.
+
+\subsection{Original-coordinate KKT checks}
+The solver accepts only finite candidates and finite objective values satisfying
+the following tests, with $\tau=10^{-7}$:
+\begin{align}
+  \|\pos{G\xi}\|_\infty&\leq\tau
+      &&\text{(primal feasibility)},\\
+  \mu_\ell&\geq-\tau\quad\text{for every row }\ell
+      &&\text{(dual feasibility)},\\
+  \|\mu\odot(G\xi)\|_\infty&\leq\tau
+      &&\text{(complementarity)},\\
+  \|s\|_\infty&\leq\tau
+      &&\text{(stationarity)}.
+\end{align}
+Checks occur at iterations $1,26,51,\ldots$ and at the iteration cap. For the
+convex QP these are numerical KKT tests for optimality; their absolute
+tolerance is an implementation choice, not a unit-invariant error bound.
+Failure to certify within the limit rejects the LM trial.
+
+The recorded primal residual is $\|\bar Gy-z\|_\infty$. In constraint-split
+mode the field named \code{dualResidual} records the latest original-coordinate
+stationarity norm, rather than the textbook ADMM residual
+$\rho\bar G^\top(z^k-z^{k-1})$. This mode has no additional consensus-residual
+acceptance gate beyond the KKT certificate above.
+
+\subsection{Active faces and retraction}
+The solver returns a blocking-row mask in the original QP row order. Row
+$\ell$ is marked active when $\mu_\ell>0$ and
+$|(G\xi)_\ell|\leq\tau$. A tight row with zero multiplier need not be marked.
+The CMC adapter promotes a nonlinear vector constraint block to a retraction
+equality only when all of its rows are active; a partially active block
+remains an inequality.
+
+The outer optimizer lifts the step through $B$ and performs its existing
+directional checks and nonlinear retraction. Retraction restores the nonlinear
+equalities and inequalities, including omitted slack boundaries that the
+finite step reaches. The undamped model determines predicted reduction;
+nonlinear objective evaluation and LM acceptance decide whether to keep the
+trial. ADMM solves only~\eqref{eq:qp}, not the nonlinear feasibility problem
+or the retraction subproblem.
+
+\newpage
+\section{Cost, implementation, and scope}
+The solve time includes both factorization and repeated Bayes-tree solves:
+\begin{equation}
+  T_{\mathrm{QP}}\approx T_{\mathrm{setup+factor}}
+    +N\bigl(T_{\mathrm{two\ triangular\ solves}}+T_{G,G^\top}+O(m)\bigr)
+    +N_{\mathrm{check}}T_{\mathrm{KKT}}.
+\end{equation}
+Triangular-solve cost depends on clique dimensions and fill; the iteration
+count $N$ depends on curvature, constraint geometry, scaling, $\rho$, and
+accuracy. Constraint splitting removes iterative cone projections, but
+retains the global primal solve at each iteration.
+
+In the G1 timing example, 171 CMC blocks contain 18,297 scalar coordinates;
+42 unconstrained six-dimensional blocks add 252. The total of 18,549 is
+\emph{after equality elimination}. The captured second QP has 230 inequality
+rows on 117 CMC blocks: $z$ and $u$ each have dimension 230, while the global
+solve still has dimension 18,549. These counts are specific to that capture.
+
+\subsection{Code and options}
+Both splitting strategies share the ADMM backend API:
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}p{0.47\linewidth}X@{}}
+\toprule
+File under \code{gtdynamics/cmcopt/} & Responsibility \\
+\midrule
+\code{ConstraintSplitAdmmSolver.cpp} & Scaling, augmented graph, cached solves,
+clipping, multiplier recovery, and KKT certificate. \\
+\code{AdmmSolver.h} & Shared parameters, result, and workspace. \\
+\code{PointSplitAdmmSolver.cpp} & Validation and manifold-variable splitting. \\
+\code{IELMOptimizer.cpp} & Workspace lifetime across damping trials. \\
+\code{IELMOptimizerState.cpp} & Damped QP assembly, backend dispatch,
+blocking-row mapping, and nonlinear update. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Select \code{QpBackend::ADMM} and choose \code{admmRho}.\\
+Set \code{admmSplitting} to \code{AdmmSplitting::ConstraintOutputs}
+(the default is \code{ManifoldVariables}). Enable \code{admmUseDiagonalMetric}
+for $D,E$ scaling here or the $M$-metric in point mode.
+This opt-in experiment uses fixed $\rho$, cold starts for each QP, and no
+over-relaxation, polishing, or fallback. Tests are in \code{testAdmm}
+and \code{testIELMQp}. Compare timings only with comparable full QP convergence
+and feasible nonlinear results~\cite{experiment}.
+
+\begingroup
+\small
+\raggedright
+\setlength{\parskip}{0pt}
+\begin{thebibliography}{5}
+\bibitem{cmc} GTDynamics contributors.
+\emph{CMC-Opt Math to Code Map}. Repository document,
+\path{gtdynamics/cmcopt/README.md}; includes pointers to Chapter 4 of
+Yetong Zhang's 2024 thesis on constraint manifold optimization.
+\bibitem{coordinates} GTDynamics contributors.
+\emph{Equality coordinates and the global tangent-cone QP}.
+\path{gtdynamics/cmcopt/ComponentCoordinates.md}.
+\bibitem{admm} S. Boyd, N. Parikh, E. Chu, B. Peleato, and J. Eckstein.
+\href{https://web.stanford.edu/~boyd/papers/admm_distr_stats.html}
+{Distributed Optimization and Statistical Learning via the Alternating
+Direction Method of Multipliers}.
+\emph{Foundations and Trends in Machine Learning}, 3(1):1--122, 2011.
+\bibitem{scaling} P. Giselsson and S. Boyd.
+\href{https://web.stanford.edu/~boyd/papers/diag_scaling_DR_ADMM.html}
+{Diagonal Scaling in Douglas--Rachford Splitting and ADMM}.
+\emph{IEEE Conference on Decision and Control}, pp.\ 5033--5039, 2014.
+\bibitem{experiment} GTDynamics contributors.
+\emph{ADMM versus ProxQP (experimental)}.
+\path{examples/cmc_benchmarks/ADMM.md}.
+\end{thebibliography}
+\endgroup
+\end{document}

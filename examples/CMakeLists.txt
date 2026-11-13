@@ -6,6 +6,7 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 # Variable to hold all the example directories
 set(EXAMPLE_SUBDIRS
     scripts
+    cmc_benchmarks
     example_a1_walking
     example_cart_pole_trajectory_optimization
     example_forward_dynamics

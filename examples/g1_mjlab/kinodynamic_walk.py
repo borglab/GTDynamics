@@ -71,11 +71,18 @@ def solve_walk(
     retraction_threads: int = 8,
     initialization: str = "contact-gp-dynamics",
     qp_backend: str = "gtsam",
+    first_qp_backend: str | None = None,
     linear_solver: str = "automatic",
     equality_only: bool = False,
     qp_use_feasible_step: bool = True,
     qp_use_projected_gradient_initialization: bool = False,
     qp_use_temporal_ordering: bool = False,
+    qp_max_iterations: int = 1000,
+    admm_rho: float = 1.0,
+    admm_use_diagonal_metric: bool = False,
+    admm_splitting: str = "manifold-variables",
+    admm_projection_threads: int = 1,
+    use_link_collocation: bool = True,
 ) -> KinodynamicSolution:
     """Initialize and jointly optimize G1 poses, motion, and forces at support knots.
 
@@ -92,8 +99,13 @@ def solve_walk(
         linear_solver: "automatic", "gaussian", or "qp" reduced linear steps.
         equality_only: Benchmark a relaxed problem with inequalities omitted from
             optimization and retraction; original violations remain diagnostics.
-        qp_backend: "gtsam" (default) or the optional native "proxqp" backend.
-            ProxQP requires full solves with projected gradients disabled.
+        use_link_collocation: Include root-link pose and twist collocation.
+            Joint collocation remains enabled when this is false.
+        qp_backend: "gtsam" (default), "proxqp", or "admm".
+            ProxQP and ADMM require full solves with projected gradients disabled.
+        admm_splitting: "manifold-variables" (default) or "constraint-outputs".
+        first_qp_backend: Optional GTSAM or ProxQP backend for iteration zero
+            when subsequent iterations use ADMM.
         qp_use_feasible_step: Request feasible descent from GTSAM instead of convergence.
         qp_use_projected_gradient_initialization: Seed primal GTSAM solves by projecting
             the negative gradient; disabled by default and ignored by Dual.
@@ -137,11 +149,18 @@ def solve_walk(
         max_iterations,
         retraction_threads,
         qp_backend=qp_backend,
+        first_qp_backend=first_qp_backend,
         linear_solver=linear_solver,
         equality_only=equality_only,
         qp_use_feasible_step=qp_use_feasible_step,
         qp_use_projected_gradient_initialization=qp_use_projected_gradient_initialization,
         qp_use_temporal_ordering=qp_use_temporal_ordering,
+        qp_max_iterations=qp_max_iterations,
+        admm_rho=admm_rho,
+        admm_use_diagonal_metric=admm_use_diagonal_metric,
+        admm_splitting=admm_splitting,
+        admm_projection_threads=admm_projection_threads,
+        use_link_collocation=use_link_collocation,
     )
     metadata.update(solver_metadata)
     metadata["measurementPreparationSeconds"] = (
@@ -192,6 +211,10 @@ def summary(solution: KinodynamicSolution) -> dict[str, Any]:
                 "initialEqualityL2",
                 "equalityL2",
                 "inequalityL2",
+                "linkPoseCollocationFactors",
+                "linkTwistCollocationFactors",
+                "jointPositionCollocationFactors",
+                "jointVelocityCollocationFactors",
                 "variableDimension",
                 "reducedDimension",
                 "equalityDimension",
@@ -368,18 +391,46 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-iterations", type=int, default=5)
     parser.add_argument("--retraction-threads", type=int, default=8)
     parser.add_argument(
-        "--linear-solver", choices=("automatic", "gaussian", "qp"),
-        default="automatic", help="Reduced linear solver (default: automatic)",
+        "--linear-solver",
+        choices=("automatic", "gaussian", "qp"),
+        default="automatic",
+        help="Reduced linear solver (default: automatic)",
     )
     parser.add_argument(
-        "--equality-only", action="store_true",
+        "--equality-only",
+        action="store_true",
         help="Benchmark relaxation: omit all inequalities, including in retraction",
     )
     parser.add_argument(
         "--qp-backend",
-        choices=("gtsam", "proxqp"),
+        choices=("gtsam", "proxqp", "admm"),
         default="gtsam",
-        help="QP backend (default: gtsam); proxqp requires --qp-step full",
+        help="QP backend (default: gtsam); proxqp/admm require --qp-step full",
+    )
+    parser.add_argument(
+        "--first-qp-backend",
+        choices=("gtsam", "proxqp"),
+        help="QP backend for the first LM iteration before switching to ADMM",
+    )
+    parser.add_argument("--qp-max-iterations", type=int, default=1000)
+    parser.add_argument("--admm-rho", type=float, default=1.0)
+    parser.add_argument(
+        "--admm-use-diagonal-metric",
+        action="store_true",
+        help="Scale ADMM using the damped Hessian diagonal; also normalize rows for constraint splitting",
+    )
+    parser.add_argument(
+        "--admm-splitting",
+        choices=("manifold-variables", "constraint-outputs"),
+        default="manifold-variables",
+        help="ADMM auxiliary variables: manifold coordinates or inequality outputs",
+    )
+    parser.add_argument("--admm-projection-threads", type=int, default=1)
+    parser.add_argument(
+        "--link-collocation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include root-link pose/twist collocation; joint collocation stays enabled",
     )
     parser.add_argument(
         "--qp-step",
@@ -416,11 +467,18 @@ def main() -> None:
         retraction_threads=args.retraction_threads,
         initialization=args.initialization,
         qp_backend=args.qp_backend,
+        first_qp_backend=args.first_qp_backend,
         linear_solver=args.linear_solver,
         equality_only=args.equality_only,
         qp_use_feasible_step=args.qp_step == "feasible",
         qp_use_projected_gradient_initialization=args.projected_gradient_initialization,
         qp_use_temporal_ordering=args.qp_ordering == "temporal",
+        qp_max_iterations=args.qp_max_iterations,
+        admm_rho=args.admm_rho,
+        admm_use_diagonal_metric=args.admm_use_diagonal_metric,
+        admm_splitting=args.admm_splitting,
+        admm_projection_threads=args.admm_projection_threads,
+        use_link_collocation=args.link_collocation,
     )
     args.output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(args.output / "kinodynamics.npz", **solution_arrays(solution))

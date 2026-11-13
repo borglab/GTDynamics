@@ -17,11 +17,13 @@
  */
 
 #pragma once
+#include <gtdynamics/cmcopt/AdmmSplitting.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
 #include <gtdynamics/cmcopt/IEOptimizer.h>
 #include <gtsam/constrained/ConstrainedOptimizer.h>
 
 #include <functional>
+#include <optional>
 
 namespace gtdynamics {
 using namespace gtsam;
@@ -33,7 +35,7 @@ struct IELMParams {
   LinearSolver linearSolver = LinearSolver::Automatic;
 
   /// Numerical backend for the global reduced QP.
-  enum class QpBackend { Gtsam, ProxQP };
+  enum class QpBackend { Gtsam, ProxQP, ADMM };
 
   IELMParams() {}
   double boundaryApproachRateThreshold = 3;
@@ -46,8 +48,27 @@ struct IELMParams {
    * with projected-gradient initialization disabled. GTSAM remains the default.
    */
   QpBackend qpBackend = QpBackend::Gtsam;
+  /// Optional QP backend for all damping trials of outer iteration zero.
+  std::optional<QpBackend> firstIterationQpBackend;
+  /** Experimental fixed-rho ADMM backend, with manifold-variable or
+   * constraint-output splitting. The global sparse numerical factorization
+   * is reused between iterations.
+   * Unlike qpUseFeasibleStep, this backend requires an original-factor KKT
+   * certificate before returning a direction for nonlinear retraction.
+   */
+  double admmRho = 1.0;
+  /// Use the Hessian-diagonal metric, or coordinate/row scaling in constraint
+  /// mode.
+  bool admmUseDiagonalMetric = false;
+  /// Select manifold cone projections or constraint-output clipping.
+  AdmmSplitting admmSplitting = AdmmSplitting::ManifoldVariables;
+  double admmAbsoluteTolerance = 1e-9;
+  double admmRelativeTolerance = 1e-9;
+  size_t admmProjectionSweeps = 2000;
+  size_t admmProjectionThreads = 1;
   /** Backend QP iteration limit; exhaustion rejects the LM trial. For ProxQP
    * this bounds outer iterations; qpIterations reports total inner iterations.
+   * For ADMM it bounds global ADMM iterations.
    */
   size_t qpMaxIterations = 1000;
   /** Seed primal working sets with GTSAM's componentwise projected gradient.

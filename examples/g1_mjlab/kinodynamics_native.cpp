@@ -321,6 +321,8 @@ py::dict solve(
   auto groups = measurementGroups;
   auto names = measurementNames;
   NonlinearFactorGraph poseCollocation, velocityCollocation, stanceVelocity;
+  const bool useLinkCollocation = !settings.contains("useLinkCollocation") ||
+                                  setting<bool>(settings, "useLinkCollocation");
   Vector6 poseSigmas, twistSigmas;
   poseSigmas << Vector3::Constant(
       setting<double>(settings, "poseRotationSigmaDegrees") * radiansPerDegree),
@@ -378,7 +380,7 @@ py::dict solve(
             noiseModel::Isotropic::Sigma(
                 3, setting<double>(settings, "stanceVelocitySigma")),
             frame.contact.comTcontact.inverse()));
-    if (i) {
+    if (i && useLinkCollocation) {
       const size_t before = slices[i - 1].k;
       const double dt = times[i] - times[i - 1];
       poseCollocation.emplace_shared<FixTimeTrapezoidalPoseCollocationFactor>(
@@ -428,6 +430,13 @@ py::dict solve(
   const auto equalities = NonlinearEqualityConstraints::FromCostGraph(exact);
   py::dict result;
   result["initialValues"] = seed;
+  const size_t linkFactors = useLinkCollocation ? slices.size() - 1 : 0;
+  result["linkPoseCollocationFactors"] = linkFactors;
+  result["linkTwistCollocationFactors"] = linkFactors;
+  result["jointPositionCollocationFactors"] =
+      poseCollocation.size() - linkFactors;
+  result["jointVelocityCollocationFactors"] =
+      velocityCollocation.size() - linkFactors;
   result["initialEqualityL2"] = equalities.violationNorm(seed);
   result["variableDimension"] = seed.dim();
   result["equalityDimension"] = equalities.dim();
@@ -526,9 +535,47 @@ py::dict solve(
   const auto qpBackend = setting<std::string>(settings, "qpBackend");
   if (qpBackend == "proxqp")
     params.qpBackend = IELMParams::QpBackend::ProxQP;
+  else if (qpBackend == "admm")
+    params.qpBackend = IELMParams::QpBackend::ADMM;
   else if (qpBackend != "gtsam")
     throw std::invalid_argument("Unknown QP backend: " + qpBackend);
+  if (settings.contains("firstIterationQpBackend")) {
+    const auto firstBackend =
+        setting<std::string>(settings, "firstIterationQpBackend");
+    if (firstBackend == "gtsam")
+      params.firstIterationQpBackend = IELMParams::QpBackend::Gtsam;
+    else if (firstBackend == "proxqp")
+      params.firstIterationQpBackend = IELMParams::QpBackend::ProxQP;
+    else
+      throw std::invalid_argument("Unknown first QP backend: " + firstBackend);
+  }
   params.qpMaxIterations = setting<size_t>(settings, "qpMaxIterations");
+  if (settings.contains("admmSplitting")) {
+    const auto splitting = setting<std::string>(settings, "admmSplitting");
+    if (splitting == "manifold-variables")
+      params.admmSplitting = AdmmSplitting::ManifoldVariables;
+    else if (splitting == "constraint-outputs")
+      params.admmSplitting = AdmmSplitting::ConstraintOutputs;
+    else
+      throw std::invalid_argument("Unknown ADMM splitting: " + splitting);
+  }
+  if (settings.contains("admmUseDiagonalMetric"))
+    params.admmUseDiagonalMetric =
+        setting<bool>(settings, "admmUseDiagonalMetric");
+  if (settings.contains("admmRho"))
+    params.admmRho = setting<double>(settings, "admmRho");
+  if (settings.contains("admmProjectionThreads"))
+    params.admmProjectionThreads =
+        setting<size_t>(settings, "admmProjectionThreads");
+  if (settings.contains("admmProjectionSweeps"))
+    params.admmProjectionSweeps =
+        setting<size_t>(settings, "admmProjectionSweeps");
+  if (settings.contains("admmAbsoluteTolerance"))
+    params.admmAbsoluteTolerance =
+        setting<double>(settings, "admmAbsoluteTolerance");
+  if (settings.contains("admmRelativeTolerance"))
+    params.admmRelativeTolerance =
+        setting<double>(settings, "admmRelativeTolerance");
   params.qpUseProjectedGradientInitialization =
       setting<bool>(settings, "qpUseProjectedGradientInitialization");
   params.qpUseFeasibleStep = setting<bool>(settings, "qpUseFeasibleStep");

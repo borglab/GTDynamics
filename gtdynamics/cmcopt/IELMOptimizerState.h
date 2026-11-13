@@ -32,6 +32,9 @@ struct IELMState;
 struct IELMTrial;
 struct IELMIterationDetails;
 struct IELMParams;
+namespace internal {
+class AdmmWorkspace;
+}
 
 /** State corresponding to each LM iteration. */
 struct IELMState {
@@ -105,9 +108,11 @@ struct IELMTrial {
   struct LinearUpdate;
   struct NonlinearUpdate;
 
-  /// Perform a trial of iteration with specified lambda value.
+  /// Perform a trial at lambda with an optional workspace for this
+  /// linearization.
   IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
-            const double &lambda, const IELMParams &params);
+            const double &lambda, const IELMParams &params,
+            internal::AdmmWorkspace *admmWorkspace = nullptr);
 
   /// Perform a trial by moving to specified boundaries.
   IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
@@ -142,7 +147,8 @@ struct IELMTrial {
      * reduction in the undamped cost model.
      */
     LinearUpdate(const double &_lambda, const NonlinearFactorGraph &graph,
-                 const IELMState &state, const IELMParams &params);
+                 const IELMState &state, const IELMParams &params,
+                 internal::AdmmWorkspace *admmWorkspace = nullptr);
 
     /// Construct a zero step for a boundary-mode change.
     static LinearUpdate zero(const IELMState &state);

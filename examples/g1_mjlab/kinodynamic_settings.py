@@ -24,6 +24,13 @@ def solver_settings() -> dict[str, Any]:
         "maxIterations": 5,
         "qpMaxIterations": 1000,
         "qpBackend": "gtsam",
+        "admmRho": 1.0,
+        "admmUseDiagonalMetric": False,
+        "admmSplitting": "manifold-variables",
+        "admmProjectionThreads": 1,
+        "admmProjectionSweeps": 2000,
+        "admmAbsoluteTolerance": 1e-9,
+        "admmRelativeTolerance": 1e-9,
         "linearSolver": "automatic",
         "equalityOnly": False,
         "qpUseProjectedGradientInitialization": False,
@@ -32,6 +39,7 @@ def solver_settings() -> dict[str, Any]:
         "gaugeSlice": 0,
         "retractionThreads": 8,
         "historyWindow": 1,
+        "useLinkCollocation": True,
         "poseRotationSigmaDegrees": 0.05,
         "poseTranslationSigma": 0.0005,
         "twistAngularSigmaDegrees": 2.0,
@@ -70,11 +78,18 @@ def configure_solve(
     retraction_threads: int,
     *,
     qp_backend: str = "gtsam",
+    first_qp_backend: str | None = None,
     linear_solver: str = "automatic",
     equality_only: bool = False,
     qp_use_feasible_step: bool = True,
     qp_use_projected_gradient_initialization: bool = False,
     qp_use_temporal_ordering: bool = False,
+    qp_max_iterations: int = 1000,
+    admm_rho: float = 1.0,
+    admm_use_diagonal_metric: bool = False,
+    admm_splitting: str = "manifold-variables",
+    admm_projection_threads: int = 1,
+    use_link_collocation: bool = True,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return native options and report metadata for the selected root gauge.
 
@@ -86,15 +101,29 @@ def configure_solve(
         raise ValueError(f"Unknown linear solver: {linear_solver}")
     if linear_solver == "gaussian" and not equality_only:
         raise ValueError("Gaussian solves require equality_only=True")
-    if qp_backend not in ("gtsam", "proxqp"):
+    if qp_backend not in ("gtsam", "proxqp", "admm"):
         raise ValueError(f"Unknown QP backend: {qp_backend}")
     uses_qp = linear_solver == "qp" or (
         linear_solver == "automatic" and not equality_only
     )
-    if uses_qp and qp_backend == "proxqp" and (
-        qp_use_feasible_step or qp_use_projected_gradient_initialization
+    if (
+        uses_qp
+        and qp_backend in ("proxqp", "admm")
+        and (qp_use_feasible_step or qp_use_projected_gradient_initialization)
     ):
-        raise ValueError("ProxQP requires --qp-step full and projected gradients off")
+        raise ValueError(
+            "ProxQP and ADMM require --qp-step full and projected gradients off"
+        )
+    if first_qp_backend is not None and (
+        first_qp_backend not in ("gtsam", "proxqp")
+        or qp_backend != "admm"
+        or not uses_qp
+    ):
+        raise ValueError(
+            "The first QP backend requires a GTSAM or ProxQP start followed by ADMM"
+        )
+    if admm_splitting not in ("manifold-variables", "constraint-outputs"):
+        raise ValueError("Unknown ADMM splitting: " + admm_splitting)
     options = solver_settings()
     options.update(
         initialization=initialization,
@@ -102,12 +131,20 @@ def configure_solve(
         maxIterations=max_iterations,
         retractionThreads=retraction_threads,
         qpBackend=qp_backend,
+        qpMaxIterations=qp_max_iterations,
+        admmRho=admm_rho,
+        admmUseDiagonalMetric=admm_use_diagonal_metric,
+        admmSplitting=admm_splitting,
+        admmProjectionThreads=admm_projection_threads,
+        useLinkCollocation=use_link_collocation,
         linearSolver=linear_solver,
         equalityOnly=equality_only,
         qpUseFeasibleStep=qp_use_feasible_step,
         qpUseProjectedGradientInitialization=qp_use_projected_gradient_initialization,
         qpUseTemporalOrdering=qp_use_temporal_ordering,
     )
+    if first_qp_backend is not None:
+        options["firstIterationQpBackend"] = first_qp_backend
     metadata = {
         "gauge": {
             "coordinates": ["world_x", "world_y", "world_z", "yaw"],

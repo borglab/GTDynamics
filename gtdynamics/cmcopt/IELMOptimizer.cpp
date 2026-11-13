@@ -19,6 +19,7 @@
  * @date    Feb 26, 2012
  */
 
+#include <gtdynamics/cmcopt/AdmmSolver.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 
 using namespace std;
@@ -113,6 +114,14 @@ IELMIterationDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   // Set lambda for first trial.
   double lambda = state.lambda;
   double lambdaFactor = state.lambdaFactor;
+  internal::AdmmWorkspace admmWorkspace;
+  std::optional<IELMParams> firstIterationParams;
+  if (state.iterations == 0 && ielm_params_.firstIterationQpBackend) {
+    firstIterationParams = ielm_params_;
+    firstIterationParams->qpBackend = *ielm_params_.firstIterationQpBackend;
+  }
+  const auto &trialParams =
+      firstIterationParams ? *firstIterationParams : ielm_params_;
 
   // Perform trials until any of follwing conditions is met
   // * 1) trial is successful
@@ -120,7 +129,7 @@ IELMIterationDetails IELMOptimizer::iterate(const NonlinearFactorGraph &graph,
   // * 3) lambda goes beyond limits
   while (true) {
     // Perform the trial.
-    IELMTrial trial(state, graph, lambda, ielm_params_);
+    IELMTrial trial(state, graph, lambda, trialParams, &admmWorkspace);
     if (lmParams.verbosityLM == LevenbergMarquardtParams::SUMMARY) {
       printIELMTrial(state, trial, ielm_params_);
     }

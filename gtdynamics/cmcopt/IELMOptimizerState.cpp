@@ -11,10 +11,11 @@
  * @author Frank Dellaert
  */
 
+#include <gtdynamics/cmcopt/AdmmSolver.h>
 #include <gtdynamics/cmcopt/IELMOptimizer.h>
 #include <gtdynamics/cmcopt/IELMOptimizerState.h>
-#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/cmcopt/ProxQpSolver.h>
+#include <gtdynamics/constrained/internal/IndependentComponents.h>
 #include <gtdynamics/utils/GraphUtils.h>
 #include <gtsam/constrained/ActiveSetSolver.h>
 
@@ -227,13 +228,14 @@ IELMState::computeMetricSigmas(const NonlinearFactorGraph &graph) const {
 
 /* ************************************************************************* */
 IELMTrial::IELMTrial(const IELMState &state, const NonlinearFactorGraph &graph,
-                     const double &lambda, const IELMParams &params) {
+                     const double &lambda, const IELMParams &params,
+                     internal::AdmmWorkspace *admmWorkspace) {
   // std::cout << "========= " << state.iterations << " ======= \n";
   auto start = std::chrono::high_resolution_clock::now();
   stepIsSuccessful = false;
 
   // Compute linear update and linear cost change
-  linearUpdate = LinearUpdate(lambda, graph, state, params);
+  linearUpdate = LinearUpdate(lambda, graph, state, params, admmWorkspace);
   if (!linearUpdate.solveSuccessful) {
     return;
   }
@@ -563,10 +565,13 @@ void printIELMTrial(const IELMState &state, const IELMTrial &trial,
 IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
                                       const NonlinearFactorGraph &graph,
                                       const IELMState &state,
-                                      const IELMParams &params)
+                                      const IELMParams &params,
+                                      internal::AdmmWorkspace *admmWorkspace)
     : lambda(_lambda) {
-  const bool gaussian = params.linearSolver == IELMParams::LinearSolver::Gaussian ||
-      (params.linearSolver == IELMParams::LinearSolver::Automatic && state.equalityOnly);
+  const bool gaussian =
+      params.linearSolver == IELMParams::LinearSolver::Gaussian ||
+      (params.linearSolver == IELMParams::LinearSolver::Automatic &&
+       state.equalityOnly);
   if (gaussian && !state.equalityOnly)
     throw std::invalid_argument("Gaussian CMC solves require empty inequalities");
 
@@ -621,16 +626,18 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
     return;
   }
 
-  if(params.qpBackend == IELMParams::QpBackend::ProxQP) {
+  if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
 #ifndef GTDYNAMICS_WITH_PROXQP
     throw std::invalid_argument(
         "ProxQP backend requires a build with GTDYNAMICS_WITH_PROXQP=ON");
 #endif
-    if (params.qpUseFeasibleStep || params.qpUseProjectedGradientInitialization)
-      throw std::invalid_argument(
-          "ProxQP requires full QP solves and no projected-gradient "
-          "initialization");
   }
+  if (params.qpBackend != IELMParams::QpBackend::Gtsam &&
+      (params.qpUseFeasibleStep ||
+       params.qpUseProjectedGradientInitialization))
+    throw std::invalid_argument(
+        "ProxQP and ADMM require full QP solves and no "
+        "projected-gradient initialization");
   const auto &linear = *state.linearPointGraph;
   const auto sqrtHessianDiagonal =
       SqrtHessianDiagonal(linear, params.lmParams);
@@ -663,8 +670,29 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
       ++qpSolves;
       Values solution;
       std::vector<bool> activeRows;
+      if (params.qpBackend == IELMParams::QpBackend::ADMM) {
+        internal::AdmmParams admm;
+        admm.rho = params.admmRho;
+        admm.useDiagonalMetric = params.admmUseDiagonalMetric;
+        admm.splitting = params.admmSplitting;
+        admm.absoluteTolerance = params.admmAbsoluteTolerance;
+        admm.relativeTolerance = params.admmRelativeTolerance;
+        admm.maxProjectionSweeps = params.admmProjectionSweeps;
+        admm.projectionThreads = params.admmProjectionThreads;
+        internal::AdmmWorkspace localWorkspace;
+        auto &workspace = admmWorkspace ? *admmWorkspace : localWorkspace;
+        const auto result = workspace.solve(
+            problem, initial, qpParams->ordering, params.qpMaxIterations, admm);
+        qpIterations = result.iterations;
+        if (!result.converged) {
+          failureReason = result.message;
+          return;
+        }
+        solution = result.values;
+        activeRows = result.activeRows;
+      }
 #ifdef GTDYNAMICS_WITH_PROXQP
-      if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
+      else if (params.qpBackend == IELMParams::QpBackend::ProxQP) {
         const auto result = internal::solveProxQp(
             problem, initial, qpParams->ordering, params.qpMaxIterations);
         qpIterations = result.iterations;
@@ -674,9 +702,9 @@ IELMTrial::LinearUpdate::LinearUpdate(const double &_lambda,
         }
         solution = result.values;
         activeRows = result.activeRows;
-      } else
+      }
 #endif
-      {
+      else {
         const ActiveSetSolver solver(problem, qpParams);
         if (params.qpUseFeasibleStep) {
           const auto result = solver.computeFeasibleStep(initial);
