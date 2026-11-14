@@ -378,6 +378,13 @@ inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenari
                                   std::vector<std::pair<double, ClosedLoopResult>> runs,
                                   const std::string& program = "scate_ur10e_base_wrench");
 
+inline void writeBaseWrenchReplayRuns(const std::string& path, const ReactiveScenario& scenario,
+                                      const GraphSpec& spec, const SphereCollisionModel& model,
+                                      const std::shared_ptr<const BaseWrenchModel>& base_wrench,
+                                      const std::vector<MovingObstacle>& obstacles,
+                                      const std::vector<ReplayRun>& replay_runs,
+                                      const std::string& source);
+
 /// Replay run name of a base-wrench sigma: the default is the primary ("online") run.
 inline std::string baseWrenchRunName(double sigma) {
   if (sigma <= 0.0) return "cost_off";
@@ -488,9 +495,30 @@ inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenari
   std::stable_partition(runs.begin(), runs.end(), [](const auto& run) {
     return baseWrenchRunName(run.first) == "online";
   });
+  std::vector<ReplayRun> replay_runs;
+  for (const auto& run : runs) {
+    replay_runs.push_back({baseWrenchRunName(run.first), baseWrenchRunLabel(run.first),
+                           &run.second, 0.0});
+  }
+  writeBaseWrenchReplayRuns(path, scenario, spec, model, base_wrench, obstacles, replay_runs,
+                            program + " (GTDynamics " + scenario.robot_name +
+                                "), base-disturbance cost comparison, robot " + robot_file +
+                                ", seed 0");
+}
+
+/**
+ * Runs with any names and labels (e.g. a ghost run beside a hardware run) as
+ * one replay with the base wrench in every frame, in the order given.
+ */
+inline void writeBaseWrenchReplayRuns(const std::string& path, const ReactiveScenario& scenario,
+                                      const GraphSpec& spec, const SphereCollisionModel& model,
+                                      const std::shared_ptr<const BaseWrenchModel>& base_wrench,
+                                      const std::vector<MovingObstacle>& obstacles,
+                                      const std::vector<ReplayRun>& replay_runs,
+                                      const std::string& source) {
+  if (replay_runs.empty()) throw std::invalid_argument("writeBaseWrenchReplayRuns: no runs");
   ReplayScenario replay;
-  replay.source = program + " (GTDynamics " + scenario.robot_name +
-                  "), base-disturbance cost comparison, robot " + robot_file + ", seed 0";
+  replay.source = source;
   replay.robot_name = scenario.robot_name;
   if (!obstacles.empty()) {
     replay.obstacle_center = obstacles.front().start;
@@ -505,11 +533,6 @@ inline void writeBaseWrenchReplay(const std::string& path, const ReactiveScenari
   };
   OnlineConfig planner_radius;  // only its obstacle_radius is written
   if (!obstacles.empty()) planner_radius.obstacle_radius = obstacles.front().radius;
-  std::vector<ReplayRun> replay_runs;
-  for (const auto& run : runs) {
-    replay_runs.push_back({baseWrenchRunName(run.first), baseWrenchRunLabel(run.first),
-                           &run.second, 0.0});
-  }
   writeReplayJson(path, replay, spec, planner_radius, model, replay_runs);
 }
 

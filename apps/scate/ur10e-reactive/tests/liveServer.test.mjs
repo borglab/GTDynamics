@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createLiveJobs, liveRequestText } from '../../shared/liveServer.mjs';
+import { createHardwareRelay, createLiveJobs, hardwareMiddleware, liveRequestText } from '../../shared/liveServer.mjs';
 
 const request = {
   robot: 'ur10e', q_start: [0, -1.5708, 1.5708, -1.5708, -1.5708, 0], q_goal: [1.6, -1.2, 1.3, -1.9, -1.3, 0.4],
@@ -78,4 +78,80 @@ test('a failed solve reports the solver message and no replay', async () => {
 
 test('without the binary nothing starts', () => {
   assert.throws(() => createLiveJobs({ binary: null }).start(request), /not built/);
+});
+
+test('hardware fields become request lines, checked', () => {
+  const text = liveRequestText({ ...request, sensing: 'encoders', v_limit: 0.3, u_limit: 0.6, hardware_sigma: 3 });
+  assert.match(text, /\nseed 0\nsensing encoders\nv_limit 0\.3\nu_limit 0\.6\nhardware_sigma 3\n$/);
+  for (const bad of [{ sensing: 'vicon' }, { v_limit: 0 }, { v_limit: 1.5 }, { u_limit: 2.5 }, { u_limit: 'fast' },
+    { hardware_sigma: 0.3 }]) {
+    assert.throws(() => liveRequestText({ ...request, ...bad }));
+  }
+});
+
+// A fake executor behind fetch, recording the calls.
+function fakeExecutor({ down = false } = {}) {
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url, method: options.method || 'GET', body: options.body });
+    if (down) throw new Error('connect ECONNREFUSED');
+    const path = new URL(url).pathname;
+    const body = path === '/status' ? { state: 'ready', robot: { kind: 'sim', status: 'ready' } }
+      : path === '/replay' ? { format: 'scate-replay' } : { ok: true };
+    return { status: 200, text: async () => JSON.stringify(body) };
+  };
+  return { calls, fetchImpl };
+}
+
+test('the relay forwards to the executor and converts a prepare request to text', async () => {
+  const { calls, fetchImpl } = fakeExecutor();
+  const relay = createHardwareRelay({ env: { SCATE_HW_URL: 'http://127.0.0.1:9999' }, fetchImpl });
+  const status = await relay.status();
+  assert.equal(status.connected, true);
+  assert.equal(status.state, 'ready');
+  const middleware = hardwareMiddleware(relay);
+  const call = (method, url, body) => new Promise(resolve => {
+    const request = new EventEmitter();
+    Object.assign(request, { method, url });
+    const response = { statusCode: 0, headers: {}, setHeader(k, v) { this.headers[k] = v; },
+      end(data) { resolve({ code: this.statusCode, body: JSON.parse(data) }); } };
+    middleware(request, response, () => resolve({ code: 'next' }));
+    setImmediate(() => { if (body !== undefined) request.emit('data', JSON.stringify(body)); request.emit('end'); });
+  });
+  const prepared = await call('POST', '/api/scate-hw/prepare', { ...request, sensing: 'encoders' });
+  assert.deepEqual(prepared, { code: 200, body: { ok: true } });
+  const sent = JSON.parse(calls.at(-1).body);
+  assert.equal(calls.at(-1).url, 'http://127.0.0.1:9999/prepare');
+  assert.match(sent.request, /^robot ur10e\n[\s\S]*sensing encoders\n$/);
+  assert.equal((await call('POST', '/api/scate-hw/prepare', { robot: 'nope' })).code, 400);
+  assert.equal((await call('POST', '/api/scate-hw/begin', {})).code, 200);
+  assert.equal(calls.at(-1).url, 'http://127.0.0.1:9999/begin');
+  assert.equal((await call('GET', '/api/scate-hw/replay')).body.format, 'scate-replay');
+  assert.equal((await call('POST', '/api/scate-hw/explode', {})).code, 404);
+  assert.equal((await call('GET', '/other')).code, 'next');
+});
+
+test('with no executor and no SCATE_HW_URL the relay starts the simulated arm', async () => {
+  const { fetchImpl } = fakeExecutor({ down: true });
+  const started = [];
+  const spawnProcess = (command, args, options) => {
+    started.push({ command, args, cwd: options.cwd, bin: options.env.SCATE_HARDWARE_BIN });
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter(); child.kill = () => {};
+    return child;
+  };
+  writeFileSync('/tmp/fake_scate_hardware', '');
+  const relay = createHardwareRelay({ env: { SCATE_HARDWARE_BIN: '/tmp/fake_scate_hardware' }, fetchImpl, spawnProcess });
+  const status = await relay.status();
+  assert.equal(status.connected, false);
+  assert.match(status.hint, /simulated arm/);
+  assert.deepEqual(started.map(s => [s.command, s.args.join(' '), s.bin]), [['python3', '-m scate_hw', '/tmp/fake_scate_hardware']]);
+  assert.match(started[0].cwd, /examples\/example_scate_ur10e\/hardware$/);
+  await relay.status();
+  assert.equal(started.length, 1, 'started once');
+  // A configured URL is never replaced by a simulator.
+  const fixed = createHardwareRelay({ env: { SCATE_HW_URL: 'http://lab:8765', SCATE_HARDWARE_BIN: '/tmp/fake_scate_hardware' }, fetchImpl, spawnProcess });
+  assert.match((await fixed.status()).hint, /No executor at http:\/\/lab:8765/);
+  assert.equal(started.length, 1);
+  relay.dispose();
 });

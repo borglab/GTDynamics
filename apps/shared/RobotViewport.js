@@ -63,6 +63,33 @@ export class RobotViewport {
     this.applyTheme();
   }
 
+  /**
+   * Point the camera's up along `up` (world vector; default Z). OrbitControls
+   * fixes its up direction when it is built, so the controls are rebuilt with
+   * the same settings and target. Returns whether anything changed.
+   */
+  setUp(up = [0, 0, 1]) {
+    const next = new THREE.Vector3(...up).normalize();
+    if (this.camera.up.distanceTo(next) < 1e-9) return false;
+    const old = this.controls;
+    const keep = ['enabled', 'minDistance', 'maxDistance', 'minPolarAngle', 'maxPolarAngle',
+      'enableDamping', 'dampingFactor', 'enablePan', 'enableZoom', 'enableRotate', 'screenSpacePanning'];
+    const settings = Object.fromEntries(keep.map(key => [key, old[key]]));
+    const target = old.target.clone();
+    old.removeEventListener('change', this.controlsChanged);
+    old.dispose();
+    this.camera.up.copy(next);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    Object.assign(this.controls, settings);
+    this.controls.target.copy(target);
+    this.controls.addEventListener('change', this.controlsChanged);
+    this.cameraController.controls = this.controls;
+    this.camera.lookAt(target);
+    this.controls.update();
+    if (!this.animation) this.render();
+    return true;
+  }
+
   /** Add a standard lit stage; customize colors/dimensions without copying setup. */
   addStage({
     hemisphere = ['#f7fbff', '#a4b0a3', .65],

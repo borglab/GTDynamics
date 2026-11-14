@@ -9,6 +9,7 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { createSetupEditor, EDITOR_COLORS } from './editor.js';
 import { armClearance, clampJoints, linkTransforms, transformPoint } from './kinematics.js';
 import { planeClearance } from './environment.js';
+import HardwarePanel from './HardwarePanel.vue';
 
 const props = defineProps({
   /** The page's replay viewer (createReplayViewer). */
@@ -36,18 +37,41 @@ const job = ref(null);                  // {state, done, total, label, error, el
 const error = ref('');
 const descriptions = {};
 const useRig = ref(false);              // keep clear of the robot's lab walls and floor (description.rig)
-let editor = null, polling = null;
+// Hardware mode: plan as the hardware runs (joint encoders only, the rig, the chosen
+// limits) and show the hardware experiment controls (HardwarePanel.vue).
+const hardwareMode = ref(false);
+const vLimit = ref(0.5);                // rad/s
+const uLimit = ref(1.0);                // rad/s^2
+const lastSolve = ref(null);            // {replay, key}: the ghost runs of the last solve
+const hardwareBusy = ref(false);
+let editor = null, polling = null, monitoring = false;
 
 const solving = computed(() => job.value?.state === 'running');
 /** The walls and floor sent with the request: the robot's rig when switched on, else none. */
-const rigPlanes = computed(() => (useRig.value && description.value?.rig ? description.value.rig.planes : []));
-function showEnvironment() { editor?.setEnvironment(rigPlanes.value, description.value?.workspace); }
+const rigPlanes = computed(() => ((useRig.value || hardwareMode.value) && description.value?.rig ? description.value.rig.planes : []));
+function showEnvironment() {
+  editor?.setEnvironment(rigPlanes.value, description.value?.workspace);
+  props.viewer?.setEnvironmentView?.(rigPlanes.value);
+}
 watch(rigPlanes, showEnvironment);
+/** The experiment the resets go back to: the rig's in hardware mode, else the recorded one. */
+const experiment = computed(() => (hardwareMode.value && description.value?.rig?.defaults ? description.value.rig.defaults : description.value?.defaults));
+watch(hardwareMode, on => {
+  if (on && description.value?.rig?.defaults && !edited.value.poses && !edited.value.obstacles) {
+    setup.value = defaultSetup(description.value, description.value.rig.defaults);
+    editor?.setSetup(setup.value); editor?.setMode(mode.value);
+    revision.value++;
+  }
+  if (!on && !edited.value.poses && !edited.value.obstacles && description.value) {
+    setup.value = defaultSetup(description.value);
+    editor?.setSetup(setup.value); editor?.setMode(mode.value);
+    revision.value++;
+  }
+});
 const degrees = radians => radians * 180 / Math.PI;
 
-/** The recorded experiment of a robot as an editable setup. */
-function defaultSetup(robot) {
-  const d = robot.defaults;
+/** The recorded experiment of a robot (or another experiment of it) as an editable setup. */
+function defaultSetup(robot, d = robot.defaults) {
   return {
     q_start: d.q_start.slice(), q_goal: d.q_goal.slice(),
     obstacles: d.obstacles.map(o => ({ start: o.start.slice(), end: o.end.slice(), radius: o.radius })),
@@ -62,7 +86,10 @@ async function loadRobot(key) {
       return response.json();
     });
     description.value = descriptions[key];
-    setup.value = defaultSetup(description.value);
+    if (!description.value.rig) hardwareMode.value = false;
+    if (description.value.limits) { vLimit.value = description.value.limits.v_limit; uLimit.value = description.value.limits.u_limit; }
+    setup.value = defaultSetup(description.value, hardwareMode.value && description.value.rig?.defaults
+      ? description.value.rig.defaults : description.value.defaults);
     edited.value = { poses: false, obstacles: false };
     if (editor && props.viewer) {
       const meshes = await props.viewer.editorContext().meshes(key);
@@ -132,7 +159,7 @@ function setJoint(j, value) {
   revision.value++;
 }
 function resetPoses() {
-  const d = description.value.defaults;
+  const d = experiment.value;
   setup.value.q_start = d.q_start.slice(); setup.value.q_goal = d.q_goal.slice();
   edited.value.poses = false;
   editor?.refresh(); revision.value++;
@@ -170,7 +197,7 @@ function removeObstacle(index) {
   editor?.setSetup(setup.value); editor?.setMode(mode.value); revision.value++;
 }
 function resetObstacles() {
-  setup.value.obstacles = defaultSetup(description.value).obstacles;
+  setup.value.obstacles = defaultSetup(description.value, experiment.value).obstacles;
   edited.value.obstacles = false;
   editor?.setSetup(setup.value); editor?.setMode(mode.value); revision.value++;
 }
@@ -196,8 +223,9 @@ const warnings = computed(() => {
   return out;
 });
 const summary = computed(() => {
-  const parts = [edited.value.poses ? 'your start and goal' : 'the experiment’s start and goal',
-    edited.value.obstacles ? 'your obstacles' : 'the experiment’s obstacles'];
+  const which = hardwareMode.value ? 'the rig experiment’s' : 'the experiment’s';
+  const parts = [edited.value.poses ? 'your start and goal' : `${which} start and goal`,
+    edited.value.obstacles ? 'your obstacles' : `${which} obstacles`];
   const rig = rigPlanes.value.length ? `, keeping clear of the ${description.value.rig.name}` : '';
   return `Solving uses ${parts.join(' and ')} on the ${description.value?.name || ''}${rig}.`;
 });
@@ -212,15 +240,49 @@ function requestBody() {
     sigmas: RUNS.map(run => run.sigma).filter(sigma => selectedSigmas.value.includes(sigma)),
     seed: 0,
     environment: rigPlanes.value.map(p => ({ name: p.name, normal: p.normal, offset: p.offset })),
+    ...(hardwareMode.value ? { sensing: 'encoders', v_limit: Number(vLimit.value), u_limit: Number(uLimit.value) } : {}),
   };
 }
+// The request as the hardware panel sees it (recomputed when anything in it changes).
+const currentRequest = computed(() => { revision.value; return description.value && setup.value ? requestBody() : null; });
+
+/** Show (payload) or stop showing (null) a hardware run's measured arm in the editor's monitor mode. */
+async function monitor(payload) {
+  if (!payload) {
+    if (!monitoring) return;
+    monitoring = false;
+    editor?.setPath(null);
+    editor?.setSetup(setup.value);
+    editor?.setMode(mode.value);
+    props.viewer?.setEditing(!!mode.value);
+    return;
+  }
+  await ensureEditor();
+  if (!editor) return;
+  if (!monitoring || monitorSetup.obstacles.length !== payload.obstacles.length) {
+    monitoring = true;
+    if (mode.value) { mode.value = null; emit('editing', false); }
+    monitorSetup = { q_start: payload.q.slice(), q_goal: payload.q_goal.slice(), obstacles: payload.obstacles };
+    editor.setSetup(monitorSetup);
+    editor.setMode('monitor');
+    props.viewer?.setEditing(true);
+  } else {
+    // Move the drawn arm and obstacles in place (no rebuild at the polling rate).
+    monitorSetup.q_start.splice(0, payload.q.length, ...payload.q);
+    payload.obstacles.forEach((o, j) => Object.assign(monitorSetup.obstacles[j], o));
+    editor.refresh();
+  }
+  editor.setPath(payload.path);
+}
+let monitorSetup = null;
 
 async function solve() {
   error.value = '';
   if (!selectedSigmas.value.length) { error.value = 'Choose at least one run.'; return; }
   try {
+    solvingKey = JSON.stringify(requestBody());
     const response = await fetch(api('solve'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody()),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: solvingKey,
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
@@ -231,6 +293,7 @@ async function solve() {
   }
 }
 
+let solvingKey = null;
 function poll(id) {
   clearTimeout(polling);
   polling = setTimeout(async () => {
@@ -243,6 +306,7 @@ function poll(id) {
       const data = await fetch(api(`jobs/${id}/replay`)).then(response => response.json());
       if (mode.value) await setMode(mode.value);  // leave editing to show the result
       await props.viewer.loadReplay(data, 'Live solve');
+      lastSolve.value = { replay: data, key: solvingKey };
       emit('solved', data);
     } catch (err) {
       error.value = `Lost the solve: ${err.message}`;
@@ -281,11 +345,18 @@ const progress = computed(() => job.value ? Math.min(1, job.value.done / Math.ma
       </label>
     </div>
     <label v-if="description?.rig" class="live-check" data-rig>
-      <input v-model="useRig" type="checkbox" :disabled="solving"> Include the {{ description.rig.name }}
+      <input type="checkbox" :checked="useRig || hardwareMode" :disabled="solving || hardwareMode" @change="useRig = $event.target.checked"> Include the {{ description.rig.name }}
     </label>
+    <label v-if="description?.rig" class="live-check" data-hardware-mode>
+      <input v-model="hardwareMode" type="checkbox" :disabled="solving || hardwareBusy"> Plan for a hardware run (joint encoders, the rig, joint limits)
+    </label>
+    <div v-if="hardwareMode" class="limits" data-limits>
+      <label>Velocity limit <input v-model.number="vLimit" type="number" min="0.05" :max="description.limits?.max_v_limit ?? 1" step="0.05" :disabled="solving || hardwareBusy" @input="revision++"> rad/s</label>
+      <label>Acceleration limit <input v-model.number="uLimit" type="number" min="0.05" :max="description.limits?.max_u_limit ?? 2" step="0.05" :disabled="solving || hardwareBusy" @input="revision++"> rad/s²</label>
+    </div>
     <div class="live-buttons">
-      <button type="button" :aria-pressed="mode === 'pose'" :disabled="!description || solving" @click="setMode('pose')">Set start and goal position</button>
-      <button type="button" :aria-pressed="mode === 'obstacles'" :disabled="!description || solving" @click="setMode('obstacles')">Set obstacles</button>
+      <button type="button" :aria-pressed="mode === 'pose'" :disabled="!description || solving || hardwareBusy" @click="setMode('pose')">Set start and goal position</button>
+      <button type="button" :aria-pressed="mode === 'obstacles'" :disabled="!description || solving || hardwareBusy" @click="setMode('obstacles')">Set obstacles</button>
     </div>
 
     <div v-if="mode === 'pose'" class="live-edit" data-pose-editor>
@@ -331,7 +402,7 @@ const progress = computed(() => job.value ? Math.min(1, job.value.done / Math.ma
       <label v-for="run in RUNS" :key="run.sigma"><input v-model="selectedSigmas" type="checkbox" :value="run.sigma" :disabled="solving"> {{ run.label }}</label>
     </fieldset>
     <p class="live-hint">{{ summary }}</p>
-    <button type="button" class="primary solve" :disabled="!server.available || solving || !description" data-solve @click="solve">
+    <button type="button" class="primary solve" :disabled="!server.available || solving || !description || hardwareBusy" data-solve @click="solve">
       {{ solving ? 'Solving…' : 'Solve and run' }}
     </button>
     <div v-if="solving" class="live-progress" role="status">
@@ -341,6 +412,8 @@ const progress = computed(() => job.value ? Math.min(1, job.value.done / Math.ma
     <p v-else-if="job?.state === 'done'" class="live-hint" role="status">Solved in {{ job.elapsed.toFixed(1) }} s; playing the result.</p>
     <p v-if="server.checked && !server.available" class="live-hint" data-live-unavailable>{{ server.hint }}</p>
     <p v-if="error" class="live-warning" role="alert">{{ error }}</p>
+    <HardwarePanel v-if="hardwareMode" :viewer="viewer" :description="description" :request="currentRequest"
+                   :ghost="lastSolve" :monitor="monitor" @busy="hardwareBusy = $event" />
   </section>
 </template>
 
@@ -369,4 +442,6 @@ button.link { border: 0; background: none; color: var(--online); padding: 0; fon
 .live-progress { font-size: 12px; color: var(--ink-2); margin-top: 6px; }
 .live-progress .bar { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
 .live-progress .bar div { height: 100%; background: var(--online); transition: width .2s; }
+.limits { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; margin: 2px 0 6px 20px; }
+.limits input { width: 58px; font: inherit; font-size: 12.5px; }
 </style>

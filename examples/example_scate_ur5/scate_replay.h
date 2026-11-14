@@ -151,6 +151,7 @@ inline void writeHeader(JsonWriter& json, const ReplayScenario& scenario,
   json.writeKey("q_lower"); json.writeVector(spec.q_lower); out << ',';
   json.writeKey("q_upper"); json.writeVector(spec.q_upper); out << ',';
   json.writeKey("u_limit"); json.writeVector(spec.u_limit); out << ',';
+  json.writeKey("v_limit"); json.writeVector(spec.v_limit); out << ',';
   json.writeKey("obstacle_standoff"); json.writeNumber(scenario.obstacle_standoff); out << ',';
   json.writeKey("self_standoff"); json.writeNumber(scenario.self_standoff); out << ',';
   json.writeKey("planner_obstacle_radius"); json.writeNumber(config.obstacle_radius); out << ',';
@@ -291,6 +292,28 @@ inline void writeExecutedFrames(JsonWriter& json, const CollisionModel& model,
   json.writeKey("frames");
   out << '[';
   bool first = true;
+  if (!result.trace_t.empty()) {
+    // A hardware run: the measured motion, resampled on the same frame times.
+    const std::vector<double>& t = result.trace_t;
+    size_t i = 0;
+    const int count = last * scenario.substeps;
+    for (int f = 0; f <= count; ++f) {
+      const double time = std::min(f * dt / scenario.substeps, t.back());
+      while (i + 2 < t.size() && t[i + 1] <= time) ++i;
+      const size_t j = std::min(i + 1, t.size() - 1);
+      const double span = t[j] - t[i];
+      const double w = span > 0.0 ? std::clamp((time - t[i]) / span, 0.0, 1.0) : 0.0;
+      const Vector q = (1.0 - w) * result.trace_q[i] + w * result.trace_q[j];
+      const Vector v = (1.0 - w) * result.trace_v[i] + w * result.trace_v[j];
+      const Vector a = span > 0.0 ? Vector((result.trace_v[j] - result.trace_v[i]) / span)
+                                  : Vector(Vector::Zero(q.size()));
+      if (!first) out << ',';
+      first = false;
+      writeFrame(json, model, scenario, f * dt / scenario.substeps, q, v, a);
+    }
+    out << "],";
+    return;
+  }
   for (int k = 0; k < last; ++k) {
     for (int s = 0; s < scenario.substeps; ++s) {
       const double tau = dt * s / scenario.substeps;
@@ -438,6 +461,24 @@ inline void writeSummary(JsonWriter& json, const ClosedLoopResult& result) {
   json.writeKey("goal_error"); json.writeNumber(result.goal_error); out << ',';
   json.writeKey("final_speed"); json.writeNumber(result.final_speed); out << ',';
   json.writeKey("max_solve_ms"); json.writeNumber(result.max_solve_ms); out << ',';
+  if (result.safety) {
+    const RunSafety& safety = *result.safety;
+    json.writeKey("safety");
+    out << '{';
+    json.writeKey("safe"); out << (safety.safe ? "true" : "false") << ',';
+    json.writeKey("reasons");
+    out << '[';
+    for (size_t r = 0; r < safety.reasons.size(); ++r) {
+      if (r) out << ',';
+      json.writeString(safety.reasons[r]);
+    }
+    out << "],";
+    json.writeKey("max_velocity_ratio"); json.writeNumber(safety.max_velocity_ratio); out << ',';
+    json.writeKey("max_acceleration_ratio"); json.writeNumber(safety.max_acceleration_ratio);
+    out << ',';
+    json.writeKey("joint_limit_margin"); json.writeNumber(safety.joint_limit_margin);
+    out << "},";
+  }
   json.writeKey("collided"); out << (result.collided() ? "true" : "false");
   out << '}';
 }

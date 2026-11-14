@@ -27,6 +27,8 @@ export function createSetupEditor(context, { onChange } = {}) {
   // Walls and floor, drawn while editing; kept apart from group, which is
   // rebuilt on every robot or setup change.
   let environment = null;
+  let path = null;
+  const pathMaterial = new THREE.LineBasicMaterial({ color: EDITOR_COLORS.goal });
 
   let robot = null, geometries = {}, setup = null;
   let mode = 'pose';           // 'pose': drag the arms; 'obstacles': drag the obstacles
@@ -50,6 +52,7 @@ export function createSetupEditor(context, { onChange } = {}) {
       if (object.geometry && object.geometry !== sphereGeometry && !object.userData.shared) object.geometry.dispose();
     });
     group.clear();
+    path = null;
     for (const key of Object.keys(arms)) delete arms[key];
     obstacleObjects.length = 0;
   }
@@ -111,7 +114,9 @@ export function createSetupEditor(context, { onChange } = {}) {
       const arm = arms[key];
       poseArm(arm, setup[key === 'start' ? 'q_start' : 'q_goal']);
       const active = mode === 'pose' && activePose === key;
-      const opacity = mode === 'pose' ? (active ? 0.75 : 0.25) : (key === 'start' ? 0.45 : 0.18);
+      // 'monitor': the start arm is the measured arm of a hardware run, drawn solid.
+      const opacity = mode === 'pose' ? (active ? 0.75 : 0.25)
+        : mode === 'monitor' ? (key === 'start' ? 0.9 : 0.15) : (key === 'start' ? 0.45 : 0.18);
       arm.links.forEach(holder => holder.children.forEach(mesh => { mesh.material = material(key, opacity); }));
       arm.spheres.forEach(mesh => { mesh.visible = showSpheres; });
     }
@@ -233,7 +238,10 @@ export function createSetupEditor(context, { onChange } = {}) {
     },
     /** Redraw after the page changed the setup (sliders, radius). */
     refresh() { update(); },
-    /** 'pose' (drag the arms), 'obstacles' (drag the obstacles) or null (hidden). */
+    /**
+     * 'pose' (drag the arms), 'obstacles' (drag the obstacles), 'monitor'
+     * (show a hardware run: nothing is draggable) or null (hidden).
+     */
     setMode(next) {
       mode = next;
       group.visible = !!next;
@@ -252,6 +260,15 @@ export function createSetupEditor(context, { onChange } = {}) {
         environment = makePlanePanels(planes, bounds ? { bounds } : {});
         environment.visible = group.visible;
         scene.add(environment);
+      }
+      render();
+    },
+    /** Draw a polyline (e.g. the current plan's tool path) in the editor's group; none = remove it. */
+    setPath(points) {
+      if (path) { group.remove(path); path.geometry.dispose(); path = null; }
+      if (points?.length > 1) {
+        path = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(...p))), pathMaterial);
+        group.add(path);
       }
       render();
     },

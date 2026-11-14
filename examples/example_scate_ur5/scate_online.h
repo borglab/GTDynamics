@@ -757,6 +757,18 @@ struct SimulationConfig {
   unsigned seed = 0;                  ///< random seed of all noise
 };
 
+/**
+ * Whether an executed (or simulated) run stayed inside the limits a hardware
+ * run must respect, with the worst values found. Computed by assessRun.
+ */
+struct RunSafety {
+  bool safe = true;
+  std::vector<std::string> reasons;      ///< why not, one line each
+  double max_velocity_ratio = 0.0;       ///< max |v_j| / v_limit_j over the motion
+  double max_acceleration_ratio = 0.0;   ///< max |u_j| / u_limit_j over the controls
+  double joint_limit_margin = std::numeric_limits<double>::infinity();  ///< rad, min over joints
+};
+
 /// Executed motion and scores of one closed-loop run.
 struct ClosedLoopResult {
   std::vector<Vector> q, v;     ///< true states 0..N
@@ -778,6 +790,16 @@ struct ClosedLoopResult {
   std::vector<double> min_clearance_per_obstacle;  ///< m, one per obstacle
   /// Smallest gap to the static environment (walls, floor); infinite if none.
   double min_environment_clearance = std::numeric_limits<double>::infinity();
+  /**
+   * Measured motion of a hardware run (time from the first state, joint
+   * angles and velocities), sampled by the executor. Empty for a simulated
+   * run, whose motion is exact between the states. If set, replays draw the
+   * frames from it.
+   */
+  std::vector<double> trace_t;
+  std::vector<Vector> trace_q, trace_v;
+  /// Limits check of the run, if assessed (assessRun).
+  std::optional<RunSafety> safety;
   /// Whether the robot hit an obstacle, itself or the environment.
   bool collided() const {
     return min_obstacle_clearance < 0.0 || min_self_clearance < 0.0 ||

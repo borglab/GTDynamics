@@ -9,6 +9,16 @@
  *   POST <base>api/scate-live/solve          request JSON -> {id}
  *   GET  <base>api/scate-live/jobs/<id>      {state, done, total, label, error, elapsed}
  *   GET  <base>api/scate-live/jobs/<id>/replay   the replay JSON
+ *
+ * It also relays the page to the hardware executor (examples/example_scate_ur10e/
+ * hardware, python3 -m scate_hw or the ROS node) at $SCATE_HW_URL (default
+ * http://127.0.0.1:8765). If nothing answers there and SCATE_HW_URL is not set,
+ * it starts the executor with a simulated arm itself (SCATE_HW_AUTOSTART=0 stops that):
+ *
+ *   GET  <base>api/scate-hw/status           executor status + {connected, hint}
+ *   POST <base>api/scate-hw/prepare          the page's request (as for solve) -> executor
+ *   POST <base>api/scate-hw/move_to_start | begin | abort | reset
+ *   GET  <base>api/scate-hw/replay           replay of the last hardware run
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -21,6 +31,8 @@ const ROBOTS = ['ur5', 'ur10e'];
 const MAX_OBSTACLES = 4;
 const MAX_RUNS = 5;
 const MAX_PLANES = 6;
+const MAX_V_LIMIT = 1.0;  // rad/s, as kMaxVelocityLimit in live_scenario.h
+const MAX_U_LIMIT = 2.0;  // rad/s^2, as kMaxAccelerationLimit
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 /** The scate_live binary: $SCATE_LIVE_BIN, else <repo>/build/examples/example_scate_ur10e/scate_live. */
@@ -41,7 +53,9 @@ function numbers(value, length, what) {
  * The request text scate_live reads (live_scenario.h parseLiveRequest), from
  * the page's request: {robot, q_start, q_goal, obstacles: [{start, velocity,
  * radius}], sigmas, seed, environment: [{name, normal, offset}] (optional
- * walls and floor)}. Throws with a message on anything malformed.
+ * walls and floor), and for hardware runs (all optional): sensing ('markers'
+ * or 'encoders'), v_limit (rad/s), u_limit (rad/s^2), hardware_sigma (one of
+ * sigmas)}. Throws with a message on anything malformed.
  */
 export function liveRequestText(request) {
   if (!request || typeof request !== 'object') throw new Error('The request must be a JSON object');
@@ -76,6 +90,19 @@ export function liveRequestText(request) {
   const seed = request.seed ?? 0;
   if (!Number.isInteger(seed) || seed < 0) throw new Error('seed must be a whole number >= 0');
   lines.push(`seed ${seed}`);
+  if (request.sensing !== undefined) {
+    if (!['markers', 'encoders'].includes(request.sensing)) throw new Error("sensing must be 'markers' or 'encoders'");
+    lines.push(`sensing ${request.sensing}`);
+  }
+  for (const [key, cap] of [['v_limit', MAX_V_LIMIT], ['u_limit', MAX_U_LIMIT]]) {
+    if (request[key] === undefined) continue;
+    if (!finite(request[key]) || request[key] <= 0 || request[key] > cap) throw new Error(`${key} must be in (0, ${cap}]`);
+    lines.push(`${key} ${request[key]}`);
+  }
+  if (request.hardware_sigma !== undefined) {
+    if (!sigmas.includes(request.hardware_sigma)) throw new Error('hardware_sigma must be one of sigmas');
+    lines.push(`hardware_sigma ${request.hardware_sigma}`);
+  }
   return lines.join('\n') + '\n';
 }
 
@@ -195,13 +222,112 @@ export function liveMiddleware(jobs) {
   };
 }
 
+// ---------------------------------------------------------------- hardware
+const hardwareDir = resolve(repoRoot, 'examples/example_scate_ur10e/hardware');
+
+/** The scate_hardware binary: $SCATE_HARDWARE_BIN, else next to scate_live in the build folder. */
+export function findScateHardware(env = process.env) {
+  const candidates = [env.SCATE_HARDWARE_BIN, resolve(repoRoot, 'build/examples/example_scate_ur10e/scate_hardware')];
+  return candidates.find(path => path && existsSync(path)) || null;
+}
+
+/**
+ * The executor relay: forwards to the executor's HTTP API, and starts the
+ * simulated-arm executor (python3 -m scate_hw) when allowed and nobody answers.
+ */
+export function createHardwareRelay({ env = process.env, fetchImpl = globalThis.fetch, spawnProcess = spawn } = {}) {
+  const url = (env.SCATE_HW_URL || 'http://127.0.0.1:8765').replace(/\/$/, '');
+  const autostart = !env.SCATE_HW_URL && env.SCATE_HW_AUTOSTART !== '0';
+  let child = null, childLog = '';
+
+  async function call(path, options = {}) {
+    const response = await fetchImpl(`${url}${path}`, { ...options, signal: AbortSignal.timeout(options.timeout ?? 3000) });
+    const text = await response.text();
+    return { status: response.status, text };
+  }
+
+  function startSimulator() {
+    if (child || !autostart) return;
+    const binary = findScateHardware(env);
+    if (!binary) return;
+    const python = env.SCATE_HW_PYTHON || 'python3';
+    child = spawnProcess(python, ['-m', 'scate_hw'], {
+      cwd: hardwareDir, env: { ...env, SCATE_HARDWARE_BIN: binary, PYTHONUNBUFFERED: '1' },
+    });
+    child.stdout?.on('data', chunk => { childLog = (childLog + chunk).slice(-4000); });
+    child.stderr?.on('data', chunk => { childLog = (childLog + chunk).slice(-4000); });
+    child.on?.('error', error => { childLog += `\n${error.message}`; child = null; });
+    child.on?.('close', code => { childLog += `\nexecutor exited (${code})`; child = null; });
+  }
+
+  async function status() {
+    try {
+      const { status: code, text } = await call('/status', { timeout: 1500 });
+      if (code !== 200) throw new Error(`HTTP ${code}`);
+      return { connected: true, url, simulator: !!child, ...JSON.parse(text) };
+    } catch {
+      startSimulator();
+      const binary = findScateHardware(env);
+      let hint;
+      if (child) hint = 'Starting the executor with a simulated arm…';
+      else if (!autostart) hint = `No executor at ${url}. Start it (ros2 launch scate_ur10e_hw scate_hardware.launch.py, or python3 -m scate_hw in examples/example_scate_ur10e/hardware).`;
+      else if (!binary) hint = 'Build scate_hardware (cmake --build build --target scate_hardware) for hardware runs, then reload.';
+      else hint = `The simulated-arm executor did not start: ${childLog.trim().split('\n').pop() || 'no output'}`;
+      return { connected: false, url, simulator: !!child, hint, log: childLog.trim().split('\n').slice(-5) };
+    }
+  }
+
+  async function forward(path, body) {
+    const { status: code, text } = await call(path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}),
+    });
+    return { code, text };
+  }
+
+  async function replay() { return call('/replay', { timeout: 10000 }); }
+
+  function dispose() { if (child) child.kill('SIGTERM'); child = null; }
+  return { status, forward, replay, dispose, url, autostart };
+}
+
+/** Connect-style middleware relaying the page to the hardware executor. */
+export function hardwareMiddleware(relay) {
+  return async (request, response, next) => {
+    const path = (request.url || '').split('?')[0];
+    const at = path.indexOf('/api/scate-hw/');
+    if (at < 0) return next();
+    const route = path.slice(at + '/api/scate-hw/'.length);
+    try {
+      if (route === 'status' && request.method === 'GET') return send(response, 200, await relay.status());
+      if (route === 'replay' && request.method === 'GET') {
+        const { status, text } = await relay.replay();
+        return send(response, status, text);
+      }
+      if (['prepare', 'move_to_start', 'begin', 'abort', 'reset'].includes(route) && request.method === 'POST') {
+        let body = {};
+        try { body = JSON.parse((await readBody(request)) || '{}'); } catch { return send(response, 400, { ok: false, error: 'The request is not JSON' }); }
+        if (route === 'prepare') {
+          try { body = { request: liveRequestText(body) }; } catch (error) { return send(response, 400, { ok: false, error: error.message }); }
+        }
+        const { code, text } = await relay.forward(`/${route}`, body);
+        return send(response, code, text);
+      }
+      return send(response, 404, { ok: false, error: 'Unknown hardware route' });
+    } catch (error) {
+      return send(response, 502, { ok: false, error: `The executor did not answer: ${error.message}` });
+    }
+  };
+}
+
 /** Vite plugin adding the endpoint to `vite` (dev) and `vite preview`. */
 export default function scateLiveServer() {
-  let jobs = null;
+  let jobs = null, relay = null;
   const install = server => {
     jobs ??= createLiveJobs();
+    relay ??= createHardwareRelay();
     server.middlewares.use(liveMiddleware(jobs));
-    server.httpServer?.once('close', () => { jobs?.dispose(); jobs = null; });
+    server.middlewares.use(hardwareMiddleware(relay));
+    server.httpServer?.once('close', () => { jobs?.dispose(); jobs = null; relay?.dispose(); relay = null; });
   };
   return { name: 'scate-live-server', configureServer: install, configurePreviewServer: install };
 }

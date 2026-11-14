@@ -21,9 +21,12 @@
 
 #include <gtsam/geometry/Pose3.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
 #include <istream>
+#include <limits>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -48,7 +51,33 @@ struct LiveRobot {
   ReactiveScenario scenario;        ///< the default experiment (goal and crossings)
   std::string rig_name;             ///< the lab rig around this robot, if any
   std::vector<HalfSpace> rig;       ///< its walls and floor (empty = none)
+  /// An experiment that suits the rig (the app's starting point for hardware runs).
+  Vector rig_q_start, rig_q_goal;
+  std::vector<MovingObstacle> rig_obstacles;
 };
+
+/**
+ * A UR10e experiment for the MK 111 rig. The default experiment's goal
+ * reaches toward base +y and ends 0.3 cm from the floor, so this one sweeps
+ * the other way (pan -1.6 rad, toward base -y: up, in the lab) with the
+ * wrist turned in. One static obstacle sits just above the straight
+ * joint-space path at its midpoint, and one descends slowly toward the end
+ * of the path. Its ghost runs (encoders, sigma 0 and 3, seeds 0-2) keep
+ * 4-12 cm from the obstacles and 14 cm from the wall and floor.
+ */
+inline void setMk111RigExperiment(Vector* q_start, Vector* q_goal,
+                                  std::vector<MovingObstacle>* obstacles) {
+  *q_start = (Vector(6) << 0, -1.5708, 1.5708, -1.5708, -1.5708, 0).finished();
+  *q_goal = (Vector(6) << -1.6, -1.2, 1.3, -1.9, -1.8, 0.4).finished();
+  MovingObstacle still, falling;
+  still.start = gtsam::Point3(0.72, -0.47, 0.78);
+  still.velocity = gtsam::Vector3::Zero();
+  still.radius = 0.06;
+  falling.start = gtsam::Point3(0.45, -0.75, 1.0);
+  falling.velocity = gtsam::Vector3(0, 0, -0.012);
+  falling.radius = 0.06;
+  *obstacles = {still, falling};
+}
 
 /// The UR5 version of ur10eReactiveScenario: the same sweep and crossings.
 inline ReactiveScenario ur5ReactiveScenario() {
@@ -68,6 +97,7 @@ inline LiveRobot liveRobot(const std::string& key) {
     robot.scenario = ur10eReactiveScenario();
     robot.rig_name = "MK 111 wall and floor";
     robot.rig = mk111RigEnvironment();
+    setMk111RigExperiment(&robot.rig_q_start, &robot.rig_q_goal, &robot.rig_obstacles);
   } else if (key == "ur5") {
     robot.urdf = ur5UrdfPath();
     robot.sphere_model = ur5SphereModel();
@@ -89,7 +119,24 @@ struct LiveRequest {
   std::vector<double> sigmas{0.0, 3.0, 0.3, 0.1};  ///< one run each
   unsigned seed = 0;                            ///< noise seed shared by every run
   std::vector<HalfSpace> environment;           ///< walls and floor (empty = free space)
+  /// Joint speed limit of the planner, rad/s, every joint (unset = kVelocityLimit).
+  std::optional<double> v_limit;
+  /// Joint acceleration limit of the planner, rad/s^2, every joint (unset = kAccelerationLimit).
+  std::optional<double> u_limit;
+  /**
+   * How the arm's state is measured: "markers" (motion capture, the
+   * scenario's default) or "encoders" (joint encoders only, as on hardware).
+   */
+  std::string sensing = "markers";
+  /// Prior of an executed control on the commanded one (rad/s^2): the process noise.
+  double sigma_executed_control = 1e-2;
+  /// Base-cost sigma of the run to execute on hardware (unset = the first of sigmas).
+  std::optional<double> hardware_sigma;
 };
+
+/// Highest limits a request may ask for (rad/s and rad/s^2): a margin below the UR10e's own.
+inline constexpr double kMaxVelocityLimit = 1.0;
+inline constexpr double kMaxAccelerationLimit = 2.0;
 
 /**
  * Read a request, one item per line, '#' starting a comment:
@@ -101,6 +148,11 @@ struct LiveRequest {
  *   seed 0
  *   plane name nx ny nz offset         (optional, once per wall or floor: free
  *                                       space is n . p >= offset; n unit length)
+ *   v_limit 0.5                        (optional, rad/s, every joint)
+ *   u_limit 1.0                        (optional, rad/s^2, every joint)
+ *   sensing encoders                   (optional: markers or encoders)
+ *   sigma_executed_control 0.01        (optional, rad/s^2)
+ *   hardware_sigma 3                   (optional: the run executed on hardware)
  */
 inline LiveRequest parseLiveRequest(std::istream& in) {
   LiveRequest request;
@@ -166,6 +218,29 @@ inline LiveRequest parseLiveRequest(std::istream& in) {
       boundary.normal = normal.normalized();
       boundary.offset = values[3];
       request.environment.push_back(boundary);
+    } else if (key == "v_limit" || key == "u_limit" || key == "sigma_executed_control" ||
+               key == "hardware_sigma") {
+      const std::vector<double> values = numbers(fields);
+      const double cap = key == "v_limit"   ? kMaxVelocityLimit
+                         : key == "u_limit" ? kMaxAccelerationLimit
+                                            : std::numeric_limits<double>::infinity();
+      const bool zero_ok = key == "hardware_sigma";
+      if (values.size() != 1 || !(zero_ok ? values[0] >= 0.0 : values[0] > 0.0) ||
+          values[0] > cap) {
+        throw std::invalid_argument("line " + std::to_string(line_number) + ": " + key +
+                                    " needs one value in " + (zero_ok ? "[0, " : "(0, ") +
+                                    (std::isfinite(cap) ? std::to_string(cap).substr(0, 3) : "inf") +
+                                    "]");
+      }
+      if (key == "v_limit") request.v_limit = values[0];
+      else if (key == "u_limit") request.u_limit = values[0];
+      else if (key == "sigma_executed_control") request.sigma_executed_control = values[0];
+      else request.hardware_sigma = values[0];
+    } else if (key == "sensing") {
+      if (!(fields >> request.sensing) || (request.sensing != "markers" && request.sensing != "encoders")) {
+        throw std::invalid_argument("line " + std::to_string(line_number) +
+                                    ": sensing must be markers or encoders");
+      }
     } else if (key == "sigmas") {
       request.sigmas = numbers(fields);
       have_sigmas = true;
@@ -187,6 +262,11 @@ inline LiveRequest parseLiveRequest(std::istream& in) {
   if (have_sigmas && request.sigmas.empty()) throw std::invalid_argument("sigmas is empty");
   for (double sigma : request.sigmas) {
     if (sigma < 0.0) throw std::invalid_argument("sigmas must be >= 0 (0 = cost off)");
+  }
+  if (request.hardware_sigma &&
+      std::find(request.sigmas.begin(), request.sigmas.end(), *request.hardware_sigma) ==
+          request.sigmas.end()) {
+    throw std::invalid_argument("hardware_sigma must be one of sigmas");
   }
   return request;
 }
@@ -239,6 +319,15 @@ inline LiveSetup makeLiveSetup(const LiveRobot& live, const Vector& q_start, con
   return setup;
 }
 
+/// The setup of a request: makeLiveSetup with its walls and floor and its limits.
+inline LiveSetup makeLiveSetup(const LiveRobot& live, const LiveRequest& request) {
+  LiveSetup setup = makeLiveSetup(live, request.q_start, request.q_goal, request.environment);
+  const long n = setup.spec.q_start.size();
+  if (request.v_limit) setup.spec.v_limit = Vector::Constant(n, *request.v_limit);
+  if (request.u_limit) setup.spec.u_limit = Vector::Constant(n, *request.u_limit);
+  return setup;
+}
+
 /// Planner settings of a live solve: the scenario's, with one radius per obstacle.
 inline ReactiveConfig liveConfig(const LiveRobot& live,
                                  const std::vector<MovingObstacle>& obstacles) {
@@ -247,6 +336,33 @@ inline ReactiveConfig liveConfig(const LiveRobot& live,
   config.tau_fractions = evenlySpacedFractions(live.scenario.checks_per_interval);
   config.effort_sigmas = live.scenario.effort_sigmas;
   return config;
+}
+
+/// Planner settings of a request: liveConfig plus its executed-control sigma.
+inline ReactiveConfig liveConfig(const LiveRobot& live, const LiveRequest& request) {
+  ReactiveConfig config = liveConfig(live, request.obstacles);
+  config.sigma_executed_control = request.sigma_executed_control;
+  return config;
+}
+
+/// The planner settings of one run: base cost on at sigma (> 0) or off (0).
+inline ReactiveConfig runConfig(ReactiveConfig config, const LiveSetup& setup, double sigma) {
+  if (sigma > 0.0) {
+    config.base_wrench = setup.base_wrench;
+    config.sigma_base_torque = sigma;
+    config.sigma_base_force = sigma;
+  }
+  return config;
+}
+
+/// The simulated sensing of a request's closed loop (ghost run).
+inline ViconSimulationConfig liveSimulation(const LiveRobot& live, const LiveRequest& request) {
+  ViconSimulationConfig simulation;
+  simulation.obstacles = request.obstacles;
+  simulation.use_encoders = live.scenario.use_encoders || request.sensing == "encoders";
+  simulation.use_markers = request.sensing == "markers";
+  simulation.seed = request.seed;
+  return simulation;
 }
 
 /// The default experiment: the scenario's start, IK goal and crossing obstacles.
@@ -380,8 +496,23 @@ inline void writeLiveDescription(std::ostream& out, const LiveRobot& live,
       out << ",\"normal\":"; array(out, live.rig[b].normal.data(), 3);
       out << ",\"offset\":"; number(out, live.rig[b].offset); out << '}';
     }
-    out << "]},";
+    out << "],\"defaults\":{\"q_start\":"; vector(out, live.rig_q_start);
+    out << ",\"q_goal\":"; vector(out, live.rig_q_goal);
+    out << ",\"obstacles\":[";
+    for (size_t j = 0; j < live.rig_obstacles.size(); ++j) {
+      const MovingObstacle& obstacle = live.rig_obstacles[j];
+      if (j) out << ',';
+      out << "{\"start\":"; point(out, obstacle.start);
+      out << ",\"end\":"; point(out, obstacle.center(duration));
+      out << ",\"radius\":"; number(out, obstacle.radius); out << '}';
+    }
+    out << "]}},";
   }
+  // The planner's joint limits and the most a request may ask for.
+  out << "\"limits\":{\"v_limit\":"; number(out, setup.spec.v_limit.maxCoeff());
+  out << ",\"u_limit\":"; number(out, setup.spec.u_limit.maxCoeff());
+  out << ",\"max_v_limit\":"; number(out, kMaxVelocityLimit);
+  out << ",\"max_u_limit\":"; number(out, kMaxAccelerationLimit); out << "},";
   out << "\"duration\":"; number(out, duration); out << ',';
   out << "\"dt\":"; number(out, setup.spec.dt); out << ',';
   out << "\"defaults\":{\"q_start\":"; vector(out, defaults.q_start);
@@ -406,29 +537,23 @@ inline void writeLiveDescription(std::ostream& out, const LiveRobot& live,
 inline std::vector<std::pair<double, ClosedLoopResult>> runLiveRequest(
     const LiveRequest& request, const std::string& replay_path, std::ostream* progress) {
   const LiveRobot live = liveRobot(request.robot);
-  LiveSetup setup = makeLiveSetup(live, request.q_start, request.q_goal, request.environment);
+  LiveSetup setup = makeLiveSetup(live, request);
   for (const MovingObstacle& obstacle : request.obstacles) {
     if (!(obstacle.radius > 0.0)) throw std::invalid_argument("obstacle radius must be > 0");
   }
-  const ReactiveConfig plain = liveConfig(live, request.obstacles);
+  const ReactiveConfig plain = liveConfig(live, request);
   std::vector<std::pair<double, ClosedLoopResult>> runs;
   const size_t total = request.sigmas.size();
   for (size_t r = 0; r < total; ++r) {
     const double sigma = request.sigmas[r];
     if (progress) *progress << "PROGRESS " << r << ' ' << total << ' ' << baseWrenchRunLabel(sigma)
                             << std::endl;
-    ReactiveConfig config = plain;
-    if (sigma > 0.0) {
-      config.base_wrench = setup.base_wrench;
-      config.sigma_base_torque = sigma;
-      config.sigma_base_force = sigma;
-    }
-    ReactivePlanner planner(setup.spec, config, setup.model, setup.initial);
-    ViconSimulationConfig simulation;
-    simulation.obstacles = request.obstacles;
-    simulation.use_encoders = live.scenario.use_encoders;
-    simulation.seed = request.seed;
-    runs.emplace_back(sigma, runReactiveClosedLoop(planner, *setup.model, simulation));
+    ReactivePlanner planner(setup.spec, runConfig(plain, setup, sigma), setup.model,
+                            setup.initial);
+    ClosedLoopResult result =
+        runReactiveClosedLoop(planner, *setup.model, liveSimulation(live, request));
+    result.safety = assessRun(result, setup.spec);
+    runs.emplace_back(sigma, std::move(result));
   }
   if (progress) *progress << "PROGRESS " << total << ' ' << total << " writing replay" << std::endl;
   writeBaseWrenchReplay(replay_path, live.scenario, live.urdf, setup.spec, *setup.model,

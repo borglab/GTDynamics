@@ -37,10 +37,17 @@ setup with the native solver (`scate_live`, built with GTDynamics):
 - **Include the MK 111 wall and floor** (UR10e only) adds the lab rig's wall
   and floor to the planner, draws them as grey panels and warns when the start
   or goal goes through them or sits inside the 5 cm standoff. The scene is the
-  arm's base frame, and on the rig the arm is mounted on a wall: the wall is
-  the horizontal panel just under the base (z = -0.05 m) and the floor is the
-  upright panel at y = +0.975 m. The recorded experiment's goal reaches toward
-  +y and ends 0.3 cm from the floor, so pick a new goal for the rig.
+  arm's base frame, and on the rig the arm is mounted on a wall; with the
+  rig on, the view turns so the lab's floor is at the bottom and the wall
+  (z = -0.05 m in the base frame) is upright behind the arm. The recorded
+  experiment's goal reaches toward the floor and ends 0.3 cm from it; the rig
+  experiment (hardware mode) sweeps the other way.
+- **Plan for a hardware run** (UR10e only) adds the rig, plans with joint
+  encoders only and the velocity and acceleration limits you set, loads the
+  rig experiment, and opens the **Hardware experiment** panel: solve, check
+  the ghost run, then **Begin hardware experiment** (see
+  `examples/example_scate_ur10e/hardware/README.md`). With no executor
+  running, the dev server starts one with a simulated arm.
 - **Runs to solve** picks the base-cost weights (each is one closed-loop run
   on the same noise), and **Solve and run** solves and plays the result.
   A UR10e run takes about 1.5 s.
@@ -97,4 +104,5 @@ drags, solves live and needs `scate_live`):
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scate/ur10e-reactive/tests/app.browser.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scate/ur10e-reactive/tests/live.browser.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scate/ur10e-reactive/tests/rig.browser.mjs
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scate/ur10e-reactive/tests/hardware.browser.mjs
 ```

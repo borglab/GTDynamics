@@ -74,3 +74,9 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Writing the live app's robot descriptions to apps/scate/ur10e-reactive/public/robots"
   VERBATIM)
+
+# Hardware runs (hardware/README.md): the executor runs `scate_hardware serve`,
+# which simulates the ghost run, then re-plans at each reading from the arm.
+add_executable(scate_hardware scate_hardware.cpp)
+target_link_libraries(scate_hardware PUBLIC gtdynamics)
+target_include_directories(scate_hardware PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${SCATE_UR5_DIR})

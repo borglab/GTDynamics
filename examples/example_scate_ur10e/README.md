@@ -137,3 +137,19 @@ UR10e description carries the rig as `"rig"`, and the app's "Include the MK 111
 wall and floor" checkbox sends it. Replays then list the planes under
 `"environment"` and each run's `min_environment_clearance`.
 
+
+### Hardware runs
+
+`scate_hardware` (`hardware_session.h`) is the planner process of a run on
+the real arm: it simulates the ghost run and checks it (`assessRun` in
+`scate_reactive.h`: collisions, walls and floor, joint limits, speed and
+acceleration against the planner's limits), then re-plans at each reading
+the executor sends. Requests may set `v_limit`, `u_limit`, `sensing
+encoders`, `sigma_executed_control` and `hardware_sigma`. The executor, the
+ROS 2 package and how to test them on a laptop are in `hardware/README.md`.
+`testScateHardware` covers the request items, `assessRun`, the session
+driven like the executor drives it, and a run stopped early.
+
+The UR10e description now carries a rig experiment (`setMk111RigExperiment`):
+the default experiment's goal ends 0.3 cm from the lab floor, so this one
+sweeps the other way, up and away from it.

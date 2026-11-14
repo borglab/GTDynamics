@@ -67,6 +67,7 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -491,6 +492,7 @@ struct ViconSimulationConfig {
   std::vector<MovingObstacle> obstacles;  ///< ground truth
   ObstacleSensing sensing = ObstacleSensing::kEveryStep;
   bool use_encoders = false;          ///< also give joint encoder readings
+  bool use_markers = true;            ///< give arm marker readings (false = encoders only)
   double sigma_process_u = 1e-2;      ///< rad/s^2, noise added to each executed control
   double sigma_marker = 5e-4;         ///< m per axis, arm markers
   double sigma_obstacle = 5e-4;       ///< m per axis, obstacle centers
@@ -551,6 +553,7 @@ inline ViconMeasurement readVicon(const CollisionModel& truth,
   ViconMeasurement reading;
   reading.markers = truth.markerPositions(q);
   reading.markers += noise->sample(reading.markers.size(), simulation.sigma_marker);
+  if (!simulation.use_markers) reading.markers = Vector();  // noise drawn all the same
   const Vector q_noise = noise->sample(q.size(), simulation.sigma_q_encoder);
   const Vector v_noise = noise->sample(v.size(), simulation.sigma_v_encoder);
   if (simulation.use_encoders) {
@@ -620,6 +623,85 @@ inline ClosedLoopResult runReactiveClosedLoop(ReactivePlanner& planner,
     result.max_solve_ms = std::max(result.max_solve_ms, step.solve_ms);
   }
   return result;
+}
+
+/// Thresholds of assessRun: what a run must keep to be run on hardware.
+struct SafetyThresholds {
+  double min_environment_clearance = 0.01;  ///< m to walls and floor (the plan aims for the standoff)
+  double min_obstacle_clearance = 0.0;      ///< m to the (virtual) obstacles
+  double limit_tolerance = 0.05;            ///< allowed excess over v_limit and u_limit, as a fraction
+  int samples_per_interval = 10;            ///< velocity and joint-limit samples per interval
+};
+
+/**
+ * Check a closed-loop run against the limits of its GraphSpec and the
+ * clearance thresholds: no collision, walls and floor and obstacles kept
+ * clear, every joint inside its limits, |v| and |u| within the planner's
+ * limits (plus a tolerance). Uses the measured trace if the run has one,
+ * else the exact constant-acceleration motion between the states.
+ */
+inline RunSafety assessRun(const ClosedLoopResult& result, const GraphSpec& spec,
+                           const SafetyThresholds& thresholds = SafetyThresholds()) {
+  RunSafety safety;
+  auto sample = [&](const Vector& q, const Vector& v) {
+    safety.max_velocity_ratio =
+        std::max(safety.max_velocity_ratio, v.cwiseAbs().cwiseQuotient(spec.v_limit).maxCoeff());
+    safety.joint_limit_margin =
+        std::min(safety.joint_limit_margin,
+                 std::min((q - spec.q_lower).minCoeff(), (spec.q_upper - q).minCoeff()));
+  };
+  if (!result.trace_t.empty()) {
+    for (size_t i = 0; i < result.trace_t.size(); ++i) sample(result.trace_q[i], result.trace_v[i]);
+  } else {
+    const int samples = std::max(1, thresholds.samples_per_interval);
+    for (size_t k = 0; k < result.u.size(); ++k) {
+      for (int s = 0; s <= samples; ++s) {
+        const double tau = spec.dt * s / samples;
+        sample(result.q[k] + tau * result.v[k] + 0.5 * tau * tau * result.u[k],
+               result.v[k] + tau * result.u[k]);
+      }
+    }
+    if (!result.q.empty()) sample(result.q.back(), result.v.back());
+  }
+  for (const Vector& u : result.u) {
+    safety.max_acceleration_ratio =
+        std::max(safety.max_acceleration_ratio, u.cwiseAbs().cwiseQuotient(spec.u_limit).maxCoeff());
+  }
+  auto fail = [&](const std::string& reason) {
+    safety.safe = false;
+    safety.reasons.push_back(reason);
+  };
+  auto cm = [](double metres) {
+    std::ostringstream text;
+    text.setf(std::ios::fixed);
+    text.precision(1);
+    text << 100.0 * metres << " cm";
+    return text.str();
+  };
+  auto percent = [](double ratio) {
+    std::ostringstream text;
+    text.setf(std::ios::fixed);
+    text.precision(0);
+    text << 100.0 * ratio << "%";
+    return text.str();
+  };
+  if (result.min_self_clearance < 0.0) fail("the arm hits itself");
+  if (result.min_environment_clearance < thresholds.min_environment_clearance) {
+    fail("the arm comes within " + cm(result.min_environment_clearance) +
+         " of the wall or floor (needs " + cm(thresholds.min_environment_clearance) + ")");
+  }
+  if (result.min_obstacle_clearance < thresholds.min_obstacle_clearance) {
+    fail("the arm comes within " + cm(result.min_obstacle_clearance) + " of an obstacle");
+  }
+  if (safety.joint_limit_margin < 0.0) fail("a joint leaves its limits");
+  if (safety.max_velocity_ratio > 1.0 + thresholds.limit_tolerance) {
+    fail("joint speed reaches " + percent(safety.max_velocity_ratio) + " of the velocity limit");
+  }
+  if (safety.max_acceleration_ratio > 1.0 + thresholds.limit_tolerance) {
+    fail("joint acceleration reaches " + percent(safety.max_acceleration_ratio) +
+         " of the acceleration limit");
+  }
+  return safety;
 }
 
 }  // namespace scate

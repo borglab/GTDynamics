@@ -113,7 +113,31 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     controls: { minDistance: .1, maxDistance: 10, maxPolarAngle: Math.PI },
     ariaLabel: `${robotName} replay; drag to orbit, scroll to zoom`,
   });
-  const { scene, camera, controls } = viewport;
+  const { scene, camera } = viewport;
+  // The controls are rebuilt when the up direction changes (setUp), so hand
+  // the editor a stand-in that always reaches the current ones.
+  const controls = {
+    get enabled() { return viewport.controls.enabled; },
+    set enabled(value) { viewport.controls.enabled = value; },
+  };
+  // Up in the view: Z (the arm's base frame), or the lab's up when the replay
+  // or the editor has a floor (its normal points up, into free space).
+  let up = [0, 0, 1];
+  const floorUp = planes => planes?.find(p => p.name === 'floor')?.normal || null;
+  /** A pleasant viewing direction for this up: Z-up as before; with a floor, from the room. */
+  function viewDirection() {
+    if (up[2] === 1) return new THREE.Vector3(.75, -.95, .6);
+    const u = new THREE.Vector3(...up);
+    // Out of the wall (+Z of the base) toward the viewer, a little to the side and above.
+    return new THREE.Vector3(0, 0, 1).multiplyScalar(1.0).addScaledVector(u, .45).add(new THREE.Vector3(.6, 0, 0));
+  }
+  function applyUp(next) {
+    const value = next || [0, 0, 1];
+    if (value.every((x, i) => Math.abs(x - up[i]) < 1e-9)) return false;
+    up = value;
+    viewport.setUp(up);
+    return true;
+  }
   viewport.addStage({ ground: false, grid: {size: 2, divisions: 20, colors: ['#dde2e6', '#e3e7ea']} });
   scene.add(new THREE.AxesHelper(.15));
 
@@ -265,6 +289,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
     $("note").textContent =
       "Clearance is the gap between the closest collision sphere and the true obstacle surface. Click or drag on the chart to scrub.";
     buildObjects();
+    applyUp(floorUp(d.environment));
     frameCamera();
     // Open at the most telling instant: where the blind run comes closest,
     // or in a comparison where any run comes closest.
@@ -290,7 +315,7 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
       box.expandByPoint(v3(obstacleCenter(o, Tend)));
     }
     if (box.isEmpty()) return;
-    viewport.cameraController.fit(box, { direction: new THREE.Vector3(.75, -.95, .6), padding: 1.05, minDistance: .1 });
+    viewport.cameraController.fit(box, { direction: viewDirection(), padding: 1.05, minDistance: .1 });
   }
 
   // Obstacles: the moving ones of a reactive replay, or the one static obstacle.
@@ -801,6 +826,18 @@ export function createReplayViewer(root, { robotName = 'UR5', meshForLink = UR_M
       world.visible = !editing;
       viewport.render();
     },
+    /**
+     * View with the lab's up when planes include a floor (normal = up), else Z up.
+     * Refits the view if the up direction changed.
+     */
+    setEnvironmentView(planes) {
+      if (applyUp(floorUp(planes))) {
+        if (D) frameCamera();
+        viewport.render();
+      }
+    },
+    /** The current up direction of the view. */
+    upDirection() { return [...up]; },
     /** The scene and helpers the live-setup editor draws into (editor.js). */
     editorContext() {
       return {
